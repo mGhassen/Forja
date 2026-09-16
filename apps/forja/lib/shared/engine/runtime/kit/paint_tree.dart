@@ -11,6 +11,9 @@ import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_entry.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/catalog_epg_guide_host.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/channel_catalog_health_host.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
+import 'package:forja/shared/player/live/tv_focus.dart';
+import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/kit_schedule_window.dart';
 import 'package:forja/shared/engine/runtime/actions/event_search/kit_event_list_search.dart';
 import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_sort_action_host.dart';
@@ -1610,7 +1613,7 @@ class PackPaintTree extends StatelessWidget {
             return 'poster';
           }();
           final openMode = (spec['open'] ?? '').toString().trim().toLowerCase();
-          final selectedId = selected == null
+          final panelSelectedId = selected == null
               ? null
               : (selected['id'] ??
                       (selected['meta'] is Map
@@ -1618,15 +1621,34 @@ class PackPaintTree extends StatelessWidget {
                           : null) ??
                       '')
                   .toString();
+          final highlightId =
+              (IptvCatalogLand.highlightedStreamId.value ?? '').trim();
+          final selectedId = (panelSelectedId != null &&
+                  panelSelectedId.isNotEmpty)
+              ? panelSelectedId
+              : (highlightId.isEmpty ? null : highlightId);
           final wide = constraints.maxWidth >= 900;
           final showPanel = openMode == 'panel' && selected != null && wide;
           final gap = PackPaintArtifact.packDouble(spec['gap']);
           final pad = PackPaintArtifact.packDouble(spec['pad']);
+          final listId = (spec['id'] ?? 'items').toString().trim();
+          final kindFilterLive = kindMenu == 'cats';
+          final currentKind = kindFilter;
+
+          if (liveChannels) {
+            IptvCatalogLand.setVisibleStreamIds([
+              for (final item in filtered) _itemStreamId(item),
+            ]);
+          }
 
           void onListItemTap(Map<String, dynamic> item) {
             if (openMode == 'panel') {
               chrome?.onSelectListItem(item);
               return;
+            }
+            final streamId = _itemStreamId(item);
+            if (streamId.isNotEmpty) {
+              IptvCatalogLand.highlightedStreamId.value = streamId;
             }
             PackPaintArtifact.openTap(
               context,
@@ -1637,6 +1659,30 @@ class PackPaintTree extends StatelessWidget {
             )?.call();
           }
 
+          void onHoldJump(Map<String, dynamic> item) {
+            final props = catalogItemProps(item);
+            final open = item['open'];
+            final openMap = open is Map ? open : null;
+            final cat = (openMap?['categoryId'] ??
+                    item['categoryId'] ??
+                    props['categoryId'] ??
+                    '')
+                .toString()
+                .trim();
+            if (cat.isEmpty ||
+                cat == 'all' ||
+                PortalLiveCatalog.isSyntheticId(cat)) {
+              return;
+            }
+            final scope = LayoutScope.maybeOf(context);
+            scope?.onSelect(IptvCatalogLand.catsRowId, cat, toggle: false);
+            final sid = _itemStreamId(item);
+            if (sid.isNotEmpty) {
+              IptvCatalogLand.highlightedStreamId.value = sid;
+              IptvCatalogLand.requestLandScroll();
+            }
+          }
+
           CatalogCardsGrid buildGrid({
             ValueListenable<bool?>? Function(Map<String, dynamic>)?
                 healthListenableFor,
@@ -1645,6 +1691,11 @@ class PackPaintTree extends StatelessWidget {
             Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
                 loadEpgProgrammes,
           }) {
+            final allowHoldJump = kindFilterLive &&
+                (currentKind == PortalLiveCatalog.favoritesId ||
+                    currentKind == PortalLiveCatalog.watchedId ||
+                    currentKind == 'favorites' ||
+                    currentKind == 'watched');
             return CatalogCardsGrid(
               items: filtered,
               cardKind: cardKind,
@@ -1663,6 +1714,14 @@ class PackPaintTree extends StatelessWidget {
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
               onItemTap: onListItemTap,
+              tvTabId: tabId,
+              tvRowId: listId.isEmpty ? IptvCatalogLand.itemsRowId : listId,
+              landEpoch: IptvCatalogLand.landEpoch,
+              preferCategoryFocusOnLand:
+                  IptvCatalogLand.preferCategoryFocusOnLand,
+              onHoldJumpToCategory: allowHoldJump ? onHoldJump : null,
+              onRequestFocusAt: liveFocusBrowserStreamAt,
+              onArmFocusMemory: liveArmBrowserStreamFocusMemory,
             );
           }
 
@@ -1675,17 +1734,58 @@ class PackPaintTree extends StatelessWidget {
               },
             );
           } else if (cardKind == 'channel') {
-            grid = CatalogEpgGuideHost(
-              builder: (context,
-                  {required loadEpgProgrammes, required loadShortEpgProgrammes}) {
-                return ChannelCatalogHealthHost(
+            grid = ValueListenableBuilder<String?>(
+              valueListenable: IptvCatalogLand.highlightedStreamId,
+              builder: (context, highlight, _) {
+                final hid = (highlight ?? '').trim();
+                final effectiveSelected =
+                    (panelSelectedId != null && panelSelectedId.isNotEmpty)
+                        ? panelSelectedId
+                        : (hid.isEmpty ? null : hid);
+                return CatalogEpgGuideHost(
                   builder: (context,
-                      {required healthListenableFor,
-                      required onInteractiveActive}) {
-                    return buildGrid(
-                      healthListenableFor: healthListenableFor,
-                      onInteractiveActive: onInteractiveActive,
-                      loadEpgProgrammes: loadShortEpgProgrammes,
+                      {required loadEpgProgrammes,
+                      required loadShortEpgProgrammes}) {
+                    return ChannelCatalogHealthHost(
+                      builder: (context,
+                          {required healthListenableFor,
+                          required onInteractiveActive}) {
+                        final allowHoldJump = kindFilterLive &&
+                            (currentKind == PortalLiveCatalog.favoritesId ||
+                                currentKind == PortalLiveCatalog.watchedId ||
+                                currentKind == 'favorites' ||
+                                currentKind == 'watched');
+                        return CatalogCardsGrid(
+                          items: filtered,
+                          cardKind: cardKind,
+                          selectedItemId: effectiveSelected,
+                          gap: gap,
+                          pad: pad,
+                          emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.')
+                              .toString(),
+                          emptyDescription:
+                              (spec['emptyDescription'] ?? '').toString().isEmpty
+                                  ? null
+                                  : spec['emptyDescription']?.toString(),
+                          emptyAction: _listEmptyAction(context, spec),
+                          itemAccessory: _liveFavoriteAccessory,
+                          itemHealthListenable: healthListenableFor,
+                          onItemInteractiveActive: onInteractiveActive,
+                          loadEpgProgrammes: loadShortEpgProgrammes,
+                          onItemTap: onListItemTap,
+                          tvTabId: tabId,
+                          tvRowId: listId.isEmpty
+                              ? IptvCatalogLand.itemsRowId
+                              : listId,
+                          landEpoch: IptvCatalogLand.landEpoch,
+                          preferCategoryFocusOnLand:
+                              IptvCatalogLand.preferCategoryFocusOnLand,
+                          onHoldJumpToCategory:
+                              allowHoldJump ? onHoldJump : null,
+                          onRequestFocusAt: liveFocusBrowserStreamAt,
+                          onArmFocusMemory: liveArmBrowserStreamFocusMemory,
+                        );
+                      },
                     );
                   },
                 );

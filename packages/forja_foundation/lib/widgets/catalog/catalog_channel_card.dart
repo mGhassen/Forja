@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
@@ -23,12 +26,18 @@ class CatalogChannelCard extends StatefulWidget {
     this.health,
     this.healthListenable,
     this.highlighted = false,
+    this.showLogo = true,
+    this.listLayout = false,
     this.width,
     this.height,
     this.gridIndex,
     this.gridColumns,
+    this.tvTabId,
+    this.tvRowId,
     this.onTap,
     this.onInteractiveActive,
+    this.onHoldJumpToCategory,
+    this.onTvFocusGained,
     this.favoriteBuilder,
   });
 
@@ -43,12 +52,24 @@ class CatalogChannelCard extends StatefulWidget {
   /// Per-channel health — preferred so probe results do not rebuild sibling cards.
   final ValueListenable<bool?>? healthListenable;
   final bool highlighted;
+
+  /// Leanback lazy logos — false until settle / focus reveal.
+  final bool showLogo;
+
+  /// Narrow phone list row (logo + title) instead of grid card.
+  final bool listLayout;
   final double? width;
   final double? height;
   final int? gridIndex;
   final int? gridColumns;
+  final String? tvTabId;
+  final String? tvRowId;
   final VoidCallback? onTap;
   final ValueChanged<bool>? onInteractiveActive;
+
+  /// TV: hold OK ~1s (Favorites / Already watched) — no play.
+  final VoidCallback? onHoldJumpToCategory;
+  final VoidCallback? onTvFocusGained;
   final Widget? Function({required bool active})? favoriteBuilder;
 
   /// Desktop ~165 target (fill-width grid); TV = portrait poster cell.
@@ -103,6 +124,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   bool _hovered = false;
   bool _focused = false;
   Future<List<GuideEpgProgramme>>? _epgFuture;
+  Timer? _okHoldTimer;
+  bool _okHoldFired = false;
+  static const _okHoldDelay = Duration(seconds: 1);
 
   bool get _active => ShellPaintScope.interactiveActive(
         context,
@@ -112,6 +136,10 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
 
   bool get _epgEnabled =>
       widget.programmes.isNotEmpty || widget.loadProgrammes != null;
+
+  bool get _leanbackOnly =>
+      ShellPaintScope.usesTvDensityOf(context) &&
+      !ShellPaintScope.scaleOnHoverOf(context);
 
   @override
   void initState() {
@@ -152,14 +180,55 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
 
   void _setFocused(bool v) {
     if (_focused == v) return;
+    if (!v) {
+      _okHoldTimer?.cancel();
+      _okHoldTimer = null;
+      _okHoldFired = false;
+    }
     setState(() => _focused = v);
     widget.onInteractiveActive?.call(v || _hovered);
+    if (v) widget.onTvFocusGained?.call();
   }
 
   @override
   void dispose() {
+    _okHoldTimer?.cancel();
     widget.onInteractiveActive?.call(false);
     super.dispose();
+  }
+
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    final jump = widget.onHoldJumpToCategory;
+    if (jump == null || !_leanbackOnly) return KeyEventResult.ignored;
+    final activate = ShellPaintScope.maybeOf(context)?.isActivateKey;
+    final isActivate = activate != null
+        ? activate(event)
+        : (event.logicalKey == LogicalKeyboardKey.select ||
+            event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.numpadEnter ||
+            event.logicalKey == LogicalKeyboardKey.space);
+    if (!isActivate) return KeyEventResult.ignored;
+    if (event is KeyDownEvent) {
+      _okHoldFired = false;
+      _okHoldTimer?.cancel();
+      _okHoldTimer = Timer(_okHoldDelay, () {
+        if (!mounted) return;
+        _okHoldFired = true;
+        jump();
+      });
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent) {
+      _okHoldTimer?.cancel();
+      _okHoldTimer = null;
+      if (_okHoldFired) {
+        _okHoldFired = false;
+        return KeyEventResult.handled;
+      }
+      widget.onTap?.call();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   Color _surface(bool? health, bool active) {
@@ -215,34 +284,47 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   Widget _buildCard(BuildContext context, {required bool? health}) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final active = _active;
-    final radius = tv ? InteractivePosterCard.cardBorderRadius(context) : 12.0;
-    final body = tv
-        ? _buildTvBody(context, active: active, health: health)
-        : _buildDesktopBody(context, active: active, health: health);
+    final radius = widget.listLayout
+        ? 10.0
+        : (tv ? InteractivePosterCard.cardBorderRadius(context) : 12.0);
+    final body = widget.listLayout
+        ? _buildListBody(context, active: active, health: health)
+        : tv
+            ? _buildTvBody(context, active: active, health: health)
+            : _buildDesktopBody(context, active: active, health: health);
 
-    // Instant hover chrome — AnimatedContainer on every tile while sweeping
-    // the mouse is the stutter (grid health rebuilds made it worse).
+    final holdJump =
+        widget.onHoldJumpToCategory != null && _leanbackOnly;
+
     Widget card = Container(
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
-        color: tv ? Colors.transparent : _surface(health, active || widget.highlighted),
+        color: tv && !widget.listLayout
+            ? Colors.transparent
+            : _surface(health, active || widget.highlighted),
         borderRadius: BorderRadius.circular(radius),
-        border: tv && !active && !widget.highlighted
+        border: tv && !widget.listLayout && !active && !widget.highlighted
             ? Border.all(color: Colors.transparent)
             : Border.all(color: _border(health, active)),
       ),
       child: ShellPaintScope.focusableTap(
         context: context,
-        onTap: widget.onTap,
+        onTap: holdJump ? null : widget.onTap,
         borderRadius: radius,
         scaleOnFocus: 1.0,
         gridIndex: widget.gridIndex,
         gridColumns: widget.gridColumns,
-        tvZone: ShellPaintTvZone.grid,
+        listIndex: widget.listLayout ? widget.gridIndex : null,
+        tvTabId: widget.tvTabId,
+        tvRowId: widget.tvRowId,
+        tvZone: widget.listLayout
+            ? ShellPaintTvZone.row
+            : ShellPaintTvZone.grid,
         tvItemIndex: widget.gridIndex,
         onFocusChange: _setFocused,
         onHoverChange: _setHovered,
+        onKeyEvent: holdJump ? _onKeyEvent : null,
         child: body,
       ),
     );
@@ -255,6 +337,61 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     }
 
     return card;
+  }
+
+  Widget _buildListBody(
+    BuildContext context, {
+    required bool active,
+    required bool? health,
+  }) {
+    final fav = widget.favoriteBuilder?.call(active: active);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _logoThumb(contain: true, padding: 4, cacheWidth: 88),
+                  if (active)
+                    const ColoredBox(color: Color(0x52000000)),
+                  ShellCardPlayOverlay(
+                    active: false,
+                    visible: active,
+                    diameter: 30,
+                    iconSize: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              widget.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(
+                color: health == false ? Colors.white54 : Colors.white,
+                fontSize: 12,
+                height: 1.18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (fav != null) ...[const SizedBox(width: 4), fav],
+          if (health != null) ...[
+            const SizedBox(width: 6),
+            _healthDot(health, compact: true),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildDesktopBody(
@@ -409,6 +546,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     double padding = 0,
     int? cacheWidth,
   }) {
+    if (!widget.showLogo) {
+      return const SizedBox.expand(child: _ChannelPlaceholder());
+    }
     final icon = widget.imageUrl.trim();
     if (icon.isEmpty) {
       return const SizedBox.expand(child: _ChannelPlaceholder());

@@ -8,10 +8,12 @@ import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_live_sort_providers.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_category_rail.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/chrome/live_favorite_star.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shared/engine/engine.dart';
 
 /// Live category rail chrome — pack declares features; host owns store engines.
@@ -361,9 +363,11 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       return;
     }
     final key = PortalAliveStore.portalKey(portal);
+    IptvCatalogLand.bindPortalKey(key);
     final pinned =
         await PortalLiveChannelListsStore.loadPinnedCategories(key);
     final order = await PortalLiveChannelListsStore.loadCategoryOrder(key);
+    final lastCat = await PortalLiveChannelListsStore.loadLastCategory(key);
     await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
     if (!mounted) return;
     setState(() {
@@ -378,7 +382,8 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       _loading = false;
     });
     _publishBar(chromeItems: _items);
-    _ensureValidSelection(_items);
+    _ensureValidSelection(_items, preferCategoryId: lastCat);
+    unawaited(IptvCatalogLand.hydrateHighlightFromStore());
   }
 
   List<CatalogCategoryItem> _plainItems() {
@@ -434,7 +439,10 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     ];
   }
 
-  void _ensureValidSelection(List<CatalogCategoryItem> items) {
+  void _ensureValidSelection(
+    List<CatalogCategoryItem> items, {
+    String? preferCategoryId,
+  }) {
     if (items.isEmpty) return;
     final sel = widget.selectedId.trim();
     if (sel.isNotEmpty && sel != 'all' && items.any((e) => e.id == sel)) {
@@ -447,6 +455,16 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         widget.onSelect('all');
+      });
+      return;
+    }
+    final prefer = (preferCategoryId ?? '').trim();
+    if (prefer.isNotEmpty &&
+        !PortalLiveCatalog.isSyntheticId(prefer) &&
+        items.any((e) => e.id == prefer)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.onSelect(prefer);
       });
       return;
     }
@@ -463,6 +481,13 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       if (!mounted) return;
       widget.onSelect(items.first.id);
     });
+  }
+
+  void _onSelectCategory(String id) {
+    widget.onSelect(id);
+    if (_isLive) {
+      unawaited(IptvCatalogLand.rememberCategory(id));
+    }
   }
 
   void _publishBar({required List<CatalogCategoryItem> chromeItems}) {
@@ -571,6 +596,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     }
     final categorySort = ref.watch(iptvLiveCategorySortProvider);
     final width = _d('width') ?? 220.0;
+    final tvTab = tab.isNotEmpty ? tab : 'iptv';
 
     if (_loading && _items.isEmpty) {
       return SizedBox(
@@ -594,13 +620,13 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       ];
     }
 
-    CatalogCategoryRail rail({
+    Widget rail({
       required List<CatalogCategoryItem> items,
       ValueChanged<String>? onTogglePin,
       void Function(int oldIndex, int newIndex)? onReorder,
       required bool canReorder,
     }) {
-      return CatalogCategoryRail(
+      final child = CatalogCategoryRail(
         items: items,
         selectedId: widget.selectedId,
         width: width,
@@ -610,10 +636,22 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         rowPadH: _d('rowPadH'),
         listPadV: _d('listPadV') ?? 8,
         pinSlotWidth: _d('pinSlotWidth') ?? 28,
-        onSelect: widget.onSelect,
+        tvTabId: tvTab,
+        tvRowId: IptvCatalogLand.catsRowId,
+        onSelect: _onSelectCategory,
         onTogglePin: onTogglePin,
         onReorder: onReorder,
         canReorder: canReorder,
+      );
+      if (!ShellPaintScope.useTvFocusOf(context)) return child;
+      return ShellPaintScope.tvRow(
+        context: context,
+        tabId: tvTab,
+        rowId: IptvCatalogLand.catsRowId,
+        sortOrder: 1,
+        itemCount: items.length,
+        axis: ShellPaintTvRowAxis.vertical,
+        child: child,
       );
     }
 

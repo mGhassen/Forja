@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
@@ -47,6 +49,13 @@ class CatalogCardsGrid extends StatelessWidget {
     this.itemHealthListenable,
     this.onItemInteractiveActive,
     this.loadEpgProgrammes,
+    this.tvTabId,
+    this.tvRowId,
+    this.landEpoch,
+    this.onHoldJumpToCategory,
+    this.preferCategoryFocusOnLand = true,
+    this.onRequestFocusAt,
+    this.onArmFocusMemory,
   });
 
   final List<Map<String, dynamic>> items;
@@ -90,6 +99,25 @@ class CatalogCardsGrid extends StatelessWidget {
   /// Lazy EPG table fetch for [cardKind] `guide` / `epg`.
   final Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
       loadEpgProgrammes;
+
+  /// TV focus graph tab / row for Live channel grid (pack `items`).
+  final String? tvTabId;
+  final String? tvRowId;
+
+  /// Bumped by host to scroll/focus [selectedItemId] (after player / hydrate).
+  final ValueListenable<int>? landEpoch;
+
+  /// Favorites / Already watched: hold OK ~1s → jump to portal category.
+  final void Function(Map<String, dynamic> item)? onHoldJumpToCategory;
+
+  /// When landing a restored channel, keep D-pad on category rail (arm memory).
+  final bool preferCategoryFocusOnLand;
+
+  /// Host focuses TV item after scroll (lazy grid).
+  final ValueChanged<int>? onRequestFocusAt;
+
+  /// Host arms D-pad memory without stealing category focus.
+  final ValueChanged<int>? onArmFocusMemory;
 
   static List<Map<String, dynamic>> itemsFromProps(Map<String, dynamic> props) {
     final v = props['items'];
@@ -173,12 +201,21 @@ class CatalogCardsGrid extends StatelessWidget {
 
   static String _itemId(Map<String, dynamic> item) {
     final props = catalogItemProps(item);
-    return (item['id'] ??
-            props['id'] ??
-            item['streamId'] ??
-            props['streamId'] ??
-            '')
-        .toString();
+    final open = item['open'];
+    final openMap = open is Map ? open : null;
+    // Prefer portal streamId — matches last-played store / after-player restore
+    // (pack compound id is `iptv:live:…`).
+    for (final key in [
+      openMap?['streamId'],
+      item['streamId'],
+      props['streamId'],
+      item['id'],
+      props['id'],
+    ]) {
+      final v = (key ?? '').toString().trim();
+      if (v.isNotEmpty) return v;
+    }
+    return '';
   }
 
   static String _itemTitle(Map<String, dynamic> item) {
@@ -213,6 +250,13 @@ class CatalogCardsGrid extends StatelessWidget {
       onItemInteractiveActive: onItemInteractiveActive,
       loadEpgProgrammes: loadEpgProgrammes,
       onItemTap: onItemTap,
+      tvTabId: tvTabId,
+      tvRowId: tvRowId,
+      landEpoch: landEpoch,
+      onHoldJumpToCategory: onHoldJumpToCategory,
+      preferCategoryFocusOnLand: preferCategoryFocusOnLand,
+      onRequestFocusAt: onRequestFocusAt,
+      onArmFocusMemory: onArmFocusMemory,
     );
   }
 
@@ -382,6 +426,13 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
     this.onItemInteractiveActive,
     this.loadEpgProgrammes,
     this.onItemTap,
+    this.tvTabId,
+    this.tvRowId,
+    this.landEpoch,
+    this.onHoldJumpToCategory,
+    this.preferCategoryFocusOnLand = true,
+    this.onRequestFocusAt,
+    this.onArmFocusMemory,
   });
 
   final List<Map<String, dynamic>> items;
@@ -403,6 +454,13 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
   final Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
       loadEpgProgrammes;
   final void Function(Map<String, dynamic> item)? onItemTap;
+  final String? tvTabId;
+  final String? tvRowId;
+  final ValueListenable<int>? landEpoch;
+  final void Function(Map<String, dynamic> item)? onHoldJumpToCategory;
+  final bool preferCategoryFocusOnLand;
+  final ValueChanged<int>? onRequestFocusAt;
+  final ValueChanged<int>? onArmFocusMemory;
 
   @override
   State<_ChannelLetterJumpGrid> createState() => _ChannelLetterJumpGridState();
@@ -415,12 +473,43 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   /// Same role as category [selectedId] — letter-jump selection chrome + anchor.
   int _selectedIndex = -1;
 
+  Timer? _logoSettleTimer;
+  bool _allowNewLogos = false;
+  final Set<String> _revealedLogoIds = <String>{};
+  static const _logoSettleDelay = Duration(milliseconds: 500);
+
   bool get _leanbackOnly =>
       ShellPaintScope.usesTvDensityOf(context) &&
       !ShellPaintScope.scaleOnHoverOf(context);
 
+  bool get _compactList {
+    if (_leanbackOnly || ShellPaintScope.usesTvDensityOf(context)) {
+      return false;
+    }
+    return MediaQuery.sizeOf(context).width < 720;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+    widget.landEpoch?.addListener(_onLandEpoch);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_leanbackOnly) {
+        _bumpChannelLogoSettle();
+      } else {
+        setState(() => _allowNewLogos = true);
+      }
+      _landSelected(preferCategoryFocus: widget.preferCategoryFocusOnLand);
+    });
+  }
+
   @override
   void dispose() {
+    widget.landEpoch?.removeListener(_onLandEpoch);
+    _logoSettleTimer?.cancel();
+    _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
   }
@@ -428,10 +517,60 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   @override
   void didUpdateWidget(covariant _ChannelLetterJumpGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.landEpoch, widget.landEpoch)) {
+      oldWidget.landEpoch?.removeListener(_onLandEpoch);
+      widget.landEpoch?.addListener(_onLandEpoch);
+    }
     if (!identical(oldWidget.items, widget.items)) {
       _selectedIndex = -1;
       _itemKeys.clear();
+      _revealedLogoIds.clear();
+      if (_leanbackOnly) {
+        _allowNewLogos = false;
+        _bumpChannelLogoSettle(hide: true);
+      }
     }
+    if (oldWidget.selectedItemId != widget.selectedItemId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _landSelected(preferCategoryFocus: widget.preferCategoryFocusOnLand);
+      });
+    }
+  }
+
+  void _onLandEpoch() {
+    _landSelected(preferCategoryFocus: widget.preferCategoryFocusOnLand);
+  }
+
+  void _onScroll() {
+    if (!_leanbackOnly) return;
+    _bumpChannelLogoSettle(hide: true);
+  }
+
+  void _revealChannelLogo(String channelId) {
+    final id = channelId.trim();
+    if (id.isEmpty || _revealedLogoIds.contains(id)) return;
+    setState(() => _revealedLogoIds.add(id));
+  }
+
+  void _bumpChannelLogoSettle({bool hide = false}) {
+    if (!_leanbackOnly) return;
+    _logoSettleTimer?.cancel();
+    if (hide) {
+      _allowNewLogos = false;
+    }
+    _logoSettleTimer = Timer(_logoSettleDelay, () {
+      if (!mounted) return;
+      setState(() {
+        _allowNewLogos = true;
+      });
+    });
+  }
+
+  bool _showChannelLogo(String channelId) {
+    if (!_leanbackOnly) return true;
+    final id = channelId.trim();
+    return _revealedLogoIds.contains(id) || _allowNewLogos;
   }
 
   String _titleAt(int i) {
@@ -443,10 +582,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     return t.isEmpty ? CatalogCardsGrid._itemId(item) : t;
   }
 
-  int _letterJumpAnchor() {
-    if (_selectedIndex >= 0 && _selectedIndex < widget.items.length) {
-      return _selectedIndex;
-    }
+  int _indexOfSelected() {
     final sel = (widget.selectedItemId ?? '').trim();
     if (sel.isEmpty) return -1;
     for (var i = 0; i < widget.items.length; i++) {
@@ -455,12 +591,49 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     return -1;
   }
 
+  int _letterJumpAnchor() {
+    if (_selectedIndex >= 0 && _selectedIndex < widget.items.length) {
+      return _selectedIndex;
+    }
+    return _indexOfSelected();
+  }
+
   void _letterJump(int index) {
     if (index < 0 || index >= widget.items.length) return;
-    // Mirror category rail: select first (chrome), then scroll into place.
     setState(() => _selectedIndex = index);
-    void go() {
+    _scrollAndMaybeFocus(index, focus: false);
+  }
+
+  void _landSelected({required bool preferCategoryFocus}) {
+    final idx = _indexOfSelected();
+    if (idx < 0) return;
+    setState(() => _selectedIndex = idx);
+    if (preferCategoryFocus) {
+      _scrollToIndex(idx);
+      widget.onArmFocusMemory?.call(idx);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _scrollToIndex(idx);
+        widget.onArmFocusMemory?.call(idx);
+      });
+      return;
+    }
+    _scrollAndMaybeFocus(idx, focus: true);
+  }
+
+  void _scrollAndMaybeFocus(int index, {required bool focus}) {
+    if (index < 0 || index >= widget.items.length) return;
+    var tries = 0;
+    var scrolledFor = -1;
+    void attempt() {
       if (!mounted) return;
+      if (scrolledFor != index) {
+        _scrollToIndex(index);
+        scrolledFor = index;
+        tries++;
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        return;
+      }
       final ctx = _itemKeys[index]?.currentContext;
       if (ctx != null) {
         Scrollable.ensureVisible(
@@ -468,17 +641,35 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
           alignment: 0.15,
           duration: Duration.zero,
         );
-        return;
       }
-      _scrollToIndex(index);
+      if (!focus || !_leanbackOnly) return;
+      final focused = widget.onRequestFocusAt != null;
+      if (focused) {
+        widget.onRequestFocusAt!(index);
+      }
+      tries++;
+      if (tries < 24) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
     }
 
-    go();
-    WidgetsBinding.instance.addPostFrameCallback((_) => go());
+    attempt();
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
   void _scrollToIndex(int index) {
     if (!_scroll.hasClients || index < 0) return;
+    if (_compactList) {
+      const rowH = 56.0;
+      const topPad = 4.0;
+      final target = (topPad + index * rowH).clamp(
+        0.0,
+        _scroll.position.maxScrollExtent,
+      );
+      if ((_scroll.offset - target).abs() < 0.5) return;
+      _scroll.jumpTo(target);
+      return;
+    }
     final layout = _layout;
     if (layout == null) return;
     final cols = layout.columns.clamp(1, 999);
@@ -492,107 +683,154 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     _scroll.jumpTo(target);
   }
 
+  Widget _buildChannelTile(BuildContext context, int i, {required bool list}) {
+    final item = widget.items[i];
+    final props = catalogItemProps(item);
+    final title = (props['title'] ?? item['name'] ?? '').toString();
+    final image = (props['imageUrl'] ??
+            props['posterUrl'] ??
+            props['logoUrl'] ??
+            item['poster'] ??
+            '')
+        .toString();
+    final programmes = CatalogChannelCard.programmesFromRaw(
+      item['programmes'] ?? props['programmes'],
+    );
+    final id = CatalogCardsGrid._itemId(item);
+    final key = _itemKeys.putIfAbsent(i, GlobalKey.new);
+    final panelSelected = widget.selectedItemId != null &&
+        widget.selectedItemId!.isNotEmpty &&
+        widget.selectedItemId == id;
+    final layout = _layout;
+    return KeyedSubtree(
+      key: key,
+      child: CatalogChannelCard(
+        title: title,
+        imageUrl: image,
+        programmes: programmes,
+        loadProgrammes: widget.loadEpgProgrammes == null
+            ? null
+            : () => widget.loadEpgProgrammes!(item),
+        health: widget.itemHealth?.call(item),
+        healthListenable: widget.itemHealthListenable?.call(item),
+        highlighted: panelSelected || i == _selectedIndex,
+        showLogo: _showChannelLogo(id),
+        listLayout: list,
+        width: list ? null : layout?.cardW,
+        height: list ? 56 : layout?.cardH,
+        gridIndex: i,
+        gridColumns: list ? 1 : layout?.columns,
+        tvTabId: widget.tvTabId,
+        tvRowId: widget.tvRowId,
+        onHoldJumpToCategory: widget.onHoldJumpToCategory == null
+            ? null
+            : () => widget.onHoldJumpToCategory!(item),
+        onTap: widget.onItemTap == null
+            ? null
+            : () {
+                setState(() => _selectedIndex = i);
+                widget.onItemTap!(item);
+              },
+        onInteractiveActive: widget.onItemInteractiveActive == null
+            ? null
+            : (active) => widget.onItemInteractiveActive!(
+                  item,
+                  active: active,
+                ),
+        onTvFocusGained: _leanbackOnly
+            ? () {
+                _revealChannelLogo(id);
+                _bumpChannelLogoSettle();
+              }
+            : null,
+        favoriteBuilder: widget.itemAccessory == null
+            ? null
+            : ({required bool active}) =>
+                widget.itemAccessory!(context, item, active: active),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
+    final list = _compactList;
     final cardW = CatalogChannelCard.cardWidth(context);
     final cardH = CatalogChannelCard.cardHeight(context);
-    final gap = widget.gap ??
-        (tv ? ShellTokens.tvPosterCardRowGap : 10.0);
+    final gap = widget.gap ?? (tv ? ShellTokens.tvPosterCardRowGap : 10.0);
     final leading = widget.pad ?? 8.0;
     final trailing = widget.pad ?? 12.0;
+    final tab = (widget.tvTabId ?? '').trim();
+    final rowId = (widget.tvRowId ?? '').trim();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final layout = tv
-            ? CatalogPosterGridLayout.poster(
-                maxWidth: constraints.maxWidth,
-                cardW: cardW,
-                cardH: cardH,
-                gap: gap,
-                leading: leading,
-                trailing: trailing,
-              )
-            : CatalogPosterGridLayout.channelCards(
-                maxWidth: constraints.maxWidth,
-                minW: cardW,
-                minH: cardH,
-                gap: gap,
-                leading: leading,
-                trailing: trailing,
-              );
-        _layout = layout;
+    Widget body;
+    if (list) {
+      body = CatalogDenseList(
+        controller: _scroll,
+        itemCount: widget.items.length,
+        leading: leading,
+        trailing: trailing,
+        itemBuilder: (context, i) => _buildChannelTile(context, i, list: true),
+      );
+    } else {
+      body = LayoutBuilder(
+        builder: (context, constraints) {
+          final layout = tv
+              ? CatalogPosterGridLayout.poster(
+                  maxWidth: constraints.maxWidth,
+                  cardW: cardW,
+                  cardH: cardH,
+                  gap: gap,
+                  leading: leading,
+                  trailing: trailing,
+                )
+              : CatalogPosterGridLayout.channelCards(
+                  maxWidth: constraints.maxWidth,
+                  minW: cardW,
+                  minH: cardH,
+                  gap: gap,
+                  leading: leading,
+                  trailing: trailing,
+                );
+          _layout = layout;
 
-        final grid = CatalogPosterGrid(
-          layout: layout,
-          controller: _scroll,
-          useAspectRatio: false,
-          itemCount: widget.items.length,
-          itemBuilder: (context, i) {
-            final item = widget.items[i];
-            final props = catalogItemProps(item);
-            final title = (props['title'] ?? item['name'] ?? '').toString();
-            final image = (props['imageUrl'] ??
-                    props['posterUrl'] ??
-                    props['logoUrl'] ??
-                    item['poster'] ??
-                    '')
-                .toString();
-            final programmes = CatalogChannelCard.programmesFromRaw(
-              item['programmes'] ?? props['programmes'],
-            );
-            final id = (item['id'] ?? props['id'] ?? '').toString();
-            final key = _itemKeys.putIfAbsent(i, GlobalKey.new);
-            final panelSelected = widget.selectedItemId != null &&
-                widget.selectedItemId!.isNotEmpty &&
-                widget.selectedItemId == id;
-            return KeyedSubtree(
-              key: key,
-              child: CatalogChannelCard(
-                title: title,
-                imageUrl: image,
-                programmes: programmes,
-                loadProgrammes: widget.loadEpgProgrammes == null
-                    ? null
-                    : () => widget.loadEpgProgrammes!(item),
-                health: widget.itemHealth?.call(item),
-                healthListenable: widget.itemHealthListenable?.call(item),
-                highlighted: panelSelected || i == _selectedIndex,
-                width: layout.cardW,
-                height: layout.cardH,
-                gridIndex: i,
-                gridColumns: layout.columns,
-                onTap: widget.onItemTap == null
-                    ? null
-                    : () {
-                        setState(() => _selectedIndex = i);
-                        widget.onItemTap!(item);
-                      },
-                onInteractiveActive: widget.onItemInteractiveActive == null
-                    ? null
-                    : (active) => widget.onItemInteractiveActive!(
-                          item,
-                          active: active,
-                        ),
-                favoriteBuilder: widget.itemAccessory == null
-                    ? null
-                    : ({required bool active}) =>
-                        widget.itemAccessory!(context, item, active: active),
-              ),
-            );
-          },
-        );
+          return CatalogPosterGrid(
+            layout: layout,
+            controller: _scroll,
+            useAspectRatio: false,
+            itemCount: widget.items.length,
+            itemBuilder: (context, i) =>
+                _buildChannelTile(context, i, list: false),
+          );
+        },
+      );
+    }
 
-        return ListLetterJumpScope(
-          enabled: !_leanbackOnly && widget.items.isNotEmpty,
-          itemCount: widget.items.length,
-          anchorIndex: _letterJumpAnchor(),
-          labelAt: _titleAt,
-          onJump: _letterJump,
-          child: grid,
-        );
-      },
+    body = ListLetterJumpScope(
+      enabled: !_leanbackOnly && widget.items.isNotEmpty,
+      itemCount: widget.items.length,
+      anchorIndex: _letterJumpAnchor(),
+      labelAt: _titleAt,
+      onJump: _letterJump,
+      child: body,
     );
+
+    if (tab.isNotEmpty &&
+        rowId.isNotEmpty &&
+        ShellPaintScope.useTvFocusOf(context)) {
+      body = ShellPaintScope.tvRow(
+        context: context,
+        tabId: tab,
+        rowId: rowId,
+        sortOrder: 2,
+        itemCount: widget.items.length,
+        axis: list
+            ? ShellPaintTvRowAxis.vertical
+            : ShellPaintTvRowAxis.horizontal,
+        child: body,
+      );
+    }
+    return body;
   }
 }
 

@@ -7,11 +7,13 @@ import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
 import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/shared/player/live/hooks/live_play.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext;
 
@@ -128,6 +130,7 @@ abstract final class HostPlaybackOpen {
       }
       final sid = (streamId ?? '').trim();
       final pk = (portalKey ?? '').trim();
+      final cat = (categoryId ?? '').trim();
       if (!vodPlayback && sid.isNotEmpty && pk.isNotEmpty) {
         unawaited(
           CategoryBarActionHost.recordWatched(
@@ -135,7 +138,21 @@ abstract final class HostPlaybackOpen {
             streamId: sid,
           ),
         );
+        final portal = await _portalForKey(pk);
+        if (portal != null) {
+          IptvCatalogLand.bindPortalKey(PortalAliveStore.portalKey(portal));
+        } else {
+          IptvCatalogLand.bindPortalKey(pk);
+        }
+        unawaited(IptvCatalogLand.rememberChannel(sid));
+        IptvCatalogLand.armPostPlayerRestore(
+          streamId: sid,
+          categoryId: cat,
+        );
       }
+      var focusStreamId = sid;
+      var focusCategoryId = cat;
+      if (!ctx.mounted) return false;
       await openForjaLiveNativePlayer(
         ctx,
         sources: [
@@ -159,7 +176,39 @@ abstract final class HostPlaybackOpen {
         titleTracksSource: false,
         vodPlayback: vodPlayback,
         onlineSubtitles: onlineSubtitles,
+        onChannelChanged: vodPlayback
+            ? null
+            : (next) {
+                final nid = next.streamId.trim();
+                if (nid.isEmpty) return;
+                focusStreamId = nid;
+                focusCategoryId = next.categoryId.trim();
+                unawaited(IptvCatalogLand.rememberChannel(nid));
+                IptvCatalogLand.armPostPlayerRestore(
+                  streamId: nid,
+                  categoryId: focusCategoryId,
+                );
+              },
       );
+      if (!vodPlayback && focusStreamId.isNotEmpty) {
+        final restoreCtx =
+            shellOverlayNavigatorKey.currentContext ??
+            (ctx.mounted ? ctx : null);
+        if (restoreCtx != null && restoreCtx.mounted) {
+          _restoreCatalogAfterPlayer(
+            context: restoreCtx,
+            streamId: focusStreamId,
+            categoryId: focusCategoryId,
+          );
+        } else {
+          IptvCatalogLand.armPostPlayerRestore(
+            streamId: focusStreamId,
+            categoryId: focusCategoryId,
+          );
+          IptvCatalogLand.preferCategoryFocusOnLand = false;
+          IptvCatalogLand.landEpoch.value++;
+        }
+      }
       return true;
     } catch (_) {
       return false;
@@ -271,5 +320,30 @@ abstract final class HostPlaybackOpen {
       out[k] = v;
     }
     return out.isEmpty ? null : out;
+  }
+
+  /// Scroll/highlight (and TV-focus) the Live channel after the player pops.
+  static void _restoreCatalogAfterPlayer({
+    required BuildContext context,
+    required String streamId,
+    required String categoryId,
+  }) {
+    IptvCatalogLand.takePendingRestore();
+    void selectCategory(String id) {
+      final scope = LayoutScope.maybeOf(context);
+      scope?.onSelect(IptvCatalogLand.catsRowId, id, toggle: false);
+    }
+
+    final selected =
+        LayoutScope.maybeOf(context)?.selectedId(IptvCatalogLand.catsRowId);
+    IptvCatalogLand.restoreAfterPlayback(
+      streamId: streamId,
+      categoryId: categoryId,
+      selectCategory: selectCategory,
+      // Keep Favorites / Already watched / search when the channel is still
+      // in the painted filter; otherwise open the channel's real group.
+      streamVisibleInFilter: IptvCatalogLand.streamVisibleInFilter,
+      selectedCategoryId: selected,
+    );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
@@ -25,6 +26,7 @@ Future<void> openForjaLiveNativePlayer(
   bool titleTracksSource = true,
   bool vodPlayback = false,
   bool onlineSubtitles = false,
+  ValueChanged<PortalStream>? onChannelChanged,
 }) async {
   if (sources.isEmpty) return;
   if (!context.mounted) return;
@@ -46,6 +48,7 @@ Future<void> openForjaLiveNativePlayer(
           liveEngineResolveSource: liveEngineResolveSource,
           vodPlayback: vodPlayback,
           onlineSubtitles: onlineSubtitles,
+          onChannelChanged: onChannelChanged,
         );
     final Widget player;
     if (channelGuideFuture != null) {

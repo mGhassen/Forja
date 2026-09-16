@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/focus/forja_interactive.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -77,13 +78,12 @@ bool liveFocusRowItem(String rowId, [int? index]) {
 /// Returns false while the row is not registered yet (caller should retry).
 bool liveArmBrowserStreamFocusMemory(int index) {
   if (index < 0) return false;
-  final handle = ShellTvFocusCoordinator.rowHandle('iptv', 'browser-streams');
+  // Pack layout row id is `items` (pre-wipe used `browser-streams`).
+  const rowId = 'items';
+  final tab = ShellTvFocus.currentNavTabId ?? 'iptv';
+  final handle = ShellTvFocusCoordinator.rowHandle(tab, rowId);
   if (handle == null || handle.itemCount <= index) return false;
-  ShellTvFocusCoordinator.setRowLastFocusedIndex(
-    'iptv',
-    'browser-streams',
-    index,
-  );
+  ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, rowId, index);
   return true;
 }
 
@@ -93,16 +93,10 @@ bool liveArmBrowserStreamFocusMemory(int index) {
 /// and retry until the target node is registered.
 bool liveFocusBrowserStreamAt(int index) {
   if (index < 0) return false;
-  ShellTvFocusCoordinator.setRowLastFocusedIndex(
-    'iptv',
-    'browser-streams',
-    index,
-  );
-  return ShellTvFocusCoordinator.focusRowItemExact(
-    'iptv',
-    'browser-streams',
-    index,
-  );
+  const rowId = 'items';
+  final tab = ShellTvFocus.currentNavTabId ?? 'iptv';
+  ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, rowId, index);
+  return ShellTvFocusCoordinator.focusRowItemExact(tab, rowId, index);
 }
 
 Widget liveTap({
