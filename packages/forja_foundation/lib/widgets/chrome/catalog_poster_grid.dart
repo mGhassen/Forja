@@ -75,6 +75,37 @@ class CatalogPosterGridLayout {
       topPad: chromeTop + 4,
     );
   }
+
+  /// IPTV live channel tiles — denser column count, cells fill the row.
+  ///
+  /// Matches pre-wipe `maxWidth ~/ minW` packing (not fixed card width with
+  /// leftover right slack).
+  factory CatalogPosterGridLayout.channelCards({
+    required double maxWidth,
+    required double minW,
+    required double minH,
+    required double gap,
+    required double leading,
+    required double trailing,
+    int minColumns = 2,
+    int maxColumns = 9,
+    double chromeTop = 0,
+  }) {
+    final inner = math.max(0.0, maxWidth - leading - trailing);
+    final columns = (maxWidth ~/ minW).clamp(minColumns, maxColumns);
+    final cardW =
+        columns <= 1 ? inner : (inner - (columns - 1) * gap) / columns;
+    final cardH = minW > 0 ? minH * (cardW / minW) : minH;
+    return CatalogPosterGridLayout(
+      columns: columns,
+      cardW: cardW,
+      cardH: cardH,
+      gap: gap,
+      leading: leading,
+      rightPad: trailing,
+      topPad: chromeTop + cardH * (ShellTokens.focusActiveScale - 1) / 2 + 4,
+    );
+  }
 }
 
 /// Poster / card grid chrome — host supplies [itemBuilder] + optional focus wrap.

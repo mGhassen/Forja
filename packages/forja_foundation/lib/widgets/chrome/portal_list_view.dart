@@ -171,13 +171,7 @@ class _PortalListViewState extends State<PortalListView> {
               ),
             ],
             const Spacer(),
-            // Classic L→R: Add · Deal · Scrape · Search (white icons).
-            for (final a in widget.headerActions)
-              _PortalHeaderIcon(
-                tooltip: a.tooltip ?? a.label,
-                icon: _iconFor(a),
-                onPressed: widget.busy || !a.enabled ? null : a.onPressed,
-              ),
+            // R→L: Add · Deal · Scrape · Search  ⇒  L→R paint: Search · Scrape · Deal · Add
             _PortalHeaderIcon(
               tooltip: _searchOpen ? 'Close search' : 'Search portals',
               icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
@@ -191,6 +185,12 @@ class _PortalListViewState extends State<PortalListView> {
                 });
               },
             ),
+            for (final a in widget.headerActions)
+              _PortalHeaderIcon(
+                tooltip: a.tooltip ?? a.label,
+                icon: _iconFor(a),
+                onPressed: widget.busy || !a.enabled ? null : a.onPressed,
+              ),
           ],
         ),
       ),

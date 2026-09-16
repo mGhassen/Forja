@@ -51,12 +51,12 @@ class CatalogChannelCard extends StatefulWidget {
   final ValueChanged<bool>? onInteractiveActive;
   final Widget? Function({required bool active})? favoriteBuilder;
 
-  /// Desktop ~180× aspect 0.9; TV = portrait poster cell.
+  /// Desktop ~165 target (fill-width grid); TV = portrait poster cell.
   static double cardWidth(BuildContext context) {
     if (ShellPaintScope.usesTvDensityOf(context)) {
       return InteractivePosterCard.cardWidth(context);
     }
-    return 180;
+    return 165;
   }
 
   static double cardHeight(BuildContext context) {

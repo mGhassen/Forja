@@ -281,7 +281,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
     final credits = AccountFeatures.instance.iptvCredits;
 
-    // Classic strip L→R: Add · Deal · Scrape · (Search is paint chrome).
+    // Pack order L→R after Search: Scrape · Deal · Add (= R→L Add · Deal · Scrape · Search).
     final headerActions = <PortalListHeaderAction>[];
     for (final a in inv?.actions ?? const <PortalsPanelAction>[]) {
       final id = a.id.trim().toLowerCase();

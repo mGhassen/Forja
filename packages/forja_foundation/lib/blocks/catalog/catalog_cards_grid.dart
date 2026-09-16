@@ -196,25 +196,34 @@ class CatalogCardsGrid extends StatelessWidget {
   }
 
   Widget _channelGrid(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final cardW = CatalogChannelCard.cardWidth(context);
     final cardH = CatalogChannelCard.cardHeight(context);
     final gap = this.gap ??
-        (ShellPaintScope.usesTvDensityOf(context)
-            ? ShellTokens.tvPosterCardRowGap
-            : 10.0);
+        (tv ? ShellTokens.tvPosterCardRowGap : 10.0);
     final leading = pad ?? 8.0;
     final trailing = pad ?? 12.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final layout = CatalogPosterGridLayout.poster(
-          maxWidth: constraints.maxWidth,
-          cardW: cardW,
-          cardH: cardH,
-          gap: gap,
-          leading: leading,
-          trailing: trailing,
-        );
+        // Desktop: fill-width denser tiles (pre-wipe IPTV). TV: poster cells.
+        final layout = tv
+            ? CatalogPosterGridLayout.poster(
+                maxWidth: constraints.maxWidth,
+                cardW: cardW,
+                cardH: cardH,
+                gap: gap,
+                leading: leading,
+                trailing: trailing,
+              )
+            : CatalogPosterGridLayout.channelCards(
+                maxWidth: constraints.maxWidth,
+                minW: cardW,
+                minH: cardH,
+                gap: gap,
+                leading: leading,
+                trailing: trailing,
+              );
         return CatalogPosterGrid(
           layout: layout,
           itemCount: items.length,
