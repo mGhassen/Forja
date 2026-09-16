@@ -6,13 +6,180 @@ import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja_foundation/components/mood_circle.dart';
+import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
+
+/// Reserved loading slot for one pack layout node (structure-stable).
+({Widget placeholder, double height}) kitSectionLoadingSlot(
+  BuildContext context,
+  Map<String, dynamic> spec, {
+  bool compact = false,
+  bool pageBottomBleed = false,
+  bool shimmer = true,
+}) {
+  final type = LayoutTypes.normalize((spec['type'] ?? '').toString(), spec);
+  final title = (spec['title'] ?? '').toString().trim();
+  final size = MediaQuery.sizeOf(context);
+  final screenCompact = size.width < ShellTokens.heroDesktopMinBodyWidth;
+
+  if (type == LayoutTypes.hero) {
+    final heroH = homeCinematicHeroBodyHeight(
+      screenHeight: size.height,
+      compact: screenCompact,
+      pageBottomBleed: pageBottomBleed,
+    );
+    return (
+      placeholder: homeCinematicHeroShimmer(height: heroH),
+      height: heroH,
+    );
+  }
+
+  if (type == LayoutTypes.list) {
+    final ticker = kitListLoadingTickerCopy(context, spec);
+    if (ticker != null) {
+      return (
+        placeholder: CatalogLoadingTicker(title: ticker.$1, detail: ticker.$2),
+        height: 160,
+      );
+    }
+    const cardW = 160.0;
+    const cardH = 100.0;
+    final grid = homeLoadingShimmer(
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(
+          children: [
+            for (var r = 0; r < 3; r++) ...[
+              if (r > 0) const SizedBox(height: 12),
+              Row(
+                children: [
+                  for (var c = 0; c < 4; c++) ...[
+                    if (c > 0) const SizedBox(width: 12),
+                    homeCardSkeleton(width: cardW, height: cardH),
+                  ],
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    return (placeholder: grid, height: 8 + 3 * cardH + 2 * 12 + 24);
+  }
+
+  final cardW = InteractivePosterCard.cardWidth(context);
+  final cardH = InteractivePosterCard.cardHeight(context);
+
+  if (type == LayoutTypes.because) {
+    return (
+      placeholder: catalogBecauseRowSkeleton(
+        context: context,
+        compact: compact,
+        cardWidth: cardW,
+        cardHeight: cardH,
+        shimmer: shimmer,
+      ),
+      height: catalogBecauseRowSkeletonHeight(
+        context: context,
+        cardHeight: cardH,
+        compact: compact,
+      ),
+    );
+  }
+
+  if (type == LayoutTypes.continueWatching) {
+    return (
+      placeholder: catalogContinueRowSkeleton(
+        context: context,
+        compact: compact,
+        title: title.isEmpty ? 'Continue Watching' : title,
+        shimmer: shimmer,
+      ),
+      height: catalogContinueRowSkeletonHeight(
+        context: context,
+        compact: compact,
+      ),
+    );
+  }
+
+  if (type == LayoutTypes.mood) {
+    final chipH = MoodCircleLayout.desktop.rowHeight;
+    return (
+      placeholder: catalogMoodRowSkeleton(
+        context: context,
+        title: title.isEmpty ? null : title,
+        compact: compact,
+        chipRowHeight: chipH,
+        resultsCardHeight: cardH,
+        resultsCardWidth: cardW,
+        shimmer: shimmer,
+      ),
+      height: catalogMoodRowSkeletonHeight(
+        context: context,
+        compact: compact,
+        chipRowHeight: chipH,
+        resultsCardHeight: cardH,
+      ),
+    );
+  }
+
+  // rail / ranked / row / default poster section
+  return (
+    placeholder: catalogPosterRowSkeleton(
+      context: context,
+      title: title.isEmpty ? null : title,
+      titleWidth: title.isEmpty ? 140 : (title.length * 10.0).clamp(80, 220),
+      compact: compact,
+      cardWidth: cardW,
+      cardHeight: cardH,
+      shimmer: shimmer,
+    ),
+    height: catalogPosterRowSkeletonHeight(
+      context: context,
+      cardHeight: cardH,
+      compact: compact,
+    ),
+  );
+}
+
+/// Pack-owned ticker copy (`loading` map / `loadingTitle`). Null → card skeleton.
+(String, String)? kitListLoadingTickerCopy(
+  BuildContext context,
+  Map<String, dynamic> spec,
+) {
+  final catalogMenu = (spec['catalogMenu'] ?? '').toString().trim();
+  var section = '';
+  if (catalogMenu.isNotEmpty) {
+    section =
+        (LayoutScope.maybeOf(context)?.selectedId(catalogMenu) ?? '').trim();
+    if (section.isEmpty) section = 'live';
+  }
+
+  final loading = spec['loading'];
+  if (loading is Map) {
+    final keyed = loading[section] ?? loading['default'] ?? loading['*'];
+    if (keyed is Map) {
+      final t = (keyed['title'] ?? '').toString().trim();
+      final detail = (keyed['detail'] ?? '').toString().trim();
+      if (t.isNotEmpty) {
+        return (t, detail.isEmpty ? 'Fetching catalog…' : detail);
+      }
+    }
+  }
+
+  final t = (spec['loadingTitle'] ?? '').toString().trim();
+  if (t.isEmpty) return null;
+  final detail = (spec['loadingDetail'] ?? '').toString().trim();
+  return (t, detail.isEmpty ? 'Fetching catalog…' : detail);
+}
 
 /// Bubbles from [PackLoadedPaint] → composition roots (`columnsHeader`).
 /// When [cover] is true, hide the category rail so the ticker / empty fills
@@ -559,88 +726,15 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
   /// Finite-height light skeleton — CatalogBody mounts this in a sliver.
   Widget _sectionLoadingSkeleton() {
-    final type = (widget.fallbackSpec['type'] ?? '').toString().toLowerCase();
-    if (type.contains('hero')) {
-      return homeCinematicHeroShimmer(height: 420);
-    }
-    if (type.contains('list') || type == 'kit.list') {
-      final ticker = _listLoadingTickerCopy();
-      if (ticker != null) {
-        return CatalogLoadingTicker(title: ticker.$1, detail: ticker.$2);
-      }
-      return homeLoadingShimmer(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: Column(
-            children: [
-              for (var r = 0; r < 3; r++) ...[
-                if (r > 0) const SizedBox(height: 12),
-                Row(
-                  children: [
-                    for (var c = 0; c < 4; c++) ...[
-                      if (c > 0) const SizedBox(width: 12),
-                      homeCardSkeleton(width: 160, height: 100),
-                    ],
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
-    }
-    final cardW = InteractivePosterCard.cardWidth(context);
-    final cardH = InteractivePosterCard.cardHeight(context);
-    if (type == 'because' || type.contains('because')) {
-      return homeLoadingShimmer(
-        homeBecauseRowSkeleton(
-          topPadding: 12,
-          itemCount: 5,
-          cardWidth: cardW,
-          cardHeight: cardH,
-        ),
-      );
-    }
-    return homeLoadingShimmer(
-      homePosterRowSkeleton(
-        topPadding: 12,
-        titleWidth: 140,
-        itemCount: 5,
-        cardWidth: cardW,
-        cardHeight: cardH,
-      ),
+    final compact = widget.fallbackSpec['compactTop'] == true;
+    final bleed = (widget.fallbackSpec['bleed'] ?? '').toString().trim();
+    final slot = kitSectionLoadingSlot(
+      context,
+      widget.fallbackSpec,
+      compact: compact,
+      pageBottomBleed: bleed.isNotEmpty,
+      shimmer: true,
     );
-  }
-
-  /// Pack-owned ticker copy (`loading` map / `loadingTitle`). Null → card skeleton.
-  (String, String)? _listLoadingTickerCopy() {
-    final spec = widget.fallbackSpec;
-    final catalogMenu = (spec['catalogMenu'] ?? '').toString().trim();
-    var section = '';
-    if (catalogMenu.isNotEmpty) {
-      section =
-          (LayoutScope.maybeOf(context)?.selectedId(catalogMenu) ?? '').trim();
-      if (section.isEmpty) section = 'live';
-    }
-
-    final loading = spec['loading'];
-    if (loading is Map) {
-      final keyed = loading[section] ?? loading['default'] ?? loading['*'];
-      if (keyed is Map) {
-        final title = (keyed['title'] ?? '').toString().trim();
-        final detail = (keyed['detail'] ?? '').toString().trim();
-        if (title.isNotEmpty) {
-          return (
-            title,
-            detail.isEmpty ? 'Fetching catalog…' : detail,
-          );
-        }
-      }
-    }
-
-    final title = (spec['loadingTitle'] ?? '').toString().trim();
-    if (title.isEmpty) return null;
-    final detail = (spec['loadingDetail'] ?? '').toString().trim();
-    return (title, detail.isEmpty ? 'Fetching catalog…' : detail);
+    return slot.placeholder;
   }
 }

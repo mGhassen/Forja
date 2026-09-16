@@ -98,7 +98,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     super.initState();
     _scroll.addListener(_publishScroll);
     PluginRegistry.hubFeedEpoch.addListener(_onHubFeedEpoch);
-    unawaited(_loadPage());
+    // Sync shell from EngineCache when boot prefetch / prior visit warmed layout.
+    final warmed = _tryApplyCachedLayout();
+    unawaited(_loadPage(keepPainted: warmed));
   }
 
   @override
@@ -158,6 +160,114 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Future<void> onShellTabRefresh({required bool force}) =>
       _loadPage(force: force);
 
+  Map<String, dynamic> _pageRunParams() => <String, dynamic>{
+        ...?widget.pageParams,
+        ...?PluginNavRegistry.pageParamsForTab(_pageKey),
+        'page': _pageKey,
+      };
+
+  /// Sync-apply pack page tree from EngineCache. Returns true when structure painted.
+  bool _tryApplyCachedLayout() {
+    final action = _pageAction;
+    if (action.isEmpty) return false;
+    final env = MetaRuntime.instance.peekCached(
+      pluginId: widget.pluginId,
+      action: action,
+      params: _pageRunParams(),
+      packSourceUrl: widget.packSourceUrl,
+    );
+    if (env == null || !env.ok || env.data == null) return false;
+    if (validateLayoutData(env.data) != null) return false;
+    // initState — mutate fields without setState.
+    _applyLayoutData(
+      env.data!,
+      forceFeed: false,
+      reuseFeed: true,
+      notify: false,
+    );
+    return true;
+  }
+
+  void _applyLayoutData(
+    Map<String, dynamic> data, {
+    required bool forceFeed,
+    required bool reuseFeed,
+    bool notify = true,
+  }) {
+    final pages = data['pages'];
+    var widgets = <Map<String, dynamic>>[];
+    Map<String, dynamic>? pageMap;
+    if (pages is Map && pages.isNotEmpty) {
+      final page = pages[_pageKey] ?? pages.values.first;
+      if (page is Map) {
+        pageMap = Map<String, dynamic>.from(page);
+        final raw = pageMap['widgets'];
+        if (raw is List) {
+          widgets = [
+            for (final w in raw)
+              if (w is Map) Map<String, dynamic>.from(w),
+          ];
+        }
+      }
+    } else {
+      final raw = data['widgets'];
+      if (raw is List) {
+        widgets = [
+          for (final w in raw)
+            if (w is Map) Map<String, dynamic>.from(w),
+        ];
+      }
+    }
+
+    // First-paint only (hero → Continue). Do NOT union page feedRails —
+    // packs put later rails (e.g. new_releases) in feed for batching while
+    // still wanting LazyViewportGate until scrolled into view.
+    final eager = _firstPaintEagerKeys(widgets);
+    final feedIds = _feedRailIdsForPage(pageMap, widgets);
+    Future<Map<String, List<dynamic>>>? feedFuture;
+    if (feedIds.isNotEmpty) {
+      // Reuse in-flight / completed page feed when layout soft-reloads so
+      // PackLoadedPaint does not remount every rail (skeleton flash).
+      if (reuseFeed &&
+          !forceFeed &&
+          _pageFeedFuture != null &&
+          setEquals(feedIds, _pageFeedRailIds)) {
+        feedFuture = _pageFeedFuture;
+      } else {
+        feedFuture = _fetchPageFeed(forceRefresh: forceFeed);
+      }
+    }
+
+    void apply() {
+      _loading = false;
+      _error = null;
+      _widgets = widgets;
+      _layoutRtl = catalogLayoutIsRtl(data);
+      _eagerLoadKeys = eager;
+      _pageFeedRailIds = feedIds;
+      _pageFeedFuture = feedFuture;
+      _rowPrefetch.reset();
+      initLayoutTabSelections(_layoutSelections, widgets);
+    }
+
+    if (notify && mounted) {
+      setState(apply);
+    } else {
+      apply();
+    }
+    _rebindChromeFilters();
+    final tab = widget.tabId?.trim();
+    if (tab != null && tab.isNotEmpty) {
+      VerticalFiltersRegistry.syncFromLayout(
+        tabId: tab,
+        pluginId: widget.pluginId,
+        packSourceUrl: widget.packSourceUrl,
+        widgets: widgets,
+      );
+    }
+    markShellTabFresh();
+  }
+
   Future<void> _loadPage({bool force = false, bool keepPainted = false}) async {
     final action = _pageAction;
     if (action.isEmpty) {
@@ -197,11 +307,23 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       return;
     }
 
-    final params = <String, dynamic>{
-      ...?widget.pageParams,
-      ...?PluginNavRegistry.pageParamsForTab(_pageKey),
-      'page': _pageKey,
-    };
+    final params = _pageRunParams();
+
+    // After install idle, cache may have filled — paint structure before await.
+    if (!force && _widgets.isEmpty) {
+      final peeked = MetaRuntime.instance.peekCached(
+        pluginId: widget.pluginId,
+        action: action,
+        params: params,
+        packSourceUrl: widget.packSourceUrl,
+      );
+      if (peeked != null &&
+          peeked.ok &&
+          peeked.data != null &&
+          validateLayoutData(peeked.data) == null) {
+        _applyLayoutData(peeked.data!, forceFeed: false, reuseFeed: true);
+      }
+    }
 
     final envelope = await packOpaqueRun(
       pluginId: widget.pluginId,
@@ -213,6 +335,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (!mounted) return;
 
     if (!envelope.ok) {
+      if (_widgets.isNotEmpty) return;
       setState(() {
         _loading = false;
         _error = envelope.error?.message.isNotEmpty == true
@@ -224,6 +347,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
     final invalid = validateLayoutData(envelope.data);
     if (invalid != null) {
+      if (_widgets.isNotEmpty) return;
       setState(() {
         _loading = false;
         _error = 'This hub’s layout is invalid.';
@@ -231,72 +355,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       return;
     }
 
-    final data = envelope.data!;
-    final pages = data['pages'];
-    var widgets = <Map<String, dynamic>>[];
-    Map<String, dynamic>? pageMap;
-    if (pages is Map && pages.isNotEmpty) {
-      final page = pages[_pageKey] ?? pages.values.first;
-      if (page is Map) {
-        pageMap = Map<String, dynamic>.from(page);
-        final raw = pageMap['widgets'];
-        if (raw is List) {
-          widgets = [
-            for (final w in raw)
-              if (w is Map) Map<String, dynamic>.from(w),
-          ];
-        }
-      }
-    } else {
-      final raw = data['widgets'];
-      if (raw is List) {
-        widgets = [
-          for (final w in raw)
-            if (w is Map) Map<String, dynamic>.from(w),
-        ];
-      }
-    }
-
-    // First-paint only (hero → Continue). Do NOT union page feedRails —
-    // packs put later rails (e.g. new_releases) in feed for batching while
-    // still wanting LazyViewportGate until scrolled into view.
-    final eager = _firstPaintEagerKeys(widgets);
-    final feedIds = _feedRailIdsForPage(pageMap, widgets);
-    Future<Map<String, List<dynamic>>>? feedFuture;
-    if (feedIds.isNotEmpty) {
-      // Reuse in-flight / completed page feed when layout soft-reloads so
-      // PackLoadedPaint does not remount every rail (skeleton flash).
-      if (!force &&
-          _pageFeedFuture != null &&
-          setEquals(feedIds, _pageFeedRailIds)) {
-        feedFuture = _pageFeedFuture;
-      } else {
-        feedFuture = _fetchPageFeed(forceRefresh: force);
-      }
-    }
-
-    setState(() {
-      _loading = false;
-      _error = null;
-      _widgets = widgets;
-      _layoutRtl = catalogLayoutIsRtl(data);
-      _eagerLoadKeys = eager;
-      _pageFeedRailIds = feedIds;
-      _pageFeedFuture = feedFuture;
-      _rowPrefetch.reset();
-      initLayoutTabSelections(_layoutSelections, widgets);
-    });
-    _rebindChromeFilters();
-    final tab = widget.tabId?.trim();
-    if (tab != null && tab.isNotEmpty) {
-      VerticalFiltersRegistry.syncFromLayout(
-        tabId: tab,
-        pluginId: widget.pluginId,
-        packSourceUrl: widget.packSourceUrl,
-        widgets: widgets,
-      );
-    }
-    markShellTabFresh();
+    _applyLayoutData(
+      envelope.data!,
+      forceFeed: force,
+      reuseFeed: !force,
+    );
   }
 
   Set<String> _firstPaintEagerKeys(List<Map<String, dynamic>> widgets) {
@@ -768,24 +831,9 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
   }
 }
 
-/// Pre-wipe light full-page skeleton (hero + continue + poster rows).
+/// Neutral full-page wait — pack layout owns structure; do not invent rails.
 Widget _hubPageLoadingSkeleton(BuildContext context) {
-  final size = MediaQuery.sizeOf(context);
-  final compact = size.width < ShellTokens.heroDesktopMinBodyWidth;
-  final heroH = homeCinematicHeroBodyHeight(
-    screenHeight: size.height,
-    compact: compact,
-    pageBottomBleed: true,
-  );
-  return ColoredBox(
-    color: ForjaShellColors.bgDark,
-    child: CustomScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      slivers: homeHubLoadingSlivers(
-        heroShimmer: homeCinematicHeroShimmer(height: heroH),
-      ),
-    ),
-  );
+  return hubNeutralLoadingSkeleton(context);
 }
 
 /// Backward-compatible aliases while call sites migrate.

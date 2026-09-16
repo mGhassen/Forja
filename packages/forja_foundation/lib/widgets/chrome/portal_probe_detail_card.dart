@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
+import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Desktop hover peek — status, seats, ports, timezone (RFC-075).
 ///
-/// Same translucent shell as [GuideEpgCard] floating peek (`surfaceMuted`,
-/// not solid `menuSurface`).
+/// Liquid glass via [ForjaFrostedPanel] (blur + light tint), same family as
+/// Sources — not solid black and not bare translucent text.
 class PortalProbeDetailCard extends StatelessWidget {
   const PortalProbeDetailCard({
     super.key,
@@ -17,6 +18,7 @@ class PortalProbeDetailCard extends StatelessWidget {
   final PortalListItem item;
 
   static const _cardW = 280.0;
+  static const _radius = BorderRadius.all(Radius.circular(12));
 
   @override
   Widget build(BuildContext context) {
@@ -57,62 +59,62 @@ class PortalProbeDetailCard extends StatelessWidget {
     return IgnorePointer(
       child: SizedBox(
         width: _cardW,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-          decoration: BoxDecoration(
-            color: GuideChromeStyle.surfaceMuted,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: GuideChromeStyle.border),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: statusColor,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      status,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
+        child: ForjaFrostedPanel(
+          borderRadius: _radius,
+          blurSigma: 28,
+          border: Border.all(color: GuideChromeStyle.border),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
                         color: statusColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  height: 1.25,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        status,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              if (lines.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                for (var i = 0; i < lines.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 4),
-                  _detailRow(lines[i].$1, lines[i].$2),
+                const SizedBox(height: 6),
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
+                  ),
+                ),
+                if (lines.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  for (var i = 0; i < lines.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 4),
+                    _detailRow(lines[i].$1, lines[i].$2),
+                  ],
                 ],
               ],
-            ],
+            ),
           ),
         ),
       ),

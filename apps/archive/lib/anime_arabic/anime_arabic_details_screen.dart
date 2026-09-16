@@ -9,7 +9,7 @@ import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service
 
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
-import 'package:forja/shell/focus/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shell/kit/kit_section.dart';
 import 'package:forja/shell/kit/kit_poster_card.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play_row.dart';
