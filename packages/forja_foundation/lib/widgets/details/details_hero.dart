@@ -389,7 +389,7 @@ class _DetailsHeroLayout extends StatelessWidget {
             body,
             if (maxHeight != null)
               Align(
-                alignment: Alignment.bottomRight,
+                alignment: Alignment.topRight,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     maxWidth: 300,
