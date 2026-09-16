@@ -2,6 +2,11 @@ import Cocoa
 import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
+  /// Frame before a Forja fill (green button / title-bar double-click).
+  /// AppKit `zoom` + hidden titlebar snaps back on macOS 27 — we fill
+  /// `visibleFrame` ourselves and toggle from this snapshot.
+  private var forjaPreZoomFrame: NSRect?
+
   override func awakeFromNib() {
     let flutterViewController = ForjaFlutterViewController()
     let windowFrame = self.frame
@@ -26,8 +31,43 @@ class MainFlutterWindow: NSWindow {
     styleMask.insert(.fullSizeContentView)
     backgroundColor = NSColor.black
 
+    // Drop leaked PiP aspect / max caps so fill is not constrained.
+    resizeIncrements = NSSize(width: 1.0, height: 1.0)
+    minSize = NSSize(width: 640, height: 480)
+    maxSize = NSSize(
+      width: CGFloat.greatestFiniteMagnitude,
+      height: CGFloat.greatestFiniteMagnitude
+    )
+
     super.awakeFromNib()
     repositionTrafficLights()
+  }
+
+  /// Fill the screen work area (or restore the pre-fill frame). Avoids the
+  /// macOS 27 hidden-titlebar zoom animate-then-snap-back.
+  override func zoom(_ sender: Any?) {
+    guard let screen = screen ?? NSScreen.main else {
+      super.zoom(sender)
+      return
+    }
+    let target = screen.visibleFrame
+    if Self.forjaFramesMatch(frame, target) {
+      if let saved = forjaPreZoomFrame {
+        forjaPreZoomFrame = nil
+        setFrame(saved, display: true, animate: false)
+      }
+      // Already filled with no snapshot (e.g. boot maximize) — stay put.
+      return
+    }
+    forjaPreZoomFrame = frame
+    setFrame(target, display: true, animate: false)
+  }
+
+  private static func forjaFramesMatch(_ a: NSRect, _ b: NSRect) -> Bool {
+    abs(a.origin.x - b.origin.x) < 2
+      && abs(a.origin.y - b.origin.y) < 2
+      && abs(a.size.width - b.size.width) < 4
+      && abs(a.size.height - b.size.height) < 4
   }
 
   /// Match native title-bar spacing: inset from top-left, compact cluster.

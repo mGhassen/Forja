@@ -214,6 +214,13 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
 
+    // Drop leaked PiP aspect / max caps before restore (issue 284).
+    try {
+      await windowManager.setAspectRatio(0);
+      await windowManager.setMinimumSize(const Size(640, 480));
+      await windowManager.setMaximumSize(const Size(100000, 100000));
+    } catch (_) {}
+
     // Restore last windowed size/place when present; otherwise clamp a
     // default to the primary display work area (issue 196).
     final startup = await DesktopWindowGeometry.loadStartup();
@@ -246,6 +253,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
       await windowManager.focus();
       if (startup.maximized) {
         try {
+          DesktopWindowGeometry.suppressSaveBriefly();
           await windowManager.maximize();
         } catch (_) {}
       }
@@ -372,13 +380,13 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
 
   @override
   void onWindowMaximize() {
-    DesktopWindowGeometry.scheduleSave();
+    DesktopWindowGeometry.suppressSaveBriefly();
     DesktopWindowGeometry.noteWindowedFrameIfSession();
   }
 
   @override
   void onWindowUnmaximize() {
-    DesktopWindowGeometry.scheduleSave();
+    DesktopWindowGeometry.suppressSaveBriefly();
     DesktopWindowGeometry.noteWindowedFrameIfSession();
   }
 

@@ -28,8 +28,13 @@ class DesktopWindowGeometry {
   static const _kW = 'desktop_window_w';
   static const _kH = 'desktop_window_h';
   static const _kMaximized = 'desktop_window_maximized';
+  /// Bumped when persisted frames may be corrupt (macOS 27 zoom snap-back).
+  static const _kSchema = 'desktop_window_geometry_schema';
+  static const _kSchemaVersion = 2;
 
   static Timer? _saveDebounce;
+  /// Ignore resize saves while AppKit settle after maximize/unmaximize.
+  static DateTime? _suppressSaveUntil;
 
   /// Frame captured for the current player session (windowed / maximized).
   static Rect? _preFullscreenBounds;
@@ -71,6 +76,21 @@ class DesktopWindowGeometry {
     }
     try {
       final prefs = await SharedPreferences.getInstance();
+      final schema = prefs.getInt(_kSchema) ?? 0;
+      if (schema < _kSchemaVersion) {
+        // Drop frames stamped by macOS 27 hidden-titlebar zoom snap-back.
+        await prefs.remove(_kX);
+        await prefs.remove(_kY);
+        await prefs.remove(_kW);
+        await prefs.remove(_kH);
+        await prefs.remove(_kMaximized);
+        await prefs.setInt(_kSchema, _kSchemaVersion);
+        // macOS: open filled once so users land on work-area size again.
+        if (Platform.isMacOS) {
+          return (size: fallback, position: null, maximized: true);
+        }
+        return (size: fallback, position: null, maximized: false);
+      }
       final w = prefs.getDouble(_kW);
       final h = prefs.getDouble(_kH);
       if (w == null || h == null || w < 640 || h < 480) {
@@ -89,8 +109,22 @@ class DesktopWindowGeometry {
     }
   }
 
+  /// Pause persistence briefly after zoom/fill so a mid-settle size is not saved.
+  static void suppressSaveBriefly([
+    Duration duration = const Duration(milliseconds: 600),
+  ]) {
+    _suppressSaveUntil = DateTime.now().add(duration);
+    _saveDebounce?.cancel();
+    // Persist once the settle window ends (maximize/unmaximize).
+    _saveDebounce = Timer(duration + const Duration(milliseconds: 50), () {
+      unawaited(saveNow());
+    });
+  }
+
   static void scheduleSave() {
     if (!isDesktop) return;
+    final until = _suppressSaveUntil;
+    if (until != null && DateTime.now().isBefore(until)) return;
     _saveDebounce?.cancel();
     _saveDebounce = Timer(const Duration(milliseconds: 400), () {
       unawaited(saveNow());
@@ -99,6 +133,8 @@ class DesktopWindowGeometry {
 
   static Future<void> saveNow() async {
     if (!isDesktop) return;
+    final until = _suppressSaveUntil;
+    if (until != null && DateTime.now().isBefore(until)) return;
     try {
       // Don't persist host fullscreen or compact PiP as the normal frame.
       if (await windowManager.isFullScreen()) return;
@@ -113,6 +149,7 @@ class DesktopWindowGeometry {
       await prefs.setDouble(_kW, size.width);
       await prefs.setDouble(_kH, size.height);
       await prefs.setBool(_kMaximized, maximized);
+      await prefs.setInt(_kSchema, _kSchemaVersion);
     } catch (_) {}
   }
 
