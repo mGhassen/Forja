@@ -120,6 +120,14 @@ class _PortalListRowState extends State<PortalListRow> {
     return const Color(0x3DFFFFFF);
   }
 
+  /// Selected row = classic “active” chrome: green play until probe fails.
+  /// Idle rows stay unchecked-gray until health lands.
+  Color _selectedStatusColor({required bool checking, required bool? health}) {
+    if (checking) return const Color(0xFF38BDF8);
+    if (health == false) return const Color(0xFFEF4444);
+    return ForjaShellColors.brandGreen;
+  }
+
   @override
   Widget build(BuildContext context) {
     final deleting = item.deleting;
@@ -524,12 +532,13 @@ class _PortalListRowState extends State<PortalListRow> {
   }
 
   Widget _seatsLine({String? active, String? max}) {
-    final used = (active ?? '').trim().isEmpty ? '0' : active!.trim();
-    final cap = (max ?? '').trim().isEmpty ? '?' : max!.trim();
+    final used = _seatToken(active, fallback: '0');
+    final cap = _seatToken(max, fallback: '?');
     final activeN = int.tryParse(used);
     final maxN = int.tryParse(cap);
     final full =
         activeN != null && maxN != null && maxN > 0 && activeN >= maxN;
+    // Blue = free capacity · gray = full (avoid expiry green/orange).
     final color = full ? const Color(0xFF9CA3AF) : const Color(0xFF60A5FA);
     return Row(
       children: [
@@ -550,6 +559,12 @@ class _PortalListRowState extends State<PortalListRow> {
         ),
       ],
     );
+  }
+
+  static String _seatToken(String? raw, {required String fallback}) {
+    final s = (raw ?? '').trim();
+    if (s.isEmpty || s == 'null' || s == 'undefined') return fallback;
+    return s;
   }
 
   Widget _newBadge() {
@@ -625,7 +640,8 @@ class _PortalListRowState extends State<PortalListRow> {
   }
 
   Widget _activeGlyph({required bool checking, required bool? health}) {
-    final color = _healthColor(checking: checking, health: health);
+    final color =
+        _selectedStatusColor(checking: checking, health: health);
     final Widget glyph;
     if (checking) {
       glyph = SizedBox(
@@ -651,6 +667,9 @@ class _PortalListRowState extends State<PortalListRow> {
 }
 
 /// Expiry label + color for portal rows (paint only).
+///
+/// Parity with classic IPTV panel / host [PortalExpiry.parse]: green / orange /
+/// red from days left. Parses `16 Feb 2027`, unix, DD/MM/YYYY, ISO, trailing `*`.
 ({Color color, String label}) portalExpiryTone(String? expiry) {
   final raw = (expiry ?? '').trim();
   final label = raw.isEmpty ? 'Unknown' : raw;
@@ -664,6 +683,7 @@ class _PortalListRowState extends State<PortalListRow> {
   final today = DateTime.now();
   final midnight = DateTime(today.year, today.month, today.day);
   final days = end.difference(midnight).inDays;
+  // Orange for soon — not amber/gold (favorite star).
   final Color color;
   if (days < 0) {
     color = const Color(0xFFEF4444);
@@ -678,21 +698,102 @@ class _PortalListRowState extends State<PortalListRow> {
   return (color: color, label: '$prefix $label');
 }
 
+const _expiryMonthIndex = <String, int>{
+  'jan': 1,
+  'january': 1,
+  'feb': 2,
+  'february': 2,
+  'mar': 3,
+  'march': 3,
+  'apr': 4,
+  'april': 4,
+  'may': 5,
+  'jun': 6,
+  'june': 6,
+  'jul': 7,
+  'july': 7,
+  'aug': 8,
+  'august': 8,
+  'sep': 9,
+  'september': 9,
+  'oct': 10,
+  'october': 10,
+  'nov': 11,
+  'november': 11,
+  'dec': 12,
+  'december': 12,
+};
+
 DateTime? _tryParseExpiry(String raw) {
-  final s = raw.trim();
+  final s = raw.trim().replaceFirst(RegExp(r'\*+$'), '').trim();
   if (s.isEmpty || s.toLowerCase() == 'unknown') return null;
+
+  if (RegExp(r'^\d+$').hasMatch(s)) {
+    final n = int.tryParse(s);
+    if (n == null) return null;
+    final ms = n > 1000000000000 ? n : n * 1000;
+    try {
+      final d = DateTime.fromMillisecondsSinceEpoch(ms);
+      return d.year <= 1970 ? null : DateTime(d.year, d.month, d.day);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // `24/01/2027 19:55:57` (DD/MM/YYYY).
+  final dmy = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})').firstMatch(s);
+  if (dmy != null) {
+    final day = int.tryParse(dmy.group(1)!);
+    final month = int.tryParse(dmy.group(2)!);
+    final year = int.tryParse(dmy.group(3)!);
+    if (day != null &&
+        month != null &&
+        year != null &&
+        year > 1970 &&
+        month >= 1 &&
+        month <= 12 &&
+        day >= 1 &&
+        day <= 31) {
+      return DateTime(year, month, day);
+    }
+  }
+
+  // `16 Feb 2027` / `16 February 2027` (host PortalExpiry.format).
+  final parts = s.split(RegExp(r'\s+'));
+  if (parts.length == 3) {
+    final day = int.tryParse(parts[0]);
+    final month = _expiryMonthIndex[parts[1].toLowerCase()];
+    final year = int.tryParse(parts[2]);
+    if (day != null && month != null && year != null && year > 1970) {
+      return DateTime(year, month, day);
+    }
+  }
+
+  // `February 16, 2027` / `Feb 16 2027`
+  final eng = RegExp(r'^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})').firstMatch(s);
+  if (eng != null) {
+    final month = _expiryMonthIndex[eng.group(1)!.toLowerCase()];
+    final day = int.tryParse(eng.group(2)!);
+    final year = int.tryParse(eng.group(3)!);
+    if (day != null && month != null && year != null && year > 1970) {
+      return DateTime(year, month, day);
+    }
+  }
+
   final iso = DateTime.tryParse(s);
-  if (iso != null) return DateTime(iso.year, iso.month, iso.day);
-  final m = RegExp(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$').firstMatch(s);
-  if (m != null) {
-    var y = int.parse(m.group(3)!);
+  if (iso != null && iso.year > 1970) {
+    return DateTime(iso.year, iso.month, iso.day);
+  }
+
+  final slash = RegExp(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$').firstMatch(s);
+  if (slash != null) {
+    var y = int.parse(slash.group(3)!);
     if (y < 100) y += 2000;
-    final a = int.parse(m.group(1)!);
-    final b = int.parse(m.group(2)!);
-    // Prefer D/M/Y when first > 12, else M/D/Y.
+    final a = int.parse(slash.group(1)!);
+    final b = int.parse(slash.group(2)!);
     final day = a > 12 ? a : b;
     final month = a > 12 ? b : a;
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+    if (y > 1970 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
       return DateTime(y, month, day);
     }
   }

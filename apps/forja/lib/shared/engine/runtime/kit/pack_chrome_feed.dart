@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
@@ -80,6 +81,22 @@ Map<String, dynamic> packChromeFeedParams(
   }
 
   injectMenu('catalogMenu', 'catalogFilter', asAlso: 'section');
+  // Always stamp section when the list declares a catalog menu — empty
+  // selection must not silently default inside the pack to a stale Live fetch.
+  final catalogMenu = (listSpec['catalogMenu'] ?? '').toString().trim();
+  if (catalogMenu.isNotEmpty &&
+      (params['section'] == null ||
+          params['section'].toString().trim().isEmpty)) {
+    final fallback = (scope?.selectedId(catalogMenu) ?? 'live').trim();
+    params['section'] = fallback.isEmpty ? 'live' : fallback;
+    params['catalogFilter'] = params['section'];
+  }
+  if (catalogMenu.isNotEmpty) {
+    debugPrint(
+      '[kit] ${pluginId} feed section=${params['section']} '
+      'catalogFilter=${params['catalogFilter']}',
+    );
+  }
   // IPTV search/sort filter painted items — do not re-fetch catalog.
   if (kindReloadsFeed) {
     injectMenu('sortMenu', 'sort');

@@ -1935,6 +1935,12 @@ class PackPaintTree extends StatelessWidget {
     final dynamicItems = chrome?.barItems(id);
     final kindIcons = kitCategoryBarKindIcons(spec);
     final seed = layoutItemsFromSpec(spec);
+    final scope = LayoutScope.maybeOf(context);
+    // IPTV shelf section — VOD must not keep Live Favorites / auto-pick a Live cat.
+    final catalogSection =
+        (scope?.selectedId('catalog') ?? '').trim().toLowerCase();
+    final vodSection =
+        catalogSection == 'movies' || catalogSection == 'series';
     // Layout seed first (e.g. Live Sports "All"), then dynamic kinds.
     // Packs that omit All (IPTV) never get a host-invented row.
     final seen = <String>{};
@@ -1942,6 +1948,8 @@ class PackPaintTree extends StatelessWidget {
     void addItem(String itemId, String label, String? icon) {
       final clean = itemId.trim();
       if (clean.isEmpty || !seen.add(clean)) return;
+      // Stale Live synthetics after Movies/Series shelf flip.
+      if (vodSection && clean.startsWith('__')) return;
       items.add((
         id: clean,
         label: label,
@@ -1963,14 +1971,21 @@ class PackPaintTree extends StatelessWidget {
       }
     }
     if (items.isEmpty) return const SizedBox.shrink();
-    final scope = LayoutScope.maybeOf(context);
     final selectedRaw = (scope?.selectedId(id) ??
             (spec['default'] ?? '').toString())
         .trim();
-    final selected = selectedRaw.isNotEmpty &&
-            items.any((e) => e.id == selectedRaw)
-        ? selectedRaw
-        : _firstPortalCategoryId(items);
+    final selectedInItems =
+        selectedRaw.isNotEmpty && items.any((e) => e.id == selectedRaw);
+    // Movies/Series reset uses `all` (show whole section) — do not snap to a
+    // portal group. Live still lands on the first non-synthetic category.
+    final String selected;
+    if (selectedInItems) {
+      selected = selectedRaw;
+    } else if (vodSection) {
+      selected = 'all';
+    } else {
+      selected = _firstPortalCategoryId(items);
+    }
     if (selected != selectedRaw && scope != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;

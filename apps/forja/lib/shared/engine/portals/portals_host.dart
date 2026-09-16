@@ -138,7 +138,7 @@ abstract final class PortalsHost {
         pluginId: pluginId,
       );
     }
-    final active = (env.data?['active'] ?? '').toString();
+    final active = (env.data?['active'] ?? '').toString().trim();
     final chrome = parsePortalListChrome(env.data);
     final favs = await loadFavoriteKeys();
     final items = <PortalListItem>[];
@@ -170,17 +170,22 @@ abstract final class PortalsHost {
       final platform = (m['platform'] ?? m['badge'] ?? '').toString().trim();
       final activeConn = m['activeConnections']?.toString();
       final maxConn = m['maxConnections']?.toString();
-      final expiry = m['expiry']?.toString();
+      final expiryRaw = m['expiry']?.toString();
+      final expiryFmt = PortalExpiry.format(expiryRaw);
+      final selectedFlag = m['selected'];
       items.add(
         PortalListItem(
           id: key,
           label: label.isEmpty ? key : label,
           subtitle: url.isEmpty ? null : url,
-          selected: key == active || m['selected'] == true,
+          selected: key == active ||
+              selectedFlag == true ||
+              selectedFlag == 1 ||
+              selectedFlag?.toString().toLowerCase() == 'true',
           platformLabel: platformLabel(platform),
-          expiry: (expiry ?? '').trim().isEmpty ? null : expiry!.trim(),
-          activeConnections: activeConn,
-          maxConnections: maxConn,
+          expiry: PortalExpiry.isUnknown(expiryFmt) ? null : expiryFmt,
+          activeConnections: _seatField(activeConn),
+          maxConnections: _seatField(maxConn),
           favorite: favs.contains(key),
         ),
       );
@@ -430,6 +435,15 @@ abstract final class PortalsHost {
       _ => raw.trim(),
     };
   }
+
+  /// Paint-ready seat count — drop nullish JS strings; prefer int form.
+  static String? _seatField(String? raw) {
+    final s = (raw ?? '').trim();
+    if (s.isEmpty || s == 'null' || s == 'undefined') return null;
+    final asInt = int.tryParse(s) ?? double.tryParse(s)?.round();
+    if (asInt != null) return '$asInt';
+    return s;
+  }
 }
 
 class PortalsPanelAction {
@@ -553,11 +567,11 @@ class PortalHealthTracker {
       _inFlight.contains(portalKey) || _debounce.containsKey(portalKey);
 
   /// Schedule a probe after hover debounce. No-op while TTL is fresh unless
-  /// [force] (panel open soft-refresh / Refresh).
+  /// [force] (hover soft-refresh / panel open / Refresh).
   ///
-  /// [force] / [immediate] start now and do **not** clear last painted health —
-  /// UI keeps green/red until the new result lands. [immediate] still respects
-  /// TTL (hub-open chip preload); [force] always re-probes.
+  /// Does **not** clear last painted health — UI keeps green/red until the
+  /// new result lands. [force] ignores TTL; [immediate] starts now (else
+  /// debounce). Hub-open preload uses [immediate] only (TTL still applies).
   void schedule(
     String portalKey, {
     required bool leanback,
@@ -568,7 +582,7 @@ class PortalHealthTracker {
     if (_inFlight.contains(portalKey)) return;
     if (!force && _isFresh(portalKey)) return;
     cancel(portalKey);
-    if (force || immediate) {
+    if (immediate) {
       unawaited(_run(portalKey));
       return;
     }
@@ -622,13 +636,17 @@ class PortalHealthTracker {
       _probedAt[portalKey] = DateTime.now();
       if (probe.expiry.trim().isNotEmpty &&
           probe.expiry.toLowerCase() != 'unknown') {
-        _probeExpiry[portalKey] = probe.expiry;
+        _probeExpiry[portalKey] = PortalExpiry.format(probe.expiry);
       }
       if (probe.activeConnections.trim().isNotEmpty) {
-        _probeActive[portalKey] = probe.activeConnections;
+        _probeActive[portalKey] =
+            PortalsHost._seatField(probe.activeConnections) ??
+                probe.activeConnections.trim();
       }
       if (probe.maxConnections.trim().isNotEmpty) {
-        _probeMax[portalKey] = probe.maxConnections;
+        _probeMax[portalKey] =
+            PortalsHost._seatField(probe.maxConnections) ??
+                probe.maxConnections.trim();
       }
     } finally {
       _inFlight.remove(portalKey);
@@ -643,14 +661,18 @@ class PortalHealthTracker {
   String? seatsMaxFor(String portalKey) => _probeMax[portalKey];
 
   /// Merge probe state onto a list item for paint.
-  PortalListItem paint(PortalListItem p, {bool deleting = false}) {
+  PortalListItem paint(
+    PortalListItem p, {
+    bool deleting = false,
+    bool? selected,
+  }) {
     final checking = isChecking(p.id);
     final healthy = _health.containsKey(p.id) ? _health[p.id] : p.healthy;
     return PortalListItem(
       id: p.id,
       label: p.label,
       subtitle: p.subtitle,
-      selected: p.selected,
+      selected: selected ?? p.selected,
       healthy: healthy,
       checking: checking,
       platformLabel: p.platformLabel,

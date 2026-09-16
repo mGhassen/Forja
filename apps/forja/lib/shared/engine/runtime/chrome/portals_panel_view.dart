@@ -35,12 +35,37 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   bool _busy = false;
   final Set<String> _deletingKeys = {};
   late final PortalHealthTracker _health;
+  String _probedSelectedKey = '';
 
   @override
   void initState() {
     super.initState();
     _health = PortalHealthTracker(onChanged: () {
       if (mounted) setState(() {});
+    });
+  }
+
+  void _probeSelectedIfNeeded(List<PortalListItem> items, {required bool leanback}) {
+    String selectedId = '';
+    for (final p in items) {
+      if (!p.selected) continue;
+      selectedId = p.id;
+      break;
+    }
+    if (selectedId.isEmpty) {
+      _probedSelectedKey = '';
+      return;
+    }
+    if (selectedId == _probedSelectedKey) return;
+    _probedSelectedKey = selectedId;
+    // Post-frame — schedule/_run notifies listeners (setState).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _probedSelectedKey != selectedId) return;
+      _health.schedule(
+        selectedId,
+        leanback: leanback,
+        immediate: true,
+      );
     });
   }
 
@@ -133,6 +158,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   Future<void> _dispatchPanelAction(PortalsPanelAction a) async {
     final verb = a.action.trim().toLowerCase();
     if (verb == 'listportals' || verb == 'refresh') {
+      _probedSelectedKey = '';
       _health.invalidate();
       invalidatePortalsChrome(ref, widget.tabId);
       return;
@@ -220,26 +246,39 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     final key = widget.tabId;
     final asyncInv = ref.watch(portalsInventoryProvider(key));
     final inv = asyncInv.asData?.value;
+    final activeKey = (inv?.activeKey ?? '').trim();
+    final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
     final items = [
       for (final p in inv?.portals ?? const <PortalListItem>[])
-        _health.paint(p, deleting: _deletingKeys.contains(p.id)),
+        _health.paint(
+          p,
+          deleting: _deletingKeys.contains(p.id),
+          selected: p.selected ||
+              (activeKey.isNotEmpty && p.id == activeKey),
+        ),
     ];
+    _probeSelectedIfNeeded(items, leanback: leanback);
     final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
         SyncService.instance.isSignedIn;
+    final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
     final credits = AccountFeatures.instance.iptvCredits;
-    final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
 
-    final headerActions = <PortalListHeaderAction>[
-      for (final a in inv?.actions ?? const <PortalsPanelAction>[])
-        if (a.id != 'deal' && a.action.toLowerCase() != 'dealportals')
-          PortalListHeaderAction(
-            id: a.id,
-            label: a.label,
-            icon: a.icon,
-            enabled: !_busy,
-            onPressed: () => unawaited(_dispatchPanelAction(a)),
-          )
-        else if (canDeal)
+    // Classic strip L→R: Add · Deal · Scrape · (Search is paint chrome).
+    final headerActions = <PortalListHeaderAction>[];
+    for (final a in inv?.actions ?? const <PortalsPanelAction>[]) {
+      final id = a.id.trim().toLowerCase();
+      final verb = a.action.trim().toLowerCase();
+      if (id == 'import' ||
+          id == 'refresh' ||
+          verb == 'importportal' ||
+          verb == 'listportals' ||
+          verb == 'refresh') {
+        continue;
+      }
+      if ((id == 'deal' || verb == 'dealportals') && !canDeal) continue;
+      if ((id == 'scrape' || verb == 'scrape') && !canScrape) continue;
+      if (id == 'deal' || verb == 'dealportals') {
+        headerActions.add(
           PortalListHeaderAction(
             id: a.id,
             label: a.label,
@@ -250,7 +289,19 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
                 : '${a.label} (no credits)',
             onPressed: () => unawaited(_dispatchPanelAction(a)),
           ),
-    ];
+        );
+        continue;
+      }
+      headerActions.add(
+        PortalListHeaderAction(
+          id: a.id,
+          label: a.label,
+          icon: a.icon,
+          enabled: !_busy,
+          onPressed: () => unawaited(_dispatchPanelAction(a)),
+        ),
+      );
+    }
 
     final statusText = _busy
         ? 'Working…'
@@ -290,8 +341,12 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
               ),
       onDelete: (item) => unawaited(_deletePortal(item.id)),
       onCopyShareCode: (item) => _shareCodeFor(item.id),
-      onHoverEnter: (item) =>
-          _health.schedule(item.id, leanback: leanback),
+      onHoverEnter: (item) => _health.schedule(
+            item.id,
+            leanback: leanback,
+            // Soft refresh like the chip — recheck even when TTL is fresh.
+            force: true,
+          ),
       onHoverExit: (item) {
         _health.cancel(item.id);
         if (mounted) setState(() {});

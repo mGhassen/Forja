@@ -114,6 +114,10 @@ class _PortalListViewState extends State<PortalListView> {
       'add' => Icons.add_rounded,
       'import' || 'content_paste' || 'paste' => Icons.content_paste_rounded,
       'casino' || 'deal' => Icons.casino_rounded,
+      'scrape' ||
+      'travel_explore' ||
+      'explore' =>
+        Icons.travel_explore_rounded,
       'refresh' => Icons.refresh_rounded,
       _ => Icons.circle_outlined,
     };
@@ -135,6 +139,7 @@ class _PortalListViewState extends State<PortalListView> {
           widget.surfaceColor ?? ForjaShellColors.cinematic.menuSurface,
       searchOpen: _searchOpen,
       statusText: status,
+      onEscape: widget.onClose,
       header: Container(
         padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
         decoration: BoxDecoration(
@@ -166,8 +171,15 @@ class _PortalListViewState extends State<PortalListView> {
               ),
             ],
             const Spacer(),
+            // Classic L→R: Add · Deal · Scrape · Search (white icons).
+            for (final a in widget.headerActions)
+              _PortalHeaderIcon(
+                tooltip: a.tooltip ?? a.label,
+                icon: _iconFor(a),
+                onPressed: widget.busy || !a.enabled ? null : a.onPressed,
+              ),
             _PortalHeaderIcon(
-              tooltip: _searchOpen ? 'Close search' : 'Search',
+              tooltip: _searchOpen ? 'Close search' : 'Search portals',
               icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
               onPressed: () {
                 setState(() {
@@ -179,18 +191,6 @@ class _PortalListViewState extends State<PortalListView> {
                 });
               },
             ),
-            for (final a in widget.headerActions)
-              _PortalHeaderIcon(
-                tooltip: a.tooltip ?? a.label,
-                icon: _iconFor(a),
-                onPressed: widget.busy || !a.enabled ? null : a.onPressed,
-              ),
-            if (widget.onClose != null)
-              _PortalHeaderIcon(
-                tooltip: 'Close',
-                icon: Icons.close_rounded,
-                onPressed: widget.onClose,
-              ),
           ],
         ),
       ),
@@ -307,20 +307,17 @@ class _PortalListViewState extends State<PortalListView> {
   }
 }
 
-/// Classic IPTV portal header icon (former [IptvIconAction]):
-/// muted gray idle → brand green on hover/TV focus; slight scale on press.
+/// Classic IPTV portal header icon — white idle / hover, press scale.
 class _PortalHeaderIcon extends StatefulWidget {
   const _PortalHeaderIcon({
     required this.icon,
     required this.tooltip,
     required this.onPressed,
-    this.color,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
-  final Color? color;
 
   @override
   State<_PortalHeaderIcon> createState() => _PortalHeaderIconState();
@@ -337,25 +334,11 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
 
-  bool get _active =>
-      _pressed ||
-      ShellPaintScope.interactiveActive(
-        context,
-        hovered: _hovered,
-        focused: _focused,
-      );
-
-  Color get _idleColor {
-    final c = widget.color;
-    if (c == null) return ForjaShellColors.textSecondary;
-    return c;
-  }
-
   Color get _fg {
     final enabled = widget.onPressed != null;
-    if (!enabled) return _idleColor.withValues(alpha: 0.45);
-    if ((_tv && _focused) || _active) return ForjaShellColors.brandGreen;
-    return _idleColor;
+    if (!enabled) return Colors.white.withValues(alpha: 0.38);
+    if (_tv && _focused) return ForjaShellColors.brandGreen;
+    return Colors.white;
   }
 
   Widget _icon() => Padding(

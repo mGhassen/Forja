@@ -69,6 +69,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (_catalogSection.isNotEmpty && section != _catalogSection) {
       _envelope = null;
       _lastPaintedWidget = null;
+      // Invalidate post-frame Live kind publishes scheduled before this flip.
+      _bindGen++;
     }
     _catalogSection = section;
     // Only rebind on epoch change. `_envelope == null` alone used to restart the
@@ -377,10 +379,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         });
       }
       if (items.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!context.mounted) return;
-          chrome.onDynamicBarItems(barId, items);
-        });
+        _scheduleDynamicBarPublish(context, chrome, barId, items);
         return;
       }
     }
@@ -413,8 +412,21 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           'label': catalogKitCategoryLabel(id, label: labels[id]),
         },
     ];
+    _scheduleDynamicBarPublish(context, chrome, barId, items);
+  }
+
+  /// Drop stale Live kinds after Movies/Series already cleared the rail.
+  void _scheduleDynamicBarPublish(
+    BuildContext context,
+    PackChromeScope chrome,
+    String barId,
+    List<Map<String, dynamic>> items,
+  ) {
+    final section = _catalogSectionOf();
+    final gen = _bindGen;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!context.mounted) return;
+      if (!context.mounted || gen != _bindGen) return;
+      if (_catalogSectionOf() != section) return;
       chrome.onDynamicBarItems(barId, items);
     });
   }

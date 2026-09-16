@@ -462,6 +462,9 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     final chrome = PackChromeScope.maybeOf(context);
     final barId = (widget.spec['id'] ?? '').toString();
     if (chrome == null || barId.isEmpty) return;
+    // Live-only — never restore Favorites/cats after Movies/Series wipe.
+    if (!_isLive) return;
+    final section = _section;
     final maps = <Map<String, dynamic>>[
       for (final e in chromeItems)
         {
@@ -471,7 +474,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         },
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted || _section != section || !_isLive) return;
       chrome.onDynamicBarItems(barId, maps);
     });
   }

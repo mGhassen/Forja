@@ -127,7 +127,8 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
     final leanback = liveLeanbackOnly(context);
     final want = leanback ? focused : (hovered && _armHoverProbe);
     if (want) {
-      _health.schedule(key, leanback: leanback);
+      // Soft refresh — keep painted green/red; update when probe lands.
+      _health.schedule(key, leanback: leanback, force: true);
     } else {
       _health.cancel(key);
     }
@@ -224,7 +225,12 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
         final opening = !open;
         ref.read(portalsPanelOpenProvider(key).notifier).state = opening;
         if (opening && _probeKey.isNotEmpty) {
-          _health.schedule(_probeKey, leanback: leanback, force: true);
+          _health.schedule(
+            _probeKey,
+            leanback: leanback,
+            force: true,
+            immediate: true,
+          );
         }
       },
       onFocusChange: (focused) {
