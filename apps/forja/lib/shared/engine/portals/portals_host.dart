@@ -214,6 +214,7 @@ abstract final class PortalsHost {
       emptyTitle: chrome.emptyTitle,
       emptyDescription: chrome.emptyDescription,
       searchPlaceholder: chrome.searchPlaceholder,
+      width: chrome.width,
     );
   }
 
@@ -234,29 +235,21 @@ abstract final class PortalsHost {
     String emptyTitle,
     String emptyDescription,
     String searchPlaceholder,
+    double width,
   }) parsePortalListChrome(Map<String, dynamic>? data) {
+    const empty = (
+      title: '',
+      actions: <PortalsPanelAction>[],
+      editForm: null,
+      emptyTitle: '',
+      emptyDescription: '',
+      searchPlaceholder: '',
+      width: 380.0,
+    );
     final layout = data?['layout'];
-    if (layout is! Map) {
-      return (
-        title: 'Portals',
-        actions: const [],
-        editForm: null,
-        emptyTitle: '',
-        emptyDescription: '',
-        searchPlaceholder: '',
-      );
-    }
+    if (layout is! Map) return empty;
     final widgets = layout['widgets'];
-    if (widgets is! List) {
-      return (
-        title: 'Portals',
-        actions: const [],
-        editForm: null,
-        emptyTitle: '',
-        emptyDescription: '',
-        searchPlaceholder: '',
-      );
-    }
+    if (widgets is! List) return empty;
     Map<String, dynamic>? panel;
     for (final w in widgets) {
       if (w is! Map) continue;
@@ -267,17 +260,8 @@ abstract final class PortalsHost {
         break;
       }
     }
-    if (panel == null) {
-      return (
-        title: 'Portals',
-        actions: const [],
-        editForm: null,
-        emptyTitle: '',
-        emptyDescription: '',
-        searchPlaceholder: '',
-      );
-    }
-    final title = (panel['title'] ?? 'Portals').toString().trim();
+    if (panel == null) return empty;
+    final title = (panel['title'] ?? '').toString().trim();
     final actions = <PortalsPanelAction>[];
     final rawActions = panel['actions'];
     if (rawActions is List) {
@@ -306,13 +290,18 @@ abstract final class PortalsHost {
         editForm = formFromActionMap(Map<String, dynamic>.from(edit));
       }
     }
+    final widthRaw = panel['width'];
+    final width = widthRaw is num
+        ? widthRaw.toDouble()
+        : double.tryParse('$widthRaw') ?? 380.0;
     return (
-      title: title.isEmpty ? 'Portals' : title,
+      title: title,
       actions: actions,
       editForm: editForm,
       emptyTitle: (panel['emptyTitle'] ?? '').toString().trim(),
       emptyDescription: (panel['emptyDescription'] ?? '').toString().trim(),
       searchPlaceholder: (panel['searchPlaceholder'] ?? '').toString().trim(),
+      width: width > 0 ? width : 380.0,
     );
   }
 
@@ -484,13 +473,14 @@ class PortalsInventory {
     required this.portals,
     required this.activeKey,
     required this.pluginId,
-    this.title = 'Portals',
+    this.title = '',
     this.actions = const [],
     this.editForm,
     this.formValues = const {},
     this.emptyTitle = '',
     this.emptyDescription = '',
     this.searchPlaceholder = '',
+    this.width = 380,
   });
 
   final List<PortalListItem> portals;
@@ -506,12 +496,16 @@ class PortalsInventory {
   final String emptyTitle;
   final String emptyDescription;
   final String searchPlaceholder;
+  final double width;
 
   String get activeLabel {
     for (final p in portals) {
       if (p.id == activeKey) return p.label;
     }
-    return portals.isEmpty ? title : portals.first.label;
+    final t = title.trim();
+    return portals.isEmpty
+        ? (t.isEmpty ? 'Portals' : t)
+        : portals.first.label;
   }
 }
 

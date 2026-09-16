@@ -56,7 +56,7 @@ Shahid’s `playout/new/drm` success body includes a FairPlay certificate URL al
 
 - Windows / Linux Shahid DRM (no FairPlay; separate later if ever)
 - MediaKit Widevine CDM
-- Embed / WebView playback ([no-embed-playback](../../.cursor/rules/no-embed-playback.mdc))
+- Embed / WebView playback ([no-embed-playback](../../.cursor/rules/no-embed-playback.mdc) · skill [forja-live-native-playback](../../.cursor/skills/forja-live-native-playback/SKILL.md))
 
 ### Related
 

@@ -856,6 +856,9 @@ class MetaFilterAst {
 /// Host fallback when hub layout, manifest config, and rail response omit page size.
 const int kMetaRailPageSizeFallback = 20;
 
+/// Host default when pack omits rail `maxPages` (pageSize × pages ≈ 80).
+const int kMetaRailMaxPagesFallback = 4;
+
 const _catalogRailPageSizeKeys = [
   'pageSize',
   'limit',
@@ -873,6 +876,16 @@ int? catalogRailPageSizeFrom(Map<String, dynamic>? source) {
     final parsed = int.tryParse(v?.toString() ?? '');
     if (parsed != null && parsed > 0) return parsed;
   }
+  return null;
+}
+
+/// Pack `maxPages` on layout widget / page / rail response.
+int? catalogRailMaxPagesFrom(Map<String, dynamic>? source) {
+  if (source == null) return null;
+  final v = source['maxPages'];
+  if (v is num && v.toInt() > 0) return v.toInt();
+  final parsed = int.tryParse(v?.toString() ?? '');
+  if (parsed != null && parsed > 0) return parsed;
   return null;
 }
 

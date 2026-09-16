@@ -319,6 +319,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
   late int _page;
   late bool _hasMore;
   late int _pageSize;
+  late int _maxPages;
   int _loadGen = 0;
   bool _loadingMore = false;
   String _reloadToken = '';
@@ -354,7 +355,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
         oldWidget.packSourceUrl != widget.packSourceUrl ||
         !_samePage1(oldWidget.node, widget.node) ||
         oldWidget.node['hasMore'] != widget.node['hasMore'] ||
-        oldWidget.node['pageSize'] != widget.node['pageSize']) {
+        oldWidget.node['pageSize'] != widget.node['pageSize'] ||
+        oldWidget.node['maxPages'] != widget.node['maxPages']) {
       _resetFromNode();
     }
   }
@@ -365,8 +367,11 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     _items = _page1Items(node);
     _page = 1;
     _pageSize = catalogRailPageSizeFrom(node) ?? kMetaRailPageSizeFallback;
+    _maxPages =
+        catalogRailMaxPagesFrom(node) ?? kMetaRailMaxPagesFallback;
     final pageLoad = packLoadSpec(node['pageLoad']);
     _hasMore = pageLoad != null &&
+        _page < _maxPages &&
         (catalogRailHasMoreFrom(node) ??
             (_items.isNotEmpty && _items.length >= _pageSize));
   }
@@ -413,6 +418,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
   void _onApproachingEnd() {
     final pageLoad = packLoadSpec(node['pageLoad']);
     if (pageLoad == null || !_hasMore || _loadingMore) return;
+    if (_page >= _maxPages) return;
     unawaited(_loadPage(_page + 1, pageLoad: pageLoad));
   }
 
@@ -420,7 +426,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     int page, {
     required ({String action, Map<String, dynamic> params}) pageLoad,
   }) async {
-    if (_loadingMore || !_hasMore) return;
+    if (_loadingMore || !_hasMore || page > _maxPages) return;
     setState(() => _loadingMore = true);
     final gen = _loadGen;
     final tabId = LayoutScope.maybeOf(context)?.tabId ??
@@ -429,6 +435,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
       final params = <String, dynamic>{
         ...pageLoad.params,
         'page': page,
+        'maxPages': _maxPages,
       };
       for (final key in ['limit', 'pageSize', 'perPage']) {
         final v = node[key];
@@ -468,8 +475,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
         _page = page;
         _pageSize = resolvedSize;
         _loadingMore = false;
-        _hasMore =
-            catalogRailHasMoreFrom(data) ?? (batch.length >= resolvedSize);
+        _hasMore = page < _maxPages &&
+            (catalogRailHasMoreFrom(data) ?? (batch.length >= resolvedSize));
       });
     } catch (_) {
       if (!mounted || gen != _loadGen) return;

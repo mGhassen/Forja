@@ -100,7 +100,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     ].join('|');
   }
 
-  Future<MetaEnvelope> _run() async {
+  /// Not `async` — memo hits must return the **same** [Future] instance so
+  /// [FutureBuilder] stays `done` (async would wrap a new waiting future →
+  /// skeleton flash on remount / tab show with no engine log).
+  Future<MetaEnvelope> _run() {
     // Warm Live lists in background — never block catalog paint on SharedPrefs.
     if (widget.action == 'feed' || widget.action == 'rail') {
       unawaited(
@@ -108,7 +111,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       );
     }
     if (!mounted) {
-      return const MetaEnvelope(ok: false, action: 'feed', data: {});
+      return Future.value(
+        const MetaEnvelope(ok: false, action: 'feed', data: {}),
+      );
     }
     final chrome = PackChromeScope.maybeOf(context);
     final params = packChromeFeedParams(
@@ -254,11 +259,17 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           merged['hasMore'] = itemCount >= pageSize;
         }
         merged['pageSize'] = pageSize;
+        final maxPages = catalogRailMaxPagesFrom(data) ??
+            catalogRailMaxPagesFrom(widget.fallbackSpec);
+        if (maxPages != null) merged['maxPages'] = maxPages;
         // Opaque next-page handle (not `load` — that would re-enter PackLoadedPaint).
         if (widget.action.trim().isNotEmpty) {
           merged['pageLoad'] = {
             'action': widget.action,
-            'params': Map<String, dynamic>.from(widget.params),
+            'params': <String, dynamic>{
+              ...Map<String, dynamic>.from(widget.params),
+              'maxPages': ?maxPages,
+            },
           };
         }
         merged.remove('load');

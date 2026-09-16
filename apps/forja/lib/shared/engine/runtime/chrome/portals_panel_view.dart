@@ -254,16 +254,11 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     final inv = asyncInv.asData?.value;
     final panelTitle =
         (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals';
-    final emptyTitle = (inv?.emptyTitle.trim().isNotEmpty ?? false)
-        ? inv!.emptyTitle
-        : 'No portals yet';
-    final emptyDescription =
-        (inv?.emptyDescription.trim().isNotEmpty ?? false)
-            ? inv!.emptyDescription
-            : 'Add or import a portal to browse channels.';
+    final emptyTitle = inv?.emptyTitle ?? '';
+    final emptyDescription = inv?.emptyDescription ?? '';
     final searchHint = (inv?.searchPlaceholder.trim().isNotEmpty ?? false)
         ? inv!.searchPlaceholder
-        : 'Search portals…';
+        : 'Search…';
     final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
         SyncService.instance.isSignedIn;
     final credits = AccountFeatures.instance.iptvCredits;

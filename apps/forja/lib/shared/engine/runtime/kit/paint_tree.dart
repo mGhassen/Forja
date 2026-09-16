@@ -134,15 +134,18 @@ class PackPaintTree extends StatelessWidget {
               pageBottomBleed: heroBleed,
             )
           : 420.0;
+      // Static structure only (no pulse) — TickerMode on tab show must not
+      // look like a rail reload when the gate is still inactive.
       final skeleton = isHero
-          ? homeCinematicHeroShimmer(height: heroH)
-          : homeLoadingShimmer(
-              homePosterRowSkeleton(
-                topPadding: 12,
-                titleWidth: 140,
-                cardWidth: InteractivePosterCard.cardWidth(context),
-                cardHeight: InteractivePosterCard.cardHeight(context),
-              ),
+          ? SizedBox(
+              height: heroH,
+              child: const ColoredBox(color: ForjaShellColors.surfaceElevated),
+            )
+          : homePosterRowSkeleton(
+              topPadding: 12,
+              titleWidth: 140,
+              cardWidth: InteractivePosterCard.cardWidth(context),
+              cardHeight: InteractivePosterCard.cardHeight(context),
             );
       return LazyViewportGate(
         detectorKey: Key('lazy-$pluginId-$id'),
@@ -739,11 +742,6 @@ class PackPaintTree extends StatelessWidget {
       return;
     }
     if (verb == 'portals' || actionId == 'portals') {
-      final hoist =
-          (action?['hoistSource'] ?? action?['source'] ?? '').toString();
-      if (hoist.isNotEmpty) {
-        PortalsActionHost.registerHoistSource(hoist);
-      }
       final key = (tabId ?? '').trim();
       if (key.isEmpty) {
         ForjaToast.show('Portals unavailable');
@@ -1630,7 +1628,6 @@ class PackPaintTree extends StatelessWidget {
     final hoist = _hoistSourceFromActions(actions);
     final tab = (tabId ?? '').trim();
     if (hoist == null || tab.isEmpty) return null;
-    PortalsActionHost.registerHoistSource(hoist);
     final chrome = PackChromeScope.maybeOf(context);
     return (child) => PortalsActionHost.wrapListBody(
           context,

@@ -43,4 +43,4 @@ Live Sports handoff already passes every Providers row into the native player (`
 
 **Root fix:** `_engineOpenSource` loops unlock skips across remaining sources (toast only when none left); `_openCurrent` aborts when open returns false; liveEngine/Stremio multi-source uses `_maxRetriesLiveMultiSource` (2) before rotate. Portal single-channel reconnect stays at 8.
 
-**Related:** [Live Sports](../../features/live/live-sports.md) · [no-embed-playback](../../../.cursor/rules/no-embed-playback.mdc)
+**Related:** [Live Sports](../../features/live/live-sports.md) · [no-embed-playback](../../../.cursor/rules/no-embed-playback.mdc) · skill [forja-live-native-playback](../../../.cursor/skills/forja-live-native-playback/SKILL.md)

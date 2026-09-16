@@ -27,7 +27,6 @@ import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
 import 'package:forja/shared/player/live/hooks/live_kit_hooks_register.dart';
-import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
 import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
@@ -148,7 +147,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   LiveSurfaceOpen.ensureRegistered();
   HostPlaybackOpen.ensureRegistered();
   LiveKitHooksRegister.ensureRegistered();
-  PortalsActionHost.ensureRegistered();
   unawaited(PortalVaultInventory.ensureMigratedFromStore());
   SettingsKitHooksRegister.ensureRegistered();
   unawaited(AppVersion.instance.load());

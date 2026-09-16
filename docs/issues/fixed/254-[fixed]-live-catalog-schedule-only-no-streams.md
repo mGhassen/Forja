@@ -57,5 +57,5 @@ Broadcast-only catalogs (Live Soccer TV, LiveOnSat) stay out of Providers entire
 ## Related
 
 - [live-sports feature](../../features/live/live-sports.md)
-- [no-embed-playback](../../../.cursor/rules/no-embed-playback.mdc)
+- [no-embed-playback](../../../.cursor/rules/no-embed-playback.mdc) · [live-catalog-schedule-only](../../../.cursor/rules/live-catalog-schedule-only.mdc) · skill [forja-live-native-playback](../../../.cursor/skills/forja-live-native-playback/SKILL.md)
 - [RFC-065](../../rfc/065-[open]-live-forja-scrapers.md)

@@ -249,7 +249,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
     }
 
-    final eager = _firstPaintEagerKeys(widgets);
+    final eager = {
+      ..._firstPaintEagerKeys(widgets),
+      // Pack `feedRails` = first-paint batch — keep those gates eager so tab
+      // show does not flash LazyViewportGate placeholders.
+      if (pageMap != null) ...catalogLayoutFeedRailIds(pageMap),
+    };
     final feedIds = _feedRailIdsForPage(pageMap, widgets);
     Future<Map<String, List<dynamic>>>? feedFuture;
     if (feedIds.isNotEmpty) {

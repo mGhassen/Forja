@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_panel_view.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_providers.dart';
-import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
@@ -24,21 +23,9 @@ export 'package:forja/shared/engine/runtime/chrome/portals_panel_view.dart'
 export 'package:forja/shared/engine/runtime/chrome/portals_providers.dart';
 
 /// Thin chrome wire — chip + side overlay. Panel paint is [PortalsPanelView].
-/// Services live in [PortalsHost].
+/// Services live in [PortalsHost]. Pack layout opts in via `action: portals`.
 abstract final class PortalsActionHost {
   PortalsActionHost._();
-
-  static final Set<String> _hoistSources = {};
-
-  static void registerHoistSource(String sourceId) {
-    final id = sourceId.trim();
-    if (id.isEmpty) return;
-    _hoistSources.add(id);
-  }
-
-  static void ensureRegistered() {
-    registerHoistSource(LiveSurfaceOpen.listSourceId);
-  }
 
   static Widget buildPortalsChip(
     BuildContext context,
@@ -51,11 +38,6 @@ abstract final class PortalsActionHost {
     VoidCallback? onLeftEdge,
     VoidCallback? onRightEdge,
   }) {
-    final hoist = (action?['hoistSource'] ?? action?['source'] ?? '')
-        .toString()
-        .trim();
-    if (hoist.isNotEmpty) registerHoistSource(hoist);
-
     return _PortalsTopBarChip(
       tabId: tabId.trim(),
       rowId: rowId,
@@ -73,7 +55,6 @@ abstract final class PortalsActionHost {
     required String sourceId,
     required bool shellTabVisible,
   }) {
-    registerHoistSource(sourceId);
     return _PortalsPanelHost(
       tabId: tabId,
       shellTabVisible: shellTabVisible,
@@ -287,23 +268,25 @@ class _PortalsPanelHost extends ConsumerWidget {
   final String tabId;
   final bool shellTabVisible;
 
-  static const _panelWidth = 380.0;
+  static const _fallbackWidth = 380.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!shellTabVisible) return child;
     final key = tabId.trim();
     final open = ref.watch(portalsPanelOpenProvider(key));
+    final inv = open ? ref.watch(portalsInventoryProvider(key)).asData?.value : null;
+    final width = (inv?.width ?? _fallbackWidth);
     return SidePanelOverlay(
       open: open,
-      panelWidth: _panelWidth,
+      panelWidth: width,
       onDismiss: () {
         ref.read(portalsPanelOpenProvider(key).notifier).state = false;
       },
       panel: open
           ? PortalsPanelView(
               tabId: key,
-              width: _panelWidth,
+              width: width,
               onClose: () {
                 ref.read(portalsPanelOpenProvider(key).notifier).state = false;
               },

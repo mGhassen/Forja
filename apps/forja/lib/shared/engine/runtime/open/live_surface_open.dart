@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/chrome/live_schedule_chrome.dart';
-import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -11,7 +10,7 @@ abstract final class LiveSurfaceOpen {
 
   static const surface = 'live';
 
-  /// Opaque list source id packs may use for live schedule / portals hoist.
+  /// Opaque list source id live schedule packs may declare.
   static const listSourceId = 'live_schedule';
 
   static String? pendingOpenEntryId;
@@ -21,7 +20,6 @@ abstract final class LiveSurfaceOpen {
     if (!_registered) {
       _registered = true;
       MetaSurfaceOpen.register(surface, openFromMeta);
-      PortalsActionHost.registerHoistSource(listSourceId);
     }
     // Idempotent — re-bind after hot restart / wipe recovery.
     registerLiveScheduleChromeHooks();

@@ -60,5 +60,5 @@ Separately, Rust `streamed_streams` invented `https://embed.st/embed/{source}/{i
 
 ## Related
 
-- [no-embed-playback](../../../.cursor/rules/no-embed-playback.mdc)
+- [no-embed-playback](../../../.cursor/rules/no-embed-playback.mdc) · skill [forja-live-native-playback](../../../.cursor/skills/forja-live-native-playback/SKILL.md)
 - [046](../canceled/046-[canceled]-streamed-live-embed-white-screen.md) — legacy WebView white screen (separate)
