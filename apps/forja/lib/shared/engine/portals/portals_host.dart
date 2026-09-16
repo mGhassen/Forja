@@ -563,15 +563,15 @@ class PortalHealthTracker {
     return DateTime.now().difference(at) < ttl;
   }
 
-  bool isChecking(String portalKey) =>
-      _inFlight.contains(portalKey) || _debounce.containsKey(portalKey);
+  bool isChecking(String portalKey) => _inFlight.contains(portalKey);
 
   /// Schedule a probe after hover debounce. No-op while TTL is fresh unless
   /// [force] (hover soft-refresh / panel open / Refresh).
   ///
   /// Does **not** clear last painted health — UI keeps green/red until the
   /// new result lands. [force] ignores TTL; [immediate] starts now (else
-  /// debounce). Hub-open preload uses [immediate] only (TTL still applies).
+  /// [hoverDelay] / [tvDelay] dwell — no spinner until the probe actually
+  /// runs). Hub-open preload uses [immediate] only (TTL still applies).
   void schedule(
     String portalKey, {
     required bool leanback,
@@ -586,7 +586,6 @@ class PortalHealthTracker {
       unawaited(_run(portalKey));
       return;
     }
-    _notify();
     _debounce[portalKey] = Timer(
       leanback ? tvDelay : hoverDelay,
       () {
