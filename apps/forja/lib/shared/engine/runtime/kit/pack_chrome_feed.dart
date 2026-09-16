@@ -7,11 +7,22 @@ import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 
 /// True when kind chips re-query the pack (Live Sports schedule).
-/// IPTV category rail filters in paint — no horizon menu.
+/// IPTV Live category rail filters in paint — no horizon menu.
 bool packChromeKindReloadsFeed(Map<String, dynamic> listSpec) {
   final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
   final horizonMenu = (listSpec['horizonMenu'] ?? '').toString().trim();
   return kindMenu.isNotEmpty && horizonMenu.isNotEmpty;
+}
+
+/// IPTV Movies/Series — paged feed; category/sort/search must re-query.
+bool packChromeVodPagedFeed(
+  Map<String, dynamic> listSpec,
+  LayoutScope? scope,
+) {
+  final catalogMenu = (listSpec['catalogMenu'] ?? '').toString().trim();
+  if (catalogMenu.isEmpty) return false;
+  final section = (scope?.selectedId(catalogMenu) ?? '').trim().toLowerCase();
+  return section == 'movies' || section == 'series';
 }
 
 /// Params safe to satisfy from page `feed.rails[rail]` (no per-row extras
@@ -44,8 +55,17 @@ Map<String, dynamic> packChromeFeedParams(
   final chrome = PackChromeScope.maybeOf(context);
   final params = <String, dynamic>{
     ...baseParams,
-    'page': tabId ?? baseParams['page'],
   };
+  // Hub tab id is not a feed page index — only stamp numeric pagination pages.
+  final basePage = baseParams['page'];
+  if (basePage is num ||
+      (basePage is String &&
+          basePage.trim().isNotEmpty &&
+          int.tryParse(basePage.trim()) != null)) {
+    params['page'] = basePage;
+  } else if (tabId != null && tabId.trim().isNotEmpty) {
+    params['hubPage'] = tabId.trim();
+  }
   final kindReloadsFeed = packChromeKindReloadsFeed(listSpec);
 
   void injectMenu(String key, String paramKey, {String? asAlso}) {
@@ -66,20 +86,6 @@ Map<String, dynamic> packChromeFeedParams(
     params['listStatus'] = params['status'];
   }
 
-  // Live Sports (horizonMenu): kind → feed sportFilter (schedule re-query).
-  // IPTV / My List: kind is client-side only in paint_tree — do not pass
-  // categoryId/kind into feed (that re-ran feed + EPG on every cat flip).
-  if (kindReloadsFeed) {
-    final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
-    final kind = scope?.selectedId(kindMenu);
-    if (kind != null && kind.isNotEmpty && kind != 'all') {
-      params['kind'] = kind;
-      params['categoryId'] = kind;
-      params['sport'] = kind;
-      params['sportFilter'] = kind;
-    }
-  }
-
   injectMenu('catalogMenu', 'catalogFilter', asAlso: 'section');
   // Always stamp section when the list declares a catalog menu — empty
   // selection must not silently default inside the pack to a stale Live fetch.
@@ -97,8 +103,26 @@ Map<String, dynamic> packChromeFeedParams(
       'catalogFilter=${params['catalogFilter']}',
     );
   }
-  // IPTV search/sort filter painted items — do not re-fetch catalog.
-  if (kindReloadsFeed) {
+
+  final vodPaged = packChromeVodPagedFeed(listSpec, scope);
+
+  // Live Sports (horizonMenu): kind → feed sportFilter (schedule re-query).
+  // IPTV Live: kind is paint-only. IPTV Movies/Series: kind re-queries page 1.
+  if (kindReloadsFeed || vodPaged) {
+    final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
+    final kind = scope?.selectedId(kindMenu);
+    if (kind != null && kind.isNotEmpty && kind != 'all') {
+      params['kind'] = kind;
+      params['categoryId'] = kind;
+      if (kindReloadsFeed) {
+        params['sport'] = kind;
+        params['sportFilter'] = kind;
+      }
+    }
+  }
+
+  // Live Sports + IPTV VOD: sort/search re-query. IPTV Live stays paint-only.
+  if (kindReloadsFeed || vodPaged) {
     injectMenu('sortMenu', 'sort');
   }
   injectMenu('horizonMenu', 'horizon');
@@ -107,7 +131,7 @@ Map<String, dynamic> packChromeFeedParams(
   // (that re-fetched IPTV catalog on every Cards↔EPG flip).
 
   final q = (chrome?.eventQuery ?? '').trim();
-  if (q.isNotEmpty && kindReloadsFeed) params['q'] = q;
+  if (q.isNotEmpty && (kindReloadsFeed || vodPaged)) params['q'] = q;
 
   // Live category lists from host store cache (Favorites / pins / order).
   final liveLists = CategoryBarActionHost.cachedLiveListParams;
@@ -146,19 +170,18 @@ String packChromeSelectionEpoch(
           listSpec['default']?.toString() ??
           'plantowatch');
 
-  final horizonId = (listSpec['horizonMenu'] ?? '').toString().trim();
+  final vodPaged = packChromeVodPagedFeed(listSpec, scope);
+  final kindBustsFeed = kindReloadsFeed || vodPaged;
 
   return [
     status,
-    // Sport chips reload feed; IPTV category rail filters in paint only.
-    horizonId.isNotEmpty ? sel('kindMenu') : '',
+    // Sport chips + IPTV VOD cats reload feed; IPTV Live cats stay paint-only.
+    kindBustsFeed ? sel('kindMenu') : '',
     sel('catalogMenu'),
-    // Live Sports sort re-queries; IPTV sort is paint-only.
-    kindReloadsFeed ? sel('sortMenu') : '',
+    kindBustsFeed ? sel('sortMenu') : '',
     sel('horizonMenu'),
     // View is paint-only (cards↔EPG) — omit so PackLoadedPaint keeps items.
-    // IPTV search is paint-only; Live Sports search reloads schedule.
-    kindReloadsFeed ? (chrome?.eventQuery ?? '') : '',
+    kindBustsFeed ? (chrome?.eventQuery ?? '') : '',
     '${chrome?.refreshEpoch ?? 0}',
     catalogChromeFilterEpoch(tabId),
     // Fav/pin lists: paint filters Favorites/Watched; pin order is rail-only.

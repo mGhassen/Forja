@@ -224,13 +224,16 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
       onTap: () {
         final opening = !open;
         ref.read(portalsPanelOpenProvider(key).notifier).state = opening;
-        if (opening && _probeKey.isNotEmpty) {
-          _health.schedule(
-            _probeKey,
-            leanback: leanback,
-            force: true,
-            immediate: true,
-          );
+        if (opening) {
+          preparePortalsPanel(ProviderScope.containerOf(context), key);
+          if (_probeKey.isNotEmpty) {
+            _health.schedule(
+              _probeKey,
+              leanback: leanback,
+              force: true,
+              immediate: true,
+            );
+          }
         }
       },
       onFocusChange: (focused) {

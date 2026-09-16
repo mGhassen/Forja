@@ -32,6 +32,11 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    // AGP 9: resValue() in buildTypes requires this (default false).
+    buildFeatures {
+        resValues = true
+    }
+
     defaultConfig {
         applicationId = "com.forjahq.app"
         minSdk = maxOf(flutter.minSdkVersion, 23)

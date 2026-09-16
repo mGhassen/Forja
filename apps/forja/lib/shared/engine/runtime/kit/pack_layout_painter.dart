@@ -59,6 +59,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   String _eventQuery = '';
   int _refreshEpoch = 0;
   bool _refreshForceNetwork = true;
+  int _catalogHoldEpoch = 0;
   String _viewStyle = '';
   final Map<String, List<Map<String, dynamic>>> _dynamicBarItems = {};
   final ValueNotifier<Map<String, dynamic>?> _selectedListItem =
@@ -415,6 +416,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       eventQuery: _eventQuery,
       refreshEpoch: _refreshEpoch,
       refreshForceNetwork: _refreshForceNetwork,
+      catalogHoldEpoch: _catalogHoldEpoch,
       viewStyle: _viewStyle,
       dynamicBarItems: Map<String, List<Map<String, dynamic>>>.unmodifiable(
         Map<String, List<Map<String, dynamic>>>.from(_dynamicBarItems),
@@ -429,12 +431,23 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         if (_eventQuery == q) return;
         setState(() => _eventQuery = q);
       },
+      onClearCatalog: () {
+        _selectedListItem.value = null;
+        setState(() {
+          _catalogHoldEpoch++;
+          _dynamicBarItems.clear();
+        });
+      },
       onBumpRefresh: ({bool forceNetwork = true}) {
         _selectedListItem.value = null;
         PortalChannelGuideOpen.invalidateLiveCatalog();
         setState(() {
           _refreshEpoch++;
           _refreshForceNetwork = forceNetwork;
+          if (!forceNetwork) {
+            // Portal switch — drop stale Live kinds until the new feed publishes.
+            _dynamicBarItems.clear();
+          }
           if (_pageFeedRailIds.isNotEmpty) {
             _pageFeedFuture = _fetchPageFeed(forceRefresh: forceNetwork);
           }

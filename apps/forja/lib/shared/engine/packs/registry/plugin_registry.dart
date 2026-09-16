@@ -1806,11 +1806,10 @@ class PluginRegistry {
     if (prev == digest) return;
     _localScriptDigests[id] = digest;
     if (prev == null) return;
-    debugPrint('[engine] $id script changed — invalidating caches');
+    // Wipe memoized envelopes only. Do not remount hubs / clear playback —
+    // that double-starts flutter_js mid-feed (IPTV Movies freeze / no answer).
+    debugPrint('[engine] $id script changed — wipe meta cache (no remount)');
     EngineCache.instance.wipePlugin(id);
-    bumpHubFeedEpoch(pluginIds: [id]);
-    _invalidatePlaybackCachesAfterPackChange();
-    notifyChanged();
   }
 
   /// Resolve [pluginId] across packs — prefer active (pack + plugin on).

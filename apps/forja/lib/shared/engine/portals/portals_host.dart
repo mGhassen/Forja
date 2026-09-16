@@ -7,9 +7,11 @@ import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/share/portal_share.dart';
 import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:forja_foundation/components/form_fields_dialog.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 
@@ -19,6 +21,12 @@ import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 /// Chrome wire maps these callables → props / callbacks.
 abstract final class PortalsHost {
   PortalsHost._();
+
+  /// Last pack `listPortals` panel chrome (actions / forms). Vault paints reuse it.
+  static _PortalListChrome? _panelChrome;
+
+  static DateTime? _lastPortalPanelPullAt;
+  static Future<void>? _portalPanelPrepareInflight;
 
   /// Resolve a hub pack that declares `listPortals` (no pack-id allowlist).
   static Future<String?> resolvePluginId({String? preferTabId}) async {
@@ -64,7 +72,7 @@ abstract final class PortalsHost {
   /// Top-bar chip label from vault only — never runs pack `listPortals`.
   ///
   /// Catalog feed and the closed Portals chip must not share the flutter_js
-  /// queue with inventory. Full list loads when the panel opens.
+  /// queue with inventory. Panel open paints vault first; cloud soft-syncs.
   static Future<PortalsChipSummary> chipSummary() async {
     try {
       await PortalVaultInventory.ensureMigratedFromStore();
@@ -117,7 +125,52 @@ abstract final class PortalsHost {
     }
   }
 
-  /// Inventory for paint — favorites sorted first + pack panel chrome/forms.
+  /// Instant panel paint from vault — no pack / flutter_js.
+  ///
+  /// Reuses cached pack chrome (actions/forms) from the last [list] call.
+  static Future<PortalsInventory> listFromVault({String? preferTabId}) async {
+    final pluginId = await resolvePluginId(preferTabId: preferTabId) ?? '';
+    try {
+      await PortalVaultInventory.ensureMigratedFromStore();
+      final raw = await EngineVault.get(PortalVaultKeys.portals);
+      final activeRaw = await EngineVault.get(PortalVaultKeys.active);
+      final active = (activeRaw ?? '').toString().trim();
+      final favs = await loadFavoriteKeys();
+      final source = <Map<String, dynamic>>[];
+      if (raw != null && raw.trim().isNotEmpty && raw.trim() != '[]') {
+        final parsed = jsonDecode(raw);
+        if (parsed is List) {
+          for (final e in parsed) {
+            if (e is! Map) continue;
+            source.add(Map<String, dynamic>.from(e));
+          }
+        }
+      }
+      return _inventoryFromRows(
+        source: source,
+        active: active,
+        pluginId: pluginId,
+        favs: favs,
+        chrome: _panelChrome,
+      );
+    } catch (e) {
+      debugPrint('[PortalsHost] listFromVault failed: $e');
+      return PortalsInventory(
+        portals: const [],
+        activeKey: '',
+        pluginId: pluginId,
+        title: _panelChrome?.title ?? '',
+        actions: _panelChrome?.actions ?? const [],
+        editForm: _panelChrome?.editForm,
+        emptyTitle: _panelChrome?.emptyTitle ?? '',
+        emptyDescription: _panelChrome?.emptyDescription ?? '',
+        searchPlaceholder: _panelChrome?.searchPlaceholder ?? '',
+        width: _panelChrome?.width ?? 380,
+      );
+    }
+  }
+
+  /// Inventory via pack `listPortals` — updates cached panel chrome.
   static Future<PortalsInventory> list({String? preferTabId}) async {
     final pluginId = await resolvePluginId(preferTabId: preferTabId);
     if (pluginId == null || pluginId.isEmpty) {
@@ -139,29 +192,100 @@ abstract final class PortalsHost {
       );
     }
     final active = (env.data?['active'] ?? '').toString().trim();
-    final chrome = parsePortalListChrome(env.data);
+    final chrome = _parsePortalListChrome(env.data);
+    _panelChrome = chrome;
     final favs = await loadFavoriteKeys();
-    final items = <PortalListItem>[];
-    final formValues = <String, Map<String, String>>{};
 
     final rawItems = env.data?['items'];
     final rawPortals = env.data?['portals'];
-    final source = rawItems is List && rawItems.isNotEmpty
-        ? rawItems
-        : (rawPortals is List ? rawPortals : const []);
+    final source = <Map<String, dynamic>>[];
+    final preferred =
+        rawItems is List && rawItems.isNotEmpty ? rawItems : rawPortals;
+    if (preferred is List) {
+      for (final e in preferred) {
+        if (e is! Map) continue;
+        source.add(Map<String, dynamic>.from(e));
+      }
+    }
+    return _inventoryFromRows(
+      source: source,
+      active: active,
+      pluginId: pluginId,
+      favs: favs,
+      chrome: chrome,
+    );
+  }
 
-    for (final e in source) {
-      if (e is! Map) continue;
-      final m = Map<String, dynamic>.from(e);
+  /// Open-panel soft prepare — vault stays painted; cloud merge is async.
+  ///
+  /// Matches legacy `IptvController.preparePortalPanel`: throttle cloud pull,
+  /// mirror store → vault, never wipe Live/Movies catalog.
+  static Future<void> preparePortalPanel() async {
+    final inflight = _portalPanelPrepareInflight;
+    if (inflight != null) return inflight;
+
+    late final Future<void> run;
+    run = () async {
+      try {
+        if (SyncService.instance.isSignedIn) {
+          final now = DateTime.now();
+          final recent = _lastPortalPanelPullAt != null &&
+              now.difference(_lastPortalPanelPullAt!) <
+                  const Duration(seconds: 3);
+          if (!recent) {
+            _lastPortalPanelPullAt = now;
+            await SyncDomainBridge.instance.pullPortalsFromCloud();
+            final portals = await PortalStore.load();
+            final favs = await PortalStore.loadFavorites();
+            final active = await PortalStore.loadLastPortalKey();
+            await PortalVaultInventory.mirrorFromStore(
+              portals: portals,
+              favoriteKeys: favs,
+              activeKey: active ?? '',
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('[PortalsHost] preparePortalPanel failed: $e');
+      } finally {
+        if (identical(_portalPanelPrepareInflight, run)) {
+          _portalPanelPrepareInflight = null;
+        }
+      }
+    }();
+    _portalPanelPrepareInflight = run;
+    return run;
+  }
+
+  static String inventoryFingerprint(PortalsInventory inv) {
+    final keys = [
+      for (final p in inv.portals)
+        '${p.id}|${p.label}|${p.favorite}|${p.subtitle ?? ''}',
+    ]..sort();
+    return '${inv.activeKey}|${keys.join(';')}';
+  }
+
+  static PortalsInventory _inventoryFromRows({
+    required List<Map<String, dynamic>> source,
+    required String active,
+    required String pluginId,
+    required Set<String> favs,
+    required _PortalListChrome? chrome,
+  }) {
+    final items = <PortalListItem>[];
+    final formValues = <String, Map<String, String>>{};
+
+    for (final m in source) {
       final key = (m['key'] ?? m['id'] ?? m['portalKey'] ?? '')
           .toString()
           .trim();
-      if (key.isEmpty) continue;
+      final resolvedKey = key.isEmpty ? vaultPortalKey(m) : key;
+      if (resolvedKey.isEmpty || resolvedKey == '|') continue;
       final label = (m['label'] ??
               m['title'] ??
               m['name'] ??
               m['username'] ??
-              key)
+              resolvedKey)
           .toString()
           .trim();
       final url = (m['url'] ?? m['subtitle'] ?? m['description'] ?? '')
@@ -175,10 +299,10 @@ abstract final class PortalsHost {
       final selectedFlag = m['selected'];
       items.add(
         PortalListItem(
-          id: key,
-          label: label.isEmpty ? key : label,
+          id: resolvedKey,
+          label: label.isEmpty ? resolvedKey : label,
           subtitle: url.isEmpty ? null : url,
-          selected: key == active ||
+          selected: resolvedKey == active ||
               selectedFlag == true ||
               selectedFlag == 1 ||
               selectedFlag?.toString().toLowerCase() == 'true',
@@ -186,21 +310,21 @@ abstract final class PortalsHost {
           expiry: PortalExpiry.isUnknown(expiryFmt) ? null : expiryFmt,
           activeConnections: _seatField(activeConn),
           maxConnections: _seatField(maxConn),
-          favorite: favs.contains(key),
+          favorite: favs.contains(resolvedKey),
         ),
       );
       final fv = m['formValues'];
       if (fv is Map) {
-        formValues[key] = {
+        formValues[resolvedKey] = {
           for (final entry in fv.entries)
             entry.key.toString(): entry.value?.toString() ?? '',
         };
       } else {
         final user = (m['username'] ?? '').toString();
-        formValues[key] = {
+        formValues[resolvedKey] = {
           'url': url,
           if (user.isNotEmpty) 'username': user,
-          'label': label.isEmpty ? key : label,
+          'label': label.isEmpty ? resolvedKey : label,
         };
       }
     }
@@ -212,14 +336,14 @@ abstract final class PortalsHost {
       portals: items,
       activeKey: active,
       pluginId: pluginId,
-      title: chrome.title,
-      actions: chrome.actions,
-      editForm: chrome.editForm,
+      title: chrome?.title ?? '',
+      actions: chrome?.actions ?? const [],
+      editForm: chrome?.editForm,
       formValues: formValues,
-      emptyTitle: chrome.emptyTitle,
-      emptyDescription: chrome.emptyDescription,
-      searchPlaceholder: chrome.searchPlaceholder,
-      width: chrome.width,
+      emptyTitle: chrome?.emptyTitle ?? '',
+      emptyDescription: chrome?.emptyDescription ?? '',
+      searchPlaceholder: chrome?.searchPlaceholder ?? '',
+      width: chrome?.width ?? 380,
     );
   }
 
@@ -233,16 +357,8 @@ abstract final class PortalsHost {
     return FormFieldsSpec.fromJson(merged);
   }
 
-  static ({
-    String title,
-    List<PortalsPanelAction> actions,
-    FormFieldsSpec? editForm,
-    String emptyTitle,
-    String emptyDescription,
-    String searchPlaceholder,
-    double width,
-  }) parsePortalListChrome(Map<String, dynamic>? data) {
-    const empty = (
+  static _PortalListChrome _parsePortalListChrome(Map<String, dynamic>? data) {
+    const empty = _PortalListChrome(
       title: '',
       actions: <PortalsPanelAction>[],
       editForm: null,
@@ -299,7 +415,7 @@ abstract final class PortalsHost {
     final width = widthRaw is num
         ? widthRaw.toDouble()
         : double.tryParse('$widthRaw') ?? 380.0;
-    return (
+    return _PortalListChrome(
       title: title,
       actions: actions,
       editForm: editForm,
@@ -319,6 +435,19 @@ abstract final class PortalsHost {
         action: 'selectPortal',
         params: {'key': key},
       );
+
+  /// Instant active portal — vault only, no flutter_js.
+  ///
+  /// Panel selection / chip must not wait on pack `selectPortal` or catalog feed.
+  static Future<void> setActiveKey(String key) async {
+    final k = key.trim();
+    await PortalVaultInventory.ensureMigratedFromStore();
+    if (k.isEmpty) {
+      await EngineVault.remove(PortalVaultKeys.active);
+    } else {
+      await EngineVault.set(PortalVaultKeys.active, k);
+    }
+  }
 
   static Future<MetaEnvelope> remove({
     required String pluginId,
@@ -460,6 +589,26 @@ class PortalsPanelAction {
   final String action;
   final String icon;
   final FormFieldsSpec? form;
+}
+
+class _PortalListChrome {
+  const _PortalListChrome({
+    required this.title,
+    required this.actions,
+    required this.editForm,
+    required this.emptyTitle,
+    required this.emptyDescription,
+    required this.searchPlaceholder,
+    required this.width,
+  });
+
+  final String title;
+  final List<PortalsPanelAction> actions;
+  final FormFieldsSpec? editForm;
+  final String emptyTitle;
+  final String emptyDescription;
+  final String searchPlaceholder;
+  final double width;
 }
 
 /// Closed Portals chip paint — vault-only, no pack round-trip.

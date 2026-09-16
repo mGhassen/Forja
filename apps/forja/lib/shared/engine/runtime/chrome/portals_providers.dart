@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 
@@ -12,15 +14,69 @@ final portalsChipSummaryProvider = FutureProvider.autoDispose
   return PortalsHost.chipSummary();
 });
 
-/// Inventory for the open panel — watch only when the panel is open.
-final portalsInventoryProvider = FutureProvider.autoDispose
-    .family<PortalsInventory, String>((ref, tabId) async {
-  ref.keepAlive();
-  return PortalsHost.list(preferTabId: tabId);
-});
+/// Panel inventory — vault-first; [PortalsInventoryNotifier.prepare] soft-syncs
+/// cloud without wiping painted rows (legacy preparePortalPanel contract).
+final portalsInventoryProvider = AsyncNotifierProvider.autoDispose
+    .family<PortalsInventoryNotifier, PortalsInventory, String>(
+  PortalsInventoryNotifier.new,
+);
 
+class PortalsInventoryNotifier
+    extends AutoDisposeFamilyAsyncNotifier<PortalsInventory, String> {
+  @override
+  Future<PortalsInventory> build(String tabId) async {
+    ref.keepAlive();
+    return PortalsHost.listFromVault(preferTabId: tabId);
+  }
+
+  /// Soft vault reload — keeps prior [AsyncData] (no Loading flash).
+  Future<void> softReload() async {
+    final next = await PortalsHost.listFromVault(preferTabId: arg);
+    final prev = state.asData?.value;
+    if (prev != null &&
+        PortalsHost.inventoryFingerprint(prev) ==
+            PortalsHost.inventoryFingerprint(next) &&
+        prev.actions.length == next.actions.length) {
+      return;
+    }
+    state = AsyncData(next);
+  }
+
+  /// Panel open: paint vault (already in [build]), pull cloud, soft merge.
+  /// Optionally enrich pack chrome once in the background.
+  Future<void> prepare() async {
+    final before = state.asData?.value;
+    if (before == null) {
+      state = AsyncData(
+        await PortalsHost.listFromVault(preferTabId: arg),
+      );
+    }
+    await PortalsHost.preparePortalPanel();
+    await softReload();
+    final painted = state.asData?.value;
+    if (painted == null || painted.actions.isEmpty) {
+      unawaited(_enrichChromeFromPack());
+    }
+  }
+
+  Future<void> _enrichChromeFromPack() async {
+    try {
+      final packed = await PortalsHost.list(preferTabId: arg);
+      state = AsyncData(packed);
+    } catch (_) {}
+  }
+}
+
+/// Soft refresh after mutations — chip vault reload + inventory soft merge.
+/// Does **not** blank the open panel.
 void invalidatePortalsChrome(WidgetRef ref, String tabId) {
   final key = tabId.trim();
   ref.invalidate(portalsChipSummaryProvider(key));
-  ref.invalidate(portalsInventoryProvider(key));
+  unawaited(ref.read(portalsInventoryProvider(key).notifier).softReload());
+}
+
+void preparePortalsPanel(ProviderContainer container, String tabId) {
+  final key = tabId.trim();
+  if (key.isEmpty) return;
+  unawaited(container.read(portalsInventoryProvider(key).notifier).prepare());
 }

@@ -198,6 +198,12 @@ class PortalStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_favKey, keys.toList());
     if (scheduleSync) scheduleIptvSyncPush();
+    unawaited(
+      PortalVaultInventory.mirrorFromStore(
+        portals: await load(),
+        favoriteKeys: keys,
+      ),
+    );
   }
 
   static Future<String?> loadLastPortalKey() async {

@@ -38,6 +38,19 @@ class PackLoadedPaint extends StatefulWidget {
   final Widget Function(BuildContext context, Map<String, dynamic> merged)
       builder;
 
+  /// Soft memo — in-flight futures + resolved envelopes (sync paint on remount).
+  static final Map<String, Future<MetaEnvelope>> _memo = {};
+  static final Map<String, MetaEnvelope> _resolved = {};
+
+  /// Drop soft feed memos so portal switch cannot sync-paint a stale grid.
+  static void clearMemosForPlugin(String pluginId) {
+    final id = pluginId.trim();
+    if (id.isEmpty) return;
+    final prefix = '$id|';
+    _memo.removeWhere((k, _) => k.startsWith(prefix));
+    _resolved.removeWhere((k, _) => k.startsWith(prefix));
+  }
+
   @override
   State<PackLoadedPaint> createState() => _PackLoadedPaintState();
 }
@@ -48,11 +61,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   String _scopeEpoch = '';
   String _catalogSection = '';
   int _appliedRefreshEpoch = 0;
+  int _appliedHoldEpoch = 0;
+  /// When set, skip auto-_bind until [PackChromeScope.refreshEpoch] advances past it.
+  int? _holdAtRefreshEpoch;
   int _bindGen = 0;
-
-  /// Soft memo — in-flight futures + resolved envelopes (sync paint on remount).
-  static final Map<String, Future<MetaEnvelope>> _memo = {};
-  static final Map<String, MetaEnvelope> _resolved = {};
 
   String _catalogSectionOf() {
     final menu = (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
@@ -67,7 +79,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final epoch = _selectionEpoch();
     final chrome = PackChromeScope.maybeOf(context);
     final refreshEpoch = chrome?.refreshEpoch ?? 0;
+    final holdEpoch = chrome?.catalogHoldEpoch ?? 0;
     final refreshBumped = refreshEpoch > _appliedRefreshEpoch;
+
     // Soft-keep Live paint under Movies/Series selection looks like a dead shelf.
     if (_catalogSection.isNotEmpty && section != _catalogSection) {
       _envelope = null;
@@ -75,19 +89,36 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       // Invalidate post-frame Live kind publishes scheduled before this flip.
       _bindGen++;
     }
+
+    // Portal click — wipe grid immediately; do not fetch until refresh bumps.
+    if (holdEpoch > _appliedHoldEpoch) {
+      _appliedHoldEpoch = holdEpoch;
+      _envelope = null;
+      _lastPaintedWidget = null;
+      _inFlight = null;
+      _bindGen++;
+      _holdAtRefreshEpoch = refreshEpoch;
+    }
+
     // Portal switch / Refresh — drop old grid so CatalogLoadingTicker shows.
+    // Any refresh bump also releases a portal hold (including clear+bump same frame).
     if (refreshBumped) {
       _envelope = null;
       _lastPaintedWidget = null;
+      _holdAtRefreshEpoch = null;
     }
     _catalogSection = section;
+
+    final held = _holdAtRefreshEpoch != null &&
+        refreshEpoch <= _holdAtRefreshEpoch!;
+
     // Only rebind on epoch change. `_envelope == null` alone used to restart the
     // in-flight Movies/Series feed when clearing the category bar notified
     // PackChromeScope — duplicate flutter_js → timeout → "did not answer".
     if (epoch != _scopeEpoch) {
       _scopeEpoch = epoch;
-      _bind();
-    } else if (_envelope == null && _inFlight == null) {
+      if (!held) _bind();
+    } else if (_envelope == null && _inFlight == null && !held) {
       _bind();
     }
   }
@@ -134,7 +165,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final future = _run();
     final key = _lastRunKey;
     if (key != null) {
-      final cached = _resolved[key];
+      final cached = PackLoadedPaint._resolved[key];
       if (cached != null) {
         // Sync hit — paint this frame. FutureBuilder would flash waiting.
         _envelope = cached;
@@ -153,6 +184,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   }
 
   String? _lastRunKey;
+  Map<String, dynamic> _lastFeedParams = const {};
 
   /// Memo hits return a resolved envelope via [_resolved] for sync paint.
   Future<MetaEnvelope> _run() {
@@ -190,6 +222,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final runParams = force
         ? <String, dynamic>{...params, 'force': true}
         : params;
+    _lastFeedParams = Map<String, dynamic>.from(runParams);
     final rail =
         (runParams['rail'] ?? widget.params['rail'] ?? '').toString().trim();
     final feedFuture = chrome?.pageFeedFuture;
@@ -206,12 +239,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         _scopeEpoch,
       ].join('|');
       _lastRunKey = key;
-      final resolved = _resolved[key];
+      final resolved = PackLoadedPaint._resolved[key];
       if (resolved != null) return Future.value(resolved);
-      final hit = _memo[key];
+      final hit = PackLoadedPaint._memo[key];
       if (hit != null) {
         return hit.then((env) {
-          _resolved[key] = env;
+          PackLoadedPaint._resolved[key] = env;
           return env;
         });
       }
@@ -222,10 +255,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           action: 'rail',
           data: {'items': items},
         );
-        _resolved[key] = env;
+        PackLoadedPaint._resolved[key] = env;
         return env;
       });
-      _memo[key] = future;
+      PackLoadedPaint._memo[key] = future;
       return future;
     }
     final key = [
@@ -237,18 +270,18 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     ].join('|');
     _lastRunKey = key;
     if (!force) {
-      final resolved = _resolved[key];
+      final resolved = PackLoadedPaint._resolved[key];
       if (resolved != null) return Future.value(resolved);
-      final hit = _memo[key];
+      final hit = PackLoadedPaint._memo[key];
       if (hit != null) {
         return hit.then((env) {
-          _resolved[key] = env;
+          PackLoadedPaint._resolved[key] = env;
           return env;
         });
       }
     } else {
-      _resolved.remove(key);
-      _memo.remove(key);
+      PackLoadedPaint._resolved.remove(key);
+      PackLoadedPaint._memo.remove(key);
     }
     final future = packOpaqueRun(
       pluginId: widget.pluginId,
@@ -257,17 +290,17 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       packSourceUrl: widget.packSourceUrl,
       forceRefresh: force,
     ).then((env) {
-      _resolved[key] = env;
+      PackLoadedPaint._resolved[key] = env;
       return env;
     });
-    _memo[key] = future;
-    if (_memo.length > 48) {
-      final drop = _memo.keys.first;
-      _memo.remove(drop);
-      _resolved.remove(drop);
+    PackLoadedPaint._memo[key] = future;
+    if (PackLoadedPaint._memo.length > 48) {
+      final drop = PackLoadedPaint._memo.keys.first;
+      PackLoadedPaint._memo.remove(drop);
+      PackLoadedPaint._resolved.remove(drop);
     }
-    if (_resolved.length > 48) {
-      _resolved.remove(_resolved.keys.first);
+    if (PackLoadedPaint._resolved.length > 48) {
+      PackLoadedPaint._resolved.remove(PackLoadedPaint._resolved.keys.first);
     }
     return future;
   }
@@ -293,8 +326,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   Widget build(BuildContext context) {
     final env = _envelope;
     if (env == null) {
-      // Keep prior paint during soft reload; skeleton only on cold miss.
-      if (_inFlight != null && _lastPaintedWidget != null) {
+      // Soft-keep only for non-portal soft reloads. Portal clear/hold always
+      // shows the loading ticker (last paint already dropped).
+      if (_inFlight != null &&
+          _lastPaintedWidget != null &&
+          _holdAtRefreshEpoch == null) {
         return _lastPaintedWidget!;
       }
       return _sectionLoadingSkeleton();
@@ -345,13 +381,18 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         catalogRailMaxPagesFrom(widget.fallbackSpec);
     if (maxPages != null) merged['maxPages'] = maxPages;
     // Opaque next-page handle (not `load` — that would re-enter PackLoadedPaint).
+    // Use the chrome-merged params from the paint that produced this envelope
+    // (section/category/sort) — widget.params alone drops IPTV Movies paging.
     if (widget.action.trim().isNotEmpty) {
+      final pageParams = Map<String, dynamic>.from(
+        _lastFeedParams.isNotEmpty ? _lastFeedParams : widget.params,
+      );
+      pageParams.remove('force');
+      pageParams.remove('refresh');
+      if (maxPages != null) pageParams['maxPages'] = maxPages;
       merged['pageLoad'] = {
         'action': widget.action,
-        'params': <String, dynamic>{
-          ...Map<String, dynamic>.from(widget.params),
-          'maxPages': ?maxPages,
-        },
+        'params': pageParams,
       };
     }
     merged.remove('load');

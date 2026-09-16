@@ -795,7 +795,8 @@ class PackPaintTree extends StatelessWidget {
         final open = container.read(portalsPanelOpenProvider(key));
         container.read(portalsPanelOpenProvider(key).notifier).state = !open;
         if (!open) {
-          container.invalidate(portalsInventoryProvider(key));
+          // Vault-first paint + async cloud soft-sync (no inventory wipe).
+          preparePortalsPanel(container, key);
         } else {
           // Closing after select/add — refresh vault chip label without listPortals.
           container.invalidate(portalsChipSummaryProvider(key));

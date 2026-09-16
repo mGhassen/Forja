@@ -12,6 +12,7 @@ class PackChromeScope extends InheritedWidget {
     required this.eventQuery,
     required this.refreshEpoch,
     this.refreshForceNetwork = true,
+    this.catalogHoldEpoch = 0,
     required this.viewStyle,
     required this.dynamicBarItems,
     required this.selectedListItem,
@@ -22,6 +23,7 @@ class PackChromeScope extends InheritedWidget {
     required this.rowPrefetch,
     required this.onEventQuery,
     required this.onBumpRefresh,
+    required this.onClearCatalog,
     required this.onViewStyle,
     required this.onDynamicBarItems,
     required this.onSelectListItem,
@@ -34,6 +36,10 @@ class PackChromeScope extends InheritedWidget {
   /// Last [onBumpRefresh] asked to skip pack disk cache (`force` / network).
   /// Portal switch sets false so IPTV can hit `iptv.catalog` disk cache.
   final bool refreshForceNetwork;
+
+  /// Bumped by [onClearCatalog] — drop painted grid / kinds and hold fetch
+  /// until the next [refreshEpoch] bump (portal select while selectPortal runs).
+  final int catalogHoldEpoch;
   final String viewStyle;
   final Map<String, List<Map<String, dynamic>>> dynamicBarItems;
 
@@ -61,6 +67,9 @@ class PackChromeScope extends InheritedWidget {
   /// [forceNetwork] true = Refresh / shelf reload (skip pack disk cache).
   /// false = portal switch (EngineCache wipe only; pack may disk-hit).
   final void Function({bool forceNetwork}) onBumpRefresh;
+
+  /// Immediate empty + loading — no fetch until [onBumpRefresh].
+  final VoidCallback onClearCatalog;
   final void Function(String style) onViewStyle;
   final void Function(String barId, List<Map<String, dynamic>> items)
       onDynamicBarItems;
@@ -101,6 +110,7 @@ class PackChromeScope extends InheritedWidget {
     return eventQuery != oldWidget.eventQuery ||
         refreshEpoch != oldWidget.refreshEpoch ||
         refreshForceNetwork != oldWidget.refreshForceNetwork ||
+        catalogHoldEpoch != oldWidget.catalogHoldEpoch ||
         viewStyle != oldWidget.viewStyle ||
         !identical(selectedListItem, oldWidget.selectedListItem) ||
         shellTabVisible != oldWidget.shellTabVisible ||

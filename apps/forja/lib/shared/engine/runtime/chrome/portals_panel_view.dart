@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_providers.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -44,6 +45,13 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     super.initState();
     _health = PortalHealthTracker(onChanged: () {
       if (mounted) setState(() {});
+    });
+    // Vault already painted by provider build; soft cloud prepare in background.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(
+        ref.read(portalsInventoryProvider(widget.tabId).notifier).prepare(),
+      );
     });
   }
 
@@ -85,11 +93,57 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         : PortalsHost.resolvePluginId(preferTabId: widget.tabId);
   }
 
-  /// Feed EngineCache is portal-blind — wipe it, then soft-bump rails so the
-  /// new active portal loads. Do not stamp pack `force` (that skips disk cache).
+  /// Wipe portal-blind feed cache, then soft-bump so the active portal loads
+  /// (disk cache OK — no pack `force`). Pair with [onClearCatalog] first when
+  /// the grid must empty before an async select finishes.
   void _reloadHubCatalog(String pluginId) {
     EngineCache.instance.wipePlugin(pluginId);
+    PackLoadedPaint.clearMemosForPlugin(pluginId);
     PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+  }
+
+  /// Before catalog-reload coupling: select only wrote active + refreshed the
+  /// panel (fast). Keep that for the panel; clear + load catalog separately
+  /// without `_busy` so selection is not blocked on flutter_js / feed.
+  Future<void> _selectPortal(String portalKey) async {
+    final pluginId = await _pluginId();
+    if (pluginId == null || pluginId.isEmpty) {
+      ForjaToast.error('No portals pack installed');
+      return;
+    }
+    if (!mounted) return;
+
+    // Instant panel highlight — vault, no pack / catalog queue.
+    await PortalsHost.setActiveKey(portalKey);
+    if (!mounted) return;
+    PortalChannelGuideOpen.invalidateLiveCatalog();
+    invalidatePortalsChrome(ref, widget.tabId);
+
+    // Clean grid + loading now; feed reads vault active (already set).
+    EngineCache.instance.wipePlugin(pluginId);
+    PackLoadedPaint.clearMemosForPlugin(pluginId);
+    PackChromeScope.maybeOf(context)?.onClearCatalog();
+    _reloadHubCatalog(pluginId);
+
+    // Pack selectPortal for pack-side consistency — do not hold panel busy.
+    unawaited((() async {
+      try {
+        final env = await PortalsHost.select(
+          pluginId: pluginId,
+          key: portalKey,
+        );
+        if (!mounted) return;
+        if (!env.ok) {
+          ForjaToast.error(env.error?.message ?? 'Could not select portal');
+          PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+        }
+      } catch (e) {
+        if (mounted) {
+          ForjaToast.error(e.toString());
+          PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+        }
+      }
+    })());
   }
 
   Future<bool> _runAction(
@@ -172,7 +226,9 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     if (verb == 'listportals' || verb == 'refresh') {
       _probedSelectedKey = '';
       _health.invalidate();
-      invalidatePortalsChrome(ref, widget.tabId);
+      unawaited(
+        ref.read(portalsInventoryProvider(widget.tabId).notifier).prepare(),
+      );
       return;
     }
     if (verb == 'dealportals' || a.id == 'deal') {
@@ -323,7 +379,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
 
     final statusText = _busy
         ? 'Working…'
-        : asyncInv.isLoading
+        : (asyncInv.isLoading && inv == null)
             ? 'Loading…'
             : '';
 
@@ -341,12 +397,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       busy: _busy,
       leanback: leanback,
       onClose: widget.onClose,
-      onSelect: (item) => unawaited(
-            _runAction(
-              (id) => PortalsHost.select(pluginId: id, key: item.id),
-              reloadCatalog: true,
-            ),
-          ),
+      onSelect: (item) => unawaited(_selectPortal(item.id)),
       onFavorite: (item) => unawaited(_toggleFavorite(item.id)),
       onEdit: inv?.editForm == null
           ? null
