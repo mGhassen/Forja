@@ -998,11 +998,15 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       ...packRecSections,
     ];
 
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final firstRowOverlap =
+        DetailsTokens.bodyOverlapForFirstRow(viewportHeight);
+
     return MediaDetailsScrollPage(
       scrollController: _scrollController,
       tvHeroPlayFocus: _heroPlayFocus,
       tvBackFocus: _backFocus,
-      bodyOverlap: 0,
+      bodyOverlap: firstRowOverlap,
       topSpacing: 0,
       backgroundColor: AppTheme.bgDark,
       hero: DetailsHero(
@@ -1024,10 +1028,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         logoUrl: hubMetaLogoUrl(show),
         height: DetailsTokens.heroHeight(
           context,
-          compactForEpisodes: hasEpisodes,
+          fullBleedBackdrop: true,
         ),
-        // Match scroll body — no overlap so the bottom gradient stays clean.
-        bodyOverlap: 0,
+        bodyOverlap: firstRowOverlap,
         progressBar: heroPosMs != null && heroDurMs != null
             ? WatchProgressBar(
                 positionMs: heroPosMs,

@@ -97,6 +97,13 @@ class DetailsHero extends StatelessWidget {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
+    final rawOverlap = bodyOverlap;
+    final resolvedOverlap = rawOverlap ?? DetailsTokens.heroBodyOverlap;
+    // Large overlap = first body row on backdrop; keep title/Play above it.
+    final overlapsFirstRow = rawOverlap != null &&
+        rawOverlap > DetailsTokens.heroBodyOverlap;
+    final contentBottom =
+        overlapsFirstRow ? rawOverlap! + bottomInset : bottomInset;
 
     return SizedBox(
       height: h,
@@ -110,14 +117,15 @@ class DetailsHero extends StatelessWidget {
                 backdropUrl: backdropUrl,
                 backdropUrls: backdropUrls,
                 height: h,
-                bodyOverlap: bodyOverlap ?? DetailsTokens.heroBodyOverlap,
+                bodyOverlap: resolvedOverlap,
+                softFade: overlapsFirstRow,
                 enableKenBurns: enableKenBurns,
               ),
             Positioned(
               left: 0,
               right: 0,
               top: heroContentTop,
-              bottom: bottomInset,
+              bottom: contentBottom,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final paddedContent = ConstrainedBox(
@@ -210,6 +218,7 @@ class DetailsHeroSurface extends StatelessWidget {
     this.backdropUrls = const [],
     this.height,
     this.bodyOverlap,
+    this.softFade = false,
     this.enableKenBurns = true,
   });
 
@@ -217,6 +226,8 @@ class DetailsHeroSurface extends StatelessWidget {
   final List<String> backdropUrls;
   final double? height;
   final double? bodyOverlap;
+  /// Soft bottom fade when body rows overlap the backdrop (old episode bleed).
+  final bool softFade;
   final bool enableKenBurns;
 
   @override
@@ -250,8 +261,8 @@ class DetailsHeroSurface extends StatelessWidget {
               child: IgnorePointer(
                 child: _CinematicHeroBottomGradient(
                   shellBg: shellBg,
-                  overlap: resolvedOverlap,
-                  softFade: false,
+                  overlap: softFade ? 0 : resolvedOverlap,
+                  softFade: softFade,
                 ),
               ),
             ),
@@ -266,9 +277,11 @@ class DetailsHeroSurface extends StatelessWidget {
               left: 0,
               right: 0,
               bottom: 0,
-              height: h * 0.55 + resolvedOverlap,
+              height: softFade
+                  ? h * 0.42
+                  : h * 0.55 + resolvedOverlap,
               child: IgnorePointer(
-                child: _HeroBottomFade(shellBg: shellBg, soft: false),
+                child: _HeroBottomFade(shellBg: shellBg, soft: softFade),
               ),
             ),
         ],

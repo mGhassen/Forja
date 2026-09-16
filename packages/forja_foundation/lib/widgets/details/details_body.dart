@@ -7,6 +7,9 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 ///
 /// Horizontal inset is **not** applied here — catalog rows are edge-to-edge;
 /// wrap text-only blocks in [padContent].
+///
+/// When [bodyOverlap] > 0, the body is translated up onto the hero backdrop
+/// (no solid fill in that band — backdrop + soft gradient stay visible).
 class DetailsBody extends StatelessWidget {
   const DetailsBody({
     super.key,
@@ -42,36 +45,33 @@ class DetailsBody extends StatelessWidget {
     final overlap = bodyOverlap ?? DetailsTokens.heroBodyOverlap;
     final top = topSpacing ?? DetailsTokens.bodyTopSpacing;
 
-    return Transform.translate(
-      offset: Offset(0, -overlap),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(height: overlap),
-          ColoredBox(
-            color: shellBg,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: ShellTokens.bodyMaxWidthDesktop,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    0,
-                    top,
-                    0,
-                    DetailsTokens.bodyBottomSpacing,
-                  ),
-                  child: child,
-                ),
-              ),
-            ),
+    final content = Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: ShellTokens.bodyMaxWidthDesktop,
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            0,
+            top,
+            0,
+            DetailsTokens.bodyBottomSpacing,
           ),
-        ],
+          child: child,
+        ),
       ),
     );
+
+    if (overlap > 0) {
+      // Transparent over the hero so backdrop + bottom gradient show through.
+      return Transform.translate(
+        offset: Offset(0, -overlap),
+        child: content,
+      );
+    }
+
+    return ColoredBox(color: shellBg, child: content);
   }
 }
 

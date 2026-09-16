@@ -59,26 +59,34 @@ abstract final class DetailsTokens {
     return sideGutter + padding;
   }
 
-  /// Cinematic hero band (~82% viewport) - see media-details feature doc.
+  /// Cinematic hero band (~82% viewport) when body does not overlap the backdrop.
   static const double heroViewportFraction = 0.82;
 
-  /// Shorter hero when seasons/episodes are the first body section — keeps
-  /// the first poster row under Play like the old in-hero bleed layout.
-  static const double heroViewportFractionWithEpisodes = 0.82;
+  /// Where the first body row starts when overlapping a full-screen backdrop.
+  static const double firstBodyRowViewportFraction = 0.65;
 
-  /// Hero chrome height (title / actions only). Prefer [viewportHeight] from a
-  /// [LayoutBuilder] when the overlay width differs from [MediaQuery].
+  /// Hero chrome height. Prefer [viewportHeight] from a [LayoutBuilder] when
+  /// the overlay width differs from [MediaQuery].
+  ///
+  /// [fullBleedBackdrop]: backdrop fills the viewport; first body row overlaps
+  /// it via [bodyOverlapForFirstRow] (movies + series).
   static double heroHeight(
     BuildContext context, {
     double? viewportHeight,
-    bool compactForEpisodes = false,
+    bool fullBleedBackdrop = false,
   }) {
     final size = MediaQuery.sizeOf(context);
     final height = viewportHeight ?? size.height;
     final resolved = height.isFinite && height > 0 ? height : size.height;
-    final fraction = compactForEpisodes
-        ? heroViewportFractionWithEpisodes
-        : heroViewportFraction;
-    return resolved * fraction;
+    if (fullBleedBackdrop) return resolved;
+    return resolved * heroViewportFraction;
+  }
+
+  /// Pull-up so the first body row sits at [firstBodyRowViewportFraction].
+  static double bodyOverlapForFirstRow(double viewportHeight) {
+    final h = viewportHeight.isFinite && viewportHeight > 0
+        ? viewportHeight
+        : 0.0;
+    return h * (1.0 - firstBodyRowViewportFraction);
   }
 }
