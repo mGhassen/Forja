@@ -910,11 +910,16 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             ? _focusDetailsEpisodesFromMeta
             : _revealedDetailsHeroPlayFocus);
 
-    // Episodes own 0..(multi-season ? 1 : 0). Body rails continue after.
-    // Packs emit cast/crew/trailers/recs as rails — host does not invent TMDB sections.
+    // Episodes own 0..(multi-season ? 1 : 0). Body continues with protocol
+    // cast (enrich) then pack rails (Characters / More Like This / …).
     final metaRowBase = !hasEpisodes
         ? 0
         : (seasons.length > 1 ? 2 : 1);
+    final castMaps = show.cast;
+    final hasCast = castMaps.isNotEmpty;
+    final castSection = hasCast
+        ? DetailsCastSection(cast: castMaps)
+        : null;
     final packRecs = _packRails
         .where((r) => r.id == 'recommendations' && r.items.isNotEmpty)
         .toList();
@@ -923,15 +928,16 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         .toList();
     final hasPackRecs = packRecs.isNotEmpty;
 
+    final packMidBase = metaRowBase + (hasCast ? 1 : 0);
     final packMidSections = buildKitDetailRailSections(
       context: context,
       pluginId: widget.pluginId,
       rails: packOther,
       tvFocus: tvFocus,
-      tvRowOrderBase: metaRowBase,
-      firstMetaFocusUp: firstMetaFocusUp,
+      tvRowOrderBase: packMidBase,
+      firstMetaFocusUp: hasCast ? null : firstMetaFocusUp,
     );
-    final recOrderBase = metaRowBase + packMidSections.length;
+    final recOrderBase = packMidBase + packMidSections.length;
     final packRecSections = hasPackRecs
         ? buildKitDetailRailSections(
             context: context,
@@ -939,12 +945,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             rails: packRecs,
             tvFocus: tvFocus,
             tvRowOrderBase: recOrderBase,
-            firstMetaFocusUp:
-                packMidSections.isEmpty ? firstMetaFocusUp : null,
+            firstMetaFocusUp: !hasCast && packMidSections.isEmpty
+                ? firstMetaFocusUp
+                : null,
           )
         : const <Widget>[];
     final sections = [
       ?episodePicker,
+      ?castSection,
       ...packMidSections,
       ...packRecSections,
     ];

@@ -134,6 +134,24 @@ class PackPaintTree extends StatelessWidget {
               pageBottomBleed: heroBleed,
             )
           : 420.0;
+      final loadPaint = PackLoadedPaint(
+        pluginId: pluginId,
+        packSourceUrl: packSourceUrl,
+        tabId: tabId,
+        action: load.action,
+        params: load.params,
+        fallbackSpec: spec,
+        builder: (ctx2, merged) => PackPaintTree(
+          spec: merged,
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+          pageBottomChild: pageBottomChild,
+          compactSection: compactSection,
+        ),
+      );
+      // Eager rails skip the gate entirely — no placeholder frame on tab show.
+      if (eager) return loadPaint;
       // Static structure only (no pulse) — TickerMode on tab show must not
       // look like a rail reload when the gate is still inactive.
       final skeleton = isHero
@@ -153,23 +171,8 @@ class PackPaintTree extends StatelessWidget {
             ? heroH
             : InteractivePosterCard.cardHeight(context) + 48,
         placeholder: skeleton,
-        eager: eager,
-        builder: (ctx) => PackLoadedPaint(
-          pluginId: pluginId,
-          packSourceUrl: packSourceUrl,
-          tabId: tabId,
-          action: load.action,
-          params: load.params,
-          fallbackSpec: spec,
-          builder: (ctx2, merged) => PackPaintTree(
-            spec: merged,
-            pluginId: pluginId,
-            packSourceUrl: packSourceUrl,
-            tabId: tabId,
-            pageBottomChild: pageBottomChild,
-            compactSection: compactSection,
-          ),
-        ),
+        eager: false,
+        builder: (ctx) => loadPaint,
       );
     }
 
@@ -1035,37 +1038,53 @@ class PackPaintTree extends StatelessWidget {
       final open = item['open'] is Map
           ? MetaOpen.fromJson(Map<String, dynamic>.from(item['open'] as Map))
           : meta?.open;
-      final title = (props['title'] ?? meta?.name ?? '').toString().trim();
+      final title = (props['title'] ?? meta?.name ?? item['name'] ?? '')
+          .toString()
+          .trim();
+      // Prefer paint props; fall back to nested meta, then top-level enrich fields
+      // (companion enrich may update meta.background before paint is rebuilt).
       final backdrop = (props['backdropUrl'] ??
               props['backgroundUrl'] ??
               meta?.background ??
+              item['background'] ??
+              item['backdrop'] ??
               '')
           .toString()
           .trim();
       final poster = (props['posterUrl'] ??
               props['imageUrl'] ??
               meta?.poster ??
+              item['poster'] ??
               '')
           .toString()
           .trim();
       if (title.isEmpty && backdrop.isEmpty && poster.isEmpty) continue;
-      final id = (open?.id ?? meta?.id ?? props['id'] ?? title).toString();
+      final id = (open?.id ?? meta?.id ?? item['id'] ?? props['id'] ?? title)
+          .toString();
       slides.add(
         CinematicHeroSlide(
           id: id.isEmpty ? title : id,
           title: title.isEmpty ? 'Title' : title,
           backdropUrl: backdrop.isNotEmpty ? backdrop : poster,
           posterUrl: poster.isEmpty ? null : poster,
-          logoUrl: (props['logoUrl'] ?? props['logo'] ?? meta?.logo ?? '')
+          logoUrl: (props['logoUrl'] ??
+                  props['logo'] ??
+                  meta?.logo ??
+                  item['logo'] ??
+                  '')
               .toString(),
           overview: (props['overview'] ??
                   props['description'] ??
                   meta?.description ??
+                  item['description'] ??
                   '')
               .toString(),
           rating: props['rating'] is num
               ? (props['rating'] as num).toDouble()
-              : meta?.rating,
+              : (meta?.rating ??
+                  (item['rating'] is num
+                      ? (item['rating'] as num).toDouble()
+                      : null)),
           year: () {
             final y = (props['year'] ?? meta?.releaseInfo ?? '').toString();
             return y.isEmpty ? null : y.split(' • ').first;

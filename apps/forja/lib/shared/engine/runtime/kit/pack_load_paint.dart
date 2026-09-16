@@ -43,23 +43,23 @@ class PackLoadedPaint extends StatefulWidget {
 }
 
 class _PackLoadedPaintState extends State<PackLoadedPaint> {
-  Future<MetaEnvelope>? _future;
+  Future<MetaEnvelope>? _inFlight;
+  MetaEnvelope? _envelope;
   String _scopeEpoch = '';
   int _appliedRefreshEpoch = 0;
+  int _bindGen = 0;
 
-  /// Last successful paint — keep on screen while a soft reload runs.
-  Widget? _lastPainted;
-
-  /// Soft memo so rails don't re-hit the pack when chrome epoch is unchanged.
+  /// Soft memo — in-flight futures + resolved envelopes (sync paint on remount).
   static final Map<String, Future<MetaEnvelope>> _memo = {};
+  static final Map<String, MetaEnvelope> _resolved = {};
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final epoch = _selectionEpoch();
-    if (_future == null || epoch != _scopeEpoch) {
+    if (_envelope == null || epoch != _scopeEpoch) {
       _scopeEpoch = epoch;
-      _future = _run();
+      _bind();
     }
   }
 
@@ -80,7 +80,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         oldWidget.fallbackSpec['horizonMenu'] !=
             widget.fallbackSpec['horizonMenu']) {
       _scopeEpoch = _selectionEpoch();
-      _future = _run();
+      _bind();
     }
   }
 
@@ -100,10 +100,34 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     ].join('|');
   }
 
-  /// Not `async` — memo hits must return the **same** [Future] instance so
-  /// [FutureBuilder] stays `done` (async would wrap a new waiting future →
-  /// skeleton flash on remount / tab show with no engine log).
+  void _bind() {
+    final gen = ++_bindGen;
+    final future = _run();
+    final key = _lastRunKey;
+    if (key != null) {
+      final cached = _resolved[key];
+      if (cached != null) {
+        // Sync hit — paint this frame. FutureBuilder would flash waiting.
+        _envelope = cached;
+        _inFlight = null;
+        return;
+      }
+    }
+    _inFlight = future;
+    future.then((env) {
+      if (!mounted || gen != _bindGen) return;
+      setState(() {
+        _envelope = env;
+        _inFlight = null;
+      });
+    });
+  }
+
+  String? _lastRunKey;
+
+  /// Memo hits return a resolved envelope via [_resolved] for sync paint.
   Future<MetaEnvelope> _run() {
+    _lastRunKey = null;
     // Warm Live lists in background — never block catalog paint on SharedPrefs.
     if (widget.action == 'feed' || widget.action == 'rail') {
       unawaited(
@@ -149,15 +173,25 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         widget.packSourceUrl ?? '',
         _scopeEpoch,
       ].join('|');
+      _lastRunKey = key;
+      final resolved = _resolved[key];
+      if (resolved != null) return Future.value(resolved);
       final hit = _memo[key];
-      if (hit != null) return hit;
+      if (hit != null) {
+        return hit.then((env) {
+          _resolved[key] = env;
+          return env;
+        });
+      }
       final future = feedFuture.then((rails) {
         final items = rails[rail] ?? const <dynamic>[];
-        return MetaEnvelope(
+        final env = MetaEnvelope(
           ok: true,
           action: 'rail',
           data: {'items': items},
         );
+        _resolved[key] = env;
+        return env;
       });
       _memo[key] = future;
       return future;
@@ -169,9 +203,20 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       _scopeEpoch,
       _stableParamsKey(runParams),
     ].join('|');
+    _lastRunKey = key;
     if (!force) {
+      final resolved = _resolved[key];
+      if (resolved != null) return Future.value(resolved);
       final hit = _memo[key];
-      if (hit != null) return hit;
+      if (hit != null) {
+        return hit.then((env) {
+          _resolved[key] = env;
+          return env;
+        });
+      }
+    } else {
+      _resolved.remove(key);
+      _memo.remove(key);
     }
     final future = packOpaqueRun(
       pluginId: widget.pluginId,
@@ -179,10 +224,18 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       params: runParams,
       packSourceUrl: widget.packSourceUrl,
       forceRefresh: force,
-    );
+    ).then((env) {
+      _resolved[key] = env;
+      return env;
+    });
     _memo[key] = future;
     if (_memo.length > 48) {
-      _memo.remove(_memo.keys.first);
+      final drop = _memo.keys.first;
+      _memo.remove(drop);
+      _resolved.remove(drop);
+    }
+    if (_resolved.length > 48) {
+      _resolved.remove(_resolved.keys.first);
     }
     return future;
   }
@@ -206,80 +259,78 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
   @override
   Widget build(BuildContext context) {
-    final future = _future;
-    if (future == null) {
-      return _lastPainted ?? _sectionLoadingSkeleton();
+    final env = _envelope;
+    if (env == null) {
+      // Keep prior paint during soft reload; skeleton only on cold miss.
+      if (_inFlight != null && _lastPaintedWidget != null) {
+        return _lastPaintedWidget!;
+      }
+      return _sectionLoadingSkeleton();
     }
-    return FutureBuilder<MetaEnvelope>(
-      future: future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return _lastPainted ?? _sectionLoadingSkeleton();
-        }
-        final env = snap.data;
-        if (env == null || !env.ok) {
-          if (_lastPainted != null) return _lastPainted!;
-          final msg = env?.error?.message.trim();
-          return Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              (msg != null && msg.isNotEmpty)
-                  ? msg
-                  : 'Could not load this section.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: ForjaShellColors.textSecondary),
-            ),
-          );
-        }
-        final data = env.data ?? const <String, dynamic>{};
-        final merged = Map<String, dynamic>.from(widget.fallbackSpec);
-        if (data['items'] is List) merged['items'] = data['items'];
-        if (data['widgets'] is List) merged['widgets'] = data['widgets'];
-        if (data['paint'] is Map) merged['paint'] = data['paint'];
-        if (data['heading'] != null) merged['heading'] = data['heading'];
-        if (data['kinds'] is List) merged['kinds'] = data['kinds'];
-        if (data['categories'] is List) {
-          merged['categories'] = data['categories'];
-        }
-        if (data['seedPoster'] != null) {
-          merged['seedPoster'] = data['seedPoster'];
-        }
-        if (data.containsKey('canShuffle')) {
-          merged['canShuffle'] = data['canShuffle'];
-        }
-        final pageSize = catalogRailPageSizeFrom(data) ??
-            catalogRailPageSizeFrom(widget.fallbackSpec) ??
-            kMetaRailPageSizeFallback;
-        final items = data['items'];
-        final itemCount = items is List ? items.length : 0;
-        if (data.containsKey('hasMore')) {
-          merged['hasMore'] = data['hasMore'];
-        } else if (itemCount > 0) {
-          // Feed map strips paging — assume more when the first page is full.
-          merged['hasMore'] = itemCount >= pageSize;
-        }
-        merged['pageSize'] = pageSize;
-        final maxPages = catalogRailMaxPagesFrom(data) ??
-            catalogRailMaxPagesFrom(widget.fallbackSpec);
-        if (maxPages != null) merged['maxPages'] = maxPages;
-        // Opaque next-page handle (not `load` — that would re-enter PackLoadedPaint).
-        if (widget.action.trim().isNotEmpty) {
-          merged['pageLoad'] = {
-            'action': widget.action,
-            'params': <String, dynamic>{
-              ...Map<String, dynamic>.from(widget.params),
-              'maxPages': ?maxPages,
-            },
-          };
-        }
-        merged.remove('load');
-        _publishDynamicKinds(context, merged);
-        final painted = widget.builder(context, merged);
-        _lastPainted = painted;
-        return painted;
-      },
-    );
+    if (!env.ok) {
+      if (_lastPaintedWidget != null) return _lastPaintedWidget!;
+      final msg = env.error?.message.trim();
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          (msg != null && msg.isNotEmpty)
+              ? msg
+              : 'Could not load this section.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: ForjaShellColors.textSecondary),
+        ),
+      );
+    }
+    final data = env.data ?? const <String, dynamic>{};
+    final merged = Map<String, dynamic>.from(widget.fallbackSpec);
+    if (data['items'] is List) merged['items'] = data['items'];
+    if (data['widgets'] is List) merged['widgets'] = data['widgets'];
+    if (data['paint'] is Map) merged['paint'] = data['paint'];
+    if (data['heading'] != null) merged['heading'] = data['heading'];
+    if (data['kinds'] is List) merged['kinds'] = data['kinds'];
+    if (data['categories'] is List) {
+      merged['categories'] = data['categories'];
+    }
+    if (data['seedPoster'] != null) {
+      merged['seedPoster'] = data['seedPoster'];
+    }
+    if (data.containsKey('canShuffle')) {
+      merged['canShuffle'] = data['canShuffle'];
+    }
+    final pageSize = catalogRailPageSizeFrom(data) ??
+        catalogRailPageSizeFrom(widget.fallbackSpec) ??
+        kMetaRailPageSizeFallback;
+    final items = data['items'];
+    final itemCount = items is List ? items.length : 0;
+    if (data.containsKey('hasMore')) {
+      merged['hasMore'] = data['hasMore'];
+    } else if (itemCount > 0) {
+      // Feed map strips paging — assume more when the first page is full.
+      merged['hasMore'] = itemCount >= pageSize;
+    }
+    merged['pageSize'] = pageSize;
+    final maxPages = catalogRailMaxPagesFrom(data) ??
+        catalogRailMaxPagesFrom(widget.fallbackSpec);
+    if (maxPages != null) merged['maxPages'] = maxPages;
+    // Opaque next-page handle (not `load` — that would re-enter PackLoadedPaint).
+    if (widget.action.trim().isNotEmpty) {
+      merged['pageLoad'] = {
+        'action': widget.action,
+        'params': <String, dynamic>{
+          ...Map<String, dynamic>.from(widget.params),
+          'maxPages': ?maxPages,
+        },
+      };
+    }
+    merged.remove('load');
+    _publishDynamicKinds(context, merged);
+    final painted = widget.builder(context, merged);
+    _lastPaintedWidget = painted;
+    return painted;
   }
+
+  /// Last successful paint — keep on screen while a soft reload runs.
+  Widget? _lastPaintedWidget;
 
   void _publishDynamicKinds(BuildContext context, Map<String, dynamic> merged) {
     final chrome = PackChromeScope.maybeOf(context);
