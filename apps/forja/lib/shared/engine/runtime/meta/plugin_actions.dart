@@ -626,4 +626,28 @@ class MetaRuntime {
         data: entry.data,
         cache: CatalogCacheHints(etag: entry.etag),
       );
+
+  /// Sync read of a fresh or SWR-revalidatable catalog entry. Null on miss.
+  ///
+  /// Used by hub page painter to mount pack layout structure without awaiting
+  /// a network round-trip when boot prefetch / prior visit already warmed cache.
+  MetaEnvelope? peekCached({
+    required String pluginId,
+    required String action,
+    Map<String, dynamic> params = const {},
+    String? authSubject,
+    String? packSourceUrl,
+  }) {
+    final key = EngineCache.keyFor(
+      pluginId: pluginId,
+      action: action,
+      params: params,
+      authSubject: authSubject,
+      packSourceUrl: packSourceUrl,
+    );
+    final cached = EngineCache.instance.getEntry(key);
+    if (cached == null) return null;
+    if (!cached.isFresh && !cached.isRevalidatable) return null;
+    return _cachedEnvelope(action, cached);
+  }
 }

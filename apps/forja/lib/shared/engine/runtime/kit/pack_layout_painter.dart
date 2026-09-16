@@ -11,6 +11,7 @@ import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
 import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
+import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
