@@ -36,6 +36,7 @@ class CatalogCardsGrid extends StatelessWidget {
     this.onItemTap,
     this.emptyTitle = 'Nothing here',
     this.emptyDescription,
+    this.emptyAction,
     this.cardKind = 'poster',
     this.selectedItemId,
     this.gap,
@@ -51,6 +52,9 @@ class CatalogCardsGrid extends StatelessWidget {
   final void Function(Map<String, dynamic> item)? onItemTap;
   final String emptyTitle;
   final String? emptyDescription;
+
+  /// Optional CTA under the empty copy (e.g. Open portal).
+  final Widget? emptyAction;
 
   /// `poster` · `event`/`cards` · `dense`/`list` · `channel` · `guide`/`epg`
   final String cardKind;
@@ -115,6 +119,7 @@ class CatalogCardsGrid extends StatelessWidget {
         title: emptyTitle,
         description: emptyDescription,
         icon: Icons.inbox_outlined,
+        action: emptyAction,
       );
     }
 

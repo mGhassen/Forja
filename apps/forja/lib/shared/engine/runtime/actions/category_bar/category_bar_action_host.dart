@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
+import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_live_sort_providers.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_category_rail.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
@@ -289,16 +290,16 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
 
   bool get _canReorder {
     if (!_wantReorder || !_isLive) return false;
-    final scope = LayoutScope.maybeOf(context);
-    final sort = scope?.selectedId('sort') ?? 'playlist';
+    final categorySort = ref.watch(iptvLiveCategorySortProvider);
     final chrome = PackChromeScope.maybeOf(context);
     final q = (chrome?.eventQuery ?? '').trim();
-    return sort == 'playlist' && q.isEmpty;
+    return categorySort == PortalCatalogSort.playlist && q.isEmpty;
   }
 
   @override
   void initState() {
     super.initState();
+    unawaited(hydrateIptvLiveSortProviders(ref));
     unawaited(_reload());
   }
 
@@ -369,7 +370,11 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       _storeKey = key;
       _pinned = pinned;
       _order = order;
-      _items = _buildItems(pinned: pinned, order: order);
+      _items = _buildItems(
+        pinned: pinned,
+        order: order,
+        sort: ref.read(iptvLiveCategorySortProvider),
+      );
       _loading = false;
     });
     _publishBar(chromeItems: _items);
@@ -395,6 +400,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   List<CatalogCategoryItem> _buildItems({
     required List<String> pinned,
     required List<String> order,
+    required PortalCatalogSort sort,
   }) {
     final byId = <String, ({String id, String label, String? icon})>{};
     for (final e in widget.seedItems) {
@@ -408,6 +414,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     ];
     final sorted = PortalLiveCatalog.sortCategories(
       _wantWidgets ? PortalLiveCatalog.withPins(cats) : cats,
+      sort: sort,
       userPinnedIds: pinned,
       customOrderIds: order,
     );
@@ -505,7 +512,11 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     setState(() {
       _pinned = next;
       if (order != null) _order = order;
-      _items = _buildItems(pinned: next, order: order ?? _order);
+      _items = _buildItems(
+        pinned: next,
+        order: order ?? _order,
+        sort: ref.read(iptvLiveCategorySortProvider),
+      );
     });
     _publishBar(chromeItems: _items);
     _bumpEpoch();
@@ -536,7 +547,11 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     setState(() {
       _order = movable;
       _pinned = nextPins;
-      _items = _buildItems(pinned: nextPins, order: movable);
+      _items = _buildItems(
+        pinned: nextPins,
+        order: movable,
+        sort: ref.read(iptvLiveCategorySortProvider),
+      );
     });
     _publishBar(chromeItems: _items);
     _bumpEpoch();
@@ -554,6 +569,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     if (tab.isNotEmpty) {
       ref.watch(liveCategoryListsEpochProvider(tab));
     }
+    final categorySort = ref.watch(iptvLiveCategorySortProvider);
     final width = (widget.spec['width'] is num)
         ? (widget.spec['width'] as num).toDouble()
         : 220.0;
@@ -607,7 +623,13 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       );
     }
 
-    final liveItems = _items.isEmpty ? _plainItems() : _items;
+    final liveItems = _storeKey == null && _items.isEmpty
+        ? _plainItems()
+        : _buildItems(
+            pinned: _pinned,
+            order: _order,
+            sort: categorySort,
+          );
     if (hitListenable == null) {
       return CatalogCategoryRail(
         items: applySearchFilter(liveItems, const {}),

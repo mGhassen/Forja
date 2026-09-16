@@ -470,8 +470,10 @@ abstract final class PortalLiveCatalog {
 
   /// Order: Favorites · Already watched · custom order / pins · remaining.
   /// [input] may already include synthetics; they stay first.
+  /// Name sort applies to unpinned rows; playlist + [customOrderIds] is full manual order.
   static List<PortalCategory> sortCategories(
     List<PortalCategory> input, {
+    PortalCatalogSort sort = PortalCatalogSort.playlist,
     List<String> userPinnedIds = const [],
     List<String> customOrderIds = const [],
   }) {
@@ -490,7 +492,8 @@ abstract final class PortalLiveCatalog {
       }
     }
 
-    if (customOrderIds.isNotEmpty) {
+    // Full manual order wins in playlist mode.
+    if (sort == PortalCatalogSort.playlist && customOrderIds.isNotEmpty) {
       final ordered = <PortalCategory>[];
       final seen = <String>{};
       for (final id in customOrderIds) {
@@ -518,6 +521,12 @@ abstract final class PortalLiveCatalog {
       for (final id in userPinnedIds)
         if (userPinnedById.containsKey(id)) userPinnedById[id]!,
     ];
+    if (sort != PortalCatalogSort.playlist && rest.length >= 2) {
+      rest.sort((a, b) {
+        final cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        return sort == PortalCatalogSort.nameAsc ? cmp : -cmp;
+      });
+    }
     return [...synthetic, ...userPinned, ...rest];
   }
 }

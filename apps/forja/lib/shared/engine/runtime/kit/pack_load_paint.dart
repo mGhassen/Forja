@@ -14,6 +14,14 @@ import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 
+/// Bubbles from [PackLoadedPaint] → composition roots (`columnsHeader`).
+/// When [cover] is true, hide the category rail so the ticker / empty fills
+/// the whole body under the top bar (pre-kit IPTV behavior).
+class PackCompositionCoverNotification extends Notification {
+  PackCompositionCoverNotification({required this.cover});
+
+  final bool cover;
+}
 
 /// Runs an opaque pack [action], merges envelope fields into [fallbackSpec],
 /// then builds via [builder] (caller paints — no paint_tree import).
@@ -331,12 +339,18 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       if (_inFlight != null &&
           _lastPaintedWidget != null &&
           _holdAtRefreshEpoch == null) {
+        _syncCompositionCover(false);
         return _lastPaintedWidget!;
       }
+      _syncCompositionCover(true);
       return _sectionLoadingSkeleton();
     }
     if (!env.ok) {
-      if (_lastPaintedWidget != null) return _lastPaintedWidget!;
+      if (_lastPaintedWidget != null) {
+        _syncCompositionCover(false);
+        return _lastPaintedWidget!;
+      }
+      _syncCompositionCover(true);
       final msg = env.error?.message.trim();
       return Padding(
         padding: const EdgeInsets.all(24),
@@ -364,6 +378,18 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     }
     if (data.containsKey('canShuffle')) {
       merged['canShuffle'] = data['canShuffle'];
+    }
+    if (data['emptyTitle'] != null) {
+      merged['emptyTitle'] = data['emptyTitle'];
+    }
+    if (data['emptyDescription'] != null) {
+      merged['emptyDescription'] = data['emptyDescription'];
+    }
+    if (data['emptyAction'] != null) {
+      merged['emptyAction'] = data['emptyAction'];
+    }
+    if (data.containsKey('coverBody')) {
+      merged['coverBody'] = data['coverBody'];
     }
     final pageSize = catalogRailPageSizeFrom(data) ??
         catalogRailPageSizeFrom(widget.fallbackSpec) ??
@@ -397,6 +423,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     }
     merged.remove('load');
     _publishDynamicKinds(context, merged);
+    _syncCompositionCover(_specWantsCompositionCover(merged));
     final painted = widget.builder(context, merged);
     _lastPaintedWidget = painted;
     return painted;
@@ -404,6 +431,27 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
   /// Last successful paint — keep on screen while a soft reload runs.
   Widget? _lastPaintedWidget;
+
+  bool? _lastCover;
+  void _syncCompositionCover(bool cover) {
+    final kindMenu = (widget.fallbackSpec['kindMenu'] ?? '').toString().trim();
+    final catalogMenu =
+        (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    // Only IPTV-style composition lists (cats + grid) — not Home rails.
+    if (kindMenu.isEmpty && catalogMenu.isEmpty) return;
+    if (_lastCover == cover) return;
+    _lastCover = cover;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _lastCover != cover) return;
+      PackCompositionCoverNotification(cover: cover).dispatch(context);
+    });
+  }
+
+  bool _specWantsCompositionCover(Map<String, dynamic> spec) {
+    // Pack opts in (no-portal empty). Do not infer from layout emptyAction —
+    // that would hide categories on a filtered-empty group.
+    return spec['coverBody'] == true;
+  }
 
   void _publishDynamicKinds(BuildContext context, Map<String, dynamic> merged) {
     final chrome = PackChromeScope.maybeOf(context);
@@ -415,7 +463,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // Do not invent an "All" row — packs that want it declare it in layout
     // items; the category bar merges layout seed + dynamic kinds.
     final declared = merged['kinds'] ?? merged['categories'];
-    if (declared is List && declared.isNotEmpty) {
+    if (declared is List) {
+      if (declared.isEmpty) {
+        _scheduleDynamicBarPublish(context, chrome, barId, const []);
+        return;
+      }
       final items = <Map<String, dynamic>>[];
       final seen = <String>{};
       for (final raw in declared) {
@@ -434,6 +486,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         _scheduleDynamicBarPublish(context, chrome, barId, items);
         return;
       }
+      _scheduleDynamicBarPublish(context, chrome, barId, const []);
+      return;
     }
 
     final raw = merged['items'];

@@ -38,6 +38,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     this.title,
     this.emptyTitle = 'No channels',
     this.emptyDescription,
+    this.hideSide = false,
     this.onActionSelect,
     this.onSideSelect,
     this.onItemTap,
@@ -50,6 +51,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     Widget? side,
     Map<String, String> actionSelections = const {},
     Map<String, Widget> actionSlots = const {},
+    bool hideSide = false,
     void Function(String actionId, String value)? onActionSelect,
     ValueChanged<String>? onSideSelect,
     void Function(Map<String, dynamic> item)? onItemTap,
@@ -72,6 +74,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
       title: propsString(props, 'title'),
       emptyTitle: propsStringOr(props, 'emptyTitle', 'No channels'),
       emptyDescription: propsString(props, 'emptyDescription'),
+      hideSide: hideSide,
       onActionSelect: onActionSelect,
       onSideSelect: onSideSelect,
       onItemTap: onItemTap,
@@ -97,6 +100,9 @@ class ColumnsHeaderBlock extends StatelessWidget {
   final String? title;
   final String emptyTitle;
   final String? emptyDescription;
+
+  /// Hide category rail — full-width body (catalog load ticker / choose portal).
+  final bool hideSide;
   final void Function(String actionId, String value)? onActionSelect;
   final ValueChanged<String>? onSideSelect;
   final void Function(Map<String, dynamic> item)? onItemTap;
@@ -137,16 +143,17 @@ class ColumnsHeaderBlock extends StatelessWidget {
       thickness: 1,
       color: Color(0xFF2A2A2A),
     );
+    final showSide = !hideSide;
     Widget row = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (sideOnLeading) ...[
+        if (showSide && sideOnLeading) ...[
           SizedBox(width: sideWidth, child: side),
           divider,
           if (sideGap > 0) SizedBox(width: sideGap),
         ],
         Expanded(child: grid),
-        if (!sideOnLeading) ...[
+        if (showSide && !sideOnLeading) ...[
           if (sideGap > 0) SizedBox(width: sideGap),
           divider,
           SizedBox(width: sideWidth, child: side),

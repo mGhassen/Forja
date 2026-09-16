@@ -356,40 +356,24 @@ class CatalogTopChrome extends StatelessWidget {
         }
       }
 
-      if (isSortIcon) {
-        final selectedId = (selections[actionId] ??
-                (action['default'] ??
-                        (nested.isEmpty ? '' : nested.first.id))
-                    .toString())
-            .trim();
-        bucket.add(
-          _CatalogIconMenuChip(
-            label: (action['label'] ?? actionId).toString(),
-            icon: icon ?? Icons.filter_list_rounded,
-            selected: _isSelectedMenu(action, selections),
-            items: nested,
-            selectedId: selectedId,
-            onPick: onSelect == null
-                ? null
-                : (id) => onSelect!(actionId, id),
-          ),
-        );
-        continue;
-      }
-
-      if (isIconOnly) {
+      if (isIconOnly || isSortIcon) {
         bucket.add(
           ForjaActionChip(
             label: (action['label'] ?? actionId).toString(),
             icon: icon ??
                 (verb == 'search' || verb == 'eventsearch'
                     ? Icons.search_rounded
-                    : Icons.refresh_rounded),
+                    : isSortIcon
+                        ? Icons.filter_list_rounded
+                        : Icons.refresh_rounded),
             iconOnly: true,
-            selected: false,
+            selected: isSortIcon && _isSelectedMenu(action, selections),
             onTap: onSelect == null
                 ? () {}
-                : () => onSelect!(actionId, actionId),
+                : () => onSelect!(
+                      actionId,
+                      nested.isEmpty ? actionId : '__open__',
+                    ),
           ),
         );
         continue;
@@ -438,88 +422,3 @@ class CatalogTopChrome extends StatelessWidget {
   }
 }
 
-/// Icon-only pack menu (e.g. IPTV Sort) — anchored dropdown, not a bottom sheet.
-class _CatalogIconMenuChip extends StatelessWidget {
-  const _CatalogIconMenuChip({
-    required this.label,
-    required this.icon,
-    required this.items,
-    required this.selectedId,
-    this.selected = false,
-    this.onPick,
-  });
-
-  final String label;
-  final IconData icon;
-  final List<({String id, String label})> items;
-  final String selectedId;
-  final bool selected;
-  final ValueChanged<String>? onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final cinematic = ForjaShellColors.cinematic;
-    return MenuAnchor(
-      alignmentOffset: const Offset(0, 8),
-      style: MenuStyle(
-        backgroundColor: WidgetStatePropertyAll(cinematic.menuSurface),
-        elevation: const WidgetStatePropertyAll(8),
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(vertical: 6, horizontal: 6),
-        ),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-      menuChildren: [
-        for (final item in items)
-          MenuItemButton(
-            onPressed: onPick == null ? null : () => onPick!(item.id),
-            style: ButtonStyle(
-              minimumSize: const WidgetStatePropertyAll(Size(200, 40)),
-              backgroundColor: WidgetStatePropertyAll(
-                item.id == selectedId
-                    ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
-                    : Colors.transparent,
-              ),
-              foregroundColor: WidgetStatePropertyAll(
-                item.id == selectedId
-                    ? ForjaShellColors.brandGreen
-                    : cinematic.textPrimary,
-              ),
-            ),
-            trailingIcon: item.id == selectedId
-                ? Icon(
-                    Icons.check_rounded,
-                    size: 18,
-                    color: ForjaShellColors.brandGreen,
-                  )
-                : const SizedBox(width: 18),
-            child: Text(
-              item.label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight:
-                    item.id == selectedId ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-      ],
-      builder: (context, controller, child) {
-        return ForjaActionChip(
-          label: label,
-          icon: icon,
-          iconOnly: true,
-          selected: selected || controller.isOpen,
-          onTap: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-        );
-      },
-    );
-  }
-}

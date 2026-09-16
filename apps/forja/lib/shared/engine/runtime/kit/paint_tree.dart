@@ -13,6 +13,7 @@ import 'package:forja/shared/engine/runtime/kit/hosts/catalog_epg_guide_host.dar
 import 'package:forja/shared/engine/runtime/kit/hosts/channel_catalog_health_host.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/kit_schedule_window.dart';
 import 'package:forja/shared/engine/runtime/actions/event_search/kit_event_list_search.dart';
+import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_sort_action_host.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_action_host.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
@@ -53,6 +54,7 @@ import 'package:forja_foundation/blocks/empty/empty_block.dart';
 import 'package:forja_foundation/blocks/search/catalog_search_page.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/blocks/shell/shell_block.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -465,37 +467,44 @@ class PackPaintTree extends StatelessWidget {
     final side = categoryChild == null
         ? null
         : _chromeCategoryBar(context, categoryChild);
-    return ColumnsHeaderBlock.fromProps(
-      merged,
-      body: feed,
-      side: side,
-      actionSelections: {
-        for (final a in actions)
-          if ((a['id'] ?? '').toString().isNotEmpty)
-            (a['id'] as Object).toString():
-                scope?.selectedId((a['id'] as Object).toString()) ??
-                    (a['default'] ?? '').toString(),
-      },
-      actionSlots: _portalsActionSlots(context, actions: actions),
-      wrapBody: _portalsWrapBody(context, actions: actions),
-      onActionSelect: (actionId, value) {
-        _dispatchTopBarAction(
-          context,
-          actions: actions,
-          actionId: actionId,
-          value: value,
-          scope: scope,
-        );
-      },
-      onSideSelect: side != null
-          ? null
-          : (id) {
-              final barId = (categoryChild?['id'] ??
-                      _childIdOfType(node, LayoutTypes.categoryBar) ??
-                      'cats')
-                  .toString();
-              scope?.onSelect(barId, id, toggle: false);
-            },
+    // Start covered when the list has an opaque load — avoids one empty-cats
+    // frame before PackLoadedPaint dispatches the loading cover.
+    final initialCover = feed != null;
+    return _CompositionCoverGate(
+      initialCover: initialCover,
+      builder: (hideSide) => ColumnsHeaderBlock.fromProps(
+        merged,
+        body: feed,
+        side: side,
+        hideSide: hideSide,
+        actionSelections: {
+          for (final a in actions)
+            if ((a['id'] ?? '').toString().isNotEmpty)
+              (a['id'] as Object).toString():
+                  scope?.selectedId((a['id'] as Object).toString()) ??
+                      (a['default'] ?? '').toString(),
+        },
+        actionSlots: _portalsActionSlots(context, actions: actions),
+        wrapBody: _portalsWrapBody(context, actions: actions),
+        onActionSelect: (actionId, value) {
+          _dispatchTopBarAction(
+            context,
+            actions: actions,
+            actionId: actionId,
+            value: value,
+            scope: scope,
+          );
+        },
+        onSideSelect: side != null
+            ? null
+            : (id) {
+                final barId = (categoryChild?['id'] ??
+                        _childIdOfType(node, LayoutTypes.categoryBar) ??
+                        'cats')
+                    .toString();
+                scope?.onSelect(barId, id, toggle: false);
+              },
+      ),
     );
   }
 
@@ -786,25 +795,7 @@ class PackPaintTree extends StatelessWidget {
       return;
     }
     if (verb == 'portals' || actionId == 'portals') {
-      final key = (tabId ?? '').trim();
-      if (key.isEmpty) {
-        ForjaToast.show('Portals unavailable');
-        return;
-      }
-      try {
-        final container = ProviderScope.containerOf(context);
-        final open = container.read(portalsPanelOpenProvider(key));
-        container.read(portalsPanelOpenProvider(key).notifier).state = !open;
-        if (!open) {
-          // Vault-first paint + async cloud soft-sync (no inventory wipe).
-          preparePortalsPanel(container, key);
-        } else {
-          // Closing after select/add — refresh vault chip label without listPortals.
-          container.invalidate(portalsChipSummaryProvider(key));
-        }
-      } catch (_) {
-        ForjaToast.show('Portals unavailable');
-      }
+      _togglePortalsPanel(context);
       return;
     }
     if (value == '__open__') {
@@ -1030,6 +1021,7 @@ class PackPaintTree extends StatelessWidget {
     final out = <String, Widget>{};
     Map<String, dynamic>? portalsAction;
     Map<String, dynamic>? searchAction;
+    Map<String, dynamic>? sortAction;
     for (final a in actions) {
       final id = (a['id'] ?? '').toString().trim();
       final verb = (a['action'] ?? '').toString().trim().toLowerCase();
@@ -1040,6 +1032,11 @@ class PackPaintTree extends StatelessWidget {
       // Inline expanding search (IPTV / Live) — not hub catalog Search.
       if (searchAction == null && verb == 'eventsearch') {
         searchAction = a;
+      }
+      if (sortAction == null &&
+          (id == 'sort' || verb == 'sort') &&
+          tab == 'iptv') {
+        sortAction = a;
       }
     }
     if (searchAction != null) {
@@ -1057,6 +1054,21 @@ class PackPaintTree extends StatelessWidget {
         tvTabId: tab,
         tvRowId: 'chrome',
         tvItemIndex: 0,
+      );
+    }
+    if (sortAction != null) {
+      final slotId = (sortAction['id'] ?? 'sort').toString().trim();
+      final label = (sortAction['label'] ?? 'Sort').toString().trim();
+      out[slotId.isEmpty ? 'sort' : slotId] = Consumer(
+        builder: (ctx, ref, _) => IptvSortActionHost.buildSortChip(
+          ctx,
+          ref,
+          tabId: tab,
+          label: label.isEmpty ? 'Sort' : label,
+          icon: Icons.filter_list_rounded,
+          tvRowId: 'chrome',
+          tvItemIndex: 1,
+        ),
       );
     }
     if (portalsAction != null) {
@@ -1643,6 +1655,7 @@ class PackPaintTree extends StatelessWidget {
                   (spec['emptyDescription'] ?? '').toString().isEmpty
                       ? null
                       : spec['emptyDescription']?.toString(),
+              emptyAction: _listEmptyAction(context, spec),
               itemAccessory: _liveFavoriteAccessory,
               itemHealthListenable: healthListenableFor,
               onItemInteractiveActive: onInteractiveActive,
@@ -1811,6 +1824,41 @@ class PackPaintTree extends StatelessWidget {
         );
   }
 
+  Widget? _listEmptyAction(BuildContext context, Map<String, dynamic> spec) {
+    final raw = spec['emptyAction'];
+    if (raw is! Map) return null;
+    final label = (raw['label'] ?? '').toString().trim();
+    if (label.isEmpty) return null;
+    final verb = (raw['action'] ?? raw['id'] ?? '').toString().trim().toLowerCase();
+    if (verb != 'portals') return null;
+    return Button(
+      label: label,
+      icon: Icons.dns_rounded,
+      variant: ButtonVariant.primary,
+      onPressed: () => _togglePortalsPanel(context),
+    );
+  }
+
+  void _togglePortalsPanel(BuildContext context) {
+    final key = (tabId ?? '').trim();
+    if (key.isEmpty) {
+      ForjaToast.show('Portals unavailable');
+      return;
+    }
+    try {
+      final container = ProviderScope.containerOf(context);
+      final open = container.read(portalsPanelOpenProvider(key));
+      container.read(portalsPanelOpenProvider(key).notifier).state = !open;
+      if (!open) {
+        preparePortalsPanel(container, key);
+      } else {
+        container.invalidate(portalsChipSummaryProvider(key));
+      }
+    } catch (_) {
+      ForjaToast.show('Portals unavailable');
+    }
+  }
+
   String _itemKind(Map<String, dynamic> item) {
     final props = PackPaintArtifact.propsOf(item);
     for (final key in [
@@ -1890,15 +1938,21 @@ class PackPaintTree extends StatelessWidget {
     final needle = query.trim().toLowerCase();
     if (needle.isEmpty) return true;
     final name = (item['name'] ?? item['title'] ?? '').toString().toLowerCase();
-    final cat = (item['categoryName'] ?? item['kind'] ?? '')
+    final cat = (item['categoryName'] ??
+            item['description'] ??
+            item['kind'] ??
+            '')
         .toString()
         .toLowerCase();
     final props = PackPaintArtifact.propsOf(item);
     final propTitle =
         (props['title'] ?? props['name'] ?? '').toString().toLowerCase();
+    final propSub =
+        (props['subtitle'] ?? props['categoryLabel'] ?? '').toString().toLowerCase();
     return name.contains(needle) ||
         cat.contains(needle) ||
-        propTitle.contains(needle);
+        propTitle.contains(needle) ||
+        propSub.contains(needle);
   }
 
   List<Map<String, dynamic>> _sortCatalogItems(
@@ -2065,17 +2119,23 @@ class PackPaintTree extends StatelessWidget {
         .trim();
     final selectedInItems =
         selectedRaw.isNotEmpty && items.any((e) => e.id == selectedRaw);
+    // Search clears category for global hits — do not snap back to first/all.
+    final searching = (chrome?.eventQuery ?? '').trim().isNotEmpty;
     // Movies/Series reset uses `all` (show whole section) — do not snap to a
     // portal group. Live still lands on the first non-synthetic category.
     final String selected;
     if (selectedInItems) {
       selected = selectedRaw;
+    } else if (searching) {
+      selected = '';
     } else if (vodSection) {
       selected = 'all';
     } else {
       selected = _firstPortalCategoryId(items);
     }
-    if (selected != selectedRaw && scope != null) {
+    if (selected.isNotEmpty &&
+        selected != selectedRaw &&
+        scope != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         scope.onSelect(id, selected, toggle: false);
@@ -2897,6 +2957,48 @@ class _ContinueMountState extends State<_ContinueMount> {
           if (raw != null) unawaited(_remove(raw));
         },
       ),
+    );
+  }
+}
+
+/// Listens for [PackCompositionCoverNotification] from [PackLoadedPaint].
+/// Hides the IPTV category rail while the catalog ticker / choose-portal empty
+/// fills the body under the top bar.
+class _CompositionCoverGate extends StatefulWidget {
+  const _CompositionCoverGate({
+    required this.builder,
+    this.initialCover = false,
+  });
+
+  final Widget Function(bool coverSide) builder;
+  final bool initialCover;
+
+  @override
+  State<_CompositionCoverGate> createState() => _CompositionCoverGateState();
+}
+
+class _CompositionCoverGateState extends State<_CompositionCoverGate> {
+  late bool _cover = widget.initialCover;
+
+  @override
+  void didUpdateWidget(covariant _CompositionCoverGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialCover != widget.initialCover &&
+        widget.initialCover &&
+        !_cover) {
+      _cover = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<PackCompositionCoverNotification>(
+      onNotification: (n) {
+        if (_cover == n.cover) return true;
+        setState(() => _cover = n.cover);
+        return true;
+      },
+      child: widget.builder(_cover),
     );
   }
 }
