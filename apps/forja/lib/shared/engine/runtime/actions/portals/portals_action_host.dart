@@ -38,10 +38,13 @@ abstract final class PortalsActionHost {
     VoidCallback? onLeftEdge,
     VoidCallback? onRightEdge,
   }) {
+    final rawW = action?['width'];
+    final width = rawW is num ? rawW.toDouble() : null;
     return _PortalsTopBarChip(
       tabId: tabId.trim(),
       rowId: rowId,
       itemIndex: itemIndex,
+      width: width != null && width > 0 ? width : null,
       onDownEdge: onDownEdge,
       onLeftEdge: onLeftEdge,
       onRightEdge: onRightEdge,
@@ -69,6 +72,7 @@ class _PortalsTopBarChip extends ConsumerStatefulWidget {
     required this.tabId,
     required this.rowId,
     required this.itemIndex,
+    this.width,
     this.onDownEdge,
     this.onLeftEdge,
     this.onRightEdge,
@@ -77,6 +81,7 @@ class _PortalsTopBarChip extends ConsumerStatefulWidget {
   final String tabId;
   final String rowId;
   final int itemIndex;
+  final double? width;
   final VoidCallback? onDownEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -216,6 +221,7 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
       healthy: healthy,
       seatsUsed: used.isEmpty ? null : used,
       seatsMax: max.isEmpty ? null : max,
+      width: widget.width,
       tvFocus: policy.useFocusableMoodChips,
       onTap: () {
         final opening = !open;

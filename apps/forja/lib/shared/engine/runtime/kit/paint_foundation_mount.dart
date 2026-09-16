@@ -835,6 +835,7 @@ Widget? paintFoundationType(
         surfaceColor: propsColor(props, 'surfaceColor'),
       );
     case 'portalsChip':
+      final chipW = propsNum(props, 'width');
       return PortalsChip(
         label: propsStringOr(props, 'label', 'Portals'),
         onTap: () {},
@@ -845,6 +846,7 @@ Widget? paintFoundationType(
         seatsUsed: propsString(props, 'seatsUsed'),
         seatsMax: propsString(props, 'seatsMax'),
         compact: propsBool(props, 'compact'),
+        width: chipW != null && chipW > 0 ? chipW : null,
         accentColor: propsColor(props, 'accentColor'),
       );
     case 'catalogPosterGrid':

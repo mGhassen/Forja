@@ -14,6 +14,7 @@ import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
+import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 
 /// Props map from a pack list `items[]` entry (`paint.props` or flat).
@@ -201,80 +202,17 @@ class CatalogCardsGrid extends StatelessWidget {
   }
 
   Widget _channelGrid(BuildContext context) {
-    final tv = ShellPaintScope.usesTvDensityOf(context);
-    final cardW = CatalogChannelCard.cardWidth(context);
-    final cardH = CatalogChannelCard.cardHeight(context);
-    final gap = this.gap ??
-        (tv ? ShellTokens.tvPosterCardRowGap : 10.0);
-    final leading = pad ?? 8.0;
-    final trailing = pad ?? 12.0;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Desktop: fill-width denser tiles (pre-wipe IPTV). TV: poster cells.
-        final layout = tv
-            ? CatalogPosterGridLayout.poster(
-                maxWidth: constraints.maxWidth,
-                cardW: cardW,
-                cardH: cardH,
-                gap: gap,
-                leading: leading,
-                trailing: trailing,
-              )
-            : CatalogPosterGridLayout.channelCards(
-                maxWidth: constraints.maxWidth,
-                minW: cardW,
-                minH: cardH,
-                gap: gap,
-                leading: leading,
-                trailing: trailing,
-              );
-        return CatalogPosterGrid(
-          layout: layout,
-          itemCount: items.length,
-          itemBuilder: (context, i) {
-            final item = items[i];
-            final props = catalogItemProps(item);
-            final title = (props['title'] ?? item['name'] ?? '').toString();
-            final image = (props['imageUrl'] ??
-                    props['posterUrl'] ??
-                    props['logoUrl'] ??
-                    item['poster'] ??
-                    '')
-                .toString();
-            final programmes = CatalogChannelCard.programmesFromRaw(
-              item['programmes'] ?? props['programmes'],
-            );
-            final id = (item['id'] ?? props['id'] ?? '').toString();
-            return CatalogChannelCard(
-              title: title,
-              imageUrl: image,
-              programmes: programmes,
-              loadProgrammes: loadEpgProgrammes == null
-                  ? null
-                  : () => loadEpgProgrammes!(item),
-              health: itemHealth?.call(item),
-              healthListenable: itemHealthListenable?.call(item),
-              highlighted: selectedItemId != null &&
-                  selectedItemId!.isNotEmpty &&
-                  selectedItemId == id,
-              width: layout.cardW,
-              height: layout.cardH,
-              gridIndex: i,
-              gridColumns: layout.columns,
-              onTap: onItemTap == null ? null : () => onItemTap!(item),
-              onInteractiveActive: onItemInteractiveActive == null
-                  ? null
-                  : (active) =>
-                      onItemInteractiveActive!(item, active: active),
-              favoriteBuilder: itemAccessory == null
-                  ? null
-                  : ({required bool active}) =>
-                      itemAccessory!(context, item, active: active),
-            );
-          },
-        );
-      },
+    return _ChannelLetterJumpGrid(
+      items: items,
+      selectedItemId: selectedItemId,
+      gap: gap,
+      pad: pad,
+      itemAccessory: itemAccessory,
+      itemHealth: itemHealth,
+      itemHealthListenable: itemHealthListenable,
+      onItemInteractiveActive: onItemInteractiveActive,
+      loadEpgProgrammes: loadEpgProgrammes,
+      onItemTap: onItemTap,
     );
   }
 
@@ -428,6 +366,199 @@ bool _catalogGridIsLandscape(List<Map<String, dynamic>> items) {
     }
   }
   return false;
+}
+
+/// Channel cards + type-to-jump. Competes with category rail via last hover
+/// ([ListLetterJumpScope] active ownership).
+class _ChannelLetterJumpGrid extends StatefulWidget {
+  const _ChannelLetterJumpGrid({
+    required this.items,
+    this.selectedItemId,
+    this.gap,
+    this.pad,
+    this.itemAccessory,
+    this.itemHealth,
+    this.itemHealthListenable,
+    this.onItemInteractiveActive,
+    this.loadEpgProgrammes,
+    this.onItemTap,
+  });
+
+  final List<Map<String, dynamic>> items;
+  final String? selectedItemId;
+  final double? gap;
+  final double? pad;
+  final Widget? Function(
+    BuildContext context,
+    Map<String, dynamic> item, {
+    required bool active,
+  })? itemAccessory;
+  final bool? Function(Map<String, dynamic> item)? itemHealth;
+  final ValueListenable<bool?>? Function(Map<String, dynamic> item)?
+      itemHealthListenable;
+  final void Function(
+    Map<String, dynamic> item, {
+    required bool active,
+  })? onItemInteractiveActive;
+  final Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
+      loadEpgProgrammes;
+  final void Function(Map<String, dynamic> item)? onItemTap;
+
+  @override
+  State<_ChannelLetterJumpGrid> createState() => _ChannelLetterJumpGridState();
+}
+
+class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
+  final ScrollController _scroll = ScrollController();
+  CatalogPosterGridLayout? _layout;
+
+  bool get _leanbackOnly =>
+      ShellPaintScope.usesTvDensityOf(context) &&
+      !ShellPaintScope.scaleOnHoverOf(context);
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  String _titleAt(int i) {
+    final item = widget.items[i];
+    final props = catalogItemProps(item);
+    final t = (props['title'] ?? item['name'] ?? item['title'] ?? '')
+        .toString()
+        .trim();
+    return t.isEmpty ? CatalogCardsGrid._itemId(item) : t;
+  }
+
+  int _anchorIndex() {
+    final sel = (widget.selectedItemId ?? '').trim();
+    if (sel.isEmpty) return -1;
+    for (var i = 0; i < widget.items.length; i++) {
+      if (CatalogCardsGrid._itemId(widget.items[i]) == sel) return i;
+    }
+    return -1;
+  }
+
+  void _letterJump(int index) {
+    if (index < 0 || index >= widget.items.length) return;
+    void go() {
+      if (!mounted) return;
+      _scrollToIndex(index);
+    }
+
+    go();
+    WidgetsBinding.instance.addPostFrameCallback((_) => go());
+  }
+
+  void _scrollToIndex(int index) {
+    if (!_scroll.hasClients || index < 0) return;
+    final layout = _layout;
+    if (layout == null) return;
+    final cols = layout.columns.clamp(1, 999);
+    final row = index ~/ cols;
+    final rowExtent = layout.cardH + layout.gap;
+    final target = (layout.topPad + row * rowExtent).clamp(
+      0.0,
+      _scroll.position.maxScrollExtent,
+    );
+    if ((_scroll.offset - target).abs() < 0.5) return;
+    _scroll.jumpTo(target);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final cardW = CatalogChannelCard.cardWidth(context);
+    final cardH = CatalogChannelCard.cardHeight(context);
+    final gap = widget.gap ??
+        (tv ? ShellTokens.tvPosterCardRowGap : 10.0);
+    final leading = widget.pad ?? 8.0;
+    final trailing = widget.pad ?? 12.0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layout = tv
+            ? CatalogPosterGridLayout.poster(
+                maxWidth: constraints.maxWidth,
+                cardW: cardW,
+                cardH: cardH,
+                gap: gap,
+                leading: leading,
+                trailing: trailing,
+              )
+            : CatalogPosterGridLayout.channelCards(
+                maxWidth: constraints.maxWidth,
+                minW: cardW,
+                minH: cardH,
+                gap: gap,
+                leading: leading,
+                trailing: trailing,
+              );
+        _layout = layout;
+
+        final grid = CatalogPosterGrid(
+          layout: layout,
+          controller: _scroll,
+          itemCount: widget.items.length,
+          itemBuilder: (context, i) {
+            final item = widget.items[i];
+            final props = catalogItemProps(item);
+            final title = (props['title'] ?? item['name'] ?? '').toString();
+            final image = (props['imageUrl'] ??
+                    props['posterUrl'] ??
+                    props['logoUrl'] ??
+                    item['poster'] ??
+                    '')
+                .toString();
+            final programmes = CatalogChannelCard.programmesFromRaw(
+              item['programmes'] ?? props['programmes'],
+            );
+            final id = (item['id'] ?? props['id'] ?? '').toString();
+            return CatalogChannelCard(
+              title: title,
+              imageUrl: image,
+              programmes: programmes,
+              loadProgrammes: widget.loadEpgProgrammes == null
+                  ? null
+                  : () => widget.loadEpgProgrammes!(item),
+              health: widget.itemHealth?.call(item),
+              healthListenable: widget.itemHealthListenable?.call(item),
+              highlighted: widget.selectedItemId != null &&
+                  widget.selectedItemId!.isNotEmpty &&
+                  widget.selectedItemId == id,
+              width: layout.cardW,
+              height: layout.cardH,
+              gridIndex: i,
+              gridColumns: layout.columns,
+              onTap: widget.onItemTap == null
+                  ? null
+                  : () => widget.onItemTap!(item),
+              onInteractiveActive: widget.onItemInteractiveActive == null
+                  ? null
+                  : (active) => widget.onItemInteractiveActive!(
+                        item,
+                        active: active,
+                      ),
+              favoriteBuilder: widget.itemAccessory == null
+                  ? null
+                  : ({required bool active}) =>
+                      widget.itemAccessory!(context, item, active: active),
+            );
+          },
+        );
+
+        return ListLetterJumpScope(
+          enabled: !_leanbackOnly && widget.items.isNotEmpty,
+          itemCount: widget.items.length,
+          anchorIndex: _anchorIndex(),
+          labelAt: _titleAt,
+          onJump: _letterJump,
+          child: grid,
+        );
+      },
+    );
+  }
 }
 
 /// Event card with hover/focus active chrome + live play overlay.

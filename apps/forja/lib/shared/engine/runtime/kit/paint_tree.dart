@@ -1076,6 +1076,7 @@ class PackPaintTree extends StatelessWidget {
               portalsAction['source'] ??
               '')
           .toString();
+      final rawW = portalsAction['width'];
       out['portals'] = Consumer(
         builder: (ctx, ref, _) => PortalsActionHost.buildPortalsChip(
           ctx,
@@ -1085,6 +1086,7 @@ class PackPaintTree extends StatelessWidget {
           itemIndex: 0,
           action: {
             if (hoist.isNotEmpty) 'hoistSource': hoist,
+            if (rawW is num) 'width': rawW,
           },
         ),
       );

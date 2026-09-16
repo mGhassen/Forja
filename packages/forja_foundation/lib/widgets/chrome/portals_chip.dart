@@ -19,6 +19,7 @@ class PortalsChip extends StatefulWidget {
     this.seatsUsed,
     this.seatsMax,
     this.compact = false,
+    this.width,
     this.accentColor,
     this.tvFocus = false,
     this.interactiveBuilder,
@@ -37,6 +38,10 @@ class PortalsChip extends StatefulWidget {
   final String? seatsUsed;
   final String? seatsMax;
   final bool compact;
+
+  /// Pack-owned min width. Omit → intrinsic (compact idle = square).
+  /// Seats / long labels may still grow past this.
+  final double? width;
   final Color? accentColor;
   final bool tvFocus;
   final ValueChanged<bool>? onFocusChange;
@@ -94,9 +99,16 @@ class _PortalsChipState extends State<PortalsChip> {
             ? Colors.white
             : Colors.white60;
     final hPad = widget.compact ? 10.0 : 14.0;
+    final packWidth = widget.width;
+    final minW = packWidth ??
+        (widget.compact && !_revealSeats ? _height : 0.0);
+    // Chrome around the label (pads + status + gaps + chevron).
+    final labelMax = packWidth != null
+        ? (packWidth - (hPad * 2) - 14 - 8 - 6 - 18).clamp(48.0, 280.0)
+        : 160.0;
 
-    // Intrinsic width only — no minWidth sponge. Seats add real layout width
-    // so the trailing top-bar row pushes Search/Sort left (right edge stays).
+    // Pack [width] = minWidth. Seats / long labels may grow past it so the
+    // trailing top-bar row still pushes Search/Sort left (right edge stays).
     final chip = AnimatedSize(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
@@ -105,10 +117,7 @@ class _PortalsChipState extends State<PortalsChip> {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         height: _height,
-        // Compact idle stays a square hit target; seats widen past that.
-        constraints: widget.compact && !_revealSeats
-            ? const BoxConstraints(minWidth: _height)
-            : const BoxConstraints(),
+        constraints: BoxConstraints(minWidth: minW),
         padding: EdgeInsets.symmetric(horizontal: hPad),
         decoration: BoxDecoration(
           color: tvFocused
@@ -148,7 +157,7 @@ class _PortalsChipState extends State<PortalsChip> {
             if (!widget.compact) ...[
               const SizedBox(width: 8),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 160),
+                constraints: BoxConstraints(maxWidth: labelMax),
                 child: Text(
                   widget.label,
                   maxLines: 1,
