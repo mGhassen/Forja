@@ -547,7 +547,7 @@ class PortalHealthTracker {
   static final Map<String, Timer> _debounce = {};
 
   static const ttl = Duration(minutes: 2);
-  static const hoverDelay = Duration(milliseconds: 350);
+  static const hoverDelay = Duration(milliseconds: 500);
   static const tvDelay = Duration(seconds: 2);
 
   static void _notify() {

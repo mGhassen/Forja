@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_providers.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -83,10 +85,18 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         : PortalsHost.resolvePluginId(preferTabId: widget.tabId);
   }
 
+  /// Feed cache is portal-blind — wipe + bump so Live/Movies/Series refetch
+  /// the newly active portal instead of keeping the previous grid/error.
+  void _reloadHubCatalog(String pluginId) {
+    EngineCache.instance.wipePlugin(pluginId);
+    PackChromeScope.maybeOf(context)?.onBumpRefresh();
+  }
+
   Future<bool> _runAction(
     Future<MetaEnvelope> Function(String pluginId) action, {
     String? toastOk,
     bool refresh = true,
+    bool reloadCatalog = false,
   }) async {
     final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
@@ -106,6 +116,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         PortalChannelGuideOpen.invalidateLiveCatalog();
         invalidatePortalsChrome(ref, widget.tabId);
       }
+      if (reloadCatalog) _reloadHubCatalog(pluginId);
       return true;
     } catch (e) {
       ForjaToast.error(e.toString());
@@ -152,6 +163,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         params: params,
       ),
       toastOk: toast.isEmpty ? null : toast,
+      reloadCatalog: true,
     );
   }
 
@@ -199,6 +211,11 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         ForjaToast.success(
           'Dealt ${ids.length} portal${ids.length == 1 ? '' : 's'}',
         );
+        final pluginId = await _pluginId();
+        if (pluginId != null && pluginId.isNotEmpty && mounted) {
+          PortalChannelGuideOpen.invalidateLiveCatalog();
+          _reloadHubCatalog(pluginId);
+        }
       }
       invalidatePortalsChrome(ref, widget.tabId);
     } catch (e) {
@@ -233,6 +250,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       await _runAction(
         (id) => PortalsHost.remove(pluginId: id, key: portalKey),
         toastOk: 'Removed',
+        reloadCatalog: true,
       );
     } finally {
       if (mounted) {
@@ -327,6 +345,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
             _runAction(
               (id) => PortalsHost.select(pluginId: id, key: item.id),
               toastOk: 'Selected',
+              reloadCatalog: true,
             ),
           ),
       onFavorite: (item) => unawaited(_toggleFavorite(item.id)),
