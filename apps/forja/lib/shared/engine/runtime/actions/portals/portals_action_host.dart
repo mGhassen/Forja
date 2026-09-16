@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
-import 'package:forja/shared/engine/runtime/chrome/portals_panel_view.dart';
-import 'package:forja/shared/engine/runtime/chrome/portals_providers.dart';
+import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_view.dart';
+import 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
@@ -18,9 +18,9 @@ export 'package:forja/shared/engine/portals/portals_host.dart'
         PortalsInventory,
         PortalHealthTracker,
         PortalsPanelAction;
-export 'package:forja/shared/engine/runtime/chrome/portals_panel_view.dart'
+export 'package:forja/shared/engine/runtime/actions/portals/portals_panel_view.dart'
     show PortalsPanelView;
-export 'package:forja/shared/engine/runtime/chrome/portals_providers.dart';
+export 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
 
 /// Thin chrome wire — chip + docked Portals rail. Panel paint is [PortalsPanelView].
 /// Services live in [PortalsHost]. Pack layout opts in via `action: portals`.

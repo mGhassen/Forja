@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/runtime/chrome/live_schedule_chrome.dart';
+import 'package:forja/shared/engine/runtime/actions/schedule/live_schedule_chrome.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja_foundation/protocol/protocol.dart';

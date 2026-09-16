@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/engine/runtime/chrome/kit_schedule_window.dart';
-import 'package:forja/shared/engine/runtime/chrome/kit_schedule_window_sheet.dart';
-import 'package:forja/shared/engine/runtime/chrome/top_bar_host_hooks.dart';
+import 'package:forja/shared/engine/runtime/actions/schedule/kit_schedule_window.dart';
+import 'package:forja/shared/engine/runtime/actions/schedule/kit_schedule_window_sheet.dart';
+import 'package:forja/shared/engine/runtime/actions/schedule/top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
 import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';

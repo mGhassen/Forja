@@ -114,6 +114,8 @@ Pack knowledge (AniList, KissKh, scrapers, hub folder names, enrich, debrid vend
 - Install packs, `runPlugin(pluginId, action, params)` — opaque action strings
 - Generic cache / store / http / vault / unlock / playback open
 - Thin painter under `shared/engine/runtime/kit/` — validate tree → mount DS from props maps
+- Painter node hosts under `shared/engine/runtime/kit/hosts/` (card/grid loaders used only while painting)
+- Pack-declared action wires under `shared/engine/runtime/actions/` (`portals/`, `category_bar/`, `event_search/`, `schedule/`) — not a flat `runtime/chrome/` dump
 - Opaque meta / open.surface routing
 - Pack **kind** buckets from URL tree shape (install UI grouping only)
 - `PluginNavRegistry` cache last pack `nav` for flash-free boot (not business logic)

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **26 / 29** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **12 / 12** A41 pack migrate · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) · **3 / 3** pack-owned search (A66–A68) · **4 / 4** catalog slot paint (A69–A72) · **4 / 4** live guide paint (A73–A76) · **2 / 2** guide out of player (A82–A83) · **3 / 3** pack-owned portal forms (A84–A86) · **4 / 5** empty-shell chassis (A77–A81 · A79 🔄) |
-| **Current slice** | Empty-shell chassis — brand/bus peel landed; A79 remaining (toast / ForjaInteractive / scaffold → foundation). Guide adapters moved to `engine/portals/guide/`. Portal Add/Edit/Import forms are pack-declared. |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **26 / 29** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **12 / 12** A41 pack migrate · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) · **3 / 3** pack-owned search (A66–A68) · **4 / 4** catalog slot paint (A69–A72) · **4 / 4** live guide paint (A73–A76) · **2 / 2** guide out of player (A82–A83) · **3 / 3** pack-owned portal forms (A84–A86) · **1 / 1** runtime action wires (A87) · **4 / 5** empty-shell chassis (A77–A81 · A79 🔄) |
+| **Current slice** | Empty-shell chassis — brand/bus peel landed; A79 remaining (toast / ForjaInteractive / scaffold → foundation). Guide adapters moved to `engine/portals/guide/`. Portal Add/Edit/Import forms are pack-declared. `runtime/chrome/` split → `actions/` + `kit/hosts/`. |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -633,6 +633,14 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | 1 | R109-A84 | Foundation `FormFieldsSpec` / `showFormFieldsDialog` — generic title/fields/submit only | ✅ |
 | 2 | R109-A85 | IPTV pack `listPortals.layout` declares Add / Import / Edit forms + `importPortal`; empty feed copy points at Portals | ✅ |
 | 3 | R109-A86 | Host portals chrome paints pack forms (no hardcoded Edit/Add dialog strings/fields); submit → opaque `runPlugin` | ✅ |
+
+---
+
+## Acceptance (runtime action wires)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A87 | Split flat `runtime/chrome/` → `runtime/actions/{portals,category_bar,event_search,schedule}/` + `runtime/kit/hosts/` | ✅ |
 
 ---
 

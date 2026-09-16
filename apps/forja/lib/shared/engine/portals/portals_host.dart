@@ -217,6 +217,22 @@ abstract final class PortalsHost {
     );
   }
 
+  /// Store → vault mirror. Keeps pack `url|user` active (never host password key).
+  static Future<void> _mirrorStoreToVault() async {
+    final portals = await PortalStore.load();
+    final favs = await PortalStore.loadFavorites();
+    final vaultActive =
+        (await EngineVault.get(PortalVaultKeys.active) ?? '')
+            .toString()
+            .trim();
+    final activePack = packActiveKeyAmong(vaultActive, portals);
+    await PortalVaultInventory.mirrorFromStore(
+      portals: portals,
+      favoriteKeys: favs,
+      activeKey: activePack,
+    );
+  }
+
   /// Open-panel soft prepare — vault stays painted; cloud merge is async.
   ///
   /// Matches legacy `IptvController.preparePortalPanel`: throttle cloud pull,
@@ -236,21 +252,7 @@ abstract final class PortalsHost {
           if (!recent) {
             _lastPortalPanelPullAt = now;
             await SyncDomainBridge.instance.pullPortalsFromCloud();
-            final portals = await PortalStore.load();
-            final favs = await PortalStore.loadFavorites();
-            // Vault active is pack `url|user`. Never clobber with Portal.key
-            // (`platform|url|user|pass`) — that un-selects every list row.
-            final vaultActive =
-                (await EngineVault.get(PortalVaultKeys.active) ?? '')
-                    .toString()
-                    .trim();
-            // No last-key fallback — empty/missing active stays unselected.
-            final activePack = packActiveKeyAmong(vaultActive, portals);
-            await PortalVaultInventory.mirrorFromStore(
-              portals: portals,
-              favoriteKeys: favs,
-              activeKey: activePack,
-            );
+            await _mirrorStoreToVault();
           }
         }
       } catch (e) {
@@ -663,9 +665,35 @@ abstract final class PortalsHost {
     }
   }
 
-  /// Deal catalog portals into the active profile. Empty list = none dealt.
-  static Future<List<String>> deal({required String profileId}) {
-    return SyncService.instance.dealPortals(profileId: profileId);
+  /// Deal catalog portals into the active profile, then pull into local vault.
+  ///
+  /// [ids] — cloud assignment UUIDs (empty = pool empty / none dealt).
+  /// [synced] — false when RPC assigned portals but local list could not refresh
+  /// (dirty inventory / credential pull failure). Credit still burned.
+  static Future<({List<String> ids, bool synced})> deal({
+    required String profileId,
+  }) async {
+    final ids = await SyncService.instance.dealPortals(profileId: profileId);
+    try {
+      await SyncService.instance.pullAccountFeatures(force: true);
+    } catch (e) {
+      debugPrint('[PortalsHost] deal credits refresh failed: $e');
+    }
+    if (ids.isEmpty) return (ids: ids, synced: true);
+
+    // Cloud is ahead of local — do not let the 3s panel throttle skip this.
+    final ok = await SyncDomainBridge.instance.pullPortalsFromCloud(
+      cloudIsSource: true,
+    );
+    if (!ok) {
+      debugPrint(
+        '[PortalsHost] deal assigned ${ids.length} but local pull failed',
+      );
+      return (ids: ids, synced: false);
+    }
+    await _mirrorStoreToVault();
+    _lastPortalPanelPullAt = DateTime.now();
+    return (ids: ids, synced: true);
   }
 
   static String? platformLabel(String raw) {

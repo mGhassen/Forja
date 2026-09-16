@@ -7,7 +7,7 @@ import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/portal_form_dialog.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
-import 'package:forja/shared/engine/runtime/chrome/portals_providers.dart';
+import 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
@@ -270,10 +270,16 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         ForjaToast.error('Sign in and pick a profile to Deal');
         return;
       }
-      final ids = await PortalsHost.deal(profileId: profileId);
+      final result = await PortalsHost.deal(profileId: profileId);
       if (!mounted) return;
+      final ids = result.ids;
       if (ids.isEmpty) {
         ForjaToast.show('No portals dealt — pool may be empty');
+      } else if (!result.synced) {
+        ForjaToast.error(
+          'Dealt ${ids.length} portal${ids.length == 1 ? '' : 's'} '
+          'but the list could not refresh — reopen Portals',
+        );
       } else {
         ForjaToast.success(
           'Dealt ${ids.length} portal${ids.length == 1 ? '' : 's'}',

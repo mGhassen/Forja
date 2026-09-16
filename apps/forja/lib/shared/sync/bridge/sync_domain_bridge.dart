@@ -353,8 +353,21 @@ class SyncDomainBridge {
   /// edit / portal panel open). Merges: keeps existing local probe fields,
   /// appends new assignments, drops unassigned. Notifies only when inventory
   /// actually changed. Returns `false` when the pull failed and local was kept.
-  Future<bool> pullPortalsFromCloud() async {
+  ///
+  /// [cloudIsSource] — Deal / remote assign already wrote cloud. Skip flush
+  /// (pushing thin local would race the new assignments) and apply even when
+  /// the local gen looks dirty.
+  Future<bool> pullPortalsFromCloud({bool cloudIsSource = false}) async {
     if (!SyncService.instance.isSignedIn) return false;
+    if (cloudIsSource) {
+      // Drop pending push timer — cloud won; do not replace over dealt rows.
+      _pushTimers.remove(_domainIptv)?.cancel();
+      final ok = await _pullAndApplyUserPortals();
+      if (ok) {
+        _iptvSyncedGen = _iptvLocalGen;
+      }
+      return ok;
+    }
     // Panel open after add used to pull empty cloud over the just-saved row
     // before the 3s debounce push (229). Flush first; skip apply if still dirty.
     await flushIptvPushIfDirty();
