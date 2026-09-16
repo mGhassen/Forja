@@ -371,13 +371,42 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   void _onLayoutSelect(String widgetId, String value, {required bool toggle}) {
     setState(() {
-      if (toggle && _layoutSelections[widgetId] == value) {
+      final prev = _layoutSelections[widgetId];
+      if (toggle && prev == value) {
         _layoutSelections.remove(widgetId);
       } else {
         _layoutSelections[widgetId] = value;
       }
       if (widgetId == 'view') {
         _viewStyle = value;
+      }
+      // Live/Movies/Series shelf — Favorites / live cat ids must not stick onto
+      // VOD and empty the grid (looks like the shelf click did nothing).
+      if (widgetId == 'catalog' && prev != value) {
+        _resetCategorySelectionAfterCatalogChange();
+      }
+    });
+  }
+
+  void _resetCategorySelectionAfterCatalogChange() {
+    walkLayoutWidgets(_widgets, (spec) {
+      final type = LayoutTypes.normalize((spec['type'] ?? '').toString(), spec);
+      if (type == LayoutTypes.categoryBar) {
+        final id = (spec['id'] ?? '').toString().trim();
+        if (id.isEmpty) return;
+        final def = (spec['default'] ?? '').toString().trim();
+        if (def.isNotEmpty) {
+          _layoutSelections[id] = def;
+        } else {
+          // No pack default (IPTV) — clear so the rail snaps to the first group.
+          _layoutSelections.remove(id);
+        }
+        return;
+      }
+      if (type == LayoutTypes.list) {
+        final kindMenu = (spec['kindMenu'] ?? '').toString().trim();
+        if (kindMenu.isEmpty) return;
+        _layoutSelections.remove(kindMenu);
       }
     });
   }

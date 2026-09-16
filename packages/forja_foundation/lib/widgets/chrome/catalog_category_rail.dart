@@ -357,6 +357,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
   void _cancelHold() {
     _okHoldTimer?.cancel();
     _okHoldTimer = null;
+    // PointerUp can land after remount (shelf Live↔Movies/Series) disposed us.
+    if (!mounted) return;
     _holdOriginN.value = null;
     _holdSunrise.stop();
     _holdSunrise.value = 0;

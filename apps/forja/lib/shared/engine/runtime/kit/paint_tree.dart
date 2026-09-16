@@ -411,15 +411,30 @@ class PackPaintTree extends StatelessWidget {
           categoryChild = child;
           final barId = (child['id'] ?? 'cats').toString();
           final dynamicItems = chrome?.barItems(barId);
-          if (dynamicItems != null && dynamicItems.isNotEmpty) {
-            merged['sideItems'] = [
-              for (final raw in dynamicItems)
-                {
-                  'id': (raw['id'] ?? '').toString(),
-                  'label':
-                      (raw['label'] ?? raw['title'] ?? raw['id'] ?? '').toString(),
-                },
-            ];
+          final seedItems = child['items'];
+          final mergedSide = <Map<String, dynamic>>[];
+          final seen = <String>{};
+          void addSide(Map raw) {
+            final sid = (raw['id'] ?? '').toString().trim();
+            if (sid.isEmpty || !seen.add(sid)) return;
+            mergedSide.add({
+              'id': sid,
+              'label': (raw['label'] ?? raw['title'] ?? sid).toString(),
+            });
+          }
+
+          if (seedItems is List) {
+            for (final raw in seedItems) {
+              if (raw is Map) addSide(raw);
+            }
+          }
+          if (dynamicItems != null) {
+            for (final raw in dynamicItems) {
+              addSide(raw);
+            }
+          }
+          if (mergedSide.isNotEmpty) {
+            merged['sideItems'] = mergedSide;
           } else {
             merged['sideItems'] ??= child['items'];
           }
@@ -505,16 +520,31 @@ class PackPaintTree extends StatelessWidget {
           categoryChild = child;
           final barId = (child['id'] ?? 'kind').toString();
           final dynamicItems = chrome?.barItems(barId);
-          if (dynamicItems != null && dynamicItems.isNotEmpty) {
-            merged['kindItems'] = [
-              for (final raw in dynamicItems)
-                {
-                  'id': (raw['id'] ?? '').toString(),
-                  'label':
-                      (raw['label'] ?? raw['title'] ?? raw['id'] ?? '').toString(),
-                  if (raw['icon'] != null) 'icon': raw['icon'],
-                },
-            ];
+          final seedItems = child['items'];
+          final mergedKinds = <Map<String, dynamic>>[];
+          final seen = <String>{};
+          void addKind(Map raw) {
+            final kid = (raw['id'] ?? '').toString().trim();
+            if (kid.isEmpty || !seen.add(kid)) return;
+            mergedKinds.add({
+              'id': kid,
+              'label': (raw['label'] ?? raw['title'] ?? kid).toString(),
+              if (raw['icon'] != null) 'icon': raw['icon'],
+            });
+          }
+
+          if (seedItems is List) {
+            for (final raw in seedItems) {
+              if (raw is Map) addKind(raw);
+            }
+          }
+          if (dynamicItems != null) {
+            for (final raw in dynamicItems) {
+              addKind(raw);
+            }
+          }
+          if (mergedKinds.isNotEmpty) {
+            merged['kindItems'] = mergedKinds;
           } else {
             merged['kindItems'] ??= child['items'];
           }
@@ -1863,33 +1893,66 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
+  /// Prefer first portal/mood group — skip pack "All" and `__synthetic__` rows.
+  String _firstPortalCategoryId(
+    List<({String id, String label, String? icon})> items,
+  ) {
+    for (final e in items) {
+      final id = e.id.trim();
+      if (id.isEmpty || id == 'all' || id.startsWith('__')) continue;
+      return id;
+    }
+    return items.first.id;
+  }
+
   Widget _chromeCategoryBar(BuildContext context, Map<String, dynamic> spec) {
     final chrome = PackChromeScope.maybeOf(context);
     final id = (spec['id'] ?? '').toString();
     final dynamicItems = chrome?.barItems(id);
     final kindIcons = kitCategoryBarKindIcons(spec);
     final seed = layoutItemsFromSpec(spec);
-    final items = <({String id, String label, String? icon})>[
-      if (dynamicItems != null && dynamicItems.isNotEmpty)
-        for (final raw in dynamicItems)
-          (
-            id: (raw['id'] ?? '').toString(),
-            label: (raw['label'] ?? raw['title'] ?? raw['id'] ?? '').toString(),
-            icon: (raw['icon'] ?? kindIcons[(raw['id'] ?? '').toString().toLowerCase()])
-                ?.toString(),
-          )
-      else
-        for (final s in seed)
-          (
-            id: s.id,
-            label: s.label,
-            icon: kindIcons[s.id.toLowerCase()],
-          ),
-    ].where((e) => e.id.isNotEmpty).toList();
+    // Layout seed first (e.g. Live Sports "All"), then dynamic kinds.
+    // Packs that omit All (IPTV) never get a host-invented row.
+    final seen = <String>{};
+    final items = <({String id, String label, String? icon})>[];
+    void addItem(String itemId, String label, String? icon) {
+      final clean = itemId.trim();
+      if (clean.isEmpty || !seen.add(clean)) return;
+      items.add((
+        id: clean,
+        label: label,
+        icon: icon ?? kindIcons[clean.toLowerCase()],
+      ));
+    }
+
+    for (final s in seed) {
+      addItem(s.id, s.label, kindIcons[s.id.toLowerCase()]);
+    }
+    if (dynamicItems != null) {
+      for (final raw in dynamicItems) {
+        final rawId = (raw['id'] ?? '').toString();
+        addItem(
+          rawId,
+          (raw['label'] ?? raw['title'] ?? rawId).toString(),
+          (raw['icon'] ?? kindIcons[rawId.toLowerCase()])?.toString(),
+        );
+      }
+    }
     if (items.isEmpty) return const SizedBox.shrink();
     final scope = LayoutScope.maybeOf(context);
-    final selected = scope?.selectedId(id) ??
-        (spec['default'] ?? items.first.id).toString();
+    final selectedRaw = (scope?.selectedId(id) ??
+            (spec['default'] ?? '').toString())
+        .trim();
+    final selected = selectedRaw.isNotEmpty &&
+            items.any((e) => e.id == selectedRaw)
+        ? selectedRaw
+        : _firstPortalCategoryId(items);
+    if (selected != selectedRaw && scope != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        scope.onSelect(id, selected, toggle: false);
+      });
+    }
     final orientation = (spec['orientation'] ?? spec['axis'] ?? '')
         .toString()
         .trim()

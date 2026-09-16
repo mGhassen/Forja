@@ -46,6 +46,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   Future<MetaEnvelope>? _inFlight;
   MetaEnvelope? _envelope;
   String _scopeEpoch = '';
+  String _catalogSection = '';
   int _appliedRefreshEpoch = 0;
   int _bindGen = 0;
 
@@ -53,10 +54,23 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   static final Map<String, Future<MetaEnvelope>> _memo = {};
   static final Map<String, MetaEnvelope> _resolved = {};
 
+  String _catalogSectionOf() {
+    final menu = (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    if (menu.isEmpty) return '';
+    return (LayoutScope.maybeOf(context)?.selectedId(menu) ?? '').trim();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final section = _catalogSectionOf();
     final epoch = _selectionEpoch();
+    // Soft-keep Live paint under Movies/Series selection looks like a dead shelf.
+    if (_catalogSection.isNotEmpty && section != _catalogSection) {
+      _envelope = null;
+      _lastPaintedWidget = null;
+    }
+    _catalogSection = section;
     if (_envelope == null || epoch != _scopeEpoch) {
       _scopeEpoch = epoch;
       _bind();
@@ -338,18 +352,17 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final barId = (merged['kindMenu'] ?? '').toString().trim();
     if (barId.isEmpty) return;
 
-    // Prefer pack-declared kinds (IPTV catalog categories) over deriving
-    // from visible page items — otherwise the side rail stays on "All".
+    // Prefer pack-declared kinds (IPTV portal groups, Live Sports moods).
+    // Do not invent an "All" row — packs that want it declare it in layout
+    // items; the category bar merges layout seed + dynamic kinds.
     final declared = merged['kinds'] ?? merged['categories'];
     if (declared is List && declared.isNotEmpty) {
-      final items = <Map<String, dynamic>>[
-        {'id': 'all', 'label': 'All', 'icon': 'grid'},
-      ];
-      final seen = <String>{'all'};
+      final items = <Map<String, dynamic>>[];
+      final seen = <String>{};
       for (final raw in declared) {
         if (raw is! Map) continue;
         final id = (raw['id'] ?? raw['category_id'] ?? '').toString().trim();
-        if (id.isEmpty || !seen.add(id)) continue;
+        if (id.isEmpty || id == 'all' || !seen.add(id)) continue;
         final label = (raw['label'] ?? raw['name'] ?? raw['category_name'] ?? id)
             .toString()
             .trim();
@@ -358,7 +371,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           'label': catalogKitCategoryLabel(id, label: label),
         });
       }
-      if (items.length > 1) {
+      if (items.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!context.mounted) return;
           chrome.onDynamicBarItems(barId, items);
@@ -389,7 +402,6 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     }
     if (kinds.isEmpty) return;
     final items = <Map<String, dynamic>>[
-      {'id': 'all', 'label': 'All', 'icon': 'grid'},
       for (final id in kinds)
         {
           'id': id,

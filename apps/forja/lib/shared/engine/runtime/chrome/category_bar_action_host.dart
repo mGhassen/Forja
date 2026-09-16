@@ -263,6 +263,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   List<String> _pinned = const [];
   List<String> _order = const [];
   bool _loading = true;
+  String? _boundSection;
 
   Map<String, dynamic> get _features {
     final raw = widget.spec['features'];
@@ -302,6 +303,17 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final section = _section;
+    if (_boundSection == section) return;
+    final prev = _boundSection;
+    _boundSection = section;
+    // First bind only records section; Live↔Movies/Series must re-strip pins/favs.
+    if (prev != null) unawaited(_reload());
+  }
+
+  @override
   void didUpdateWidget(covariant _CategoryBarRailHost oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_sameSeed(oldWidget.seedItems, widget.seedItems)) {
@@ -334,6 +346,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         _items = _plainItems();
         _loading = false;
       });
+      _ensureValidSelection(_items);
       return;
     }
     final key = PortalAliveStore.portalKey(portal);
@@ -350,18 +363,20 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       _loading = false;
     });
     _publishBar(chromeItems: _items);
+    _ensureValidSelection(_items);
   }
 
   List<CatalogCategoryItem> _plainItems() {
     return [
       for (final e in widget.seedItems)
-        CatalogCategoryItem(
-          id: e.id,
-          label: e.label,
-          icon: catalogCategoryIconForId(e.id) ??
-              _iconFromName(e.icon),
-          fixed: true,
-        ),
+        if (e.id.isNotEmpty && e.id != 'all')
+          CatalogCategoryItem(
+            id: e.id,
+            label: e.label,
+            icon: catalogCategoryIconForId(e.id) ??
+                _iconFromName(e.icon),
+            fixed: true,
+          ),
     ];
   }
 
@@ -371,7 +386,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   }) {
     final byId = <String, ({String id, String label, String? icon})>{};
     for (final e in widget.seedItems) {
-      if (e.id.isEmpty) continue;
+      if (e.id.isEmpty || e.id == 'all') continue;
       if (PortalLiveCatalog.isSyntheticId(e.id)) continue;
       byId[e.id] = e;
     }
@@ -385,37 +400,38 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       customOrderIds: order,
     );
 
-    final out = <CatalogCategoryItem>[];
-    // Keep leading "all" if pack/host published it.
-    final all = widget.seedItems.where((e) => e.id == 'all').toList();
-    if (all.isNotEmpty) {
-      out.add(
-        CatalogCategoryItem(
-          id: 'all',
-          label: all.first.label.isEmpty ? 'All' : all.first.label,
-          icon: catalogCategoryIconForId('all'),
-          fixed: true,
-        ),
-      );
-    }
-
     final pinSet = pinned.toSet();
-    for (final c in sorted) {
-      final seed = byId[c.id];
-      final synthetic = PortalLiveCatalog.isSyntheticId(c.id);
-      out.add(
+    return [
+      for (final c in sorted)
         CatalogCategoryItem(
           id: c.id,
           label: c.name,
           icon: catalogCategoryIconForId(c.id) ??
-              _iconFromName(seed?.icon),
-          fixed: synthetic,
-          pinnable: _wantPin && !synthetic && c.id != 'all',
+              _iconFromName(byId[c.id]?.icon),
+          fixed: PortalLiveCatalog.isSyntheticId(c.id),
+          pinnable: _wantPin && !PortalLiveCatalog.isSyntheticId(c.id),
           pinned: pinSet.contains(c.id),
         ),
-      );
+    ];
+  }
+
+  void _ensureValidSelection(List<CatalogCategoryItem> items) {
+    if (items.isEmpty) return;
+    final sel = widget.selectedId.trim();
+    if (sel.isNotEmpty && items.any((e) => e.id == sel)) return;
+    // First portal group (skip Favorites / Already watched).
+    for (final e in items) {
+      if (PortalLiveCatalog.isSyntheticId(e.id) || e.id == 'all') continue;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.onSelect(e.id);
+      });
+      return;
     }
-    return out;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.onSelect(items.first.id);
+    });
   }
 
   void _publishBar({required List<CatalogCategoryItem> chromeItems}) {
