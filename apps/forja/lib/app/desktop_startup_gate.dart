@@ -33,7 +33,7 @@ DesktopStartupDestination resolveDesktopStartupDestination({
   return DesktopStartupDestination.account;
 }
 
-/// Email/password/passkey/Web login ([AccountEntryScreen]). Hidden — desktop
+/// Email/password/Web login ([AccountEntryScreen]). Hidden — desktop
 /// cold start uses [TvAccountLinkScreen] (code/QR) like Android TV.
 const bool kShowDesktopEmailAuth = false;
 

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,7 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
-/// Desktop email/password/passkey/Web login. Kept but hidden from cold start
+/// Desktop email/password/Web login. Kept but hidden from cold start
 /// (`kShowDesktopEmailAuth` in desktop_startup_gate.dart).
 class AccountEntryScreen extends StatefulWidget {
   const AccountEntryScreen({
@@ -36,7 +35,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   bool _obscurePassword = true;
   bool _busy = false;
   bool _webBusy = false;
-  bool _passkeyBusy = false;
   bool _mfaBusy = false;
   String? _mfaFactorId;
   String? _message;
@@ -189,42 +187,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     }
   }
 
-  Future<void> _passkeyLogin() async {
-    if (!ForjaPasskeys.supported) return;
-
-    setState(() {
-      _passkeyBusy = true;
-      _message = null;
-    });
-    try {
-      final response = await SyncService.instance.signInWithPasskey();
-      if (!mounted) return;
-      if (response.session == null) {
-        setState(() {
-          _message = 'Passkey sign-in did not complete. Try again.';
-          _messageIsError = true;
-        });
-        return;
-      }
-      await _finishAuthenticated();
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _message = error.message;
-        _messageIsError = true;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      debugPrint('[Account] passkey sign-in failed: $error');
-      setState(() {
-        _message = ForjaPasskeys.userMessage(error);
-        _messageIsError = true;
-      });
-    } finally {
-      if (mounted) setState(() => _passkeyBusy = false);
-    }
-  }
-
   Future<void> _webLogin() async {
     final cancel = Completer<void>();
     _webCancel = cancel;
@@ -294,10 +256,9 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
 
   /// Password auth locks the form. Web login only locks email/password submit
   /// so Cancel / guest stay available if the browser never returns.
-  bool get _formLocked => _busy || _webBusy || _passkeyBusy || _mfaBusy;
-  bool get _passwordLocked => _busy || _passkeyBusy || _mfaBusy;
+  bool get _formLocked => _busy || _webBusy || _mfaBusy;
+  bool get _passwordLocked => _busy || _mfaBusy;
   bool get _canSubmitPassword => !_formLocked;
-  bool get _canSubmitPasskey => ForjaPasskeys.supported && !_formLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -612,19 +573,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                             ),
                           ),
                         ),
-                        if (ForjaPasskeys.supported) ...[
-                          const SizedBox(width: 8),
-                          _AuthIconButton(
-                            tooltip: _passkeyBusy
-                                ? 'Waiting for passkey…'
-                                : 'Sign in with passkey',
-                            icon: _passkeyBusy
-                                ? Icons.hourglass_top_rounded
-                                : Icons.fingerprint_rounded,
-                            onPressed:
-                                _canSubmitPasskey ? _passkeyLogin : null,
-                          ),
-                        ],
                         const SizedBox(width: 8),
                         _AuthIconButton(
                           tooltip: _webBusy

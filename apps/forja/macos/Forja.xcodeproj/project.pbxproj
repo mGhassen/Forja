@@ -250,7 +250,6 @@
 			buildConfigurationList = 33CC10FB2044A3C60003C045 /* Build configuration list for PBXNativeTarget "Forja" */;
 			buildPhases = (
 				C1B3890C24BCF47DFC4E04DD /* [CP] Check Pods Manifest.lock */,
-				A4GATE001PASSKEYS000001 /* Gate Passkeys Registrant */,
 				33CC10E92044A3C60003C045 /* Sources */,
 				33CC10EA2044A3C60003C045 /* Frameworks */,
 				33CC10EB2044A3C60003C045 /* Resources */,
@@ -422,23 +421,6 @@
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
-		};
-		A4GATE001PASSKEYS000001 /* Gate Passkeys Registrant */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${SRCROOT}/Flutter/GeneratedPluginRegistrant.swift",
-				"${SRCROOT}/gate_passkeys_registrant.sh",
-			);
-			name = "Gate Passkeys Registrant";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/gate_passkeys_registrant.sh\"\n";
 		};
 		A4RUST001COPY0000000001 /* Copy Rust Engine */ = {
 			isa = PBXShellScriptBuildPhase;
