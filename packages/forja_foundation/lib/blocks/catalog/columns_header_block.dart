@@ -5,8 +5,8 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Prebuilt IPTV-style catalog screen: top chrome + side categories + card grid.
 ///
-/// Composes [CatalogTopChrome], [CatalogSideRail], [CatalogCardsGrid] — not an
-/// empty slot shell.
+/// Composes [CatalogTopChrome], side rail ([side] or [CatalogSideRail]), and
+/// [CatalogCardsGrid] — not an empty slot shell.
 ///
 /// ```json
 /// {
@@ -30,6 +30,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     this.selectedSideId,
     this.items = const [],
     this.body,
+    this.side,
     this.sideWidth = 220,
     this.sideOnLeading = true,
     this.sideGap = 0,
@@ -46,6 +47,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
   factory ColumnsHeaderBlock.fromProps(
     Map<String, dynamic> props, {
     Widget? body,
+    Widget? side,
     Map<String, String> actionSelections = const {},
     Map<String, Widget> actionSlots = const {},
     void Function(String actionId, String value)? onActionSelect,
@@ -62,6 +64,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
           propsString(props, 'defaultSideId'),
       items: CatalogCardsGrid.itemsFromProps(props),
       body: body,
+      side: side,
       sideWidth: propsNumOr(props, 'sideWidth', 220),
       sideOnLeading: propsBool(props, 'sideOnLeading', true),
       sideGap: propsNumOr(props, 'sideGap', 0),
@@ -84,6 +87,9 @@ class ColumnsHeaderBlock extends StatelessWidget {
   final List<Map<String, dynamic>> items;
   /// Host-fed grid (e.g. live feed). When set, replaces [items] grid.
   final Widget? body;
+
+  /// Host-fed side rail (e.g. [CatalogCategoryRail]). When null, [sideItems].
+  final Widget? side;
   final double sideWidth;
   final bool sideOnLeading;
   final double sideGap;
@@ -108,13 +114,14 @@ class ColumnsHeaderBlock extends StatelessWidget {
       onSelect: onActionSelect,
       title: title,
     );
-    final side = CatalogSideRail(
-      items: sideItems,
-      selectedId: selectedSideId ??
-          (sideItems.isEmpty ? null : sideItems.first.id),
-      onSelect: onSideSelect,
-      width: sideWidth,
-    );
+    final side = this.side ??
+        CatalogSideRail(
+          items: sideItems,
+          selectedId: selectedSideId ??
+              (sideItems.isEmpty ? null : sideItems.first.id),
+          onSelect: onSideSelect,
+          width: sideWidth,
+        );
     final grid = body ??
         CatalogCardsGrid(
           items: items,

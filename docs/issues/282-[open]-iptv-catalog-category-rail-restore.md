@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 9** acceptance (manual QA) |
+| **Progress** | **8 / 8** fix · **0 / 9** acceptance (manual QA) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I282-T05 | Channel favorite star + record watched on live play | ✅ |
 | 6 | I282-T06 | SDK / feature doc / changelog | ✅ |
 | 7 | I282-T07 | Category rail filters painted feed in place (no `feed` reload on cat / Favorites / Watched flip) | ✅ |
+| 8 | I282-T08 | `columnsHeader` mounts `_chromeCategoryBar` (rich rail) — stop folding cats into plain `CatalogSideRail` | ✅ |
 
 ---
 
@@ -50,6 +51,8 @@
 Pre-wipe Live IPTV sidebar (`_CategorySidebarRow`: pin, drag-reorder, hover, Favorites / Already watched) was deleted with `features/iptv` (`121f0779c`). Thin painter mounts plain `CatalogSideRail` (select + hover only). Store APIs (`PortalLiveCatalog` / `PortalLiveChannelListsStore`) still exist with zero callers.
 
 **Shipped:** pack emits `kit.categoryBar` with `features`; foundation paints `CatalogCategoryRail`; host `CategoryBarActionHost` owns pin/fav/watched/order engines (mirror `PortalsActionHost`). Category / Favorites / Watched selection filters the painted feed in place (pre-wipe `browserAllStreams`) — does not re-run pack `feed` or short-EPG.
+
+**T08:** IPTV `kitColumnsHeader` was still folding the category child into `ColumnsHeaderBlock` → plain `CatalogSideRail` (text list only). Host now passes `_chromeCategoryBar` as the side slot so Live mounts `CatalogCategoryRail` + `CategoryBarActionHost`.
 
 ### Related
 

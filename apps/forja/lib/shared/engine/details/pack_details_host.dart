@@ -910,16 +910,51 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             ? _focusDetailsEpisodesFromMeta
             : _revealedDetailsHeroPlayFocus);
 
-    // Episodes own 0..(multi-season ? 1 : 0). Body continues with protocol
-    // cast (enrich) then pack rails (Characters / More Like This / …).
+    // Episodes own 0..(multi-season ? 1 : 0). Then protocol cast / crew /
+    // trailers, then pack rails (Related / More Like This / …).
     final metaRowBase = !hasEpisodes
         ? 0
         : (seasons.length > 1 ? 2 : 1);
+    final isAnime = (show.open?.surface ?? '').trim() == 'anime';
     final castMaps = show.cast;
+    final crewMaps = [
+      for (final e in show.crew)
+        {
+          'name': e['name'] ?? '',
+          'character': e['job'] ?? e['character'] ?? '',
+          'profilePath': e['profilePath'] ?? '',
+        },
+    ];
     final hasCast = castMaps.isNotEmpty;
+    final hasCrew = crewMaps.isNotEmpty;
+    final bodyTrailers = trailers;
+    final hasBodyTrailers = bodyTrailers.isNotEmpty;
+
+    var protocolOrder = metaRowBase;
     final castSection = hasCast
-        ? DetailsCastSection(cast: castMaps)
+        ? DetailsCastSection(
+            cast: castMaps,
+            title: isAnime ? 'Characters' : 'Cast',
+          )
         : null;
+    if (hasCast) protocolOrder++;
+    final crewSection = hasCrew
+        ? DetailsCastSection(cast: crewMaps, title: 'Crew')
+        : null;
+    if (hasCrew) protocolOrder++;
+    final trailersSection = hasBodyTrailers
+        ? MediaDetailsTrailersSection(
+            trailers: bodyTrailers,
+            movie: metaItemToMovie(show),
+            languageCode: show.facts?['originalLanguage']?.toString(),
+            tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+            tvRowId: 'trailers',
+            tvRowOrder: protocolOrder,
+            tvFocusUp: !hasCast && !hasCrew ? firstMetaFocusUp : null,
+          )
+        : null;
+    if (hasBodyTrailers) protocolOrder++;
+
     final packRecs = _packRails
         .where((r) => r.id == 'recommendations' && r.items.isNotEmpty)
         .toList();
@@ -928,14 +963,15 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         .toList();
     final hasPackRecs = packRecs.isNotEmpty;
 
-    final packMidBase = metaRowBase + (hasCast ? 1 : 0);
+    final packMidBase = protocolOrder;
     final packMidSections = buildKitDetailRailSections(
       context: context,
       pluginId: widget.pluginId,
       rails: packOther,
       tvFocus: tvFocus,
       tvRowOrderBase: packMidBase,
-      firstMetaFocusUp: hasCast ? null : firstMetaFocusUp,
+      firstMetaFocusUp:
+          !hasCast && !hasCrew && !hasBodyTrailers ? firstMetaFocusUp : null,
     );
     final recOrderBase = packMidBase + packMidSections.length;
     final packRecSections = hasPackRecs
@@ -945,7 +981,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             rails: packRecs,
             tvFocus: tvFocus,
             tvRowOrderBase: recOrderBase,
-            firstMetaFocusUp: !hasCast && packMidSections.isEmpty
+            firstMetaFocusUp: !hasCast &&
+                    !hasCrew &&
+                    !hasBodyTrailers &&
+                    packMidSections.isEmpty
                 ? firstMetaFocusUp
                 : null,
           )
@@ -953,6 +992,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final sections = [
       ?episodePicker,
       ?castSection,
+      ?crewSection,
+      ?trailersSection,
       ...packMidSections,
       ...packRecSections,
     ];

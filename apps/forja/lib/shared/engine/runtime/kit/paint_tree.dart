@@ -442,9 +442,15 @@ class PackPaintTree extends StatelessWidget {
       }
     }
     final actions = propsActionMaps(merged);
+    // Mount kit.categoryBar directly (CatalogCategoryRail + pin/fav host).
+    // Do not fold into CatalogSideRail — that dropped Favorites / pin / DnD.
+    final side = categoryChild == null
+        ? null
+        : _chromeCategoryBar(context, categoryChild);
     return ColumnsHeaderBlock.fromProps(
       merged,
       body: feed,
+      side: side,
       actionSelections: {
         for (final a in actions)
           if ((a['id'] ?? '').toString().isNotEmpty)
@@ -463,13 +469,15 @@ class PackPaintTree extends StatelessWidget {
           scope: scope,
         );
       },
-      onSideSelect: (id) {
-        final barId = (categoryChild?['id'] ??
-                _childIdOfType(node, LayoutTypes.categoryBar) ??
-                'cats')
-            .toString();
-        scope?.onSelect(barId, id, toggle: false);
-      },
+      onSideSelect: side != null
+          ? null
+          : (id) {
+              final barId = (categoryChild?['id'] ??
+                      _childIdOfType(node, LayoutTypes.categoryBar) ??
+                      'cats')
+                  .toString();
+              scope?.onSelect(barId, id, toggle: false);
+            },
     );
   }
 
