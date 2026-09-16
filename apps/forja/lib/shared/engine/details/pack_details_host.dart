@@ -1002,8 +1002,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       scrollController: _scrollController,
       tvHeroPlayFocus: _heroPlayFocus,
       tvBackFocus: _backFocus,
-      // Pull first body row (seasons/episodes or cast) into the hero fade.
-      bodyOverlap: DetailsTokens.heroBodyOverlap,
+      bodyOverlap: 0,
       topSpacing: 0,
       backgroundColor: AppTheme.bgDark,
       hero: DetailsHero(
@@ -1027,6 +1026,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           context,
           compactForEpisodes: hasEpisodes,
         ),
+        // Match scroll body — no overlap so the bottom gradient stays clean.
+        bodyOverlap: 0,
         progressBar: heroPosMs != null && heroDurMs != null
             ? WatchProgressBar(
                 positionMs: heroPosMs,

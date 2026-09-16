@@ -28,8 +28,12 @@ abstract final class DetailsTokens {
 
   /// Sources sliding panel on media details (player overlays use
   /// [ShellTokens.playerSidePanelPadding]).
-  static const EdgeInsets sourcesPanelPadding =
-      EdgeInsets.fromLTRB(16, 8, 12, 12);
+  static const EdgeInsets sourcesPanelPadding = EdgeInsets.fromLTRB(
+    16,
+    8,
+    12,
+    12,
+  );
 
   static const double contentPaddingDesktop =
       ShellTokens.homeSectionHorizontalPadding;
@@ -60,7 +64,7 @@ abstract final class DetailsTokens {
 
   /// Shorter hero when seasons/episodes are the first body section — keeps
   /// the first poster row under Play like the old in-hero bleed layout.
-  static const double heroViewportFractionWithEpisodes = 0.58;
+  static const double heroViewportFractionWithEpisodes = 0.82;
 
   /// Hero chrome height (title / actions only). Prefer [viewportHeight] from a
   /// [LayoutBuilder] when the overlay width differs from [MediaQuery].

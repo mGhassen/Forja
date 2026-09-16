@@ -11,6 +11,7 @@ class PackChromeScope extends InheritedWidget {
     super.key,
     required this.eventQuery,
     required this.refreshEpoch,
+    this.refreshForceNetwork = true,
     required this.viewStyle,
     required this.dynamicBarItems,
     required this.selectedListItem,
@@ -29,6 +30,10 @@ class PackChromeScope extends InheritedWidget {
 
   final String eventQuery;
   final int refreshEpoch;
+
+  /// Last [onBumpRefresh] asked to skip pack disk cache (`force` / network).
+  /// Portal switch sets false so IPTV can hit `iptv.catalog` disk cache.
+  final bool refreshForceNetwork;
   final String viewStyle;
   final Map<String, List<Map<String, dynamic>>> dynamicBarItems;
 
@@ -52,7 +57,10 @@ class PackChromeScope extends InheritedWidget {
   final KitRowPrefetchLane rowPrefetch;
 
   final void Function(String query) onEventQuery;
-  final VoidCallback onBumpRefresh;
+
+  /// [forceNetwork] true = Refresh / shelf reload (skip pack disk cache).
+  /// false = portal switch (EngineCache wipe only; pack may disk-hit).
+  final void Function({bool forceNetwork}) onBumpRefresh;
   final void Function(String style) onViewStyle;
   final void Function(String barId, List<Map<String, dynamic>> items)
       onDynamicBarItems;
@@ -92,6 +100,7 @@ class PackChromeScope extends InheritedWidget {
     // Do not compare selectedListItem.value — list taps update the notifier only.
     return eventQuery != oldWidget.eventQuery ||
         refreshEpoch != oldWidget.refreshEpoch ||
+        refreshForceNetwork != oldWidget.refreshForceNetwork ||
         viewStyle != oldWidget.viewStyle ||
         !identical(selectedListItem, oldWidget.selectedListItem) ||
         shellTabVisible != oldWidget.shellTabVisible ||

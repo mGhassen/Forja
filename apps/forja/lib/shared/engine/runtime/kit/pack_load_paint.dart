@@ -65,12 +65,20 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     super.didChangeDependencies();
     final section = _catalogSectionOf();
     final epoch = _selectionEpoch();
+    final chrome = PackChromeScope.maybeOf(context);
+    final refreshEpoch = chrome?.refreshEpoch ?? 0;
+    final refreshBumped = refreshEpoch > _appliedRefreshEpoch;
     // Soft-keep Live paint under Movies/Series selection looks like a dead shelf.
     if (_catalogSection.isNotEmpty && section != _catalogSection) {
       _envelope = null;
       _lastPaintedWidget = null;
       // Invalidate post-frame Live kind publishes scheduled before this flip.
       _bindGen++;
+    }
+    // Portal switch / Refresh — drop old grid so CatalogLoadingTicker shows.
+    if (refreshBumped) {
+      _envelope = null;
+      _lastPaintedWidget = null;
     }
     _catalogSection = section;
     // Only rebind on epoch change. `_envelope == null` alone used to restart the
@@ -168,12 +176,15 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       tabId: widget.tabId,
       pluginId: widget.pluginId,
     );
-    // One-shot force on Refresh only — never sticky across filter changes.
+    // Epoch bump always rebinds. Pack `force` (skip disk cache) only when the
+    // bump asked for network — portal switch soft-bumps so iptv.catalog hits.
     final refreshEpoch = chrome?.refreshEpoch ?? 0;
-    final force = refreshEpoch > _appliedRefreshEpoch ||
+    final epochBumped = refreshEpoch > _appliedRefreshEpoch;
+    final forceNetwork = chrome?.refreshForceNetwork ?? true;
+    final force = (epochBumped && forceNetwork) ||
         params['force'] == true ||
         widget.params['force'] == true;
-    if (refreshEpoch > _appliedRefreshEpoch) {
+    if (epochBumped) {
       _appliedRefreshEpoch = refreshEpoch;
     }
     final runParams = force

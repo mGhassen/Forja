@@ -85,11 +85,11 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         : PortalsHost.resolvePluginId(preferTabId: widget.tabId);
   }
 
-  /// Feed cache is portal-blind — wipe + bump so Live/Movies/Series refetch
-  /// the newly active portal instead of keeping the previous grid/error.
+  /// Feed EngineCache is portal-blind — wipe it, then soft-bump rails so the
+  /// new active portal loads. Do not stamp pack `force` (that skips disk cache).
   void _reloadHubCatalog(String pluginId) {
     EngineCache.instance.wipePlugin(pluginId);
-    PackChromeScope.maybeOf(context)?.onBumpRefresh();
+    PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
   }
 
   Future<bool> _runAction(

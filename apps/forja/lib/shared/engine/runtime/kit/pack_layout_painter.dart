@@ -58,6 +58,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   final Map<String, String> _layoutSelections = {};
   String _eventQuery = '';
   int _refreshEpoch = 0;
+  bool _refreshForceNetwork = true;
   String _viewStyle = '';
   final Map<String, List<Map<String, dynamic>>> _dynamicBarItems = {};
   final ValueNotifier<Map<String, dynamic>?> _selectedListItem =
@@ -413,6 +414,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     return PackChromeScope(
       eventQuery: _eventQuery,
       refreshEpoch: _refreshEpoch,
+      refreshForceNetwork: _refreshForceNetwork,
       viewStyle: _viewStyle,
       dynamicBarItems: Map<String, List<Map<String, dynamic>>>.unmodifiable(
         Map<String, List<Map<String, dynamic>>>.from(_dynamicBarItems),
@@ -427,16 +429,20 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         if (_eventQuery == q) return;
         setState(() => _eventQuery = q);
       },
-      onBumpRefresh: () {
+      onBumpRefresh: ({bool forceNetwork = true}) {
         _selectedListItem.value = null;
         PortalChannelGuideOpen.invalidateLiveCatalog();
         setState(() {
           _refreshEpoch++;
+          _refreshForceNetwork = forceNetwork;
           if (_pageFeedRailIds.isNotEmpty) {
-            _pageFeedFuture = _fetchPageFeed(forceRefresh: true);
+            _pageFeedFuture = _fetchPageFeed(forceRefresh: forceNetwork);
           }
         });
-        unawaited(onShellTabRefresh(force: true));
+        // Soft portal switch keeps page layout; rails rebind via refreshEpoch.
+        if (forceNetwork) {
+          unawaited(onShellTabRefresh(force: true));
+        }
       },
       onViewStyle: (style) {
         if (_viewStyle == style) return;
