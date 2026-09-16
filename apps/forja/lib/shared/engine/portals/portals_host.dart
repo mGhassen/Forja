@@ -94,7 +94,8 @@ abstract final class PortalsHost {
         if (e is! Map) continue;
         final m = Map<String, dynamic>.from(e);
         first ??= m;
-        if (activeKey.isNotEmpty && vaultPortalKey(m) == activeKey) {
+        if (activeKey.isNotEmpty &&
+            samePortalKey(vaultPortalKey(m), activeKey)) {
           hit = m;
           break;
         }
@@ -237,11 +238,21 @@ abstract final class PortalsHost {
             await SyncDomainBridge.instance.pullPortalsFromCloud();
             final portals = await PortalStore.load();
             final favs = await PortalStore.loadFavorites();
-            final active = await PortalStore.loadLastPortalKey();
+            // Vault active is pack `url|user`. Never clobber with Portal.key
+            // (`platform|url|user|pass`) — that un-selects every list row.
+            final vaultActive =
+                (await EngineVault.get(PortalVaultKeys.active) ?? '')
+                    .toString()
+                    .trim();
+            var activePack = packActiveKeyAmong(vaultActive, portals);
+            if (activePack.isEmpty) {
+              final last = await PortalStore.loadLastPortalKey();
+              activePack = packActiveKeyAmong(last ?? '', portals);
+            }
             await PortalVaultInventory.mirrorFromStore(
               portals: portals,
               favoriteKeys: favs,
-              activeKey: active ?? '',
+              activeKey: activePack,
             );
           }
         }
@@ -302,7 +313,7 @@ abstract final class PortalsHost {
           id: resolvedKey,
           label: label.isEmpty ? resolvedKey : label,
           subtitle: url.isEmpty ? null : url,
-          selected: resolvedKey == active ||
+          selected: samePortalKey(resolvedKey, active) ||
               selectedFlag == true ||
               selectedFlag == 1 ||
               selectedFlag?.toString().toLowerCase() == 'true',
@@ -439,14 +450,22 @@ abstract final class PortalsHost {
   /// Instant active portal — vault only, no flutter_js.
   ///
   /// Panel selection / chip must not wait on pack `selectPortal` or catalog feed.
+  /// Writes pack `url|username` form so list rows / chip match.
   static Future<void> setActiveKey(String key) async {
     final k = key.trim();
     await PortalVaultInventory.ensureMigratedFromStore();
     if (k.isEmpty) {
       await EngineVault.remove(PortalVaultKeys.active);
-    } else {
-      await EngineVault.set(PortalVaultKeys.active, k);
+      await PortalStore.clearLastPortalKey();
+      return;
     }
+    // Normalize legacy host keys → pack form when possible.
+    final portals = await PortalStore.load();
+    final pack = packActiveKeyAmong(k, portals);
+    final out = pack.isNotEmpty ? pack : k;
+    await EngineVault.set(PortalVaultKeys.active, out);
+    // Keep store last-key in sync for sync/migrate paths (prefer pack form).
+    await PortalStore.saveLastPortalKey(out);
   }
 
   static Future<MetaEnvelope> remove({
@@ -502,6 +521,52 @@ abstract final class PortalsHost {
     return '$url|$user';
   }
 
+  /// Pack / vault active key form: `url|username` (not host `Portal.key`).
+  static String packPortalKey(Portal p) =>
+      '${p.url.trim().toLowerCase()}|${p.username.trim().toLowerCase()}';
+
+  /// Match pack `url|user`, legacy `platform|url|user|pass`, or cred keys.
+  static bool samePortalKey(String a, String b) {
+    final x = a.trim().toLowerCase();
+    final y = b.trim().toLowerCase();
+    if (x.isEmpty || y.isEmpty) return false;
+    if (x == y) return true;
+    String packForm(String raw) {
+      final parts = raw.split('|');
+      if (parts.length >= 4) {
+        // platform|url|user|pass
+        return '${parts[1]}|${parts[2]}';
+      }
+      if (parts.length >= 2) return '${parts[0]}|${parts[1]}';
+      return raw;
+    }
+    final px = packForm(x);
+    final py = packForm(y);
+    if (px.isEmpty || py.isEmpty || px == '|' || py == '|') return false;
+    return px == py;
+  }
+
+  /// Resolve a vault/store active string to pack `url|user` against [portals].
+  static String packActiveKeyAmong(
+    String rawActive,
+    List<VerifiedPortal> portals,
+  ) {
+    final raw = rawActive.trim();
+    if (raw.isEmpty) return '';
+    for (final p in portals) {
+      final pack = packPortalKey(p.portal);
+      if (samePortalKey(raw, pack) ||
+          samePortalKey(raw, p.key) ||
+          samePortalKey(raw, p.credKey)) {
+        return pack;
+      }
+    }
+    // Already pack-shaped even if portal list drifted.
+    final parts = raw.toLowerCase().split('|');
+    if (parts.length == 2 && parts[0].isNotEmpty) return '${parts[0]}|${parts[1]}';
+    return '';
+  }
+
   static Future<Portal?> loadVaultPortal(String portalKey) async {
     try {
       final raw = await EngineVault.get(PortalVaultKeys.portals);
@@ -516,6 +581,48 @@ abstract final class PortalsHost {
       }
     } catch (_) {}
     return null;
+  }
+
+  /// Vault portals as [VerifiedPortal] for EPG / playback host paint.
+  ///
+  /// Pack writes vault only — [PortalStore] alone misses Add/Import portals.
+  static Future<List<VerifiedPortal>> loadVaultVerifiedPortals() async {
+    try {
+      await PortalVaultInventory.ensureMigratedFromStore();
+      final raw = await EngineVault.get(PortalVaultKeys.portals);
+      if (raw == null || raw.trim().isEmpty || raw.trim() == '[]') {
+        return PortalStore.load();
+      }
+      final parsed = jsonDecode(raw);
+      if (parsed is! List) return PortalStore.load();
+      final out = <VerifiedPortal>[];
+      final seen = <String>{};
+      for (final e in parsed) {
+        if (e is! Map) continue;
+        final m = Map<String, dynamic>.from(e);
+        final portal = Portal.fromJson(m);
+        if (portal.url.trim().isEmpty) continue;
+        final key = vaultPortalKey(m);
+        if (key.isEmpty || !seen.add(key)) continue;
+        final name = (m['name'] ?? m['label'] ?? portal.username).toString();
+        out.add(
+          VerifiedPortal(
+            portal: portal,
+            label: (m['label'] ?? '').toString(),
+            name: name,
+            expiry: (m['expiry'] ?? '').toString(),
+            maxConnections: (m['maxConnections'] ?? m['max'] ?? '1').toString(),
+            activeConnections:
+                (m['activeConnections'] ?? m['active'] ?? '0').toString(),
+          ),
+        );
+      }
+      if (out.isNotEmpty) return out;
+      return PortalStore.load();
+    } catch (e) {
+      debugPrint('[PortalsHost] loadVaultVerifiedPortals failed: $e');
+      return PortalStore.load();
+    }
   }
 
   /// Login/health probe for a vault portal key.
@@ -663,7 +770,7 @@ class PortalsInventory {
 
   String get activeLabel {
     for (final p in portals) {
-      if (p.id == activeKey) return p.label;
+      if (PortalsHost.samePortalKey(p.id, activeKey)) return p.label;
     }
     final t = title.trim();
     return portals.isEmpty

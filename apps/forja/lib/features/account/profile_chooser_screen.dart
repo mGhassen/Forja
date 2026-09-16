@@ -92,6 +92,10 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
   bool _busy = false;
   late _Screen _screen;
 
+  /// Set only by the empty-list auto-jump — not by Manage → Add profile.
+  /// Cleared when profiles arrive so we return to Who's watching.
+  bool _autoOpenedCreate = false;
+
   final _nameCtrl = TextEditingController();
   String _avatarKey = 'forge';
 
@@ -217,6 +221,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     final keys = forjaProfileAvatarKeys;
     setState(() {
       _screen = _Screen.create;
+      _autoOpenedCreate = false;
       _editingId = null;
       _nameCtrl.text = '';
       _avatarKey = keys[_profiles.length % keys.length];
@@ -342,7 +347,10 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     final snap = profilesAsync.valueOrNull;
     final profiles = snap?.profiles ?? const <SyncProfile>[];
     final activeProfileId = snap?.activeProfileId;
-    final loading = profilesAsync.isLoading && !profilesAsync.hasValue;
+    // Keep showing existing tiles while refreshing. Treat empty+loading as
+    // loading so a signed-out `[]` snap cannot auto-open create (issue 285).
+    final loading = profilesAsync.isLoading &&
+        !(snap != null && snap.profiles.isNotEmpty);
     final loadError = profilesAsync.hasError
         ? (profilesAsync.error is SyncProfileFetchException
             ? (profilesAsync.error as SyncProfileFetchException).message
@@ -350,16 +358,28 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
         : null;
     final error = _error ?? loadError;
 
-    // Cold sign-in / last profile deleted - jump straight into profile
-    // creation. Mutating fields here (not via setState) is safe: we are
-    // already mid-build and the widget tree below reflects the new screen.
-    if (snap != null &&
+    // Settled empty list only — never while reloading a stale signed-out [].
+    // Mutating fields here (not via setState) is safe: we are already mid-build.
+    if (!profilesAsync.isLoading &&
+        !profilesAsync.hasError &&
+        snap != null &&
         snap.profiles.isEmpty &&
         (_screen == _Screen.choose || _screen == _Screen.manage)) {
       _screen = _Screen.create;
+      _autoOpenedCreate = true;
       _editingId = null;
       _nameCtrl.text = '';
       _avatarKey = forjaProfileAvatarKeys.first;
+    }
+
+    // Auto-open landed on create from stale empty; real profiles arrived.
+    if (_autoOpenedCreate &&
+        _screen == _Screen.create &&
+        profiles.isNotEmpty) {
+      _screen = _Screen.choose;
+      _autoOpenedCreate = false;
+      _editingId = null;
+      _error = null;
     }
 
     final showChromeBack = widget.showBack &&
@@ -390,6 +410,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                       _screen = profiles.isEmpty
                           ? _Screen.choose
                           : _Screen.manage;
+                      _autoOpenedCreate = false;
                       _editingId = null;
                       _error = null;
                     }),

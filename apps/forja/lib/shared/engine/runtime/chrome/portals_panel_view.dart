@@ -328,7 +328,8 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
           p,
           deleting: _deletingKeys.contains(p.id),
           selected: p.selected ||
-              (activeKey.isNotEmpty && p.id == activeKey),
+              (activeKey.isNotEmpty &&
+                  PortalsHost.samePortalKey(p.id, activeKey)),
         ),
     ];
     _probeSelectedIfNeeded(items, leanback: leanback);
@@ -337,16 +338,12 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
     final credits = AccountFeatures.instance.iptvCredits;
 
-    // Pack order L→R after Search: Scrape · Deal · Add (= R→L Add · Deal · Scrape · Search).
+    // Pack order L→R after Search: Scrape · Deal · Import · Add.
     final headerActions = <PortalListHeaderAction>[];
     for (final a in inv?.actions ?? const <PortalsPanelAction>[]) {
       final id = a.id.trim().toLowerCase();
       final verb = a.action.trim().toLowerCase();
-      if (id == 'import' ||
-          id == 'refresh' ||
-          verb == 'importportal' ||
-          verb == 'listportals' ||
-          verb == 'refresh') {
+      if (id == 'refresh' || verb == 'listportals' || verb == 'refresh') {
         continue;
       }
       if ((id == 'deal' || verb == 'dealportals') && !canDeal) continue;

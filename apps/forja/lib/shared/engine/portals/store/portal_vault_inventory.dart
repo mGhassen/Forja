@@ -53,7 +53,29 @@ abstract final class PortalVaultInventory {
       }
       final last = await PortalStore.loadLastPortalKey();
       if (last != null && last.isNotEmpty) {
-        await EngineVault.set(PortalVaultKeys.active, last);
+        // Prefer pack `url|user` — never write host Portal.key into vault active.
+        var activePack = '';
+        for (final p in stored) {
+          final pack =
+              '${p.portal.url.trim().toLowerCase()}|${p.portal.username.trim().toLowerCase()}';
+          final lastL = last.trim().toLowerCase();
+          if (lastL == pack ||
+              lastL == p.key.toLowerCase() ||
+              lastL == p.credKey.toLowerCase()) {
+            activePack = pack;
+            break;
+          }
+          final parts = lastL.split('|');
+          if (parts.length >= 4 &&
+              parts[1] == p.portal.url.trim().toLowerCase() &&
+              parts[2] == p.portal.username.trim().toLowerCase()) {
+            activePack = pack;
+            break;
+          }
+        }
+        if (activePack.isNotEmpty) {
+          await EngineVault.set(PortalVaultKeys.active, activePack);
+        }
       }
       await EngineVault.set(PortalVaultKeys.migrateFlag, '1');
       debugPrint(

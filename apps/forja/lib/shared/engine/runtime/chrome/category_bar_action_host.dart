@@ -565,8 +565,8 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       );
     }
 
-    // Movies/Series: plain fixed list (no pin/widgets). Prefer cleared _items
-    // over stale Live seed until the VOD feed republishes kinds.
+    // Movies/Series/Channels: plain fixed list (no pin/widgets). Prefer cleared _items
+    // over stale Live seed until the VOD/Channels feed republishes kinds.
     if (!_isLive) {
       final vodItems = _items.isNotEmpty ? _items : _plainItems();
       return CatalogCategoryRail(

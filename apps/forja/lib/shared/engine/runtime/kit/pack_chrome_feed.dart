@@ -14,7 +14,7 @@ bool packChromeKindReloadsFeed(Map<String, dynamic> listSpec) {
   return kindMenu.isNotEmpty && horizonMenu.isNotEmpty;
 }
 
-/// IPTV Movies/Series — paged feed; category/sort/search must re-query.
+/// IPTV Movies/Series/Channels — category/sort/search must re-query.
 bool packChromeVodPagedFeed(
   Map<String, dynamic> listSpec,
   LayoutScope? scope,
@@ -22,7 +22,7 @@ bool packChromeVodPagedFeed(
   final catalogMenu = (listSpec['catalogMenu'] ?? '').toString().trim();
   if (catalogMenu.isEmpty) return false;
   final section = (scope?.selectedId(catalogMenu) ?? '').trim().toLowerCase();
-  return section == 'movies' || section == 'series';
+  return section == 'movies' || section == 'series' || section == 'channels';
 }
 
 /// Params safe to satisfy from page `feed.rails[rail]` (no per-row extras
