@@ -9,6 +9,8 @@ class GuideEpgCache {
   final VerifiedPortal portal;
   final Map<String, Future<List<EpgEntry>>> _cache = {};
   final Map<String, Future<List<EpgEntry>>> _guideCache = {};
+  /// Mapped paint DTOs — same key as [load]; identity-stable for FutureBuilder.
+  final Map<String, Future<List<GuideEpgProgramme>>> _programmeCache = {};
 
   Future<List<EpgEntry>> load(
     PortalStream stream, {
@@ -33,14 +35,25 @@ class GuideEpgCache {
   }
 
   /// Foundation paint DTO — maps portal [EpgEntry] rows.
+  ///
+  /// Memoizes the mapped [Future] (not only the entry fetch) so guide hover /
+  /// card rebuilds keep the same FutureBuilder identity.
   Future<List<GuideEpgProgramme>> loadProgrammes(
     PortalStream stream, {
     int limit = PortalClient.shortEpgLimit,
-  }) async {
-    final entries = await load(stream, limit: limit);
-    return [
-      for (final e in entries) guideEpgProgrammeFromEntry(e),
-    ];
+  }) {
+    final streamId = stream.streamId;
+    final epgId = stream.epgChannelId;
+    if (streamId.isEmpty && epgId.isEmpty) {
+      return Future.value(const []);
+    }
+    final key = '${streamId.isEmpty ? epgId : streamId}:$epgId:$limit';
+    return _programmeCache.putIfAbsent(key, () async {
+      final entries = await load(stream, limit: limit);
+      return [
+        for (final e in entries) guideEpgProgrammeFromEntry(e),
+      ];
+    });
   }
 
   /// Full catalog EPG window (`get_simple_data_table` / Stalker Mag).
@@ -106,5 +119,6 @@ class GuideEpgCache {
   void clear() {
     _cache.clear();
     _guideCache.clear();
+    _programmeCache.clear();
   }
 }

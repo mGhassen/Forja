@@ -309,8 +309,18 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     if (_boundSection == section) return;
     final prev = _boundSection;
     _boundSection = section;
-    // First bind only records section; Live↔Movies/Series must re-strip pins/favs.
-    if (prev != null) unawaited(_reload());
+    if (prev == null) return;
+    // Immediate wipe — do not keep Live Favorites/cats painted under Movies/Series.
+    if (!_isLive) {
+      setState(() {
+        _items = const [];
+        _loading = true;
+        _storeKey = null;
+        _pinned = const [];
+        _order = const [];
+      });
+    }
+    unawaited(_reload());
   }
 
   @override
@@ -369,7 +379,9 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   List<CatalogCategoryItem> _plainItems() {
     return [
       for (final e in widget.seedItems)
-        if (e.id.isNotEmpty && e.id != 'all')
+        if (e.id.isNotEmpty &&
+            e.id != 'all' &&
+            !PortalLiveCatalog.isSyntheticId(e.id))
           CatalogCategoryItem(
             id: e.id,
             label: e.label,
@@ -418,8 +430,20 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   void _ensureValidSelection(List<CatalogCategoryItem> items) {
     if (items.isEmpty) return;
     final sel = widget.selectedId.trim();
-    if (sel.isNotEmpty && items.any((e) => e.id == sel)) return;
-    // First portal group (skip Favorites / Already watched).
+    if (sel.isNotEmpty && sel != 'all' && items.any((e) => e.id == sel)) {
+      return;
+    }
+    if (!_isLive) {
+      // Movies/Series after shelf flip: keep entire section (sel all/empty).
+      if (sel.isEmpty || sel == 'all') return;
+      // Stale Live cat id — snap back to all.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.onSelect('all');
+      });
+      return;
+    }
+    // Live: no All row — land on first portal group (skip Favorites / Watched).
     for (final e in items) {
       if (PortalLiveCatalog.isSyntheticId(e.id) || e.id == 'all') continue;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -538,10 +562,12 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       );
     }
 
-    // Movies/Series: plain fixed list (no pin/widgets).
+    // Movies/Series: plain fixed list (no pin/widgets). Prefer cleared _items
+    // over stale Live seed until the VOD feed republishes kinds.
     if (!_isLive) {
+      final vodItems = _items.isNotEmpty ? _items : _plainItems();
       return CatalogCategoryRail(
-        items: _plainItems(),
+        items: vodItems,
         selectedId: widget.selectedId,
         width: width,
         onSelect: widget.onSelect,

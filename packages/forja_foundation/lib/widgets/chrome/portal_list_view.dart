@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Opaque header action for [PortalListView] — no product verbs in the DS.
@@ -165,8 +166,9 @@ class _PortalListViewState extends State<PortalListView> {
               ),
             ],
             const Spacer(),
-            IconButton(
+            _PortalHeaderIcon(
               tooltip: _searchOpen ? 'Close search' : 'Search',
+              icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
               onPressed: () {
                 setState(() {
                   _searchOpen = !_searchOpen;
@@ -176,29 +178,18 @@ class _PortalListViewState extends State<PortalListView> {
                   }
                 });
               },
-              icon: Icon(
-                _searchOpen ? Icons.close_rounded : Icons.search_rounded,
-                color: _searchOpen
-                    ? ForjaShellColors.brandGreen
-                    : Colors.white70,
-              ),
             ),
             for (final a in widget.headerActions)
-              IconButton(
+              _PortalHeaderIcon(
                 tooltip: a.tooltip ?? a.label,
-                onPressed: widget.busy || !a.enabled
-                    ? null
-                    : a.onPressed,
-                icon: Icon(
-                  _iconFor(a),
-                  color: a.enabled ? Colors.white70 : Colors.white38,
-                ),
+                icon: _iconFor(a),
+                onPressed: widget.busy || !a.enabled ? null : a.onPressed,
               ),
             if (widget.onClose != null)
-              IconButton(
+              _PortalHeaderIcon(
                 tooltip: 'Close',
+                icon: Icons.close_rounded,
                 onPressed: widget.onClose,
-                icon: const Icon(Icons.close_rounded, color: Colors.white70),
               ),
           ],
         ),
@@ -312,6 +303,116 @@ class _PortalListViewState extends State<PortalListView> {
                 );
               },
             ),
+    );
+  }
+}
+
+/// Classic IPTV portal header icon (former [IptvIconAction]):
+/// muted gray idle → brand green on hover/TV focus; slight scale on press.
+class _PortalHeaderIcon extends StatefulWidget {
+  const _PortalHeaderIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.color,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final Color? color;
+
+  @override
+  State<_PortalHeaderIcon> createState() => _PortalHeaderIconState();
+}
+
+class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
+  static const _iconSize = 24.0;
+  static const _hoverScale = 1.08;
+  static const _pressScale = 0.88;
+
+  bool _focused = false;
+  bool _hovered = false;
+  bool _pressed = false;
+
+  bool get _tv => ShellPaintScope.useTvFocusOf(context);
+
+  bool get _active =>
+      _pressed ||
+      ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hovered,
+        focused: _focused,
+      );
+
+  Color get _idleColor {
+    final c = widget.color;
+    if (c == null) return ForjaShellColors.textSecondary;
+    return c;
+  }
+
+  Color get _fg {
+    final enabled = widget.onPressed != null;
+    if (!enabled) return _idleColor.withValues(alpha: 0.45);
+    if ((_tv && _focused) || _active) return ForjaShellColors.brandGreen;
+    return _idleColor;
+  }
+
+  Widget _icon() => Padding(
+        padding: const EdgeInsets.all(10),
+        child: Icon(widget.icon, color: _fg, size: _iconSize),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final body = Tooltip(message: widget.tooltip, child: _icon());
+
+    if (_tv) {
+      return ShellPaintScope.focusableTap(
+        context: context,
+        onTap: widget.onPressed,
+        borderRadius: 24,
+        scaleOnFocus: 1.0,
+        suppressInkHover: true,
+        showFocusFill: false,
+        tvZone: ShellPaintTvZone.topBar,
+        onFocusChange: (f) => setState(() => _focused = f),
+        onHoverChange: (h) => setState(() => _hovered = h),
+        child: body,
+      );
+    }
+
+    final enabled = widget.onPressed != null;
+    final scale = !enabled
+        ? 1.0
+        : _pressed
+            ? _pressScale
+            : _hovered
+                ? _hoverScale
+                : 1.0;
+
+    return MouseRegion(
+      onEnter: !enabled ? null : (_) => setState(() => _hovered = true),
+      onExit: !enabled
+          ? null
+          : (_) => setState(() {
+                _hovered = false;
+                _pressed = false;
+              }),
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onPressed,
+        onTapDown: !enabled ? null : (_) => setState(() => _pressed = true),
+        onTapUp: !enabled ? null : (_) => setState(() => _pressed = false),
+        onTapCancel: !enabled ? null : () => setState(() => _pressed = false),
+        child: AnimatedScale(
+          scale: scale,
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          child: body,
+        ),
+      ),
     );
   }
 }

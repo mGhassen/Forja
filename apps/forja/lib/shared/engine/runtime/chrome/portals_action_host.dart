@@ -22,7 +22,7 @@ export 'package:forja/shared/engine/runtime/chrome/portals_panel_view.dart'
     show PortalsPanelView;
 export 'package:forja/shared/engine/runtime/chrome/portals_providers.dart';
 
-/// Thin chrome wire — chip + side overlay. Panel paint is [PortalsPanelView].
+/// Thin chrome wire — chip + docked Portals rail. Panel paint is [PortalsPanelView].
 /// Services live in [PortalsHost]. Pack layout opts in via `action: portals`.
 abstract final class PortalsActionHost {
   PortalsActionHost._();
@@ -175,6 +175,20 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
     if (portalKey != _probeKey) {
       if (_probeKey.isNotEmpty) _health.cancel(_probeKey);
       _probeKey = portalKey;
+      // Hub open / active portal change: preload chip status now (TTL still
+      // applies). Keep `_armHoverProbe` for intentional hover — mount-under-
+      // cursor must not cancel this via `_onActiveChange(want: false)`.
+      if (portalKey.isNotEmpty) {
+        final probeKey = portalKey;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _probeKey != probeKey) return;
+          _health.schedule(
+            probeKey,
+            leanback: liveLeanbackOnly(context),
+            immediate: true,
+          );
+        });
+      }
     }
 
     final painted = portalKey.isEmpty

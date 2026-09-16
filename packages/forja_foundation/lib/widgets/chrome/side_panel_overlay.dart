@@ -3,9 +3,9 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Presentational side-panel overlay — props only (RFC-095).
 ///
-/// Always keeps [child] under a stable [Stack] so toggling [open] does not
-/// remount the body (e.g. IPTV feed). When open, stacks [panel] on the right
-/// (side rail) or as a dimmed modal sheet.
+/// Always keeps [child] mounted so toggling [open] does not remount the body
+/// (e.g. IPTV feed). Wide / ATV: docked rail pushes [child] aside in a [Row].
+/// Narrow: dimmed modal sheet stacked over [child].
 class SidePanelOverlay extends StatelessWidget {
   const SidePanelOverlay({
     super.key,
@@ -37,18 +37,24 @@ class SidePanelOverlay extends StatelessWidget {
     final side = useSideRail ?? defaultUseSideRail(context);
     final scrim = scrimColor ?? Colors.black.withValues(alpha: 0.45);
 
+    if (side) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: child),
+          if (open)
+            SizedBox(
+              width: panelWidth,
+              child: panel,
+            ),
+        ],
+      );
+    }
+
     return Stack(
       children: [
         child,
-        if (open && side)
-          Positioned(
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: panelWidth,
-            child: panel,
-          ),
-        if (open && !side)
+        if (open)
           Positioned.fill(
             child: GestureDetector(
               onTap: onDismiss,

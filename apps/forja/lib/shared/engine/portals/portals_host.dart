@@ -509,10 +509,11 @@ class PortalsInventory {
   }
 }
 
-/// Debounced hover health probe — shared TTL cache across chip + panel.
+/// Debounced health probe — shared TTL cache across chip + panel.
 ///
-/// Probe on hover only (callers). Fresh results skip re-probe until [ttl]
-/// expires or [invalidate]. UI owns one instance; call [dispose] from the widget.
+/// Callers: hub-open chip preload ([immediate]), hover/focus dwell, panel
+/// open / Refresh ([force]). Fresh results skip re-probe until [ttl] expires
+/// or [invalidate]. UI owns one instance; call [dispose] from the widget.
 class PortalHealthTracker {
   PortalHealthTracker({this.onChanged}) {
     _listeners.add(this);
@@ -554,18 +555,20 @@ class PortalHealthTracker {
   /// Schedule a probe after hover debounce. No-op while TTL is fresh unless
   /// [force] (panel open soft-refresh / Refresh).
   ///
-  /// [force] starts immediately and does **not** clear last painted health —
-  /// UI keeps green/red until the new result lands.
+  /// [force] / [immediate] start now and do **not** clear last painted health —
+  /// UI keeps green/red until the new result lands. [immediate] still respects
+  /// TTL (hub-open chip preload); [force] always re-probes.
   void schedule(
     String portalKey, {
     required bool leanback,
     bool force = false,
+    bool immediate = false,
   }) {
     if (portalKey.isEmpty) return;
     if (_inFlight.contains(portalKey)) return;
     if (!force && _isFresh(portalKey)) return;
     cancel(portalKey);
-    if (force) {
+    if (force || immediate) {
       unawaited(_run(portalKey));
       return;
     }

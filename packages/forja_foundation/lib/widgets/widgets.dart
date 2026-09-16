@@ -62,6 +62,7 @@ export 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 export 'package:forja_foundation/widgets/chrome/shell_tab_header.dart';
 export 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 export 'package:forja_foundation/widgets/chrome/action_chip.dart';
+export 'package:forja_foundation/widgets/chrome/event_list_search.dart';
 export 'package:forja_foundation/widgets/chrome/top_bar_actions.dart';
 export 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
 export 'package:forja_foundation/widgets/chrome/filter_sheet_option.dart';

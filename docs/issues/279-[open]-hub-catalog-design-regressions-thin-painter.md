@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **29 / 30** verification · A14 manual QA remaining |
+| **Progress** | **30 / 31** verification · A14 manual QA remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -42,6 +42,7 @@
 | 21 | I279-A21 | Continue card play overlay + hover; home layout genre TTL shortened for rotating genre rows | ✅ |
 | 22 | I279-A22 | Portals open/inventory scoped per shell tab; IPTV kind filter no longer injects Live Sports `sportFilter` | ✅ |
 | 23 | I279-A23 | IPTV / Live `kit.topBar` uses restored `ForjaActionChip` + `TopBarActions` (not expanded `ForjaShellChip` strip) | ✅ |
+| 31 | I279-A31 | IPTV / Live Search = expanding circle inline field (`EventListSearch`); Sort = circle icon → filter sheet | ✅ |
 | 24 | I279-A24 | Hub open shows light full-page skeleton (`homeHubLoadingSlivers`) instead of spinner | ✅ |
 | 25 | I279-A25 | Hub open paints structure + section skeletons; page `feed` shared (no per-rail spinner cascade) | ✅ |
 | 26 | I279-A26 | Live Sports Catalog + Schedule sheets open again (dynamic catalogs + Status×Horizon) | ✅ |

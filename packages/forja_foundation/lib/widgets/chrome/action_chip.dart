@@ -58,29 +58,34 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
     final tvFocused = _tv && _focused;
 
     if (widget.iconOnly) {
+      const size = 40.0;
       final fg = active || tvFocused ? Colors.white : Colors.white70;
-      final icon = Padding(
-        padding: const EdgeInsets.all(8),
+      final idleAlpha = widget.selected ? 0.12 : 0.08;
+      final circle = Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(
+            alpha: active || tvFocused ? 0.16 : idleAlpha,
+          ),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(
+              alpha: tvFocused
+                  ? 0.45
+                  : active || widget.selected
+                      ? 0.28
+                      : 0.12,
+            ),
+            width: tvFocused ? 1.5 : 1,
+          ),
+        ),
         child: Icon(widget.icon ?? Icons.refresh_rounded, color: fg, size: 20),
       );
-      if (!_tv) {
-        return MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
-          child: Tooltip(
-            message: widget.label.isEmpty ? 'Refresh' : widget.label,
-            child: shellRoundedInkHost(
-              radius: 24,
-              onTap: widget.onTap,
-              child: icon,
-            ),
-          ),
-        );
-      }
       return ShellPaintScope.focusableTap(
         context: context,
         onTap: widget.onTap,
-        borderRadius: 24,
+        borderRadius: size / 2,
         scaleOnFocus: 1.0,
         suppressInkHover: true,
         showFocusFill: false,
@@ -96,7 +101,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         onHoverChange: (h) => setState(() => _hovered = h),
         child: Tooltip(
           message: widget.label.isEmpty ? 'Refresh' : widget.label,
-          child: icon,
+          child: circle,
         ),
       );
     }

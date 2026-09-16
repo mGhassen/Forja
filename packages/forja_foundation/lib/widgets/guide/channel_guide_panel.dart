@@ -123,6 +123,9 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
 
   /// Desktop hover / TV → peek: channel id for the side EPG card.
   String? _epgPeekChannelId;
+  /// Stable future for the peek card — [loadEpg] returns a new Future every
+  /// call; recreating it on scroll/hover rebuilds resets [FutureBuilder] → flash.
+  Future<List<GuideEpgProgramme>>? _epgPeekFuture;
   Timer? _epgHoverTimer;
   /// TV: first OK tunes; second OK on the channel list closes the guide.
   bool _closeArmedOnEnter = false;
@@ -603,10 +606,22 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     return load(ch);
   }
 
+  void _setEpgPeek(GuideChannel ch) {
+    final future = _epgFutureFor(ch);
+    if (future == null) return;
+    setState(() {
+      _epgPeekChannelId = ch.id;
+      _epgPeekFuture = future;
+    });
+  }
+
   void _clearEpgPeek() {
     _epgHoverTimer?.cancel();
-    if (_epgPeekChannelId == null) return;
-    setState(() => _epgPeekChannelId = null);
+    if (_epgPeekChannelId == null && _epgPeekFuture == null) return;
+    setState(() {
+      _epgPeekChannelId = null;
+      _epgPeekFuture = null;
+    });
   }
 
   void _scheduleHoverEpg(GuideChannel ch) {
@@ -615,7 +630,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     if (_epgPeekChannelId == ch.id) return;
     _epgHoverTimer = Timer(ChannelGuidePanel.epgHoverDelay, () {
       if (!mounted) return;
-      setState(() => _epgPeekChannelId = ch.id);
+      _setEpgPeek(ch);
     });
   }
 
@@ -632,11 +647,11 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     if (_focusedChannelIndex < 0 || _focusedChannelIndex >= channels.length) {
       return;
     }
-    setState(() => _epgPeekChannelId = channels[_focusedChannelIndex].id);
+    _setEpgPeek(channels[_focusedChannelIndex]);
   }
 
   bool get _showEpgPeek =>
-      _epgPeekChannel != null && _epgFutureFor(_epgPeekChannel!) != null;
+      _epgPeekChannel != null && _epgPeekFuture != null;
 
   bool get _wide =>
       MediaQuery.sizeOf(context).width >= ChannelGuidePanel.wideBreakpoint;
@@ -677,6 +692,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
         setState(() {
           _focusColumn = _FocusColumn.channels;
           _epgPeekChannelId = null;
+          _epgPeekFuture = null;
         });
         WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
         return KeyEventResult.handled;
@@ -772,6 +788,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
         setState(() {
           _focusColumn = _FocusColumn.channels;
           _epgPeekChannelId = null;
+          _epgPeekFuture = null;
         });
         return;
       }
@@ -954,7 +971,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
 
   Widget _buildEpgPeekCard() {
     final ch = _epgPeekChannel!;
-    final future = _epgFutureFor(ch)!;
+    final future = _epgPeekFuture!;
     // Card chrome lives on GuideEpgCard(floating) — no second border here.
     return IgnorePointer(
       child: GuideEpgCard(

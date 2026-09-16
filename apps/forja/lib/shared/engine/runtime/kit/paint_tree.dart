@@ -12,6 +12,7 @@ import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart
 import 'package:forja/shared/engine/runtime/chrome/catalog_epg_guide_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/channel_catalog_health_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/kit_schedule_window.dart';
+import 'package:forja/shared/engine/runtime/chrome/kit_event_list_search.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
@@ -976,22 +977,44 @@ class PackPaintTree extends StatelessWidget {
   }) {
     final tab = (tabId ?? '').trim();
     if (tab.isEmpty) return const {};
+    final out = <String, Widget>{};
     Map<String, dynamic>? portalsAction;
+    Map<String, dynamic>? searchAction;
     for (final a in actions) {
-      final id = (a['id'] ?? '').toString();
-      final verb = (a['action'] ?? id).toString().toLowerCase();
-      if (id == 'portals' || verb == 'portals') {
+      final id = (a['id'] ?? '').toString().trim();
+      final verb = (a['action'] ?? '').toString().trim().toLowerCase();
+      if (portalsAction == null &&
+          (id == 'portals' || verb == 'portals')) {
         portalsAction = a;
-        break;
+      }
+      // Inline expanding search (IPTV / Live) — not hub catalog Search.
+      if (searchAction == null && verb == 'eventsearch') {
+        searchAction = a;
       }
     }
-    if (portalsAction == null) return const {};
-    final hoist = (portalsAction['hoistSource'] ??
-            portalsAction['source'] ??
-            '')
-        .toString();
-    return {
-      'portals': Consumer(
+    if (searchAction != null) {
+      final tooltip =
+          (searchAction['label'] ?? 'Search').toString().trim();
+      final hint = (searchAction['placeholder'] ??
+              searchAction['hint'] ??
+              'Search…')
+          .toString()
+          .trim();
+      final slotId = (searchAction['id'] ?? 'search').toString().trim();
+      out[slotId.isEmpty ? 'search' : slotId] = KitEventListSearch(
+        tooltip: tooltip.isEmpty ? 'Search' : tooltip,
+        placeholder: hint.isEmpty ? 'Search…' : hint,
+        tvTabId: tab,
+        tvRowId: 'chrome',
+        tvItemIndex: 0,
+      );
+    }
+    if (portalsAction != null) {
+      final hoist = (portalsAction['hoistSource'] ??
+              portalsAction['source'] ??
+              '')
+          .toString();
+      out['portals'] = Consumer(
         builder: (ctx, ref, _) => PortalsActionHost.buildPortalsChip(
           ctx,
           ref,
@@ -1002,8 +1025,9 @@ class PackPaintTree extends StatelessWidget {
             if (hoist.isNotEmpty) 'hoistSource': hoist,
           },
         ),
-      ),
-    };
+      );
+    }
+    return out;
   }
 
   String? _childIdOfType(Map<String, dynamic> node, String type) {

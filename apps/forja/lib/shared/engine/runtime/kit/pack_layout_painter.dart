@@ -394,19 +394,17 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       if (type == LayoutTypes.categoryBar) {
         final id = (spec['id'] ?? '').toString().trim();
         if (id.isEmpty) return;
-        final def = (spec['default'] ?? '').toString().trim();
-        if (def.isNotEmpty) {
-          _layoutSelections[id] = def;
-        } else {
-          // No pack default (IPTV) — clear so the rail snaps to the first group.
-          _layoutSelections.remove(id);
-        }
+        final def = (spec['default'] ?? 'all').toString().trim();
+        _layoutSelections[id] = def.isEmpty ? 'all' : def;
+        // Drop Live Favorites/cats immediately — empty → pack seed (All) until
+        // the Movies/Series feed republishes kinds.
+        _dynamicBarItems[id] = const [];
         return;
       }
       if (type == LayoutTypes.list) {
         final kindMenu = (spec['kindMenu'] ?? '').toString().trim();
         if (kindMenu.isEmpty) return;
-        _layoutSelections.remove(kindMenu);
+        _layoutSelections[kindMenu] = 'all';
       }
     });
   }

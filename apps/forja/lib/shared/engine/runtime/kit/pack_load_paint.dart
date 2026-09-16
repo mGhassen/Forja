@@ -71,8 +71,13 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       _lastPaintedWidget = null;
     }
     _catalogSection = section;
-    if (_envelope == null || epoch != _scopeEpoch) {
+    // Only rebind on epoch change. `_envelope == null` alone used to restart the
+    // in-flight Movies/Series feed when clearing the category bar notified
+    // PackChromeScope — duplicate flutter_js → timeout → "did not answer".
+    if (epoch != _scopeEpoch) {
       _scopeEpoch = epoch;
+      _bind();
+    } else if (_envelope == null && _inFlight == null) {
       _bind();
     }
   }
