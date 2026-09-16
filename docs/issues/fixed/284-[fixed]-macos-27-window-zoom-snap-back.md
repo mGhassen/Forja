@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 3/3** tasks · **0/2** acceptance (manual QA) |
+| **Progress** | **Complete · 5/5** tasks · **0/2** acceptance (manual QA) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -22,6 +22,8 @@
 | 1 | I284-T01 | Override `NSWindow.zoom` to fill/restore `visibleFrame` (hidden titlebar) | ✅ |
 | 2 | I284-T02 | Clear aspect/max on boot; schema-bump drop corrupt geometry prefs; settle save | ✅ |
 | 3 | I284-T03 | Changelog + platforms note | ✅ |
+| 4 | I284-T04 | Zoom reentrancy gate + async re-assert; reject tall-narrow snap saves; boot at work-area size (no small→fill flash) | ✅ |
+| 5 | I284-T05 | Animate fill/restore (`setFrame` animate + gate covers duration) | ✅ |
 
 ---
 
@@ -38,7 +40,7 @@
 
 After macOS 27, AppKit `zoom` with Forja’s hidden titlebar + `fullSizeContentView` animates to fill then snaps back. `DesktopWindowGeometry` persisted the snapped frame (`maximized=false`), so every relaunch opened boxed.
 
-**Root fix:** `MainFlutterWindow.zoom` sets `screen.visibleFrame` (toggle restores pre-fill frame). Boot clears aspect/max caps. Geometry schema v2 drops corrupt prefs once and opens maximized on macOS. Maximize/unmaximize suppress mid-settle saves.
+**Root fix:** `MainFlutterWindow.zoom` sets `screen.visibleFrame` (toggle restores pre-fill frame) with a **reentrancy gate** so AppKit’s second `zoom` in the same gesture cannot undo the fill (that caused the fill→flash→boxed regression). Async re-assert if Tahoe reverts once. Boot clears aspect/max caps. Geometry schema v3 drops corrupt prefs and opens at work-area size (no small→fill flash). Tall-narrow snap frames are not persisted.
 
 ## Related
 

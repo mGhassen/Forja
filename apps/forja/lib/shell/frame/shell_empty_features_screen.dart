@@ -62,7 +62,10 @@ class _ShellEmptyFeaturesScreenState
 
   @override
   void dispose() {
-    TvHeroActions.unbind('settings');
+    // Do not TvHeroActions.unbind('settings') here. Gate → Settings swap runs
+    // dispose *after* SettingsHubScaffold.initState; a full unbind wipes
+    // pageBack / ←-on-row-edge and traps D-pad inside Features.
+    // Settings clears empty-shell handlers on its own bind.
     for (final n in _cardFocus) {
       n.dispose();
     }

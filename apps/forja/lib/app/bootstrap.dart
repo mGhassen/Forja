@@ -254,6 +254,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
       if (startup.maximized) {
         try {
           DesktopWindowGeometry.suppressSaveBriefly();
+          // macOS: already placed on work area when possible — maximize is a
+          // no-op fill if frames match (avoids small→full flash).
           await windowManager.maximize();
         } catch (_) {}
       }

@@ -30,7 +30,7 @@ class DesktopWindowGeometry {
   static const _kMaximized = 'desktop_window_maximized';
   /// Bumped when persisted frames may be corrupt (macOS 27 zoom snap-back).
   static const _kSchema = 'desktop_window_geometry_schema';
-  static const _kSchemaVersion = 2;
+  static const _kSchemaVersion = 3;
 
   static Timer? _saveDebounce;
   /// Ignore resize saves while AppKit settle after maximize/unmaximize.
@@ -52,8 +52,7 @@ class DesktopWindowGeometry {
     const desiredWidth = 1600.0;
     const desiredHeight = 1000.0;
     const screenMargin = 80.0;
-    final display = WidgetsBinding.instance.platformDispatcher.displays.first;
-    final logicalScreen = display.size / display.devicePixelRatio;
+    final logicalScreen = _logicalPrimarySize();
     final maxW = (logicalScreen.width - screenMargin).clamp(
       640.0,
       double.infinity,
@@ -66,6 +65,34 @@ class DesktopWindowGeometry {
       desiredWidth.clamp(640.0, maxW),
       desiredHeight.clamp(480.0, maxH),
     );
+  }
+
+  static Size _logicalPrimarySize() {
+    final display = WidgetsBinding.instance.platformDispatcher.displays.first;
+    return display.size / display.devicePixelRatio;
+  }
+
+  /// Approx menu-bar work area (matches typical macOS `visibleFrame`).
+  static ({Size size, Offset position}) macWorkArea() {
+    final logical = _logicalPrimarySize();
+    const topInset = 39.0;
+    return (
+      size: Size(
+        logical.width.clamp(640.0, double.infinity),
+        (logical.height - topInset).clamp(480.0, double.infinity),
+      ),
+      position: const Offset(0, topInset),
+    );
+  }
+
+  /// Tall-but-narrow frames left by macOS 27 zoom snap — not a real user size.
+  static bool _looksLikeZoomSnap(Size size) {
+    if (!Platform.isMacOS) return false;
+    final screen = _logicalPrimarySize();
+    if (screen.width < 800 || screen.height < 600) return false;
+    final tall = size.height >= screen.height * 0.85;
+    final narrow = size.width <= screen.width * 0.82;
+    return tall && narrow;
   }
 
   static Future<({Size size, Offset? position, bool maximized})>
@@ -85,9 +112,14 @@ class DesktopWindowGeometry {
         await prefs.remove(_kH);
         await prefs.remove(_kMaximized);
         await prefs.setInt(_kSchema, _kSchemaVersion);
-        // macOS: open filled once so users land on work-area size again.
+        // macOS: open already at work-area size (no small→fill flash).
         if (Platform.isMacOS) {
-          return (size: fallback, position: null, maximized: true);
+          final area = macWorkArea();
+          return (
+            size: area.size,
+            position: area.position,
+            maximized: true,
+          );
         }
         return (size: fallback, position: null, maximized: false);
       }
@@ -96,11 +128,20 @@ class DesktopWindowGeometry {
       if (w == null || h == null || w < 640 || h < 480) {
         return (size: fallback, position: null, maximized: false);
       }
+      final saved = Size(w, h);
+      if (_looksLikeZoomSnap(saved)) {
+        final area = macWorkArea();
+        return (
+          size: area.size,
+          position: area.position,
+          maximized: true,
+        );
+      }
       final x = prefs.getDouble(_kX);
       final y = prefs.getDouble(_kY);
       final maximized = prefs.getBool(_kMaximized) ?? false;
       return (
-        size: Size(w, h),
+        size: saved,
         position: (x != null && y != null) ? Offset(x, y) : null,
         maximized: maximized,
       );
@@ -140,6 +181,10 @@ class DesktopWindowGeometry {
       if (await windowManager.isFullScreen()) return;
       final size = await windowManager.getSize();
       if (size.width < 500 || size.height < 360) return;
+      // Don't lock in macOS 27 zoom-snap boxes.
+      if (_looksLikeZoomSnap(size) && !await windowManager.isMaximized()) {
+        return;
+      }
 
       final pos = await windowManager.getPosition();
       final maximized = await windowManager.isMaximized();

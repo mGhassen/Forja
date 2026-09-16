@@ -11,6 +11,7 @@ import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja_foundation/components/switch.dart';
@@ -396,10 +397,15 @@ class _SettingsNavigationPageBodyState
                   },
                   itemBuilder: (context, index) {
                     final id = _navbarOrder[index];
-                    final dest = navDestinations[id];
-                    if (dest == null) {
-                      return SizedBox.shrink(key: ValueKey('nav-missing-$id'));
-                    }
+                    // Same as rail: keep a focusable row even when the hub pack
+                    // has not contributed nav yet (lean / missing install).
+                    final dest = navDestinationFor(id) ??
+                        NavDestination(
+                          id: id,
+                          icon: Icons.apps_outlined,
+                          activeIcon: Icons.apps,
+                          label: PluginRegistry.hubSlotLabel(id) ?? id,
+                        );
                     final isVisible = _navbarVisible.contains(id);
                     final rowId = 'feat-$id';
                     // Columns: 0=tab, 1=star, 2=up, 3=down — ↓ keeps column.
@@ -651,13 +657,19 @@ class _SettingsNavigationPageBodyState
                   sortOrder: 100 + _navbarOrder.length,
                   itemCount: 1,
                   onFocusUp: () {
-                    if (_navbarOrder.isEmpty) return;
-                    final last = _navbarOrder.last;
-                    ShellTvFocusCoordinator.focusRowItem(
-                      'settings',
-                      'feat-$last',
-                      0,
-                    );
+                    // Walk upward until a row actually has a focus node.
+                    for (var i = _navbarOrder.length - 1; i >= 0; i--) {
+                      final id = _navbarOrder[i];
+                      if (ShellTvFocusCoordinator.focusRowItem(
+                        'settings',
+                        'feat-$id',
+                        0,
+                      )) {
+                        return;
+                      }
+                    }
+                    // No feature rows (or none registered) — leave detail.
+                    ShellTvFocusCoordinator.tryPageBack('settings');
                   },
                   onFocusDown: () {
                     ShellTvFocusCoordinator.focusRowItem(

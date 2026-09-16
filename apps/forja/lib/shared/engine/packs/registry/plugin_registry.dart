@@ -8,7 +8,6 @@ import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/packs/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/catalog/plugin_catalog_remote.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_validator.dart';
 import 'package:forja/shared/engine/packs/registry/pack_http.dart';
@@ -142,32 +141,6 @@ class PluginRegistry {
     final file = _asLocalFile(url);
     if (file == null) return true;
     return file.exists();
-  }
-
-  /// When a stored manifest is a local path this device cannot read, try another
-  /// installed pack at the same opaque slot (remote URL), then a published
-  /// catalog row with the same slot. No baked GitHub URL map.
-  Future<String> _substituteUnreachableLocalManifest(String url) async {
-    if (await _localManifestExists(url)) return url;
-    final slot = forjaHqSlot(url);
-    if (slot == null) return url;
-    for (final pack in await listPacksRaw()) {
-      if (pack.sourceUrl == url) continue;
-      if (forjaHqSlot(pack.sourceUrl) != slot) continue;
-      if (_asLocalFile(pack.sourceUrl) != null) continue;
-      debugPrint(
-        '[engine] local manifest missing ($slot) — using ${pack.sourceUrl}',
-      );
-      return pack.sourceUrl;
-    }
-    for (final published in await PluginCatalogRemote.fetchPublishedPacks()) {
-      if (forjaHqSlot(published.manifestUrl) != slot) continue;
-      debugPrint(
-        '[engine] local manifest missing ($slot) — catalog ${published.manifestUrl}',
-      );
-      return published.manifestUrl;
-    }
-    return url;
   }
 
   Future<String> _fetchText(String url) async {
@@ -357,17 +330,14 @@ class PluginRegistry {
   static bool isLocalManifestUrl(String url) => _asLocalFile(url) != null;
 
   /// True when a remote pack needs install/repair (lean stub or missing disk JS).
-  /// Unreachable local checkout paths (synced Mac paths on TV) also need install
-  /// so [_substituteUnreachableLocalManifest] can swap to a peer/catalog URL.
+  /// Local checkout paths never hydrate over the network — URL/path stays as-is.
   ///
   /// Lean stubs (`plugins: []`) after sign-out / profile reset still return
   /// true here — call [rehydrateLeanStubsFromDisk] first so the active profile
   /// scope can restore metadata from `pack.json` without a network re-fetch.
   Future<bool> packNeedsDiskInstall(EnginePack pack) async {
     if (isLegacyAssetPack(pack.sourceUrl)) return false;
-    if (isLocalManifestUrl(pack.sourceUrl)) {
-      return !(await _localManifestExists(pack.sourceUrl));
-    }
+    if (isLocalManifestUrl(pack.sourceUrl)) return false;
     if (pack.plugins.isEmpty) return true;
     return !(await _diskHasAllScripts(pack));
   }
@@ -993,10 +963,9 @@ class PluginRegistry {
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
     bool forceNetwork = false,
   }) async {
-    final requestedUrl = manifestUrl.trim();
-    manifestUrl = await _substituteUnreachableLocalManifest(requestedUrl);
-    final remappedFromLocal =
-        requestedUrl != manifestUrl && isLocalManifestUrl(requestedUrl);
+    // Keep the URL/path exactly as given — local checkout or remote. Never
+    // remap unreachable locals through catalog / peer slots.
+    manifestUrl = manifestUrl.trim();
     final body = await _fetchText(manifestUrl);
     final map = jsonDecode(body) as Map<String, dynamic>;
     try {
@@ -1007,8 +976,7 @@ class PluginRegistry {
     final all = await listPacksRaw();
     EnginePack? previous;
     for (final p in all) {
-      if (p.sourceUrl == manifestUrl ||
-          (remappedFromLocal && p.sourceUrl == requestedUrl)) {
+      if (p.sourceUrl == manifestUrl) {
         previous = p;
         break;
       }
@@ -1317,11 +1285,6 @@ class PluginRegistry {
       all[packIdx] = pack;
     } else {
       all.add(pack);
-    }
-    if (remappedFromLocal) {
-      all.removeWhere((a) => a.sourceUrl == requestedUrl);
-      await DeferredRemoteInstallStore.clear(requestedUrl);
-      await PendingRemotePurgeStore.clear(requestedUrl);
     }
     await _savePacks(all);
     if (!localCheckout) {

@@ -425,25 +425,60 @@ function mergeNavTabOrder(stored: string[], extras: string[]): string[] {
 }
 
 /**
+ * Path segment used to detect `hubs/<slot>/…` — works for http(s), `file://`,
+ * and absolute local checkout paths (`/Users/…/hubs/home/manifest.json`).
+ * `new URL('/Users/…')` throws; that used to drop every local pack from
+ * Features inventory.
+ */
+function manifestPathForHubSlot(raw: string): string | null {
+  const normalized = raw.trim().replace(/\\/g, '/')
+  if (!normalized) return null
+  if (
+    normalized.startsWith('http://') ||
+    normalized.startsWith('https://') ||
+    normalized.startsWith('file://')
+  ) {
+    try {
+      return decodeURIComponent(new URL(normalized).pathname)
+    } catch {
+      return null
+    }
+  }
+  // Local checkout / bare path (Mac, Linux, Windows `C:/…`).
+  if (
+    normalized.startsWith('/') ||
+    /^[A-Za-z]:\//.test(normalized) ||
+    normalized.includes('/hubs/')
+  ) {
+    return normalized
+  }
+  return null
+}
+
+/**
  * Hub shell tab from a pack manifest URL (`…/hubs/<slot>/manifest.json`).
  * Non-hub packs (providers, live, torrent, …) return null.
+ * Local absolute paths are accepted as-is (same as Flutter `forjaHqSlot`).
  */
 export function hubTabIdFromPackManifestUrl(manifestUrl: string): string | null {
-  const raw = manifestUrl.trim()
-  if (!raw) return null
-  try {
-    const path = new URL(raw).pathname
-    const parts = path.split('/').filter(Boolean)
-    const hubsIdx = parts.findIndex((p) => p === 'hubs')
-    const slot = hubsIdx >= 0 ? parts[hubsIdx + 1] : undefined
-    if (!slot || slot === 'manifest.json') return null
-    const id = slot.replace(/-/g, '_')
-    if (!isPersistedNavId(id)) return null
-    if ((HOST_CORE_NAV_IDS as string[]).includes(id)) return null
-    return id
-  } catch {
-    return null
+  const path = manifestPathForHubSlot(manifestUrl)
+  if (!path) return null
+  const lower = path.toLowerCase()
+  // Flutter: hubs/manifest.json → home
+  if (lower.endsWith('hubs/manifest.json')) {
+    return isPersistedNavId('home') &&
+      !(HOST_CORE_NAV_IDS as string[]).includes('home')
+      ? 'home'
+      : null
   }
+  const parts = lower.split('/').filter(Boolean)
+  const hubsIdx = parts.findIndex((p) => p === 'hubs')
+  const slot = hubsIdx >= 0 ? parts[hubsIdx + 1] : undefined
+  if (!slot || slot === 'manifest.json') return null
+  const id = slot.replace(/-/g, '_')
+  if (!isPersistedNavId(id)) return null
+  if ((HOST_CORE_NAV_IDS as string[]).includes(id)) return null
+  return id
 }
 
 export function hubTabIdsFromForjaPacks(packs: ForjaPackRow[]): string[] {

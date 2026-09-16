@@ -52,7 +52,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   @override
   void initState() {
     super.initState();
-    // Back ladder: nested drill → detail (same control) → selected category → nav.
+    // Drop empty-shell enter/restore leftovers, then own the Back ladder.
+    // (Empty dispose must not unbind — it runs after this initState.)
+    TvHeroActions.unbind('settings');
     TvHeroActions.bind(
       'settings',
       pageBack: _handlePageBack,

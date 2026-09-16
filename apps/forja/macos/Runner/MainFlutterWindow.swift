@@ -3,9 +3,10 @@ import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
   /// Frame before a Forja fill (green button / title-bar double-click).
-  /// AppKit `zoom` + hidden titlebar snaps back on macOS 27 — we fill
-  /// `visibleFrame` ourselves and toggle from this snapshot.
   private var forjaPreZoomFrame: NSRect?
+  /// AppKit on macOS 27 often invokes `zoom` twice per gesture; the second
+  /// call must not undo the fill (that was the fill→flash→boxed bug).
+  private var forjaZoomGateUntil: Date?
 
   override func awakeFromNib() {
     let flutterViewController = ForjaFlutterViewController()
@@ -43,24 +44,46 @@ class MainFlutterWindow: NSWindow {
     repositionTrafficLights()
   }
 
-  /// Fill the screen work area (or restore the pre-fill frame). Avoids the
-  /// macOS 27 hidden-titlebar zoom animate-then-snap-back.
+  /// Fill the screen work area (or restore the pre-fill frame). Never call
+  /// `super.zoom` — hidden titlebar + macOS 27 animate-then-snap.
   override func zoom(_ sender: Any?) {
-    guard let screen = screen ?? NSScreen.main else {
-      super.zoom(sender)
+    if let until = forjaZoomGateUntil, Date() < until {
       return
     }
-    let target = screen.visibleFrame
-    if Self.forjaFramesMatch(frame, target) {
-      if let saved = forjaPreZoomFrame {
-        forjaPreZoomFrame = nil
-        setFrame(saved, display: true, animate: false)
+
+    guard let screen = screen ?? NSScreen.main else { return }
+    let target: NSRect
+    let restoring: Bool
+    if Self.forjaFramesMatch(frame, screen.visibleFrame) {
+      guard let saved = forjaPreZoomFrame else { return }
+      forjaPreZoomFrame = nil
+      target = saved
+      restoring = true
+    } else {
+      forjaPreZoomFrame = frame
+      target = screen.visibleFrame
+      restoring = false
+    }
+
+    let duration = animationResizeTime(target)
+    // Gate covers the whole animation so AppKit’s second zoom can’t undo mid-flight.
+    forjaZoomGateUntil = Date().addingTimeInterval(max(0.45, duration + 0.12))
+    setFrame(target, display: true, animate: true)
+
+    if restoring { return }
+    // After settle, re-assert fill if Tahoe reverted once (no animate — already there).
+    let pinned = target
+    DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) { [weak self] in
+      guard let self else { return }
+      if !Self.forjaFramesMatch(self.frame, pinned) {
+        self.setFrame(pinned, display: true, animate: false)
       }
-      // Already filled with no snapshot (e.g. boot maximize) — stay put.
-      return
     }
-    forjaPreZoomFrame = frame
-    setFrame(target, display: true, animate: false)
+  }
+
+  override func animationResizeTime(_ newFrame: NSRect) -> TimeInterval {
+    // Native zoom feel — short enough to stay snappy, long enough to read as fluid.
+    0.25
   }
 
   private static func forjaFramesMatch(_ a: NSRect, _ b: NSRect) -> Bool {
