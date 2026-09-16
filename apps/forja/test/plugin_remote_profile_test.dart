@@ -73,6 +73,48 @@ void main() {
       expect(packs.single.plugins, isEmpty);
     });
 
+    test('applies cloud pack enabled master switch', () async {
+      const url = 'https://cdn.example/toggle/manifest.json';
+      await _seedPacks([
+        {
+          'sourceUrl': url,
+          'packId': 'toggle',
+          'name': 'Toggle Pack',
+          'version': '1.0.0',
+          'enabled': true,
+          'plugins': [
+            {
+              'id': 'p1',
+              'name': 'P1',
+              'entry': 'p1.js',
+              'kind': 'http',
+            },
+          ],
+        },
+      ]);
+
+      final off = await PluginRegistry.instance.applyLeanManifestUrls([
+        {'manifestUrl': url, 'name': 'Toggle Pack', 'enabled': false},
+      ]);
+      expect(off.turnedOff, hasLength(1));
+      expect(off.turnedOff.first.manifestUrl, url);
+      expect(off.turnedOn, isEmpty);
+      expect(
+        (await PluginRegistry.instance.listPacksRaw()).single.enabled,
+        isFalse,
+      );
+
+      final on = await PluginRegistry.instance.applyLeanManifestUrls([
+        {'manifestUrl': url, 'name': 'Toggle Pack'},
+      ]);
+      expect(on.turnedOn, hasLength(1));
+      expect(on.turnedOff, isEmpty);
+      expect(
+        (await PluginRegistry.instance.listPacksRaw()).single.enabled,
+        isTrue,
+      );
+    });
+
     test('rehydrates from disk pack.json instead of lean stub (issue 259)', () async {
       const url = 'https://cdn.example/cached/manifest.json';
       final meta = EnginePack(

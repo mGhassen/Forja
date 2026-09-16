@@ -5,10 +5,12 @@ import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shared/sync/bridge/packs_onboarding_store.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
 
 /// Export/import between local stores and lean `profile_settings.payload`.
@@ -1019,6 +1021,8 @@ class SyncDomainBridge {
       if (version.isNotEmpty && version != '0.0.0') {
         row['version'] = version;
       }
+      // Omit when on (legacy); explicit false = installed but skipped.
+      if (!pack.enabled) row['enabled'] = false;
       lean.add(row);
     }
     final out = <String, dynamic>{};
@@ -1574,6 +1578,7 @@ class SyncDomainBridge {
         '[Sync] importForja purged ${result.removed.length} pack(s)',
       );
     }
+    await _applyForjaEnabledHubDiff(result);
     // Downloads / hub activate only when splash dismissed (or no-op under
     // bootWarm). Soft-pull before profile splash must not install early.
     await PluginInstallPromptService.applyCloudLeanDiff(result);
@@ -1582,6 +1587,36 @@ class SyncDomainBridge {
       scheduleForjaSyncPush();
     }
     return result;
+  }
+
+  /// Cloud pack master switch → Features / rail (same as Settings toggle).
+  Future<void> _applyForjaEnabledHubDiff(LeanApplyResult result) async {
+    if (result.turnedOn.isEmpty && result.turnedOff.isEmpty) return;
+    final packs = await PluginRegistry.instance.listPacksRaw();
+    EnginePack? find(String url) {
+      for (final p in packs) {
+        if (p.sourceUrl == url) return p;
+      }
+      return null;
+    }
+
+    for (final d in result.turnedOff) {
+      final pack = find(d.manifestUrl);
+      if (pack == null) continue;
+      await PluginNavRegistry.refresh();
+      await PackHubFeatures.deactivate(pack);
+    }
+
+    if (PluginInstallCoordinator.instance.isBootWarm) return;
+    if (!ShellBus.splashDismissed.value) return;
+
+    final onPacks = <EnginePack>[
+      for (final d in result.turnedOn)
+        if (find(d.manifestUrl) case final pack?) pack,
+    ];
+    if (onPacks.isNotEmpty) {
+      await PackHubFeatures.refreshAndActivateInstalled(onPacks);
+    }
   }
 }
 

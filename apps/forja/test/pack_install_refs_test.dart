@@ -53,6 +53,34 @@ void main() {
       );
     });
 
+    test('recovers zero-separator glued manifest paths (TV paste)', () {
+      expect(
+        parsePackInstallRefs(
+          '/Users/me/forja-packs/providers/manifest.json'
+          '/Users/me/forja-packs/torrent/manifest.json'
+          '/Users/me/forja-packs/live/manifest.json',
+        ),
+        [
+          '/Users/me/forja-packs/providers/manifest.json',
+          '/Users/me/forja-packs/torrent/manifest.json',
+          '/Users/me/forja-packs/live/manifest.json',
+        ],
+      );
+    });
+
+    test('recovers glued http manifests', () {
+      expect(
+        parsePackInstallRefs(
+          'https://cdn.example/a/manifest.json'
+          'https://cdn.example/b/manifest.json',
+        ),
+        [
+          'https://cdn.example/a/manifest.json',
+          'https://cdn.example/b/manifest.json',
+        ],
+      );
+    });
+
     test('single ref stays one entry', () {
       expect(
         parsePackInstallRefs('https://example.com/manifest.json'),

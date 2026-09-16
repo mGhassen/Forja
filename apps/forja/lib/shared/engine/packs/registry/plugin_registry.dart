@@ -1830,7 +1830,7 @@ class PluginRegistry {
     bool removeMissingUserPacks = true,
     bool purgeRemovedImmediately = true,
   }) async {
-    final remote = <String, ({String? name, String? version})>{};
+    final remote = <String, ({String? name, String? version, bool enabled})>{};
     for (final raw in rows) {
       final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
       if (url.isEmpty || isLegacyAssetPack(url)) {
@@ -1844,9 +1844,12 @@ class PluginRegistry {
 
       final name = (raw['name'] as String?)?.trim();
       final version = (raw['version'] as String?)?.trim();
+      // Omit / true = on (legacy); explicit false = installed but skipped.
+      final enabled = raw['enabled'] != false;
       remote[url] = (
         name: (name != null && name.isNotEmpty) ? name : null,
         version: (version != null && version.isNotEmpty) ? version : null,
+        enabled: enabled,
       );
     }
 
@@ -1855,6 +1858,8 @@ class PluginRegistry {
     final victims = <EnginePack>[];
     final added = <LeanPackDelta>[];
     final removed = <LeanPackDelta>[];
+    final turnedOn = <LeanPackDelta>[];
+    final turnedOff = <LeanPackDelta>[];
     var changed = false;
     // Remote lean URLs already satisfied by a kept local/remote pack (same slot).
     final satisfiedRemote = <String>{};
@@ -1898,11 +1903,21 @@ class PluginRegistry {
         final localOk = isLocalManifestUrl(pack.sourceUrl) &&
             await _localManifestExists(pack.sourceUrl);
         if (localOk) {
-          // Readable checkout wins over same-slot remote URL.
+          // Readable checkout wins over same-slot remote URL — still apply
+          // cloud master switch onto the local install.
           satisfiedRemote.add(remoteKey);
           satisfiedRemote.add(pack.sourceUrl);
           _markLeanSlotSatisfied(satisfiedRemote, remote, pack.sourceUrl);
-          next.add(pack);
+          final lean = remote[remoteKey]!;
+          next.add(
+            _leanApplyEnabled(
+              pack,
+              lean.enabled,
+              turnedOn: turnedOn,
+              turnedOff: turnedOff,
+              changed: () => changed = true,
+            ),
+          );
           continue;
         }
         // Remote URL moved (or dead local path) — cloud URL wins.
@@ -1921,20 +1936,30 @@ class PluginRegistry {
       }
       final lean = remoteKey != null ? remote[remoteKey] : null;
       final leanName = lean?.name;
-      if (leanName != null && pack.plugins.isEmpty && pack.name != leanName) {
+      var kept = pack;
+      if (lean != null) {
+        kept = _leanApplyEnabled(
+          kept,
+          lean.enabled,
+          turnedOn: turnedOn,
+          turnedOff: turnedOff,
+          changed: () => changed = true,
+        );
+      }
+      if (leanName != null && kept.plugins.isEmpty && kept.name != leanName) {
         next.add(
           EnginePack(
-            sourceUrl: pack.sourceUrl,
-            packId: pack.packId,
+            sourceUrl: kept.sourceUrl,
+            packId: kept.packId,
             name: leanName,
-            version: lean?.version ?? pack.version,
-            plugins: pack.plugins,
-            enabled: pack.enabled,
+            version: lean?.version ?? kept.version,
+            plugins: kept.plugins,
+            enabled: kept.enabled,
           ),
         );
         changed = true;
       } else {
-        next.add(pack);
+        next.add(kept);
       }
     }
 
@@ -1956,6 +1981,7 @@ class PluginRegistry {
           diskPack.copyWith(
             name: entry.value.name ?? diskPack.name,
             version: entry.value.version ?? diskPack.version,
+            enabled: entry.value.enabled,
           ),
         );
         changed = true;
@@ -1969,6 +1995,7 @@ class PluginRegistry {
           name: entry.value.name ?? 'Forja pack',
           version: entry.value.version ?? '0.0.0',
           plugins: const [],
+          enabled: entry.value.enabled,
         ),
       );
       added.add(LeanPackDelta(manifestUrl: entry.key, name: entry.value.name));
@@ -1987,13 +2014,37 @@ class PluginRegistry {
       await PendingRemotePurgeStore.clearAll();
     }
 
-    return LeanApplyResult(added: added, removed: removed);
+    return LeanApplyResult(
+      added: added,
+      removed: removed,
+      turnedOn: turnedOn,
+      turnedOff: turnedOff,
+    );
+  }
+
+  /// Apply cloud master switch onto [pack]; records flipped deltas.
+  static EnginePack _leanApplyEnabled(
+    EnginePack pack,
+    bool enabled, {
+    required List<LeanPackDelta> turnedOn,
+    required List<LeanPackDelta> turnedOff,
+    required void Function() changed,
+  }) {
+    if (pack.enabled == enabled) return pack;
+    changed();
+    final delta = LeanPackDelta(manifestUrl: pack.sourceUrl, name: pack.name);
+    if (enabled) {
+      turnedOn.add(delta);
+    } else {
+      turnedOff.add(delta);
+    }
+    return pack.copyWith(enabled: enabled);
   }
 
   /// Cloud lean row key for [sourceUrl], or null if the pack is not in [remote].
   /// Matches exact URL, else same opaque [forjaHqSlot] (local checkout ↔ remote).
   static String? _leanRemoteKeyForPack(
-    Map<String, ({String? name, String? version})> remote,
+    Map<String, ({String? name, String? version, bool enabled})> remote,
     String sourceUrl,
   ) {
     if (remote.containsKey(sourceUrl)) return sourceUrl;
@@ -2008,7 +2059,7 @@ class PluginRegistry {
   /// Mark every remote lean URL that shares [sourceUrl]'s opaque slot.
   static void _markLeanSlotSatisfied(
     Set<String> satisfiedRemote,
-    Map<String, ({String? name, String? version})> remote,
+    Map<String, ({String? name, String? version, bool enabled})> remote,
     String sourceUrl,
   ) {
     final slot = forjaHqSlot(sourceUrl);

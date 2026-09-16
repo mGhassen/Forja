@@ -26,6 +26,7 @@ import {
   type ForjaPackRow,
   type ForjaPayload,
 } from '@/lib/sync-domains'
+import { cn } from '@/lib/utils'
 
 function forjaFromServer(value: unknown): ForjaPayload {
   const payload = value as ForjaPayload | undefined
@@ -146,6 +147,25 @@ export function AccountSettingsAddonPackKindPage({
     }))
   }
 
+  const setPackEnabled = (manifestUrl: string, enabled: boolean) => {
+    void commit((prev) => ({
+      ...prev,
+      packs: prev.packs.map((p) => {
+        if (p.manifestUrl !== manifestUrl) return p
+        if (enabled) {
+          if (p.enabled !== false) return p
+          return {
+            manifestUrl: p.manifestUrl,
+            ...(p.name ? { name: p.name } : {}),
+            ...(p.version ? { version: p.version } : {}),
+            ...(p.addedAt ? { addedAt: p.addedAt } : {}),
+          }
+        }
+        return { ...p, enabled: false }
+      }),
+    }))
+  }
+
   const confirmOfficial = async (selected: PluginBatchInstallItem[]) => {
     if (!selected.length) {
       setOfficialOpen(false)
@@ -218,13 +238,19 @@ export function AccountSettingsAddonPackKindPage({
                 const kind = meta?.kind
                   ? pluginKindLabel(meta.kind)
                   : kindLabels
+                const enabled = pack.enabled !== false
                 return (
                   <li
                     key={pack.manifestUrl}
                     className="flex min-h-14.5 items-center justify-between gap-3 px-0.5 py-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-forja-text">
+                      <p
+                        className={cn(
+                          'font-medium text-forja-text',
+                          !enabled && 'text-forja-muted',
+                        )}
+                      >
                         {packTitle(pack, meta)}
                       </p>
                       <p className="mt-0.5 truncate text-xs text-forja-muted">
@@ -238,17 +264,45 @@ export function AccountSettingsAddonPackKindPage({
                         {version ? ` · v${version}` : ''}
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0 text-red-300 hover:text-red-200"
-                      onClick={() => removePack(pack.manifestUrl)}
-                      disabled={controlsLocked || isSaving}
-                      aria-label={`Remove ${packTitle(pack, meta)}`}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={enabled}
+                        aria-label={enabled ? 'Disable pack' : 'Enable pack'}
+                        disabled={controlsLocked || isSaving}
+                        onClick={() =>
+                          setPackEnabled(pack.manifestUrl, !enabled)
+                        }
+                        className="group relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'absolute inset-0 rounded-full transition-colors',
+                            enabled ? 'bg-forja-green' : 'bg-white/15',
+                          )}
+                        />
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-transform',
+                            enabled ? 'translate-x-5' : 'translate-x-0',
+                          )}
+                        />
+                      </button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-300 hover:text-red-200"
+                        onClick={() => removePack(pack.manifestUrl)}
+                        disabled={controlsLocked || isSaving}
+                        aria-label={`Remove ${packTitle(pack, meta)}`}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </li>
                 )
               })}

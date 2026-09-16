@@ -72,11 +72,23 @@ String packInstallRefDisplayName(String ref) {
 }
 
 List<String> _extractPathLikeTokens(String blob) {
-  final re = RegExp(
+  final spaced = RegExp(
     r'''(?:https?://[^\s,;]+|file://[^\s,;]+|/[^\s,;]+|[A-Za-z]:\\[^\s,;]+)''',
   );
-  final matches = re.allMatches(blob).map((m) => m.group(0)!.trim()).toList();
-  if (matches.length > 1) return matches;
+  final spacedMatches =
+      spaced.allMatches(blob).map((m) => m.group(0)!.trim()).toList();
+  if (spacedMatches.length > 1) return spacedMatches;
+
+  // Android single-line IME often strips newlines/spaces when pasting a list,
+  // producing …/manifest.json/Users/… or …/manifest.jsonhttps://…
+  final glued = RegExp(
+    r'''(?:https?://|file://|/|[A-Za-z]:\\).*?manifest\.json''',
+    caseSensitive: false,
+  );
+  final gluedMatches =
+      glued.allMatches(blob).map((m) => m.group(0)!.trim()).toList();
+  if (gluedMatches.length > 1) return gluedMatches;
+
   return [blob];
 }
 

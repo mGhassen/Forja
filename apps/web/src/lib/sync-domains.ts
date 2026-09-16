@@ -154,6 +154,8 @@ export type ForjaPackRow = {
   name?: string
   version?: string
   addedAt?: string
+  /** Master on/off — omit / true = enabled; false = installed but skipped */
+  enabled?: boolean
 }
 
 export type ForjaPayload = {
@@ -485,6 +487,7 @@ export function hubTabIdsFromForjaPacks(packs: ForjaPackRow[]): string[] {
   const out: string[] = []
   const seen = new Set<string>()
   for (const pack of packs) {
+    if (pack.enabled === false) continue
     const id = hubTabIdFromPackManifestUrl(pack.manifestUrl ?? '')
     if (!id || seen.has(id)) continue
     seen.add(id)
@@ -677,6 +680,7 @@ function compactForja(s: ForjaPayload | undefined): ForjaPayload | undefined {
       if (version) row.version = version
       const addedAt = a.addedAt?.trim()
       if (addedAt) row.addedAt = addedAt
+      if (a.enabled === false) row.enabled = false
       return row
     })
     .filter((a): a is ForjaPackRow => a != null)
