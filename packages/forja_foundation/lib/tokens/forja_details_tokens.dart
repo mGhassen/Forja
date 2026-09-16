@@ -7,6 +7,9 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// body sections. Packs may omit hero, episodes, or any rail — host only
 /// applies spacing rules, never row-type layout branches.
 ///
+/// Backdrop height + first-row Y are **pack `layout` props** (see
+/// [parseKitDetailsLayout]). Tokens here are defaults / math only.
+///
 /// Content gutters reuse [ShellTokens] so details stay aligned with shell
 /// catalog rows and body max-width.
 abstract final class DetailsTokens {
@@ -59,34 +62,42 @@ abstract final class DetailsTokens {
     return sideGutter + padding;
   }
 
-  /// Cinematic hero band (~82% viewport) when body does not overlap the backdrop.
+  /// Default hero band when pack omits `layout.backdropFraction` / full-bleed.
   static const double heroViewportFraction = 0.82;
 
-  /// Where the first body row starts when overlapping a full-screen backdrop.
+  /// Default first-row Y when pack opts into overlap without a fraction.
   static const double firstBodyRowViewportFraction = 0.65;
 
-  /// Hero chrome height. Prefer [viewportHeight] from a [LayoutBuilder] when
-  /// the overlay width differs from [MediaQuery].
-  ///
-  /// [fullBleedBackdrop]: backdrop fills the viewport; first body row overlaps
-  /// it via [bodyOverlapForFirstRow] (movies + series).
+  /// Hero chrome height from pack layout + viewport.
   static double heroHeight(
     BuildContext context, {
     double? viewportHeight,
     bool fullBleedBackdrop = false,
+    double? backdropFraction,
   }) {
     final size = MediaQuery.sizeOf(context);
     final height = viewportHeight ?? size.height;
     final resolved = height.isFinite && height > 0 ? height : size.height;
     if (fullBleedBackdrop) return resolved;
-    return resolved * heroViewportFraction;
+    final fraction = (backdropFraction ?? heroViewportFraction).clamp(0.2, 1.0);
+    return resolved * fraction;
   }
 
-  /// Pull-up so the first body row sits at [firstBodyRowViewportFraction].
-  static double bodyOverlapForFirstRow(double viewportHeight) {
-    final h = viewportHeight.isFinite && viewportHeight > 0
-        ? viewportHeight
-        : 0.0;
-    return h * (1.0 - firstBodyRowViewportFraction);
+  /// Pull-up so the first body row sits at [firstBodyRowFraction] of the
+  /// viewport while overlapping a hero of [heroHeight].
+  static double bodyOverlapForFirstRow({
+    required double viewportHeight,
+    required double heroHeight,
+    double? firstBodyRowFraction,
+  }) {
+    final f = firstBodyRowFraction;
+    if (f == null || !f.isFinite || f <= 0 || f >= 1) return 0;
+    final vh =
+        viewportHeight.isFinite && viewportHeight > 0 ? viewportHeight : 0.0;
+    if (vh <= 0 || heroHeight <= 0) return 0;
+    final firstRowY = vh * f;
+    final overlap = heroHeight - firstRowY;
+    if (overlap <= 0) return 0;
+    return overlap.clamp(0.0, heroHeight);
   }
 }

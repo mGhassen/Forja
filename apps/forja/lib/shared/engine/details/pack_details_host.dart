@@ -120,6 +120,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
 
   MetaItem? _detail;
   List<KitDetailRailSection> _packRails = const [];
+  KitDetailsLayout _layout = KitDetailsLayout.classic;
   List<String> _heroBackdrops = const [];
   bool _loading = true;
   String? _error;
@@ -537,6 +538,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       setState(() {
         _detail = meta;
         _packRails = result.rails;
+        _layout = KitDetailsLayout.classic;
         _heroBackdrops = backdrops;
         _loading = false;
         _selectedSeason = firstSeason;
@@ -583,6 +585,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     }
     final meta = hubMergeDetailsSeed(env.meta ?? widget.item, widget.item);
     final packRails = parseKitDetailRails(env.data);
+    final layout = parseKitDetailsLayout(env.data);
     final backdrops = hubHeroBackdropUrls(meta);
     if (!mounted) return;
     final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
@@ -602,6 +605,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     setState(() {
       _detail = meta;
       _packRails = packRails;
+      _layout = layout;
       _heroBackdrops = backdrops;
       _loading = false;
       _selectedSeason = firstSeason;
@@ -999,8 +1003,16 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     ];
 
     final viewportHeight = MediaQuery.sizeOf(context).height;
-    final firstRowOverlap =
-        DetailsTokens.bodyOverlapForFirstRow(viewportHeight);
+    final heroH = DetailsTokens.heroHeight(
+      context,
+      fullBleedBackdrop: _layout.fullBleedBackdrop,
+      backdropFraction: _layout.backdropFraction,
+    );
+    final firstRowOverlap = DetailsTokens.bodyOverlapForFirstRow(
+      viewportHeight: viewportHeight,
+      heroHeight: heroH,
+      firstBodyRowFraction: _layout.firstBodyRowFraction,
+    );
 
     return MediaDetailsScrollPage(
       scrollController: _scrollController,
@@ -1026,10 +1038,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           durationMs: heroDurMs,
         ),
         logoUrl: hubMetaLogoUrl(show),
-        height: DetailsTokens.heroHeight(
-          context,
-          fullBleedBackdrop: true,
-        ),
+        height: heroH,
         bodyOverlap: firstRowOverlap,
         progressBar: heroPosMs != null && heroDurMs != null
             ? WatchProgressBar(

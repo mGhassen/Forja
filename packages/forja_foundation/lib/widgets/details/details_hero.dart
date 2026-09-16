@@ -98,10 +98,10 @@ class DetailsHero extends StatelessWidget {
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
     final rawOverlap = bodyOverlap;
-    final resolvedOverlap = rawOverlap ?? DetailsTokens.heroBodyOverlap;
-    // Large overlap = first body row on backdrop; keep title/Play above it.
-    final overlapsFirstRow = rawOverlap != null &&
-        rawOverlap > DetailsTokens.heroBodyOverlap;
+    final overlapsFirstRow = rawOverlap != null && rawOverlap > 0;
+    final resolvedOverlap =
+        overlapsFirstRow ? rawOverlap! : DetailsTokens.heroBodyOverlap;
+    // Keep title / Play above the overlapping first body row.
     final contentBottom =
         overlapsFirstRow ? rawOverlap! + bottomInset : bottomInset;
 

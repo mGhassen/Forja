@@ -64,10 +64,21 @@ class DetailsBody extends StatelessWidget {
     );
 
     if (overlap > 0) {
-      // Transparent over the hero so backdrop + bottom gradient show through.
+      // Translate paints the first row onto the backdrop. Add matching bottom
+      // extent so end-of-scroll doesn't leave a blank overlap-sized hole.
       return Transform.translate(
         offset: Offset(0, -overlap),
-        child: content,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            content,
+            ColoredBox(
+              color: shellBg,
+              child: SizedBox(height: overlap, width: double.infinity),
+            ),
+          ],
+        ),
       );
     }
 

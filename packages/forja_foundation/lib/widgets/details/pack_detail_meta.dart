@@ -1,4 +1,5 @@
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/widgets/details/facts_panel.dart';
 
@@ -12,6 +13,68 @@ class KitDetailRailSection {
   final String id;
   final String title;
   final List<MetaItem> items;
+}
+
+/// Pack `details.data.layout` — backdrop + first body row placement.
+///
+/// ```json
+/// "layout": {
+///   "fullBleedBackdrop": true,
+///   "backdropFraction": 0.82,
+///   "firstBodyRowFraction": 0.65
+/// }
+/// ```
+///
+/// Omit `layout` → classic 82% hero, no body overlap. Host never invents these.
+class KitDetailsLayout {
+  const KitDetailsLayout({
+    this.fullBleedBackdrop = false,
+    this.backdropFraction,
+    this.firstBodyRowFraction,
+  });
+
+  static const classic = KitDetailsLayout();
+
+  /// Full-viewport backdrop; first row at 65% overlapping it.
+  static const cinematicBleed = KitDetailsLayout(
+    fullBleedBackdrop: true,
+    firstBodyRowFraction: DetailsTokens.firstBodyRowViewportFraction,
+  );
+
+  final bool fullBleedBackdrop;
+
+  /// Hero height as a viewport fraction when [fullBleedBackdrop] is false.
+  final double? backdropFraction;
+
+  /// Viewport Y for the first body row when overlapping the hero. Null = no pull-up.
+  final double? firstBodyRowFraction;
+
+  bool get overlapsFirstRow =>
+      firstBodyRowFraction != null &&
+      firstBodyRowFraction! > 0 &&
+      firstBodyRowFraction! < 1;
+}
+
+/// Reads `data.layout` from a catalog `details` envelope.
+KitDetailsLayout parseKitDetailsLayout(Map<String, dynamic>? data) {
+  final raw = data?['layout'];
+  if (raw is! Map) return KitDetailsLayout.classic;
+  final m = Map<String, dynamic>.from(raw);
+  final fullBleed = m['fullBleedBackdrop'] == true;
+  final backdropFrac = _layoutFraction(m['backdropFraction']);
+  final firstRow = _layoutFraction(m['firstBodyRowFraction']);
+  return KitDetailsLayout(
+    fullBleedBackdrop: fullBleed,
+    backdropFraction: backdropFrac,
+    firstBodyRowFraction: firstRow,
+  );
+}
+
+double? _layoutFraction(dynamic raw) {
+  if (raw is! num) return null;
+  final v = raw.toDouble();
+  if (!v.isFinite || v <= 0 || v > 1) return null;
+  return v;
 }
 
 List<KitDetailRailSection> parseKitDetailRails(Map<String, dynamic>? data) {
