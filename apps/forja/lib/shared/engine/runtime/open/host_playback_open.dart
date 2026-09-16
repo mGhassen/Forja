@@ -3,8 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
+import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/portals/network/portal_network.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
+import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/shared/player/live/hooks/live_play.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -92,6 +96,19 @@ abstract final class HostPlaybackOpen {
     if (ctx == null || !ctx.mounted) return false;
     final t = title.trim().isEmpty ? 'Stream' : title.trim();
     try {
+      final playUrl = await _resolveStalkerPlayUrl(
+        url: u,
+        liveSourceKind: liveSourceKind,
+        streamId: streamId,
+        portalKey: portalKey,
+      );
+      if (liveSourceKind == PortalLiveSourceKind.iptvStalker &&
+          !_stalkerHandoffReady(playUrl)) {
+        LivePluginEngine.engineResolveFailed();
+        return false;
+      }
+      if (!ctx.mounted) return false;
+
       // Open player immediately — guide catalog is a network fetch and must not
       // block the first paint / stream start.
       Future<ChannelGuide?>? guideFuture;
@@ -106,7 +123,7 @@ abstract final class HostPlaybackOpen {
           logoUrl: logoUrl,
           categoryId: categoryId,
           epgChannelId: epgChannelId,
-          playUrl: u,
+          playUrl: playUrl,
         );
       }
       final sid = (streamId ?? '').trim();
@@ -123,7 +140,7 @@ abstract final class HostPlaybackOpen {
         ctx,
         sources: [
           LivePlaySource(
-            url: u,
+            url: playUrl,
             label: t,
             logoUrl: logoUrl,
             streamId: streamId,
@@ -147,6 +164,61 @@ abstract final class HostPlaybackOpen {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Stalker catalog rows ship `pending:` until create_link; mint before open.
+  static Future<String> _resolveStalkerPlayUrl({
+    required String url,
+    PortalLiveSourceKind? liveSourceKind,
+    String? streamId,
+    String? portalKey,
+  }) async {
+    if (liveSourceKind != PortalLiveSourceKind.iptvStalker) return url;
+    if (_stalkerHandoffReady(url)) return url;
+    final cmd = (streamId ?? '').trim();
+    final pk = (portalKey ?? '').trim();
+    if (cmd.isEmpty || pk.isEmpty) return url;
+    final portal = await _portalForKey(pk);
+    if (portal == null) {
+      debugPrint('[IPTV] stalker create_link: no portal for key=$pk');
+      return url;
+    }
+    try {
+      final fresh = await PortalClient.createLink(
+        portal,
+        cmd: cmd,
+        section: 'live',
+      );
+      if (fresh == null || fresh.isEmpty) {
+        debugPrint('[IPTV] stalker create_link empty for cmd=$cmd');
+        return url;
+      }
+      return fresh;
+    } catch (e) {
+      debugPrint('[IPTV] stalker create_link failed: $e');
+      return url;
+    }
+  }
+
+  /// Stalker CDN links are often `.ts` / php — not m3u8/mp4.
+  static bool _stalkerHandoffReady(String url) {
+    final u = url.trim();
+    if (u.isEmpty || u.startsWith('pending:')) return false;
+    return u.startsWith('http://') || u.startsWith('https://');
+  }
+
+  static Future<Portal?> _portalForKey(String portalKey) async {
+    final key = portalKey.trim();
+    if (key.isEmpty) return null;
+    final portals = await PortalStore.load();
+    final lower = key.toLowerCase();
+    for (final v in portals) {
+      if (PortalChannelGuideOpen.packPortalKey(v.portal) == lower) {
+        return v.portal;
+      }
+      if (v.key == key || v.credKey == key) return v.portal;
+    }
+    return null;
   }
 
   static bool _vodFromOpen(MetaOpen? open) {
