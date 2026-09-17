@@ -4,7 +4,7 @@
 
 ## What it is
 
-Cold start on **Android TV and desktop** is the same centered welcome (logo, **Your cinema**, **Sign in** / **Continue as guest**) over the animated background, with a soft dark shadow under the copy for readability. Sign in opens the code + QR screen (code under the QR as `XXXX-XXXX`); approve on `/connect`. After a successful link, Forja opens **Who’s watching?** so you can pick a profile. Desktop email/password, passkey, and Web login are not on this screen (mobile keeps email/password in Settings if you continue as guest; desktop guest **Settings → Profile & account** uses the same code + QR flow).
+Cold start on **Android TV and desktop** is the same centered welcome (logo, **Your cinema**, **Sign in** / **Continue as guest**) over the animated background, with a soft dark shadow under the copy for readability. Sign in opens the code + QR screen (code under the QR as `XXXX-XXXX`); approve on `/connect`. After a successful link, Forja opens **Who’s watching?** so you can pick a profile. Mobile keeps email/password in Settings if you continue as guest; desktop guest **Settings → Profile & account** uses the same code + QR flow.
 
 ## How to open it
 
