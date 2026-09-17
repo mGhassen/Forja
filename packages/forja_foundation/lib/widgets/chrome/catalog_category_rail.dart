@@ -124,21 +124,6 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
     super.dispose();
   }
 
-  @override
-  void didUpdateWidget(covariant CatalogCategoryRail oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedId != widget.selectedId) {
-      final selected = (widget.selectedId ?? '').trim();
-      if (selected.isEmpty) return;
-      final idx = widget.items.indexWhere((e) => e.id == selected);
-      if (idx < 0) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _scrollToIndex(idx);
-      });
-    }
-  }
-
   int _letterJumpAnchor() {
     final jump = _jumpItems;
     if (jump.isEmpty) return -1;
