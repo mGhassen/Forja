@@ -290,13 +290,16 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     }
 
     // Portal switch / Refresh — drop old grid so CatalogLoadingTicker shows.
+    // Soft list pin refresh keeps last paint until the new envelope lands.
     // Any refresh bump also releases a portal hold (including clear+bump same frame).
     if (refreshBumped) {
       _progressiveSub?.cancel();
       _progressiveSub = null;
-      _envelope = null;
-      _lastPaintedWidget = null;
       _holdAtRefreshEpoch = null;
+      if (!(chrome?.refreshKeepPainted ?? false)) {
+        _envelope = null;
+        _lastPaintedWidget = null;
+      }
     }
     _catalogSection = section;
 

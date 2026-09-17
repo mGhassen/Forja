@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
@@ -38,14 +39,18 @@ class MoodCircleLayout {
     labelMaxLines: 2,
   );
 
-  static const tvScrollable = MoodCircleLayout(
-    circleSize: 54,
-    itemWidth: 78,
-    horizontalGap: 10,
-    rowHeight: 54 + 6 + 12 + 8,
-    labelFontSize: 10.5,
-    iconSize: 22.7,
-    iconSizeActive: 28.1,
+  static final tvScrollable = MoodCircleLayout(
+    circleSize: ShellTokens.moodCircleSizeTv,
+    itemWidth: ShellTokens.moodCircleItemWidthTv,
+    horizontalGap: ShellTokens.moodCircleGapTv,
+    rowHeight: ShellTokens.moodCircleSizeTv +
+        ShellTokens.moodCircleLabelGapTv +
+        ShellTokens.moodCircleLabelFontSizeTv *
+            ShellTokens.moodCircleLabelLineHeightTv +
+        8,
+    labelFontSize: ShellTokens.moodCircleLabelFontSizeTv,
+    iconSize: ShellTokens.moodCircleSizeTv * 0.42,
+    iconSizeActive: ShellTokens.moodCircleSizeTv * 0.52,
     labelMaxLines: 1,
   );
 

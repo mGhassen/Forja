@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Pack-driven hub chrome paint over hero — Search + menus + Categories.
@@ -88,7 +89,11 @@ class HubTopBar extends StatelessWidget {
           children: [
             for (var i = 0; i < menus.length; i++) ...[
               if (i > 0)
-                const SizedBox(width: ShellTokens.hubTopBarItemGap),
+                SizedBox(
+                  width: ShellPaintScope.usesTvDensityOf(context)
+                      ? ShellTokens.hubTopBarItemGapTv
+                      : ShellTokens.hubTopBarItemGap,
+                ),
               _HubTab(
                 label: menus[i].label,
                 selected: selectedMenuId == menus[i].id,
@@ -111,12 +116,16 @@ class HubTopBar extends StatelessWidget {
               onTap: onCategories!,
             ));
 
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final sectionGap = tv
+        ? ShellTokens.hubTopBarSectionGapTv
+        : ShellTokens.hubTopBarSectionGap;
     return Opacity(
       opacity: opacity.clamp(0.0, 1.0),
       child: Transform.translate(
         offset: Offset(0, translateY),
         child: SizedBox(
-          height: ShellTokens.homeTopBarHeight,
+          height: tv ? ShellTokens.homeTopBarHeightTv : ShellTokens.homeTopBarHeight,
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: ShellTokens.compactChromeLeadingInset(context),
@@ -125,19 +134,19 @@ class HubTopBar extends StatelessWidget {
               children: [
                 if (leading != null) ...[
                   leading!,
-                  const SizedBox(width: ShellTokens.hubTopBarSectionGap),
+                  SizedBox(width: sectionGap),
                 ],
                 if (search != null) ...[
                   search,
-                  const SizedBox(width: ShellTokens.hubTopBarSectionGap),
+                  SizedBox(width: sectionGap),
                 ],
                 Expanded(child: menu),
                 if (cats != null) ...[
-                  const SizedBox(width: ShellTokens.hubTopBarSectionGap),
+                  SizedBox(width: sectionGap),
                   cats,
                 ],
                 if (trailing != null) ...[
-                  const SizedBox(width: ShellTokens.hubTopBarSectionGap),
+                  SizedBox(width: sectionGap),
                   trailing!,
                 ],
               ],
@@ -162,13 +171,18 @@ class _HubTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(ShellTokens.hubTopBarTabRadius),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ShellTokens.hubTopBarTabPadH,
-          vertical: ShellTokens.hubTopBarTabPadV,
+        padding: EdgeInsets.symmetric(
+          horizontal: tv
+              ? ShellTokens.hubTopBarTabPadHTv
+              : ShellTokens.hubTopBarTabPadH,
+          vertical: tv
+              ? ShellTokens.hubTopBarTabPadVTv
+              : ShellTokens.hubTopBarTabPadV,
         ),
         child: Text(
           label,
@@ -177,7 +191,9 @@ class _HubTab extends StatelessWidget {
                 ? ForjaShellColors.brandGreen
                 : ForjaShellColors.textPrimary,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-            fontSize: ShellTokens.hubTopBarTabFontSize,
+            fontSize: tv
+                ? ShellTokens.hubTopBarTabFontSizeTv
+                : ShellTokens.hubTopBarTabFontSize,
           ),
         ),
       ),

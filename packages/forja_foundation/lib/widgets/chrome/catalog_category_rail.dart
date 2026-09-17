@@ -93,13 +93,13 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   String? _floatingId;
   final ScrollController _scroll = ScrollController();
 
-  double get _listPadV => widget.listPadV;
+  double _listPadV(BuildContext context) => catalogUsesTvDensity(context)
+      ? catalogCategoryRailListPadV(context)
+      : widget.listPadV;
 
-  double get _rowExtent =>
+  double _rowExtent(BuildContext context) =>
       widget.rowHeight ??
-      (widget.compact
-          ? CatalogCategoryRail.rowExtentCompact
-          : CatalogCategoryRail.rowExtentDesktop);
+      catalogCategoryRailRowExtent(context, compact: widget.compact);
 
   List<CatalogCategoryItem> get _fixed =>
       [for (final e in widget.items) if (e.fixed) e];
@@ -148,12 +148,13 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   }
 
   void _scrollToIndex(int index, {int keepAbove = 2}) {
-    if (!_scroll.hasClients || index < 0) return;
+    if (!_scroll.hasClients || index < 0 || !mounted) return;
     final position = _scroll.position;
     final viewport = position.viewportDimension;
     if (viewport <= 0) return;
-    final itemTop = _listPadV + index * _rowExtent;
-    final target = (itemTop - keepAbove * _rowExtent).clamp(
+    final rowExtent = _rowExtent(context);
+    final itemTop = _listPadV(context) + index * rowExtent;
+    final target = (itemTop - keepAbove * rowExtent).clamp(
       0.0,
       position.maxScrollExtent,
     );
@@ -187,11 +188,18 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
         listIndex: listIndex,
         reorderIndex: canReorder ? reorderIndex : null,
         floating: _floatingId == item.id,
-        rowExtent: _rowExtent,
-        fontSize: widget.fontSize,
-        iconSize: widget.iconSize,
+        rowExtent: _rowExtent(context),
+        fontSize: widget.fontSize ??
+            catalogCategoryRailFontSize(context, compact: widget.compact),
+        iconSize: widget.iconSize ??
+            catalogCategoryRailIconSize(context, compact: widget.compact),
         rowPadH: widget.rowPadH,
-        pinSlotWidth: widget.pinSlotWidth,
+        rowPadV: widget.rowPadH == null
+            ? catalogCategoryRailRowPadV(context, compact: widget.compact)
+            : null,
+        pinSlotWidth: widget.pinSlotWidth == ShellTokens.categoryRailPinSlotWidth
+            ? catalogCategoryRailPinSlotWidth(context)
+            : widget.pinSlotWidth,
         onSelect: widget.onSelect == null
             ? null
             : () => widget.onSelect!(item.id),
@@ -221,12 +229,12 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
           controller: _scroll,
           slivers: [
             SliverPadding(
-              padding: EdgeInsets.symmetric(vertical: _listPadV),
+              padding: EdgeInsets.symmetric(vertical: _listPadV(context)),
               sliver: SliverMainAxisGroup(
                 slivers: [
                   if (fixed.isNotEmpty)
                     SliverFixedExtentList(
-                      itemExtent: _rowExtent,
+                      itemExtent: _rowExtent(context),
                       delegate: SliverChildBuilderDelegate(
                         (context, i) => rowFor(fixed[i], i),
                         childCount: fixed.length,
@@ -237,7 +245,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
                     canReorder
                         ? SliverReorderableList(
                             itemCount: movable.length,
-                            itemExtent: _rowExtent,
+                            itemExtent: _rowExtent(context),
                             proxyDecorator: _reorderProxy,
                             onReorderItem: (oldIndex, newIndex) {
                               widget.onReorder?.call(oldIndex, newIndex);
@@ -249,7 +257,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
                             ),
                           )
                         : SliverFixedExtentList(
-                            itemExtent: _rowExtent,
+                            itemExtent: _rowExtent(context),
                             delegate: SliverChildBuilderDelegate(
                               (context, i) =>
                                   rowFor(movable[i], fixed.length + i),
@@ -321,6 +329,7 @@ class _CatalogCategoryRow extends StatefulWidget {
     this.fontSize,
     this.iconSize,
     this.rowPadH,
+    this.rowPadV,
     this.reorderIndex,
     this.floating = false,
     this.onSelect,
@@ -340,6 +349,7 @@ class _CatalogCategoryRow extends StatefulWidget {
   final double? fontSize;
   final double? iconSize;
   final double? rowPadH;
+  final double? rowPadV;
   final int? reorderIndex;
   final bool floating;
   final VoidCallback? onSelect;
@@ -611,18 +621,30 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
         children: [
           Padding(
             padding: EdgeInsets.only(
-              left: widget.rowPadH ?? (widget.compact ? ShellTokens.categoryRailRowPadHCompact : ShellTokens.categoryRailRowPadH),
-              right: widget.rowPadH ?? (widget.compact ? ShellTokens.categoryRailRowPadVCompact : ShellTokens.categoryRailRowPadV),
+              left: widget.rowPadH ??
+                  catalogCategoryRailRowPadH(context, compact: widget.compact),
+              right: widget.rowPadV ??
+                  catalogCategoryRailRowPadV(context, compact: widget.compact),
             ),
             child: Row(
               children: [
                 if (widget.item.icon != null) ...[
                   Icon(
                     widget.item.icon,
-                    size: widget.iconSize ?? (widget.compact ? ShellTokens.categoryRailIconSizeCompact : ShellTokens.categoryRailIconSize),
+                    size: widget.iconSize ??
+                        catalogCategoryRailIconSize(
+                          context,
+                          compact: widget.compact,
+                        ),
                     color: iconColor,
                   ),
-                  SizedBox(width: widget.compact ? ShellTokens.categoryRailItemGapCompact : ShellTokens.categoryRailItemGap),
+                  SizedBox(
+                    width: catalogUsesTvDensity(context)
+                        ? ShellTokens.categoryRailItemGapTv
+                        : widget.compact
+                            ? ShellTokens.categoryRailItemGapCompact
+                            : ShellTokens.categoryRailItemGap,
+                  ),
                 ],
                 Expanded(
                   child: Text(
@@ -631,7 +653,11 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
                       color: titleColor,
-                      fontSize: widget.fontSize ?? (widget.compact ? ShellTokens.categoryRailFontSizeCompact : ShellTokens.categoryRailFontSize),
+                      fontSize: widget.fontSize ??
+                          catalogCategoryRailFontSize(
+                            context,
+                            compact: widget.compact,
+                          ),
                       fontWeight: lit || selected
                           ? FontWeight.w700
                           : FontWeight.w500,

@@ -103,6 +103,14 @@ class _PortalsChipState extends State<PortalsChip> {
 
   @override
   Widget build(BuildContext context) {
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final height = tvDensity ? ShellTokens.portalsChipHeightTv : widget.height;
+    final fontSize =
+        tvDensity ? ShellTokens.portalsChipFontSizeTv : widget.fontSize;
+    final iconSize =
+        tvDensity ? ShellTokens.portalsChipIconSizeTv : widget.iconSize;
+    final chevronSize =
+        tvDensity ? ShellTokens.portalsChipChevronSizeTv : widget.chevronSize;
     final tvFocused = widget.tvFocus &&
         ShellPaintScope.focusStyledOf(context, focused: _focused);
     final showHighlight = widget.selected || _active;
@@ -122,12 +130,14 @@ class _PortalsChipState extends State<PortalsChip> {
             ? Colors.white
             : Colors.white60;
     final hPad = widget.pad ??
-        (widget.compact
-            ? ShellTokens.portalsChipPadCompact
-            : ShellTokens.portalsChipPad);
+        (tvDensity
+            ? ShellTokens.portalsChipPadTv
+            : widget.compact
+                ? ShellTokens.portalsChipPadCompact
+                : ShellTokens.portalsChipPad);
     final packWidth = widget.width;
     final minW = packWidth ??
-        (widget.compact && !_revealSeats ? widget.height : 0.0);
+        (widget.compact && !_revealSeats ? height : 0.0);
     // Pack body column (inside pads). Seats prepend left of this so the chip
     // grows left while the body/chevron right edge stays put.
     final bodyW = packWidth != null ? (packWidth - hPad * 2) : null;
@@ -135,7 +145,7 @@ class _PortalsChipState extends State<PortalsChip> {
         ? (bodyW -
                 ShellTokens.portalsChipStatusSlot -
                 ShellTokens.portalsChipGap -
-                widget.chevronSize)
+                chevronSize)
             .clamp(
               ShellTokens.portalsChipLabelMaxMin,
               ShellTokens.portalsChipLabelMaxMax,
@@ -148,7 +158,7 @@ class _PortalsChipState extends State<PortalsChip> {
       overflow: TextOverflow.ellipsis,
       style: GoogleFonts.plusJakartaSans(
         color: fg,
-        fontSize: widget.fontSize,
+        fontSize: fontSize,
         fontWeight: FontWeight.w600,
         height: 1,
       ),
@@ -162,7 +172,7 @@ class _PortalsChipState extends State<PortalsChip> {
             ? _statusDot()
             : Icon(
                 Icons.add_link_rounded,
-                size: widget.iconSize,
+                size: iconSize,
                 color: tvFocused
                     ? ForjaShellColors.brandGreen
                     : _active
@@ -176,7 +186,7 @@ class _PortalsChipState extends State<PortalsChip> {
       widget.selected
           ? Icons.expand_less_rounded
           : Icons.expand_more_rounded,
-      size: widget.chevronSize,
+      size: chevronSize,
       color: fgMuted,
     );
 
@@ -222,7 +232,7 @@ class _PortalsChipState extends State<PortalsChip> {
       child: AnimatedContainer(
         duration: fill.duration,
         curve: fill.resolvedCurve,
-        height: widget.height,
+        height: height,
         constraints: BoxConstraints(minWidth: minW),
         padding: EdgeInsets.symmetric(horizontal: hPad),
         decoration: BoxDecoration(

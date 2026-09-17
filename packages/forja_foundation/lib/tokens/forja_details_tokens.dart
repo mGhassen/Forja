@@ -15,19 +15,25 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 abstract final class DetailsTokens {
   /// Extra pull-up for movie details body (cast/trailers) when the host opts in.
   static const double heroBodyOverlap = 120;
+  static const double heroBodyOverlapTv = 72;
 
   static const double heroContentTopInset = 88;
+  static const double heroContentTopInsetTv = 48;
   static const double heroDescriptionWidthFraction = 0.40;
 
   /// Gap after the hero before the first section, and between every section.
   static const double sectionSpacing = 48;
+  static const double sectionSpacingTv = 24;
 
   /// Alias — first section under hero uses the same rhythm as between sections.
   static const double bodyTopSpacing = sectionSpacing;
+  static const double bodyTopSpacingTv = sectionSpacingTv;
 
   /// Title → row gap inside cast / trailers / recommendations on details.
   static const double sectionTitleGap = 16;
+  static const double sectionTitleGapTv = 10;
   static const double bodyBottomSpacing = 80;
+  static const double bodyBottomSpacingTv = 48;
 
   /// Sources sliding panel on media details (player overlays use
   /// [ShellTokens.playerSidePanelPadding]).
@@ -69,30 +75,49 @@ abstract final class DetailsTokens {
   static const double firstBodyRowViewportFraction = 0.65;
 
   static const double castAvatarSize = 88;
+  static const double castAvatarSizeTv = 56;
   static const double castItemWidth = 112;
+  static const double castItemWidthTv = 72;
   static const double castGap = 32;
+  static const double castGapTv = 16;
   static const double trailerCardWidth = 200;
+  static const double trailerCardWidthTv = 140;
   static const double episodeSeasonWidth = 104;
+  static const double episodeSeasonWidthTv = 72;
   static const double episodeSeasonHeight = 156;
+  static const double episodeSeasonHeightTv = 108;
   static const double episodeCardWidth = 268;
+  static const double episodeCardWidthTv = 180;
   static const double heroPillHeight = ShellTokens.controlHeight;
+  static const double heroPillHeightTv = ShellTokens.controlHeightTv;
   static const double heroPillIconSize = 20;
+  static const double heroPillIconSizeTv = 14;
   static const double watchProviderTileSize = 40;
+  static const double watchProviderTileSizeTv = 28;
   static const double watchProviderGap = 8;
   static const double episodeRangeMenuHeight = 44;
+  static const double episodeRangeMenuHeightTv = 32;
   static const int episodeRangeMenuMaxRows = 8;
   static const double episodeRangeMenuRadius = 20;
   static const double factsRadius = 12;
   static const double sectionTitleFontSize = 18;
+  static const double sectionTitleFontSizeTv = 13;
   static const double railsGap = 12;
+  static const double railsGapTv = 8;
   static const double railsSectionGap = 24;
+  static const double railsSectionGapTv = 14;
   static const double detailsHeaderGap = 8;
   static const double detailsHeaderFontSize = 18;
+  static const double detailsHeaderFontSizeTv = 13;
 
   static const double heroTitleBlockHeight = 96;
+  static const double heroTitleBlockHeightTv = 64;
   static const double heroMetaBlockHeight = 32;
+  static const double heroMetaBlockHeightTv = 22;
   static const double heroActionsBlockHeight = 26;
+  static const double heroActionsBlockHeightTv = 20;
   static const double heroTitleSlotReserve = 64;
+  static const double heroTitleSlotReserveTv = 40;
 
   /// Hero chrome height from pack layout + viewport.
   static double heroHeight(

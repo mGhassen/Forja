@@ -57,8 +57,16 @@ class WidgetShelf extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final resolvedHeight =
+        tv ? ShellTokens.widgetShelfHeightTv : height;
+    final resolvedFontSize =
+        tv ? ShellTokens.widgetShelfFontSizeTv : fontSize;
+    final resolvedIconSize =
+        tv ? ShellTokens.widgetShelfIconSizeTv : iconSize;
+    final resolvedPad = tv ? ShellTokens.widgetShelfGapTv : pad;
     return Container(
-      height: height,
+      height: resolvedHeight,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(radius),
@@ -74,11 +82,11 @@ class WidgetShelf extends StatelessWidget {
               listIndex: i,
               isFirst: i == 0,
               isLast: i == items.length - 1,
-              height: height,
+              height: resolvedHeight,
               radius: radius,
-              fontSize: fontSize,
-              iconSize: iconSize,
-              pad: pad,
+              fontSize: resolvedFontSize,
+              iconSize: resolvedIconSize,
+              pad: resolvedPad,
               onTap: () => onSelect(items[i].id),
               onReload: onReload == null
                   ? null

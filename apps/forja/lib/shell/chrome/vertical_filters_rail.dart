@@ -6,6 +6,7 @@ import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/focus/forja_interactive.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
@@ -436,6 +437,25 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final tv = catalogUsesTvDensity(context);
+        final tileW = catalogProviderTileWidth(context);
+        final tileH = catalogProviderTileHeight(context);
+        final railW = catalogProviderRailWidth(context);
+        final railPadH = tv
+            ? ShellTokens.shellProviderRailPadHTv
+            : ShellTokens.shellProviderRailPadH;
+        final railPadV = tv
+            ? ShellTokens.shellProviderRailPadVTv
+            : ShellTokens.shellProviderRailPadV;
+        final railGap = tv
+            ? ShellTokens.shellProviderRailGapTv
+            : ShellTokens.shellProviderRailGap;
+        final tileRadius = tv
+            ? ShellTokens.shellProviderTileRadiusTv
+            : ShellTokens.shellProviderTileRadius;
+        final railRadius = tv
+            ? ShellTokens.shellProviderRailRadiusTv
+            : ShellTokens.shellProviderRailRadius;
         final maxH = constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : MediaQuery.sizeOf(context).height *
@@ -444,25 +464,21 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
           leadingFor: (o) => VerticalFilterLogoMark(
             option: o,
             packSourceUrl: widget.spec.packSourceUrl,
-            width: ShellTokens.shellProviderTileWidth,
-            height: ShellTokens.shellProviderTileHeight,
+            width: tileW,
+            height: tileH,
             inset: o.inset,
-            borderRadius: BorderRadius.circular(
-              ShellTokens.shellProviderTileRadius,
-            ),
+            borderRadius: BorderRadius.circular(tileRadius),
           ),
         );
         return Material(
           color: Colors.transparent,
           elevation: 0,
           child: Container(
-            width: ShellTokens.shellProviderRailWidth,
+            width: railW,
             constraints: BoxConstraints(maxHeight: maxH),
             decoration: BoxDecoration(
               color: AppTheme.bgDark,
-              borderRadius: BorderRadius.circular(
-                ShellTokens.shellProviderRailRadius,
-              ),
+              borderRadius: BorderRadius.circular(railRadius),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.45),
@@ -476,13 +492,12 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
               policy: OrderedTraversalPolicy(),
               child: SingleChildScrollView(
                 clipBehavior: Clip.none,
-                padding: const EdgeInsets.symmetric(
-                  vertical: ShellTokens.shellProviderRailPadV,
-                  horizontal: ShellTokens.shellProviderRailPadH,
+                padding: EdgeInsets.symmetric(
+                  vertical: railPadV,
+                  horizontal: railPadH,
                 ),
                 child: LogoMenuRail(
-                  width: ShellTokens.shellProviderRailWidth -
-                      ShellTokens.shellProviderRailPadH * 2,
+                  width: railW - railPadH * 2,
                   backgroundColor: Colors.transparent,
                   clipBehavior: Clip.none,
                   items: items,
@@ -501,7 +516,7 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
                       child: Padding(
                         padding: EdgeInsets.only(
                           bottom: i < widget.spec.options.length - 1
-                              ? ShellTokens.shellProviderRailGap
+                              ? railGap
                               : 0,
                         ),
                         child: _VerticalFilterTile(
@@ -554,12 +569,16 @@ class _VerticalFilterTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final tileW = ShellTokens.shellProviderTileWidth;
-    final tileH = ShellTokens.shellProviderTileHeight;
+    final tv = catalogUsesTvDensity(context);
+    final tileW = catalogProviderTileWidth(context);
+    final tileH = catalogProviderTileHeight(context);
+    final tileRadius = tv
+        ? ShellTokens.shellProviderTileRadiusTv
+        : ShellTokens.shellProviderTileRadius;
     final ring = selected ? ShellTokens.shellProviderTileSelectedRing : 0.0;
     final child = DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(tileRadius),
         border: Border.all(
           color: selected ? Colors.white : Colors.transparent,
           width: ring,
@@ -573,9 +592,7 @@ class _VerticalFilterTile extends StatelessWidget {
           width: tileW - ring * 2,
           height: tileH - ring * 2,
           inset: option.inset,
-          borderRadius: BorderRadius.circular(
-            ShellTokens.shellProviderTileRadius,
-          ),
+          borderRadius: BorderRadius.circular(tileRadius),
         ),
       ),
     );

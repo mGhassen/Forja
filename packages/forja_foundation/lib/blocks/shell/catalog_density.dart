@@ -52,3 +52,78 @@ double catalogContinueCardHeight(BuildContext context, {required bool wide}) {
 double catalogSideRailWidth(BuildContext context) => catalogUsesTvDensity(context)
     ? ShellTokens.categoryRailWidthTv
     : ShellTokens.categoryRailWidth;
+
+double catalogControlHeight(BuildContext context) =>
+    catalogUsesTvDensity(context)
+        ? ShellTokens.controlHeightTv
+        : ShellTokens.controlHeight;
+
+double catalogHomeTopBarHeight(BuildContext context) =>
+    catalogUsesTvDensity(context)
+        ? ShellTokens.homeTopBarHeightTv
+        : ShellTokens.homeTopBarHeight;
+
+double catalogCategoryRailRowExtent(BuildContext context, {bool compact = false}) {
+  if (catalogUsesTvDensity(context)) return ShellTokens.categoryRailRowExtentTv;
+  return compact
+      ? ShellTokens.categoryRailRowExtentCompact
+      : ShellTokens.categoryRailRowExtent;
+}
+
+double catalogCategoryRailFontSize(BuildContext context, {bool compact = false}) {
+  if (catalogUsesTvDensity(context)) return ShellTokens.categoryRailFontSizeTv;
+  return compact
+      ? ShellTokens.categoryRailFontSizeCompact
+      : ShellTokens.categoryRailFontSize;
+}
+
+double catalogCategoryRailIconSize(BuildContext context, {bool compact = false}) {
+  if (catalogUsesTvDensity(context)) return ShellTokens.categoryRailIconSizeTv;
+  return compact
+      ? ShellTokens.categoryRailIconSizeCompact
+      : ShellTokens.categoryRailIconSize;
+}
+
+double catalogProviderTileWidth(BuildContext context) =>
+    catalogUsesTvDensity(context)
+        ? ShellTokens.shellProviderTileWidthTv
+        : ShellTokens.shellProviderTileWidth;
+
+double catalogProviderTileHeight(BuildContext context) =>
+    catalogUsesTvDensity(context)
+        ? ShellTokens.shellProviderTileHeightTv
+        : ShellTokens.shellProviderTileHeight;
+
+double catalogProviderRailWidth(BuildContext context) =>
+    catalogUsesTvDensity(context)
+        ? ShellTokens.shellProviderRailWidthTv
+        : ShellTokens.shellProviderRailWidth;
+
+double catalogProviderRailInset(BuildContext context) =>
+    catalogUsesTvDensity(context)
+        ? ShellTokens.shellProviderRailInsetTv
+        : ShellTokens.shellProviderRailInset;
+
+double catalogCategoryRailListPadV(BuildContext context) =>
+    catalogUsesTvDensity(context)
+        ? ShellTokens.categoryRailListPadVTv
+        : ShellTokens.categoryRailListPadV;
+
+double catalogCategoryRailRowPadH(BuildContext context, {bool compact = false}) {
+  if (catalogUsesTvDensity(context)) return ShellTokens.categoryRailRowPadHTv;
+  return compact
+      ? ShellTokens.categoryRailRowPadHCompact
+      : ShellTokens.categoryRailRowPadH;
+}
+
+double catalogCategoryRailRowPadV(BuildContext context, {bool compact = false}) {
+  if (catalogUsesTvDensity(context)) return ShellTokens.categoryRailRowPadVTv;
+  return compact
+      ? ShellTokens.categoryRailRowPadVCompact
+      : ShellTokens.categoryRailRowPadV;
+}
+
+double catalogCategoryRailPinSlotWidth(BuildContext context) =>
+    catalogUsesTvDensity(context)
+        ? ShellTokens.categoryRailPinSlotWidthTv
+        : ShellTokens.categoryRailPinSlotWidth;

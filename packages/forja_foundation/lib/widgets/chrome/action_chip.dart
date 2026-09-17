@@ -69,11 +69,25 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
 
   @override
   Widget build(BuildContext context) {
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final height =
+        tvDensity ? ShellTokens.actionChipHeightTv : widget.height;
+    final fontSize =
+        tvDensity ? ShellTokens.actionChipFontSizeTv : widget.fontSize;
+    final iconSize = tvDensity
+        ? (widget.iconSize ?? ShellTokens.actionChipIconSizeTv)
+        : (widget.iconSize ?? (widget.iconOnly ? 20 : 14));
+    final padding = tvDensity
+        ? EdgeInsets.symmetric(
+            horizontal: ShellTokens.actionChipPadHTv,
+            vertical: ShellTokens.actionChipPadV,
+          )
+        : widget.padding;
     final active = _active || widget.selected;
     final tvFocused = ShellPaintScope.focusStyledOf(context, focused: _focused);
 
     if (widget.iconOnly) {
-      final size = widget.height;
+      final size = height;
       final fg = active || tvFocused ? Colors.white : Colors.white70;
       final idleAlpha = widget.selected ? 0.12 : 0.08;
       final circle = Container(
@@ -98,7 +112,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         child: Icon(
           widget.icon ?? Icons.refresh_rounded,
           color: fg,
-          size: widget.iconSize ?? 20,
+          size: iconSize,
         ),
       );
       return ShellPaintScope.focusableTap(
@@ -145,12 +159,12 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         borderRadius: BorderRadius.circular(widget.radius),
         border: Border.all(color: border, width: tvFocused ? 1.5 : 1),
       ),
-      padding: widget.padding,
+      padding: padding,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.icon != null) ...[
-            Icon(widget.icon, size: widget.iconSize ?? 14, color: fg),
+            Icon(widget.icon, size: iconSize, color: fg),
             if (widget.label.isNotEmpty) SizedBox(width: widget.gap),
           ],
           if (widget.label.isNotEmpty)
@@ -161,7 +175,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: fg,
-                  fontSize: widget.fontSize,
+                  fontSize: fontSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),

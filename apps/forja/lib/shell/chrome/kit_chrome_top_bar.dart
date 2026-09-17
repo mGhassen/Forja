@@ -12,6 +12,7 @@ import 'package:forja/shell/nav/shell_nav_rail.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -132,6 +133,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
       pageBuilder: (dialogContext, _, _) {
         final shellScope = ShellScope.of(context);
         final tvFocus = shellScope.inputPolicy.useFocusableMoodChips;
+        final usesTv = shellScope.metrics.usesTvDensity;
         void dismissMenu() => Navigator.of(dialogContext).pop();
 
         Widget menu = Stack(
@@ -161,7 +163,9 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                     child: IntrinsicWidth(
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          maxHeight: ShellTokens.homeCategoriesMenuMaxHeight,
+                          maxHeight: usesTv
+                              ? ShellTokens.homeCategoriesMenuMaxHeightTv
+                              : ShellTokens.homeCategoriesMenuMaxHeight,
                         ),
                         child: SingleChildScrollView(
                           padding: EdgeInsets.zero,
@@ -328,7 +332,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
         final logoHeight = usesTv
             ? ShellTokens.shellProviderTopBarIconHeightTv
             : ShellTokens.shellProviderTopBarIconHeight;
-        final barContentHeight = ShellTokens.homeTopBarHeight;
+        final barContentHeight = catalogHomeTopBarHeight(context);
 
         return ValueListenableBuilder<double>(
           valueListenable: widget.scrollOffset,
@@ -363,7 +367,9 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                   compactNav
                       ? ShellTokens.compactMenuLeadingInset(context)
                       : ShellTokens.bodyHorizontalPadding +
-                            ShellTokens.homeTopBarMenuLeadingInset,
+                            (usesTv
+                                ? ShellTokens.homeTopBarMenuLeadingInsetTv
+                                : ShellTokens.homeTopBarMenuLeadingInset),
                   ShellTokens.shellHeaderTopPadding,
                   ShellTokens.bodyHorizontalPadding,
                   0,
@@ -384,9 +390,12 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                     ShellTokens.kitTopBarTabGapCompactMaxWidth
                             ? ShellTokens.kitTopBarTabGapCompact
                             : ShellTokens.kitTopBarTabGapWide;
+                        final menuRowHeight = usesTv
+                            ? ShellTokens.homeMenuRowHeightTv
+                            : ShellTokens.homeMenuRowHeight;
                         final tabTextHeight = shellScaled(
                           context,
-                          ShellTokens.homeMenuRowHeight,
+                          menuRowHeight,
                         );
                         // Provider logo → Search? → pack menus[] → Categories?
                         final hasSearch = widget.onSearch != null;
@@ -639,17 +648,24 @@ class _CategoryTabState extends State<_CategoryTab> {
           t,
         )!;
         final underlineWidth = _underlineWidth(t, context);
+        final usesTv = ShellScope.metricsOf(context).usesTvDensity;
         final tabHeight = shellScaled(
           context,
-          ShellTokens.homeMenuRowHeight,
+          usesTv
+              ? ShellTokens.homeMenuRowHeightTv
+              : ShellTokens.homeMenuRowHeight,
         );
         final tabFont = shellScaled(
           context,
-          ShellTokens.kitTopBarTabFontSize,
+          usesTv
+              ? ShellTokens.kitTopBarTabFontSizeTv
+              : ShellTokens.kitTopBarTabFontSize,
         );
         final chevronSize = shellScaled(
           context,
-          ShellTokens.kitTopBarChevronSize,
+          usesTv
+              ? ShellTokens.kitTopBarChevronSizeTv
+              : ShellTokens.kitTopBarChevronSize,
         );
 
         return Column(
@@ -800,17 +816,24 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final policy = ShellScope.inputPolicyOf(context);
+    final usesTv = ShellScope.metricsOf(context).usesTvDensity;
     final focusStyled = policy.focusStyled(context, focused: _focused);
     final highlight = widget.selected || _hovered || focusStyled;
     final row = Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: ShellTokens.homeCategoriesMenuRowPadH,
-        vertical: ShellTokens.homeCategoriesMenuRowPadV,
+      padding: EdgeInsets.symmetric(
+        horizontal: usesTv
+            ? ShellTokens.homeCategoriesMenuRowPadHTv
+            : ShellTokens.homeCategoriesMenuRowPadH,
+        vertical: usesTv
+            ? ShellTokens.homeCategoriesMenuRowPadVTv
+            : ShellTokens.homeCategoriesMenuRowPadV,
       ),
       child: Text(
         widget.label,
         style: GoogleFonts.plusJakartaSans(
-          fontSize: ShellTokens.homeCategoriesMenuFontSize,
+          fontSize: usesTv
+              ? ShellTokens.homeCategoriesMenuFontSizeTv
+              : ShellTokens.homeCategoriesMenuFontSize,
           fontWeight: highlight ? FontWeight.w600 : FontWeight.w500,
           color: highlight ? Colors.white : cinematic.textSecondary,
         ),

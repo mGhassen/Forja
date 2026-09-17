@@ -12,6 +12,7 @@ class PackChromeScope extends InheritedWidget {
     required this.eventQuery,
     required this.refreshEpoch,
     this.refreshForceNetwork = true,
+    this.refreshKeepPainted = false,
     this.catalogHoldEpoch = 0,
     required this.viewStyle,
     required this.dynamicBarItems,
@@ -37,6 +38,9 @@ class PackChromeScope extends InheritedWidget {
   /// Last [onBumpRefresh] asked to skip pack disk cache (`force` / network).
   /// Portal switch sets false so IPTV can hit `iptv.catalog` disk cache.
   final bool refreshForceNetwork;
+
+  /// Soft list refresh (My List pin) — rebind feed but keep last painted grid.
+  final bool refreshKeepPainted;
 
   /// Bumped by [onClearCatalog] — drop painted grid / kinds and hold fetch
   /// until the next [refreshEpoch] bump (portal select while selectPortal runs).
@@ -114,6 +118,7 @@ class PackChromeScope extends InheritedWidget {
     return eventQuery != oldWidget.eventQuery ||
         refreshEpoch != oldWidget.refreshEpoch ||
         refreshForceNetwork != oldWidget.refreshForceNetwork ||
+        refreshKeepPainted != oldWidget.refreshKeepPainted ||
         catalogHoldEpoch != oldWidget.catalogHoldEpoch ||
         viewStyle != oldWidget.viewStyle ||
         !identical(selectedListItem, oldWidget.selectedListItem) ||

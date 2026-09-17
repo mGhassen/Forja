@@ -24,6 +24,7 @@ import 'package:forja/shell/routing/shell_tab_refresh.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
@@ -63,6 +64,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   String _eventQuery = '';
   int _refreshEpoch = 0;
   bool _refreshForceNetwork = true;
+  bool _refreshKeepPainted = false;
   int _catalogHoldEpoch = 0;
   String _viewStyle = '';
   final Map<String, List<Map<String, dynamic>>> _dynamicBarItems = {};
@@ -181,11 +183,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   }
 
   /// Bookmark / Simkl list write — only hubs with a status-tab list (My List).
+  /// Soft: keep painted grid; swap items when the new feed lands.
   void _onListFeedEpoch() {
     if (!mounted || !_layoutHasStatusTab()) return;
     setState(() {
       _refreshEpoch++;
       _refreshForceNetwork = true;
+      _refreshKeepPainted = true;
       if (_pageFeedRailIds.isNotEmpty) {
         _pageFeedFuture = _fetchPageFeed(forceRefresh: true);
       }
@@ -546,6 +550,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       eventQuery: _eventQuery,
       refreshEpoch: _refreshEpoch,
       refreshForceNetwork: _refreshForceNetwork,
+      refreshKeepPainted: _refreshKeepPainted,
       catalogHoldEpoch: _catalogHoldEpoch,
       viewStyle: _viewStyle,
       dynamicBarItems: Map<String, List<Map<String, dynamic>>>.unmodifiable(
@@ -596,6 +601,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         setState(() {
           _refreshEpoch++;
           _refreshForceNetwork = forceNetwork;
+          _refreshKeepPainted = false;
           if (!forceNetwork) {
             // Portal switch — drop stale Live kinds until the new feed publishes.
             _dynamicBarItems.clear();
@@ -684,7 +690,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             result,
             Positioned(
               key: ValueKey('kit-vf-rail-$tab'),
-              left: ShellTokens.shellProviderRailInset,
+              left: catalogProviderRailInset(context),
               top: 0,
               bottom: 0,
               child: Padding(

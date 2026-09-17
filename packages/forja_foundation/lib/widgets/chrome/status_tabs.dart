@@ -43,6 +43,7 @@ class ForjaStatusTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final useTv = ShellPaintScope.useTvFocusOf(context);
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
     final statusTabs = tabs ?? defaultTabs;
     final tvRowId = rowId ?? kKitStatusTabsRowId;
     return ShellPaintScope.tvRow(
@@ -58,12 +59,18 @@ class ForjaStatusTabs extends StatelessWidget {
           inShellTopBar
               ? ShellTokens.shellTopBarMenuLeadingInset(context)
               : ShellTokens.compactChromeLeadingInset(context),
-          inShellTopBar ? ShellTokens.kitTopBarStatusRowTopGap : 0,
+          inShellTopBar
+              ? (tvDensity
+                  ? ShellTokens.kitTopBarStatusRowTopGapTv
+                  : ShellTokens.kitTopBarStatusRowTopGap)
+              : 0,
           ShellTokens.bodyHorizontalPadding,
           0,
         ),
         child: SizedBox(
-          height: ShellTokens.kitTopBarStatusRowHeight,
+          height: tvDensity
+              ? ShellTokens.kitTopBarStatusRowHeightTv
+              : ShellTokens.kitTopBarStatusRowHeight,
           child: FocusTraversalGroup(
             policy: ReadingOrderTraversalPolicy(),
             child: Row(

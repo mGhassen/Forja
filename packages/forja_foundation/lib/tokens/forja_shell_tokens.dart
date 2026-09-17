@@ -172,6 +172,10 @@ abstract final class ShellTokens {
   static const double shellProviderTileHeight = 54;
   static const double shellProviderTileSize = shellProviderTileHeight;
   static const double shellProviderTileRadius = 6.5;
+  /// Leanback VF / provider rail — denser than desktop, still logo-readable.
+  static const double shellProviderTileWidthTv = 68;
+  static const double shellProviderTileHeightTv = 38;
+  static const double shellProviderTileRadiusTv = 5;
   static const double shellProviderTopBarLogoInset = 0.14;
   static const double shellProviderRailMaxHeightFraction = 0.88;
   static const Duration shellProviderRailScrollAnimation = Duration(
@@ -184,18 +188,26 @@ abstract final class ShellTokens {
   static const double shellProviderTileCheckWidth = 12;
   static const double shellProviderTileCheckHeight = 10;
   static const double shellProviderRailGap = 10;
+  static const double shellProviderRailGapTv = 6;
   static const double shellProviderRailPadH = 12;
+  static const double shellProviderRailPadHTv = 8;
   static const double shellProviderRailPadV = 14;
+  static const double shellProviderRailPadVTv = 8;
   static const double shellProviderRailWidth =
       shellProviderTileWidth + shellProviderRailPadH * 2;
+  static const double shellProviderRailWidthTv =
+      shellProviderTileWidthTv + shellProviderRailPadHTv * 2;
   static const double shellProviderRailInset = 10;
+  static const double shellProviderRailInsetTv = 6;
   static const double shellProviderRailRadius = 18;
+  static const double shellProviderRailRadiusTv = 12;
 
   /// Selected-provider mark before Films — rectangle (wordmark-friendly).
   static const double shellProviderTopBarIconWidth = 88;
   static const double shellProviderTopBarIconHeight = 40;
-  static const double shellProviderTopBarIconWidthTv = 92;
-  static const double shellProviderTopBarIconHeightTv = 42;
+  /// Leanback — denser than desktop (matches [tvChromeScale]).
+  static const double shellProviderTopBarIconWidthTv = 64;
+  static const double shellProviderTopBarIconHeightTv = 30;
 
   static const double shellProviderStripHeight =
       shellProviderCardHeight * shellProviderHoverScale + 4;
@@ -213,25 +225,36 @@ abstract final class ShellTokens {
   /// Home Films / TV / Categories text menu (not provider strip).
   /// Label band for Films / TV / Categories (underline sits below).
   static const double homeMenuRowHeight = 34;
+  static const double homeMenuRowHeightTv = 24;
   static const double homeTopBarHeight =
       shellHeaderTopPadding +
       homeMenuRowHeight +
       shellCategoryUnderlineGap +
       shellNavUnderlineHeight;
+  static const double homeTopBarHeightTv =
+      shellHeaderTopPadding +
+      homeMenuRowHeightTv +
+      shellCategoryUnderlineGap +
+      shellNavUnderlineHeight;
 
   /// Extra inset before the Films tab in [HomeTopBar].
   static const double homeTopBarMenuLeadingInset = 28;
+  static const double homeTopBarMenuLeadingInsetTv = 16;
 
   /// Hoisted `kit.menu` → `kit.tabs` gap in [KitTopBar].
   static const double kitTopBarStatusRowTopGap = 10;
+  static const double kitTopBarStatusRowTopGapTv = 6;
   static const double kitTopBarStatusRowHeight = 42;
+  static const double kitTopBarStatusRowHeightTv = 30;
   static const double kitTopBarHideSlideDistance = 56;
-  static const double kitTopBarTabGapTv = 28;
+  static const double kitTopBarTabGapTv = 16;
   static const double kitTopBarTabGapCompact = 20;
   static const double kitTopBarTabGapWide = 36;
   static const double kitTopBarTabGapCompactMaxWidth = 560;
   static const double kitTopBarTabFontSize = 17;
+  static const double kitTopBarTabFontSizeTv = 12;
   static const double kitTopBarChevronSize = 18;
+  static const double kitTopBarChevronSizeTv = 14;
   static const double kitTopBarIconGap = 6;
   static const double kitTopBarChevronGap = 4;
   static const double kitTopBarUnderlineHoverWidth = 28;
@@ -241,10 +264,17 @@ abstract final class ShellTokens {
   static const double homeCategoriesMenuOffsetY = 4;
   static const double homeCategoriesMenuRadius = 8;
   static const double homeCategoriesMenuRowPadH = 16;
+  static const double homeCategoriesMenuRowPadHTv = 12;
   static const double homeCategoriesMenuRowPadV = 10;
+  static const double homeCategoriesMenuRowPadVTv = 6;
   static const double homeCategoriesMenuFontSize = 14;
+  static const double homeCategoriesMenuFontSizeTv = 11;
   static double get kitTopBarTwoRowHeight =>
       homeTopBarHeight + kitTopBarStatusRowTopGap + kitTopBarStatusRowHeight;
+  static double get kitTopBarTwoRowHeightTv =>
+      homeTopBarHeightTv +
+      kitTopBarStatusRowTopGapTv +
+      kitTopBarStatusRowHeightTv;
 
   /// Leading inset for shell top-bar menu rows (matches [KitChromeTopBar]).
   static double shellTopBarMenuLeadingInset(BuildContext context) {
@@ -256,9 +286,12 @@ abstract final class ShellTokens {
 
   /// Home Categories popup: visible rows before scrolling.
   static const double homeCategoriesMenuRowHeight = 38;
+  static const double homeCategoriesMenuRowHeightTv = 28;
   static const int homeCategoriesMenuMaxVisibleRows = 8;
   static double get homeCategoriesMenuMaxHeight =>
       homeCategoriesMenuRowHeight * homeCategoriesMenuMaxVisibleRows;
+  static double get homeCategoriesMenuMaxHeightTv =>
+      homeCategoriesMenuRowHeightTv * homeCategoriesMenuMaxVisibleRows;
   static const double shellLogoWidth = 110;
 
   /// Music desktop sidebar width - global rail hidden when Music tab uses this.
@@ -447,6 +480,7 @@ abstract final class ShellTokens {
 
   /// Shared control / chip height (Portals, action chips, hero pills).
   static const double controlHeight = 40;
+  static const double controlHeightTv = 28;
   static const double sideRailWidth = 220;
   static const double sideRailWidthTv =
       sideRailWidth * posterCardWidthTv / posterCardWidthDesktop;
@@ -504,13 +538,18 @@ abstract final class ShellTokens {
 
   // --- Pack chrome defaults (overridable via layout props) ---
   static const double portalsChipHeight = controlHeight;
+  static const double portalsChipHeightTv = controlHeightTv;
   static const double portalsChipRadius = 8;
   static const double portalsChipFontSize = 12.5;
+  static const double portalsChipFontSizeTv = 10;
   static const double portalsChipIconSize = 16;
+  static const double portalsChipIconSizeTv = 12;
   static const double portalsChipChevronSize = 18;
+  static const double portalsChipChevronSizeTv = 14;
   static const double portalsChipSeatsFontSize = 12;
   static const double portalsChipPadCompact = 10;
   static const double portalsChipPad = 14;
+  static const double portalsChipPadTv = 8;
   static const double portalsChipStatusSlot = 14;
   static const double portalsChipGap = 8;
   static const double portalsChipGapTight = 6;
@@ -523,29 +562,42 @@ abstract final class ShellTokens {
   static const double categoryRailWidth = sideRailWidth;
   static const double categoryRailWidthTv = sideRailWidthTv;
   static const double categoryRailListPadV = 8;
+  static const double categoryRailListPadVTv = 4;
   static const double categoryRailPinSlotWidth = 28;
+  static const double categoryRailPinSlotWidthTv = 22;
   static const double categoryRailRowExtent = 46;
   static const double categoryRailRowExtentCompact = 42;
+  static const double categoryRailRowExtentTv = 32;
   static const double categoryRailLeftBarWidth = 2.5;
   static const double categoryRailRowPadH = 12;
   static const double categoryRailRowPadHCompact = 10;
+  static const double categoryRailRowPadHTv = 8;
   static const double categoryRailRowPadV = 8;
   static const double categoryRailRowPadVCompact = 6;
+  static const double categoryRailRowPadVTv = 4;
   static const double categoryRailIconSize = 20;
   static const double categoryRailIconSizeCompact = 18;
+  static const double categoryRailIconSizeTv = 14;
   static const double categoryRailItemGap = 12;
   static const double categoryRailItemGapCompact = 10;
+  static const double categoryRailItemGapTv = 8;
   static const double categoryRailFontSize = 14;
   static const double categoryRailFontSizeCompact = 13;
+  static const double categoryRailFontSizeTv = 11;
   static const double categoryRailPinRadius = 6;
   static const double categoryRailPinPad = 4;
 
   static const double hubTopBarItemGap = 8;
+  static const double hubTopBarItemGapTv = 6;
   static const double hubTopBarSectionGap = 12;
+  static const double hubTopBarSectionGapTv = 8;
   static const double hubTopBarTabRadius = 8;
   static const double hubTopBarTabPadH = 10;
+  static const double hubTopBarTabPadHTv = 8;
   static const double hubTopBarTabPadV = 8;
+  static const double hubTopBarTabPadVTv = 4;
   static const double hubTopBarTabFontSize = 14;
+  static const double hubTopBarTabFontSizeTv = 11;
 
   static const double topBarActionsHeight = controlHeight;
   static const double topBarActionsGap = 8;
@@ -554,30 +606,50 @@ abstract final class ShellTokens {
   static const double topBarTitleFontSize = 16;
 
   static const double actionChipHeight = controlHeight;
+  static const double actionChipHeightTv = controlHeightTv;
   static const double actionChipRadius = 20;
   static const double actionChipMaxWidth = 220;
   static const double actionChipPadH = 12;
+  static const double actionChipPadHTv = 8;
   static const double actionChipPadV = 6;
   static const double actionChipFontSize = 11.5;
+  static const double actionChipFontSizeTv = 10;
   static const double actionChipGap = 6;
   static const double actionChipIconSize = 16;
+  static const double actionChipIconSizeTv = 12;
 
   static const double shellChipRadiusPill = 20;
   static const double shellChipRadius = 8;
   static const double shellChipFontSize = 12.5;
+  static const double shellChipFontSizeTv = 10;
   static const double shellChipIconSize = 14;
   static const double shellChipGap = 6;
   static const double shellChipGapTight = 4;
 
   static const double widgetShelfHeight = 36;
+  static const double widgetShelfHeightTv = 28;
   static const double widgetShelfRadius = 8;
   static const double widgetShelfFontSize = 12.5;
+  static const double widgetShelfFontSizeTv = 10;
   static const double widgetShelfIconSize = 16;
+  static const double widgetShelfIconSizeTv = 12;
   static const double widgetShelfGap = 14;
+  static const double widgetShelfGapTv = 8;
 
   static const double viewButtonHeight = 36;
+  static const double viewButtonHeightTv = 28;
   static const double viewButtonIconSize = 18;
+  static const double viewButtonIconSizeTv = 14;
   static const double viewButtonGap = 16;
+  static const double viewButtonGapTv = 10;
+
+  /// Accent mood circles on TV (leanback catalog rows).
+  static const double moodCircleSizeTv = 42;
+  static const double moodCircleItemWidthTv = 58;
+  static const double moodCircleGapTv = 6;
+  static const double moodCircleLabelFontSizeTv = 9;
+  static const double moodCircleLabelGapTv = 6;
+  static const double moodCircleLabelLineHeightTv = 1.15;
 
   static const double eventSearchCollapsed = controlHeight;
   static const double eventSearchExpanded = 260;
@@ -609,9 +681,24 @@ abstract final class ShellTokens {
   static double get tvLayoutScale =>
       posterCardWidthTv / posterCardWidthDesktop;
 
+  /// Leanback interactive chrome (top bar, chips, pills, VF tiles).
+  /// Milder than [tvLayoutScale] so focus targets stay readable.
+  static const double tvChromeScale = 0.72;
+
   /// Scale a desktop token by [tvLayoutScale] when [tv] is true.
   static double densityScale(double value, {required bool tv}) =>
       tv ? value * tvLayoutScale : value;
+
+  /// Scale desktop chrome by [tvChromeScale] when [tv] is true.
+  static double chromeScale(
+    double value, {
+    required bool tv,
+    double min = 0,
+  }) {
+    if (!tv) return value;
+    final s = value * tvChromeScale;
+    return s < min ? min : s;
+  }
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
   static const double homeSectionTitleTop = 36;
