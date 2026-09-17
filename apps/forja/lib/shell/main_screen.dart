@@ -366,6 +366,12 @@ class _MainScreenState extends ConsumerState<MainScreen>
           _invalidateHubTabsAfterPackChange(remountBuilders: true);
         }
         await _loadNavbarConfig();
+        if (!mounted) return;
+        // Invalidate drops hubs from [_mountedTabIds]; navbar reload may early-return
+        // when ids are unchanged (post-install promote already painted). Without
+        // remounting the selected hub, the rail stays on it but the body is empty
+        // until the user taps the tab again.
+        _ensureSelectedKitTabMounted();
       }();
       _hubNavReloadInFlight = run;
       try {
@@ -391,10 +397,27 @@ class _MainScreenState extends ConsumerState<MainScreen>
       // reparent and keep the old memoized rails).
       _tabKeys.remove(id);
     }
+    // Selected hub remount runs after [_loadNavbarConfig] via
+    // [_ensureSelectedKitTabMounted] (promote / index must settle first).
+  }
+
+  /// Keep the selected hub body mounted after pack-nav invalidate.
+  ///
+  /// [ShellBody] only builds tabs in [_mountedTabIds]. Invalidate clears that
+  /// set; a no-op navbar reload must not leave the rail on an empty slot.
+  void _ensureSelectedKitTabMounted() {
     final current = _currentTabId;
-    if (current != null && PluginNavRegistry.isKitTab(current)) {
+    if (current == null || !PluginNavRegistry.isKitTab(current)) return;
+    if (_mountedTabIds.contains(current)) return;
+    setState(() {
+      _mountedTabIds.add(current);
+      _touchTab(current);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _currentTabId != current) return;
+      _notifyTabShown(current);
       _refreshTabIfStale(current, force: true);
-    }
+    });
   }
 
   Future<void> _loadNavbarConfig() async {
