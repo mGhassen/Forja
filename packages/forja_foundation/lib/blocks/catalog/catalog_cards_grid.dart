@@ -58,6 +58,52 @@ Map<String, dynamic> catalogItemProps(Map<String, dynamic> item) {
       .toString()
       .trim();
   if (streamId.isNotEmpty) raw['streamId'] = streamId;
+
+  // Home / My List flat rows — same card chrome as painted posters.
+  if (raw['rating'] is! num) {
+    final vote = raw['voteAverage'] ?? item['voteAverage'] ?? item['rating'];
+    if (vote is num && vote > 0) raw['rating'] = vote.toDouble();
+  }
+  final subtitle = (raw['subtitle'] ?? '').toString().trim();
+  if (subtitle.isEmpty) {
+    final release = (raw['releaseInfo'] ??
+            item['releaseInfo'] ??
+            raw['releaseDate'] ??
+            item['releaseDate'] ??
+            raw['year'] ??
+            item['year'] ??
+            '')
+        .toString()
+        .trim();
+    final year = release.contains('-')
+        ? release.split('-').first
+        : (release.length >= 4 ? release.substring(0, 4) : release);
+    final kind = (raw['mediaType'] ??
+            raw['type'] ??
+            raw['kind'] ??
+            item['mediaType'] ??
+            item['type'] ??
+            item['kind'] ??
+            '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final typeLabel = switch (kind) {
+      'tv' || 'series' || 'shows' => 'TV',
+      'movie' || 'movies' => 'FILM',
+      'anime' => 'ANIME',
+      'asian_drama' || 'drama' => 'DRAMA',
+      _ => null,
+    };
+    final parts = <String>[
+      if (year.isNotEmpty) year,
+      if (typeLabel != null) typeLabel,
+    ];
+    if (parts.isNotEmpty) raw['subtitle'] = parts.join(' • ');
+  }
+  final badge = (raw['badge'] ?? item['badge'] ?? '').toString().trim();
+  if (badge.isNotEmpty) raw['badge'] = badge;
+
   return raw;
 }
 
@@ -844,22 +890,26 @@ class InteractiveEventCard extends StatefulWidget {
   final int? gridIndex;
   final int? gridColumns;
 
-  static const widthScale = 1.15;
-  static const heightScale = 1.32;
-
   static double cardWidth(BuildContext context) {
     final base = catalogContinueCardWidth(context, wide: true);
     if (ShellPaintScope.usesTvDensityOf(context)) return base;
-    return base * widthScale;
+    return base * EventCardTokens.desktopWidthScale;
   }
 
   static double cardHeight(BuildContext context) {
     final base = catalogContinueCardHeight(context, wide: true);
     if (ShellPaintScope.usesTvDensityOf(context)) {
       return base +
-          InteractivePosterCard.scaled(context, 40).clamp(32.0, 48.0);
+          InteractivePosterCard.scaled(context, EventCardTokens.tvCaptionExtra)
+              .clamp(
+                EventCardTokens.tvCaptionExtraMin,
+                EventCardTokens.tvCaptionExtraMax,
+              );
     }
-    return (base * heightScale).clamp(190.0, 230.0);
+    return (base * EventCardTokens.desktopHeightScale).clamp(
+      EventCardTokens.desktopHeightMin,
+      EventCardTokens.desktopHeightMax,
+    );
   }
 
   @override

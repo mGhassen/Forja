@@ -640,6 +640,10 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
     // Install / remove / version change only. Enable toggles reuse the same
     // inventory key — re-checking flashed "Checking for plugin updates…" and
     // rebuilt the whole Forja Packs pane on every switch flip.
+    //
+    // Use listen only — never watch enginePacksProvider from here. The nav
+    // badge used to watch this notifier at boot and pull packs before
+    // LocalDataScope was bound, caching [] forever.
     ref.listen(enginePacksProvider, (_, next) {
       final packs = next.valueOrNull;
       if (packs == null || packs.isEmpty) return;
@@ -670,6 +674,9 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
         checking: false,
         lastChecked: DateTime.now(),
       );
+      PluginInstallCoordinator.instance.publishPendingUpdateCount(
+        result.updates.length,
+      );
     } catch (_) {
       if (!identical(_checkToken, token)) return;
       final latest = stateOrNull ?? current;
@@ -683,10 +690,10 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
   }
 
   Future<void> refresh() async {
-    final packs = ref.read(enginePacksProvider).valueOrNull ?? const [];
-    if (packs.isNotEmpty) {
-      _lastInventoryKey = inventoryKey(packs);
-    }
+    final packs = ref.read(enginePacksProvider).valueOrNull;
+    // Empty inventory: do not stamp lastChecked or the nav badge never retries.
+    if (packs == null || packs.isEmpty) return;
+    _lastInventoryKey = inventoryKey(packs);
     await check(packs);
   }
 
@@ -700,6 +707,7 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
       checking: state.checking,
       lastChecked: state.lastChecked,
     );
+    PluginInstallCoordinator.instance.publishPendingUpdateCount(next.length);
   }
 }
 
@@ -717,10 +725,17 @@ class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
       });
     }
 
+    Future<void> onScopeChanged() async {
+      if (disposed) return;
+      await reload();
+    }
+
     n.addListener(listener);
+    LocalDataScope.addListener(onScopeChanged);
     ref.onDispose(() {
       disposed = true;
       n.removeListener(listener);
+      LocalDataScope.removeListener(onScopeChanged);
     });
     return EngineService.instance.listUserPacks();
   }

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/addons/addons_host.dart';
-import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/shell/router.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/features/settings/shell/visibility_provider.dart';
@@ -12,6 +11,7 @@ import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/nav/pack_update_alert_icon.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
@@ -20,6 +20,10 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_tab_header.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
+int _packUpdateCount() {
+  return PluginInstallCoordinator.instance.pendingUpdateCount.value;
+}
 
 /// Hub chrome: split sidebar on wide (incl. Android TV 1080p+), list→push on compact.
 class SettingsHubScaffold extends ConsumerStatefulWidget {
@@ -420,34 +424,40 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(
-                  SettingsTokens.pagePadding,
-                  8,
-                  SettingsTokens.pagePadding,
-                  48,
-                ),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final c = categories[index];
-                  final packUpdates =
-                      c.id == SettingsCategoryId.forjaPacks
-                      ? ref.watch(enginePackUpdatesProvider).count
-                      : 0;
-                  return SettingsCategoryTile(
-                    icon: c.icon,
-                    leading: packUpdates > 0
-                        ? const PackUpdateAlertIcon(
-                            size: SettingsTokens.categoryIconSize,
-                          )
-                        : null,
-                    title: c.title,
-                    subtitle: c.subtitle,
-                    selected: false,
-                    adminOnly: c.adminOnly,
-                    listIndex: index,
-                    focusNode: index == 0 ? widget.firstTileFocusNode : null,
-                    onTap: () => widget.onSelect(c.id),
+              child: ValueListenableBuilder<int>(
+                valueListenable:
+                    PluginInstallCoordinator.instance.pendingUpdateCount,
+                builder: (context, _, child) {
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(
+                      SettingsTokens.pagePadding,
+                      8,
+                      SettingsTokens.pagePadding,
+                      48,
+                    ),
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      final c = categories[index];
+                      final packUpdates = c.id == SettingsCategoryId.forjaPacks
+                          ? _packUpdateCount()
+                          : 0;
+                      return SettingsCategoryTile(
+                        icon: c.icon,
+                        leading: packUpdates > 0
+                            ? const PackUpdateAlertIcon(
+                                size: SettingsTokens.categoryIconSize,
+                              )
+                            : null,
+                        title: c.title,
+                        subtitle: c.subtitle,
+                        selected: false,
+                        adminOnly: c.adminOnly,
+                        listIndex: index,
+                        focusNode:
+                            index == 0 ? widget.firstTileFocusNode : null,
+                        onTap: () => widget.onSelect(c.id),
+                      );
+                    },
                   );
                 },
               ),
@@ -480,62 +490,67 @@ class _CategorySidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final headerTop = tv ? 28.0 : 12.0;
-    final packUpdateCount = ref.watch(enginePackUpdatesProvider).count;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(16, headerTop, 16, 8),
-          child: const ShellTabHeader(
-            title: 'Settings',
-            padding: EdgeInsets.zero,
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final c = categories[index];
-              final showPackAlert = c.id == SettingsCategoryId.forjaPacks &&
-                  packUpdateCount > 0;
-              return SettingsCategoryTile(
-                icon: c.icon,
-                leading: showPackAlert
-                    ? const PackUpdateAlertIcon(
-                        size: SettingsTokens.categoryIconSize,
-                      )
-                    : null,
-                title: c.title,
-                subtitle: c.subtitle,
-                selected: c.id == selectedId,
-                adminOnly: c.adminOnly,
-                listIndex: index,
-                // Pin default/restore focus on the *selected* tile — never
-                // index 0 (Profile). Resume focus dump onto hub-0 was
-                // selecting Profile via onFocusSelect.
-                focusNode: c.id == selectedId ? firstTileFocusNode : null,
-                tvRowId: categoryRowId,
-                tvItemIndex: categoryRowId != null ? index : null,
-                onRightEdge: onEnterDetail == null
-                    ? null
-                    : () => onEnterDetail!(c.id),
-                // ↑/↓ selects only; OK / Right enters the independent detail pane.
-                onFocusSelect:
-                    onEnterDetail == null ? null : () => onSelect(c.id),
-                onTap: () {
-                  if (onEnterDetail != null) {
-                    onEnterDetail!(c.id);
-                  } else {
-                    onSelect(c.id);
-                  }
+    return ValueListenableBuilder<int>(
+      valueListenable: PluginInstallCoordinator.instance.pendingUpdateCount,
+      builder: (context, _, child) {
+        final packUpdateCount = _packUpdateCount();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, headerTop, 16, 8),
+              child: const ShellTabHeader(
+                title: 'Settings',
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final c = categories[index];
+                  final showPackAlert = c.id == SettingsCategoryId.forjaPacks &&
+                      packUpdateCount > 0;
+                  return SettingsCategoryTile(
+                    icon: c.icon,
+                    leading: showPackAlert
+                        ? const PackUpdateAlertIcon(
+                            size: SettingsTokens.categoryIconSize,
+                          )
+                        : null,
+                    title: c.title,
+                    subtitle: c.subtitle,
+                    selected: c.id == selectedId,
+                    adminOnly: c.adminOnly,
+                    listIndex: index,
+                    // Pin default/restore focus on the *selected* tile — never
+                    // index 0 (Profile). Resume focus dump onto hub-0 was
+                    // selecting Profile via onFocusSelect.
+                    focusNode: c.id == selectedId ? firstTileFocusNode : null,
+                    tvRowId: categoryRowId,
+                    tvItemIndex: categoryRowId != null ? index : null,
+                    onRightEdge: onEnterDetail == null
+                        ? null
+                        : () => onEnterDetail!(c.id),
+                    // ↑/↓ selects only; OK / Right enters the independent detail pane.
+                    onFocusSelect:
+                        onEnterDetail == null ? null : () => onSelect(c.id),
+                    onTap: () {
+                      if (onEnterDetail != null) {
+                        onEnterDetail!(c.id);
+                      } else {
+                        onSelect(c.id);
+                      }
+                    },
+                  );
                 },
-              );
-            },
-          ),
-        ),
-        const SettingsSidebarFooter(),
-      ],
+              ),
+            ),
+            const SettingsSidebarFooter(),
+          ],
+        );
+      },
     );
   }
 }

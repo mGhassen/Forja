@@ -530,9 +530,10 @@ class _RailLogoState extends State<_RailLogo> {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ShellScope.metricsOf(context);
     final logo = Image.asset(
       'assets/icon/logo-dark.png',
-      width: ShellTokens.navRailLogoWidth,
+      width: metrics.navRailLogoWidth,
       fit: BoxFit.contain,
     );
 
@@ -589,13 +590,13 @@ class _RailLogoState extends State<_RailLogo> {
 
     if (onTap == null) {
       return SizedBox(
-        width: ShellTokens.navRailWidth,
+        width: metrics.navRailWidth,
         child: Center(child: content),
       );
     }
 
     return SizedBox(
-      width: ShellTokens.navRailWidth,
+      width: metrics.navRailWidth,
       child: Center(
         child: Focus(
           onFocusChange: (focused) => setState(() => _focused = focused),
@@ -1204,8 +1205,9 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         },
         child: Builder(
           builder: (context) {
+            final railW = ShellScope.metricsOf(context).navRailWidth;
             return SizedBox(
-              width: ShellTokens.navRailWidth,
+              width: railW,
               height: contentHeight,
               child: Center(
                 child: MouseRegion(
@@ -1226,7 +1228,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                         : null,
                     behavior: HitTestBehavior.opaque,
                     child: SizedBox(
-                      width: ShellTokens.navRailWidth,
+                      width: railW,
                       height: contentHeight,
                       // Top-pin icon stack so focus scale + label never shift the
                       // icon baseline relative to unlabeled neighbors.
@@ -1235,7 +1237,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           SizedBox(
-                            width: ShellTokens.navRailWidth,
+                            width: railW,
                             height: renderedIconSize *
                                 ShellTokens.navRailIconHoverScale,
                             child: Align(
@@ -1291,7 +1293,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                           ),
                           SizedBox(
                             height: labelSlotHeight,
-                            width: ShellTokens.navRailWidth,
+                            width: railW,
                             child: Center(
                               child: showLabel
                                   ? _NavRailLabel(

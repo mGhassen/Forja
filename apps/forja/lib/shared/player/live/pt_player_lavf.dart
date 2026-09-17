@@ -9,16 +9,13 @@ mixin _PtPlayerLavf on _PtPlayerEngineCore {
   Future<void> _enginePlay();
   void _applyCacheAheadSample(double aheadSecs, {required String source});
 
-  /// ipdigi `stream-lavf-o` — progressive and HLS.
-  static const _lavfReconnect =
-      'reconnect=1,'
-      'reconnect_at_eof=1,'
-      'reconnect_streamed=1,'
-      'reconnect_on_network_error=1,'
-      'reconnect_delay_max=5';
-
-  Future<void> _applyStreamLavfReconnect(NativePlayer p) async {
-    await p.setProperty('stream-lavf-o', _lavfReconnect);
+  /// Progressive TS uses [iptvStreamLavfO] reconnect; HLS is `reconnect=0`
+  /// (playlist EOF loop — issue 273).
+  Future<void> _applyStreamLavfReconnect(
+    NativePlayer p, {
+    String? streamUrl,
+  }) async {
+    await p.setProperty('stream-lavf-o', iptvStreamLavfO(streamUrl: streamUrl));
   }
 
   void _invalidatePendingLiveEdgeSnaps() {

@@ -1188,6 +1188,27 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
+  /// Poster grid pin (My List / Home parity) — falls back after live fav star.
+  Widget? _listPosterPinAccessory(
+    BuildContext context,
+    Map<String, dynamic> item, {
+    required bool active,
+  }) {
+    final live = _liveFavoriteAccessory(
+      context,
+      item,
+      active: active,
+    );
+    if (live != null) return live;
+    return PackPaintArtifact.listPinFor(
+      context: context,
+      pluginId: pluginId,
+      props: PackPaintArtifact.propsOf(item),
+      open: item['open'] ?? item['metaOpen'] ?? item['catalogOpen'],
+      meta: item['meta'],
+    );
+  }
+
   Widget _mountHero(BuildContext context, Map<String, dynamic> node) {
     final items = node['items'];
     if (items is! List || items.isEmpty) return const SizedBox.shrink();
@@ -1686,7 +1707,7 @@ class PackPaintTree extends StatelessWidget {
                       ? null
                       : spec['emptyDescription']?.toString(),
               emptyAction: _listEmptyAction(context, spec),
-              itemAccessory: _liveFavoriteAccessory,
+              itemAccessory: _listPosterPinAccessory,
               itemHealthListenable: healthListenableFor,
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
@@ -1772,7 +1793,7 @@ class PackPaintTree extends StatelessWidget {
                                   ? null
                                   : spec['emptyDescription']?.toString(),
                           emptyAction: _listEmptyAction(context, spec),
-                          itemAccessory: _liveFavoriteAccessory,
+                          itemAccessory: _listPosterPinAccessory,
                           itemHealthListenable: healthListenableFor,
                           onItemInteractiveActive: onInteractiveActive,
                           loadEpgProgrammes: loadShortEpgProgrammes,
@@ -2556,24 +2577,30 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
 
   Widget _galleryOverlay(BuildContext context) {
     final tab = widget.tabId;
-    return shellFocusableTap(
-      context: context,
-      focusNode: _galleryFocus,
-      tvTabId: tab.isEmpty ? null : tab,
-      tvZone: ShellTvZone.hero,
-      scaleOnFocus: 1,
-      ensureVisibleMode: ShellPaintEnsureVisible.off,
-      onLeftEdge: () => _stepFilm(-1),
-      onRightEdge: () => _stepFilm(1),
-      onUpEdge: _focusTopBar,
-      onDownEdge: _focusPlay,
-      onTap: () {
-        final details = widget.slides.isEmpty
-            ? null
-            : widget.slides[_heroKey.currentState?.heroIndex ?? 0].onDetails;
-        details?.call();
-      },
-      child: const SizedBox.expand(),
+    final policy = ShellScope.inputPolicyOf(context);
+    // Desktop shares the TV focus graph but still needs trackpad/mouse swipes
+    // on the PageView — opaque gallery hit target would block them.
+    return IgnorePointer(
+      ignoring: policy.scaleOnHover,
+      child: shellFocusableTap(
+        context: context,
+        focusNode: _galleryFocus,
+        tvTabId: tab.isEmpty ? null : tab,
+        tvZone: ShellTvZone.hero,
+        scaleOnFocus: 1,
+        ensureVisibleMode: ShellPaintEnsureVisible.off,
+        onLeftEdge: () => _stepFilm(-1),
+        onRightEdge: () => _stepFilm(1),
+        onUpEdge: _focusTopBar,
+        onDownEdge: _focusPlay,
+        onTap: () {
+          final details = widget.slides.isEmpty
+              ? null
+              : widget.slides[_heroKey.currentState?.heroIndex ?? 0].onDetails;
+          details?.call();
+        },
+        child: const SizedBox.expand(),
+      ),
     );
   }
 

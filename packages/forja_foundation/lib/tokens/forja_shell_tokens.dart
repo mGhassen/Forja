@@ -424,6 +424,14 @@ abstract final class ShellTokens {
   static const double posterCardWidthMobile = 165;
   static const double posterCardWidthDesktop = 190;
   static const double posterCardWidthTv = 70;
+
+  /// Leanback chrome — same ratio as [posterCardWidthTv] / [posterCardWidthDesktop].
+  static const double navRailWidthTv =
+      navRailWidth * posterCardWidthTv / posterCardWidthDesktop;
+  static const double navRailLogoWidthTv =
+      navRailLogoWidth * posterCardWidthTv / posterCardWidthDesktop;
+  static const double navRailLogoHeightTv =
+      navRailLogoWidthTv * 160 / 370;
   static const double posterCardWideBreakpoint = 900;
   static const double posterCardAspectRatio = 1.5;
   static const double posterCardRadius = 14;
@@ -438,6 +446,8 @@ abstract final class ShellTokens {
   /// Shared control / chip height (Portals, action chips, hero pills).
   static const double controlHeight = 40;
   static const double sideRailWidth = 220;
+  static const double sideRailWidthTv =
+      sideRailWidth * posterCardWidthTv / posterCardWidthDesktop;
   static const double emptyShellSideRailWidth = 72;
   static const double sidePanelWidth = 380;
   static const double focusBorderRadius = 12;
@@ -505,6 +515,7 @@ abstract final class ShellTokens {
   static const double portalsChipLabelMaxFallback = 160;
 
   static const double categoryRailWidth = sideRailWidth;
+  static const double categoryRailWidthTv = sideRailWidthTv;
   static const double categoryRailListPadV = 8;
   static const double categoryRailPinSlotWidth = 28;
   static const double categoryRailRowExtent = 46;
@@ -591,6 +602,10 @@ abstract final class ShellTokens {
   /// TV chrome scale vs desktop poster baseline — derived, not a second magic number.
   static double get tvLayoutScale =>
       posterCardWidthTv / posterCardWidthDesktop;
+
+  /// Scale a desktop token by [tvLayoutScale] when [tv] is true.
+  static double densityScale(double value, {required bool tv}) =>
+      tv ? value * tvLayoutScale : value;
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
   static const double homeSectionTitleTop = 36;

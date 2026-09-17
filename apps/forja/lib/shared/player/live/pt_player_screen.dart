@@ -111,7 +111,21 @@ enum PortalLiveSourceKind {
 @visibleForTesting
 bool iptvUrlLooksLikeHls(String url) {
   final lower = url.toLowerCase();
-  return lower.contains('.m3u8');
+  // Local `/hls-proxy?url=…m3u8` keeps `.m3u8` in the query; also match path.
+  return lower.contains('.m3u8') || lower.contains('/hls-proxy');
+}
+
+/// MediaKit `stream-lavf-o` for live open — HLS off (issue 273), progressive on.
+@visibleForTesting
+String iptvStreamLavfO({String? streamUrl}) {
+  if (streamUrl != null && iptvUrlLooksLikeHls(streamUrl)) {
+    return 'reconnect=0';
+  }
+  return 'reconnect=1,'
+      'reconnect_at_eof=1,'
+      'reconnect_streamed=1,'
+      'reconnect_on_network_error=1,'
+      'reconnect_delay_max=5';
 }
 
 /// HLS ABR masters (DAI / CloudFront) probe every variant before first paint.

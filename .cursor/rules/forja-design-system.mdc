@@ -30,7 +30,7 @@ Composers take **props + callbacks only** (RFC-095). No `features/**` imports, g
 - **Flat cinematic shell** — no `BackdropFilter`, frosted glass, or ambient glows on shell nav, home chrome, or player control bars.
 - **Exception — sliding side panels:** media-details Sources uses `ForjaFrostedPanel` with `BackdropFilter`. Player overlays (Episodes, torrent files) pass a video screenshot as `frozenFrame` and blur that with `ImageFiltered` — do **not** put `BackdropFilter` over live video (freezes macOS). Do not scatter ad-hoc blur elsewhere.
 - **Hero overlays** use `ForjaShellColors.cinematic` (fixed light-on-imagery), not `AppTheme.primaryColor`.
-- **Spacing and breakpoints** come from `ShellTokens` / `DetailsTokens` — do not hardcode magic numbers that already exist there.
+- **Spacing and breakpoints** come from `ShellTokens` / `DetailsTokens` / `EventCardTokens` — do not hardcode magic numbers that belong in tokens ([no-hardcode](./forja-foundation-no-hardcode.mdc)).
 
 ## Tokens
 
@@ -49,9 +49,16 @@ Composers take **props + callbacks only** (RFC-095). No `features/**` imports, g
 | Hero / body | `heroHeight`, `sectionSpacing`, `heroBodyOverlap`, `contentHorizontalPadding` |
 | Sources panel | `sourcesPanelPadding` (player overlays keep `ShellTokens.playerSidePanelPadding`) |
 
+### `EventCardTokens` — live event / match cards
+
+| Area | Use |
+|------|-----|
+| Density | `desktopWidthScale`, `desktopHeightScale`, `desktopHeightMin` / `Max`, TV caption extras |
+| Paint | `radius`, type sizes, play overlay sizes, `paintFallbackWidth` / `Height` |
+
 Details gutters deliberately alias `ShellTokens.homeSectionHorizontalPadding` / `bodyMaxWidthDesktop` so details stay aligned with catalog rows.
 
-When adding a reused constant: **shell/catalog → `ShellTokens`**, **details surfaces → `DetailsTokens`**. One-off padding inside a single widget is fine.
+When adding a reused constant: **shell/catalog → `ShellTokens`**, **details surfaces → `DetailsTokens`**, **event/match cards → `EventCardTokens`**. One-off padding inside a single widget is fine — grid density / clamps are not (see [no-hardcode](./forja-foundation-no-hardcode.mdc)).
 
 ## Colors (`ForjaShellColors`)
 
@@ -103,6 +110,7 @@ Forbidden on TV: raw `TextField` that becomes editable / opens IME when focused;
 
 ## Forbidden without explicit approval
 
+- Magic scales, clamps, or fallback sizes for foundation cards/chrome — token first ([no-hardcode](./forja-foundation-no-hardcode.mdc))
 - Ad-hoc `BackdropFilter` / `ImageFilter.blur` outside `ForjaFrostedPanel` (and existing IPTV frosted panels)
 - Ad-hoc pill/chip styles that duplicate `TorrentSourceToggle` / chip selected tokens
 - Ad-hoc `Switch(` / `SwitchListTile` color overrides — use `ForjaSwitch` / theme tokens

@@ -106,6 +106,38 @@ void main() {
       expect(spec.fields.single.id, 'x');
     });
 
+    test('allows empty fields when addon bucket is set', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'hub-bucket-only',
+        'name': 'IPTV',
+        'entry': 'i.js',
+        'kind': 'catalog',
+        'settings': {
+          'addon': 'iptv',
+          'order': 10,
+        },
+      });
+      final spec = PackAddonSettingsSpec.fromPlugin(plugin);
+      expect(spec, isNotNull);
+      expect(spec!.addonId, 'iptv');
+      expect(spec.fields, isEmpty);
+      expect(spec.order, 10);
+    });
+
+    test('rejects empty fields without addon bucket', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'hub-empty',
+        'name': 'Empty',
+        'entry': 'e.js',
+        'kind': 'catalog',
+        'settings': {
+          'group': 'Nope',
+          'fields': [],
+        },
+      });
+      expect(PackAddonSettingsSpec.fromPlugin(plugin), isNull);
+    });
+
     test('listForAddon filters enabled plugins by addon id', () {
       final a = EnginePlugin.fromJson({
         'id': 'hub-a',

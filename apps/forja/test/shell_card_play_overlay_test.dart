@@ -146,6 +146,38 @@ void main() {
     expect(tester.widget<Icon>(find.byIcon(Icons.play_arrow_rounded)).size, 18);
   });
 
+  testWidgets('expand Stack parent does not stretch play diameter', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 280,
+            height: 160,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ShellCardPlayOverlay(
+                  active: true,
+                  visible: true,
+                  diameter: 48,
+                  iconSize: 28,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.getSize(find.byType(AnimatedContainer)), const Size(48, 48));
+    expect(
+      tester.getSize(find.byKey(const ValueKey('shell-card-play-hover-target'))),
+      const Size(48, 48),
+    );
+  });
+
   testWidgets('visible play button receives tap; card does not', (tester) async {
     var playTaps = 0;
     var cardTaps = 0;

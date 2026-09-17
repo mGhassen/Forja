@@ -47,3 +47,8 @@ double catalogContinueCardHeight(BuildContext context, {required bool wide}) {
       ? ShellTokens.shellContinueWatchingCardHeightDesktop
       : ShellTokens.shellContinueWatchingCardHeightCompact;
 }
+
+/// Category / side rail width — leanback uses [ShellTokens.categoryRailWidthTv].
+double catalogSideRailWidth(BuildContext context) => catalogUsesTvDensity(context)
+    ? ShellTokens.categoryRailWidthTv
+    : ShellTokens.categoryRailWidth;

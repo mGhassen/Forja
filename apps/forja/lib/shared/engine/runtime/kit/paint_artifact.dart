@@ -9,9 +9,11 @@ import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/catalog/event_card.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
@@ -31,7 +33,8 @@ abstract final class PackPaintArtifact {
     }
     final props = item['props'];
     if (props is Map) return Map<String, dynamic>.from(props);
-    return const {};
+    // Flat feed rows (My List before hubPaintPoster) — same aliases as grid.
+    return catalogItemProps(item);
   }
 
   static VoidCallback? openTap(
@@ -54,7 +57,28 @@ abstract final class PackPaintArtifact {
     Object? meta,
   }) {
     final metaMap = meta is Map ? Map<String, dynamic>.from(meta) : null;
-    if (metaMap != null) return MetaItem.fromJson(metaMap);
+    if (metaMap != null) {
+      if (metaMap['open'] == null && open is Map) {
+        metaMap['open'] = open;
+      }
+      if ((metaMap['name'] ?? '').toString().trim().isEmpty) {
+        final title = (props['title'] ?? '').toString().trim();
+        if (title.isNotEmpty) metaMap['name'] = title;
+      }
+      if ((metaMap['poster'] ?? '').toString().trim().isEmpty) {
+        final poster =
+            (props['imageUrl'] ?? props['posterUrl'] ?? '').toString().trim();
+        if (poster.isNotEmpty) metaMap['poster'] = poster;
+      }
+      if (metaMap['rating'] == null && props['rating'] is num) {
+        metaMap['rating'] = props['rating'];
+      }
+      if ((metaMap['releaseInfo'] ?? '').toString().trim().isEmpty) {
+        final sub = (props['subtitle'] ?? props['year'] ?? '').toString().trim();
+        if (sub.isNotEmpty) metaMap['releaseInfo'] = sub;
+      }
+      return MetaItem.fromJson(metaMap);
+    }
     final openMap = open is Map ? Map<String, dynamic>.from(open) : null;
     if (openMap == null) return null;
     return MetaItem(
@@ -166,10 +190,10 @@ abstract final class PackPaintArtifact {
       case 'event':
         final w = (props['width'] is num)
             ? (props['width'] as num).toDouble()
-            : 220.0;
+            : EventCardTokens.paintFallbackWidth;
         final h = (props['height'] is num)
             ? (props['height'] as num).toDouble()
-            : 124.0;
+            : EventCardTokens.paintFallbackHeight;
         return EventCard(
           title: (props['title'] ?? '').toString(),
           posterUrl: (props['posterUrl'] ?? props['imageUrl'] ?? '').toString(),

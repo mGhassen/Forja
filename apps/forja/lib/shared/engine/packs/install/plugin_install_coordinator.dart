@@ -87,6 +87,15 @@ class PluginInstallCoordinator {
   final ValueNotifier<List<EnginePackUpdateInfo>?> pendingUpdatePrompt =
       ValueNotifier<List<EnginePackUpdateInfo>?>(null);
 
+  /// Live pending update count for nav badge (same check as the toast).
+  final ValueNotifier<int> pendingUpdateCount = ValueNotifier<int>(0);
+
+  void publishPendingUpdateCount(int count) {
+    final next = count < 0 ? 0 : count;
+    if (pendingUpdateCount.value == next) return;
+    pendingUpdateCount.value = next;
+  }
+
   final ValueNotifier<PluginInstallProgress?> progress =
       ValueNotifier<PluginInstallProgress?>(null);
 
@@ -319,6 +328,7 @@ class PluginInstallCoordinator {
     try {
       final packs = await PluginRegistry.instance.listPacksRaw();
       final check = await EngineService.instance.checkPackUpdates(packs);
+      publishPendingUpdateCount(check.updates.length);
       if (check.updates.isEmpty) {
         clearPackUpdateToast();
         return;
@@ -389,7 +399,10 @@ class PluginInstallCoordinator {
         ForjaToast.error('${entry.packName} update failed: $e');
       }
     }
-    if (ok > 0) clearPackUpdateToast();
+    if (ok > 0) {
+      clearPackUpdateToast();
+      publishPendingUpdateCount(0);
+    }
     return ok;
   }
 

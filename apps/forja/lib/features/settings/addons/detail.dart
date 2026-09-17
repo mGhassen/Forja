@@ -34,7 +34,7 @@ Widget _hostAddonDetailBody(String addonId, SettingsVisibility visibility) {
     case SettingsAddonId.playback:
       return SettingsPlaybackSection(visibility: visibility);
     case SettingsAddonId.iptv:
-      // Pack-contributed Addons → IPTV: portal fields above; host player prefs.
+      // Pack-contributed Addons → IPTV bucket; host player prefs.
       return const SettingsPortalAddonSection();
     case SettingsAddonId.torrent:
       return Column(

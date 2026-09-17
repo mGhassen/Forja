@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 
@@ -84,17 +86,26 @@ Map<String, dynamic> packChromeFeedParams(
         params['status'] ??
         'plantowatch';
     params['listStatus'] = params['status'];
+    // Hide keys until Simkl refetch catches a local remove.
+    try {
+      final hidden = ProviderScope.containerOf(context, listen: false)
+          .read(bookmarkHiddenKeysProvider);
+      if (hidden.isNotEmpty) {
+        params['hiddenKeys'] = hidden.toList(growable: false);
+      }
+    } catch (_) {}
   }
 
   injectMenu('catalogMenu', 'catalogFilter', asAlso: 'section');
   // Always stamp section when the list declares a catalog menu — empty
-  // selection must not silently default inside the pack to a stale Live fetch.
+  // selection must match top-bar paint (`dynamicCatalogs` → all), not IPTV's
+  // `live` section id (that filtered Live Sports to a non-existent plugin).
   final catalogMenu = (listSpec['catalogMenu'] ?? '').toString().trim();
   if (catalogMenu.isNotEmpty &&
       (params['section'] == null ||
           params['section'].toString().trim().isEmpty)) {
-    final fallback = (scope?.selectedId(catalogMenu) ?? 'live').trim();
-    params['section'] = fallback.isEmpty ? 'live' : fallback;
+    final fallback = (scope?.selectedId(catalogMenu) ?? 'all').trim();
+    params['section'] = fallback.isEmpty ? 'all' : fallback;
     params['catalogFilter'] = params['section'];
   }
   if (catalogMenu.isNotEmpty) {
@@ -177,6 +188,12 @@ String packChromeSelectionEpoch(
       (CategoryBarActionHost.cachedLiveListParams['portalStoreKey'] ?? '')
           .toString();
 
+  // My List: bookmark writes bump listFeedEpoch → PackLayoutPainter refreshEpoch.
+  // Hash epoch here so PackLoadedPaint memo keys cannot reuse a stale compose.
+  final listEpoch = statusTab.trim().isEmpty
+      ? ''
+      : '${listFeedEpochListenable.value}';
+
   return [
     status,
     // Sport chips + IPTV VOD cats reload feed; IPTV Live cats stay paint-only.
@@ -187,6 +204,7 @@ String packChromeSelectionEpoch(
     // View is paint-only (cards↔EPG) — omit so PackLoadedPaint keeps items.
     kindBustsFeed ? (chrome?.eventQuery ?? '') : '',
     '${chrome?.refreshEpoch ?? 0}',
+    listEpoch,
     portalStoreKey,
     catalogChromeFilterEpoch(tabId),
     // Fav/pin lists: paint filters Favorites/Watched; pin order is rail-only.

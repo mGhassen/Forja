@@ -7,7 +7,10 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   Future<void> _applyMpvTunables();
   Future<void> _tuneAtvMediaKitAfterOpen();
   Future<void> _tuneDesktopMediaKitAfterOpen();
-  Future<void> _applyStreamLavfReconnect(NativePlayer p);
+  Future<void> _applyStreamLavfReconnect(
+    NativePlayer p, {
+    String? streamUrl,
+  });
   void _startWatchdog();
   void _noteFeedProgress(int markMs, {int? positionMs});
   Future<void> _triggerRecovery({
@@ -637,7 +640,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         final np = player.platform;
         final liveMk = _livePlaybackProfile && !_s.widget.vodPlayback;
         if (np is NativePlayer && liveMk) {
-          await _applyStreamLavfReconnect(np);
+          await _applyStreamLavfReconnect(np, streamUrl: playUrl);
         } else if (np is NativePlayer) {
           await applyMediaHttpHeaders(
             player,

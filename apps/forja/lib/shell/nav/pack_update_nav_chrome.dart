@@ -1,8 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/packs/engine_pack_update.dart';
-import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/nav/pack_update_alert_icon.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -12,7 +13,10 @@ export 'package:forja/shell/nav/pack_update_alert_icon.dart'
     show PackUpdateAlertIcon;
 
 /// Corner badge + hover/focus flyout over profile / settings nav chrome.
-class PackUpdateNavChrome extends ConsumerStatefulWidget {
+///
+/// Listens only to [PluginInstallCoordinator.pendingUpdateCount] — never
+/// watches [enginePacksProvider] (that cached [] when profile scope was unbound).
+class PackUpdateNavChrome extends StatefulWidget {
   const PackUpdateNavChrome({
     super.key,
     required this.child,
@@ -36,14 +40,13 @@ class PackUpdateNavChrome extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<PackUpdateNavChrome> createState() =>
-      _PackUpdateNavChromeState();
+  State<PackUpdateNavChrome> createState() => _PackUpdateNavChromeState();
 }
 
-class _PackUpdateNavChromeState extends ConsumerState<PackUpdateNavChrome> {
+class _PackUpdateNavChromeState extends State<PackUpdateNavChrome> {
   final OverlayPortalController _portal = OverlayPortalController();
   final LayerLink _link = LayerLink();
-  bool _refreshScheduled = false;
+  bool _checkScheduled = false;
 
   @override
   void dispose() {
@@ -62,79 +65,88 @@ class _PackUpdateNavChromeState extends ConsumerState<PackUpdateNavChrome> {
   @override
   void didUpdateWidget(covariant PackUpdateNavChrome oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final count = ref.read(enginePackUpdatesProvider).count;
-    _syncPortal(show: widget.expanded && count > 0);
+    if (oldWidget.expanded == widget.expanded) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncPortal(
+        show: widget.expanded &&
+            PluginInstallCoordinator.instance.pendingUpdateCount.value > 0,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final updates = ref.watch(enginePackUpdatesProvider);
-    if (!_refreshScheduled &&
-        updates.lastChecked == null &&
-        !updates.checking) {
-      _refreshScheduled = true;
+    if (!_checkScheduled) {
+      _checkScheduled = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        ref.read(enginePackUpdatesProvider.notifier).refresh();
+        unawaited(
+          PluginInstallCoordinator.instance.notifyPendingUpdatesIfAny(),
+        );
       });
     }
 
-    final count = updates.count;
-    if (count <= 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _syncPortal(show: false);
-      });
-      return widget.child;
-    }
+    return ValueListenableBuilder<int>(
+      valueListenable: PluginInstallCoordinator.instance.pendingUpdateCount,
+      builder: (context, count, _) {
+        if (count <= 0) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _syncPortal(show: false);
+          });
+          return widget.child;
+        }
 
-    final show = widget.expanded;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _syncPortal(show: show);
-    });
+        final show = widget.expanded;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _syncPortal(show: show);
+        });
 
-    final label = EnginePackUpdateCopy.available(count);
-    final offset = ShellTokens.packUpdateFlyoutOffset;
+        final label = EnginePackUpdateCopy.available(count);
+        final offset = ShellTokens.packUpdateFlyoutOffset;
 
-    return CompositedTransformTarget(
-      link: _link,
-      child: OverlayPortal(
-        controller: _portal,
-        overlayChildBuilder: (context) {
-          return CompositedTransformFollower(
-            link: _link,
-            showWhenUnlinked: false,
-            targetAnchor: widget.flyoutAbove
-                ? Alignment.topCenter
-                : Alignment.centerRight,
-            followerAnchor: widget.flyoutAbove
-                ? Alignment.bottomCenter
-                : Alignment.centerLeft,
-            offset: widget.flyoutAbove
-                ? Offset(0, -offset)
-                : Offset(offset, 0),
-            child: _PackUpdateFlyout(
-              label: label,
-              onTap: PackUpdateNavChrome.openForjaPacks,
+        return CompositedTransformTarget(
+          link: _link,
+          child: OverlayPortal(
+            controller: _portal,
+            overlayChildBuilder: (context) {
+              return CompositedTransformFollower(
+                link: _link,
+                showWhenUnlinked: false,
+                targetAnchor: widget.flyoutAbove
+                    ? Alignment.topCenter
+                    : Alignment.centerRight,
+                followerAnchor: widget.flyoutAbove
+                    ? Alignment.bottomCenter
+                    : Alignment.centerLeft,
+                offset: widget.flyoutAbove
+                    ? Offset(0, -offset)
+                    : Offset(offset, 0),
+                child: _PackUpdateFlyout(
+                  label: label,
+                  onTap: PackUpdateNavChrome.openForjaPacks,
+                ),
+              );
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                widget.child,
+                Positioned(
+                  right: -ShellTokens.packUpdateBadgeCornerInset,
+                  top: -ShellTokens.packUpdateBadgeCornerInset,
+                  child: IgnorePointer(
+                    child: PackUpdateAlertIcon(size: widget.badgeSize),
+                  ),
+                ),
+              ],
             ),
-          );
-        },
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            widget.child,
-            Positioned(
-              right: -ShellTokens.packUpdateBadgeCornerInset,
-              top: -ShellTokens.packUpdateBadgeCornerInset,
-              child: IgnorePointer(
-                child: PackUpdateAlertIcon(size: widget.badgeSize),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

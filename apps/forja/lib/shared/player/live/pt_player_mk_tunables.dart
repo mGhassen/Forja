@@ -5,7 +5,10 @@ part of 'pt_player_screen.dart';
 
 mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
   void _engineSetVolume(double volume);
-  Future<void> _applyStreamLavfReconnect(NativePlayer p);
+  Future<void> _applyStreamLavfReconnect(
+    NativePlayer p, {
+    String? streamUrl,
+  });
   bool get _livePlaybackProfile;
   bool get _useSoftwareDecode;
 
@@ -316,7 +319,10 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
 
       // FFmpeg reconnect — applied after open for VOD; live sets before open.
       if (_s.widget.vodPlayback) {
-        await _applyStreamLavfReconnect(p);
+        final vodUrl = _s._sources.isEmpty
+            ? null
+            : _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)].url;
+        await _applyStreamLavfReconnect(p, streamUrl: vodUrl);
       }
 
       // VOD / non-live only — ipdigi does not set demuxer-lavf-o.

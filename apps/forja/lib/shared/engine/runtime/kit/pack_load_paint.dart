@@ -169,7 +169,7 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
   if (catalogMenu.isNotEmpty) {
     section =
         (LayoutScope.maybeOf(context)?.selectedId(catalogMenu) ?? '').trim();
-    if (section.isEmpty) section = 'live';
+    if (section.isEmpty) section = 'all';
   }
 
   final loading = spec['loading'];

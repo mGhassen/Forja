@@ -22,8 +22,10 @@ class ShellMetrics {
     required this.torrentPanelLeadingIconSize,
     required this.torrentPanelSectionFontSize,
     required this.usesTvDensity,
+    required this.navRailWidth,
     required this.navRailItemSpacing,
     required this.navRailLogoGap,
+    required this.navRailLogoWidth,
     required this.navRailTopPadding,
     required this.navRailBottomPadding,
   });
@@ -45,10 +47,14 @@ class ShellMetrics {
   final double torrentPanelLeadingIconSize;
   final double torrentPanelSectionFontSize;
   final bool usesTvDensity;
+  final double navRailWidth;
   final double navRailItemSpacing;
   final double navRailLogoGap;
+  final double navRailLogoWidth;
   final double navRailTopPadding;
   final double navRailBottomPadding;
+
+  double get navRailLogoHeight => navRailLogoWidth * 160 / 370;
 
   static const mobile = ShellMetrics(
     posterCardWidth: ShellTokens.posterCardWidthMobile,
@@ -68,8 +74,10 @@ class ShellMetrics {
     torrentPanelLeadingIconSize: ShellTokens.torrentPanelLeadingIconSizeDesktop,
     torrentPanelSectionFontSize: ShellTokens.torrentPanelSectionFontSizeDesktop,
     usesTvDensity: false,
+    navRailWidth: ShellTokens.navRailWidth,
     navRailItemSpacing: ShellTokens.navRailItemSpacing,
     navRailLogoGap: ShellTokens.navRailLogoGapDesktop,
+    navRailLogoWidth: ShellTokens.navRailLogoWidth,
     navRailTopPadding: ShellTokens.shellHeaderTopPadding,
     navRailBottomPadding: ShellTokens.navRailBottomPaddingDesktop,
   );
@@ -92,13 +100,16 @@ class ShellMetrics {
     torrentPanelLeadingIconSize: ShellTokens.torrentPanelLeadingIconSizeDesktop,
     torrentPanelSectionFontSize: ShellTokens.torrentPanelSectionFontSizeDesktop,
     usesTvDensity: false,
+    navRailWidth: ShellTokens.navRailWidth,
     navRailItemSpacing: ShellTokens.navRailItemSpacing,
     navRailLogoGap: ShellTokens.navRailLogoGapDesktop,
+    navRailLogoWidth: ShellTokens.navRailLogoWidth,
     navRailTopPadding: ShellTokens.shellHeaderTopPadding,
     navRailBottomPadding: ShellTokens.navRailBottomPaddingDesktop,
   );
 
   /// Leanback density — rows fill the body edge-to-edge after the nav rail.
+  /// Rail width / logo share [ShellTokens.tvLayoutScale] with poster cards.
   static const tv = ShellMetrics(
     posterCardWidth: ShellTokens.posterCardWidthTv,
     hubCardTitleFontSize: ShellTokens.hubCardTitleFontSizeTv,
@@ -117,11 +128,11 @@ class ShellMetrics {
     torrentPanelLeadingIconSize: ShellTokens.torrentPanelLeadingIconSizeTv,
     torrentPanelSectionFontSize: ShellTokens.torrentPanelSectionFontSizeTv,
     usesTvDensity: true,
+    navRailWidth: ShellTokens.navRailWidthTv,
     navRailItemSpacing: ShellTokens.navRailItemSpacingTv,
     navRailLogoGap: ShellTokens.navRailLogoGapTv,
+    navRailLogoWidth: ShellTokens.navRailLogoWidthTv,
     navRailTopPadding: ShellTokens.navRailTopPaddingTv,
     navRailBottomPadding: ShellTokens.navRailBottomPaddingTv,
   );
-
-  double get navRailWidth => ShellTokens.navRailWidth;
 }

@@ -1,0 +1,41 @@
+---
+description: No magic layout numbers for foundation paint — use tokens
+globs: packages/forja_foundation/**/*.dart,apps/forja/lib/**/*.dart
+alwaysApply: false
+---
+
+# Foundation — no hardcoded layout (law)
+
+When sizing, spacing, radius, type scale, or density for **foundation paint** (catalog cards, event cards, chrome, shell density):
+
+| Do | Don’t |
+|----|--------|
+| Put reused numbers in `packages/forja_foundation/lib/tokens/*` | Magic `0.85`, `130.0`, `220.0` in widgets / host paint |
+| Read `ShellTokens` / `DetailsTokens` / `EventCardTokens` / sibling `*Tokens` | Copy a literal that already exists on a token |
+| Add a named token when introducing a new density or clamp | Inline scale/clamp next to `cardWidth` / `cardHeight` |
+
+```dart
+// ❌
+return (base * 0.85).clamp(130.0, 165.0);
+
+// ✅ — EventCardTokens (or the matching *Tokens file)
+return (base * EventCardTokens.desktopWidthScale).clamp(
+  EventCardTokens.desktopHeightMin,
+  EventCardTokens.desktopHeightMax,
+);
+```
+
+**Where tokens live**
+
+| Surface | Token file |
+|---------|------------|
+| Shell / catalog density | `forja_shell_tokens.dart` |
+| Media details | `forja_details_tokens.dart` |
+| Live event / match cards | `event_card_tokens.dart` |
+| Other reusable chrome | sibling `*_tokens.dart` in `tokens/` |
+
+One-off padding inside a single private widget is fine. **Grid min size, aspect clamps, play overlay diameter, paint fallbacks** are not one-offs — token them.
+
+Host kit paint (`paint_artifact`, catalog grids) must import foundation tokens — never re-hardcode the same numbers in `apps/forja`.
+
+See also: [forja-design-system.mdc](./forja-design-system.mdc).

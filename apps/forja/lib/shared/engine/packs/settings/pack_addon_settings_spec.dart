@@ -156,25 +156,28 @@ class PackAddonSettingsSpec {
   /// provider plugin ids (RFC-101 hub account → provider extract).
   final List<String> extractPluginIds;
 
-  /// Parses [plugin.settings] when the block has fields.
+  /// Parses [plugin.settings] when the block has fields, or when [addon] is set
+  /// with no fields (pack owns the Addons bucket; host paints player prefs).
   ///
   /// [addon] is optional (RFC-093) — used only when contributing into a host
   /// Addon detail page via [listForAddon].
   static PackAddonSettingsSpec? fromPlugin(EnginePlugin plugin) {
     final raw = plugin.settings;
     if (raw == null || raw.isEmpty) return null;
-    final fieldsRaw = raw['fields'];
-    if (fieldsRaw is! List || fieldsRaw.isEmpty) return null;
-    final fields = <PackAddonSettingsField>[];
-    for (final e in fieldsRaw) {
-      if (e is! Map) continue;
-      final field = PackAddonSettingsField.fromJson(
-        Map<String, dynamic>.from(e),
-      );
-      if (field != null) fields.add(field);
-    }
-    if (fields.isEmpty) return null;
     final addonId = (raw['addon'] ?? '').toString().trim();
+    final fieldsRaw = raw['fields'];
+    final fields = <PackAddonSettingsField>[];
+    if (fieldsRaw is List) {
+      for (final e in fieldsRaw) {
+        if (e is! Map) continue;
+        final field = PackAddonSettingsField.fromJson(
+          Map<String, dynamic>.from(e),
+        );
+        if (field != null) fields.add(field);
+      }
+    }
+    // Empty fields OK when registering a pack-owned Addons bucket.
+    if (fields.isEmpty && addonId.isEmpty) return null;
     final groupRaw = (raw['group'] ?? '').toString().trim();
     final orderRaw = raw['order'];
     final order = orderRaw is int

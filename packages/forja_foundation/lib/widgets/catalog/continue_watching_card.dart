@@ -192,7 +192,7 @@ class ContinueWatchingCard extends StatelessWidget {
                   ],
                 ),
               ),
-              ?playOverlay,
+              if (playOverlay != null) Center(child: playOverlay),
               if (isLoading)
                 Container(
                   color: Colors.black.withValues(alpha: 0.6),

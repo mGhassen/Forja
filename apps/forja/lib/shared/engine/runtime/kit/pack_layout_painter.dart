@@ -14,6 +14,7 @@ import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
 import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
@@ -102,6 +103,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     super.initState();
     _scroll.addListener(_publishScroll);
     PluginRegistry.hubFeedEpoch.addListener(_onHubFeedEpoch);
+    listFeedEpochListenable.addListener(_onListFeedEpoch);
     // Sync shell from EngineCache when boot prefetch / prior visit warmed layout.
     final warmed = _tryApplyCachedLayout();
     unawaited(_loadPage(keepPainted: warmed));
@@ -122,6 +124,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   void dispose() {
     _filterListenable?.removeListener(_onChromeFiltersChanged);
     PluginRegistry.hubFeedEpoch.removeListener(_onHubFeedEpoch);
+    listFeedEpochListenable.removeListener(_onListFeedEpoch);
     _scroll.removeListener(_publishScroll);
     _scroll.dispose();
     _selectedListItem.dispose();
@@ -175,6 +178,31 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (!PluginRegistry.hubFeedEpochTouches(widget.pluginId)) return;
     // Soft reload — keep painted rails while pack settings / scripts refresh.
     unawaited(_loadPage(force: true, keepPainted: true));
+  }
+
+  /// Bookmark / Simkl list write — only hubs with a status-tab list (My List).
+  void _onListFeedEpoch() {
+    if (!mounted || !_layoutHasStatusTab()) return;
+    setState(() {
+      _refreshEpoch++;
+      _refreshForceNetwork = true;
+      if (_pageFeedRailIds.isNotEmpty) {
+        _pageFeedFuture = _fetchPageFeed(forceRefresh: true);
+      }
+    });
+  }
+
+  bool _layoutHasStatusTab() {
+    var found = false;
+    walkLayoutWidgets(_widgets, (spec) {
+      if (found) return;
+      final type = LayoutTypes.normalize((spec['type'] ?? '').toString(), spec);
+      if (type != LayoutTypes.list) return;
+      if ((spec['statusTab'] ?? '').toString().trim().isNotEmpty) {
+        found = true;
+      }
+    });
+    return found;
   }
 
   void _publishScroll() {

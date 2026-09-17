@@ -61,7 +61,9 @@ class _SettingsForjaPacksSectionState
     SettingsPackPromptDrill.current.addListener(_onPackPromptDrill);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(enginePackUpdatesProvider.notifier).refresh();
+      // Unstick empty cache if nav badge pulled packs before profile scope.
+      unawaited(ref.read(enginePacksProvider.notifier).reload());
+      unawaited(ref.read(enginePackUpdatesProvider.notifier).refresh());
     });
   }
 

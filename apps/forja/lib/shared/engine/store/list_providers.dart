@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/store/external_list_providers.dart';
@@ -24,11 +25,17 @@ final listFeedEpochProvider = NotifierProvider<ListFeedEpochNotifier, int>(
   ListFeedEpochNotifier.new,
 );
 
+/// Non-Consumer twin of [listFeedEpochProvider] — PackLayoutPainter listens here.
+final listFeedEpochListenable = ValueNotifier<int>(0);
+
 class ListFeedEpochNotifier extends Notifier<int> {
   @override
-  int build() => 0;
+  int build() => listFeedEpochListenable.value;
 
-  void bump() => state++;
+  void bump() {
+    listFeedEpochListenable.value++;
+    state = listFeedEpochListenable.value;
+  }
 }
 
 /// After a local bookmark write — bust EngineCache `feed` + list providers.
@@ -36,11 +43,14 @@ class ListFeedEpochNotifier extends Notifier<int> {
 /// stale composed feed until pull-to-refresh.
 void invalidateListHubFeeds(ProviderContainer? container) {
   EngineCache.instance.wipeAction('feed');
-  if (container == null) return;
-  try {
-    container.invalidate(simklWatchlistProvider);
-    container.read(listFeedEpochProvider.notifier).bump();
-  } catch (_) {}
+  if (container != null) {
+    try {
+      container.invalidate(simklWatchlistProvider);
+      container.read(listFeedEpochProvider.notifier).bump();
+      return;
+    } catch (_) {}
+  }
+  listFeedEpochListenable.value++;
 }
 
 /// Local bookmark rows (persist engine).

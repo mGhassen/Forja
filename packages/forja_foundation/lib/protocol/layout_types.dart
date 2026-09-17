@@ -171,6 +171,9 @@ void initLayoutTabSelections(
       final def = action['default']?.toString();
       if (def != null && def.isNotEmpty) {
         selections[id] = def;
+      } else if (action['dynamicCatalogs'] == true) {
+        // Match top-bar paint: empty dynamic catalog → All (not IPTV live).
+        selections[id] = 'all';
       }
     }
   });

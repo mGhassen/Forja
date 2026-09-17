@@ -235,6 +235,14 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
       );
     }
 
-    return button;
+    // Parent stacks often use [StackFit.expand] — without a sized + centered
+    // wrap, tight max constraints stretch the circle to the full card.
+    return Center(
+      child: SizedBox(
+        width: widget.diameter,
+        height: widget.diameter,
+        child: button,
+      ),
+    );
   }
 }

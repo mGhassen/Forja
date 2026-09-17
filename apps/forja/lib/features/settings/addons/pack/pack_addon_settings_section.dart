@@ -259,17 +259,21 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   Widget build(BuildContext context) {
     if (_loading || _specs.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final spec in _specs)
+    final groups = <Widget>[
+      for (final spec in _specs)
+        if (spec.fields.isNotEmpty)
           SettingsGroup(
             label: spec.group,
             children: [
               for (final field in spec.fields) _fieldRow(spec, field),
             ],
           ),
-      ],
+    ];
+    if (groups.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: groups,
     );
   }
 
