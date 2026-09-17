@@ -114,6 +114,8 @@ class _PackUpdateNavChromeState extends State<PackUpdateNavChrome> {
           child: OverlayPortal(
             controller: _portal,
             overlayChildBuilder: (context) {
+              // OverlayPortal gives max constraints — same trap as IPTV portal
+              // probe cards; UnconstrainedBox keeps the tip content-sized.
               return CompositedTransformFollower(
                 link: _link,
                 showWhenUnlinked: false,
@@ -126,9 +128,14 @@ class _PackUpdateNavChromeState extends State<PackUpdateNavChrome> {
                 offset: widget.flyoutAbove
                     ? Offset(0, -offset)
                     : Offset(offset, 0),
-                child: _PackUpdateFlyout(
-                  count: count,
-                  onTap: PackUpdateNavChrome.openForjaPacks,
+                child: UnconstrainedBox(
+                  alignment: widget.flyoutAbove
+                      ? Alignment.bottomCenter
+                      : Alignment.centerLeft,
+                  child: _PackUpdateFlyout(
+                    count: count,
+                    onTap: PackUpdateNavChrome.openForjaPacks,
+                  ),
                 ),
               );
             },

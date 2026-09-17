@@ -2659,8 +2659,11 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
         nextRowPeekFraction: shellHeroNextRowPeekFraction(context),
         firstCatalogRowHeight: widget.pageBottomChild == null
             ? 0
-            : ShellTokens.homeSectionTitleTop + 180 + 40,
+            : catalogSectionTitleTop(context) +
+                shellPosterCardHeight(context) +
+                shellPosterCardRowGap(context),
         bleedDownOffset: widget.bleedDownOffset,
+        scale: shellLayoutScale(context),
       ),
       onHeight: tab.isEmpty
           ? null

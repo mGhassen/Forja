@@ -350,6 +350,9 @@ double catalogContinueRowSkeletonHeight({
 }
 
 /// Neutral full-page wait — no invented hub rails (pack layout owns structure).
+///
+/// Static fill only — no opacity pulse. Pulsing shimmer on cold hub remount
+/// (shell nav / TV tab eviction) reads as the page background flashing.
 Widget hubNeutralLoadingSkeleton(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
   // TV is full-bleed regardless of logical width (720p ATV ≈ 960dp < 1000).
@@ -364,7 +367,10 @@ Widget hubNeutralLoadingSkeleton(BuildContext context) {
   );
   return ColoredBox(
     color: ForjaShellColors.bgDark,
-    child: homeCinematicHeroShimmer(height: heroH),
+    child: ColoredBox(
+      color: ForjaShellColors.surfaceElevated,
+      child: SizedBox(width: double.infinity, height: heroH),
+    ),
   );
 }
 

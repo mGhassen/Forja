@@ -103,8 +103,22 @@ class CinematicHeroLayout {
 
   double scaled(double value) => value * scale;
 
-  double get resolvedBleedDownOffset =>
-      bleedDownOffset ?? ShellTokens.homePageBottomSectionDownOffset;
+  /// Scale without fighting TV density with desktop floor clamps.
+  double scaledChrome(double value, {double? floor, double? ceil}) {
+    final s = scaled(value);
+    if (tvDensity) {
+      if (ceil != null) return math.min(s, ceil);
+      return s;
+    }
+    final lo = floor ?? s;
+    final hi = ceil ?? s;
+    return s.clamp(lo, hi);
+  }
+
+  double get resolvedBleedDownOffset {
+    final base = bleedDownOffset ?? ShellTokens.homePageBottomSectionDownOffset;
+    return tvDensity ? base * scale : base;
+  }
 }
 
 bool cinematicHeroIsFullBleed({
@@ -318,22 +332,23 @@ class CinematicHeroState extends State<CinematicHero> {
         onHeight(imageHeight + layout.topBarBleed);
       });
     }
-    final textTop = layout.topBarBleed + ShellTokens.heroTextColumnTopInsetDesktop;
+    final textTop = layout.topBarBleed +
+        layout.scaledChrome(ShellTokens.heroTextColumnTopInsetDesktop);
     final compactRightInset = compact ? layout.heroCompactRightInset : 48.0;
     final textRight = compact
-        ? layout.scaled(compactRightInset).clamp(12.0, compactRightInset)
-        : layout.scaled(48).clamp(24.0, 48.0);
-    final textBottom = layout.scaled(16).clamp(8.0, 16.0);
+        ? layout.scaledChrome(compactRightInset, floor: 12.0, ceil: compactRightInset)
+        : layout.scaledChrome(48, floor: 24.0, ceil: 48.0);
+    final textBottom = layout.scaledChrome(16, floor: 8.0, ceil: 16.0);
     final textBottomInset = pageBleed
         ? layout.firstCatalogRowHeight +
-            ShellTokens.homePageBottomSectionTopPadding +
+            layout.scaledChrome(ShellTokens.homePageBottomSectionTopPadding) +
             layout.resolvedBleedDownOffset +
             textBottom
         : textBottom;
-    final textLeft = layout.sectionHorizontalPadding;
+    final textLeft = layout.scaledChrome(layout.sectionHorizontalPadding);
     final desktopTextWidth = math.min(
       MediaQuery.sizeOf(context).width * 0.34,
-      ShellTokens.heroTextColumnWidthDesktop,
+      layout.scaledChrome(ShellTokens.heroTextColumnWidthDesktop),
     );
     final shellBg = Theme.of(context).scaffoldBackgroundColor;
     final imageStartFraction = compact
@@ -387,7 +402,7 @@ class CinematicHeroState extends State<CinematicHero> {
           Positioned(
             top: 0,
             bottom: 0,
-            right: layout.scaled(16).clamp(8.0, 20.0),
+            right: layout.scaledChrome(16, floor: 8.0, ceil: 20.0),
             child: Center(
               child: _buildStepIndicators(),
             ),
@@ -728,22 +743,23 @@ class CinematicHeroState extends State<CinematicHero> {
     required double maxHeight,
     bool isActive = true,
   }) {
-    const overviewStyle = TextStyle(
-      fontSize: ShellTokens.heroOverviewFontSizeDesktop,
+    final layout = widget.layout;
+    final overviewStyle = TextStyle(
+      fontSize: layout.scaledChrome(ShellTokens.heroOverviewFontSizeDesktop),
       height: ShellTokens.heroOverviewLineHeightDesktop,
       letterSpacing: 0.1,
-      color: Color(0x99FFFFFF),
+      color: const Color(0x99FFFFFF),
     );
-    const titleGap = ShellTokens.heroTitleMetaGapDesktop;
-    const actionGap = ShellTokens.heroMetaActionsGapDesktop;
+    final titleGap = layout.scaledChrome(ShellTokens.heroTitleMetaGapDesktop);
+    final actionGap = layout.scaledChrome(ShellTokens.heroMetaActionsGapDesktop);
     final overview = slide.overview.trim();
     final upcomingReserve = slide.isUpcoming
-        ? ShellTokens.heroUpcomingNoticeReserveDesktop
+        ? layout.scaledChrome(ShellTokens.heroUpcomingNoticeReserveDesktop)
         : 0.0;
     final layoutFit = heroDesktopTextLayout(
       maxHeight: maxHeight,
       hasOverview: overview.isNotEmpty,
-      minTitleHeight: widget.layout.heroMinTitleHeight,
+      minTitleHeight: layout.scaledChrome(widget.layout.heroMinTitleHeight),
       reservedBelowOverview: upcomingReserve,
     );
 
@@ -767,16 +783,20 @@ class CinematicHeroState extends State<CinematicHero> {
                   ),
                 ),
               ),
-              const SizedBox(height: titleGap),
+              SizedBox(height: titleGap),
               SizedBox(
-                height: ShellTokens.heroMetaSlotHeightDesktop,
+                height: layout.scaledChrome(ShellTokens.heroMetaSlotHeightDesktop),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: _buildMetaRow(slide, singleLine: true),
                 ),
               ),
               if (layoutFit.showOverview) ...[
-                SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
+                SizedBox(
+                  height: layout.scaledChrome(
+                    ShellTokens.heroMetaOverviewGapDesktop,
+                  ),
+                ),
                 SizedBox(
                   height: layoutFit.overviewSlotHeight,
                   child: Align(
@@ -793,7 +813,7 @@ class CinematicHeroState extends State<CinematicHero> {
             ],
           ),
         ),
-        const SizedBox(height: actionGap),
+        SizedBox(height: actionGap),
         widget.upcomingNoticeBuilder?.call(context, slide) ??
             const SizedBox.shrink(),
         widget.actionRowBuilder?.call(context, slide, isActive: isActive) ??
@@ -895,20 +915,20 @@ class CinematicHeroState extends State<CinematicHero> {
 
   Widget _buildMetaRow(CinematicHeroSlide slide, {bool singleLine = false}) {
     final layout = widget.layout;
-    final metaFont = layout.scaled(13).clamp(9.0, 13.0);
-    final genreFont = layout.scaled(12).clamp(8.0, 12.0);
-    final gap = layout.scaled(10).clamp(7.0, 10.0);
+    final metaFont = layout.scaledChrome(13, floor: 9.0, ceil: 13.0);
+    final genreFont = layout.scaledChrome(12, floor: 8.0, ceil: 12.0);
+    final gap = layout.scaledChrome(10, floor: 7.0, ceil: 10.0);
     final vote = slide.rating ?? 0;
     final rating = vote > 0
         ? Container(
             padding: EdgeInsets.symmetric(
-              horizontal: layout.scaled(8).clamp(4.0, 8.0),
-              vertical: layout.scaled(4).clamp(2.0, 4.0),
+              horizontal: layout.scaledChrome(8, floor: 4.0, ceil: 8.0),
+              vertical: layout.scaledChrome(4, floor: 2.0, ceil: 4.0),
             ),
             decoration: BoxDecoration(
               color: Colors.amber.withValues(alpha: 0.15),
               borderRadius:
-                  BorderRadius.circular(layout.scaled(20).clamp(10.0, 20.0)),
+                  BorderRadius.circular(layout.scaledChrome(20, floor: 10.0, ceil: 20.0)),
               border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
             ),
             child: Row(
@@ -916,10 +936,10 @@ class CinematicHeroState extends State<CinematicHero> {
               children: [
                 Icon(
                   Icons.star_rounded,
-                  size: layout.scaled(14).clamp(10.0, 14.0),
+                  size: layout.scaledChrome(14, floor: 10.0, ceil: 14.0),
                   color: Colors.amber,
                 ),
-                SizedBox(width: layout.scaled(4).clamp(2.0, 4.0)),
+                SizedBox(width: layout.scaledChrome(4, floor: 2.0, ceil: 4.0)),
                 Text(
                   vote.toStringAsFixed(1),
                   style: TextStyle(
@@ -1043,17 +1063,17 @@ class CinematicHeroState extends State<CinematicHero> {
     final layout = widget.layout;
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: layout.scaled(8).clamp(4.0, 8.0),
-        vertical: layout.scaled(3).clamp(2.0, 3.0),
+        horizontal: layout.scaledChrome(8, floor: 4.0, ceil: 8.0),
+        vertical: layout.scaledChrome(3, floor: 2.0, ceil: 3.0),
       ),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(layout.scaled(4).clamp(2.0, 4.0)),
+        borderRadius: BorderRadius.circular(layout.scaledChrome(4, floor: 2.0, ceil: 4.0)),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: layout.scaled(10).clamp(7.0, 10.0),
+          fontSize: layout.scaledChrome(10, floor: 7.0, ceil: 10.0),
           fontWeight: FontWeight.bold,
           color: Colors.white60,
           letterSpacing: 0.8,

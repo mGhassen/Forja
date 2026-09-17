@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
+import 'package:forja/shared/engine/runtime/actions/schedule/live_schedule_progressive.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
@@ -249,6 +251,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   /// When set, skip auto-_bind until [PackChromeScope.refreshEpoch] advances past it.
   int? _holdAtRefreshEpoch;
   int _bindGen = 0;
+  StreamSubscription<MetaEnvelope>? _progressiveSub;
 
   String _catalogSectionOf() {
     final menu = (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
@@ -277,6 +280,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // Portal click — wipe grid immediately; do not fetch until refresh bumps.
     if (holdEpoch > _appliedHoldEpoch) {
       _appliedHoldEpoch = holdEpoch;
+      _progressiveSub?.cancel();
+      _progressiveSub = null;
       _envelope = null;
       _lastPaintedWidget = null;
       _inFlight = null;
@@ -287,6 +292,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // Portal switch / Refresh — drop old grid so CatalogLoadingTicker shows.
     // Any refresh bump also releases a portal hold (including clear+bump same frame).
     if (refreshBumped) {
+      _progressiveSub?.cancel();
+      _progressiveSub = null;
       _envelope = null;
       _lastPaintedWidget = null;
       _holdAtRefreshEpoch = null;
@@ -344,9 +351,18 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     ].join('|');
   }
 
+  @override
+  void dispose() {
+    _progressiveSub?.cancel();
+    super.dispose();
+  }
+
   void _bind() {
     final gen = ++_bindGen;
+    _progressiveSub?.cancel();
+    _progressiveSub = null;
     final future = _run();
+    if (future == null) return;
     final key = _lastRunKey;
     if (key != null) {
       final cached = PackLoadedPaint._resolved[key];
@@ -370,8 +386,99 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   String? _lastRunKey;
   Map<String, dynamic> _lastFeedParams = const {};
 
+  bool _wantsProgressiveCatalogs(Map<String, dynamic> params) {
+    if (widget.action.trim() != 'feed') return false;
+    return params['progressiveCatalogs'] == true ||
+        widget.params['progressiveCatalogs'] == true;
+  }
+
+  void _setScheduleBusy({required bool busy, String? label}) {
+    try {
+      final container = ProviderScope.containerOf(context, listen: false);
+      container.read(liveScheduleFeedBusyProvider(widget.pluginId).notifier).state =
+          (busy: busy, label: label);
+    } catch (_) {}
+  }
+
+  /// Progressive catalog fan-out — paints after each scrape (issue 278).
+  /// Returns null so [_bind] does not await a one-shot future.
+  Future<MetaEnvelope>? _bindProgressive({
+    required int gen,
+    required Map<String, dynamic> runParams,
+    required bool force,
+    required String key,
+  }) {
+    _lastRunKey = key;
+    if (!force) {
+      final resolved = PackLoadedPaint._resolved[key];
+      if (resolved != null) {
+        _envelope = resolved;
+        _inFlight = null;
+        return null;
+      }
+    } else {
+      PackLoadedPaint._resolved.remove(key);
+      PackLoadedPaint._memo.remove(key);
+    }
+
+    _inFlight = Future.value(
+      const MetaEnvelope(ok: false, action: 'feed', data: {}),
+    );
+
+    final completer = Completer<MetaEnvelope>();
+    MetaEnvelope? last;
+    var paintedOnce = false;
+    _progressiveSub = loadLiveScheduleProgressive(
+      hubPluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+      feedParams: runParams,
+      forceRefresh: force,
+      setBusy: _setScheduleBusy,
+    ).listen(
+      (env) {
+        if (!mounted || gen != _bindGen) return;
+        last = env;
+        PackLoadedPaint._resolved[key] = env;
+        paintedOnce = true;
+        setState(() {
+          _envelope = env;
+        });
+      },
+      onError: (Object e, StackTrace st) {
+        debugPrint('[PackLoadedPaint] progressive feed: $e\n$st');
+        if (!completer.isCompleted) {
+          completer.complete(
+            MetaEnvelope.failure(
+              MetaErrorCode.upstream,
+              message: '${widget.pluginId} progressive feed failed',
+              action: widget.action,
+            ),
+          );
+        }
+        if (!mounted || gen != _bindGen) return;
+        _setScheduleBusy(busy: false, label: null);
+        setState(() => _inFlight = null);
+      },
+      onDone: () {
+        final env = last ??
+            const MetaEnvelope(ok: true, action: 'feed', data: {'items': []});
+        PackLoadedPaint._resolved[key] = env;
+        if (!completer.isCompleted) completer.complete(env);
+        if (!mounted || gen != _bindGen) return;
+        setState(() {
+          if (!paintedOnce) _envelope = env;
+          _inFlight = null;
+        });
+      },
+      cancelOnError: false,
+    );
+    PackLoadedPaint._memo[key] = completer.future;
+    return null;
+  }
+
   /// Memo hits return a resolved envelope via [_resolved] for sync paint.
-  Future<MetaEnvelope> _run() {
+  /// Null when a progressive stream was started instead.
+  Future<MetaEnvelope>? _run() {
     _lastRunKey = null;
     // Warm Live lists in background — never block catalog paint on SharedPrefs.
     if (widget.action == 'feed' || widget.action == 'rail') {
@@ -453,6 +560,17 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       _stableParamsKey(runParams),
     ].join('|');
     _lastRunKey = key;
+
+    if (_wantsProgressiveCatalogs(runParams)) {
+      final gen = _bindGen;
+      return _bindProgressive(
+        gen: gen,
+        runParams: runParams,
+        force: force,
+        key: key,
+      );
+    }
+
     if (!force) {
       final resolved = PackLoadedPaint._resolved[key];
       if (resolved != null) return Future.value(resolved);

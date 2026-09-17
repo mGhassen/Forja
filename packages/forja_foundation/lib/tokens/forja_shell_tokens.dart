@@ -273,9 +273,6 @@ abstract final class ShellTokens {
   static const double heroLogoMaxHeightCompact = 72;
   static const double heroTitleSlotHeightCompact = 80;
 
-  /// Browse / details TMDB logo cap on Android TV (landscape 720p).
-  static const double heroLogoMaxHeightTv = 56;
-  static const double heroTitleSlotHeightTv = 64;
   static const double heroImageStartFractionCompact = 0.08;
 
   static const double heroImageStartFraction = 0.12;
@@ -431,6 +428,12 @@ abstract final class ShellTokens {
       navRailLogoWidth * posterCardWidthTv / posterCardWidthDesktop;
   static const double navRailLogoHeightTv =
       navRailLogoWidthTv * 160 / 370;
+
+  /// Leanback hero chrome — same ratio as catalog density.
+  static const double heroLogoMaxHeightTv =
+      heroLogoMaxHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
+  static const double heroTitleSlotHeightTv =
+      heroTitleSlotHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
   static const double posterCardWideBreakpoint = 900;
   static const double posterCardAspectRatio = 1.5;
   static const double posterCardRadius = 14;
@@ -458,9 +461,13 @@ abstract final class ShellTokens {
   static const double heroCompactRightInsetDesktop = 20;
   static const double heroCompactRightInsetTv = 16;
   static const double heroMinTitleHeightDesktop = 72;
-  static const double heroMinTitleHeightTv = 64;
-  static const double heroMinHeightTv = 400;
+  static const double heroMinTitleHeightTv =
+      heroMinTitleHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
   static const double heroMinHeightDesktop = 320;
+
+  /// Leanback min — same ratio as catalog density.
+  static const double heroMinHeightTv =
+      heroMinHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
   static const double heroMetaGapTv = 14;
   static const double heroMetaGapDesktop = 10;
   static const double heroActionGapTv = 16;

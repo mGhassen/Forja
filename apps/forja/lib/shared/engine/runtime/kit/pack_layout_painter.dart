@@ -858,6 +858,16 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
   @override
   void initState() {
     super.initState();
+    // Sync registry hit — first frame mounts the painter (no skeleton flash).
+    final syncId =
+        PluginNavRegistry.pluginIdForTabSync(widget.tabId)?.trim() ?? '';
+    if (syncId.isNotEmpty) {
+      _pluginId = syncId;
+      _packSourceUrl =
+          PluginNavRegistry.packSourceUrlForTabSync(widget.tabId);
+      _loading = false;
+      return;
+    }
     unawaited(_resolve());
   }
 
@@ -868,7 +878,6 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
   }
 
   Future<void> _resolve() async {
-    setState(() => _loading = true);
     final pluginId = await PluginNavRegistry.pluginIdForTab(widget.tabId);
     final url = await PluginNavRegistry.packSourceUrlForTab(widget.tabId);
     if (!mounted) return;

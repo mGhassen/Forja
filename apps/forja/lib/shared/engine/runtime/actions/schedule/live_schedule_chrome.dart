@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/kit_schedule_window.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/kit_schedule_window_sheet.dart';
+import 'package:forja/shared/engine/runtime/actions/schedule/live_schedule_progressive.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
 
@@ -103,6 +105,11 @@ void registerLiveScheduleChromeHooks() {
     final v = ref.watch(kitFeedHorizonPrefProvider(key));
     return v.trim().isEmpty ? kKitScheduleDefaultPref : v;
   };
+  KitTopBarHostHooks.readFeedBusy = (ref, {required tabId}) {
+    final pluginId = PluginNavRegistry.pluginIdForTabSync(tabId)?.trim() ?? '';
+    if (pluginId.isEmpty) return (busy: false, label: null);
+    return ref.watch(liveScheduleFeedBusyProvider(pluginId));
+  };
 }
 
 void clearLiveScheduleChromeHooks() {
@@ -116,4 +123,5 @@ void clearLiveScheduleChromeHooks() {
   KitTopBarHostHooks.scheduleChipLabel = null;
   KitTopBarHostHooks.scheduleChipSelected = null;
   KitTopBarHostHooks.readSchedulePref = null;
+  KitTopBarHostHooks.readFeedBusy = null;
 }
