@@ -6,12 +6,13 @@ import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
+import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
@@ -28,7 +29,11 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
   final type = LayoutTypes.normalize((spec['type'] ?? '').toString(), spec);
   final title = (spec['title'] ?? '').toString().trim();
   final size = MediaQuery.sizeOf(context);
-  final screenCompact = size.width < ShellTokens.heroDesktopMinBodyWidth;
+  // TV is full-bleed regardless of logical width (720p ATV ≈ 960dp < 1000).
+  final screenCompact = !cinematicHeroIsFullBleed(
+    width: size.width,
+    tvDensity: catalogUsesTvDensity(context),
+  );
 
   if (type == LayoutTypes.hero) {
     final heroH = homeCinematicHeroBodyHeight(

@@ -1246,8 +1246,11 @@ class PackPaintTree extends StatelessWidget {
       slideMetas.add(meta);
     }
     if (slides.isEmpty) return const SizedBox.shrink();
-    final compact = MediaQuery.sizeOf(context).width <
-        ShellTokens.heroDesktopMinBodyWidth;
+    // TV is full-bleed regardless of logical width (720p ATV ≈ 960dp < 1000).
+    final compact = !cinematicHeroIsFullBleed(
+      width: MediaQuery.sizeOf(context).width,
+      tvDensity: ShellScope.metricsOf(context).usesTvDensity,
+    );
     final scope = LayoutScope.maybeOf(context);
     final bleed = (node['bleed'] ?? '').toString().trim();
     final focusDown = bleed.isNotEmpty
@@ -2475,7 +2478,9 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
         heroHeightFraction: widget.heightFraction ??
             (compact
                 ? ShellTokens.heroHeightFractionCompact
-                : ShellTokens.heroHeightFractionDesktop),
+                : shellHeroHeightFraction(context)),
+        heroMinHeight: shellHeroMinHeight(context),
+        nextRowPeekFraction: shellHeroNextRowPeekFraction(context),
         firstCatalogRowHeight: widget.pageBottomChild == null
             ? 0
             : ShellTokens.homeSectionTitleTop + 180 + 40,
