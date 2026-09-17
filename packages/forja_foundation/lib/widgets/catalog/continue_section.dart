@@ -193,6 +193,14 @@ class _ContinueHoverCard extends StatefulWidget {
 class _ContinueHoverCardState extends State<_ContinueHoverCard> {
   bool _active = false;
 
+  void _queueActive(bool active) {
+    if (_active == active) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _active == active) return;
+      setState(() => _active = active);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
@@ -229,13 +237,16 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
         tvItemIndex: widget.listIndex,
         tvZone: ShellPaintTvZone.row,
         onFocusChange: (f) => setState(() => _active = f),
-        onHoverChange: (h) => setState(() => _active = h),
+        onHoverChange: (h) {
+          if (_active == h) return;
+          setState(() => _active = h);
+        },
         child: card,
       );
     }
     return MouseRegion(
-      onEnter: (_) => setState(() => _active = true),
-      onExit: (_) => setState(() => _active = false),
+      onEnter: (_) => _queueActive(true),
+      onExit: (_) => _queueActive(false),
       child: Focus(
         onFocusChange: (f) => setState(() => _active = f),
         child: card,

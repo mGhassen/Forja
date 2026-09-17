@@ -212,8 +212,16 @@ Widget shellFocusableTap({
 
   if (policy.scaleOnHover && onHoverChange != null) {
     body = MouseRegion(
-      onEnter: (_) => onHoverChange(true),
-      onExit: (_) => onHoverChange(false),
+      onEnter: (_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onHoverChange(true);
+        });
+      },
+      onExit: (_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onHoverChange(false);
+        });
+      },
       cursor: SystemMouseCursors.click,
       child: body,
     );

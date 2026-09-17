@@ -127,6 +127,16 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
     }
   }
 
+  /// Defer past MouseTracker.deviceUpdate — nested under card MouseRegions.
+  void _queueButtonHover(bool hovered) {
+    if (_buttonHovered == hovered) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _buttonHovered == hovered) return;
+      setState(() => _buttonHovered = hovered);
+      _syncPulse();
+    });
+  }
+
   @override
   void dispose() {
     _pulseController.dispose();
@@ -196,16 +206,8 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
     Widget button = MouseRegion(
       key: const ValueKey('shell-card-play-hover-target'),
       cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
-      onEnter: (_) {
-        if (_buttonHovered) return;
-        setState(() => _buttonHovered = true);
-        _syncPulse();
-      },
-      onExit: (_) {
-        if (!_buttonHovered) return;
-        setState(() => _buttonHovered = false);
-        _syncPulse();
-      },
+      onEnter: (_) => _queueButtonHover(true),
+      onExit: (_) => _queueButtonHover(false),
       child: interactive
           ? GestureDetector(
               onTap: widget.onTap,

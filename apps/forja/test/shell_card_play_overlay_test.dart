@@ -67,6 +67,8 @@ void main() {
     addTearDown(mouse.removePointer);
     await mouse.addPointer();
     await mouse.moveTo(tester.getCenter(_hoverTarget));
+    // Hover setState is deferred past MouseTracker.deviceUpdate.
+    await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -99,6 +101,7 @@ void main() {
       addTearDown(mouse.removePointer);
       await mouse.addPointer();
       await mouse.moveTo(tester.getCenter(_hoverTarget));
+      await tester.pump();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

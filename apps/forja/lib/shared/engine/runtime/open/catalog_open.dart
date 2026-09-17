@@ -25,7 +25,6 @@ String tmdbCatalogTypeToken(MetaItem item) {
 }
 
 /// Engine type used to pick the details hub for [item.open].
-@visibleForTesting
 String? detailsEngineTypeForOpen(MetaItem item) {
   final surface = item.open?.surface.trim() ?? '';
   if (surface == 'tmdb') return tmdbCatalogTypeToken(item);

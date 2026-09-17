@@ -35,6 +35,7 @@ import 'package:forja/shared/engine/runtime/kit/paint_foundation_mount.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
+import 'package:forja/shared/engine/details/kit_entry_details.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/engine/store/continue_entries.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
@@ -1629,6 +1630,28 @@ class PackPaintTree extends StatelessWidget {
           void onListItemTap(Map<String, dynamic> item) {
             if (openMode == 'panel') {
               chrome?.onSelectListItem(item);
+              return;
+            }
+            // Detail page — same entry + panelTabs as the side panel.
+            // Do not openTap open.surface:live (tab switch no-op on this hub).
+            if (openMode == 'details') {
+              unawaited(
+                KitEntryDetailsPage.open(
+                  context,
+                  entry: _listEntryFromItem(item),
+                  listSourceId: KitResolvePanelHost.instance.listSourceId,
+                  layoutWidgets: [
+                    if (spec['panelTabs'] is List)
+                      {
+                        'type': 'kit.list',
+                        'panelTabs': spec['panelTabs'],
+                        'panelTab': spec['panelTab'],
+                      },
+                  ],
+                  refreshEpoch: chrome?.refreshEpoch ?? 0,
+                  shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+                ),
+              );
               return;
             }
             final streamId = _itemStreamId(item);

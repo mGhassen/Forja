@@ -261,7 +261,11 @@ class ShellPaintScope extends InheritedWidget {
         onFocusChange: onFocusChange,
         onHover: onHoverChange == null
             ? null
-            : (v) => onHoverChange(v),
+            : (v) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  onHoverChange(v);
+                });
+              },
         child: child,
       ),
     );

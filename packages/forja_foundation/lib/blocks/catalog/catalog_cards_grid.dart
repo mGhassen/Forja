@@ -977,7 +977,10 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       tvZone: ShellPaintTvZone.grid,
       tvItemIndex: widget.gridIndex,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
+      onHoverChange: (h) {
+        if (_hovered == h) return;
+        setState(() => _hovered = h);
+      },
       child: paint,
     );
   }
@@ -1014,6 +1017,14 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
   bool _hovered = false;
   bool _focused = false;
 
+  void _queueHover(bool hovered) {
+    if (_hovered == hovered) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _hovered == hovered) return;
+      setState(() => _hovered = hovered);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final tile = EventDenseTile(
@@ -1028,8 +1039,8 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
     );
     if (!ShellPaintScope.useTvFocusOf(context)) {
       return MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+        onEnter: (_) => _queueHover(true),
+        onExit: (_) => _queueHover(false),
         cursor: widget.onTap != null
             ? SystemMouseCursors.click
             : MouseCursor.defer,
@@ -1053,7 +1064,10 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
+      onHoverChange: (h) {
+        if (_hovered == h) return;
+        setState(() => _hovered = h);
+      },
       child: tile,
     );
   }

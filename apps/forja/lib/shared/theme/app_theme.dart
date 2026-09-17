@@ -367,6 +367,26 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     }
   }
 
+  void _queueHover(bool hovered) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final policy =
+          ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+      widget.onHoverChange?.call(hovered);
+      if (!policy.scaleOnHover) return;
+      if (_isHovered == hovered) return;
+      setState(() => _isHovered = hovered);
+      _updateState(
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: hovered,
+          focused: _isFocused,
+          context: context,
+        ),
+      );
+    });
+  }
+
   void _ensureVisible(BuildContext context, ShellInputPolicy policy) {
     if (!policy.ensureVisibleOnFocus) return;
     if (widget.ensureVisibleMode == ShellPaintEnsureVisible.off) return;
@@ -534,32 +554,11 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         return KeyEventResult.ignored;
       },
       child: MouseRegion(
-        onEnter: (_) {
-          widget.onHoverChange?.call(true);
-          if (!policy.scaleOnHover) return;
-          setState(() => _isHovered = true);
-          _updateState(
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: true,
-              focused: _isFocused,
-              context: context,
-            ),
-          );
-        },
-        onExit: (_) {
-          widget.onHoverChange?.call(false);
-          if (!policy.scaleOnHover) return;
-          setState(() => _isHovered = false);
-          _updateState(
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: false,
-              focused: _isFocused,
-              context: context,
-            ),
-          );
-        },
+        // Defer out of MouseTracker.deviceUpdate — sync setState / parent
+        // onHoverChange rebuilds MouseRegions mid-hit-test and trips
+        // `!_debugDuringDeviceUpdate` (cascades into null-check floods).
+        onEnter: (_) => _queueHover(true),
+        onExit: (_) => _queueHover(false),
         cursor: SystemMouseCursors.click,
         // Leanback: DPAD_CENTER synthesizes a click after Select. Key path
         // already ran onTap — a second pointer activate flips switches off

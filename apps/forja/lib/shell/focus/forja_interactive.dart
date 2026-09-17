@@ -219,12 +219,22 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     Widget interactive = MouseRegion(
       onEnter: (_) {
         if (widget.suppressActive) return;
-        setState(() => _hover = true);
+        if (_hover) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || widget.suppressActive || _hover) return;
+          setState(() => _hover = true);
+        });
       },
-      onExit: (_) => setState(() {
-        _hover = false;
-        _pressed = false;
-      }),
+      onExit: (_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (!_hover && !_pressed) return;
+          setState(() {
+            _hover = false;
+            _pressed = false;
+          });
+        });
+      },
       cursor: SystemMouseCursors.click,
       child: widget.onTap != null
           ? GestureDetector(
