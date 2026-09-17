@@ -67,7 +67,7 @@ class DetailsCastSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             homePad,
             0,
             homePad,
@@ -107,7 +107,12 @@ class DetailsCastSection extends StatelessWidget {
               );
               final focusChild = itemBuilder != null
                   ? itemBuilder!(context, index: i, child: avatar)
-                  : _defaultAvatarTap(context, index: i, child: avatar);
+                  : _defaultAvatarTap(
+                      context,
+                      index: i,
+                      avatarSize: avatarSize,
+                      child: avatar,
+                    );
               return SizedBox(
                 width: itemWidth,
                 child: Column(
@@ -166,11 +171,12 @@ class DetailsCastSection extends StatelessWidget {
   static Widget _defaultAvatarTap(
     BuildContext context, {
     required int index,
+    required double avatarSize,
     required Widget child,
   }) {
     return ShellPaintScope.focusableTap(
       context: context,
-      borderRadius: _avatarSize / 2,
+      borderRadius: avatarSize / 2,
       showFocusBorder: true,
       showFocusFill: false,
       listIndex: index,

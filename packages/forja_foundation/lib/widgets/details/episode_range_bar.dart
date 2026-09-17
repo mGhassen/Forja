@@ -3,6 +3,7 @@ import 'package:forja_foundation/components/focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 const int kEpisodeRangeChunkSize = 50;
 
@@ -104,10 +105,12 @@ class EpisodeRangeSelector extends StatelessWidget {
       orElse: () => ranges.first,
     );
     final cinematic = ForjaShellColors.cinematic;
-
-    const double menuItemHeight = DetailsTokens.episodeRangeMenuHeight;
-    const int maxVisibleRanges = DetailsTokens.episodeRangeMenuMaxRows;
-    const double menuVerticalPadding = 8;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final menuItemHeight = tv
+        ? DetailsTokens.episodeRangeMenuHeightTv
+        : DetailsTokens.episodeRangeMenuHeight;
+    const maxVisibleRanges = DetailsTokens.episodeRangeMenuMaxRows;
+    const menuVerticalPadding = 8.0;
     final maxMenuHeight =
         menuItemHeight * maxVisibleRanges + menuVerticalPadding;
 
@@ -132,7 +135,7 @@ class EpisodeRangeSelector extends StatelessWidget {
           MenuItemButton(
             onPressed: () => onSelected(range.index),
             style: ButtonStyle(
-              minimumSize: const WidgetStatePropertyAll(
+              minimumSize: WidgetStatePropertyAll(
                 Size(120, menuItemHeight),
               ),
               foregroundColor: WidgetStatePropertyAll(

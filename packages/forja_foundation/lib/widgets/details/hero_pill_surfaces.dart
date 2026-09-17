@@ -52,9 +52,9 @@ BorderRadius heroPillSlotBorderRadius(
   bool? tvDensity,
 }) {
   final radius = Radius.circular(heroPillHeightOf(context, tvDensity: tvDensity) / 2);
-  if (isFirst && isLast) return const BorderRadius.all(radius);
-  if (isFirst) return const BorderRadius.horizontal(left: radius);
-  if (isLast) return const BorderRadius.horizontal(right: radius);
+  if (isFirst && isLast) return BorderRadius.all(radius);
+  if (isFirst) return BorderRadius.horizontal(left: radius);
+  if (isLast) return BorderRadius.horizontal(right: radius);
   return BorderRadius.zero;
 }
 

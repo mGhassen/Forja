@@ -274,9 +274,9 @@ class CatalogTopChrome extends StatelessWidget {
       onSelect: onSelect == null
           ? (_) {}
           : (id) => onSelect!(actionId, id),
-      height: propsOptDouble(action, 'height') ?? ShellTokens.viewButtonHeight,
-      iconSize: propsOptDouble(action, 'iconSize') ?? ShellTokens.viewButtonIconSize,
-      dividerHeight: propsOptDouble(action, 'dividerHeight') ?? ShellTokens.viewButtonGap,
+      height: propsOptDouble(action, 'height'),
+      iconSize: propsOptDouble(action, 'iconSize'),
+      dividerHeight: propsOptDouble(action, 'dividerHeight'),
       items: [
         for (final m in maps)
           ViewButtonItem(

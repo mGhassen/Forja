@@ -1444,12 +1444,17 @@ class PackPaintTree extends StatelessWidget {
               for (final e in raw)
                 if (e is Map) Map<String, dynamic>.from(e),
           ];
+          final layoutScope = LayoutScope.maybeOf(context);
           final kindMenu = (spec['kindMenu'] ?? '').toString().trim();
           final kindFilter = kindMenu.isEmpty
               ? (spec['kind'] ?? '').toString().trim()
-              : (LayoutScope.maybeOf(context)?.selectedId(kindMenu) ?? '')
-                  .trim();
-          final paintOnlySearch = !packChromeKindReloadsFeed(spec);
+              : (layoutScope?.selectedId(kindMenu) ?? '').trim();
+          // IPTV Live: paint-filter cats/search/sort. Movies/Series re-query
+          // feed (paged) — paint must not kind-filter the stale previous page
+          // or the grid flashes empty while the new page loads.
+          final vodPaged = packChromeVodPagedFeed(spec, layoutScope);
+          final paintOnlySearch =
+              !packChromeKindReloadsFeed(spec) && !vodPaged;
           final q = paintOnlySearch
               ? (chrome?.eventQuery ?? '').trim()
               : '';
@@ -1457,7 +1462,7 @@ class PackPaintTree extends StatelessWidget {
 
           // Legacy IPTV Search: match name OR category across the full feed,
           // then optionally narrow by a category tapped while searching.
-          // Idle (no query): category filter only.
+          // Idle (no query): category filter only (Live). VOD: trust feed.
           List<Map<String, dynamic>> filtered;
           if (searchActive) {
             final hits = <Map<String, dynamic>>[
@@ -1485,6 +1490,16 @@ class PackPaintTree extends StatelessWidget {
             } else {
               filtered = hits;
             }
+          } else if (vodPaged) {
+            filtered = items;
+            final notifier = chrome?.searchHitKindIds;
+            if (notifier != null && notifier.value.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (notifier.value.isNotEmpty) {
+                  notifier.value = const {};
+                }
+              });
+            }
           } else {
             filtered = [
               for (final e in items)
@@ -1499,8 +1514,8 @@ class PackPaintTree extends StatelessWidget {
               });
             }
           }
-          // IPTV search/sort are paint-only (packChromeFeedParams skips q/sort
-          // when there is no horizon menu). Live Sports still re-queries feed.
+          // IPTV Live: search/sort paint-only. Movies/Series + Live Sports
+          // re-query feed for kind/q/sort.
           if (paintOnlySearch) {
             final sortMenu = (spec['sortMenu'] ?? '').toString().trim();
             final sortId = sortMenu.isEmpty

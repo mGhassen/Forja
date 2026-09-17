@@ -64,7 +64,9 @@ class CatalogSearchTypeSegment extends StatelessWidget {
         final slot = w / items.length;
         final idx = items.indexWhere((e) => e.$1 == value).clamp(0, 2);
         return SizedBox(
-          height: ShellTokens.viewButtonHeight,
+          height: ShellPaintScope.usesTvDensityOf(context)
+              ? ShellTokens.viewButtonHeightTv
+              : ShellTokens.viewButtonHeight,
           child: Stack(
             children: [
               Positioned.fill(
@@ -106,7 +108,9 @@ class CatalogSearchTypeSegment extends StatelessWidget {
                         listIndex: i,
                         onTap: () => onChanged(items[i].$1),
                         child: SizedBox(
-                          height: ShellTokens.viewButtonHeight,
+                          height: ShellPaintScope.usesTvDensityOf(context)
+                              ? ShellTokens.viewButtonHeightTv
+                              : ShellTokens.viewButtonHeight,
                           child: Center(
                             child: AnimatedDefaultTextStyle(
                               duration: ForjaMotionTheme.of(context).cardLift.duration,

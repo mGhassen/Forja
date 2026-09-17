@@ -24,27 +24,34 @@ class ViewButtonGroup extends StatelessWidget {
     required this.items,
     required this.selectedId,
     required this.onSelect,
-    this.height = ShellTokens.viewButtonHeight,
-    this.iconSize = ShellTokens.viewButtonIconSize,
-    this.dividerHeight = ShellTokens.viewButtonGap,
+    this.height,
+    this.iconSize,
+    this.dividerHeight,
   });
 
   final List<ViewButtonItem> items;
   final String? selectedId;
   final ValueChanged<String> onSelect;
-  final double height;
-  final double iconSize;
-  final double dividerHeight;
+  final double? height;
+  final double? iconSize;
+  final double? dividerHeight;
 
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
-    final r = Radius.circular(height / 2);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final h = height ??
+        (tv ? ShellTokens.viewButtonHeightTv : ShellTokens.viewButtonHeight);
+    final icon = iconSize ??
+        (tv ? ShellTokens.viewButtonIconSizeTv : ShellTokens.viewButtonIconSize);
+    final gap = dividerHeight ??
+        (tv ? ShellTokens.viewButtonGapTv : ShellTokens.viewButtonGap);
+    final r = Radius.circular(h / 2);
     return Container(
-      height: height,
+      height: h,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(height / 2),
+        borderRadius: BorderRadius.circular(h / 2),
         border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -55,7 +62,7 @@ class ViewButtonGroup extends StatelessWidget {
             if (i > 0)
               Container(
                 width: 1,
-                height: dividerHeight,
+                height: gap,
                 color: Colors.white.withValues(alpha: 0.14),
               ),
             _ViewButtonSlot(
@@ -63,9 +70,9 @@ class ViewButtonGroup extends StatelessWidget {
               selected: selectedId == items[i].id,
               isFirst: i == 0,
               isLast: i == items.length - 1,
-              height: height,
+              height: h,
               radius: r,
-              iconSize: iconSize,
+              iconSize: icon,
               listIndex: i,
               onTap: () => onSelect(items[i].id),
             ),
