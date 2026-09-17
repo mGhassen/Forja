@@ -357,7 +357,7 @@ void main() {
     expect(underlineColor(), navDestinationAccentColors[hubB]);
   });
 
-  testWidgets('TV selected nav icon uses destination accent at desktop size', (
+  testWidgets('TV selected nav icon uses destination accent at TV density', (
     tester,
   ) async {
     await pumpScaffold(
@@ -375,7 +375,11 @@ void main() {
       ),
     );
     expect(animeIcon.color, navDestinationAccentColors[hubB]);
-    expect(animeIcon.size, ShellTokens.navRailIconSize);
+    final expectedIconSize = shellNavRailIconSize(
+      tester.element(find.byType(ShellNavRail)),
+    );
+    expect(expectedIconSize, lessThan(ShellTokens.navRailIconSize));
+    expect(animeIcon.size, expectedIconSize);
 
     final underline = find.byKey(ValueKey('nav-$hubB-underline'));
     final underlineColor =
@@ -423,13 +427,14 @@ void main() {
       );
     }
 
+    final railContext = tester.element(find.byType(ShellNavRail));
     final avatar = tester.widget<ForjaProfileAvatar>(
       find.byType(ForjaProfileAvatar),
     );
     expect(
       avatar.size,
-      ShellTokens.navRailIconSize *
-          ShellTokens.navRailProfileAvatarScaleTv *
+      shellNavRailIconSize(railContext) *
+          shellNavRailProfileAvatarScale(railContext) *
           ShellTokens.navRailIconHoverScale,
     );
     expect(
