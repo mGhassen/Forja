@@ -19,6 +19,8 @@ import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -79,6 +81,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Future<Map<String, List<dynamic>>>? _pageFeedFuture;
   Listenable? _filterListenable;
   final KitRowPrefetchLane _rowPrefetch = KitRowPrefetchLane();
+  String? _tvBoundTab;
 
   String get _pageKey => widget.tabId?.trim() ?? '';
 
@@ -126,8 +129,36 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (tab != null && tab.isNotEmpty) {
       VerticalFiltersRegistry.unregister(tab);
       ShellBus.hubScrollOffsetFor(tab).value = 0;
+      // Drop tab TV defaults — hero may have merged defaultFocus into the same id.
+      TvHeroActions.unbind(tab);
     }
     super.dispose();
+  }
+
+  void _bindHubTvDefaults(String tab) {
+    if (tab.isEmpty || _tvBoundTab == tab) return;
+    _tvBoundTab = tab;
+    TvHeroActions.bind(
+      tab,
+      heroReveal: _revealHeroScroll,
+      // List hubs (IPTV / Live Sports): land first catalog row when no hero CTA.
+      // Hero hubs overwrite enterFromNav / defaultFocus when the CTA mounts.
+      enterFromNavFocus: () {
+        ShellTvFocusCoordinator.focusFirstContentRow(tab);
+      },
+      restoreFocus: () => ShellTvFocusCoordinator.focusFirstContentRow(tab),
+    );
+  }
+
+  void _revealHeroScroll() {
+    if (!_scroll.hasClients) return;
+    unawaited(
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      ),
+    );
   }
 
   void _rebindChromeFilters() {
@@ -614,23 +645,27 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       );
     }
     final tab = widget.tabId?.trim() ?? '';
-    if (tab.isNotEmpty && VerticalFiltersRegistry.hasFilters(tab)) {
-      result = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          result,
-          Positioned(
-            key: ValueKey('kit-vf-rail-$tab'),
-            left: ShellTokens.shellProviderRailInset,
-            top: 0,
-            bottom: 0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: VerticalFiltersRail(tabId: tab)),
+    if (tab.isNotEmpty) {
+      _bindHubTvDefaults(tab);
+      if (VerticalFiltersRegistry.hasFilters(tab)) {
+        result = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            result,
+            Positioned(
+              key: ValueKey('kit-vf-rail-$tab'),
+              left: ShellTokens.shellProviderRailInset,
+              top: 0,
+              bottom: 0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: VerticalFiltersRail(tabId: tab)),
+              ),
             ),
-          ),
-        ],
-      );
+          ],
+        );
+      }
+      result = TvFocusGraph(tabId: tab, child: result);
     }
     return result;
   }

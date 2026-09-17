@@ -46,6 +46,8 @@ import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
 import 'package:forja_foundation/blocks/catalog/columns_header_block.dart';
@@ -1246,104 +1248,24 @@ class PackPaintTree extends StatelessWidget {
     if (slides.isEmpty) return const SizedBox.shrink();
     final compact = MediaQuery.sizeOf(context).width <
         ShellTokens.heroDesktopMinBodyWidth;
-    final metrics = ShellScope.metricsOf(context);
-    final policy = ShellScope.inputPolicyOf(context);
     final scope = LayoutScope.maybeOf(context);
     final bleed = (node['bleed'] ?? '').toString().trim();
     final focusDown = bleed.isNotEmpty
         ? scope?.resolveFocusEdge(bleed)
         : scope?.resolveFocusEdge((node['focusDown'] ?? '').toString());
-    final tv = policy.useFocusableMoodChips;
     final tab = (tabId ?? scope?.tabId ?? '').trim();
 
-    return CinematicHero(
+    return _HubTvCinematicHero(
+      tabId: tab,
+      pluginId: pluginId,
       slides: slides,
+      slideMetas: slideMetas,
+      actionSpecs: actionSpecs,
       pageBottomChild: pageBottomChild,
-      layout: CinematicHeroLayout(
-        compact: compact,
-        tvDensity: metrics.usesTvDensity,
-        kenBurns: policy.kenBurnsBackdrop,
-        plainTitle: policy.useFocusableMoodChips,
-        heroMinTitleHeight: metrics.heroMinTitleHeight,
-        heroActionUseFittedBox: metrics.heroActionUseFittedBox,
-        heroCompactRightInset: metrics.heroCompactRightInset,
-        sectionHorizontalPadding: ShellTokens.homeSectionHorizontalPadding,
-        heroHeightFraction: PackPaintArtifact.packDouble(node['heightFraction']) ??
-            (compact
-                ? ShellTokens.heroHeightFractionCompact
-                : ShellTokens.heroHeightFractionDesktop),
-        firstCatalogRowHeight: pageBottomChild == null
-            ? 0
-            : ShellTokens.homeSectionTitleTop + 180 + 40,
-        bleedDownOffset: bleedDownOffset,
-      ),
-      onHeight: tab.isEmpty
-          ? null
-          : (h) {
-              ShellBus.hubHeroHeightFor(tab).value = h;
-            },
-      actionRowBuilder: (ctx, slide, {required isActive}) {
-        if (!isActive) return const SizedBox.shrink();
-        final idx = slides.indexWhere((s) => s.id == slide.id);
-        final meta = idx >= 0 && idx < slideMetas.length ? slideMetas[idx] : null;
-        final details = slide.onDetails;
-        final follow = meta == null
-            ? null
-            : ListFollowTarget.fromMeta(meta: meta, pluginId: pluginId);
-
-        final children = <Widget>[];
-        var autofocusUsed = false;
-        for (final action in actionSpecs) {
-          final id = action.id;
-          Widget? child;
-          if (id == 'details') {
-            if (details == null) continue;
-            final useAuto = tv && policy.heroPlayAutoFocus && !autofocusUsed;
-            if (useAuto) autofocusUsed = true;
-            child = HeroPillPlayButton(
-              label: action.label ?? 'View details',
-              icon: _heroActionIcon(action.icon),
-              // Pre-cutover Home: glass details (secondary), not green Play.
-              tone: action.tone,
-              alwaysShowLabel: true,
-              onTap: details,
-              autoFocus: useAuto,
-              tvTabId: tab.isEmpty ? null : tab,
-              tvRowId: 'hero-details',
-            );
-          } else if (id == 'follow') {
-            if (follow == null) continue;
-            // Glass circular pin (expands “My List” on hover) — not bare icon.
-            child = KitListStatusHero(
-              target: follow,
-              tvTabId: tab.isEmpty ? null : tab,
-              tvItemIndexStart: 1,
-              enabled: true,
-            );
-          } else {
-            continue;
-          }
-          if (children.isNotEmpty) {
-            children.add(const SizedBox(width: 10));
-          }
-          children.add(child);
-        }
-        if (children.isEmpty) return const SizedBox.shrink();
-        final row = HeroPillActionRow(children: children);
-        if (!tv || focusDown == null) return row;
-        return Focus(
-          skipTraversal: true,
-          onKeyEvent: (node, event) {
-            if (event is! KeyDownEvent) return KeyEventResult.ignored;
-            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-              focusDown();
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          },
-          child: row,
-        );
-      },
+      compact: compact,
+      bleedDownOffset: bleedDownOffset,
+      heightFraction: PackPaintArtifact.packDouble(node['heightFraction']),
+      focusDown: focusDown,
     );
   }
 
@@ -2440,6 +2362,213 @@ class PackPaintTree extends StatelessWidget {
     controller.dispose();
     if (result == null || !context.mounted) return;
     chrome?.onEventQuery(result.trim());
+  }
+}
+
+/// Hub cinematic hero + TV default focus (nav RIGHT / OK land on details CTA).
+///
+/// Restores [TvHeroActions.bind] lost when pack_layout_host_wire was deleted.
+class _HubTvCinematicHero extends StatefulWidget {
+  const _HubTvCinematicHero({
+    required this.tabId,
+    required this.pluginId,
+    required this.slides,
+    required this.slideMetas,
+    required this.actionSpecs,
+    required this.pageBottomChild,
+    required this.compact,
+    required this.bleedDownOffset,
+    required this.heightFraction,
+    required this.focusDown,
+  });
+
+  final String tabId;
+  final String pluginId;
+  final List<CinematicHeroSlide> slides;
+  final List<MetaItem?> slideMetas;
+  final List<_HeroActionSpec> actionSpecs;
+  final Widget? pageBottomChild;
+  final bool compact;
+  final double? bleedDownOffset;
+  final double? heightFraction;
+  final VoidCallback? focusDown;
+
+  @override
+  State<_HubTvCinematicHero> createState() => _HubTvCinematicHeroState();
+}
+
+class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
+  final FocusNode _playFocus = FocusNode(debugLabel: 'hub-hero-details');
+
+  @override
+  void initState() {
+    super.initState();
+    _bindTv();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HubTvCinematicHero oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _bindTv();
+  }
+
+  @override
+  void dispose() {
+    // Do not TvHeroActions.unbind — PackLayoutPainter owns tab teardown and
+    // may still need enterFromNav / restore for list hubs after hero unmount.
+    _playFocus.dispose();
+    super.dispose();
+  }
+
+  void _bindTv() {
+    final tab = widget.tabId;
+    if (tab.isEmpty) return;
+    TvHeroActions.bind(
+      tab,
+      defaultFocus: () => _playFocus,
+      heroReveal: _scrollHeroIntoView,
+      enterFromNavFocus: () {
+        if (_playFocus.canRequestFocus && _playFocus.context != null) {
+          FocusScope.of(_playFocus.context!).requestFocus(_playFocus);
+          return;
+        }
+        ShellTvFocusCoordinator.focusFirstContentRow(tab);
+      },
+    );
+  }
+
+  void _scrollHeroIntoView() {
+    final scrollable = Scrollable.maybeOf(context);
+    final position = scrollable?.position;
+    if (position == null || !position.hasPixels) return;
+    unawaited(
+      position.animateTo(
+        0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Keep CTA enter/default focus after PackLayoutPainter's one-shot list bind.
+    _bindTv();
+    final metrics = ShellScope.metricsOf(context);
+    final policy = ShellScope.inputPolicyOf(context);
+    final tv = policy.useFocusableMoodChips;
+    final tab = widget.tabId;
+    final compact = widget.compact;
+
+    return CinematicHero(
+      slides: widget.slides,
+      pageBottomChild: widget.pageBottomChild,
+      layout: CinematicHeroLayout(
+        compact: compact,
+        tvDensity: metrics.usesTvDensity,
+        kenBurns: policy.kenBurnsBackdrop,
+        plainTitle: policy.useFocusableMoodChips,
+        heroMinTitleHeight: metrics.heroMinTitleHeight,
+        heroActionUseFittedBox: metrics.heroActionUseFittedBox,
+        heroCompactRightInset: metrics.heroCompactRightInset,
+        sectionHorizontalPadding: ShellTokens.homeSectionHorizontalPadding,
+        heroHeightFraction: widget.heightFraction ??
+            (compact
+                ? ShellTokens.heroHeightFractionCompact
+                : ShellTokens.heroHeightFractionDesktop),
+        firstCatalogRowHeight: widget.pageBottomChild == null
+            ? 0
+            : ShellTokens.homeSectionTitleTop + 180 + 40,
+        bleedDownOffset: widget.bleedDownOffset,
+      ),
+      onHeight: tab.isEmpty
+          ? null
+          : (h) {
+              ShellBus.hubHeroHeightFor(tab).value = h;
+            },
+      actionRowBuilder: (ctx, slide, {required isActive}) {
+        if (!isActive) return const SizedBox.shrink();
+        final idx = widget.slides.indexWhere((s) => s.id == slide.id);
+        final meta = idx >= 0 && idx < widget.slideMetas.length
+            ? widget.slideMetas[idx]
+            : null;
+        final details = slide.onDetails;
+        final follow = meta == null
+            ? null
+            : ListFollowTarget.fromMeta(
+                meta: meta,
+                pluginId: widget.pluginId,
+              );
+
+        final children = <Widget>[];
+        var autofocusUsed = false;
+        for (final action in widget.actionSpecs) {
+          final id = action.id;
+          Widget? child;
+          if (id == 'details') {
+            if (details == null) continue;
+            final useAuto = tv && policy.heroPlayAutoFocus && !autofocusUsed;
+            if (useAuto) autofocusUsed = true;
+            child = HeroPillPlayButton(
+              label: action.label ?? 'View details',
+              icon: PackPaintTree._heroActionIcon(action.icon),
+              tone: action.tone,
+              alwaysShowLabel: true,
+              onTap: details,
+              autoFocus: useAuto,
+              // Keep node mounted for nav RIGHT restore even when not autofocus.
+              focusNode: tv ? _playFocus : null,
+              tvTabId: tab.isEmpty ? null : tab,
+              tvRowId: 'hero-details',
+              tvItemIndex: 0,
+              onKeyEvent: tv
+                  ? (node, event) {
+                      if (!shellTvIsNavigationKey(event)) {
+                        return KeyEventResult.ignored;
+                      }
+                      if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                        if (ShellTvFocusCoordinator.focusActiveNavTab()) {
+                          return KeyEventResult.handled;
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    }
+                  : null,
+            );
+          } else if (id == 'follow') {
+            if (follow == null) continue;
+            child = KitListStatusHero(
+              target: follow,
+              tvTabId: tab.isEmpty ? null : tab,
+              tvItemIndexStart: 1,
+              enabled: true,
+            );
+          } else {
+            continue;
+          }
+          if (children.isNotEmpty) {
+            children.add(const SizedBox(width: 10));
+          }
+          children.add(child);
+        }
+        if (children.isEmpty) return const SizedBox.shrink();
+        final row = HeroPillActionRow(children: children);
+        final focusDown = widget.focusDown;
+        if (!tv || focusDown == null) return row;
+        return Focus(
+          skipTraversal: true,
+          onKeyEvent: (node, event) {
+            if (event is! KeyDownEvent) return KeyEventResult.ignored;
+            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              focusDown();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: row,
+        );
+      },
+    );
   }
 }
 

@@ -808,6 +808,36 @@ class CinematicHeroState extends State<CinematicHero> {
     bool isActive = true,
   }) {
     final overview = slide.overview.trim();
+    const titleMetaGap = 8.0;
+    const metaOverviewGap = 8.0;
+    const actionGap = 12.0;
+    const overviewFontSize = 13.0;
+    const overviewHeight = 1.35;
+    const overviewMaxLinesCap = 3;
+    const metaReserve = 24.0;
+    final overviewLineHeight = overviewFontSize * overviewHeight;
+    // Worst-case chrome so synopsis shrinks/drops before the Column overflows.
+    final fixedChrome = ShellTokens.heroTitleSlotHeightCompact +
+        titleMetaGap +
+        metaReserve +
+        actionGap +
+        ShellTokens.shellButtonHeight;
+    var overviewLines = 0;
+    if (overview.isNotEmpty) {
+      final budget = maxHeight - fixedChrome - metaOverviewGap;
+      if (budget >= overviewLineHeight) {
+        overviewLines =
+            (budget / overviewLineHeight).floor().clamp(0, overviewMaxLinesCap);
+        // HeroOverviewText adds a Read More row when truncated — keep room.
+        while (overviewLines > 0) {
+          final need =
+              overviewLines * overviewLineHeight + 8 + overviewLineHeight;
+          if (need <= budget) break;
+          overviewLines--;
+        }
+      }
+    }
+
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight, maxWidth: maxWidth),
       child: Column(
@@ -815,22 +845,22 @@ class CinematicHeroState extends State<CinematicHero> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildTitle(slide, compact: true),
-          const SizedBox(height: 8),
-          _buildMetaRow(slide),
-          if (overview.isNotEmpty) ...[
-            const SizedBox(height: 8),
+          const SizedBox(height: titleMetaGap),
+          _buildMetaRow(slide, singleLine: true),
+          if (overviewLines > 0) ...[
+            const SizedBox(height: metaOverviewGap),
             HeroOverviewText(
               overview: overview,
               style: const TextStyle(
-                fontSize: 13,
-                height: 1.35,
+                fontSize: overviewFontSize,
+                height: overviewHeight,
                 color: Color(0x99FFFFFF),
               ),
-              maxLines: 3,
+              maxLines: overviewLines,
               shrinkWrap: true,
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: actionGap),
           widget.upcomingNoticeBuilder?.call(context, slide) ??
               const SizedBox.shrink(),
           widget.actionRowBuilder?.call(context, slide, isActive: isActive) ??
