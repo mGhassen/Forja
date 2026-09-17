@@ -100,16 +100,18 @@ class PluginRegistry {
   /// Pack index for the launched profile (`engine_js_packs_v2@account:profile`).
   static String get packsPrefsKey => LocalDataScope.storageKey(_packsKeyV2);
 
-  /// Read pack JSON for the active profile; lazy-copy unscoped legacy once.
+  /// Read pack JSON for the active profile.
+  ///
+  /// Never lazy-copies bare `engine_js_packs_v2` into a new profile (issue 289).
+  /// Drop the unscoped key if it still exists — scoped keys are SoT.
   Future<String?> _readPacksJson(SharedPreferences prefs) async {
     final scoped = packsPrefsKey;
     final scopedRaw = prefs.getString(scoped);
+    if (prefs.containsKey(_packsKeyV2)) {
+      await prefs.remove(_packsKeyV2);
+    }
     if (scopedRaw != null && scopedRaw.isNotEmpty) return scopedRaw;
-    final bare = prefs.getString(_packsKeyV2);
-    if (bare == null || bare.isEmpty) return null;
-    await prefs.setString(scoped, bare);
-    await prefs.remove(_packsKeyV2);
-    return bare;
+    return null;
   }
 
   Future<void> _writePacksJson(SharedPreferences prefs, String json) async {
@@ -502,13 +504,48 @@ class PluginRegistry {
 
   void notifyChanged() => changeNotifier.value++;
 
-  Future<void> _savePacks(List<EnginePack> packs) async {
+  Future<void> _savePacks(
+    List<EnginePack> packs, {
+    int? expectedGeneration,
+  }) async {
+    if (expectedGeneration != null &&
+        LocalDataScope.generation != expectedGeneration) {
+      debugPrint(
+        '[engine] _savePacks skipped — profile scope changed '
+        '(gen $expectedGeneration → ${LocalDataScope.generation})',
+      );
+      return;
+    }
     final prefs = await _prefs;
     await _writePacksJson(
       prefs,
       jsonEncode([for (final p in packs) p.toJson()]),
     );
     notifyChanged();
+  }
+
+  /// Wipe pack membership for the launched profile (prefs index only).
+  ///
+  /// Local checkout folders on disk are shared and are not deleted. Remote
+  /// script caches under this profile scope are purged. Used when creating a
+  /// profile so B never inherits A's packs (issue 289).
+  Future<void> clearPackMembershipForActiveProfile() async {
+    final all = await listPacksRaw();
+    for (final pack in all) {
+      await _purgePackScriptStorage(
+        pack,
+        purgeDisk: !isLocalManifestUrl(pack.sourceUrl),
+      );
+      for (final p in pack.plugins) {
+        EngineCache.instance.wipePlugin(p.id);
+      }
+    }
+    await _savePacks(const []);
+    if (all.isNotEmpty) {
+      bumpHubFeedEpoch(all: true);
+      _invalidatePlaybackCachesAfterPackChange();
+      notifyChanged();
+    }
   }
 
   Future<List<EnginePack>> listPacksRaw() async {
@@ -966,6 +1003,8 @@ class PluginRegistry {
     // Keep the URL/path exactly as given — local checkout or remote. Never
     // remap unreachable locals through catalog / peer slots.
     manifestUrl = manifestUrl.trim();
+    final scopeGen = LocalDataScope.generation;
+    final scopeId = LocalDataScope.id;
     final body = await _fetchText(manifestUrl);
     final map = jsonDecode(body) as Map<String, dynamic>;
     try {
@@ -1286,7 +1325,20 @@ class PluginRegistry {
     } else {
       all.add(pack);
     }
-    await _savePacks(all);
+    if (LocalDataScope.generation != scopeGen || LocalDataScope.id != scopeId) {
+      debugPrint(
+        '[engine] install aborted — profile scope changed '
+        '($scopeId → ${LocalDataScope.id}) $manifestUrl',
+      );
+      throw StateError('Pack install cancelled: profile switched');
+    }
+    await _savePacks(all, expectedGeneration: scopeGen);
+    if (LocalDataScope.generation != scopeGen) {
+      debugPrint(
+        '[engine] install write skipped after scope change $manifestUrl',
+      );
+      throw StateError('Pack install cancelled: profile switched');
+    }
     if (!localCheckout) {
       await PluginScriptDiskStore.saveEnginePackMeta(pack);
     }
@@ -1871,18 +1923,14 @@ class PluginRegistry {
       }
       final remoteKey = _leanRemoteKeyForPack(remote, pack.sourceUrl);
       if (removeMissingUserPacks && remoteKey == null) {
-        // Readable local checkout is device-local membership — soft-pull must
-        // not delete it just because cloud omitted the absolute path (or has
-        // a same-slot remote twin).
-        if (isLocalManifestUrl(pack.sourceUrl) &&
-            await _localManifestExists(pack.sourceUrl)) {
-          next.add(pack);
-          satisfiedRemote.add(pack.sourceUrl);
-          _markLeanSlotSatisfied(satisfiedRemote, remote, pack.sourceUrl);
-          continue;
-        }
+        // Cloud membership is SoT. Local checkout paths do not bypass an empty
+        // or omitted lean row (issue 289). Same-slot remote URLs still match
+        // via [_leanRemoteKeyForPack] above.
         final stub = pack.plugins.isEmpty;
-        if (stub || purgeRemovedImmediately) {
+        final dropNow = stub ||
+            purgeRemovedImmediately ||
+            isLocalManifestUrl(pack.sourceUrl);
+        if (dropNow) {
           victims.add(pack);
           changed = true;
           if (!stub) {

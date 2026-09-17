@@ -15,11 +15,16 @@ abstract final class LocalDataScope {
 
   static String _accountId = guestAccountId;
   static String _profileId = guestProfileId;
+  static int _generation = 0;
 
   static final List<Future<void> Function()> _listeners = [];
 
   static String get accountId => _accountId;
   static String get profileId => _profileId;
+
+  /// Bumps on every identity change — pack installs stamp this and abort writes
+  /// if the profile switched mid-flight (issue 289).
+  static int get generation => _generation;
 
   /// `accountId:profileId` — suffix for prefs keys and disk path segments.
   static String get id => '$_accountId:$_profileId';
@@ -46,6 +51,7 @@ abstract final class LocalDataScope {
   static void resetForTest() {
     _accountId = guestAccountId;
     _profileId = guestProfileId;
+    _generation = 0;
     _listeners.clear();
   }
 
@@ -62,6 +68,7 @@ abstract final class LocalDataScope {
     // Always attempt one-time legacy migrate (guest boot keeps local/default).
     await _migrateLegacyKeysIfNeeded();
     if (!changed) return;
+    _generation++;
     for (final listener in List<Future<void> Function()>.from(_listeners)) {
       try {
         await listener();

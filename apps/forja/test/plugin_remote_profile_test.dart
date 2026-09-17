@@ -237,8 +237,8 @@ void main() {
       expect(packs.single.plugins, isEmpty);
     });
 
-    test('keeps readable local checkout when cloud omits it', () async {
-      final dir = await Directory.systemTemp.createTemp('lean_local_keep_');
+    test('drops local checkout when cloud omits it', () async {
+      final dir = await Directory.systemTemp.createTemp('lean_local_drop_');
       final manifest = File('${dir.path}/manifest.json');
       await manifest.writeAsString('{"name":"Local","version":"1.0.0"}');
       final local = manifest.path;
@@ -248,8 +248,8 @@ void main() {
       await _seedPacks([
         {
           'sourceUrl': local,
-          'packId': 'local-keep',
-          'name': 'Local Keep',
+          'packId': 'local-drop',
+          'name': 'Local Drop',
           'version': '1.0.0',
           'plugins': [
             {
@@ -265,10 +265,11 @@ void main() {
         const [],
         purgeRemovedImmediately: true,
       );
-      expect(result.removed, isEmpty);
-      final packs = await PluginRegistry.instance.listPacksRaw();
-      expect(packs, hasLength(1));
-      expect(packs.single.sourceUrl, local);
+      expect(result.removed, hasLength(1));
+      expect(result.removed.single.manifestUrl, local);
+      expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
+      // Shared checkout file stays on disk — only membership is dropped.
+      expect(await manifest.exists(), isTrue);
     });
 
     test('skips non-ForjaHQ local paths from cloud lean', () async {
@@ -283,10 +284,10 @@ void main() {
       expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
     });
 
-    test('mid-session keeps installed pack and reports removed', () async {
+    test('mid-session keeps remote pack and reports removed', () async {
       await _seedPacks([
         {
-          'sourceUrl': '/tmp/forja-keep/manifest.json',
+          'sourceUrl': 'https://cdn.example/keep/manifest.json',
           'packId': 'keep',
           'name': 'Keep',
           'version': '1.0.0',
@@ -305,15 +306,51 @@ void main() {
         purgeRemovedImmediately: false,
       );
       expect(result.removed, hasLength(1));
-      expect(result.removed.first.manifestUrl, '/tmp/forja-keep/manifest.json');
+      expect(
+        result.removed.first.manifestUrl,
+        'https://cdn.example/keep/manifest.json',
+      );
       final packs = await PluginRegistry.instance.listPacksRaw();
       expect(packs, hasLength(1));
+    });
+
+    test('mid-session drops local checkout immediately when cloud omits it',
+        () async {
+      final dir = await Directory.systemTemp.createTemp('lean_local_mid_');
+      final manifest = File('${dir.path}/manifest.json');
+      await manifest.writeAsString('{"name":"Local","version":"1.0.0"}');
+      final local = manifest.path;
+      addTearDown(() async {
+        if (await dir.exists()) await dir.delete(recursive: true);
+      });
+      await _seedPacks([
+        {
+          'sourceUrl': local,
+          'packId': 'local-mid',
+          'name': 'Local Mid',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'p1',
+              'name': 'P1',
+              'entry': 'p1.js',
+              'kind': 'http',
+            },
+          ],
+        },
+      ]);
+      final result = await PluginRegistry.instance.applyLeanManifestUrls(
+        const [],
+        purgeRemovedImmediately: false,
+      );
+      expect(result.removed, hasLength(1));
+      expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
     });
 
     test('boot purges missing user packs immediately', () async {
       await _seedPacks([
         {
-          'sourceUrl': '/tmp/forja-drop/manifest.json',
+          'sourceUrl': 'https://cdn.example/drop/manifest.json',
           'packId': 'drop',
           'name': 'Drop',
           'version': '1.0.0',
@@ -608,6 +645,143 @@ void main() {
       );
       expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
       expect(ShellBus.pendingPluginBatchInstall.value, isNull);
+    });
+  });
+
+  group('profile pack membership isolation (issue 289)', () {
+    test('clearPackMembershipForActiveProfile empties index', () async {
+      await _seedPacks([
+        {
+          'sourceUrl': 'https://cdn.example/a/manifest.json',
+          'packId': 'a',
+          'name': 'A',
+          'version': '1.0.0',
+          'plugins': [
+            {'id': 'p1', 'name': 'P1', 'entry': 'p1.js', 'kind': 'http'},
+          ],
+        },
+      ]);
+      expect(await PluginRegistry.instance.listPacksRaw(), hasLength(1));
+      await PluginRegistry.instance.clearPackMembershipForActiveProfile();
+      expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
+    });
+
+    test('pack prefs stay isolated across LocalDataScope profiles', () async {
+      await LocalDataScope.configure(accountId: 'user', profileId: 'prof-a');
+      await PluginScriptDiskStore.configureScope(
+        accountId: 'user',
+        profileId: 'prof-a',
+      );
+      await _seedPacks([
+        {
+          'sourceUrl': 'https://cdn.example/a/manifest.json',
+          'packId': 'a',
+          'name': 'A',
+          'version': '1.0.0',
+          'plugins': [
+            {'id': 'p1', 'name': 'P1', 'entry': 'p1.js', 'kind': 'http'},
+          ],
+        },
+      ]);
+      expect(await PluginRegistry.instance.listPacksRaw(), hasLength(1));
+
+      await LocalDataScope.configure(accountId: 'user', profileId: 'prof-b');
+      await PluginScriptDiskStore.configureScope(
+        accountId: 'user',
+        profileId: 'prof-b',
+      );
+      expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
+
+      await LocalDataScope.configure(accountId: 'user', profileId: 'prof-a');
+      await PluginScriptDiskStore.configureScope(
+        accountId: 'user',
+        profileId: 'prof-a',
+      );
+      expect(await PluginRegistry.instance.listPacksRaw(), hasLength(1));
+    });
+
+    test('bare engine_js_packs_v2 is not copied into a new profile', () async {
+      SharedPreferences.setMockInitialValues({
+        'engine_js_packs_v2': jsonEncode([
+          {
+            'sourceUrl': 'https://cdn.example/bare/manifest.json',
+            'packId': 'bare',
+            'name': 'Bare',
+            'version': '1.0.0',
+            'plugins': [
+              {'id': 'p1', 'name': 'P1', 'entry': 'p1.js', 'kind': 'http'},
+            ],
+          },
+        ]),
+        'engine_js_packs_v2_migrated': true,
+        'engine_js_scripts_disk_v3_migrated': true,
+        'engine_js_legacy_forjahq_wiped': true,
+        'nuvio_scripts_disk_v1_migrated': true,
+      });
+      await LocalDataScope.configure(accountId: 'user', profileId: 'new');
+      expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('engine_js_packs_v2'), isFalse);
+    });
+
+    test('install aborts when profile scope changes mid-flight', () async {
+      const url = 'https://cdn.example/scope-abort/manifest.json';
+      const body = '''
+{
+  "id": "scope-pack",
+  "name": "Scope Pack",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "id": "p1",
+      "name": "P1",
+      "entry": "p1.js",
+      "kind": "http",
+      "types": ["movie"]
+    }
+  ],
+  "bundle": ["p1.js"]
+}
+''';
+      await LocalDataScope.configure(accountId: 'user', profileId: 'prof-a');
+      await PluginScriptDiskStore.configureScope(
+        accountId: 'user',
+        profileId: 'prof-a',
+      );
+      PluginRegistry.instance.debugHttpClient = MockClient((request) async {
+        // Flip to B while install still holds A's generation stamp.
+        await LocalDataScope.configure(accountId: 'user', profileId: 'prof-b');
+        await PluginScriptDiskStore.configureScope(
+          accountId: 'user',
+          profileId: 'prof-b',
+        );
+        if (request.url.path.endsWith('manifest.json')) {
+          return http.Response(body, 200);
+        }
+        return http.Response('exports.extract=async()=>({streams:[]});', 200);
+      });
+
+      await expectLater(
+        PluginRegistry.instance.install(url),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('profile switched'),
+          ),
+        ),
+      );
+
+      // Active scope is B — must not have received the write.
+      expect(LocalDataScope.profileId, 'prof-b');
+      expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
+
+      await LocalDataScope.configure(accountId: 'user', profileId: 'prof-a');
+      await PluginScriptDiskStore.configureScope(
+        accountId: 'user',
+        profileId: 'prof-a',
+      );
+      expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
     });
   });
 

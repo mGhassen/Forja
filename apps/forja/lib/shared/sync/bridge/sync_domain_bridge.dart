@@ -180,8 +180,8 @@ class SyncDomainBridge {
       }
     }
 
-    // Pack index is per launched profile ([LocalDataScope]); lean apply after
-    // selectProfile owns membership. Do not removePack here.
+    // Pack membership cleared in [seedNewProfileDefaults] / lean import — not
+    // here (profile switch applies cloud packs[] after this wipe).
     await PacksOnboardingStore.clearLocalForActiveProfile();
 
     final nuvioAddons = await NuvioService.instance.listAddons();
@@ -204,12 +204,17 @@ class SyncDomainBridge {
     }
   }
 
-  /// After creating a profile: local defaults + push so cloud is not `{}` / prior prefs.
+  /// After creating a profile: local defaults + empty pack membership + push
+  /// so cloud is not `{}` / prior prefs / prior packs (issue 289).
   Future<void> seedNewProfileDefaults() async {
     cancelPendingPushes();
     await resetSyncedLocalToPlatformDefaults(clearIptv: true);
+    await PluginRegistry.instance.clearPackMembershipForActiveProfile();
     // New profile has no assignments yet - settings only; skip empty IPTV wipe.
-    await pushAllLocal(pushIptvIfLocalEmpty: false);
+    await pushAllLocal(
+      pushIptvIfLocalEmpty: false,
+      allowEmptyForjaWipe: true,
+    );
   }
 
   DateTime? _lastCloudPullAt;
