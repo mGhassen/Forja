@@ -129,7 +129,7 @@ class CatalogScheduleDenseSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const rowExtent = 52.0;
+        const rowExtent = ShellTokens.denseListRowExtent;
         final avail = constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : MediaQuery.sizeOf(context).height * 0.55;

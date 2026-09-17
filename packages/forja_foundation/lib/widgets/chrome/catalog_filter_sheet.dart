@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/filter_sheet_option.dart';
 
 /// Generic catalog picker — flat [FilterSheetOption] rows (Zone A).
@@ -42,7 +43,7 @@ class CatalogFilterSheet extends StatefulWidget {
     this.autofocusFirst = false,
     this.wrapBody,
     this.optionInteractiveBuilder,
-    this.radius = 12,
+    this.radius = ShellTokens.filterSheetRadius,
     this.fontSize = 16,
     this.padding = const EdgeInsets.fromLTRB(24, 20, 24, 32),
   });
@@ -106,8 +107,8 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
               children: [
                 Center(
                   child: Container(
-                    width: 40,
-                    height: 4,
+                    width: ShellTokens.filterSheetHandleWidth,
+                    height: ShellTokens.filterSheetHandleHeight,
                     decoration: BoxDecoration(
                       color: Colors.white24,
                       borderRadius: BorderRadius.circular(2),

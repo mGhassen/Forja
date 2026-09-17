@@ -42,12 +42,12 @@ class DetailsTrailersSection extends StatelessWidget {
     required Widget child,
   })? itemBuilder;
 
-  static const double cardWidth = 200;
+  static const double cardWidth = DetailsTokens.trailerCardWidth;
   static const TextStyle titleStyle = TextStyle(
     color: Colors.white,
-    fontSize: 20,
+    fontSize: ShellTokens.sectionTitleFontSize,
     fontWeight: FontWeight.w800,
-    letterSpacing: -0.3,
+    letterSpacing: ShellTokens.sectionTitleLetterSpacing,
   );
 
   @override
@@ -115,8 +115,8 @@ class DetailsTrailersSection extends StatelessWidget {
                       ),
                       Center(
                         child: Container(
-                          width: 40,
-                          height: 40,
+                          width: DetailsTokens.heroPillHeight,
+                          height: DetailsTokens.heroPillHeight,
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.9),
                             shape: BoxShape.circle,

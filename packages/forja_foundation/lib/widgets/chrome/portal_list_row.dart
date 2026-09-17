@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_probe_detail_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -14,8 +15,8 @@ const _kPortalsRowId = 'portals';
 
 /// Presentational portal inventory row — props / callbacks only (RFC-095).
 ///
-/// Visual parity with the former IPTV Portals panel tile: 98px card, health
-/// glyph, expiry / title / platform+URL / seats, hover action rail.
+/// Sources-panel chrome: bordered card, inner left probe/selection strip,
+/// expiry / title / platform+URL / seats, hover action rail.
 ///
 /// When [tvTabId] is set, the row + action chrome register via [ShellPaintScope].
 class PortalListRow extends StatefulWidget {
@@ -26,9 +27,9 @@ class PortalListRow extends StatefulWidget {
     this.tvTabId,
     this.listIndex = 0,
     this.height = rowHeight,
-    this.actionWidth = 108,
-    this.fontSize = 13,
-    this.metaFontSize = 11,
+    this.actionWidth = PortalListTokens.actionWidth,
+    this.fontSize = PortalListTokens.titleFontSize,
+    this.metaFontSize = PortalListTokens.metaFontSize,
     this.onSelect,
     this.onFavorite,
     this.onEdit,
@@ -36,13 +37,14 @@ class PortalListRow extends StatefulWidget {
     this.onCopyShareCode,
     this.onHoverEnter,
     this.onHoverExit,
+    this.hoverOwnerId,
     this.onUpEdge,
     this.onDownEdge,
     this.onLeftEdge,
     this.onTvFocus,
   });
 
-  static const rowHeight = 98.0;
+  static const rowHeight = PortalListTokens.rowHeight;
 
   final PortalListItem item;
   final bool leanback;
@@ -59,6 +61,10 @@ class PortalListRow extends StatefulWidget {
   final Future<String?> Function()? onCopyShareCode;
   final VoidCallback? onHoverEnter;
   final VoidCallback? onHoverExit;
+
+  /// Shared with [PortalListView] — only one row may own hover/detail at a time.
+  /// Scroll clears it; a new enter steals it (scroll does not fire `onExit`).
+  final ValueNotifier<String?>? hoverOwnerId;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
   final VoidCallback? onLeftEdge;
@@ -69,7 +75,7 @@ class PortalListRow extends StatefulWidget {
 }
 
 class _PortalListRowState extends State<PortalListRow> {
-  static const _statusSlot = 18.0;
+  static const _probeBarWidth = 4.0;
   static const _detailHoverDelay = Duration(seconds: 1);
 
   bool _lineHover = false;
@@ -149,11 +155,16 @@ class _PortalListRowState extends State<PortalListRow> {
     ]) {
       node.addListener(_onActionFocusChanged);
     }
+    widget.hoverOwnerId?.addListener(_onHoverOwnerChanged);
   }
 
   @override
   void didUpdateWidget(covariant PortalListRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.hoverOwnerId != widget.hoverOwnerId) {
+      oldWidget.hoverOwnerId?.removeListener(_onHoverOwnerChanged);
+      widget.hoverOwnerId?.addListener(_onHoverOwnerChanged);
+    }
     if (_detailOverlay == null) return;
     // OverlayEntry lives under Overlay, not this row. Sync markNeedsBuild
     // during list rebuild asserts "wrong build scope" and poisons Tooltips.
@@ -171,6 +182,10 @@ class _PortalListRowState extends State<PortalListRow> {
 
   @override
   void dispose() {
+    widget.hoverOwnerId?.removeListener(_onHoverOwnerChanged);
+    if (widget.hoverOwnerId?.value == item.id) {
+      widget.hoverOwnerId!.value = null;
+    }
     _hideDetailCard();
     for (final node in [
       _favoriteFocus,
@@ -191,8 +206,35 @@ class _PortalListRowState extends State<PortalListRow> {
     if (mounted) setState(() {});
   }
 
+  void _onHoverOwnerChanged() {
+    if (!mounted) return;
+    if (widget.hoverOwnerId?.value == item.id) return;
+    if (!_lineHover && _detailOverlay == null && _detailTimer == null) return;
+    final wasHover = _lineHover;
+    _clearHover();
+    if (wasHover) widget.onHoverExit?.call();
+  }
+
+  void _claimHover() {
+    final owner = widget.hoverOwnerId;
+    if (owner != null) owner.value = item.id;
+    setState(() => _lineHover = true);
+    widget.onHoverEnter?.call();
+    _scheduleDetailCard();
+  }
+
+  void _releaseHover() {
+    final owner = widget.hoverOwnerId;
+    if (owner != null) {
+      if (owner.value == item.id) owner.value = null;
+      return;
+    }
+    _clearHover();
+    widget.onHoverExit?.call();
+  }
+
   void _clearHover() {
-    setState(() => _lineHover = false);
+    if (_lineHover) setState(() => _lineHover = false);
     _hideDetailCard();
   }
 
@@ -201,6 +243,10 @@ class _PortalListRowState extends State<PortalListRow> {
     _detailTimer?.cancel();
     _detailTimer = Timer(_detailHoverDelay, () {
       if (!mounted || !_lineHover) return;
+      if (widget.hoverOwnerId != null &&
+          widget.hoverOwnerId!.value != item.id) {
+        return;
+      }
       _showDetailCard();
     });
   }
@@ -340,41 +386,64 @@ class _PortalListRowState extends State<PortalListRow> {
     widget.onSelect?.call();
   }
 
-  Color _healthColor({required bool checking, required bool? health}) {
-    if (checking) return const Color(0xFF38BDF8);
-    if (health == true) return ForjaShellColors.brandGreen;
-    if (health == false) return const Color(0xFFEF4444);
-    return const Color(0x3DFFFFFF);
+  /// Desktop hybrid: focus chrome only when keyboard paint is on — raw
+  /// `_focused` stays true after mouse delete + inventory re-focus restore.
+  bool get _focusChrome => widget.leanback
+      ? _focused
+      : ShellPaintScope.focusStyledOf(context, focused: _focused);
+
+  bool get _hoverChrome =>
+      _lineHover || _focusChrome || _showShareCode;
+
+  Color _backgroundColor() {
+    if (item.selected) {
+      return ForjaShellColors.brandGreen.withValues(alpha: 0.16);
+    }
+    if (_hoverChrome) return ForjaShellColors.chipSelectedBg;
+    if (_showNewChrome) {
+      return ForjaShellColors.navUnderline.withValues(alpha: 0.1);
+    }
+    return Colors.white.withValues(alpha: 0.04);
   }
 
-  Color _selectedStatusColor({required bool checking, required bool? health}) {
-    if (checking) return const Color(0xFF38BDF8);
-    if (health == false) return const Color(0xFFEF4444);
-    return ForjaShellColors.brandGreen;
+  Color _borderColor() {
+    if (item.selected) {
+      return _hoverChrome
+          ? ForjaShellColors.brandGreen
+          : ForjaShellColors.brandGreen.withValues(alpha: 0.40);
+    }
+    if (_hoverChrome) return ForjaShellColors.chipSelectedBorder;
+    if (_showNewChrome) {
+      return ForjaShellColors.navUnderline.withValues(alpha: 0.45);
+    }
+    return Colors.white.withValues(alpha: 0.07);
+  }
+
+  double _borderWidth() {
+    if (item.selected || _hoverChrome) return 1.5;
+    return 1;
+  }
+
+  /// Inner left strip — selected owns green; else probe / new chrome.
+  Color _leftBarColor() {
+    if (item.selected) return ForjaShellColors.brandGreen;
+    if (item.checking) return Colors.white.withValues(alpha: 0.35);
+    return switch (item.healthy) {
+      true => const Color(0xFF22C55E),
+      false => const Color(0xFFEF4444),
+      null => _showNewChrome
+          ? ForjaShellColors.navUnderline
+          : Colors.transparent,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final deleting = item.deleting;
-    final isActive = item.selected;
     final reveal = _reveal;
     final railAnim =
         widget.leanback ? Duration.zero : const Duration(milliseconds: 180);
-
-    // Desktop hybrid: focus fill only when keyboard chrome is on — raw
-    // `_focused` stays true after mouse delete + inventory re-focus restore.
-    final focusFill = widget.leanback
-        ? _focused
-        : ShellPaintScope.focusStyledOf(context, focused: _focused);
-    final fillColor = widget.leanback && focusFill
-        ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-        : isActive
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.07)
-            : _showNewChrome
-                ? ForjaShellColors.navUnderline.withValues(alpha: 0.1)
-                : (_lineHover || focusFill || _showShareCode)
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.transparent;
+    final cardHeight = widget.height - 4;
 
     Widget tile = ExcludeFocus(
       excluding: deleting,
@@ -385,45 +454,48 @@ class _PortalListRowState extends State<PortalListRow> {
           child: Stack(
             fit: StackFit.passthrough,
             children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: fillColor,
-                  border: _showNewChrome
-                      ? const Border(
-                          left: BorderSide(
-                            color: ForjaShellColors.navUnderline,
-                            width: 3,
-                          ),
-                        )
-                      : null,
-                ),
-                child: SizedBox(
-                  height: widget.height,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: _buildMain()),
-                      AnimatedContainer(
-                        duration: railAnim,
-                        curve: Curves.easeOutCubic,
-                        width: reveal ? widget.actionWidth : 0,
-                        height: widget.height,
-                        child: !reveal
-                            ? const SizedBox.shrink()
-                            : ClipRect(
-                                child: OverflowBox(
-                                  minWidth: widget.actionWidth,
-                                  maxWidth: widget.actionWidth,
-                                  alignment: Alignment.centerRight,
-                                  child: SizedBox(
-                                    width: widget.actionWidth,
-                                    height: widget.height,
-                                    child: _buildActionRail(),
+              SizedBox(
+                height: widget.height,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: _backgroundColor(),
+                      border: Border.all(
+                        color: _borderColor(),
+                        width: _borderWidth(),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ColoredBox(
+                          color: _leftBarColor(),
+                          child: const SizedBox(width: _probeBarWidth),
+                        ),
+                        Expanded(child: _buildMain()),
+                        AnimatedContainer(
+                          duration: railAnim,
+                          curve: Curves.easeOutCubic,
+                          width: reveal ? widget.actionWidth : 0,
+                          height: cardHeight,
+                          child: !reveal
+                              ? const SizedBox.shrink()
+                              : ClipRect(
+                                  child: OverflowBox(
+                                    minWidth: widget.actionWidth,
+                                    maxWidth: widget.actionWidth,
+                                    alignment: Alignment.centerRight,
+                                    child: SizedBox(
+                                      width: widget.actionWidth,
+                                      height: cardHeight,
+                                      child: _buildActionRail(),
+                                    ),
                                   ),
                                 ),
-                              ),
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -439,19 +511,18 @@ class _PortalListRowState extends State<PortalListRow> {
 
     if (!widget.leanback) {
       tile = MouseRegion(
-        onEnter: deleting
+        onEnter: deleting ? null : (_) => _claimHover(),
+        // Scroll clears ownership under a still cursor; onHover re-claims without
+        // needing a full exit/enter (and does not reset the 1s timer while owned).
+        onHover: deleting
             ? null
             : (_) {
-                setState(() => _lineHover = true);
-                widget.onHoverEnter?.call();
-                _scheduleDetailCard();
+                final owner = widget.hoverOwnerId;
+                if (owner == null) return;
+                if (owner.value == item.id && _lineHover) return;
+                _claimHover();
               },
-        onExit: deleting
-            ? null
-            : (_) {
-                _clearHover();
-                widget.onHoverExit?.call();
-              },
+        onExit: deleting ? null : (_) => _releaseHover(),
         child: tile,
       );
       tile = CompositedTransformTarget(link: _detailLink, child: tile);
@@ -476,23 +547,26 @@ class _PortalListRowState extends State<PortalListRow> {
     final isActive = item.selected;
     final isFav = item.favorite;
     final title = item.label;
-    final checking = item.checking;
-    final health = item.healthy;
     final tab = (widget.tvTabId ?? '').trim();
     final deleting = item.deleting;
+    final titleColor = isFav
+        ? const Color(0xFFFBBF24)
+        : isActive
+            ? ForjaShellColors.brandGreen
+            : _showNewChrome
+                ? ForjaShellColors.navUnderline
+                : Colors.white.withValues(alpha: 0.88);
 
     final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(
+        PortalListTokens.rowPadH,
+        8,
+        10,
+        8,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: Alignment.center,
-            child: isActive
-                ? _activeGlyph(checking: checking, health: health)
-                : _idleDot(checking: checking, health: health),
-          ),
-          const SizedBox(width: 10),
           Expanded(
             child: _confirmingDelete
                 ? _deleteConfirmLine()
@@ -517,15 +591,7 @@ class _PortalListRowState extends State<PortalListRow> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.plusJakartaSans(
-                                    color: isFav
-                                        ? const Color(0xFFFBBF24)
-                                        : isActive
-                                            ? Colors.white
-                                            : _showNewChrome
-                                                ? ForjaShellColors.navUnderline
-                                                : Colors.white.withValues(
-                                                    alpha: 0.88,
-                                                  ),
+                                    color: titleColor,
                                     fontSize: widget.fontSize,
                                     fontWeight: isFav ||
                                             isActive ||
@@ -556,9 +622,12 @@ class _PortalListRowState extends State<PortalListRow> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.plusJakartaSans(
-                                    color: _showNewChrome
-                                        ? Colors.white54
-                                        : Colors.white38,
+                                    color: isActive
+                                        ? ForjaShellColors.brandGreen
+                                            .withValues(alpha: 0.75)
+                                        : _showNewChrome
+                                            ? Colors.white54
+                                            : Colors.white38,
                                     fontSize: widget.metaFontSize,
                                     height: 1.25,
                                   ),
@@ -608,7 +677,7 @@ class _PortalListRowState extends State<PortalListRow> {
                             isFav
                                 ? Icons.star_rounded
                                 : Icons.star_outline_rounded,
-                            size: 16,
+                            size: PortalListTokens.rowIconSize,
                             color: isFav || _favoriteFocus.hasFocus
                                 ? const Color(0xFFFBBF24)
                                 : Colors.white30,
@@ -627,7 +696,7 @@ class _PortalListRowState extends State<PortalListRow> {
                           isFav
                               ? Icons.star_rounded
                               : Icons.star_outline_rounded,
-                          size: 16,
+                          size: PortalListTokens.rowIconSize,
                           color: isFav
                               ? const Color(0xFFFBBF24)
                               : Colors.white30,
@@ -843,7 +912,11 @@ class _PortalListRowState extends State<PortalListRow> {
     final tone = portalExpiryTone(expiry);
     return Row(
       children: [
-        Icon(Icons.event_rounded, size: 12, color: tone.color),
+        Icon(
+          Icons.event_rounded,
+          size: PortalListTokens.metaIconSize,
+          color: tone.iconColor,
+        ),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
@@ -851,7 +924,7 @@ class _PortalListRowState extends State<PortalListRow> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
-              color: tone.color,
+              color: tone.labelColor,
               fontSize: widget.metaFontSize,
               fontWeight: FontWeight.w600,
               height: 1.25,
@@ -872,7 +945,11 @@ class _PortalListRowState extends State<PortalListRow> {
     final color = full ? const Color(0xFF9CA3AF) : const Color(0xFF60A5FA);
     return Row(
       children: [
-        Icon(Icons.people_rounded, size: 12, color: color),
+        Icon(
+          Icons.people_rounded,
+          size: PortalListTokens.metaIconSize,
+          color: color,
+        ),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
@@ -902,7 +979,7 @@ class _PortalListRowState extends State<PortalListRow> {
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
         color: ForjaShellColors.navUnderline.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(PortalListTokens.badgeRadius),
         border: Border.all(
           color: ForjaShellColors.navUnderline.withValues(alpha: 0.5),
         ),
@@ -911,7 +988,7 @@ class _PortalListRowState extends State<PortalListRow> {
         'NEW',
         style: GoogleFonts.plusJakartaSans(
           color: ForjaShellColors.navUnderline,
-          fontSize: 9,
+          fontSize: PortalListTokens.badgeFontSize,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
           height: 1,
@@ -926,14 +1003,14 @@ class _PortalListRowState extends State<PortalListRow> {
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(PortalListTokens.badgeRadius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
       ),
       child: Text(
         label,
         style: GoogleFonts.plusJakartaSans(
           color: color,
-          fontSize: 9,
+          fontSize: PortalListTokens.badgeFontSize,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,
           height: 1,
@@ -942,89 +1019,58 @@ class _PortalListRowState extends State<PortalListRow> {
     );
   }
 
-  Widget _idleDot({required bool checking, required bool? health}) {
-    final color = _healthColor(checking: checking, health: health);
-    return SizedBox(
-      width: _statusSlot,
-      height: _statusSlot,
-      child: Center(
-        child: checking
-            ? SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: color,
-                ),
-              )
-            : Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color,
-                ),
-              ),
-      ),
-    );
-  }
-
-  Widget _activeGlyph({required bool checking, required bool? health}) {
-    final color = _selectedStatusColor(checking: checking, health: health);
-    final Widget glyph;
-    if (checking) {
-      glyph = SizedBox(
-        width: 14,
-        height: 14,
-        child: CircularProgressIndicator(strokeWidth: 2, color: color),
-      );
-    } else if (health == false) {
-      glyph = Icon(Icons.cancel_rounded, color: color, size: _statusSlot);
-    } else {
-      glyph = Icon(
-        Icons.play_circle_filled_rounded,
-        color: color,
-        size: _statusSlot,
-      );
-    }
-    return SizedBox(
-      width: _statusSlot,
-      height: _statusSlot,
-      child: Center(child: glyph),
-    );
-  }
 }
 
 /// Expiry label + color for portal rows (paint only).
 ///
-/// Parity with classic IPTV panel / host [PortalExpiry.parse]: green / orange /
-/// red from days left. Parses `16 Feb 2027`, unix, DD/MM/YYYY, ISO, trailing `*`.
-({Color color, String label}) portalExpiryTone(String? expiry) {
+/// Confirmed dates: green / orange / red on icon + label (`Ends` / `Expired`).
+/// Unverified scrape (`14 Sep 2026*`): gray label with trailing `*`, icon still
+/// tinted by days left. No date at all → gray `*` on both.
+({Color iconColor, Color labelColor, String label}) portalExpiryTone(
+  String? expiry,
+) {
+  const gray = Color(0xFF9CA3AF);
   final raw = (expiry ?? '').trim();
-  final label = raw.isEmpty ? 'Unknown' : raw;
-  final end = _tryParseExpiry(label);
+  final unverified = raw.endsWith('*');
+  final bare = raw.replaceFirst(RegExp(r'\*+$'), '').trim();
+  if (bare.isEmpty || bare.toLowerCase() == 'unknown') {
+    return (iconColor: gray, labelColor: gray, label: '*');
+  }
+  final end = _tryParseExpiry(bare);
   if (end == null) {
     return (
-      color: const Color(0xFF9CA3AF),
-      label: label == 'Unknown' ? 'Ends: Unknown' : 'Ends: $label',
+      iconColor: gray,
+      labelColor: gray,
+      label: unverified ? '$bare*' : '*',
     );
   }
   final today = DateTime.now();
   final midnight = DateTime(today.year, today.month, today.day);
   final days = end.difference(midnight).inDays;
   // Orange for soon — not amber/gold (favorite star).
-  final Color color;
+  final Color dayColor;
   if (days < 0) {
-    color = const Color(0xFFEF4444);
+    dayColor = const Color(0xFFEF4444);
   } else if (days <= 7) {
-    color = const Color(0xFFF97316);
+    dayColor = const Color(0xFFF97316);
   } else if (days <= 30) {
-    color = const Color(0xFFFB923C);
+    dayColor = const Color(0xFFFB923C);
   } else {
-    color = const Color(0xFF22C55E);
+    dayColor = const Color(0xFF22C55E);
+  }
+  if (unverified) {
+    return (
+      iconColor: dayColor,
+      labelColor: gray,
+      label: '$bare*',
+    );
   }
   final prefix = days < 0 ? 'Expired' : 'Ends';
-  return (color: color, label: '$prefix $label');
+  return (
+    iconColor: dayColor,
+    labelColor: dayColor,
+    label: '$prefix $bare',
+  );
 }
 
 const _expiryMonthIndex = <String, int>{
@@ -1164,7 +1210,7 @@ class _RailAction extends StatelessWidget {
     final body = SizedBox(
       width: 32,
       height: 32,
-      child: Icon(icon, size: 16, color: color),
+      child: Icon(icon, size: PortalListTokens.rowIconSize, color: color),
     );
     final tab = (tvTabId ?? '').trim();
     final child = Tooltip(message: tooltip, child: body);
@@ -1173,7 +1219,7 @@ class _RailAction extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(PortalListTokens.chipRadius),
           child: child,
         ),
       );
@@ -1181,7 +1227,7 @@ class _RailAction extends StatelessWidget {
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: onTap,
-      borderRadius: 6,
+      borderRadius: PortalListTokens.chipRadius,
       scaleOnFocus: 1.0,
       showFocusFill: false,
       suppressInkHover: true,
@@ -1208,7 +1254,7 @@ class _DeletingStripePainter extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.07)
       ..strokeWidth = 5
       ..style = PaintingStyle.stroke;
-    const spacing = 12.0;
+    const spacing = PortalListTokens.itemSpacing;
     for (double x = -size.height; x < size.width + size.height; x += spacing) {
       canvas.drawLine(
         Offset(x, size.height),

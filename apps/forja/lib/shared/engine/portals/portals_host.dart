@@ -970,8 +970,10 @@ class PortalHealthTracker {
       _health[portalKey] = probe.alive;
       _probes[portalKey] = probe;
       _probedAt[portalKey] = DateTime.now();
-      if (probe.expiry.trim().isNotEmpty &&
-          probe.expiry.toLowerCase() != 'unknown') {
+      // Probe miss: keep vault scrape date with `*` (paint merges in [paint]).
+      if (PortalExpiry.isUnknown(probe.expiry)) {
+        _probeExpiry[portalKey] = '*';
+      } else {
         _probeExpiry[portalKey] = PortalExpiry.format(probe.expiry);
       }
       if (probe.activeConnections.trim().isNotEmpty) {
@@ -1039,7 +1041,7 @@ class PortalHealthTracker {
       healthy: healthy,
       checking: checking,
       platformLabel: p.platformLabel,
-      expiry: _probeExpiry[p.id] ?? p.expiry,
+      expiry: _expiryForPaint(p),
       activeConnections: _probeActive[p.id] ?? p.activeConnections,
       maxConnections: _probeMax[p.id] ?? p.maxConnections,
       favorite: p.favorite,
@@ -1047,6 +1049,16 @@ class PortalHealthTracker {
       deleting: deleting,
       probeDetail: _detailFor(_probes[p.id]) ?? p.probeDetail,
     );
+  }
+
+  /// Confirmed probe date wins; probe miss keeps vault scrape as `date*`.
+  String? _expiryForPaint(PortalListItem p) {
+    final probed = _probeExpiry[p.id];
+    if (probed == null) return p.expiry;
+    if (PortalExpiry.isUnknown(probed)) {
+      return PortalExpiry.mergeOnProbe(p.expiry ?? '', probed);
+    }
+    return probed;
   }
 
   void dispose() {

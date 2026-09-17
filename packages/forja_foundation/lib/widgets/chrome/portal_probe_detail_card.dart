@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
@@ -17,8 +18,9 @@ class PortalProbeDetailCard extends StatelessWidget {
 
   final PortalListItem item;
 
-  static const _cardW = 280.0;
-  static const _radius = BorderRadius.all(Radius.circular(12));
+  static const _cardW = PortalListTokens.probeCardWidth;
+  static const _radius =
+      BorderRadius.all(Radius.circular(PortalListTokens.probeCardRadius));
 
   @override
   Widget build(BuildContext context) {
@@ -72,14 +74,14 @@ class PortalProbeDetailCard extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      width: 8,
-                      height: 8,
+                      width: PortalListTokens.probeDotSize,
+                      height: PortalListTokens.probeDotSize,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: statusColor,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: PortalListTokens.probeGap),
                     Expanded(
                       child: Text(
                         status,
@@ -94,7 +96,7 @@ class PortalProbeDetailCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: PortalListTokens.probeMetaGap),
                 Text(
                   item.label,
                   maxLines: 1,
@@ -107,9 +109,10 @@ class PortalProbeDetailCard extends StatelessWidget {
                   ),
                 ),
                 if (lines.isNotEmpty) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: PortalListTokens.probeSectionGap),
                   for (var i = 0; i < lines.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 4),
+                    if (i > 0)
+                      const SizedBox(height: PortalListTokens.probeLineGap),
                     _detailRow(lines[i].$1, lines[i].$2),
                   ],
                 ],
@@ -132,12 +135,12 @@ class PortalProbeDetailCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 68,
+          width: PortalListTokens.probeLabelWidth,
           child: Text(
             label,
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white54,
-              fontSize: 11,
+              fontSize: PortalListTokens.metaFontSize,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -147,7 +150,7 @@ class PortalProbeDetailCard extends StatelessWidget {
             value,
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white,
-              fontSize: 11,
+              fontSize: PortalListTokens.metaFontSize,
               fontWeight: FontWeight.w500,
               height: 1.3,
             ),

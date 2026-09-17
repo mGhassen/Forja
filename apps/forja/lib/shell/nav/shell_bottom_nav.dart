@@ -72,7 +72,7 @@ class ShellBottomNav extends StatelessWidget {
                               size: ShellTokens.navRailIconSize,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: ShellTokens.bottomNavIconLabelGap),
                           Text(
                             dest.label,
                             maxLines: 1,
@@ -111,7 +111,7 @@ class ShellBottomNav extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.arrow_forward_ios,
-                  size: 12,
+                  size: ShellTokens.bottomNavFadeIconSize,
                   color: Colors.white24,
                 ),
               ),

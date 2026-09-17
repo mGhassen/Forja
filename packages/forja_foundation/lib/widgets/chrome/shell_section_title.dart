@@ -8,14 +8,14 @@ class ShellSectionTitle extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.padding = const EdgeInsetsDirectional.only(
-      start: 24,
-      top: 36,
-      end: 24,
+      start: ShellTokens.homeSectionHorizontalPadding,
+      top: ShellTokens.homeSectionTitleTop,
+      end: ShellTokens.homeSectionHorizontalPadding,
       bottom: 16,
     ),
     this.trailing,
-    this.fontSize = 20,
-    this.subtitleFontSize = 11,
+    this.fontSize = ShellTokens.sectionTitleFontSize,
+    this.subtitleFontSize = ShellTokens.sectionSubtitleFontSize,
   });
 
   final String title;
@@ -27,12 +27,12 @@ class ShellSectionTitle extends StatelessWidget {
 
   static const TextStyle titleStyle = TextStyle(
     color: Colors.white,
-    fontSize: 20,
+    fontSize: ShellTokens.sectionTitleFontSize,
     fontWeight: FontWeight.w800,
-    letterSpacing: -0.3,
+    letterSpacing: ShellTokens.sectionTitleLetterSpacing,
   );
 
-  static TextStyle subtitleStyle(BuildContext context, {double fontSize = 11}) =>
+  static TextStyle subtitleStyle(BuildContext context, {double fontSize = ShellTokens.sectionSubtitleFontSize}) =>
       TextStyle(
         color: Colors.white.withValues(alpha: 0.3),
         fontSize: fontSize,
@@ -53,9 +53,9 @@ class ShellSectionTitle extends StatelessWidget {
     final resolvedPadding =
         padding ==
             const EdgeInsetsDirectional.only(
-              start: 24,
-              top: 36,
-              end: 24,
+              start: ShellTokens.homeSectionHorizontalPadding,
+              top: ShellTokens.homeSectionTitleTop,
+              end: ShellTokens.homeSectionHorizontalPadding,
               bottom: 16,
             )
             ? defaultPadding(context)

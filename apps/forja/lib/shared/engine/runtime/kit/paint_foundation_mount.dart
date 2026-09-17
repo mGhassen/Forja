@@ -40,6 +40,8 @@ import 'package:forja_foundation/components/tooltip.dart';
 import 'package:forja_foundation/components/typography.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/event_card_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_epg_guide.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
@@ -152,7 +154,7 @@ Widget? paintFoundationType(
       );
     case 'verticalMenu':
       return VerticalMenu(
-        width: propsNumOr(props, 'width', 220),
+        width: propsNumOr(props, 'width', ShellTokens.sideRailWidth),
         backgroundColor: propsColor(props, 'backgroundColor'),
         minHeight: propsNumOr(props, 'minHeight', 40),
         fontSize: propsNumOr(props, 'fontSize', 14),
@@ -530,8 +532,8 @@ Widget? paintFoundationType(
           'coverUrl',
           propsStringOr(props, 'imageUrl', ''),
         ),
-        width: propsNumOr(props, 'width', 280),
-        height: propsNumOr(props, 'height', 158),
+        width: propsNumOr(props, 'width', ShellTokens.shellContinueWatchingCardWidthDesktop),
+        height: propsNumOr(props, 'height', ShellTokens.shellContinueWatchingCardHeightDesktop),
         subtitle: propsStringOr(props, 'subtitle', ''),
         progress: propsNumOr(props, 'progress', 0),
         remainingText: propsStringOr(props, 'remainingText', ''),
@@ -552,7 +554,7 @@ Widget? paintFoundationType(
         playable: propsBool(props, 'playable', true),
         fontSize: propsNumOr(props, 'fontSize', 14),
         metaFontSize: propsNumOr(props, 'metaFontSize', 12),
-        iconSize: propsNumOr(props, 'iconSize', 20),
+        iconSize: propsNumOr(props, 'iconSize', ShellTokens.eventSearchIconSize),
         onTap: () {},
       );
     case 'catalogSearchResultCard':
@@ -770,8 +772,8 @@ Widget? paintFoundationType(
       return ShellSectionTitle(
         title: propsStringOr(props, 'title', ''),
         subtitle: propsString(props, 'subtitle'),
-        fontSize: propsNumOr(props, 'fontSize', 20),
-        subtitleFontSize: propsNumOr(props, 'subtitleFontSize', 11),
+        fontSize: propsNumOr(props, 'fontSize', ShellTokens.sectionTitleFontSize),
+        subtitleFontSize: propsNumOr(props, 'subtitleFontSize', ShellTokens.sectionSubtitleFontSize),
         trailing: children.isEmpty ? null : kids(),
       );
     case 'shellTabHeader':
@@ -785,7 +787,7 @@ Widget? paintFoundationType(
         height: propsNumOr(props, 'height', 180),
         itemCount: count,
         itemBuilder: (_, i) => kids()[i],
-        arrowOffset: propsNumOr(props, 'arrowOffset', 8),
+        arrowOffset: propsNumOr(props, 'arrowOffset', ShellTokens.scrollerArrowOffset),
       );
     case 'shellChip':
       final padN = propsNum(props, 'pad') ?? propsNum(props, 'padding');
@@ -795,9 +797,9 @@ Widget? paintFoundationType(
         onTap: () {},
         loading: propsBool(props, 'loading'),
         accentHover: propsBool(props, 'accentHover'),
-        fontSize: propsNumOr(props, 'fontSize', 12.5),
-        radius: propsNumOr(props, 'radius', 20),
-        iconSize: propsNumOr(props, 'iconSize', 14),
+        fontSize: propsNumOr(props, 'fontSize', ShellTokens.shellChipFontSize),
+        radius: propsNumOr(props, 'radius', ShellTokens.shellChipRadiusPill),
+        iconSize: propsNumOr(props, 'iconSize', ShellTokens.shellChipIconSize),
         padding: padN != null
             ? EdgeInsets.symmetric(horizontal: padN, vertical: padN * 0.57)
             : const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -808,11 +810,11 @@ Widget? paintFoundationType(
         panel: children.length > 1
             ? children[1]
             : SizedBox(
-                width: propsNumOr(props, 'panelWidth', 380),
+                width: propsNumOr(props, 'panelWidth', ShellTokens.sidePanelWidth),
                 child: const ColoredBox(color: Colors.black54),
               ),
         onDismiss: () {},
-        panelWidth: propsNumOr(props, 'panelWidth', 380),
+        panelWidth: propsNumOr(props, 'panelWidth', ShellTokens.sidePanelWidth),
         scrimColor: propsColor(props, 'scrimColor'),
         child: children.isNotEmpty ? children.first : const SizedBox.expand(),
       );
@@ -820,7 +822,7 @@ Widget? paintFoundationType(
     case 'portalListPanel':
       final panelPad = propsNum(props, 'pad');
       return PortalListPanel(
-        width: propsNumOr(props, 'width', 380),
+        width: propsNumOr(props, 'width', ShellTokens.sidePanelWidth),
         pad: panelPad != null ? EdgeInsets.all(panelPad) : null,
         statusFontSize: propsNumOr(props, 'statusFontSize', 11),
         header: Text(
@@ -864,13 +866,18 @@ Widget? paintFoundationType(
         seatsMax: propsString(props, 'seatsMax'),
         compact: propsBool(props, 'compact'),
         width: chipW != null && chipW > 0 ? chipW : null,
-        height: propsNumOr(props, 'height', 40),
-        radius: propsNumOr(props, 'radius', 8),
+        height: propsNumOr(props, 'height', ShellTokens.portalsChipHeight),
+        radius: propsNumOr(props, 'radius', ShellTokens.portalsChipRadius),
         pad: propsNum(props, 'pad'),
-        fontSize: propsNumOr(props, 'fontSize', 12.5),
-        iconSize: propsNumOr(props, 'iconSize', 16),
-        chevronSize: propsNumOr(props, 'chevronSize', 18),
-        seatsFontSize: propsNumOr(props, 'seatsFontSize', 12),
+        fontSize: propsNumOr(props, 'fontSize', ShellTokens.portalsChipFontSize),
+        iconSize: propsNumOr(props, 'iconSize', ShellTokens.portalsChipIconSize),
+        chevronSize:
+            propsNumOr(props, 'chevronSize', ShellTokens.portalsChipChevronSize),
+        seatsFontSize: propsNumOr(
+          props,
+          'seatsFontSize',
+          ShellTokens.portalsChipSeatsFontSize,
+        ),
         accentColor: propsColor(props, 'accentColor'),
       );
     case 'catalogPosterGrid':
@@ -879,8 +886,8 @@ Widget? paintFoundationType(
         cardW: propsNumOr(props, 'cardW', propsNumOr(props, 'cardWidth', 120)),
         cardH: propsNumOr(props, 'cardH', propsNumOr(props, 'cardHeight', 180)),
         gap: propsNumOr(props, 'gap', 12),
-        leading: propsNumOr(props, 'leading', 24),
-        rightPad: propsNumOr(props, 'rightPad', 24),
+        leading: propsNumOr(props, 'leading', ShellTokens.homeSectionHorizontalPadding),
+        rightPad: propsNumOr(props, 'rightPad', ShellTokens.homeSectionHorizontalPadding),
         topPad: propsNumOr(props, 'topPad', 8),
       );
       final n = kids().isEmpty ? (propsInt(props, 'itemCount') ?? 0) : kids().length;
@@ -913,7 +920,7 @@ Widget? paintFoundationType(
           body: children.isNotEmpty ? children.first : const SizedBox.shrink(),
           header: children.length > 1 ? children[1] : null,
           sidePanelOpen: propsBool(props, 'sidePanelOpen'),
-          panelWidth: propsNumOr(props, 'panelWidth', 380),
+          panelWidth: propsNumOr(props, 'panelWidth', ShellTokens.sidePanelWidth),
           sideSplit: propsBool(props, 'sideSplit'),
           onDismissSidePanel: () {},
         ),
@@ -923,7 +930,7 @@ Widget? paintFoundationType(
     case 'sourcesPanel':
       final tabs = _sourcesTabs(props);
       return SizedBox(
-        width: propsNumOr(props, 'width', 380),
+        width: propsNumOr(props, 'width', ShellTokens.sidePanelWidth),
         height: propsNumOr(props, 'height', 480),
         child: SourcesPanelChrome(
           title: propsStringOr(props, 'title', 'Sources'),
@@ -986,8 +993,8 @@ Widget? paintFoundationType(
       return ShellCardPlayOverlay(
         active: propsBool(props, 'active'),
         visible: propsBool(props, 'visible', true),
-        diameter: propsNumOr(props, 'diameter', 48),
-        iconSize: propsNumOr(props, 'iconSize', 28),
+        diameter: propsNumOr(props, 'diameter', EventCardTokens.playOverlaySize),
+        iconSize: propsNumOr(props, 'iconSize', EventCardTokens.playIconSize),
         onTap: () {},
       );
     case 'fractalGlassGradient':
@@ -1054,6 +1061,9 @@ Widget? paintFoundationType(
         filters: SearchFilters.empty,
         onFiltersChanged: (_) {},
         onSubmit: () {},
+        allLabel: propsStringOr(props, 'allLabel', 'All'),
+        movieLabel: propsStringOr(props, 'movieLabel', 'Films'),
+        seriesLabel: propsStringOr(props, 'seriesLabel', 'Series'),
         tvLeanback: propsBool(props, 'tvLeanback') || propsBool(props, 'compact'),
       );
     case 'tvSeasonEpisodePicker':
@@ -1200,8 +1210,8 @@ Widget? paintFoundationType(
         rank: propsInt(props, 'rank'),
         badge: propsString(props, 'badge'),
         aspect: _posterAspect(propsString(props, 'aspect')),
-        borderRadius: propsNumOr(props, 'borderRadius', 14),
-        titleFontSize: propsNumOr(props, 'titleFontSize', 13),
+        borderRadius: propsNumOr(props, 'borderRadius', ShellTokens.posterCardRadius),
+        titleFontSize: propsNumOr(props, 'titleFontSize', ShellTokens.posterTitleFontSizeMobile),
         metaFontSize: propsNumOr(props, 'metaFontSize', 11),
         inset: propsNumOr(props, 'inset', 10),
         backgroundColor:
@@ -1336,12 +1346,12 @@ Widget? paintFoundationType(
             : _filterSheetIcon(propsString(props, 'icon')),
         selected: propsBool(props, 'selected'),
         iconOnly: propsBool(props, 'iconOnly'),
-        height: propsNumOr(props, 'height', 40),
-        radius: propsNumOr(props, 'radius', 20),
-        maxWidth: propsNumOr(props, 'maxWidth', 220),
-        fontSize: propsNumOr(props, 'fontSize', 11.5),
+        height: propsNumOr(props, 'height', ShellTokens.controlHeight),
+        radius: propsNumOr(props, 'radius', ShellTokens.shellChipRadiusPill),
+        maxWidth: propsNumOr(props, 'maxWidth', ShellTokens.actionChipMaxWidth),
+        fontSize: propsNumOr(props, 'fontSize', ShellTokens.actionChipFontSize),
         iconSize: propsNum(props, 'iconSize'),
-        gap: propsNumOr(props, 'gap', 6),
+        gap: propsNumOr(props, 'gap', ShellTokens.actionChipGap),
       );
     case 'catalogListEmpty':
       return CatalogListEmpty(
@@ -1432,7 +1442,7 @@ Widget? paintFoundationType(
     case 'interactiveEventCard':
       return InteractiveEventCard(
         props: props,
-        width: propsNumOr(props, 'width', 280),
+        width: propsNumOr(props, 'width', ShellTokens.shellContinueWatchingCardWidthDesktop),
         height: propsNumOr(props, 'height', 200),
         selected: propsBool(props, 'selected'),
         onTap: () {},
@@ -1465,7 +1475,7 @@ Widget? paintFoundationType(
             (items.isEmpty ? 'cards' : items.first.id),
         onSelect: (_) {},
         height: propsNumOr(props, 'height', 36),
-        iconSize: propsNumOr(props, 'iconSize', 18),
+        iconSize: propsNumOr(props, 'iconSize', ShellTokens.categoryRailIconSize),
         dividerHeight: propsNumOr(props, 'dividerHeight', 16),
       );
     case 'widgetShelf':
@@ -1482,8 +1492,8 @@ Widget? paintFoundationType(
         onSelect: (_) {},
         height: propsNumOr(props, 'height', 36),
         radius: propsNumOr(props, 'radius', 8),
-        fontSize: propsNumOr(props, 'fontSize', 12.5),
-        iconSize: propsNumOr(props, 'iconSize', 16),
+        fontSize: propsNumOr(props, 'fontSize', ShellTokens.shellChipFontSize),
+        iconSize: propsNumOr(props, 'iconSize', ShellTokens.actionChipIconSize),
         pad: propsNumOr(props, 'pad', 14),
       );
     case 'catalogSideRail':
@@ -1497,7 +1507,7 @@ Widget? paintFoundationType(
           selectedId: propsString(props, 'selectedId') ??
               (side.isEmpty ? 'all' : side.first.id),
           onSelect: (_) {},
-          width: propsNumOr(props, 'width', 220),
+          width: propsNumOr(props, 'width', ShellTokens.sideRailWidth),
         ),
       );
     case 'catalogCategoryRail':
@@ -1511,7 +1521,7 @@ Widget? paintFoundationType(
           selectedId: propsString(props, 'selectedId') ??
               (cats.isEmpty ? 'all' : cats.first.id),
           onSelect: (_) {},
-          width: propsNumOr(props, 'width', 220),
+          width: propsNumOr(props, 'width', ShellTokens.sideRailWidth),
           compact: propsBool(props, 'compact'),
           rowHeight: propsNum(props, 'rowHeight'),
           fontSize: propsNum(props, 'fontSize'),
@@ -1524,6 +1534,9 @@ Widget? paintFoundationType(
     case 'catalogSearchTypeSegment':
       return CatalogSearchTypeSegment(
         value: _searchMediaFilter(propsString(props, 'value')),
+        allLabel: propsStringOr(props, 'allLabel', 'All'),
+        movieLabel: propsStringOr(props, 'movieLabel', 'Films'),
+        seriesLabel: propsStringOr(props, 'seriesLabel', 'Series'),
         onChanged: (_) {},
       );
     case 'catalogSearchScoreArc':
@@ -1578,8 +1591,8 @@ Widget? paintFoundationType(
         cardW: propsNumOr(props, 'cardW', propsNumOr(props, 'cardWidth', 120)),
         cardH: propsNumOr(props, 'cardH', propsNumOr(props, 'cardHeight', 180)),
         gap: propsNumOr(props, 'gap', 12),
-        leading: propsNumOr(props, 'leading', 24),
-        rightPad: propsNumOr(props, 'rightPad', 24),
+        leading: propsNumOr(props, 'leading', ShellTokens.homeSectionHorizontalPadding),
+        rightPad: propsNumOr(props, 'rightPad', ShellTokens.homeSectionHorizontalPadding),
         topPad: propsNumOr(props, 'topPad', 8),
       );
       return SizedBox(

@@ -138,6 +138,9 @@ class KitSourcesPanel extends StatelessWidget {
       showTabs: showTabs,
       onTabsLeftEdge: onTabsLeftEdge,
       browseCategoryTabIds: browseCategoryTabIds,
+      emptyQueryMessage: browseCategoryTabIds.isEmpty
+          ? 'No matches'
+          : 'No channels match',
       channelQuery: channelQuery,
       onChannelQueryChanged: onChannelQueryChanged,
       showInlineSearch: showInlineSearch,

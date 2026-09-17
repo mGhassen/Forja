@@ -5,13 +5,14 @@ import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/widgets/feedback/loading_dots.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Flat shell chip fill + border - matches sources panel / home filter style.
 BoxDecoration shellChipDecoration({
   required bool selected,
   bool accentHover = false,
-  double radius = 20,
+  double radius = ShellTokens.shellChipRadiusPill,
 }) {
   final Color fill;
   final Color border;
@@ -107,7 +108,7 @@ Widget shellRoundedInkHost({
 
 /// Rounded hover/focus overlay for [MenuItemButton] and compact list rows.
 ButtonStyle shellMenuItemStyle({
-  double radius = 8,
+  double radius = ShellTokens.shellChipRadius,
   EdgeInsetsGeometry padding =
       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
 }) {
@@ -138,10 +139,10 @@ class ForjaShellChip extends StatefulWidget {
     this.onTap,
     this.onLongPress,
     this.longPressDuration = const Duration(seconds: 2),
-    this.radius = 20,
+    this.radius = ShellTokens.shellChipRadiusPill,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-    this.fontSize = 12.5,
-    this.iconSize = 14,
+    this.fontSize = ShellTokens.shellChipFontSize,
+    this.iconSize = ShellTokens.shellChipIconSize,
     this.focusNode,
     this.listIndex,
     this.tvTabId,
@@ -307,7 +308,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         children: [
           if (widget.icon != null) ...[
             Icon(widget.icon, size: widget.iconSize, color: fg),
-            const SizedBox(width: 6),
+            const SizedBox(width: ShellTokens.shellChipGap),
           ],
           Text(
             widget.label,
@@ -318,7 +319,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             ),
           ),
           if (widget.loading) ...[
-            const SizedBox(width: 4),
+            const SizedBox(width: ShellTokens.shellChipGapTight),
             ForjaBusyCancelGlyph(
               color: fg,
               hovered: _busyHovered,
@@ -326,7 +327,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
               onCancel: widget.onCancel,
             ),
           ] else if (showReload) ...[
-            const SizedBox(width: 6),
+            const SizedBox(width: ShellTokens.shellChipGap),
             ExcludeFocus(
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
@@ -349,7 +350,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
               ),
             ),
           ] else if (widget.trailing != null) ...[
-            const SizedBox(width: 4),
+            const SizedBox(width: ShellTokens.shellChipGapTight),
             widget.trailing!,
           ],
         ],

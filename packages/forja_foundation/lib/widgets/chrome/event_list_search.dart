@@ -3,10 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
-const kEventListSearchCollapsed = 40.0;
-const kEventListSearchExpanded = 260.0;
+const kEventListSearchCollapsed = ShellTokens.eventSearchCollapsed;
+const kEventListSearchExpanded = ShellTokens.eventSearchExpanded;
 
 /// Expanding list search for `kit.topBar` (`action: eventSearch`) — Zone A.
 ///
@@ -27,9 +28,9 @@ class EventListSearch extends StatefulWidget {
     this.fieldBuilder,
     this.collapsedSize = kEventListSearchCollapsed,
     this.expandedWidth = kEventListSearchExpanded,
-    this.fontSize = 13,
-    this.iconSize = 20,
-    this.fieldIconSize = 18,
+    this.fontSize = ShellTokens.eventSearchFontSize,
+    this.iconSize = ShellTokens.eventSearchIconSize,
+    this.fieldIconSize = ShellTokens.eventSearchClearIconSize,
     this.tvTabId,
     this.tvRowId,
     this.tvItemIndex,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Probe fields for the desktop hover detail card — opaque strings only.
@@ -86,7 +87,7 @@ class PortalListPanel extends StatelessWidget {
     this.focusNode,
     this.onEscape,
     this.pad,
-    this.statusFontSize = 11,
+    this.statusFontSize = PortalListTokens.metaFontSize,
   }) : assert(
           body != null || (items != null && itemBuilder != null),
           'PortalListPanel requires body, or items + itemBuilder',
@@ -118,7 +119,7 @@ class PortalListPanel extends StatelessWidget {
   final FocusNode? focusNode;
   final VoidCallback? onEscape;
 
-  /// Status line padding. Null → h12 v4.
+  /// Status line padding. Null → h[PortalListTokens.panelPad] v4.
   final EdgeInsetsGeometry? pad;
   final double statusFontSize;
 
@@ -153,7 +154,10 @@ class PortalListPanel extends StatelessWidget {
     if (statusChild == null && statusText.isNotEmpty) {
       statusChild = Padding(
         padding: pad ??
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            const EdgeInsets.symmetric(
+              horizontal: PortalListTokens.panelPad,
+              vertical: 4,
+            ),
         child: Text(
           statusText,
           style: GoogleFonts.plusJakartaSans(

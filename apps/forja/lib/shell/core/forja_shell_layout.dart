@@ -38,13 +38,16 @@ bool shellUsesWideLayout(BuildContext context) {
 
 double shellPosterCardWidth(BuildContext context) {
   if (ShellScope.profileOf(context) == ShellProfile.mobile) {
-    return MediaQuery.sizeOf(context).width > 900 ? 190.0 : 165.0;
+    return MediaQuery.sizeOf(context).width > ShellTokens.posterCardWideBreakpoint
+        ? ShellTokens.posterCardWidthDesktop
+        : ShellTokens.posterCardWidthMobile;
   }
   return ShellScope.metricsOf(context).posterCardWidth;
 }
 
 double shellPosterCardHeight(BuildContext context) =>
-    (shellPosterCardWidth(context) * 1.5).roundToDouble();
+    (shellPosterCardWidth(context) * ShellTokens.posterCardAspectRatio)
+        .roundToDouble();
 
 double shellHubCardTitleFontSize(BuildContext context) =>
     ShellScope.metricsOf(context).hubCardTitleFontSize;
@@ -79,10 +82,14 @@ double shellCardFocusBleed(
   double scaleOnFocus = ShellTokens.focusActiveScale,
   double? cardWidth,
 }) {
-  const borderWidth = 1.5;
-  if (scaleOnFocus <= 1.0) return borderWidth + 1;
+  const borderWidth = ShellTokens.cardFocusBorderWidth;
+  if (scaleOnFocus <= 1.0) {
+    return borderWidth + ShellTokens.cardFocusBleedExtra;
+  }
   final w = cardWidth ?? shellPosterCardWidth(context);
-  return w * (scaleOnFocus - 1) / 2 + borderWidth + 1;
+  return w * (scaleOnFocus - 1) / 2 +
+      borderWidth +
+      ShellTokens.cardFocusBleedExtra;
 }
 
 double shellHeroNextRowPeekFraction(BuildContext context) =>
@@ -96,11 +103,13 @@ double shellTvKitScrollBottomGap(BuildContext context) {
     return MediaQuery.sizeOf(context).height *
         ShellTokens.tvKitRowFocusBottomInsetFraction;
   }
-  return 100;
+  return ShellTokens.kitScrollBottomGapDesktop;
 }
 
 double shellHeroMinHeight(BuildContext context) =>
-    ShellScope.metricsOf(context).usesTvDensity ? 400.0 : 320.0;
+    ShellScope.metricsOf(context).usesTvDensity
+    ? ShellTokens.heroMinHeightTv
+    : ShellTokens.heroMinHeightDesktop;
 
 double shellSearchGridCardWidth(BuildContext context) =>
     shellPosterCardWidth(context);
@@ -113,7 +122,7 @@ int shellGridCrossAxisCount(
 }) {
   if (shellUsesWideLayout(context)) return wide;
   final w = MediaQuery.sizeOf(context).width;
-  return w > 600 ? tablet : phone;
+  return w > ShellTokens.shellGridTabletMinWidth ? tablet : phone;
 }
 
 /// TV density vs desktop card baseline (190px). Typography uses [ShellTokens.tvLayoutScaleFloor].
@@ -126,16 +135,22 @@ double shellLayoutScale(BuildContext context) {
 }
 
 double shellHeroMetaGap(BuildContext context) =>
-    ShellScope.metricsOf(context).usesTvDensity ? 14.0 : 10.0;
+    ShellScope.metricsOf(context).usesTvDensity
+    ? ShellTokens.heroMetaGapTv
+    : ShellTokens.heroMetaGapDesktop;
 
 double shellHeroActionGap(BuildContext context) =>
-    ShellScope.metricsOf(context).usesTvDensity ? 16.0 : 12.0;
+    ShellScope.metricsOf(context).usesTvDensity
+    ? ShellTokens.heroActionGapTv
+    : ShellTokens.heroActionGapDesktop;
 
 double shellScaled(BuildContext context, double value) =>
     value * shellLayoutScale(context);
 
-double shellCardBorderRadius(BuildContext context) =>
-    shellScaled(context, 14).clamp(4.0, 14.0);
+double shellCardBorderRadius(BuildContext context) => shellScaled(
+  context,
+  ShellTokens.posterCardRadius,
+).clamp(ShellTokens.posterCardRadiusMin, ShellTokens.posterCardRadius);
 
 /// Preferred nav icon size. TV density scales down from the desktop token;
 /// [_navRailFitForHeight] may compress further so every tab fits.
@@ -179,14 +194,20 @@ double shellNavRailItemContentHeight(
 
 TextStyle shellSectionTitleTextStyle(BuildContext context) => TextStyle(
   color: Colors.white,
-  fontSize: shellScaled(context, 20).clamp(15.0, 20.0),
+  fontSize: shellScaled(context, ShellTokens.sectionTitleFontSize).clamp(
+    ShellTokens.sectionTitleFontSizeMin,
+    ShellTokens.sectionTitleFontSize,
+  ),
   fontWeight: FontWeight.w800,
-  letterSpacing: -0.3,
+  letterSpacing: ShellTokens.sectionTitleLetterSpacing,
 );
 
 TextStyle shellSectionSubtitleTextStyle(BuildContext context) => TextStyle(
   color: Colors.white.withValues(alpha: 0.3),
-  fontSize: shellScaled(context, 11).clamp(10.0, 11.0),
+  fontSize: shellScaled(context, ShellTokens.sectionSubtitleFontSize).clamp(
+    ShellTokens.sectionSubtitleFontSizeMin,
+    ShellTokens.sectionSubtitleFontSize,
+  ),
 );
 
 /// Desktop cinematic hero text column - prefer synopsis over a full logo slot.
@@ -216,8 +237,8 @@ ShellHeroDesktopTextLayout shellHeroDesktopTextLayout({
   required double minTitleHeight,
   double reservedBelowOverview = 0,
 }) {
-  const titleGap = 20.0;
-  const actionGap = 16.0;
+  const titleGap = ShellTokens.heroTitleMetaGapDesktop;
+  const actionGap = ShellTokens.heroMetaActionsGapDesktop;
   final baseWithoutOverview =
       titleGap +
       ShellTokens.heroMetaSlotHeightDesktop +

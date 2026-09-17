@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/channel_card_tokens.dart';
+import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
@@ -77,7 +80,7 @@ class CatalogChannelCard extends StatefulWidget {
     if (ShellPaintScope.usesTvDensityOf(context)) {
       return InteractivePosterCard.cardWidth(context);
     }
-    return 165;
+    return ShellTokens.posterCardWidthMobile;
   }
 
   static double cardHeight(BuildContext context) {
@@ -286,7 +289,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     final active = _active;
     final radius = widget.listLayout
         ? 10.0
-        : (tv ? InteractivePosterCard.cardBorderRadius(context) : 12.0);
+        : (tv
+            ? InteractivePosterCard.cardBorderRadius(context)
+            : ChannelCardTokens.radius);
     final body = widget.listLayout
         ? _buildListBody(context, active: active, health: health)
         : tv
@@ -409,7 +414,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+                  top: Radius.circular(ChannelCardTokens.radius),
                 ),
                 child: _logoThumb(contain: true, padding: 10),
               ),
@@ -419,7 +424,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                     decoration: BoxDecoration(
                       color: Color(0x52000000),
                       borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(12),
+                        top: Radius.circular(ChannelCardTokens.radius),
                       ),
                     ),
                   ),
@@ -525,8 +530,8 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
           ShellCardPlayOverlay(
             active: false,
             visible: active,
-            diameter: 28,
-            iconSize: 16,
+            diameter: EventCardTokens.playIconSize,
+            iconSize: EventCardTokens.playIconSizeTv,
           ),
           if (fav != null)
             Positioned(top: inset, left: inset, child: fav),
@@ -596,7 +601,7 @@ class _EpgNowFooter extends StatefulWidget {
 }
 
 class _EpgNowFooterState extends State<_EpgNowFooter> {
-  static const _slotHeight = 22.0;
+  static const _slotHeight = ChannelCardTokens.epgSlotHeight;
   List<GuideEpgProgramme> _last = const [];
 
   @override
@@ -645,7 +650,7 @@ class _EpgNowFooterState extends State<_EpgNowFooter> {
                           now.isNow ? 'NOW' : 'NEXT',
                           style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
-                            fontSize: 8,
+                            fontSize: ChannelCardTokens.badgeFontSize,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.5,
                           ),
@@ -704,7 +709,7 @@ class _ChannelEpgSheet extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: ChannelCardTokens.titleFontSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -728,7 +733,7 @@ class _ChannelEpgSheet extends StatelessWidget {
                                     color: e.isNow
                                         ? const Color(0xFFEF4444)
                                         : Colors.white60,
-                                    fontSize: 11,
+                                    fontSize: ChannelCardTokens.metaFontSize,
                                     fontWeight: e.isNow
                                         ? FontWeight.w700
                                         : FontWeight.w500,

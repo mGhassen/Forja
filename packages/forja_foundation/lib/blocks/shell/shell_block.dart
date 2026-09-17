@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 
 /// Prebuilt page shell: optional top bar + body + optional side rail.
@@ -12,7 +13,7 @@ class ShellBlock extends StatelessWidget {
     this.topBar,
     required this.body,
     this.sideRail,
-    this.sideRailWidth = 220,
+    this.sideRailWidth = ShellTokens.sideRailWidth,
     this.railOnLeading = true,
   });
 
@@ -26,7 +27,7 @@ class ShellBlock extends StatelessWidget {
       topBar: topBar,
       body: body,
       sideRail: sideRail,
-      sideRailWidth: propsNumOr(props, 'sideRailWidth', 220),
+      sideRailWidth: propsNumOr(props, 'sideRailWidth', ShellTokens.sideRailWidth),
       railOnLeading: propsBool(props, 'railOnLeading', true),
     );
   }

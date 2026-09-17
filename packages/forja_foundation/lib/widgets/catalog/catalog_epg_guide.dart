@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/epg_guide_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -83,10 +84,6 @@ class CatalogEpgTimeline {
     return CatalogEpgTimeline(start: start, end: end);
   }
 }
-
-const _kEpgChannelColW = 280.0;
-const _kEpgRowH = 68.0;
-const _kEpgHeaderH = 36.0;
 
 /// Desktop Live catalog EPG: sticky channels + sticky ruler + programme blocks.
 class CatalogEpgGuide extends StatefulWidget {
@@ -301,7 +298,7 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
     final idx = widget.channels.indexWhere((c) => c.id == id);
     if (idx < 0 || !_vChannels.hasClients) return;
     final target =
-        (idx * _kEpgRowH).clamp(0.0, _vChannels.position.maxScrollExtent);
+        (idx * EpgGuideTokens.rowHeight).clamp(0.0, _vChannels.position.maxScrollExtent);
     _syncingV = true;
     _vChannels.jumpTo(target);
     if (_vGrid.hasClients) {
@@ -380,10 +377,10 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
     return Column(
       children: [
         SizedBox(
-          height: _kEpgHeaderH,
+          height: EpgGuideTokens.headerHeight,
           child: Row(
             children: [
-              const SizedBox(width: _kEpgChannelColW),
+              const SizedBox(width: EpgGuideTokens.columnWidth),
               Expanded(
                 child: SingleChildScrollView(
                   controller: _hRuler,
@@ -391,7 +388,7 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
                   physics: const ClampingScrollPhysics(),
                   child: SizedBox(
                     width: _timeline.totalWidth,
-                    height: _kEpgHeaderH,
+                    height: EpgGuideTokens.headerHeight,
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -449,11 +446,11 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: _kEpgChannelColW,
+                width: EpgGuideTokens.columnWidth,
                 child: ListView.builder(
                   controller: _vChannels,
                   physics: const ClampingScrollPhysics(),
-                  itemExtent: _kEpgRowH,
+                  itemExtent: EpgGuideTokens.rowHeight,
                   itemCount: channels.length,
                   itemBuilder: (_, i) => _ChannelCell(
                     channel: channels[i],
@@ -474,14 +471,14 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
                     child: Stack(
                       children: [
                         ListView.builder(
-                          scrollCacheExtent: ScrollCacheExtent.pixels(_kEpgRowH * 12), controller: _vGrid,
+                          scrollCacheExtent: ScrollCacheExtent.pixels(EpgGuideTokens.rowHeight * 12), controller: _vGrid,
                           physics: const ClampingScrollPhysics(),
-                          itemExtent: _kEpgRowH,
+                          itemExtent: EpgGuideTokens.rowHeight,
                           itemCount: channels.length,
                           itemBuilder: (_, i) {
                             final ch = channels[i];
                             return SizedBox(
-                              height: _kEpgRowH,
+                              height: EpgGuideTokens.rowHeight,
                               width: _timeline.totalWidth,
                               child: _ProgrammeRow(
                                 future: _futureFor(ch),
@@ -577,7 +574,7 @@ class _ChannelCellState extends State<_ChannelCell> {
     );
 
     final body = Container(
-      height: _kEpgRowH,
+      height: EpgGuideTokens.rowHeight,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: active

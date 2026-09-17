@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 
@@ -16,7 +17,7 @@ class MoodSection extends StatelessWidget {
     this.chipStrip,
     this.results,
     this.padding,
-    this.rowHeight = 120,
+    this.rowHeight,
     this.gap,
   });
 
@@ -33,7 +34,9 @@ class MoodSection extends StatelessWidget {
   final Widget? results;
 
   final EdgeInsetsGeometry? padding;
-  final double rowHeight;
+
+  /// Chip row height — omit → [MoodCircleLayout.desktop.rowHeight].
+  final double? rowHeight;
 
   /// Chip separator gap — omit → theme `spaceMd`.
   final double? gap;
@@ -41,9 +44,11 @@ class MoodSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
+    final resolvedRowHeight =
+        rowHeight ?? MoodCircleLayout.desktop.rowHeight;
     final chips = chipStrip ??
         SizedBox(
-          height: rowHeight,
+          height: resolvedRowHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding:

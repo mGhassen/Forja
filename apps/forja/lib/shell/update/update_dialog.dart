@@ -10,6 +10,8 @@ import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/update_dialog_tokens.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 import 'package:forja/shared/services/update/app_update_macos_installer.dart';
@@ -131,7 +133,7 @@ class _UpdateLayout {
         padTop: 8,
         padBottom: 10,
         padHorizontal: ((width - contentWidth) / 2).clamp(24.0, width),
-        buttonHeight: 40,
+        buttonHeight: ShellTokens.shellButtonHeight,
         buttonFontSize: 14,
         skipFontSize: 14,
         downloadPercentSize: 34,
@@ -176,7 +178,7 @@ class _UpdateLayout {
       padHorizontal: contentWidth >= width - 56
           ? 28
           : (width - contentWidth) / 2,
-      buttonHeight: 54,
+      buttonHeight: UpdateDialogTokens.buttonHeightTv,
       buttonFontSize: 16,
       skipFontSize: 15,
       downloadPercentSize: lerp(40, 56),
@@ -200,7 +202,7 @@ class UpdateDialog extends StatefulWidget {
         barrierDismissible: false,
         barrierColor: AppTheme.bgDark,
         barrierLabel: 'Software update',
-        transitionDuration: const Duration(milliseconds: 480),
+        transitionDuration: UpdateDialogTokens.pageTransition,
         pageBuilder: (dialogContext, _, _) =>
             _scopeHost(hostContext, UpdateDialog(updateInfo: updateInfo)),
         transitionBuilder: (context, animation, _, child) {
@@ -688,7 +690,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
   Widget _buildReleaseNotes(_UpdateLayout layout) {
     final changelogs = widget.updateInfo.changelogs;
     final showRail = changelogs.length > 1;
-    final railWidth = layout.isTv ? 96.0 : 118.0;
+    final railWidth = layout.isTv
+        ? UpdateDialogTokens.changelogRailWidthTv
+        : UpdateDialogTokens.changelogRailWidthDesktop;
     final notesBody = _buildSelectedChangelogBody(layout, changelogs);
 
     Widget notes = showRail
@@ -712,7 +716,11 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   ),
                 ),
               ),
-              SizedBox(width: layout.isTv ? 12 : 18),
+              SizedBox(
+                width: layout.isTv
+                    ? UpdateDialogTokens.notesGapTv
+                    : UpdateDialogTokens.notesGapDesktop,
+              ),
               Expanded(
                 child: _ReleaseNotesScroller(
                   layout: layout,
@@ -756,18 +764,22 @@ class _UpdateDialogState extends State<UpdateDialog> {
       children: [
         Expanded(child: notes),
         if (hint != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: UpdateDialogTokens.bulletGap),
           Text(
             hint,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
+              fontSize: UpdateDialogTokens.bulletFontSize,
               color: _changelogActive
                   ? ForjaShellColors.brandGreen
                   : ForjaShellColors.iconMuted,
             ),
           ),
         ],
-        SizedBox(height: layout.isTv ? 4 : 12),
+        SizedBox(
+          height: layout.isTv
+              ? UpdateDialogTokens.sectionMetaGapTv
+              : UpdateDialogTokens.sectionMetaGapDesktop,
+        ),
         ExcludeFocus(
           excluding: layout.isTv,
           child: _FullChangelogLink(
@@ -876,7 +888,11 @@ class _UpdateDialogState extends State<UpdateDialog> {
             color: ForjaShellColors.textSecondary,
           ),
         ),
-        SizedBox(height: layout.isTv ? 20 : 32),
+        SizedBox(
+          height: layout.isTv
+              ? UpdateDialogTokens.downloadGapTv
+              : UpdateDialogTokens.downloadGapDesktop,
+        ),
         ClipRRect(
           borderRadius: BorderRadius.circular(999),
           child: LinearProgressIndicator(
@@ -1094,7 +1110,7 @@ class _ChangelogVersionRail extends StatelessWidget {
           final active = index == selected;
           final focused = active && railActive;
           final tile = AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
+            duration: UpdateDialogTokens.chromeAnimation,
             padding: EdgeInsets.symmetric(
               horizontal: layout.isTv ? 8 : 10,
               vertical: layout.isTv ? 6 : 10,
@@ -1105,7 +1121,7 @@ class _ChangelogVersionRail extends StatelessWidget {
                   : active
                   ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(ShellTokens.shellButtonRadius),
               border: Border.all(
                 width: 2,
                 color: focused
@@ -1134,7 +1150,7 @@ class _ChangelogVersionRail extends StatelessWidget {
                     builder: (hover, pressed) {
                       final lit = active || hover || pressed;
                       return AnimatedContainer(
-                        duration: const Duration(milliseconds: 120),
+                        duration: UpdateDialogTokens.chromeAnimation,
                         padding: EdgeInsets.symmetric(
                           horizontal: layout.isTv ? 8 : 10,
                           vertical: layout.isTv ? 8 : 10,
@@ -1147,7 +1163,9 @@ class _ChangelogVersionRail extends StatelessWidget {
                               : lit
                               ? ForjaShellColors.surfaceElevated
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(
+                            ShellTokens.shellButtonRadius,
+                          ),
                           border: Border.all(
                             width: 2,
                             color: active
@@ -1388,7 +1406,7 @@ class _UpdatePrimaryAction extends StatelessWidget {
       builder: (hover, pressed) {
         final active = hover || pressed;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+          duration: UpdateDialogTokens.chromeAnimation,
           height: layout.buttonHeight,
           padding: EdgeInsets.symmetric(horizontal: layout.isTv ? 20 : 0),
           alignment: Alignment.center,
@@ -1396,7 +1414,7 @@ class _UpdatePrimaryAction extends StatelessWidget {
             color: ForjaShellColors.brandGreen.withValues(
               alpha: active ? 0.20 : 0.12,
             ),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(ShellTokens.shellButtonRadius),
             border: Border.all(
               color: ForjaShellColors.brandGreen.withValues(
                 alpha: active ? 0.95 : 0.55,

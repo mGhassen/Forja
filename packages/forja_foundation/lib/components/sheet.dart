@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Show a Forja bottom sheet. Returns the result from [Navigator.pop].
@@ -25,8 +26,8 @@ Future<T?> showForjaSheet<T>({
             Padding(
               padding: EdgeInsets.only(top: theme.spaceSm, bottom: theme.spaceSm),
               child: Container(
-                width: 36,
-                height: 4,
+                width: ShellTokens.sheetHandleWidth,
+                height: ShellTokens.sheetHandleHeight,
                 decoration: BoxDecoration(
                   color: theme.borderSubtle,
                   borderRadius: BorderRadius.circular(999),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Live channel favorite star — hidden until [reveal] (or already favorited).
 class LiveFavoriteStar extends StatefulWidget {
@@ -10,7 +11,7 @@ class LiveFavoriteStar extends StatefulWidget {
     required this.favorited,
     required this.onToggle,
     required this.reveal,
-    this.iconSize = 14,
+    this.iconSize = ShellTokens.favStarIconSize,
   });
 
   final bool favorited;

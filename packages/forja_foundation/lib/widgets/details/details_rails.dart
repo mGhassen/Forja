@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
@@ -27,6 +28,7 @@ class DetailsRailSection extends StatelessWidget {
 
   final String title;
   final List<Widget> cards;
+
   /// Host passes portrait poster card height; a short fixed row clips to near-square.
   final double rowHeight;
   final bool compactTop;
@@ -49,12 +51,12 @@ class DetailsRailSection extends StatelessWidget {
               title,
               style: const TextStyle(
                 color: ForjaShellColors.textPrimary,
-                fontSize: 18,
+                fontSize: DetailsTokens.sectionTitleFontSize,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: DetailsTokens.railsGap),
           SizedBox(
             height: rowHeight,
             child: ListView.separated(
@@ -94,7 +96,7 @@ class DetailsRails extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var i = 0; i < sections.length; i++) ...[
-          if (i > 0) const SizedBox(height: 24),
+          if (i > 0) const SizedBox(height: DetailsTokens.railsSectionGap),
           DetailsRailSection(
             title: sections[i].title,
             cards: sections[i].cards,

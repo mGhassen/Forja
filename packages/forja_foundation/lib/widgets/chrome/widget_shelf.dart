@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -31,11 +32,11 @@ class WidgetShelf extends StatelessWidget {
     required this.selectedId,
     required this.onSelect,
     this.onReload,
-    this.height = 36,
-    this.radius = 8,
-    this.fontSize = 12.5,
-    this.iconSize = 16,
-    this.pad = 14,
+    this.height = ShellTokens.widgetShelfHeight,
+    this.radius = ShellTokens.widgetShelfRadius,
+    this.fontSize = ShellTokens.widgetShelfFontSize,
+    this.iconSize = ShellTokens.widgetShelfIconSize,
+    this.pad = ShellTokens.widgetShelfGap,
     this.tvRowId = 'widget-shelf',
     this.onDownEdge,
   });
@@ -329,7 +330,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
           children: [
             if (widget.item.icon != null) ...[
               Icon(widget.item.icon, size: widget.iconSize, color: ink),
-              const SizedBox(width: 6),
+              const SizedBox(width: ShellTokens.shellChipGap),
             ],
             Text(
               widget.item.label,
@@ -414,7 +415,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                     child: ShellPaintScope.focusableTap(
                       context: context,
                       onTap: widget.onReload!,
-                      borderRadius: 8,
+                      borderRadius: ShellTokens.widgetShelfRadius,
                       scaleOnFocus: 1.0,
                       suppressInkHover: true,
                       showFocusFill: false,

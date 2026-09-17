@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -22,9 +23,9 @@ class ViewButtonGroup extends StatelessWidget {
     required this.items,
     required this.selectedId,
     required this.onSelect,
-    this.height = 36,
-    this.iconSize = 18,
-    this.dividerHeight = 16,
+    this.height = ShellTokens.viewButtonHeight,
+    this.iconSize = ShellTokens.viewButtonIconSize,
+    this.dividerHeight = ShellTokens.viewButtonGap,
   });
 
   final List<ViewButtonItem> items;

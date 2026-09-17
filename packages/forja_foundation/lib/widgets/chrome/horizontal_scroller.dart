@@ -4,6 +4,7 @@ import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:flutter/rendering.dart';
 
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Horizontal scrollable strip with overlaid left/right arrow buttons.
 /// Arrows appear on desktop/wide screens and on hover; they paginate the
@@ -32,7 +33,7 @@ class HorizontalScroller extends StatefulWidget {
     required this.itemBuilder,
     this.separatorBuilder,
     this.padding = EdgeInsets.zero,
-    this.arrowOffset = 8,
+    this.arrowOffset = ShellTokens.scrollerArrowOffset,
     this.controller,
     this.clipBehavior = Clip.none,
     this.physics,
@@ -258,8 +259,8 @@ class _ArrowButton extends StatelessWidget {
               onTap: onTap,
               builder: (hover) {
                 return Container(
-                  width: 40,
-                  height: 40,
+                  width: ShellTokens.controlHeight,
+                  height: ShellTokens.controlHeight,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: ForjaShellColors.surfaceElevated
@@ -289,7 +290,7 @@ class _ArrowButton extends StatelessWidget {
                     color: hover
                         ? ForjaShellColors.textPrimary
                         : ForjaShellColors.iconActive,
-                    size: 24,
+                    size: ShellTokens.scrollerArrowIconSize,
                   ),
                 );
               },

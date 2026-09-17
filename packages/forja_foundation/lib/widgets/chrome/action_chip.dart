@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Kit primitive — badge / chip action (pack-declared top-bar filters, etc.).
 ///
@@ -14,13 +15,13 @@ class ForjaActionChip extends StatefulWidget {
     this.icon,
     this.selected = false,
     this.iconOnly = false,
-    this.height = 40,
-    this.radius = 20,
-    this.maxWidth = 220,
-    this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    this.fontSize = 11.5,
+    this.height = ShellTokens.actionChipHeight,
+    this.radius = ShellTokens.actionChipRadius,
+    this.maxWidth = ShellTokens.actionChipMaxWidth,
+    this.padding = const EdgeInsets.symmetric(horizontal: ShellTokens.actionChipPadH, vertical: ShellTokens.actionChipPadV),
+    this.fontSize = ShellTokens.actionChipFontSize,
     this.iconSize,
-    this.gap = 6,
+    this.gap = ShellTokens.actionChipGap,
     this.tvTabId,
     this.tvRowId,
     this.tvItemIndex,

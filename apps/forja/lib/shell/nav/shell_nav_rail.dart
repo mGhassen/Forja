@@ -85,7 +85,7 @@ double _navRailItemContentHeight({
 
   final minIcon = ShellTokens.navRailIconSizeMin;
   // Solve: n * (icon * hoverScale + fixedChrome + minSpacing) <= maxHeight
-  const minSpacing = 2.0;
+  const minSpacing = ShellTokens.navRailItemSpacingMin;
   final fixedChrome = ShellTokens.navRailIconUnderlineGap +
       ShellTokens.shellNavUnderlineHeight +
       ShellTokens.navRailIconLabelGap;
@@ -150,8 +150,8 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
           onTap: widget.onPressed,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
-            width: 34,
-            height: 34,
+            width: ShellTokens.shellNavMenuButtonHitSize,
+            height: ShellTokens.shellNavMenuButtonHitSize,
             child: Center(
               child: AnimatedScale(
                 scale: active
@@ -393,7 +393,9 @@ class _ShellNavRailState extends State<ShellNavRail> {
                       final profilePaintSize =
                           profileIconSize * ShellTokens.navRailIconHoverScale;
                       final profileSpacing =
-                          isTv ? 4.0 : metrics.navRailItemSpacing;
+                          isTv
+                              ? ShellTokens.navRailProfileSpacingTv
+                              : metrics.navRailItemSpacing;
                       final profileLabelSlot = math.max(
                         preferredLabelSlot,
                         LanPresenceMark.railSlotHeight(tv: isTv),
@@ -406,12 +408,14 @@ class _ShellNavRailState extends State<ShellNavRail> {
                               ShellTokens.navRailIconLabelGap +
                               profileLabelSlot +
                               profileSpacing;
-                      const navPadV = 4.0;
+                      const navPadV = ShellTokens.navRailNavPadVTv;
                       final navMaxHeight = math.max(
                         0.0,
                         constraints.maxHeight -
                             profileBlockHeight -
-                            (isTv ? navPadV * 2 : 16),
+                            (isTv
+                                ? navPadV * 2
+                                : ShellTokens.navRailNavReserveDesktop),
                       );
                       final fit = _navRailFitForHeight(
                         itemCount: _navIds.length,
@@ -435,7 +439,9 @@ class _ShellNavRailState extends State<ShellNavRail> {
                               child: navColumn,
                             )
                           : SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: ShellTokens.navRailScrollPadV,
+                              ),
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
                                   minHeight: math.max(0, navMaxHeight),
@@ -572,7 +578,7 @@ class _RailLogoState extends State<_RailLogo> {
         );
 
     content = AnimatedScale(
-      scale: active ? 1.04 : 1,
+      scale: active ? ShellTokens.navRailLogoHoverScale : 1,
       duration: policy.instantFocusChrome
           ? Duration.zero
           : ShellTokens.navSelectionAnimation,
@@ -609,7 +615,10 @@ class _RailLogoState extends State<_RailLogo> {
               onTap: onTap,
               behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: ShellTokens.navRailLogoTapPadding,
+                  horizontal: ShellTokens.navRailLogoTapPaddingWide,
+                ),
                 child: content,
               ),
             ),
@@ -805,7 +814,7 @@ class _NavRailLabel extends StatelessWidget {
           size: markSize,
           showBar: showBar,
         ),
-        const SizedBox(width: 5),
+        const SizedBox(width: ShellTokens.navRailLanMarkGap),
         Flexible(child: label),
       ],
     );
@@ -957,10 +966,14 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     // Profile: painted at hover size; idle downscales (never upscale SVG).
     if (widget.customIconSize != null) {
       final idle = 1 / ShellTokens.navRailIconHoverScale;
-      if (itemActive) return _pressed ? 0.92 : 1;
+      if (itemActive) {
+        return _pressed ? ShellTokens.navRailIconPressScale : 1;
+      }
       return idle;
     }
-    if (itemActive) return _pressed ? big * 0.92 : big;
+    if (itemActive) {
+      return _pressed ? big * ShellTokens.navRailIconPressScale : big;
+    }
     // TV: selected stays big, idle stays small — no rail-engage shrink cascade.
     if (policy.instantFocusChrome) {
       return widget.selected ? big : small;
@@ -1041,7 +1054,13 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               )
             : shellNavRailLabelSlotHeight(context, labelFontSize));
     final contentHeight = _contentHeight(context);
-    final underlineWidth = shellScaled(context, 24).clamp(14.0, 24.0);
+    final underlineWidth = shellScaled(
+      context,
+      ShellTokens.shellNavUnderlineWidth,
+    ).clamp(
+      ShellTokens.shellNavUnderlineWidthMin,
+      ShellTokens.shellNavUnderlineWidth,
+    );
     final destinationAccent =
         navDestinationAccentColors[widget.destination.id] ??
         ForjaShellColors.brandGreen;
@@ -1252,7 +1271,9 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                         ? Colors.white
                                         : ForjaShellColors.navUnderline)
                                   : Colors.transparent,
-                              borderRadius: BorderRadius.circular(2),
+                              borderRadius: BorderRadius.circular(
+                                ShellTokens.shellNavUnderlineRadius,
+                              ),
                             ),
                           ),
                           const SizedBox(

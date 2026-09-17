@@ -140,7 +140,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
         // Always reserve this slot so overlay open/close does not reshuffle
         // later Stack children (nav) onto the wrong Elements.
         Positioned(
-          key: const ValueKey('shell-home-top-bar'),
+          key: const ValueKey('shell-kit-top-bar'),
           top: 0,
           left: contentLeftInset,
           right: tvSafeRight,

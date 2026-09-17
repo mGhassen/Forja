@@ -332,9 +332,9 @@ class EntryDetailsChrome extends StatelessWidget {
             Padding(
               padding: EdgeInsets.fromLTRB(
                 ShellTokens.bodyHorizontalPadding,
-                8,
+                DetailsTokens.detailsHeaderGap,
                 ShellTokens.bodyHorizontalPadding,
-                8,
+                DetailsTokens.detailsHeaderGap,
               ),
               child: Row(
                 children: [
@@ -344,7 +344,7 @@ class EntryDetailsChrome extends StatelessWidget {
                     icon: const Icon(Icons.arrow_back),
                     color: ForjaShellColors.textPrimary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: DetailsTokens.detailsHeaderGap),
                   Expanded(
                     child: Text(
                       title,
@@ -352,7 +352,7 @@ class EntryDetailsChrome extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: ForjaShellColors.textPrimary,
-                        fontSize: 18,
+                        fontSize: DetailsTokens.detailsHeaderFontSize,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

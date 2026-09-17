@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
 
 /// One selectable logo+label row for [LogoMenuRail].
@@ -29,7 +30,7 @@ class LogoMenuRail extends StatelessWidget {
     required this.selectedId,
     required this.onSelect,
     this.visible = true,
-    this.width = 220,
+    this.width = ShellTokens.sideRailWidth,
     this.backgroundColor,
     this.clipBehavior = Clip.antiAlias,
     this.itemBuilder,

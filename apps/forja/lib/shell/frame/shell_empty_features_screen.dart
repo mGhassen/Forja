@@ -12,6 +12,8 @@ import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/brand/animated_logo.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
 /// Shown when every shell feature tab is hidden — guides users to Plugins,
 /// Addons, and Features instead of landing on an empty Settings body.
 class ShellEmptyFeaturesScreen extends ConsumerStatefulWidget {
@@ -215,7 +217,11 @@ class _ShellEmptyFeaturesScreenState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       ForjaLogoIdle(logoHeight: logoHeight),
-                      SizedBox(height: tv ? 14 : 28),
+                      SizedBox(
+                        height: tv
+                            ? ShellTokens.emptyFeaturesTitleGapTv
+                            : ShellTokens.emptyFeaturesTitleGapDesktop,
+                      ),
                       Text(
                         'Turn on a feature to get started',
                         textAlign: TextAlign.center,
@@ -227,7 +233,11 @@ class _ShellEmptyFeaturesScreenState
                           height: 1.2,
                         ),
                       ),
-                      SizedBox(height: tv ? 10 : 14),
+                      SizedBox(
+                        height: tv
+                            ? ShellTokens.emptyFeaturesBodyGapTv
+                            : ShellTokens.emptyFeaturesBodyGapDesktop,
+                      ),
                       Text(
                         'Pick Plugins, Addons, or Features.',
                         textAlign: TextAlign.center,
@@ -241,14 +251,21 @@ class _ShellEmptyFeaturesScreenState
                           height: 1.35,
                         ),
                       ),
-                      SizedBox(height: tv ? 20 : 32),
+                      SizedBox(
+                        height: tv
+                            ? ShellTokens.emptyFeaturesCardsGapTv
+                            : ShellTokens.emptyFeaturesCardsGapDesktop,
+                      ),
                       if (horizontal)
                         IntrinsicHeight(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               for (var i = 0; i < specs.length; i++) ...[
-                                if (i > 0) SizedBox(width: tv ? 12 : 12),
+                                if (i > 0)
+                                  const SizedBox(
+                                    width: ShellTokens.emptyFeaturesCardGap,
+                                  ),
                                 Expanded(
                                   child: cardAt(
                                     i,
@@ -264,7 +281,12 @@ class _ShellEmptyFeaturesScreenState
                         Column(
                           children: [
                             for (var i = 0; i < specs.length; i++) ...[
-                              if (i > 0) SizedBox(height: tv ? 10 : 12),
+                              if (i > 0)
+                                SizedBox(
+                                  height: tv
+                                      ? ShellTokens.emptyFeaturesCardGapCompact
+                                      : ShellTokens.emptyFeaturesCardGap,
+                                ),
                               cardAt(i, expandBody: false, compact: tv),
                             ],
                           ],
@@ -360,7 +382,7 @@ class _HintCardState extends State<_HintCard> {
     final borderColor = accent;
 
     final inner = AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
+      duration: ShellTokens.emptyFeaturesCardAnim,
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: lit ? litBg : idleBg,
@@ -373,7 +395,11 @@ class _HintCardState extends State<_HintCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(widget.spec.icon, size: iconSize, color: iconColor),
-            SizedBox(height: widget.compact ? 10 : 12),
+            SizedBox(
+              height: widget.compact
+                  ? ShellTokens.emptyFeaturesCardGapCompact
+                  : ShellTokens.emptyFeaturesCardGap,
+            ),
             Text(
               widget.spec.title,
               style: GoogleFonts.plusJakartaSans(

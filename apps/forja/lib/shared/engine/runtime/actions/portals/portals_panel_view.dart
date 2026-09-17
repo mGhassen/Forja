@@ -349,18 +349,9 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   Future<void> _deletePortal(String portalKey) async {
     setState(() => _deletingKeys.add(portalKey));
     try {
-      final inv =
-          ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
-      final wasActive = inv != null &&
-          inv.activeKey.isNotEmpty &&
-          PortalsHost.samePortalKey(inv.activeKey, portalKey);
-      if (wasActive && mounted) {
-        PackChromeScope.maybeOf(context)?.onClearCatalog();
-      }
       await _runAction(
         (id) => PortalsHost.remove(pluginId: id, key: portalKey),
         toastOk: 'Removed',
-        reloadCatalog: true,
       );
     } finally {
       if (mounted) {

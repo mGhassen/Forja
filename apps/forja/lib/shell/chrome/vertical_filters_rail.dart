@@ -223,8 +223,10 @@ class VerticalFilterTopBarLogo extends StatelessWidget {
             packSourceUrl: spec.packSourceUrl,
             width: width,
             height: height,
-            inset: 0.14,
-            borderRadius: BorderRadius.circular(6.5),
+            inset: ShellTokens.shellProviderTopBarLogoInset,
+            borderRadius: BorderRadius.circular(
+              ShellTokens.shellProviderTileRadius,
+            ),
           ),
         );
       },
@@ -271,8 +273,10 @@ class _TvSelectedFilterLogo extends StatelessWidget {
         packSourceUrl: packSourceUrl,
         width: width,
         height: height,
-        inset: 0.14,
-        borderRadius: BorderRadius.circular(6.5),
+        inset: ShellTokens.shellProviderTopBarLogoInset,
+        borderRadius: BorderRadius.circular(
+          ShellTokens.shellProviderTileRadius,
+        ),
       ),
     );
   }
@@ -422,7 +426,7 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
       Scrollable.ensureVisible(
         ctx,
         alignment: 0.4,
-        duration: const Duration(milliseconds: 140),
+        duration: ShellTokens.shellProviderRailScrollAnimation,
         curve: Curves.easeOutCubic,
       );
     });
@@ -434,7 +438,8 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
       builder: (context, constraints) {
         final maxH = constraints.maxHeight.isFinite
             ? constraints.maxHeight
-            : MediaQuery.sizeOf(context).height * 0.88;
+            : MediaQuery.sizeOf(context).height *
+                ShellTokens.shellProviderRailMaxHeightFraction;
         final items = widget.spec.toLogoMenuItems(
           leadingFor: (o) => VerticalFilterLogoMark(
             option: o,
@@ -442,7 +447,9 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
             width: ShellTokens.shellProviderTileWidth,
             height: ShellTokens.shellProviderTileHeight,
             inset: o.inset,
-            borderRadius: BorderRadius.circular(6.5),
+            borderRadius: BorderRadius.circular(
+              ShellTokens.shellProviderTileRadius,
+            ),
           ),
         );
         return Material(
@@ -549,7 +556,7 @@ class _VerticalFilterTile extends StatelessWidget {
     final policy = ShellScope.inputPolicyOf(context);
     final tileW = ShellTokens.shellProviderTileWidth;
     final tileH = ShellTokens.shellProviderTileHeight;
-    final ring = selected ? 2.0 : 0.0;
+    final ring = selected ? ShellTokens.shellProviderTileSelectedRing : 0.0;
     final child = DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
@@ -559,14 +566,16 @@ class _VerticalFilterTile extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(2),
+        padding: const EdgeInsets.all(ShellTokens.shellProviderTileSelectedPad),
         child: VerticalFilterLogoMark(
           option: option,
           packSourceUrl: packSourceUrl,
           width: tileW - ring * 2,
           height: tileH - ring * 2,
           inset: option.inset,
-          borderRadius: BorderRadius.circular(6.5),
+          borderRadius: BorderRadius.circular(
+            ShellTokens.shellProviderTileRadius,
+          ),
         ),
       ),
     );
@@ -591,8 +600,8 @@ class _VerticalFilterTile extends StatelessWidget {
           child,
           if (selected)
             const Positioned(
-              top: 4,
-              right: 4,
+              top: ShellTokens.shellProviderTileCheckInset,
+              right: ShellTokens.shellProviderTileCheckInset,
               child: _FilterSelectedCheck(),
             ),
         ],
@@ -612,9 +621,12 @@ class _FilterSelectedCheck extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(2),
+        padding: const EdgeInsets.all(ShellTokens.shellProviderTileCheckPad),
         child: CustomPaint(
-          size: const Size(12, 10),
+          size: const Size(
+            ShellTokens.shellProviderTileCheckWidth,
+            ShellTokens.shellProviderTileCheckHeight,
+          ),
           painter: _LineCheckPainter(color: Colors.white),
         ),
       ),

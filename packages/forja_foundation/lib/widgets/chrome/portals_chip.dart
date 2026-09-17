@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -21,13 +22,13 @@ class PortalsChip extends StatefulWidget {
     this.seatsMax,
     this.compact = false,
     this.width,
-    this.height = 40,
-    this.radius = 8,
+    this.height = ShellTokens.portalsChipHeight,
+    this.radius = ShellTokens.portalsChipRadius,
     this.pad,
-    this.fontSize = 12.5,
-    this.iconSize = 16,
-    this.chevronSize = 18,
-    this.seatsFontSize = 12,
+    this.fontSize = ShellTokens.portalsChipFontSize,
+    this.iconSize = ShellTokens.portalsChipIconSize,
+    this.chevronSize = ShellTokens.portalsChipChevronSize,
+    this.seatsFontSize = ShellTokens.portalsChipSeatsFontSize,
     this.accentColor,
     this.tvFocus = false,
     this.interactiveBuilder,
@@ -53,7 +54,8 @@ class PortalsChip extends StatefulWidget {
   final double height;
   final double radius;
 
-  /// Horizontal padding. Null → compact ? 10 : 14.
+  /// Horizontal padding. Null → compact ? [ShellTokens.portalsChipPadCompact] :
+  /// [ShellTokens.portalsChipPad].
   final double? pad;
   final double fontSize;
   final double iconSize;
@@ -118,7 +120,10 @@ class _PortalsChipState extends State<PortalsChip> {
         : _active
             ? Colors.white
             : Colors.white60;
-    final hPad = widget.pad ?? (widget.compact ? 10.0 : 14.0);
+    final hPad = widget.pad ??
+        (widget.compact
+            ? ShellTokens.portalsChipPadCompact
+            : ShellTokens.portalsChipPad);
     final packWidth = widget.width;
     final minW = packWidth ??
         (widget.compact && !_revealSeats ? widget.height : 0.0);
@@ -126,8 +131,15 @@ class _PortalsChipState extends State<PortalsChip> {
     // grows left while the body/chevron right edge stays put.
     final bodyW = packWidth != null ? (packWidth - hPad * 2) : null;
     final labelMax = bodyW != null
-        ? (bodyW - 14 - 8 - widget.chevronSize).clamp(48.0, 280.0)
-        : 160.0;
+        ? (bodyW -
+                ShellTokens.portalsChipStatusSlot -
+                ShellTokens.portalsChipGap -
+                widget.chevronSize)
+            .clamp(
+              ShellTokens.portalsChipLabelMaxMin,
+              ShellTokens.portalsChipLabelMaxMax,
+            )
+        : ShellTokens.portalsChipLabelMaxFallback;
 
     final labelText = Text(
       widget.label,
@@ -142,8 +154,8 @@ class _PortalsChipState extends State<PortalsChip> {
     );
 
     final status = SizedBox(
-      width: 14,
-      height: 14,
+      width: ShellTokens.portalsChipStatusSlot,
+      height: ShellTokens.portalsChipStatusSlot,
       child: Center(
         child: widget.hasPortal
             ? _statusDot()
@@ -177,7 +189,7 @@ class _PortalsChipState extends State<PortalsChip> {
         child: Row(
           children: [
             status,
-            const SizedBox(width: 8),
+            const SizedBox(width: ShellTokens.portalsChipGap),
             Expanded(child: labelText),
             chevron,
           ],
@@ -188,12 +200,12 @@ class _PortalsChipState extends State<PortalsChip> {
         mainAxisSize: MainAxisSize.min,
         children: [
           status,
-          const SizedBox(width: 8),
+          const SizedBox(width: ShellTokens.portalsChipGap),
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: labelMax),
             child: labelText,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: ShellTokens.portalsChipGapTight),
           chevron,
         ],
       );
@@ -227,7 +239,11 @@ class _PortalsChipState extends State<PortalsChip> {
           children: [
             if (widget.hasPortal && _revealSeats) ...[
               _seats(),
-              SizedBox(width: widget.compact ? 6 : 8),
+              SizedBox(
+                width: widget.compact
+                    ? ShellTokens.portalsChipGapTight
+                    : ShellTokens.portalsChipGap,
+              ),
             ],
             body,
           ],
@@ -267,17 +283,17 @@ class _PortalsChipState extends State<PortalsChip> {
     // green/red (otherwise the pin looks frozen on hover recheck).
     if (widget.checking) {
       return SizedBox(
-        width: 14,
-        height: 14,
+        width: ShellTokens.portalsChipStatusSlot,
+        height: ShellTokens.portalsChipStatusSlot,
         child: CircularProgressIndicator(
-          strokeWidth: 1.5,
+          strokeWidth: ShellTokens.portalsChipStatusStroke,
           color: _statusColor(),
         ),
       );
     }
     return Container(
-      width: 8,
-      height: 8,
+      width: ShellTokens.portalsChipDotSize,
+      height: ShellTokens.portalsChipDotSize,
       decoration: BoxDecoration(color: _statusColor(), shape: BoxShape.circle),
     );
   }

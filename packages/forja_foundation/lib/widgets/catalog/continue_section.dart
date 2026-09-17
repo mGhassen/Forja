@@ -13,7 +13,7 @@ import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 class ContinueSection extends StatelessWidget {
   const ContinueSection({
     super.key,
-    this.title = 'Continue Watching',
+    required this.title,
     this.items,
     this.children,
     this.entries,
@@ -23,8 +23,8 @@ class ContinueSection extends StatelessWidget {
     this.scrollController,
     this.titlePadding,
     this.listPadding,
-    this.cardWidth = 280,
-    this.cardHeight = 158,
+    this.cardWidth = ShellTokens.shellContinueWatchingCardWidthDesktop,
+    this.cardHeight = ShellTokens.shellContinueWatchingCardHeightDesktop,
     this.cardGap = ShellTokens.posterCardRowGap,
     this.onResume,
     this.onRemove,

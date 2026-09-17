@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 const int kEpisodeRangeChunkSize = 50;
 
@@ -103,8 +105,8 @@ class EpisodeRangeSelector extends StatelessWidget {
     );
     final cinematic = ForjaShellColors.cinematic;
 
-    const double menuItemHeight = 44;
-    const int maxVisibleRanges = 8;
+    const double menuItemHeight = DetailsTokens.episodeRangeMenuHeight;
+    const int maxVisibleRanges = DetailsTokens.episodeRangeMenuMaxRows;
     const double menuVerticalPadding = 8;
     final maxMenuHeight =
         menuItemHeight * maxVisibleRanges + menuVerticalPadding;
@@ -120,7 +122,9 @@ class EpisodeRangeSelector extends StatelessWidget {
           Size(double.infinity, maxMenuHeight),
         ),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ShellTokens.shellChipRadius),
+          ),
         ),
       ),
       menuChildren: [
@@ -156,7 +160,7 @@ class EpisodeRangeSelector extends StatelessWidget {
           }
         }
 
-        const radius = 20.0;
+        const radius = DetailsTokens.episodeRangeMenuRadius;
         final trigger = Material(
           color: Colors.transparent,
           child: InkWell(

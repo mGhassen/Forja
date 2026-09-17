@@ -26,18 +26,18 @@ class DetailsCastSection extends StatelessWidget {
     required Widget child,
   })? itemBuilder;
 
-  static const double _avatarSize = 88;
-  static const double _itemWidth = 112;
-  static const double _horizontalGap = 32;
+  static const double _avatarSize = DetailsTokens.castAvatarSize;
+  static const double _itemWidth = DetailsTokens.castItemWidth;
+  static const double _horizontalGap = DetailsTokens.castGap;
   static const double _titleGap = DetailsTokens.sectionTitleGap;
   static const double _avatarNameGap = 8;
   static const double _nameCharacterGap = 3;
 
   static const TextStyle titleStyle = TextStyle(
     color: Colors.white,
-    fontSize: 20,
+    fontSize: ShellTokens.sectionTitleFontSize,
     fontWeight: FontWeight.w800,
-    letterSpacing: -0.3,
+    letterSpacing: ShellTokens.sectionTitleLetterSpacing,
   );
 
   static const double _rowHeight =

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
 
 bool _searchFilterActivateKey(KeyEvent event) {
@@ -30,6 +31,9 @@ class CatalogSearchTypeSegment extends StatelessWidget {
     super.key,
     required this.value,
     required this.onChanged,
+    required this.allLabel,
+    required this.movieLabel,
+    required this.seriesLabel,
     this.firstFocusNode,
     this.onUpFromFirst,
     this.interactiveBuilder,
@@ -37,31 +41,36 @@ class CatalogSearchTypeSegment extends StatelessWidget {
 
   final SearchMediaFilter value;
   final ValueChanged<SearchMediaFilter> onChanged;
+  final String allLabel;
+  final String movieLabel;
+  final String seriesLabel;
   final FocusNode? firstFocusNode;
   final VoidCallback? onUpFromFirst;
   final CatalogSearchFilterInteractive? interactiveBuilder;
 
-  static const _items = [
-    (SearchMediaFilter.all, 'All'),
-    (SearchMediaFilter.movie, 'Films'),
-    (SearchMediaFilter.tv, 'Series'),
-  ];
+  List<(SearchMediaFilter, String)> get _items => [
+        (SearchMediaFilter.all, allLabel),
+        (SearchMediaFilter.movie, movieLabel),
+        (SearchMediaFilter.tv, seriesLabel),
+      ];
 
   @override
   Widget build(BuildContext context) {
+    final items = _items;
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        final slot = w / _items.length;
-        final idx = _items.indexWhere((e) => e.$1 == value).clamp(0, 2);
+        final slot = w / items.length;
+        final idx = items.indexWhere((e) => e.$1 == value).clamp(0, 2);
         return SizedBox(
-          height: 36,
+          height: ShellTokens.viewButtonHeight,
           child: Stack(
             children: [
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius:
+                        BorderRadius.circular(ShellTokens.shellChipRadiusPill),
                     border: Border.all(color: ForjaShellColors.borderSubtle),
                   ),
                 ),
@@ -87,29 +96,29 @@ class CatalogSearchTypeSegment extends StatelessWidget {
               ),
               Row(
                 children: [
-                  for (var i = 0; i < _items.length; i++)
+                  for (var i = 0; i < items.length; i++)
                     Expanded(
                       child: _wrapTap(
                         focusNode: i == 0 ? firstFocusNode : null,
                         onUpEdge: i == 0 ? onUpFromFirst : null,
                         onLeftEdge: i == 0 ? null : null,
                         listIndex: i,
-                        onTap: () => onChanged(_items[i].$1),
+                        onTap: () => onChanged(items[i].$1),
                         child: SizedBox(
-                          height: 36,
+                          height: ShellTokens.viewButtonHeight,
                           child: Center(
                             child: AnimatedDefaultTextStyle(
                               duration: const Duration(milliseconds: 180),
                               style: TextStyle(
-                                color: value == _items[i].$1
+                                color: value == items[i].$1
                                     ? ForjaShellColors.textPrimary
                                     : ForjaShellColors.textSecondary,
-                                fontSize: 13,
-                                fontWeight: value == _items[i].$1
+                                fontSize: ShellTokens.eventSearchFontSize,
+                                fontWeight: value == items[i].$1
                                     ? FontWeight.w600
                                     : FontWeight.w500,
                               ),
-                              child: Text(_items[i].$2),
+                              child: Text(items[i].$2),
                             ),
                           ),
                         ),
@@ -836,6 +845,9 @@ class CatalogSearchFilterLens extends StatelessWidget {
     required this.filters,
     required this.onFiltersChanged,
     required this.onSubmit,
+    required this.allLabel,
+    required this.movieLabel,
+    required this.seriesLabel,
     this.firstFocusNode,
     this.onUpFromFirst,
     this.tvLeanback = false,
@@ -847,6 +859,9 @@ class CatalogSearchFilterLens extends StatelessWidget {
   final SearchFilters filters;
   final ValueChanged<SearchFilters> onFiltersChanged;
   final VoidCallback onSubmit;
+  final String allLabel;
+  final String movieLabel;
+  final String seriesLabel;
   final FocusNode? firstFocusNode;
   final VoidCallback? onUpFromFirst;
   final bool tvLeanback;
@@ -884,6 +899,9 @@ class CatalogSearchFilterLens extends StatelessWidget {
                           order: const NumericFocusOrder(1),
                           child: CatalogSearchTypeSegment(
                             value: filters.media,
+                            allLabel: allLabel,
+                            movieLabel: movieLabel,
+                            seriesLabel: seriesLabel,
                             firstFocusNode: firstFocusNode,
                             onUpFromFirst: onUpFromFirst,
                             interactiveBuilder:
@@ -1020,7 +1038,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(ShellTokens.shellChipRadiusPill),
         border: Border.all(
           color: ForjaShellColors.textPrimary.withValues(alpha: 0.35),
         ),
@@ -1029,7 +1047,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
         'Search',
         style: TextStyle(
           color: ForjaShellColors.textPrimary,
-          fontSize: 13,
+          fontSize: ShellTokens.eventSearchFontSize,
           fontWeight: FontWeight.w600,
         ),
       ),

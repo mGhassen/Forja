@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/widgets/details/meta_line.dart';
 
 /// Right-column production metadata on a details hero — label/value rows only.
@@ -71,7 +72,7 @@ class FactsPanel extends StatelessWidget {
         .toList(growable: false);
     if (visible.isEmpty) return const SizedBox.shrink();
 
-    const radius = 12.0;
+    const radius = DetailsTokens.factsRadius;
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),

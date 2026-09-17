@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 
 class WatchProviderTile {
   const WatchProviderTile({required this.name, required this.logoUrl});
@@ -20,8 +21,8 @@ class HeroWatchProvidersRow extends StatelessWidget {
   final int maxVisible;
   final bool visible;
 
-  static const double tileSize = 40;
-  static const double tileGap = 8;
+  static const double tileSize = DetailsTokens.watchProviderTileSize;
+  static const double tileGap = DetailsTokens.watchProviderGap;
   static const double rowHeight = tileSize;
 
   @override

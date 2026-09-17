@@ -554,7 +554,6 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                                 _ProfileChoice(
                                   profile: profiles[i],
                                   metrics: metrics,
-                                  active: profiles[i].id == activeProfileId,
                                   managing: managing,
                                   enabled: !_busy,
                                   autofocus: !_busy && i == autofocusIndex,
@@ -800,7 +799,6 @@ class _ProfileChoice extends StatefulWidget {
   const _ProfileChoice({
     required this.profile,
     required this.metrics,
-    required this.active,
     required this.managing,
     required this.enabled,
     required this.onTap,
@@ -809,7 +807,6 @@ class _ProfileChoice extends StatefulWidget {
 
   final SyncProfile profile;
   final ProfileChooserMetrics metrics;
-  final bool active;
   final bool managing;
   final bool enabled;
   final bool autofocus;
@@ -844,7 +841,6 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
       focused: _focused,
       context: context,
     );
-    final selected = highlighted || (!widget.managing && widget.active);
     final m = widget.metrics;
     return ExcludeFocus(
       excluding: !widget.enabled,
@@ -870,7 +866,7 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
                   avatarKey: widget.profile.avatarKey,
                   name: widget.profile.name,
                   size: m.avatarSize,
-                  selected: selected,
+                  selected: highlighted,
                   editing: widget.managing,
                 ),
               ),
@@ -881,13 +877,12 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: selected
+                  color: highlighted
                       ? ForjaShellColors.textPrimary
                       : ForjaShellColors.textSecondary,
                   fontSize: m.isTv ? 13 : 15,
-                  fontWeight: (!widget.managing && widget.active)
-                      ? FontWeight.w700
-                      : FontWeight.w500,
+                  fontWeight:
+                      highlighted ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ],

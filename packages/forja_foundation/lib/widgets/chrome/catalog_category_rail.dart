@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -43,14 +44,14 @@ class CatalogCategoryRail extends StatefulWidget {
     this.onTogglePin,
     this.onReorder,
     this.canReorder = false,
-    this.width = 220,
+    this.width = ShellTokens.categoryRailWidth,
     this.compact = false,
     this.rowHeight,
     this.fontSize,
     this.iconSize,
     this.rowPadH,
-    this.listPadV = 8,
-    this.pinSlotWidth = 28,
+    this.listPadV = ShellTokens.categoryRailListPadV,
+    this.pinSlotWidth = ShellTokens.categoryRailPinSlotWidth,
     this.tvTabId,
     this.tvRowId = 'catalog-categories',
   });
@@ -79,8 +80,8 @@ class CatalogCategoryRail extends StatefulWidget {
   final String? tvTabId;
   final String tvRowId;
 
-  static const double rowExtentDesktop = 46;
-  static const double rowExtentCompact = 42;
+  static const double rowExtentDesktop = ShellTokens.categoryRailRowExtent;
+  static const double rowExtentCompact = ShellTokens.categoryRailRowExtentCompact;
 
   /// Host Back handlers may call this to dismiss pin / floating chrome.
   static bool tryConsumeBack() => _CatalogCategoryRowState.tryConsumeBack();
@@ -624,25 +625,25 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: fillColor,
-        border: Border(left: BorderSide(color: leftBar, width: 2.5)),
+        border: Border(left: BorderSide(color: leftBar, width: ShellTokens.categoryRailLeftBarWidth)),
       ),
       child: Stack(
         fit: StackFit.expand,
         children: [
           Padding(
             padding: EdgeInsets.only(
-              left: widget.rowPadH ?? (widget.compact ? 10 : 12),
-              right: widget.rowPadH ?? (widget.compact ? 6 : 8),
+              left: widget.rowPadH ?? (widget.compact ? ShellTokens.categoryRailRowPadHCompact : ShellTokens.categoryRailRowPadH),
+              right: widget.rowPadH ?? (widget.compact ? ShellTokens.categoryRailRowPadVCompact : ShellTokens.categoryRailRowPadV),
             ),
             child: Row(
               children: [
                 if (widget.item.icon != null) ...[
                   Icon(
                     widget.item.icon,
-                    size: widget.iconSize ?? (widget.compact ? 18 : 20),
+                    size: widget.iconSize ?? (widget.compact ? ShellTokens.categoryRailIconSizeCompact : ShellTokens.categoryRailIconSize),
                     color: iconColor,
                   ),
-                  SizedBox(width: widget.compact ? 10 : 12),
+                  SizedBox(width: widget.compact ? ShellTokens.categoryRailItemGapCompact : ShellTokens.categoryRailItemGap),
                 ],
                 Expanded(
                   child: Text(
@@ -651,7 +652,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
                       color: titleColor,
-                      fontSize: widget.fontSize ?? (widget.compact ? 13 : 14),
+                      fontSize: widget.fontSize ?? (widget.compact ? ShellTokens.categoryRailFontSizeCompact : ShellTokens.categoryRailFontSize),
                       fontWeight: lit || selected
                           ? FontWeight.w700
                           : FontWeight.w500,
@@ -771,8 +772,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
           type: MaterialType.transparency,
           child: InkWell(
             onTap: widget.onTogglePin,
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(padding: const EdgeInsets.all(4), child: icon),
+            borderRadius: BorderRadius.circular(ShellTokens.categoryRailPinRadius),
+            child: Padding(padding: const EdgeInsets.all(ShellTokens.categoryRailPinPad), child: icon),
           ),
         ),
       );
@@ -780,7 +781,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onTogglePin,
-      borderRadius: 6,
+      borderRadius: ShellTokens.categoryRailPinRadius,
       scaleOnFocus: 1.0,
       showFocusFill: false,
       suppressInkHover: true,
@@ -790,7 +791,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       onUpEdge: () => _rowFocus.requestFocus(),
       onDownEdge: () => _rowFocus.requestFocus(),
       onRightEdge: () {},
-      child: Padding(padding: const EdgeInsets.all(4), child: icon),
+      child: Padding(padding: const EdgeInsets.all(ShellTokens.categoryRailPinPad), child: icon),
     );
   }
 }

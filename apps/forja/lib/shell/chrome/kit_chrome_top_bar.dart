@@ -48,7 +48,7 @@ class KitChromeTopBar extends StatefulWidget {
   /// Null when the pack does not declare `search` — Search tab is omitted.
   final VoidCallback? onSearch;
 
-  static const hideSlideDistance = 56.0;
+  static const hideSlideDistance = ShellTokens.kitTopBarHideSlideDistance;
 
   @override
   State<KitChromeTopBar> createState() => _KitChromeTopBarState();
@@ -138,20 +138,26 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
           children: [
             Positioned(
               left: offset.dx,
-              top: offset.dy + box.size.height + 4,
+              top: offset.dy + box.size.height + ShellTokens.homeCategoriesMenuOffsetY,
               child: Material(
                 color: ForjaShellColors.cinematic.menuSurface,
                 elevation: 8,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(
+                  ShellTokens.homeCategoriesMenuRadius,
+                ),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(
+                      ShellTokens.homeCategoriesMenuRadius,
+                    ),
                     border: Border.all(
                       color: ForjaShellColors.cinematic.borderSubtle,
                     ),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(
+                      ShellTokens.homeCategoriesMenuRadius,
+                    ),
                     child: IntrinsicWidth(
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
@@ -284,7 +290,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: 34,
+            height: ShellTokens.homeMenuRowHeight,
             child: Center(
               child: ShellNavMenuButton(
                 onPressed: () => Scaffold.of(context).openDrawer(),
@@ -373,12 +379,15 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                         final categoriesActive =
                             _categoriesOpen || categoryId != null;
                         final tabGap = usesTv
-                            ? 28.0
-                            : MediaQuery.sizeOf(context).width < 560
-                            ? 20.0
-                            : 36.0;
-                        final tabTextHeight =
-                            shellScaled(context, 34).clamp(28.0, 34.0);
+                            ? ShellTokens.kitTopBarTabGapTv
+                            : MediaQuery.sizeOf(context).width <
+                                    ShellTokens.kitTopBarTabGapCompactMaxWidth
+                            ? ShellTokens.kitTopBarTabGapCompact
+                            : ShellTokens.kitTopBarTabGapWide;
+                        final tabTextHeight = shellScaled(
+                          context,
+                          ShellTokens.homeMenuRowHeight,
+                        ).clamp(28.0, ShellTokens.homeMenuRowHeight);
                         // Provider logo → Search? → pack menus[] → Categories?
                         final hasSearch = widget.onSearch != null;
                         final menus = widget.menus;
@@ -570,7 +579,7 @@ class _CategoryTab extends StatefulWidget {
 }
 
 class _CategoryTabState extends State<_CategoryTab> {
-  static const _animDuration = Duration(milliseconds: 280);
+  static const _animDuration = ShellTokens.kitTopBarTabAnimation;
   static const _animCurve = Curves.easeInOutCubic;
   static const _hoverT = 0.62;
   static const _selectedT = 1.0;
@@ -604,8 +613,14 @@ class _CategoryTabState extends State<_CategoryTab> {
   }
 
   double _underlineWidth(double t, BuildContext context) {
-    final hoverW = shellScaled(context, 28).clamp(14.0, 28.0);
-    final selectedExtra = shellScaled(context, 4).clamp(2.0, 4.0);
+    final hoverW = shellScaled(
+      context,
+      ShellTokens.kitTopBarUnderlineHoverWidth,
+    ).clamp(14.0, ShellTokens.kitTopBarUnderlineHoverWidth);
+    final selectedExtra = shellScaled(
+      context,
+      ShellTokens.kitTopBarUnderlineSelectedExtra,
+    ).clamp(2.0, ShellTokens.kitTopBarUnderlineSelectedExtra);
     if (t <= 0) return 0;
     if (t < _hoverT) return hoverW * (t / _hoverT);
     return hoverW + selectedExtra * ((t - _hoverT) / (_selectedT - _hoverT));
@@ -624,9 +639,18 @@ class _CategoryTabState extends State<_CategoryTab> {
           t,
         )!;
         final underlineWidth = _underlineWidth(t, context);
-        final tabHeight = shellScaled(context, 34).clamp(28.0, 34.0);
-        final tabFont = shellScaled(context, 17).clamp(14.0, 17.0);
-        final chevronSize = shellScaled(context, 18).clamp(14.0, 18.0);
+        final tabHeight = shellScaled(
+          context,
+          ShellTokens.homeMenuRowHeight,
+        ).clamp(28.0, ShellTokens.homeMenuRowHeight);
+        final tabFont = shellScaled(
+          context,
+          ShellTokens.kitTopBarTabFontSize,
+        ).clamp(14.0, ShellTokens.kitTopBarTabFontSize);
+        final chevronSize = shellScaled(
+          context,
+          ShellTokens.kitTopBarChevronSize,
+        ).clamp(14.0, ShellTokens.kitTopBarChevronSize);
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -645,7 +669,12 @@ class _CategoryTabState extends State<_CategoryTab> {
                         size: chevronSize,
                         color: textColor,
                       ),
-                      SizedBox(width: shellScaled(context, 6).clamp(4.0, 6.0)),
+                      SizedBox(
+                        width: shellScaled(
+                          context,
+                          ShellTokens.kitTopBarIconGap,
+                        ).clamp(4.0, ShellTokens.kitTopBarIconGap),
+                      ),
                     ],
                     Text(
                       widget.label,
@@ -657,7 +686,12 @@ class _CategoryTabState extends State<_CategoryTab> {
                       ),
                     ),
                     if (widget.showChevron) ...[
-                      SizedBox(width: shellScaled(context, 4).clamp(2.0, 4.0)),
+                      SizedBox(
+                        width: shellScaled(
+                          context,
+                          ShellTokens.kitTopBarChevronGap,
+                        ).clamp(2.0, ShellTokens.kitTopBarChevronGap),
+                      ),
                       Icon(
                         Icons.expand_more_rounded,
                         size: chevronSize,
@@ -684,7 +718,9 @@ class _CategoryTabState extends State<_CategoryTab> {
                 width: underlineWidth,
                 decoration: BoxDecoration(
                   color: underlineWidth > 0 ? textColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(
+                    ShellTokens.shellNavUnderlineRadius,
+                  ),
                 ),
               ),
             ),
@@ -700,7 +736,7 @@ class _CategoryTabState extends State<_CategoryTab> {
       return shellFocusableTap(
         context: context,
         onTap: widget.onTap,
-        borderRadius: 4,
+        borderRadius: ShellTokens.kitTopBarFocusRadius,
         scaleOnFocus: 1.0,
         listIndex: widget.listIndex,
         tvTabId: widget.tabId,
@@ -767,11 +803,14 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     final focusStyled = policy.focusStyled(context, focused: _focused);
     final highlight = widget.selected || _hovered || focusStyled;
     final row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: ShellTokens.homeCategoriesMenuRowPadH,
+        vertical: ShellTokens.homeCategoriesMenuRowPadV,
+      ),
       child: Text(
         widget.label,
         style: GoogleFonts.plusJakartaSans(
-          fontSize: 14,
+          fontSize: ShellTokens.homeCategoriesMenuFontSize,
           fontWeight: highlight ? FontWeight.w600 : FontWeight.w500,
           color: highlight ? Colors.white : cinematic.textSecondary,
         ),
@@ -781,7 +820,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 4,
+      borderRadius: ShellTokens.kitTopBarFocusRadius,
       listIndex: widget.listIndex,
       focusNode: widget.focusNode,
       onUpEdge: widget.onUpEdge,

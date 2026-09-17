@@ -68,6 +68,32 @@ abstract final class DetailsTokens {
   /// Default first-row Y when pack opts into overlap without a fraction.
   static const double firstBodyRowViewportFraction = 0.65;
 
+  static const double castAvatarSize = 88;
+  static const double castItemWidth = 112;
+  static const double castGap = 32;
+  static const double trailerCardWidth = 200;
+  static const double episodeSeasonWidth = 104;
+  static const double episodeSeasonHeight = 156;
+  static const double episodeCardWidth = 268;
+  static const double heroPillHeight = ShellTokens.controlHeight;
+  static const double heroPillIconSize = 20;
+  static const double watchProviderTileSize = 40;
+  static const double watchProviderGap = 8;
+  static const double episodeRangeMenuHeight = 44;
+  static const int episodeRangeMenuMaxRows = 8;
+  static const double episodeRangeMenuRadius = 20;
+  static const double factsRadius = 12;
+  static const double sectionTitleFontSize = 18;
+  static const double railsGap = 12;
+  static const double railsSectionGap = 24;
+  static const double detailsHeaderGap = 8;
+  static const double detailsHeaderFontSize = 18;
+
+  static const double heroTitleBlockHeight = 96;
+  static const double heroMetaBlockHeight = 32;
+  static const double heroActionsBlockHeight = 26;
+  static const double heroTitleSlotReserve = 64;
+
   /// Hero chrome height from pack layout + viewport.
   static double heroHeight(
     BuildContext context, {

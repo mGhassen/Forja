@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
@@ -661,9 +663,9 @@ class _SeasonCard extends StatefulWidget {
   final String? tvRowId;
   final int? listIndex;
 
-  static const double cardWidth = 104;
-  static const double cardHeight = 156;
-  static const double radius = 8;
+  static const double cardWidth = DetailsTokens.episodeSeasonWidth;
+  static const double cardHeight = DetailsTokens.episodeSeasonHeight;
+  static const double radius = ShellTokens.shellProviderCardRadius;
   static const double hoverScale = 1.04;
   static const double rowVerticalPadding = 4;
   static double get rowScrollerHeight =>
@@ -847,7 +849,7 @@ class _EpisodeCard extends StatefulWidget {
   final String? tvRowId;
   final int? listIndex;
 
-  static const double cardWidth = 268;
+  static const double cardWidth = DetailsTokens.episodeCardWidth;
   static const double thumbRadius = 10;
   static const double rowVerticalPadding = 8;
 

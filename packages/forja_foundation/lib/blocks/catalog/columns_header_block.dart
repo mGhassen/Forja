@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Prebuilt IPTV-style catalog screen: top chrome + side categories + card grid.
 ///
@@ -31,12 +32,12 @@ class ColumnsHeaderBlock extends StatelessWidget {
     this.items = const [],
     this.body,
     this.side,
-    this.sideWidth = 220,
+    this.sideWidth = ShellTokens.categoryRailWidth,
     this.sideOnLeading = true,
     this.sideGap = 0,
     this.backgroundColor,
     this.title,
-    this.emptyTitle = 'No channels',
+    required this.emptyTitle,
     this.emptyDescription,
     this.hideSide = false,
     this.onActionSelect,
@@ -67,12 +68,12 @@ class ColumnsHeaderBlock extends StatelessWidget {
       items: CatalogCardsGrid.itemsFromProps(props),
       body: body,
       side: side,
-      sideWidth: propsNumOr(props, 'sideWidth', 220),
+      sideWidth: propsNumOr(props, 'sideWidth', ShellTokens.categoryRailWidth),
       sideOnLeading: propsBool(props, 'sideOnLeading', true),
       sideGap: propsNumOr(props, 'sideGap', 0),
       backgroundColor: propsColor(props, 'backgroundColor'),
       title: propsString(props, 'title'),
-      emptyTitle: propsStringOr(props, 'emptyTitle', 'No channels'),
+      emptyTitle: propsStringOr(props, 'emptyTitle', ''),
       emptyDescription: propsString(props, 'emptyDescription'),
       hideSide: hideSide,
       onActionSelect: onActionSelect,

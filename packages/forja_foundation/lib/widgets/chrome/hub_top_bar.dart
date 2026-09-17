@@ -13,6 +13,7 @@ class HubTopBar extends StatelessWidget {
     required this.selectedMenuId,
     required this.onMenuSelected,
     this.onSearch,
+    this.searchLabel,
     this.categoriesLabel,
     this.onCategories,
     this.categoriesOpen = false,
@@ -29,6 +30,11 @@ class HubTopBar extends StatelessWidget {
   final String? selectedMenuId;
   final ValueChanged<String> onMenuSelected;
   final VoidCallback? onSearch;
+
+  /// Required when [onSearch] is set and [searchBuilder] is null.
+  final String? searchLabel;
+
+  /// Required when [onCategories] is set — host owns the product string.
   final String? categoriesLabel;
   final VoidCallback? onCategories;
   final bool categoriesOpen;
@@ -52,11 +58,22 @@ class HubTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    assert(
+      onCategories == null ||
+          (categoriesLabel != null && categoriesLabel!.isNotEmpty),
+      'HubTopBar: pass categoriesLabel when onCategories is set',
+    );
+    assert(
+      onSearch == null ||
+          searchBuilder != null ||
+          (searchLabel != null && searchLabel!.isNotEmpty),
+      'HubTopBar: pass searchLabel when onSearch is set without searchBuilder',
+    );
     final search = onSearch == null
         ? null
         : (searchBuilder?.call(onSearch: onSearch!) ??
             _HubTab(
-              label: 'Search',
+              label: searchLabel!,
               selected: false,
               onTap: onSearch!,
             ));
@@ -70,7 +87,8 @@ class HubTopBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (var i = 0; i < menus.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
+              if (i > 0)
+                const SizedBox(width: ShellTokens.hubTopBarItemGap),
               _HubTab(
                 label: menus[i].label,
                 selected: selectedMenuId == menus[i].id,
@@ -83,12 +101,12 @@ class HubTopBar extends StatelessWidget {
     final cats = onCategories == null
         ? null
         : (categoriesBuilder?.call(
-              label: categoriesLabel ?? 'Categories',
+              label: categoriesLabel!,
               open: categoriesOpen,
               onTap: onCategories!,
             ) ??
             _HubTab(
-              label: categoriesLabel ?? 'Categories',
+              label: categoriesLabel!,
               selected: categoriesOpen,
               onTap: onCategories!,
             ));
@@ -107,19 +125,19 @@ class HubTopBar extends StatelessWidget {
               children: [
                 if (leading != null) ...[
                   leading!,
-                  const SizedBox(width: 12),
+                  const SizedBox(width: ShellTokens.hubTopBarSectionGap),
                 ],
                 if (search != null) ...[
                   search,
-                  const SizedBox(width: 12),
+                  const SizedBox(width: ShellTokens.hubTopBarSectionGap),
                 ],
                 Expanded(child: menu),
                 if (cats != null) ...[
-                  const SizedBox(width: 12),
+                  const SizedBox(width: ShellTokens.hubTopBarSectionGap),
                   cats,
                 ],
                 if (trailing != null) ...[
-                  const SizedBox(width: 12),
+                  const SizedBox(width: ShellTokens.hubTopBarSectionGap),
                   trailing!,
                 ],
               ],
@@ -146,9 +164,12 @@ class _HubTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(ShellTokens.hubTopBarTabRadius),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: ShellTokens.hubTopBarTabPadH,
+          vertical: ShellTokens.hubTopBarTabPadV,
+        ),
         child: Text(
           label,
           style: GoogleFonts.plusJakartaSans(
@@ -156,7 +177,7 @@ class _HubTab extends StatelessWidget {
                 ? ForjaShellColors.brandGreen
                 : ForjaShellColors.textPrimary,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-            fontSize: 14,
+            fontSize: ShellTokens.hubTopBarTabFontSize,
           ),
         ),
       ),

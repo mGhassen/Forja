@@ -11,9 +11,9 @@ import 'package:forja/shell/chrome/kit_chrome_top_bar.dart';
 import 'package:forja_foundation/protocol/pack_capabilities.dart';
 import 'package:rust/rust.dart' show SettingsService;
 
-/// Shell top chrome for pack hubs — Search + Films/Series/Categories from pack `filters`.
+/// Shell top chrome for pack hubs — Search + pack filter menus/categories.
 ///
-/// Layout-only hubs (IPTV / Live / My List) paint their own composition chrome in-body.
+/// Layout-only hubs paint their own composition chrome in-body.
 class PluginKitTopBar extends StatefulWidget {
   const PluginKitTopBar({super.key, required this.tabId});
 
@@ -98,7 +98,7 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
     return _plugin!.id == pluginId ? _plugin : null;
   }
 
-  /// IPTV / Live / My List — chrome lives in pack composition root, not shell.
+  /// Layout-only hubs — chrome lives in pack composition root, not shell.
   bool _layoutOnlyHub(EnginePlugin? plugin) {
     if (plugin == null) return false;
     final caps = plugin.capabilities.map((c) => c.toLowerCase()).toSet();
@@ -112,7 +112,7 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
       'structured_search',
       'details',
     };
-    // feed without rail/filters still browse (Live). layout+feed+liveTv only → body chrome.
+    // feed without rail/filters still browse. layout+feed+liveTv only → body chrome.
     if (caps.contains('livetv') || caps.contains('listportals')) return true;
     if (caps.contains('feed') &&
         !caps.contains('rail') &&

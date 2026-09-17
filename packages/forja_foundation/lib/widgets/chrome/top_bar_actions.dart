@@ -13,7 +13,7 @@ class TopBarActions extends StatelessWidget {
     this.wrapRow,
     this.height,
     this.padding,
-    this.gap = 8,
+    this.gap = ShellTokens.topBarActionsGap,
   });
 
   final List<Widget> leading;
@@ -33,7 +33,7 @@ class TopBarActions extends StatelessWidget {
     }
 
     final strip = SizedBox(
-      height: height ?? 40,
+      height: height ?? ShellTokens.topBarActionsHeight,
       child: Row(
         children: [
           for (var i = 0; i < leading.length; i++) ...[
@@ -64,9 +64,9 @@ class TopBarActions extends StatelessWidget {
       padding: padding ??
           EdgeInsets.fromLTRB(
             ShellTokens.compactChromeLeadingInset(context),
-            8,
+            ShellTokens.topBarActionsPadV,
             ShellTokens.bodyHorizontalPadding,
-            8,
+            ShellTokens.topBarActionsPadV,
           ),
       child: body,
     );

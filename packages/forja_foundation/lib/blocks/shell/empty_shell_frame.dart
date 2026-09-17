@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/blocks/shell/shell_block.dart';
 
 /// Declarative empty-shell frame for the pack-product host.
@@ -17,7 +18,7 @@ class EmptyShellFrame extends StatelessWidget {
     this.sideRail,
     this.topBar,
     this.bottomNav,
-    this.sideRailWidth = 72,
+    this.sideRailWidth = ShellTokens.emptyShellSideRailWidth,
     this.railOnLeading = true,
   });
 

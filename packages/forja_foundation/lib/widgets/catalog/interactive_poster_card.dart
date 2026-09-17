@@ -82,43 +82,57 @@ class InteractivePosterCard extends StatefulWidget {
     if (aspect == PosterAspect.landscape) {
       return _continueHeight(context);
     }
-    return (_posterWidth(context) * 1.5).roundToDouble();
+    return (_posterWidth(context) * ShellTokens.posterCardAspectRatio)
+        .roundToDouble();
   }
 
   static double _posterWidth(BuildContext context) {
-    if (ShellPaintScope.usesTvDensityOf(context)) return 90;
+    if (ShellPaintScope.usesTvDensityOf(context)) {
+      return ShellTokens.posterCardWidthTv;
+    }
     final w = MediaQuery.sizeOf(context).width;
-    if (w <= 600) return 165;
-    return 190;
+    if (w <= ShellTokens.shellGridTabletMinWidth) {
+      return ShellTokens.posterCardWidthMobile;
+    }
+    return ShellTokens.posterCardWidthDesktop;
   }
 
   static double _continueWidth(BuildContext context) {
-    if (ShellPaintScope.usesTvDensityOf(context)) return 140;
+    if (ShellPaintScope.usesTvDensityOf(context)) {
+      return ShellTokens.continueWatchingCardWidthTv;
+    }
     return ShellTokens.shellContinueWatchingCardWidthDesktop;
   }
 
   static double _continueHeight(BuildContext context) {
     if (ShellPaintScope.usesTvDensityOf(context)) {
-      return 140 * 9 / 16;
+      return ShellTokens.continueWatchingCardWidthTv * 9 / 16;
     }
     return ShellTokens.shellContinueWatchingCardHeightDesktop;
   }
 
   static double _layoutScale(BuildContext context) {
     if (!ShellPaintScope.usesTvDensityOf(context)) return 1.0;
-    final raw = _posterWidth(context) / 190.0;
+    final raw =
+        _posterWidth(context) / ShellTokens.posterCardWidthDesktop;
     return math.max(ShellTokens.tvLayoutScaleFloor, raw);
   }
 
   static double scaled(BuildContext context, double value) =>
       value * _layoutScale(context);
 
-  static double cardBorderRadius(BuildContext context) =>
-      scaled(context, 14).clamp(4.0, 14.0);
+  static double cardBorderRadius(BuildContext context) => scaled(
+        context,
+        ShellTokens.posterCardRadius,
+      ).clamp(ShellTokens.posterCardRadiusMin, ShellTokens.posterCardRadius);
 
   static double titleFontSize(BuildContext context) {
-    if (ShellPaintScope.usesTvDensityOf(context)) return 12;
-    return MediaQuery.sizeOf(context).width <= 600 ? 13 : 14;
+    if (ShellPaintScope.usesTvDensityOf(context)) {
+      return ShellTokens.posterTitleFontSizeTv;
+    }
+    return MediaQuery.sizeOf(context).width <= 600
+        ? ShellTokens.posterTitleFontSizeMobile
+        : ShellTokens.posterTitleFontSizeDesktop;
   }
 
   @override

@@ -50,7 +50,7 @@ class CatalogChipBar extends StatelessWidget {
     required this.items,
     this.selectedId,
     this.onSelect,
-    this.padding = const EdgeInsets.fromLTRB(12, 8, 12, 8),
+    this.padding = const EdgeInsets.fromLTRB(12, ShellTokens.topBarActionsGap, 12, ShellTokens.topBarActionsGap),
   });
 
   final List<({String id, String label})> items;
@@ -68,7 +68,7 @@ class CatalogChipBar extends StatelessWidget {
         child: Row(
           children: [
             for (var i = 0; i < items.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
+              if (i > 0) const SizedBox(width: ShellTokens.topBarActionsGap),
               ForjaShellChip(
                 label: items[i].label,
                 selected: selectedId == items[i].id,
@@ -227,13 +227,8 @@ class CatalogTopChrome extends StatelessWidget {
   static IconData _viewItemIcon(String id, String? token) {
     final fromToken = catalogChromeIconToken(token ?? '');
     if (fromToken != null) return fromToken;
-    return switch (id.trim().toLowerCase()) {
-      'timeline' || 'schedule' => Icons.view_timeline_rounded,
-      'list' => Icons.view_list_rounded,
-      'guide' || 'epg' => Icons.table_chart_outlined,
-      'grid' => Icons.grid_on_rounded,
-      _ => Icons.grid_view_rounded,
-    };
+    // Pack must pass `icon` on view items; generic fallback only.
+    return Icons.grid_view_rounded;
   }
 
   Widget? _buildShelf(Map<String, dynamic> action, String actionId) {
@@ -251,11 +246,11 @@ class CatalogTopChrome extends StatelessWidget {
       onReload: !allowReload || onSelect == null
           ? null
           : (id) => onSelect!(actionId, '__reload__:$id'),
-      height: propsOptDouble(action, 'height') ?? 36,
-      radius: propsOptDouble(action, 'radius') ?? 8,
-      fontSize: propsOptDouble(action, 'fontSize') ?? 12.5,
-      iconSize: propsOptDouble(action, 'iconSize') ?? 16,
-      pad: propsOptDouble(action, 'pad') ?? 14,
+      height: propsOptDouble(action, 'height') ?? ShellTokens.widgetShelfHeight,
+      radius: propsOptDouble(action, 'radius') ?? ShellTokens.widgetShelfRadius,
+      fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.widgetShelfFontSize,
+      iconSize: propsOptDouble(action, 'iconSize') ?? ShellTokens.widgetShelfIconSize,
+      pad: propsOptDouble(action, 'pad') ?? ShellTokens.widgetShelfGap,
       items: [
         for (final m in maps)
           WidgetShelfItem(
@@ -279,9 +274,9 @@ class CatalogTopChrome extends StatelessWidget {
       onSelect: onSelect == null
           ? (_) {}
           : (id) => onSelect!(actionId, id),
-      height: propsOptDouble(action, 'height') ?? 36,
-      iconSize: propsOptDouble(action, 'iconSize') ?? 18,
-      dividerHeight: propsOptDouble(action, 'dividerHeight') ?? 16,
+      height: propsOptDouble(action, 'height') ?? ShellTokens.viewButtonHeight,
+      iconSize: propsOptDouble(action, 'iconSize') ?? ShellTokens.viewButtonIconSize,
+      dividerHeight: propsOptDouble(action, 'dividerHeight') ?? ShellTokens.viewButtonGap,
       items: [
         for (final m in maps)
           ViewButtonItem(
@@ -302,7 +297,7 @@ class CatalogTopChrome extends StatelessWidget {
       final t = title?.trim() ?? '';
       if (t.isEmpty) return const SizedBox(height: 8);
       return SizedBox(
-        height: 48,
+        height: ShellTokens.topBarTitleHeight,
         child: Align(
           alignment: Alignment.centerLeft,
           child: Padding(
@@ -313,7 +308,7 @@ class CatalogTopChrome extends StatelessWidget {
               t,
               style: const TextStyle(
                 color: ForjaShellColors.textPrimary,
-                fontSize: 16,
+                fontSize: ShellTokens.topBarTitleFontSize,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -386,12 +381,12 @@ class CatalogTopChrome extends StatelessWidget {
                         : Icons.refresh_rounded),
             iconOnly: true,
             selected: isSortIcon && _isSelectedMenu(action, selections),
-            height: propsOptDouble(action, 'height') ?? 40,
-            radius: propsOptDouble(action, 'radius') ?? 20,
-            maxWidth: propsOptDouble(action, 'maxWidth') ?? 220,
-            fontSize: propsOptDouble(action, 'fontSize') ?? 11.5,
+            height: propsOptDouble(action, 'height') ?? ShellTokens.actionChipHeight,
+            radius: propsOptDouble(action, 'radius') ?? ShellTokens.actionChipRadius,
+            maxWidth: propsOptDouble(action, 'maxWidth') ?? ShellTokens.actionChipMaxWidth,
+            fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
             iconSize: propsOptDouble(action, 'iconSize'),
-            gap: propsOptDouble(action, 'gap') ?? 6,
+            gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
             onTap: onSelect == null
                 ? () {}
                 : () => onSelect!(
@@ -409,12 +404,12 @@ class CatalogTopChrome extends StatelessWidget {
             label: _selectedLabel(action, selections, selectionLabels),
             icon: icon,
             selected: _isSelectedMenu(action, selections),
-            height: propsOptDouble(action, 'height') ?? 40,
-            radius: propsOptDouble(action, 'radius') ?? 20,
-            maxWidth: propsOptDouble(action, 'maxWidth') ?? 220,
-            fontSize: propsOptDouble(action, 'fontSize') ?? 11.5,
+            height: propsOptDouble(action, 'height') ?? ShellTokens.actionChipHeight,
+            radius: propsOptDouble(action, 'radius') ?? ShellTokens.actionChipRadius,
+            maxWidth: propsOptDouble(action, 'maxWidth') ?? ShellTokens.actionChipMaxWidth,
+            fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
             iconSize: propsOptDouble(action, 'iconSize'),
-            gap: propsOptDouble(action, 'gap') ?? 6,
+            gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
             onTap: onSelect == null
                 ? () {}
                 // Host opens the real Catalog / Schedule sheet (not a flat fallback).
@@ -429,12 +424,12 @@ class CatalogTopChrome extends StatelessWidget {
           label: (action['label'] ?? actionId).toString(),
           icon: icon,
           selected: false,
-          height: propsOptDouble(action, 'height') ?? 40,
-          radius: propsOptDouble(action, 'radius') ?? 20,
-          maxWidth: propsOptDouble(action, 'maxWidth') ?? 220,
-          fontSize: propsOptDouble(action, 'fontSize') ?? 11.5,
+          height: propsOptDouble(action, 'height') ?? ShellTokens.actionChipHeight,
+          radius: propsOptDouble(action, 'radius') ?? ShellTokens.actionChipRadius,
+          maxWidth: propsOptDouble(action, 'maxWidth') ?? ShellTokens.actionChipMaxWidth,
+          fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
           iconSize: propsOptDouble(action, 'iconSize'),
-          gap: propsOptDouble(action, 'gap') ?? 6,
+          gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
           onTap: onSelect == null
               ? () {}
               : () => onSelect!(actionId, actionId),
@@ -447,7 +442,7 @@ class CatalogTopChrome extends StatelessWidget {
       trailing: trailing,
       center: center,
       height: height,
-      gap: gap ?? 8,
+      gap: gap ?? ShellTokens.topBarActionsGap,
       padding: padding ??
           EdgeInsets.fromLTRB(
             ShellTokens.compactChromeLeadingInset(context),

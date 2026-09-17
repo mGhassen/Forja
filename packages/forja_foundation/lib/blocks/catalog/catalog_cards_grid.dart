@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
+import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
@@ -20,15 +21,43 @@ import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 
 /// Props map from a pack list `items[]` entry (`paint.props` or flat).
+///
+/// Canonical paint keys: `title`, `imageUrl`, `id`, `streamId`, …
+/// Alias → canonical mapping happens here once so widgets do not invent fields.
 Map<String, dynamic> catalogItemProps(Map<String, dynamic> item) {
+  Map<String, dynamic> raw;
   final paint = item['paint'];
   if (paint is Map && paint['props'] is Map) {
-    return Map<String, dynamic>.from(paint['props'] as Map);
+    raw = Map<String, dynamic>.from(paint['props'] as Map);
+  } else if (item['props'] is Map) {
+    raw = Map<String, dynamic>.from(item['props'] as Map);
+  } else {
+    raw = Map<String, dynamic>.from(item);
   }
-  if (item['props'] is Map) {
-    return Map<String, dynamic>.from(item['props'] as Map);
-  }
-  return Map<String, dynamic>.from(item);
+  final title = (raw['title'] ?? raw['name'] ?? item['name'] ?? item['title'] ?? '')
+      .toString()
+      .trim();
+  final imageUrl = (raw['imageUrl'] ??
+          raw['posterUrl'] ??
+          raw['poster'] ??
+          raw['logo'] ??
+          item['poster'] ??
+          item['logo'] ??
+          '')
+      .toString()
+      .trim();
+  if (title.isNotEmpty) raw['title'] = title;
+  if (imageUrl.isNotEmpty) raw['imageUrl'] = imageUrl;
+  final id = (raw['id'] ?? item['id'] ?? '').toString().trim();
+  if (id.isNotEmpty) raw['id'] = id;
+  final streamId = (raw['streamId'] ??
+          item['streamId'] ??
+          (item['open'] is Map ? item['open']['streamId'] : null) ??
+          '')
+      .toString()
+      .trim();
+  if (streamId.isNotEmpty) raw['streamId'] = streamId;
+  return raw;
 }
 
 /// Poster / event / dense list from pack `items[]` — pre-wipe density + hover.
@@ -201,42 +230,18 @@ class CatalogCardsGrid extends StatelessWidget {
 
   static String _itemId(Map<String, dynamic> item) {
     final props = catalogItemProps(item);
-    final open = item['open'];
-    final openMap = open is Map ? open : null;
-    // Prefer portal streamId — matches last-played store / after-player restore
-    // (pack compound id is `iptv:live:…`).
-    for (final key in [
-      openMap?['streamId'],
-      item['streamId'],
-      props['streamId'],
-      item['id'],
-      props['id'],
-    ]) {
+    for (final key in [props['streamId'], props['id']]) {
       final v = (key ?? '').toString().trim();
       if (v.isNotEmpty) return v;
     }
     return '';
   }
 
-  static String _itemTitle(Map<String, dynamic> item) {
-    final props = catalogItemProps(item);
-    return (props['title'] ??
-            item['name'] ??
-            item['title'] ??
-            props['name'] ??
-            '')
-        .toString();
-  }
+  static String _itemTitle(Map<String, dynamic> item) =>
+      (catalogItemProps(item)['title'] ?? '').toString();
 
-  static String _itemImage(Map<String, dynamic> item) {
-    final props = catalogItemProps(item);
-    return (props['imageUrl'] ??
-            props['poster'] ??
-            item['poster'] ??
-            item['logo'] ??
-            '')
-        .toString();
-  }
+  static String _itemImage(Map<String, dynamic> item) =>
+      (catalogItemProps(item)['imageUrl'] ?? '').toString();
 
   Widget _channelGrid(BuildContext context) {
     return _ChannelLetterJumpGrid(
@@ -575,10 +580,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
 
   String _titleAt(int i) {
     final item = widget.items[i];
-    final props = catalogItemProps(item);
-    final t = (props['title'] ?? item['name'] ?? item['title'] ?? '')
-        .toString()
-        .trim();
+    final t = CatalogCardsGrid._itemTitle(item).trim();
     return t.isEmpty ? CatalogCardsGrid._itemId(item) : t;
   }
 
@@ -686,15 +688,10 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   Widget _buildChannelTile(BuildContext context, int i, {required bool list}) {
     final item = widget.items[i];
     final props = catalogItemProps(item);
-    final title = (props['title'] ?? item['name'] ?? '').toString();
-    final image = (props['imageUrl'] ??
-            props['posterUrl'] ??
-            props['logoUrl'] ??
-            item['poster'] ??
-            '')
-        .toString();
+    final title = CatalogCardsGrid._itemTitle(item);
+    final image = CatalogCardsGrid._itemImage(item);
     final programmes = CatalogChannelCard.programmesFromRaw(
-      item['programmes'] ?? props['programmes'],
+      props['programmes'] ?? item['programmes'],
     );
     final id = CatalogCardsGrid._itemId(item);
     final key = _itemKeys.putIfAbsent(i, GlobalKey.new);
@@ -894,7 +891,7 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
         widget.selected;
     final radius = tv
         ? InteractivePosterCard.cardBorderRadius(context)
-        : 14.0;
+        : EventCardTokens.radius;
 
     final paint = EventCard(
       title: (props['title'] ?? '').toString(),
@@ -918,8 +915,12 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
           ? ShellCardPlayOverlay(
               active: tv ? true : active,
               visible: true,
-              diameter: tv ? 28 : 48,
-              iconSize: tv ? 16 : 28,
+              diameter: tv
+                  ? EventCardTokens.playIconSize
+                  : EventCardTokens.playOverlaySize,
+              iconSize: tv
+                  ? EventCardTokens.playIconSizeTv
+                  : EventCardTokens.playIconSize,
             )
           : null,
     );
@@ -1013,7 +1014,7 @@ class CatalogSideRail extends StatelessWidget {
     required this.items,
     required this.selectedId,
     this.onSelect,
-    this.width = 220,
+    this.width = ShellTokens.categoryRailWidth,
   });
 
   final List<({String id, String label})> items;
@@ -1034,7 +1035,7 @@ class CatalogSideRail extends StatelessWidget {
       child: SizedBox(
         width: width,
         child: ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: ShellTokens.categoryRailListPadV),
           itemCount: items.length,
           itemBuilder: (context, i) {
             final item = items[i];

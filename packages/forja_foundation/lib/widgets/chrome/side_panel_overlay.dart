@@ -13,7 +13,7 @@ class SidePanelOverlay extends StatelessWidget {
     required this.child,
     required this.panel,
     required this.onDismiss,
-    this.panelWidth = 380,
+    this.panelWidth = ShellTokens.sidePanelWidth,
     this.useSideRail,
     this.scrimColor,
   });

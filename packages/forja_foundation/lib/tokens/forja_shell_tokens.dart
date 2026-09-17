@@ -17,6 +17,8 @@ abstract final class ShellTokens {
   static const double bottomNavIconPaddingV = 4;
   static const double bottomNavLabelSize = 11;
   static const double bottomNavFadeWidth = 40;
+  static const double bottomNavIconLabelGap = 4;
+  static const double bottomNavFadeIconSize = 12;
 
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
@@ -86,6 +88,26 @@ abstract final class ShellTokens {
   /// Line-height multiplier for rail labels — slot must match or glyphs clip.
   static const double navRailLabelLineHeight = 1.2;
   static const double navRailItemSpacing = 28;
+  static const double navRailItemSpacingTv = 12;
+  static const double navRailItemSpacingMin = 2;
+  static const double navRailLogoGapDesktop = 20;
+  static const double navRailLogoGapTv = 12;
+  static const double navRailBottomPaddingDesktop = 16;
+  static const double navRailBottomPaddingTv = 6;
+  static const double navRailTopPaddingTv = 10;
+  static const double navRailProfileSpacingTv = 4;
+  static const double navRailNavPadVTv = 4;
+  static const double navRailNavReserveDesktop = 16;
+  static const double navRailScrollPadV = 8;
+  static const double navRailLogoHoverScale = 1.04;
+  static const double navRailLogoTapPadding = 4;
+  static const double navRailLogoTapPaddingWide = 8;
+  static const double navRailIconPressScale = 0.92;
+  static const double shellNavUnderlineWidth = 24;
+  static const double shellNavUnderlineWidthMin = 14;
+  static const double shellNavUnderlineRadius = 2;
+  static const double shellNavMenuButtonHitSize = 34;
+  static const double navRailLanMarkGap = 5;
   static const Duration navRailLabelRevealDelay = Duration(milliseconds: 300);
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
   static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
@@ -115,6 +137,18 @@ abstract final class ShellTokens {
   static const double shellProviderTileWidth = 96;
   static const double shellProviderTileHeight = 54;
   static const double shellProviderTileSize = shellProviderTileHeight;
+  static const double shellProviderTileRadius = 6.5;
+  static const double shellProviderTopBarLogoInset = 0.14;
+  static const double shellProviderRailMaxHeightFraction = 0.88;
+  static const Duration shellProviderRailScrollAnimation = Duration(
+    milliseconds: 140,
+  );
+  static const double shellProviderTileSelectedRing = 2;
+  static const double shellProviderTileSelectedPad = 2;
+  static const double shellProviderTileCheckInset = 4;
+  static const double shellProviderTileCheckPad = 2;
+  static const double shellProviderTileCheckWidth = 12;
+  static const double shellProviderTileCheckHeight = 10;
   static const double shellProviderRailGap = 10;
   static const double shellProviderRailPadH = 12;
   static const double shellProviderRailPadV = 14;
@@ -157,6 +191,24 @@ abstract final class ShellTokens {
   /// Hoisted `kit.menu` → `kit.tabs` gap in [KitTopBar].
   static const double kitTopBarStatusRowTopGap = 10;
   static const double kitTopBarStatusRowHeight = 42;
+  static const double kitTopBarHideSlideDistance = 56;
+  static const double kitTopBarTabGapTv = 28;
+  static const double kitTopBarTabGapCompact = 20;
+  static const double kitTopBarTabGapWide = 36;
+  static const double kitTopBarTabGapCompactMaxWidth = 560;
+  static const double kitTopBarTabFontSize = 17;
+  static const double kitTopBarChevronSize = 18;
+  static const double kitTopBarIconGap = 6;
+  static const double kitTopBarChevronGap = 4;
+  static const double kitTopBarUnderlineHoverWidth = 28;
+  static const double kitTopBarUnderlineSelectedExtra = 4;
+  static const double kitTopBarFocusRadius = 4;
+  static const Duration kitTopBarTabAnimation = Duration(milliseconds: 280);
+  static const double homeCategoriesMenuOffsetY = 4;
+  static const double homeCategoriesMenuRadius = 8;
+  static const double homeCategoriesMenuRowPadH = 16;
+  static const double homeCategoriesMenuRowPadV = 10;
+  static const double homeCategoriesMenuFontSize = 14;
   static double get kitTopBarTwoRowHeight =>
       homeTopBarHeight + kitTopBarStatusRowTopGap + kitTopBarStatusRowHeight;
 
@@ -332,6 +384,174 @@ abstract final class ShellTokens {
   /// Gap between poster cards in hub rails (desktop / non-TV).
   /// ~14 separator + former desktop focus-bleed room (bleed is TV-only now).
   static const double posterCardRowGap = 32;
+
+  /// Catalog poster card widths by shell profile.
+  static const double posterCardWidthMobile = 165;
+  static const double posterCardWidthDesktop = 190;
+  static const double posterCardWidthTv = 90;
+  static const double posterCardWideBreakpoint = 900;
+  static const double posterCardAspectRatio = 1.5;
+  static const double posterCardRadius = 14;
+  static const double posterCardRadiusMin = 4;
+  static const double posterTitleFontSizeMobile = 13;
+  static const double posterTitleFontSizeDesktop = 14;
+  static const double posterTitleFontSizeTv = 12;
+  static const double cardFocusBorderWidth = 1.5;
+  static const double cardFocusBleedExtra = 1;
+  static const double continueWatchingCardWidthTv = 140;
+
+  /// Shared control / chip height (Portals, action chips, hero pills).
+  static const double controlHeight = 40;
+  static const double sideRailWidth = 220;
+  static const double emptyShellSideRailWidth = 72;
+  static const double sidePanelWidth = 380;
+  static const double focusBorderRadius = 12;
+  static const double focusIdleScale = 1.04;
+
+  static const double hubCardTitleFontSizeMobile = 13;
+  static const double hubCardTitleFontSizeDesktop = 14;
+  static const double hubCardTitleFontSizeTv = 12;
+  static const double heroCompactRightInsetDesktop = 20;
+  static const double heroCompactRightInsetTv = 16;
+  static const double heroMinTitleHeightDesktop = 72;
+  static const double heroMinTitleHeightTv = 64;
+  static const double heroMinHeightTv = 400;
+  static const double heroMinHeightDesktop = 320;
+  static const double heroMetaGapTv = 14;
+  static const double heroMetaGapDesktop = 10;
+  static const double heroActionGapTv = 16;
+  static const double heroActionGapDesktop = 12;
+  static const double heroTitleMetaGapDesktop = 20;
+  static const double heroMetaActionsGapDesktop = 16;
+  static const double kitScrollBottomGapDesktop = 100;
+  static const double shellGridTabletMinWidth = 600;
+
+  static const double sectionTitleFontSize = 20;
+  static const double sectionTitleFontSizeMin = 15;
+  static const double sectionTitleLetterSpacing = -0.3;
+  static const double sectionSubtitleFontSize = 11;
+  static const double sectionSubtitleFontSizeMin = 10;
+
+  static const double torrentPanelPaddingDesktop = 16;
+  static const double torrentPanelPaddingTv = 14;
+  static const double torrentPanelTitleFontSizeDesktop = 16;
+  static const double torrentPanelTitleFontSizeTv = 15;
+  static const double torrentPanelChipPadHDesktop = 12;
+  static const double torrentPanelChipPadHTv = 10;
+  static const double torrentPanelChipPadVDesktop = 8;
+  static const double torrentPanelChipPadVTv = 6;
+  static const double torrentPanelChipFontSizeDesktop = 12;
+  static const double torrentPanelChipFontSizeTv = 11;
+  static const double torrentPanelMetaIconSizeDesktop = 14;
+  static const double torrentPanelMetaIconSizeTv = 13;
+  static const double torrentPanelMetaFontSizeDesktop = 11;
+  static const double torrentPanelMetaFontSizeTv = 10;
+  static const double torrentPanelLeadingIconSizeDesktop = 22;
+  static const double torrentPanelLeadingIconSizeTv = 20;
+  static const double torrentPanelSectionFontSizeDesktop = 16;
+  static const double torrentPanelSectionFontSizeTv = 15;
+
+  // --- Pack chrome defaults (overridable via layout props) ---
+  static const double portalsChipHeight = controlHeight;
+  static const double portalsChipRadius = 8;
+  static const double portalsChipFontSize = 12.5;
+  static const double portalsChipIconSize = 16;
+  static const double portalsChipChevronSize = 18;
+  static const double portalsChipSeatsFontSize = 12;
+  static const double portalsChipPadCompact = 10;
+  static const double portalsChipPad = 14;
+  static const double portalsChipStatusSlot = 14;
+  static const double portalsChipGap = 8;
+  static const double portalsChipGapTight = 6;
+  static const double portalsChipDotSize = 8;
+  static const double portalsChipStatusStroke = 1.5;
+  static const double portalsChipLabelMaxMin = 48;
+  static const double portalsChipLabelMaxMax = 280;
+  static const double portalsChipLabelMaxFallback = 160;
+
+  static const double categoryRailWidth = sideRailWidth;
+  static const double categoryRailListPadV = 8;
+  static const double categoryRailPinSlotWidth = 28;
+  static const double categoryRailRowExtent = 46;
+  static const double categoryRailRowExtentCompact = 42;
+  static const double categoryRailLeftBarWidth = 2.5;
+  static const double categoryRailRowPadH = 12;
+  static const double categoryRailRowPadHCompact = 10;
+  static const double categoryRailRowPadV = 8;
+  static const double categoryRailRowPadVCompact = 6;
+  static const double categoryRailIconSize = 20;
+  static const double categoryRailIconSizeCompact = 18;
+  static const double categoryRailItemGap = 12;
+  static const double categoryRailItemGapCompact = 10;
+  static const double categoryRailFontSize = 14;
+  static const double categoryRailFontSizeCompact = 13;
+  static const double categoryRailPinRadius = 6;
+  static const double categoryRailPinPad = 4;
+
+  static const double hubTopBarItemGap = 8;
+  static const double hubTopBarSectionGap = 12;
+  static const double hubTopBarTabRadius = 8;
+  static const double hubTopBarTabPadH = 10;
+  static const double hubTopBarTabPadV = 8;
+  static const double hubTopBarTabFontSize = 14;
+
+  static const double topBarActionsHeight = controlHeight;
+  static const double topBarActionsGap = 8;
+  static const double topBarActionsPadV = 8;
+  static const double topBarTitleHeight = 48;
+  static const double topBarTitleFontSize = 16;
+
+  static const double actionChipHeight = controlHeight;
+  static const double actionChipRadius = 20;
+  static const double actionChipMaxWidth = 220;
+  static const double actionChipPadH = 12;
+  static const double actionChipPadV = 6;
+  static const double actionChipFontSize = 11.5;
+  static const double actionChipGap = 6;
+  static const double actionChipIconSize = 16;
+
+  static const double shellChipRadiusPill = 20;
+  static const double shellChipRadius = 8;
+  static const double shellChipFontSize = 12.5;
+  static const double shellChipIconSize = 14;
+  static const double shellChipGap = 6;
+  static const double shellChipGapTight = 4;
+
+  static const double widgetShelfHeight = 36;
+  static const double widgetShelfRadius = 8;
+  static const double widgetShelfFontSize = 12.5;
+  static const double widgetShelfIconSize = 16;
+  static const double widgetShelfGap = 14;
+
+  static const double viewButtonHeight = 36;
+  static const double viewButtonIconSize = 18;
+  static const double viewButtonGap = 16;
+
+  static const double eventSearchCollapsed = controlHeight;
+  static const double eventSearchExpanded = 260;
+  static const double eventSearchFontSize = 13;
+  static const double eventSearchIconSize = 20;
+  static const double eventSearchClearIconSize = 18;
+
+  static const double favStarIconSize = 14;
+  static const double denseListRowExtent = 52;
+  static const double scrollerArrowOffset = 8;
+  static const double scrollerArrowIconSize = 24;
+  static const double filterSheetRadius = 12;
+  static const double filterSheetHandleWidth = 40;
+  static const double filterSheetHandleHeight = 4;
+  static const double sheetHandleWidth = 36;
+  static const double sheetHandleHeight = 4;
+
+  static const double emptyFeaturesTitleGapTv = 14;
+  static const double emptyFeaturesTitleGapDesktop = 28;
+  static const double emptyFeaturesBodyGapTv = 10;
+  static const double emptyFeaturesBodyGapDesktop = 14;
+  static const double emptyFeaturesCardsGapTv = 20;
+  static const double emptyFeaturesCardsGapDesktop = 32;
+  static const double emptyFeaturesCardGap = 12;
+  static const double emptyFeaturesCardGapCompact = 10;
+  static const Duration emptyFeaturesCardAnim = Duration(milliseconds: 140);
 
   /// Floor for TV typography/chrome - cards scale down, text/spacing does not crush.
   static const double tvLayoutScaleFloor = 0.75;

@@ -7,6 +7,7 @@ import 'package:forja/shared/player/live/tv_focus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portals_chip.dart';
 import 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
@@ -251,13 +252,13 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
       seatsUsed: used.isEmpty ? null : used,
       seatsMax: max.isEmpty ? null : max,
       width: widget.width,
-      height: widget.height ?? 40,
-      radius: widget.radius ?? 8,
+      height: widget.height ?? ShellTokens.portalsChipHeight,
+      radius: widget.radius ?? ShellTokens.portalsChipRadius,
       pad: widget.pad,
-      fontSize: widget.fontSize ?? 12.5,
-      iconSize: widget.iconSize ?? 16,
-      chevronSize: widget.chevronSize ?? 18,
-      seatsFontSize: widget.seatsFontSize ?? 12,
+      fontSize: widget.fontSize ?? ShellTokens.portalsChipFontSize,
+      iconSize: widget.iconSize ?? ShellTokens.portalsChipIconSize,
+      chevronSize: widget.chevronSize ?? ShellTokens.portalsChipChevronSize,
+      seatsFontSize: widget.seatsFontSize ?? ShellTokens.portalsChipSeatsFontSize,
       tvFocus: policy.useFocusableMoodChips,
       onTap: () {
         final opening = !open;

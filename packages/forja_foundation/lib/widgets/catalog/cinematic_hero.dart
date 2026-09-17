@@ -733,8 +733,8 @@ class CinematicHeroState extends State<CinematicHero> {
       letterSpacing: 0.1,
       color: Color(0x99FFFFFF),
     );
-    const titleGap = 20.0;
-    const actionGap = 16.0;
+    const titleGap = ShellTokens.heroTitleMetaGapDesktop;
+    const actionGap = ShellTokens.heroMetaActionsGapDesktop;
     final overview = slide.overview.trim();
     final upcomingReserve = slide.isUpcoming
         ? ShellTokens.heroUpcomingNoticeReserveDesktop
@@ -810,7 +810,7 @@ class CinematicHeroState extends State<CinematicHero> {
     final overview = slide.overview.trim();
     const titleMetaGap = 8.0;
     const metaOverviewGap = 8.0;
-    const actionGap = 12.0;
+    const actionGap = ShellTokens.heroActionGapDesktop;
     const overviewFontSize = 13.0;
     const overviewHeight = 1.35;
     const overviewMaxLinesCap = 3;

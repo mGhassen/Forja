@@ -14,8 +14,8 @@ export 'package:forja_foundation/widgets/sources/sources_types.dart';
 ///
 /// Features wire load/play via callbacks. Zone A — no host TV / ShellScope.
 ///
-/// When the active tab is in [browseCategoryTabIds], the body uses an IPTV-style
-/// Categories rail + optional channel search (Live TV chrome).
+/// When the active tab is in [browseCategoryTabIds], the body uses a category
+/// rail + optional channel search.
 class SourcesPanelChrome extends StatefulWidget {
   const SourcesPanelChrome({
     super.key,
@@ -44,6 +44,7 @@ class SourcesPanelChrome extends StatefulWidget {
     this.listFocusWrap,
     this.tabsFocusWrap,
     this.tabsBuilder,
+    this.emptyQueryMessage = 'No matches',
   });
 
   final String title;
@@ -124,6 +125,9 @@ class SourcesPanelChrome extends StatefulWidget {
     required ValueChanged<String> onSelected,
     required List<SourcesTab> tabs,
   })? tabsBuilder;
+
+  /// Empty-state copy when channel query matches nothing (host owns product wording).
+  final String emptyQueryMessage;
 
   /// Host wires TV focus — Zone A has no TV graph.
   static void claimProvidersFocus({int maxTries = 24}) {}
@@ -517,7 +521,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
             ),
             const SizedBox(height: 12),
             Text(
-              'No channels match “${_effectiveQuery.trim()}”',
+              '${widget.emptyQueryMessage} “${_effectiveQuery.trim()}”',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,

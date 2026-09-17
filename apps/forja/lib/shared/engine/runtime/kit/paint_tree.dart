@@ -3194,6 +3194,7 @@ class _ContinueMountState extends State<_ContinueMount> {
       itemCount: _entries.length,
       onFocusUp: LayoutScope.maybeOf(context)?.resolveFocusEdge('spotlight'),
       child: ContinueSection(
+        title: 'Continue Watching',
         scrollController: _scroll,
         showScrollArrows: showArrows,
         cardWidth: cardW,

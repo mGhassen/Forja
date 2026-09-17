@@ -105,7 +105,7 @@ class _PosterCell extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: theme.textPrimary,
-                fontSize: 12,
+                fontSize: ShellTokens.posterTitleFontSizeTv,
                 fontWeight: FontWeight.w600,
               ),
             ),

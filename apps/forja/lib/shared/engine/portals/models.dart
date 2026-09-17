@@ -85,17 +85,18 @@ abstract final class PortalExpiry {
     'december': 12,
   };
 
-  /// True when [raw] is empty / `Unknown` (trailing `*` from an unverified keep ignored).
+  /// True when [raw] is empty / `Unknown` / bare `*` (trailing `*` on a date
+  /// means unverified scrape — still a date, not unknown).
   static bool isUnknown(String? raw) {
     final bare = (raw ?? '').trim().replaceFirst(RegExp(r'\*+$'), '').trim();
     return bare.isEmpty || bare.toLowerCase() == 'unknown';
   }
 
-  /// Probe merge: real API date wins; never wipe a known date with `Unknown`.
-  /// Kept scrape/manual dates get a trailing `*` when login could not confirm.
+  /// Probe merge: real API date wins; keep scrape date with `*` when login
+  /// did not confirm; bare `*` when there was nothing to keep.
   static String mergeOnProbe(String current, String fresh) {
     if (!isUnknown(fresh)) return format(fresh);
-    if (isUnknown(current)) return 'Unknown';
+    if (isUnknown(current)) return '*';
     final base = current.trim().replaceFirst(RegExp(r'\*+$'), '').trim();
     return '$base*';
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 
 /// Poster tile aspect for [PosterCard].
@@ -23,8 +24,8 @@ class PosterCard extends StatelessWidget {
     this.listPin,
     this.onTap,
     this.aspect = PosterAspect.portrait,
-    this.borderRadius = 14,
-    this.titleFontSize = 13,
+    this.borderRadius = ShellTokens.posterCardRadius,
+    this.titleFontSize = ShellTokens.posterTitleFontSizeMobile,
     this.metaFontSize = 11,
     this.inset = 10,
     this.backgroundColor = const Color(0xFF0A0A0A),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -53,7 +54,12 @@ class PortalListView extends StatefulWidget {
     this.tvTabId,
     this.listScrollController,
     this.titleFontSize = 18,
-    this.pad = const EdgeInsets.fromLTRB(12, 12, 8, 8),
+    this.pad = const EdgeInsets.fromLTRB(
+      PortalListTokens.panelPad,
+      PortalListTokens.panelPad,
+      PortalListTokens.sectionGap,
+      PortalListTokens.sectionGap,
+    ),
     this.rowHeight = PortalListRow.rowHeight,
     this.onClose,
     this.onSelect,
@@ -143,11 +149,13 @@ class PortalListView extends StatefulWidget {
 
 class _PortalListViewState extends State<PortalListView> {
   final _searchCtrl = TextEditingController();
+  final ValueNotifier<String?> _hoverRowId = ValueNotifier<String?>(null);
   String _query = '';
   bool _searchOpen = false;
 
   @override
   void dispose() {
+    _hoverRowId.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -185,6 +193,13 @@ class _PortalListViewState extends State<PortalListView> {
   }
 
   bool _onListScrollNotification(ScrollNotification notification) {
+    // Scroll moves rows under a fixed cursor — MouseRegion often skips onExit,
+    // so drop exclusive hover ownership (clears stacked info cards).
+    if (notification is ScrollUpdateNotification &&
+        (notification.scrollDelta ?? 0) != 0 &&
+        _hoverRowId.value != null) {
+      _hoverRowId.value = null;
+    }
     if (notification is! UserScrollNotification) return false;
     if (notification.direction == ScrollDirection.idle) return false;
     widget.onListPointerBrowse?.call();
@@ -238,18 +253,23 @@ class _PortalListViewState extends State<PortalListView> {
       onEscape: widget.onClose,
       header: header,
       search: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        padding: const EdgeInsets.fromLTRB(
+          PortalListTokens.panelPad,
+          PortalListTokens.sectionGap,
+          PortalListTokens.panelPad,
+          4,
+        ),
         child: TextField(
           controller: _searchCtrl,
           style: GoogleFonts.plusJakartaSans(
             color: Colors.white,
-            fontSize: 13,
+            fontSize: PortalListTokens.titleFontSize,
           ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.plusJakartaSans(
               color: Colors.white38,
-              fontSize: 13,
+              fontSize: PortalListTokens.titleFontSize,
             ),
             prefixIcon: const Icon(
               Icons.search_rounded,
@@ -331,7 +351,7 @@ class _PortalListViewState extends State<PortalListView> {
             ),
           ),
           if ((widget.badgeLabel ?? '').trim().isNotEmpty) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: PortalListTokens.sectionGap),
             Text(
               widget.badgeLabel!.trim(),
               style: TextStyle(
@@ -382,11 +402,11 @@ class _PortalListViewState extends State<PortalListView> {
           children: [
             const Icon(
               Icons.inbox_outlined,
-              size: 48,
+              size: PortalListTokens.emptyIconSize,
               color: Colors.white38,
             ),
             if (widget.emptyTitle.trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: PortalListTokens.itemSpacing),
               Text(
                 widget.emptyTitle,
                 style: GoogleFonts.plusJakartaSans(
@@ -397,7 +417,7 @@ class _PortalListViewState extends State<PortalListView> {
               ),
             ],
             if (widget.emptyDescription.trim().isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: PortalListTokens.sectionGap),
               Text(
                 widget.emptyDescription,
                 textAlign: TextAlign.center,
@@ -435,6 +455,7 @@ class _PortalListViewState extends State<PortalListView> {
             height: widget.rowHeight,
             tvTabId: _tv ? tab : null,
             listIndex: index,
+            hoverOwnerId: widget.leanback ? null : _hoverRowId,
             onSelect: widget.busy || widget.onSelect == null
                 ? null
                 : () => widget.onSelect!(item),
@@ -516,7 +537,7 @@ class _PortalHeaderIcon extends StatefulWidget {
 }
 
 class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
-  static const _iconSize = 24.0;
+  static const _iconSize = PortalListTokens.headerIconSize;
   static const _hoverScale = 1.08;
   static const _pressScale = 0.88;
 

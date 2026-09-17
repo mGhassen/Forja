@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:flutter/services.dart';
 
 /// TV focus zone tokens for paint widgets (host maps to its coordinator).
@@ -132,8 +133,8 @@ class ShellPaintScope extends InheritedWidget {
     required BuildContext context,
     required Widget child,
     VoidCallback? onTap,
-    double borderRadius = 12,
-    double scaleOnFocus = 1.04,
+    double borderRadius = ShellTokens.focusBorderRadius,
+    double scaleOnFocus = ShellTokens.focusIdleScale,
     VoidCallback? onLeftEdge,
     VoidCallback? onUpEdge,
     VoidCallback? onDownEdge,

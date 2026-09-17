@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Simple focusable tap target — [InkWell] + [Focus].
 ///
@@ -31,7 +32,8 @@ class FocusableTap extends StatelessWidget {
         onTap: enabled ? onTap : null,
         focusNode: focusNode,
         autofocus: autofocus,
-        borderRadius: borderRadius ?? BorderRadius.circular(8),
+        borderRadius: borderRadius ??
+            BorderRadius.circular(ShellTokens.shellProviderCardRadius),
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
         child: child,

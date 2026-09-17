@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 
 /// Layout widget [`LayoutTypes.list`] chrome — body + optional side panel.
@@ -12,7 +13,7 @@ class CatalogList extends StatelessWidget {
     this.sidePanel,
     this.sidePanelOpen = false,
     this.onDismissSidePanel,
-    this.panelWidth = 380,
+    this.panelWidth = ShellTokens.sidePanelWidth,
     this.useSideRail,
     this.sideSplit = false,
     this.listFlex = 60,

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-const double kHeroPillHeight = 40;
-const double kHeroPillIconSize = 20;
+const double kHeroPillHeight = DetailsTokens.heroPillHeight;
+const double kHeroPillIconSize = DetailsTokens.heroPillIconSize;
 const Color kHeroPillForegroundDark = Color(0xFF111827);
 
 Color heroPillHoverFill({required bool pressed}) =>

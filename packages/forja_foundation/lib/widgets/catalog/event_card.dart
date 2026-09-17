@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 
@@ -24,8 +25,8 @@ class EventCard extends StatelessWidget {
     this.active = false,
     this.tvDensity = false,
     this.onTap,
-    this.borderRadius = 14,
-    this.titleFontSize = 12,
+    this.borderRadius = EventCardTokens.radius,
+    this.titleFontSize = EventCardTokens.titleFontSize,
     this.playOverlay,
   });
 
@@ -318,7 +319,7 @@ class _TeamBadge extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70, fontSize: 8.5),
+            style: const TextStyle(color: Colors.white70, fontSize: EventCardTokens.badgeFontSize),
           ),
         ),
       ],
@@ -349,7 +350,7 @@ class _TvCaptionBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const inset = 8.0;
+    const inset = EventCardTokens.padV;
     return AnimatedContainer(
       duration: Duration.zero,
       decoration: BoxDecoration(
@@ -551,7 +552,7 @@ class _TitleStack extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white54,
-                fontSize: 10,
+                fontSize: EventCardTokens.metaFontSize,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -563,7 +564,7 @@ class _TitleStack extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 12,
+              fontSize: EventCardTokens.titleFontSize,
               fontWeight: FontWeight.w600,
             ),
           ),
