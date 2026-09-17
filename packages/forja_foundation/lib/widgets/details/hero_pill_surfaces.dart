@@ -2,37 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 const double kHeroPillHeight = DetailsTokens.heroPillHeight;
 const double kHeroPillIconSize = DetailsTokens.heroPillIconSize;
 const Color kHeroPillForegroundDark = Color(0xFF111827);
 
+double heroPillHeightOf(BuildContext context, {bool? tvDensity}) {
+  final tv = tvDensity ?? ShellPaintScope.usesTvDensityOf(context);
+  return tv ? DetailsTokens.heroPillHeightTv : DetailsTokens.heroPillHeight;
+}
+
+double heroPillIconSizeOf(BuildContext context, {bool? tvDensity}) {
+  final tv = tvDensity ?? ShellPaintScope.usesTvDensityOf(context);
+  return tv ? DetailsTokens.heroPillIconSizeTv : DetailsTokens.heroPillIconSize;
+}
+
 Color heroPillHoverFill({required bool pressed}) =>
     Colors.white.withValues(alpha: pressed ? 0.24 : 0.18);
 
-BoxDecoration heroGlassDecoration() {
+BoxDecoration heroGlassDecoration(BuildContext context, {bool? tvDensity}) {
+  final height = heroPillHeightOf(context, tvDensity: tvDensity);
   return BoxDecoration(
     color: Colors.black.withValues(alpha: 0.42),
-    borderRadius: BorderRadius.circular(kHeroPillHeight / 2),
+    borderRadius: BorderRadius.circular(height / 2),
     border: Border.all(
       color: Colors.white.withValues(alpha: 0.24),
     ),
   );
 }
 
-BoxDecoration heroFilledDecoration({required Color color}) {
+BoxDecoration heroFilledDecoration(
+  BuildContext context, {
+  required Color color,
+  bool? tvDensity,
+}) {
+  final height = heroPillHeightOf(context, tvDensity: tvDensity);
   return BoxDecoration(
     color: color,
-    borderRadius: BorderRadius.circular(kHeroPillHeight / 2),
+    borderRadius: BorderRadius.circular(height / 2),
   );
 }
 
-BorderRadius heroPillSlotBorderRadius({
+BorderRadius heroPillSlotBorderRadius(
+  BuildContext context, {
   required bool isFirst,
   required bool isLast,
+  bool? tvDensity,
 }) {
-  const radius = Radius.circular(kHeroPillHeight / 2);
+  final radius = Radius.circular(heroPillHeightOf(context, tvDensity: tvDensity) / 2);
   if (isFirst && isLast) return const BorderRadius.all(radius);
   if (isFirst) return const BorderRadius.horizontal(left: radius);
   if (isLast) return const BorderRadius.horizontal(right: radius);
@@ -81,11 +100,15 @@ class HeroPillStyle {
     }
   }
 
-  BoxDecoration decoration() {
+  BoxDecoration decoration(BuildContext context, {bool? tvDensity}) {
     if (tone == HeroPillPlayTone.secondary) {
-      return heroGlassDecoration();
+      return heroGlassDecoration(context, tvDensity: tvDensity);
     }
-    return heroFilledDecoration(color: expandedFill);
+    return heroFilledDecoration(
+      context,
+      color: expandedFill,
+      tvDensity: tvDensity,
+    );
   }
 }
 
@@ -96,10 +119,11 @@ class HeroPillGlassShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pillHeight = heroPillHeightOf(context);
     return Container(
-      height: kHeroPillHeight,
+      height: pillHeight,
       clipBehavior: Clip.antiAlias,
-      decoration: heroGlassDecoration(),
+      decoration: heroGlassDecoration(context),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: children,
@@ -202,38 +226,42 @@ class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
     super.dispose();
   }
 
-  Widget _buildShell({required Widget child}) {
+  Widget _buildShell(BuildContext context, {required Widget child}) {
+    final pillHeight = heroPillHeightOf(context);
     return Container(
-      height: kHeroPillHeight,
+      height: pillHeight,
       clipBehavior: Clip.antiAlias,
-      decoration: widget.style.decoration(),
+      decoration: widget.style.decoration(context),
       foregroundDecoration: widget.active
           ? BoxDecoration(
               color: heroPillHoverFill(pressed: widget.pressed),
-              borderRadius: BorderRadius.circular(kHeroPillHeight / 2),
+              borderRadius: BorderRadius.circular(pillHeight / 2),
             )
           : null,
       child: child,
     );
   }
 
-  Widget _buildPillContent({
+  Widget _buildPillContent(
+    BuildContext context, {
     required double morph,
     required double labelOpacity,
   }) {
+    final pillHeight = heroPillHeightOf(context);
+    final iconSize = heroPillIconSizeOf(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: kHeroPillHeight,
-          height: kHeroPillHeight,
+          width: pillHeight,
+          height: pillHeight,
           child: Center(
             child: widget.leading == null
                 ? null
                 : IconTheme(
                     data: IconThemeData(
-                      size: kHeroPillIconSize,
+                      size: iconSize,
                       color: widget.style.foreground,
                     ),
                     child: widget.leading!,
@@ -276,7 +304,9 @@ class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
       animation: _controller,
       builder: (context, _) {
         return _buildShell(
+          context,
           child: _buildPillContent(
+            context,
             morph: _expand.value,
             labelOpacity: _labelOpacity.value,
           ),
@@ -456,27 +486,31 @@ class _HeroPillGroupedSlotSurfaceState extends State<HeroPillGroupedSlotSurface>
     super.dispose();
   }
 
-  Widget? _leading() {
+  Widget? _leading(BuildContext context) {
+    final iconSize = heroPillIconSizeOf(context);
     return widget.iconWidget ??
         (widget.icon != null
-            ? Icon(widget.icon, size: kHeroPillIconSize, color: Colors.white)
+            ? Icon(widget.icon, size: iconSize, color: Colors.white)
             : null);
   }
 
   @override
   Widget build(BuildContext context) {
-    final leading = _leading();
+    final pillHeight = heroPillHeightOf(context);
+    final iconSize = heroPillIconSizeOf(context);
+    final leading = _leading(context);
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
         return Container(
-          height: kHeroPillHeight,
+          height: pillHeight,
           decoration: BoxDecoration(
             color: widget.active
                 ? heroPillHoverFill(pressed: widget.pressed)
                 : Colors.transparent,
             borderRadius: heroPillSlotBorderRadius(
+              context,
               isFirst: widget.isFirst,
               isLast: widget.isLast,
             ),
@@ -486,14 +520,14 @@ class _HeroPillGroupedSlotSurfaceState extends State<HeroPillGroupedSlotSurface>
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
-                width: kHeroPillHeight,
-                height: kHeroPillHeight,
+                width: pillHeight,
+                height: pillHeight,
                 child: Center(
                   child: leading == null
                       ? null
                       : IconTheme(
-                          data: const IconThemeData(
-                            size: kHeroPillIconSize,
+                          data: IconThemeData(
+                            size: iconSize,
                             color: Colors.white,
                           ),
                           child: leading,
@@ -556,13 +590,15 @@ class HeroPillSegmentSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pillHeight = heroPillHeightOf(context);
+    final iconSize = heroPillIconSizeOf(context);
     final foreground = lit || selected
         ? ForjaShellColors.brandGreen
         : Colors.white.withValues(alpha: 0.55);
     return AnimatedContainer(
       duration: ForjaMotionTheme.of(context).heroPillHover.duration,
       curve: ForjaMotionTheme.of(context).heroPillHover.resolvedCurve,
-      height: kHeroPillHeight,
+      height: pillHeight,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       alignment: Alignment.center,
       decoration: BoxDecoration(
@@ -571,6 +607,7 @@ class HeroPillSegmentSurface extends StatelessWidget {
                 .withValues(alpha: pressed ? 0.28 : 0.18)
             : Colors.transparent,
         borderRadius: heroPillSlotBorderRadius(
+          context,
           isFirst: isFirst,
           isLast: isLast,
         ),
@@ -578,7 +615,7 @@ class HeroPillSegmentSurface extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: kHeroPillIconSize, color: foreground),
+          Icon(icon, size: iconSize, color: foreground),
           const SizedBox(width: 6),
           Text(
             label,

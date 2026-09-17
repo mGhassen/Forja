@@ -5,6 +5,7 @@ import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/details/hero_pill_surfaces.dart';
 
 /// One trailer card — absolute thumbnail URL + title (props only).
 class DetailsTrailerItem {
@@ -43,20 +44,28 @@ class DetailsTrailersSection extends StatelessWidget {
     required Widget child,
   })? itemBuilder;
 
-  static const double cardWidth = DetailsTokens.trailerCardWidth;
-  static const TextStyle titleStyle = TextStyle(
-    color: Colors.white,
-    fontSize: ShellTokens.sectionTitleFontSize,
-    fontWeight: FontWeight.w800,
-    letterSpacing: ShellTokens.sectionTitleLetterSpacing,
-  );
-
   @override
   Widget build(BuildContext context) {
     if (trailers.isEmpty) return const SizedBox.shrink();
 
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final cardWidth = tv
+        ? DetailsTokens.trailerCardWidthTv
+        : DetailsTokens.trailerCardWidth;
+    final titleGap = tv
+        ? DetailsTokens.sectionTitleGapTv
+        : DetailsTokens.sectionTitleGap;
+    final playOverlay = heroPillHeightOf(context);
+    final titleStyle = TextStyle(
+      color: Colors.white,
+      fontSize: tv
+          ? DetailsTokens.sectionTitleFontSizeTv
+          : ShellTokens.sectionTitleFontSize,
+      fontWeight: FontWeight.w800,
+      letterSpacing: ShellTokens.sectionTitleLetterSpacing,
+    );
     const homePad = ShellTokens.homeSectionHorizontalPadding;
-    const thumbHeight = cardWidth * 9 / 16;
+    final thumbHeight = cardWidth * 9 / 16;
     const textBlock = 8 + 12 * 1.25 * 2;
     final trailerRowHeight =
         thumbHeight * ForjaMotionTheme.defaults.cardLift.focusScale + textBlock + 4;
@@ -70,7 +79,7 @@ class DetailsTrailersSection extends StatelessWidget {
             homePad,
             0,
             homePad,
-            DetailsTokens.sectionTitleGap,
+            titleGap,
           ),
           child: Text(title, style: titleStyle),
         ),
@@ -116,8 +125,8 @@ class DetailsTrailersSection extends StatelessWidget {
                       ),
                       Center(
                         child: Container(
-                          width: DetailsTokens.heroPillHeight,
-                          height: DetailsTokens.heroPillHeight,
+                          width: playOverlay,
+                          height: playOverlay,
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.9),
                             shape: BoxShape.circle,

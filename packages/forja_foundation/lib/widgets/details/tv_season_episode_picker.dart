@@ -100,8 +100,11 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     super.dispose();
   }
 
-  static const double _episodeCardStride = _EpisodeCard.cardWidth + 16;
-  static const double _seasonCardStride = _SeasonCard.cardWidth + 12;
+  double _episodeCardStride(BuildContext context) =>
+      _EpisodeCard.cardWidthOf(context) + 16;
+
+  double _seasonCardStride(BuildContext context) =>
+      _SeasonCard.cardWidthOf(context) + 12;
 
   @override
   void initState() {
@@ -251,7 +254,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     if (!_seasonScrollController.hasClients || widget.seasonCount <= 1) return;
     final index = widget.selectedSeason - 1;
     if (index < 0) return;
-    final target = (index * _seasonCardStride)
+    final target = (index * _seasonCardStride(context))
         .clamp(0.0, _seasonScrollController.position.maxScrollExtent);
     _seasonScrollController.animateTo(
       target,
@@ -273,8 +276,8 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     );
     if (index < 0) return;
     final position = _episodeScrollController.position;
-    final itemStart = index * _episodeCardStride;
-    final itemEnd = itemStart + _EpisodeCard.cardWidth;
+    final itemStart = index * _episodeCardStride(context);
+    final itemEnd = itemStart + _EpisodeCard.cardWidthOf(context);
     final viewStart = position.pixels;
     final viewEnd = viewStart + position.viewportDimension;
     // Only scroll when the card is clipped; keep current offset otherwise.
@@ -297,7 +300,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
   Widget _buildSeasonRow() {
     return HorizontalScroller(
-      height: _SeasonCard.rowScrollerHeight,
+      height: _SeasonCard.rowScrollerHeightOf(context),
       padding: const EdgeInsets.symmetric(
         vertical: _SeasonCard.rowVerticalPadding,
       ),
@@ -351,6 +354,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     final meta = _episodeMetaFlags(_visibleEpisodes);
     return HorizontalScroller(
       height: _EpisodeCard.rowScrollerHeight(
+        context,
         showDate: meta.showDate,
         showOverview: meta.showOverview,
       ),
@@ -548,6 +552,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     return homeLoadingShimmer(
       SizedBox(
         height: _EpisodeCard.rowScrollerHeight(
+          context,
           showDate: meta.showDate,
           showOverview: meta.showOverview,
         ),
@@ -573,14 +578,15 @@ class _EpisodeCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final thumbHeight = _EpisodeCard.thumbHeight;
+    final cardWidth = _EpisodeCard.cardWidthOf(context);
+    final thumbHeight = _EpisodeCard.thumbHeightOf(context);
     return SizedBox(
-      width: _EpisodeCard.cardWidth,
+      width: cardWidth,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: _EpisodeCard.cardWidth,
+            width: cardWidth,
             height: thumbHeight,
             decoration: BoxDecoration(
               color: ForjaShellColors.surfaceElevated,
@@ -590,7 +596,7 @@ class _EpisodeCardSkeleton extends StatelessWidget {
           const SizedBox(height: _EpisodeCard._bodyTopGap),
           Container(
             height: 14,
-            width: _EpisodeCard.cardWidth * 0.72,
+            width: cardWidth * 0.72,
             decoration: BoxDecoration(
               color: ForjaShellColors.surfaceElevated,
               borderRadius: BorderRadius.circular(4),
@@ -600,7 +606,7 @@ class _EpisodeCardSkeleton extends StatelessWidget {
             const SizedBox(height: _EpisodeCard._metaGap),
             Container(
               height: 12,
-              width: _EpisodeCard.cardWidth * 0.38,
+              width: cardWidth * 0.38,
               decoration: BoxDecoration(
                 color: ForjaShellColors.surfaceElevated,
                 borderRadius: BorderRadius.circular(4),
@@ -609,16 +615,16 @@ class _EpisodeCardSkeleton extends StatelessWidget {
             const SizedBox(height: _EpisodeCard._metaGap),
             Container(
               height: 12,
-              width: _EpisodeCard.cardWidth,
-              decoration: BoxDecoration(
-                color: ForjaShellColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(4),
-              ),
+              width: cardWidth,
+            decoration: BoxDecoration(
+              color: ForjaShellColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(4),
             ),
+          ),
             const SizedBox(height: 4),
             Container(
               height: 12,
-              width: _EpisodeCard.cardWidth * 0.85,
+              width: cardWidth * 0.85,
               decoration: BoxDecoration(
                 color: ForjaShellColors.surfaceElevated,
                 borderRadius: BorderRadius.circular(4),
@@ -651,12 +657,21 @@ class _SeasonCard extends StatefulWidget {
   final VoidCallback? onLeftEdge;
   final int? listIndex;
 
-  static const double cardWidth = DetailsTokens.episodeSeasonWidth;
-  static const double cardHeight = DetailsTokens.episodeSeasonHeight;
   static const double radius = ShellTokens.shellProviderCardRadius;
   static const double rowVerticalPadding = 4;
-  static double get rowScrollerHeight =>
-      cardHeight * ForjaMotionTheme.defaults.chipLift.hoverScale +
+
+  static double cardWidthOf(BuildContext context) =>
+      ShellPaintScope.usesTvDensityOf(context)
+          ? DetailsTokens.episodeSeasonWidthTv
+          : DetailsTokens.episodeSeasonWidth;
+
+  static double cardHeightOf(BuildContext context) =>
+      ShellPaintScope.usesTvDensityOf(context)
+          ? DetailsTokens.episodeSeasonHeightTv
+          : DetailsTokens.episodeSeasonHeight;
+
+  static double rowScrollerHeightOf(BuildContext context) =>
+      cardHeightOf(context) * ForjaMotionTheme.defaults.chipLift.hoverScale +
       rowVerticalPadding * 2;
 
   @override
@@ -700,8 +715,8 @@ class _SeasonCardState extends State<_SeasonCard> {
           onDoubleTap: widget.onDoubleTap,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
-            width: _SeasonCard.cardWidth,
-            height: _SeasonCard.cardHeight,
+            width: _SeasonCard.cardWidthOf(context),
+            height: _SeasonCard.cardHeightOf(context),
             child: Stack(
             fit: StackFit.expand,
             children: [
@@ -831,7 +846,6 @@ class _EpisodeCard extends StatefulWidget {
   final VoidCallback? onLeftEdge;
   final int? listIndex;
 
-  static const double cardWidth = DetailsTokens.episodeCardWidth;
   static const double thumbRadius = 10;
   static const double rowVerticalPadding = 8;
 
@@ -845,24 +859,36 @@ class _EpisodeCard extends StatefulWidget {
   // macOS/desktop font metrics can exceed ceil budgets by ~1px inside ListView rows.
   static const double _layoutSlack = 1;
 
-  static double get thumbHeight => (cardWidth * 9 / 16).ceilToDouble();
+  static double cardWidthOf(BuildContext context) =>
+      ShellPaintScope.usesTvDensityOf(context)
+          ? DetailsTokens.episodeCardWidthTv
+          : DetailsTokens.episodeCardWidth;
+
+  static double thumbHeightOf(BuildContext context) =>
+      (cardWidthOf(context) * 9 / 16).ceilToDouble();
 
   /// Height for title + optional air date / two-line overview.
-  static double contentHeight({
+  static double contentHeight(
+    BuildContext context, {
     bool showDate = true,
     bool showOverview = true,
   }) {
-    var h = thumbHeight + _bodyTopGap + _titleLineHeight;
+    var h = thumbHeightOf(context) + _bodyTopGap + _titleLineHeight;
     if (showDate) h += _dateBlockHeight;
     if (showOverview) h += _overviewBlockHeight;
     return h + _layoutSlack;
   }
 
-  static double rowScrollerHeight({
+  static double rowScrollerHeight(
+    BuildContext context, {
     bool showDate = true,
     bool showOverview = true,
   }) =>
-      contentHeight(showDate: showDate, showOverview: showOverview) +
+      contentHeight(
+        context,
+        showDate: showDate,
+        showOverview: showOverview,
+      ) +
       rowVerticalPadding * 2;
 
   @override
@@ -875,7 +901,8 @@ class _EpisodeCardState extends State<_EpisodeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final thumbHeight = _EpisodeCard.thumbHeight;
+    final cardWidth = _EpisodeCard.cardWidthOf(context);
+    final thumbHeight = _EpisodeCard.thumbHeightOf(context);
     final showProgress =
         WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
     final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
@@ -919,12 +946,12 @@ class _EpisodeCardState extends State<_EpisodeCard> {
           onDoubleTap: enabled ? widget.onToggleWatched : null,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
-            width: _EpisodeCard.cardWidth,
+            width: cardWidth,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: _EpisodeCard.cardWidth,
+                  width: cardWidth,
                   height: thumbHeight,
                   decoration: BoxDecoration(
                     borderRadius:

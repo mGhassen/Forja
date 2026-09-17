@@ -4,6 +4,8 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/trailers_section.dart';
 import 'package:rust/rust.dart';
 
@@ -107,7 +109,9 @@ class _MediaDetailsTrailersSectionState
           },
           borderRadius: 10,
           showFocusBorder: true,
-          focusBleedWidth: DetailsTrailersSection.cardWidth,
+          focusBleedWidth: ShellPaintScope.usesTvDensityOf(context)
+              ? DetailsTokens.trailerCardWidthTv
+              : DetailsTokens.trailerCardWidth,
           listIndex: index,
           tvTabId: tabId,
           tvRowId: widget.tvRowId != null ? rowId : null,

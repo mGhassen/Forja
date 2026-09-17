@@ -97,11 +97,17 @@ class DetailsHero extends StatelessWidget {
     final topInset = MediaQuery.paddingOf(context).top;
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
-    final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
+    final heroContentTop = topInset +
+        (tvDensity
+            ? DetailsTokens.heroContentTopInsetTv
+            : DetailsTokens.heroContentTopInset);
     final rawOverlap = bodyOverlap;
     final overlapsFirstRow = rawOverlap != null && rawOverlap > 0;
-    final resolvedOverlap =
-        overlapsFirstRow ? rawOverlap! : DetailsTokens.heroBodyOverlap;
+    final resolvedOverlap = overlapsFirstRow
+        ? rawOverlap!
+        : (tvDensity
+            ? DetailsTokens.heroBodyOverlapTv
+            : DetailsTokens.heroBodyOverlap);
     // Keep title / Play above the overlapping first body row.
     final contentBottom =
         overlapsFirstRow ? rawOverlap! + bottomInset : bottomInset;
@@ -508,9 +514,15 @@ class _DetailsHeroMainColumn extends StatelessWidget {
     color: Color(0xB8FFFFFF),
   );
   /// Room for up to 3 lines of text title (auto-shrinks in [HeroTitle]).
-  static const _textTitleBlockHeight = DetailsTokens.heroTitleBlockHeight;
-  static const _titleMinHeight = DetailsTokens.heroMetaBlockHeight;
-  static const _subtitleBlockHeight = DetailsTokens.heroActionsBlockHeight;
+  double get _textTitleBlockHeight => tvDensity
+      ? DetailsTokens.heroTitleBlockHeightTv
+      : DetailsTokens.heroTitleBlockHeight;
+  double get _titleMinHeight => tvDensity
+      ? DetailsTokens.heroMetaBlockHeightTv
+      : DetailsTokens.heroMetaBlockHeight;
+  double get _subtitleBlockHeight => tvDensity
+      ? DetailsTokens.heroActionsBlockHeightTv
+      : DetailsTokens.heroActionsBlockHeight;
   static const _genreBlockHeight = 20.0;
   static const _metaBlockHeight = 24.0;
   static const _overviewGap = 14.0;

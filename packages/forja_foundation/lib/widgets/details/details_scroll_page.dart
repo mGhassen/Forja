@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/details/details_block.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/details_body.dart';
 
 /// Unified scroll layout for torrent and streaming media details screens.
@@ -28,6 +29,9 @@ class DetailsScrollPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sectionGap = ShellPaintScope.usesTvDensityOf(context)
+        ? DetailsTokens.sectionSpacingTv
+        : DetailsTokens.sectionSpacing;
     final scroll = DetailsBlock(
       hero: hero,
       scrollController: scrollController,
@@ -47,8 +51,7 @@ class DetailsScrollPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     for (var i = 0; i < sections.length; i++) ...[
-                      if (i > 0)
-                        const SizedBox(height: DetailsTokens.sectionSpacing),
+                      if (i > 0) SizedBox(height: sectionGap),
                       sections[i],
                     ],
                   ],

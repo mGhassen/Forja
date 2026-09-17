@@ -318,7 +318,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
-                width: SettingsTokens.sidebarWidth,
+                width: SettingsTokens.sidebarWidthOf(context),
                 child: FocusTraversalGroup(
                   policy: ReadingOrderTraversalPolicy(),
                   child: TvKitRow(
@@ -413,9 +413,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
           children: [
             Padding(
               padding: EdgeInsets.fromLTRB(
-                SettingsTokens.pagePadding,
+                SettingsTokens.pagePaddingOf(context),
                 tv ? 28 : 8,
-                SettingsTokens.pagePadding,
+                SettingsTokens.pagePaddingOf(context),
                 4,
               ),
               child: const ShellTabHeader(
@@ -429,10 +429,10 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                     PluginInstallCoordinator.instance.pendingUpdateCount,
                 builder: (context, _, child) {
                   return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                      SettingsTokens.pagePadding,
+                    padding: EdgeInsets.fromLTRB(
+                      SettingsTokens.pagePaddingOf(context),
                       8,
-                      SettingsTokens.pagePadding,
+                      SettingsTokens.pagePaddingOf(context),
                       48,
                     ),
                     itemCount: categories.length,
@@ -444,8 +444,8 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                       return SettingsCategoryTile(
                         icon: c.icon,
                         leading: packUpdates > 0
-                            ? const PackUpdateAlertIcon(
-                                size: SettingsTokens.categoryIconSize,
+                            ? PackUpdateAlertIcon(
+                                size: SettingsTokens.categoryIconSizeOf(context),
                               )
                             : null,
                         title: c.title,
@@ -515,8 +515,8 @@ class _CategorySidebar extends ConsumerWidget {
                   return SettingsCategoryTile(
                     icon: c.icon,
                     leading: showPackAlert
-                        ? const PackUpdateAlertIcon(
-                            size: SettingsTokens.categoryIconSize,
+                        ? PackUpdateAlertIcon(
+                            size: SettingsTokens.categoryIconSizeOf(context),
                           )
                         : null,
                     title: c.title,

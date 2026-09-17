@@ -159,7 +159,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
       child: Row(
         children: [
           widget.leading ??
-              Icon(widget.icon, size: SettingsTokens.categoryIconSize, color: ink),
+              Icon(widget.icon, size: SettingsTokens.categoryIconSizeOf(context), color: ink),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -169,7 +169,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
                   widget.title,
                   TextStyle(
                     color: titleColor,
-                    fontSize: SettingsTokens.categoryTitleSize,
+                    fontSize: SettingsTokens.categoryTitleSizeOf(context),
                     fontWeight:
                         chromeActive ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -591,7 +591,7 @@ class SettingsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: SettingsTokens.groupSpacing),
+      padding: EdgeInsets.only(bottom: SettingsTokens.groupSpacingOf(context)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -609,9 +609,9 @@ class SettingsGroup extends StatelessWidget {
                   const SizedBox(width: 8),
                   settingsTitleText(
                     label!.toUpperCase(),
-                    const TextStyle(
+                    TextStyle(
                       color: ForjaShellColors.brandGreen,
-                      fontSize: SettingsTokens.groupLabelSize,
+                      fontSize: SettingsTokens.groupLabelSizeOf(context),
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.6,
                     ),
@@ -889,9 +889,9 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
         Expanded(
           child: settingsTitleText(
             widget.title,
-            const TextStyle(
+            TextStyle(
               color: ForjaShellColors.textPrimary,
-              fontSize: SettingsTokens.pageTitleSize,
+              fontSize: SettingsTokens.pageTitleSizeOf(context),
               fontWeight: FontWeight.w700,
               letterSpacing: -0.3,
             ),
@@ -924,9 +924,9 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
               child: SingleChildScrollView(
                 controller: _scrollController,
                 padding: EdgeInsets.fromLTRB(
-                  SettingsTokens.pagePadding,
+                  SettingsTokens.pagePaddingOf(context),
                   titleTop,
-                  SettingsTokens.pagePadding,
+                  SettingsTokens.pagePaddingOf(context),
                   48 + _imeScrollPad + tvBottomSlack,
                 ),
                 child: Align(
@@ -952,19 +952,19 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
               children: [
                 Padding(
                   padding: EdgeInsets.fromLTRB(
-                    SettingsTokens.pagePadding,
+                    SettingsTokens.pagePaddingOf(context),
                     titleTop,
-                    SettingsTokens.pagePadding,
+                    SettingsTokens.pagePaddingOf(context),
                     4,
                   ),
                   child: _titleRow(includeBack: widget.showBack),
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      SettingsTokens.pagePadding,
+                    padding: EdgeInsets.fromLTRB(
+                      SettingsTokens.pagePaddingOf(context),
                       8,
-                      SettingsTokens.pagePadding,
+                      SettingsTokens.pagePaddingOf(context),
                       16,
                     ),
                     child: LayoutBuilder(

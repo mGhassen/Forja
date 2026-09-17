@@ -27,32 +27,39 @@ class DetailsCastSection extends StatelessWidget {
     required Widget child,
   })? itemBuilder;
 
-  static const double _avatarSize = DetailsTokens.castAvatarSize;
-  static const double _itemWidth = DetailsTokens.castItemWidth;
-  static const double _horizontalGap = DetailsTokens.castGap;
-  static const double _titleGap = DetailsTokens.sectionTitleGap;
   static const double _avatarNameGap = 8;
   static const double _nameCharacterGap = 3;
 
-  static const TextStyle titleStyle = TextStyle(
-    color: Colors.white,
-    fontSize: ShellTokens.sectionTitleFontSize,
-    fontWeight: FontWeight.w800,
-    letterSpacing: ShellTokens.sectionTitleLetterSpacing,
-  );
-
-  static double get _rowHeight =>
-      _avatarSize * ForjaMotionTheme.defaults.cardLift.focusScale +
-          _avatarNameGap +
-          16 +
-          _nameCharacterGap +
-          15 +
-          4;
+  static double _rowHeight(double avatarSize) =>
+      avatarSize * ForjaMotionTheme.defaults.cardLift.focusScale +
+      _avatarNameGap +
+      16 +
+      _nameCharacterGap +
+      15 +
+      4;
 
   @override
   Widget build(BuildContext context) {
     if (cast.isEmpty) return const SizedBox.shrink();
 
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final avatarSize =
+        tv ? DetailsTokens.castAvatarSizeTv : DetailsTokens.castAvatarSize;
+    final itemWidth =
+        tv ? DetailsTokens.castItemWidthTv : DetailsTokens.castItemWidth;
+    final horizontalGap =
+        tv ? DetailsTokens.castGapTv : DetailsTokens.castGap;
+    final titleGap = tv
+        ? DetailsTokens.sectionTitleGapTv
+        : DetailsTokens.sectionTitleGap;
+    final titleStyle = TextStyle(
+      color: Colors.white,
+      fontSize: tv
+          ? DetailsTokens.sectionTitleFontSizeTv
+          : ShellTokens.sectionTitleFontSize,
+      fontWeight: FontWeight.w800,
+      letterSpacing: ShellTokens.sectionTitleLetterSpacing,
+    );
     const homePad = ShellTokens.homeSectionHorizontalPadding;
     final outdent = outdentHorizontal;
 
@@ -64,18 +71,16 @@ class DetailsCastSection extends StatelessWidget {
             homePad,
             0,
             homePad,
-            _titleGap,
+            titleGap,
           ),
           child: Text(title, style: titleStyle),
         ),
         FocusTraversalGroup(
           child: HorizontalScroller(
-            height: _rowHeight,
+            height: _rowHeight(avatarSize),
             padding: const EdgeInsets.symmetric(horizontal: homePad),
             itemCount: cast.length,
-            separatorBuilder: (_, _) => const SizedBox(
-              width: _horizontalGap,
-            ),
+            separatorBuilder: (_, _) => SizedBox(width: horizontalGap),
             itemBuilder: (context, i) {
               final m = cast[i];
               final profilePath = m['profilePath'] ?? '';
@@ -85,13 +90,13 @@ class DetailsCastSection extends StatelessWidget {
                 child: profilePath.startsWith('http')
                     ? ForjaNetworkImage(
                         url: profilePath,
-                        width: _avatarSize,
-                        height: _avatarSize,
+                        width: avatarSize,
+                        height: avatarSize,
                         fit: BoxFit.cover,
                       )
                     : Container(
-                        width: _avatarSize,
-                        height: _avatarSize,
+                        width: avatarSize,
+                        height: avatarSize,
                         color: Colors.white.withValues(alpha: 0.08),
                         child: Icon(
                           Icons.person,
@@ -104,7 +109,7 @@ class DetailsCastSection extends StatelessWidget {
                   ? itemBuilder!(context, index: i, child: avatar)
                   : _defaultAvatarTap(context, index: i, child: avatar);
               return SizedBox(
-                width: _itemWidth,
+                width: itemWidth,
                 child: Column(
                   children: [
                     focusChild,

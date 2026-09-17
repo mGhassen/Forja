@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Constrained column below the full-bleed media details hero.
 ///
@@ -43,8 +44,14 @@ class DetailsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final shellBg =
         backgroundColor ?? ForjaThemeExtension.of(context).bgDark;
-    final overlap = bodyOverlap ?? DetailsTokens.heroBodyOverlap;
-    final top = topSpacing ?? DetailsTokens.bodyTopSpacing;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final overlap = bodyOverlap ??
+        (tv ? DetailsTokens.heroBodyOverlapTv : DetailsTokens.heroBodyOverlap);
+    final top = topSpacing ??
+        (tv ? DetailsTokens.bodyTopSpacingTv : DetailsTokens.bodyTopSpacing);
+    final bottom = tv
+        ? DetailsTokens.bodyBottomSpacingTv
+        : DetailsTokens.bodyBottomSpacing;
 
     final content = Align(
       alignment: Alignment.topCenter,
@@ -57,7 +64,7 @@ class DetailsBody extends StatelessWidget {
             0,
             top,
             0,
-            DetailsTokens.bodyBottomSpacing,
+            bottom,
           ),
           child: child,
         ),

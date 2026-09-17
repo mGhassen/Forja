@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// One catalog details rail — title + horizontal cards (props only).
 class DetailsRailSectionData {
@@ -36,6 +37,11 @@ class DetailsRailSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (cards.isEmpty) return const SizedBox.shrink();
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final titleSize = tv
+        ? DetailsTokens.sectionTitleFontSizeTv
+        : DetailsTokens.sectionTitleFontSize;
+    final railsGap = tv ? DetailsTokens.railsGapTv : DetailsTokens.railsGap;
     return Padding(
       padding: EdgeInsets.only(
         top: compactTop ? 0 : ShellTokens.homeSectionTitleTop,
@@ -49,14 +55,14 @@ class DetailsRailSection extends StatelessWidget {
             ),
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 color: ForjaShellColors.textPrimary,
-                fontSize: DetailsTokens.sectionTitleFontSize,
+                fontSize: titleSize,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(height: DetailsTokens.railsGap),
+          SizedBox(height: railsGap),
           SizedBox(
             height: rowHeight,
             child: ListView.separated(
@@ -92,11 +98,14 @@ class DetailsRails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sectionGap = ShellPaintScope.usesTvDensityOf(context)
+        ? DetailsTokens.railsSectionGapTv
+        : DetailsTokens.railsSectionGap;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var i = 0; i < sections.length; i++) ...[
-          if (i > 0) const SizedBox(height: DetailsTokens.railsSectionGap),
+          if (i > 0) SizedBox(height: sectionGap),
           DetailsRailSection(
             title: sections[i].title,
             cards: sections[i].cards,
