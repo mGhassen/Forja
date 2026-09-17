@@ -124,15 +124,8 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
   }
 
-  /// Soft switch — keep per-portal EngineCache + pack disk; no wipe / clear.
+  /// Soft switch — vault active first, clear grid, soft-bump feed.
   Future<void> _selectPortal(String portalKey) async {
-    final inv =
-        ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
-    final active = (inv?.activeKey ?? '').trim();
-    if (active.isNotEmpty && PortalsHost.samePortalKey(active, portalKey)) {
-      return;
-    }
-
     final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
       ForjaToast.error('No portals pack installed');
@@ -149,7 +142,10 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     if (!mounted) return;
 
     PackLoadedPaint.clearMemosForPlugin(pluginId);
-    PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+    final chrome = PackChromeScope.maybeOf(context);
+    // Drop stale "Choose a portal" cover so loading paints while feed runs.
+    chrome?.onClearCatalog();
+    chrome?.onBumpRefresh(forceNetwork: false);
 
     unawaited((() async {
       try {
@@ -161,7 +157,15 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         if (!env.ok) {
           ForjaToast.error(env.error?.message ?? 'Could not select portal');
           PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+          return;
         }
+        // Pack may rewrite active to canonical url|user — re-stamp + soft bump.
+        await CategoryBarActionHost.liveListFeedParams(
+          preferTabId: widget.tabId,
+        );
+        if (!mounted) return;
+        PackLoadedPaint.clearMemosForPlugin(pluginId);
+        PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
       } catch (e) {
         if (mounted) {
           ForjaToast.error(e.toString());

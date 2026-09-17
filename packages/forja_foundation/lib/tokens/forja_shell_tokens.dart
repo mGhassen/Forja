@@ -118,6 +118,38 @@ abstract final class ShellTokens {
     milliseconds: 520,
   );
 
+  /// Pack-update badge on profile / Settings nav chrome.
+  static const double packUpdateBadgeSize = 15;
+  static const double packUpdateBadgeSizeTv = 14;
+  static const double packUpdateBadgeSizeBottomNav = 13;
+  static const double packUpdateBadgeCornerInset = 2;
+  static const double packUpdateFlyoutIconSize = 18;
+  static const double packUpdateFlyoutMaxWidth = 220;
+  static const double packUpdateFlyoutPadH = 12;
+  static const double packUpdateFlyoutPadV = 10;
+  static const double packUpdateFlyoutGap = 10;
+  static const double packUpdateFlyoutRadius = 10;
+  static const double packUpdateFlyoutFontSize = 12.5;
+  static const double packUpdateFlyoutLineHeight = 1.25;
+  static const double packUpdateFlyoutOffset = 10;
+  static const double packUpdateFlyoutSlide = 8;
+  static const double packUpdateFlyoutShadowBlur = 16;
+  static const double packUpdateFlyoutShadowY = 6;
+  static const double packUpdateFlyoutShadowAlpha = 0.45;
+  static const double packUpdateHeartbeatScaleMin = 0.88;
+  static const double packUpdateHeartbeatScaleMax = 1.08;
+  static const double packUpdateGlyphScale = 0.62;
+  static const double packUpdateSunScale = 0.92;
+  static const double packUpdateBangFontScale = 0.55;
+  static const double packUpdateBangOffsetX = 0.08;
+  static const double packUpdateBangOffsetY = 0.12;
+  static const double packUpdateGlowBlurScale = 0.35;
+  static const double packUpdateGlowAlpha = 0.45;
+  static const double packUpdateGlowSpread = 0.5;
+  static const double packUpdateSunInkAlpha = 0.88;
+  static const Duration packUpdateHeartbeat = Duration(milliseconds: 1100);
+  static const Duration packUpdateFlyoutAnim = Duration(milliseconds: 180);
+
   static const double shellButtonHeight = 40;
   static const double shellButtonRadius = 6;
   static const double shellNavUnderlineHeight = 3;

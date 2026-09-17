@@ -465,27 +465,21 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     if (sel.isNotEmpty && sel != 'all' && items.any((e) => e.id == sel)) {
       return;
     }
-    if (!_isLive) {
-      // Movies/Series after shelf flip: keep entire section (sel all/empty).
-      if (sel.isEmpty || sel == 'all') return;
-      // Stale Live cat id — snap back to all.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        widget.onSelect('all');
-      });
-      return;
+    // Live only: restore last-played category when still in the rail.
+    if (_isLive) {
+      final prefer = (preferCategoryId ?? '').trim();
+      if (prefer.isNotEmpty &&
+          !PortalLiveCatalog.isSyntheticId(prefer) &&
+          items.any((e) => e.id == prefer)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          widget.onSelect(prefer);
+        });
+        return;
+      }
     }
-    final prefer = (preferCategoryId ?? '').trim();
-    if (prefer.isNotEmpty &&
-        !PortalLiveCatalog.isSyntheticId(prefer) &&
-        items.any((e) => e.id == prefer)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        widget.onSelect(prefer);
-      });
-      return;
-    }
-    // Live: no All row — land on first portal group (skip Favorites / Watched).
+    // Live + Movies/Series: no All row — land on first portal group
+    // (skip Favorites / Already watched on Live).
     for (final e in items) {
       if (PortalLiveCatalog.isSyntheticId(e.id) || e.id == 'all') continue;
       WidgetsBinding.instance.addPostFrameCallback((_) {

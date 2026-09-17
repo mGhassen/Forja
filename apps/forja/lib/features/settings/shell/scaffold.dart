@@ -437,7 +437,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                   return SettingsCategoryTile(
                     icon: c.icon,
                     leading: packUpdates > 0
-                        ? const PackUpdateAlertIcon(size: 22)
+                        ? const PackUpdateAlertIcon(
+                            size: SettingsTokens.categoryIconSize,
+                          )
                         : null,
                     title: c.title,
                     subtitle: c.subtitle,
@@ -500,7 +502,9 @@ class _CategorySidebar extends ConsumerWidget {
               return SettingsCategoryTile(
                 icon: c.icon,
                 leading: showPackAlert
-                    ? const PackUpdateAlertIcon(size: 22)
+                    ? const PackUpdateAlertIcon(
+                        size: SettingsTokens.categoryIconSize,
+                      )
                     : null,
                 title: c.title,
                 subtitle: c.subtitle,

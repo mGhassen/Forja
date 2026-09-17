@@ -1,6 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
+/// Shared copy for pack-update chrome (Settings bar, nav flyout, toast).
+abstract final class EnginePackUpdateCopy {
+  static String available(int count) {
+    if (count <= 0) return upToDate;
+    if (count == 1) return '1 update available';
+    return '$count updates available';
+  }
+
+  static const checking = 'Checking for plugin updates…';
+  static const upToDate = 'All plugins are up to date';
+}
+
+/// Shared sun glyph for pack-update chrome (nav badge + Settings tile).
+abstract final class PackUpdateAlertGlyph {
+  static const IconData icon = Icons.wb_sunny_rounded;
+}
 
 /// Banner above installed packs when one or more updates are available.
 class SettingsEnginePackUpdatesBar extends StatelessWidget {
@@ -28,23 +47,25 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(
-            hasUpdates
-                ? Icons.system_update_rounded
-                : Icons.sync_rounded,
-            size: 18,
-            color: hasUpdates
-                ? ForjaShellColors.brandGreen
-                : ForjaShellColors.textSecondary,
-          ),
-          const SizedBox(width: 10),
+          if (hasUpdates)
+            const PackUpdateAlertIcon(
+              size: ShellTokens.packUpdateFlyoutIconSize,
+              heartbeat: false,
+            )
+          else
+            const Icon(
+              Icons.sync_rounded,
+              size: ShellTokens.packUpdateFlyoutIconSize,
+              color: ForjaShellColors.textSecondary,
+            ),
+          const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
           Expanded(
             child: Text(
               checking
-                  ? 'Checking for plugin updates…'
+                  ? EnginePackUpdateCopy.checking
                   : hasUpdates
-                  ? '$updateCount update${updateCount == 1 ? '' : 's'} available'
-                  : 'All plugins are up to date',
+                  ? EnginePackUpdateCopy.available(updateCount)
+                  : EnginePackUpdateCopy.upToDate,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,

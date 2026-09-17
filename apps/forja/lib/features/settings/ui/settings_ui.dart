@@ -158,7 +158,8 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       child: Row(
         children: [
-          widget.leading ?? Icon(widget.icon, size: 22, color: ink),
+          widget.leading ??
+              Icon(widget.icon, size: SettingsTokens.categoryIconSize, color: ink),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

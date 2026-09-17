@@ -15,6 +15,7 @@ abstract final class SettingsTokens {
   static const double pagePadding = 20;
   static const double groupLabelSize = 11;
   static const double categoryTitleSize = 15;
+  static const double categoryIconSize = 22;
   static const double pageTitleSize = 22;
 
   /// True when Settings should show the split sidebar layout.

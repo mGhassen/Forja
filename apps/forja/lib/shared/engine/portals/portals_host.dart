@@ -214,8 +214,10 @@ abstract final class PortalsHost {
   }
 
   /// Store → vault mirror. Keeps pack `url|user` active (never host password key).
+  /// Never wipe vault with an empty store (cloud pull miss / race).
   static Future<void> _mirrorStoreToVault() async {
     final portals = await PortalStore.load();
+    if (portals.isEmpty) return;
     final favs = await PortalStore.loadFavorites();
     final vaultActive =
         (await EngineVault.get(PortalVaultKeys.active) ?? '')
@@ -237,8 +239,12 @@ abstract final class PortalsHost {
     final inflight = _portalPanelPrepareInflight;
     if (inflight != null) return inflight;
 
-    late final Future<void> run;
-    run = () async {
+    // Completer first — async body can finish sync (throttle / no await) and
+    // must not read an uninitialized `late` future in `finally`.
+    final done = Completer<void>();
+    final run = done.future;
+    _portalPanelPrepareInflight = run;
+    () async {
       try {
         if (SyncService.instance.isSignedIn) {
           final now = DateTime.now();
@@ -251,15 +257,16 @@ abstract final class PortalsHost {
             await _mirrorStoreToVault();
           }
         }
+        if (!done.isCompleted) done.complete();
       } catch (e) {
         debugPrint('[PortalsHost] preparePortalPanel failed: $e');
+        if (!done.isCompleted) done.complete();
       } finally {
         if (identical(_portalPanelPrepareInflight, run)) {
           _portalPanelPrepareInflight = null;
         }
       }
     }();
-    _portalPanelPrepareInflight = run;
     return run;
   }
 

@@ -19,6 +19,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/brand/forja_profile_avatar.dart';
+import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 double _navRailItemSpacingForHeight({
@@ -1117,6 +1118,15 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     if (widget.icon != null && widget.desaturateCustomIconWhenIdle) {
       icon = _AnimatedSaturation(
         colorized: widget.selected || active,
+        child: icon,
+      );
+    }
+    if (widget.destination.id == 'settings') {
+      icon = PackUpdateNavChrome(
+        expanded: active,
+        badgeSize: tv
+            ? ShellTokens.packUpdateBadgeSizeTv
+            : ShellTokens.packUpdateBadgeSize,
         child: icon,
       );
     }

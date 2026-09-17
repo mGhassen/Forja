@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
+import 'package:forja/features/settings/packs/engine_pack_update.dart';
 
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
@@ -332,7 +333,7 @@ class PluginInstallCoordinator {
       ForjaToast.info(
         count == 1
             ? '$sample update available'
-            : '$count plugin updates available',
+            : EnginePackUpdateCopy.available(count),
         duration: const Duration(seconds: 10),
         tag: ForjaToastTags.packUpdates,
         actionLabel: 'Update',

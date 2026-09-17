@@ -118,7 +118,7 @@ class _BottomNavItemState extends State<_BottomNavItem> {
       icon = PackUpdateNavChrome(
         expanded: _active,
         flyoutAbove: true,
-        badgeSize: 13,
+        badgeSize: ShellTokens.packUpdateBadgeSizeBottomNav,
         child: icon,
       );
     }

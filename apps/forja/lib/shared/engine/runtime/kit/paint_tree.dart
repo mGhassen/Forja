@@ -2231,15 +2231,12 @@ class PackPaintTree extends StatelessWidget {
         selectedRaw.isNotEmpty && items.any((e) => e.id == selectedRaw);
     // Search clears category for global hits — do not snap back to first/all.
     final searching = (chrome?.eventQuery ?? '').trim().isNotEmpty;
-    // Movies/Series reset uses `all` (show whole section) — do not snap to a
-    // portal group. Live still lands on the first non-synthetic category.
+    // Live + Movies/Series: land on first portal group (skip All / synthetics).
     final String selected;
     if (selectedInItems) {
       selected = selectedRaw;
     } else if (searching) {
       selected = '';
-    } else if (vodSection) {
-      selected = 'all';
     } else {
       selected = _firstPortalCategoryId(items);
     }

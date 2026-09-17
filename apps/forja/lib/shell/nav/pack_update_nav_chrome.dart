@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/packs/engine_pack_update.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-
-/// Shared sun glyph for pack-update chrome (nav badge + Settings tile).
-abstract final class PackUpdateAlertGlyph {
-  static const IconData icon = Icons.wb_sunny_rounded;
-}
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Heartbeating green circle with sun + exclamation.
 class PackUpdateAlertIcon extends StatefulWidget {
   const PackUpdateAlertIcon({
     super.key,
-    this.size = 16,
+    this.size = ShellTokens.packUpdateBadgeSize,
     this.heartbeat = true,
   });
 
@@ -34,7 +31,7 @@ class _PackUpdateAlertIconState extends State<PackUpdateAlertIcon>
     super.initState();
     _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1100),
+      duration: ShellTokens.packUpdateHeartbeat,
     );
     if (widget.heartbeat) {
       _pulse.repeat(reverse: true);
@@ -62,7 +59,9 @@ class _PackUpdateAlertIconState extends State<PackUpdateAlertIcon>
 
   @override
   Widget build(BuildContext context) {
-    final glyph = _SunExclamation(size: widget.size * 0.62);
+    final glyph = _SunExclamation(
+      size: widget.size * ShellTokens.packUpdateGlyphScale,
+    );
     final circle = Container(
       width: widget.size,
       height: widget.size,
@@ -71,9 +70,11 @@ class _PackUpdateAlertIconState extends State<PackUpdateAlertIcon>
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: ForjaShellColors.brandGreen.withValues(alpha: 0.45),
-            blurRadius: widget.size * 0.35,
-            spreadRadius: 0.5,
+            color: ForjaShellColors.brandGreen.withValues(
+              alpha: ShellTokens.packUpdateGlowAlpha,
+            ),
+            blurRadius: widget.size * ShellTokens.packUpdateGlowBlurScale,
+            spreadRadius: ShellTokens.packUpdateGlowSpread,
           ),
         ],
       ),
@@ -82,7 +83,10 @@ class _PackUpdateAlertIconState extends State<PackUpdateAlertIcon>
     );
     if (!widget.heartbeat) return circle;
     return ScaleTransition(
-      scale: Tween<double>(begin: 0.88, end: 1.08).animate(
+      scale: Tween<double>(
+        begin: ShellTokens.packUpdateHeartbeatScaleMin,
+        end: ShellTokens.packUpdateHeartbeatScaleMax,
+      ).animate(
         CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
       ),
       child: circle,
@@ -106,17 +110,19 @@ class _SunExclamation extends StatelessWidget {
         children: [
           Icon(
             PackUpdateAlertGlyph.icon,
-            size: size * 0.92,
-            color: Colors.black.withValues(alpha: 0.88),
+            size: size * ShellTokens.packUpdateSunScale,
+            color: Colors.black.withValues(
+              alpha: ShellTokens.packUpdateSunInkAlpha,
+            ),
           ),
           Positioned(
-            right: -size * 0.08,
-            top: -size * 0.12,
+            right: -size * ShellTokens.packUpdateBangOffsetX,
+            top: -size * ShellTokens.packUpdateBangOffsetY,
             child: Text(
               '!',
               style: TextStyle(
                 color: Colors.black,
-                fontSize: size * 0.55,
+                fontSize: size * ShellTokens.packUpdateBangFontScale,
                 fontWeight: FontWeight.w900,
                 height: 1,
               ),
@@ -135,7 +141,7 @@ class PackUpdateNavChrome extends ConsumerStatefulWidget {
     required this.child,
     required this.expanded,
     this.flyoutAbove = false,
-    this.badgeSize = 15,
+    this.badgeSize = ShellTokens.packUpdateBadgeSize,
   });
 
   final Widget child;
@@ -211,9 +217,8 @@ class _PackUpdateNavChromeState extends ConsumerState<PackUpdateNavChrome> {
       _syncPortal(show: show);
     });
 
-    final label = count == 1
-        ? '1 plugin update available'
-        : '$count plugin updates available';
+    final label = EnginePackUpdateCopy.available(count);
+    final offset = ShellTokens.packUpdateFlyoutOffset;
 
     return CompositedTransformTarget(
       link: _link,
@@ -230,8 +235,8 @@ class _PackUpdateNavChromeState extends ConsumerState<PackUpdateNavChrome> {
                 ? Alignment.bottomCenter
                 : Alignment.centerLeft,
             offset: widget.flyoutAbove
-                ? const Offset(0, -10)
-                : const Offset(10, 0),
+                ? Offset(0, -offset)
+                : Offset(offset, 0),
             child: _PackUpdateFlyout(
               label: label,
               onTap: PackUpdateNavChrome.openForjaPacks,
@@ -244,8 +249,8 @@ class _PackUpdateNavChromeState extends ConsumerState<PackUpdateNavChrome> {
           children: [
             widget.child,
             Positioned(
-              right: -2,
-              top: -2,
+              right: -ShellTokens.packUpdateBadgeCornerInset,
+              top: -ShellTokens.packUpdateBadgeCornerInset,
               child: IgnorePointer(
                 child: PackUpdateAlertIcon(size: widget.badgeSize),
               ),
@@ -268,17 +273,18 @@ class _PackUpdateFlyout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final slide = ShellTokens.packUpdateFlyoutSlide;
     return Material(
       color: Colors.transparent,
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 180),
+        duration: ShellTokens.packUpdateFlyoutAnim,
         curve: Curves.easeOutCubic,
         builder: (context, t, child) {
           return Opacity(
             opacity: t,
             child: Transform.translate(
-              offset: Offset((1 - t) * -8, 0),
+              offset: Offset((1 - t) * -slide, 0),
               child: child,
             ),
           );
@@ -288,34 +294,45 @@ class _PackUpdateFlyout extends StatelessWidget {
           child: GestureDetector(
             onTap: onTap,
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 220),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              constraints: const BoxConstraints(
+                maxWidth: ShellTokens.packUpdateFlyoutMaxWidth,
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: ShellTokens.packUpdateFlyoutPadH,
+                vertical: ShellTokens.packUpdateFlyoutPadV,
+              ),
               decoration: BoxDecoration(
                 color: ForjaShellColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(
+                  ShellTokens.packUpdateFlyoutRadius,
+                ),
                 border: Border.all(color: ForjaShellColors.borderSubtle),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+                    color: Colors.black.withValues(
+                      alpha: ShellTokens.packUpdateFlyoutShadowAlpha,
+                    ),
+                    blurRadius: ShellTokens.packUpdateFlyoutShadowBlur,
+                    offset: const Offset(0, ShellTokens.packUpdateFlyoutShadowY),
                   ),
                 ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const PackUpdateAlertIcon(size: 18, heartbeat: false),
-                  const SizedBox(width: 10),
+                  const PackUpdateAlertIcon(
+                    size: ShellTokens.packUpdateFlyoutIconSize,
+                    heartbeat: false,
+                  ),
+                  const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
                   Flexible(
                     child: Text(
                       label,
                       style: const TextStyle(
                         color: ForjaShellColors.textPrimary,
-                        fontSize: 12.5,
+                        fontSize: ShellTokens.packUpdateFlyoutFontSize,
                         fontWeight: FontWeight.w600,
-                        height: 1.25,
+                        height: ShellTokens.packUpdateFlyoutLineHeight,
                       ),
                     ),
                   ),
