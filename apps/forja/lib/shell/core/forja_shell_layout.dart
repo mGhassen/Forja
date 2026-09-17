@@ -161,7 +161,10 @@ double shellNavRailIconSize(BuildContext context) =>
     );
 
 double shellNavRailLabelFontSize(BuildContext context) =>
-    ShellTokens.navRailLabelFontSize;
+    shellScaled(context, ShellTokens.navRailLabelFontSize).clamp(
+      9.0,
+      ShellTokens.navRailLabelFontSize,
+    );
 
 /// Label row height — includes [MediaQuery.textScalerOf] (Windows accessibility).
 double shellNavRailLabelSlotHeight(BuildContext context, [double? baseFontSize]) {

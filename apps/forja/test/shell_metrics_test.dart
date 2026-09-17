@@ -23,7 +23,7 @@ void main() {
   test('mobile metrics row exists with compact card width', () {
     expect(ShellMetrics.mobile.posterCardWidth, 165);
     expect(ShellMetrics.desktop.posterCardWidth, 190);
-    expect(ShellMetrics.tv.posterCardWidth, 90);
+    expect(ShellMetrics.tv.posterCardWidth, 70);
   });
 
   test('input policies match profile expectations', () {

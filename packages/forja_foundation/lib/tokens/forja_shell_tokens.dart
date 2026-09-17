@@ -55,7 +55,7 @@ abstract final class ShellTokens {
   static const double navRailIconSize = 36;
 
   /// Floor for TV density scale ([shellNavRailIconSize]) before fit-to-height.
-  static const double navRailIconSizeTvMin = 20;
+  static const double navRailIconSizeTvMin = 16;
 
   /// Floor when TV compresses the rail to fit every enabled tab.
   static const double navRailIconSizeMin = 22;
@@ -91,10 +91,10 @@ abstract final class ShellTokens {
   static const double navRailItemSpacingTv = 12;
   static const double navRailItemSpacingMin = 2;
   static const double navRailLogoGapDesktop = 20;
-  static const double navRailLogoGapTv = 12;
+  static const double navRailLogoGapTv = 8;
   static const double navRailBottomPaddingDesktop = 16;
-  static const double navRailBottomPaddingTv = 6;
-  static const double navRailTopPaddingTv = 10;
+  static const double navRailBottomPaddingTv = 8;
+  static const double navRailTopPaddingTv = 8;
   static const double navRailProfileSpacingTv = 4;
   static const double navRailNavPadVTv = 4;
   static const double navRailNavReserveDesktop = 16;
@@ -357,11 +357,11 @@ abstract final class ShellTokens {
   /// Vertical gap between Home content rows (not hero → first row).
   static const double homeRowSpacing = 24;
 
-  /// TV catalog spacing - aligned with desktop/detail rhythm (cards stay 90px).
-  static const double tvHomeRowSpacing = 20;
+  /// Compact leanback catalog spacing (pairs with [posterCardWidthTv]).
+  static const double tvHomeRowSpacing = 3;
   static const double tvHomeSectionHorizontalPadding = 0;
-  static const double tvHeroHeightFraction = 0.78;
-  static const double tvHeroNextRowPeekFraction = 0.06;
+  static const double tvHeroHeightFraction = 0.72;
+  static const double tvHeroNextRowPeekFraction = 0.10;
 
   /// Catalog row D-pad focus: keep this fraction of viewport below the row.
   static const double tvKitRowFocusBottomInsetFraction = 0.10;
@@ -375,11 +375,11 @@ abstract final class ShellTokens {
   /// viewport above the focused row so ↑ does not pin flush to the top edge.
   static const double tvDetailsRowFocusTopInsetFraction = 0.25;
 
-  static const double tvHomeSectionTitleTopCompact = 16;
-  static const double tvHomeSectionTitleTop = 24;
-  static const double tvHomeSectionHeaderHeight = 26;
-  static const double tvHomeSectionBottomGap = 14;
-  static const double tvPosterCardRowGap = 12;
+  static const double tvHomeSectionTitleTopCompact = 2;
+  static const double tvHomeSectionTitleTop = 10;
+  static const double tvHomeSectionHeaderHeight = 11;
+  static const double tvHomeSectionBottomGap = 4;
+  static const double tvPosterCardRowGap = 4;
 
   /// Gap between poster cards in hub rails (desktop / non-TV).
   /// ~14 separator + former desktop focus-bleed room (bleed is TV-only now).
@@ -388,17 +388,17 @@ abstract final class ShellTokens {
   /// Catalog poster card widths by shell profile.
   static const double posterCardWidthMobile = 165;
   static const double posterCardWidthDesktop = 190;
-  static const double posterCardWidthTv = 90;
+  static const double posterCardWidthTv = 70;
   static const double posterCardWideBreakpoint = 900;
   static const double posterCardAspectRatio = 1.5;
   static const double posterCardRadius = 14;
   static const double posterCardRadiusMin = 4;
   static const double posterTitleFontSizeMobile = 13;
   static const double posterTitleFontSizeDesktop = 14;
-  static const double posterTitleFontSizeTv = 12;
+  static const double posterTitleFontSizeTv = 10;
   static const double cardFocusBorderWidth = 1.5;
   static const double cardFocusBleedExtra = 1;
-  static const double continueWatchingCardWidthTv = 140;
+  static const double continueWatchingCardWidthTv = 120;
 
   /// Shared control / chip height (Portals, action chips, hero pills).
   static const double controlHeight = 40;
@@ -410,7 +410,7 @@ abstract final class ShellTokens {
 
   static const double hubCardTitleFontSizeMobile = 13;
   static const double hubCardTitleFontSizeDesktop = 14;
-  static const double hubCardTitleFontSizeTv = 12;
+  static const double hubCardTitleFontSizeTv = 9;
   static const double heroCompactRightInsetDesktop = 20;
   static const double heroCompactRightInsetTv = 16;
   static const double heroMinTitleHeightDesktop = 72;
@@ -427,10 +427,10 @@ abstract final class ShellTokens {
   static const double shellGridTabletMinWidth = 600;
 
   static const double sectionTitleFontSize = 20;
-  static const double sectionTitleFontSizeMin = 15;
+  static const double sectionTitleFontSizeMin = 11;
   static const double sectionTitleLetterSpacing = -0.3;
   static const double sectionSubtitleFontSize = 11;
-  static const double sectionSubtitleFontSizeMin = 10;
+  static const double sectionSubtitleFontSizeMin = 8;
 
   static const double torrentPanelPaddingDesktop = 16;
   static const double torrentPanelPaddingTv = 14;
@@ -553,8 +553,8 @@ abstract final class ShellTokens {
   static const double emptyFeaturesCardGapCompact = 10;
   static const Duration emptyFeaturesCardAnim = Duration(milliseconds: 140);
 
-  /// Floor for TV typography/chrome - cards scale down, text/spacing does not crush.
-  static const double tvLayoutScaleFloor = 0.75;
+  /// Floor for TV typography/chrome — tracks [posterCardWidthTv] / desktop (≈0.37).
+  static const double tvLayoutScaleFloor = 0.37;
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
   static const double homeSectionTitleTop = 36;

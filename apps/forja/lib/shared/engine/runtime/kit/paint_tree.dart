@@ -3323,7 +3323,7 @@ class _ContinueMountState extends State<_ContinueMount> {
     final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final defaultW = tv
-        ? 140.0
+        ? ShellTokens.continueWatchingCardWidthTv
         : (shellUsesWideLayout(context)
             ? ShellTokens.shellContinueWatchingCardWidthDesktop
             : ShellTokens.shellContinueWatchingCardWidthCompact);

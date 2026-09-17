@@ -32,7 +32,9 @@ double catalogSectionBottomGap(BuildContext context) =>
         : 16.0;
 
 double catalogContinueCardWidth(BuildContext context, {required bool wide}) {
-  if (catalogUsesTvDensity(context)) return 140;
+  if (catalogUsesTvDensity(context)) {
+    return ShellTokens.continueWatchingCardWidthTv;
+  }
   return wide
       ? ShellTokens.shellContinueWatchingCardWidthDesktop
       : ShellTokens.shellContinueWatchingCardWidthCompact;
