@@ -65,24 +65,15 @@ class DetailsBody extends StatelessWidget {
     );
 
     if (overlap > 0) {
-      // Pull paint onto the backdrop. Stock Transform.translate fails hit tests
-      // in the overflow band (y < 0) — seasons/cast never see hover. Use a
-      // render object that hit-tests the painted bounds. Do not wrap this in
+      // Pull paint onto the backdrop and shrink layout by the same amount —
+      // otherwise scroll height keeps the overlap band as dead space at the
+      // bottom. Stock Transform.translate fails hit tests in the overflow
+      // band (y < 0) — seasons/cast never see hover. Do not wrap this in
       // Opacity / AnimatedOpacity / other size.contains hit-testers — they
       // reject y < 0 before this runs (see DetailsScrollPage fade placement).
       return _OverlapPullUp(
         overlap: overlap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            content,
-            ColoredBox(
-              color: shellBg,
-              child: SizedBox(height: overlap, width: double.infinity),
-            ),
-          ],
-        ),
+        child: content,
       );
     }
 
@@ -124,7 +115,7 @@ class _RenderOverlapPullUp extends RenderProxyBox {
   set overlap(double value) {
     if (_overlap == value) return;
     _overlap = value;
-    markNeedsPaint();
+    markNeedsLayout();
   }
 
   Matrix4 get _paintTransform =>
@@ -132,6 +123,18 @@ class _RenderOverlapPullUp extends RenderProxyBox {
 
   @override
   bool get alwaysNeedsCompositing => _overlap != 0;
+
+  @override
+  void performLayout() {
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+    child!.layout(constraints, parentUsesSize: true);
+    final childSize = child!.size;
+    final pulled = (childSize.height - _overlap).clamp(0.0, double.infinity);
+    size = constraints.constrain(Size(childSize.width, pulled));
+  }
 
   @override
   void paint(PaintingContext context, Offset offset) {
@@ -155,11 +158,12 @@ class _RenderOverlapPullUp extends RenderProxyBox {
 
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
-    // Painted y-range is [-overlap, size.height - overlap).
+    // Layout height is child − overlap; paint shifts up so the painted band is
+    // [-overlap, size.height).
     if (position.dx < 0 ||
         position.dx >= size.width ||
         position.dy < -_overlap ||
-        position.dy >= size.height - _overlap) {
+        position.dy >= size.height) {
       return false;
     }
     return result.addWithPaintTransform(

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
@@ -10,6 +11,7 @@ import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
@@ -928,6 +930,10 @@ class _ProfileEditor extends StatefulWidget {
 }
 
 class _ProfileEditorState extends State<_ProfileEditor> {
+  late final FocusNode _saveFocus = FocusNode(debugLabel: 'profile-save');
+  late final FocusNode _cancelFocus = FocusNode(debugLabel: 'profile-cancel');
+  late final FocusNode _deleteFocus = FocusNode(debugLabel: 'profile-delete');
+
   @override
   void initState() {
     super.initState();
@@ -946,10 +952,49 @@ class _ProfileEditorState extends State<_ProfileEditor> {
   @override
   void dispose() {
     widget.nameController.removeListener(_onName);
+    _saveFocus.dispose();
+    _cancelFocus.dispose();
+    _deleteFocus.dispose();
     super.dispose();
   }
 
   void _onName() => setState(() {});
+
+  /// App-root [DirectionalFocusAction] no-ops ←/→ — drive spatial walk here.
+  KeyEventResult _actionKey(FocusNode node, KeyEvent event) {
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return KeyEventResult.ignored;
+    }
+    if (event is KeyUpEvent) {
+      ShellTvHoldAccel.note(event);
+      return KeyEventResult.ignored;
+    }
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    ShellTvHoldAccel.note(event);
+    final key = event.logicalKey;
+    TraversalDirection? direction;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      direction = TraversalDirection.left;
+    } else if (key == LogicalKeyboardKey.arrowRight) {
+      direction = TraversalDirection.right;
+    } else if (key == LogicalKeyboardKey.arrowUp) {
+      direction = TraversalDirection.up;
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      direction = TraversalDirection.down;
+    }
+    if (direction == null) return KeyEventResult.ignored;
+    final vertical = direction == TraversalDirection.up ||
+        direction == TraversalDirection.down;
+    final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
+    var n = FocusManager.instance.primaryFocus ?? node;
+    var moved = false;
+    for (var i = 0; i < steps; i++) {
+      if (!n.focusInDirection(direction)) break;
+      moved = true;
+      n = FocusManager.instance.primaryFocus ?? n;
+    }
+    return moved ? KeyEventResult.handled : KeyEventResult.ignored;
+  }
 
   Widget _avatarPick(String key) {
     final selected = key == widget.avatarKey;
@@ -1049,29 +1094,39 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                 ),
               ],
               const SizedBox(height: 20),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  Button(
-              variant: ButtonVariant.primary,
-                    label: widget.saving ? 'Saving…' : 'Save profile',
-                    onPressed:
-                        widget.saving || name.isEmpty ? null : widget.onSave,
-                    loading: widget.saving,
-                  ),
-                  if (widget.canCancel)
+              FocusTraversalGroup(
+                policy: ReadingOrderTraversalPolicy(),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
                     Button(
-                      label: 'Cancel',
-                      onPressed: widget.saving ? null : widget.onCancel,
+                      variant: ButtonVariant.primary,
+                      label: widget.saving ? 'Saving…' : 'Save profile',
+                      onPressed: widget.saving || name.isEmpty
+                          ? null
+                          : widget.onSave,
+                      loading: widget.saving,
+                      focusNode: _saveFocus,
+                      onKeyEvent: _actionKey,
                     ),
-                  if (widget.canDelete)
-                    Button(
-              variant: ButtonVariant.destructive,
-                      label: 'Delete profile',
-                      onPressed: widget.saving ? null : widget.onDelete,
-                    ),
-                ],
+                    if (widget.canCancel)
+                      Button(
+                        label: 'Cancel',
+                        onPressed: widget.saving ? null : widget.onCancel,
+                        focusNode: _cancelFocus,
+                        onKeyEvent: _actionKey,
+                      ),
+                    if (widget.canDelete)
+                      Button(
+                        variant: ButtonVariant.destructive,
+                        label: 'Delete profile',
+                        onPressed: widget.saving ? null : widget.onDelete,
+                        focusNode: _deleteFocus,
+                        onKeyEvent: _actionKey,
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
