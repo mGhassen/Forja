@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -32,7 +33,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     this.items = const [],
     this.body,
     this.side,
-    this.sideWidth = ShellTokens.categoryRailWidth,
+    this.sideWidth,
     this.sideOnLeading = true,
     this.sideGap = 0,
     this.backgroundColor,
@@ -68,7 +69,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
       items: CatalogCardsGrid.itemsFromProps(props),
       body: body,
       side: side,
-      sideWidth: propsNumOr(props, 'sideWidth', ShellTokens.categoryRailWidth),
+      sideWidth: propsNum(props, 'sideWidth'),
       sideOnLeading: propsBool(props, 'sideOnLeading', true),
       sideGap: propsNumOr(props, 'sideGap', 0),
       backgroundColor: propsColor(props, 'backgroundColor'),
@@ -94,7 +95,8 @@ class ColumnsHeaderBlock extends StatelessWidget {
 
   /// Host-fed side rail (e.g. [CatalogCategoryRail]). When null, [sideItems].
   final Widget? side;
-  final double sideWidth;
+  /// Null → [catalogSideRailWidth] (TV denser).
+  final double? sideWidth;
   final bool sideOnLeading;
   final double sideGap;
   final Color? backgroundColor;
@@ -114,6 +116,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = backgroundColor ?? ForjaShellColors.bgDark;
+    final railW = sideWidth ?? catalogSideRailWidth(context);
     final header = CatalogTopChrome(
       actions: actions,
       selections: actionSelections,
@@ -127,7 +130,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
           selectedId: selectedSideId ??
               (sideItems.isEmpty ? null : sideItems.first.id),
           onSelect: onSideSelect,
-          width: sideWidth,
+          width: railW,
         );
     final grid = body ??
         CatalogCardsGrid(
@@ -149,7 +152,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showSide && sideOnLeading) ...[
-          SizedBox(width: sideWidth, child: side),
+          SizedBox(width: railW, child: side),
           divider,
           if (sideGap > 0) SizedBox(width: sideGap),
         ],
@@ -157,7 +160,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
         if (showSide && !sideOnLeading) ...[
           if (sideGap > 0) SizedBox(width: sideGap),
           divider,
-          SizedBox(width: sideWidth, child: side),
+          SizedBox(width: railW, child: side),
         ],
       ],
     );

@@ -387,7 +387,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                         final tabTextHeight = shellScaled(
                           context,
                           ShellTokens.homeMenuRowHeight,
-                        ).clamp(28.0, ShellTokens.homeMenuRowHeight);
+                        );
                         // Provider logo → Search? → pack menus[] → Categories?
                         final hasSearch = widget.onSearch != null;
                         final menus = widget.menus;
@@ -616,11 +616,11 @@ class _CategoryTabState extends State<_CategoryTab> {
     final hoverW = shellScaled(
       context,
       ShellTokens.kitTopBarUnderlineHoverWidth,
-    ).clamp(14.0, ShellTokens.kitTopBarUnderlineHoverWidth);
+    );
     final selectedExtra = shellScaled(
       context,
       ShellTokens.kitTopBarUnderlineSelectedExtra,
-    ).clamp(2.0, ShellTokens.kitTopBarUnderlineSelectedExtra);
+    );
     if (t <= 0) return 0;
     if (t < _hoverT) return hoverW * (t / _hoverT);
     return hoverW + selectedExtra * ((t - _hoverT) / (_selectedT - _hoverT));
@@ -642,15 +642,15 @@ class _CategoryTabState extends State<_CategoryTab> {
         final tabHeight = shellScaled(
           context,
           ShellTokens.homeMenuRowHeight,
-        ).clamp(28.0, ShellTokens.homeMenuRowHeight);
+        );
         final tabFont = shellScaled(
           context,
           ShellTokens.kitTopBarTabFontSize,
-        ).clamp(14.0, ShellTokens.kitTopBarTabFontSize);
+        );
         final chevronSize = shellScaled(
           context,
           ShellTokens.kitTopBarChevronSize,
-        ).clamp(14.0, ShellTokens.kitTopBarChevronSize);
+        );
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -673,7 +673,7 @@ class _CategoryTabState extends State<_CategoryTab> {
                         width: shellScaled(
                           context,
                           ShellTokens.kitTopBarIconGap,
-                        ).clamp(4.0, ShellTokens.kitTopBarIconGap),
+                        ),
                       ),
                     ],
                     Text(
@@ -690,7 +690,7 @@ class _CategoryTabState extends State<_CategoryTab> {
                         width: shellScaled(
                           context,
                           ShellTokens.kitTopBarChevronGap,
-                        ).clamp(2.0, ShellTokens.kitTopBarChevronGap),
+                        ),
                       ),
                       Icon(
                         Icons.expand_more_rounded,
@@ -706,7 +706,7 @@ class _CategoryTabState extends State<_CategoryTab> {
               height: shellScaled(
                 context,
                 ShellTokens.shellCategoryUnderlineGap,
-              ).clamp(2.0, ShellTokens.shellCategoryUnderlineGap),
+              ),
             ),
             Align(
               alignment: Alignment.centerLeft,
@@ -714,7 +714,7 @@ class _CategoryTabState extends State<_CategoryTab> {
                 height: shellScaled(
                   context,
                   ShellTokens.shellNavUnderlineHeight,
-                ).clamp(1.0, ShellTokens.shellNavUnderlineHeight),
+                ),
                 width: underlineWidth,
                 decoration: BoxDecoration(
                   color: underlineWidth > 0 ? textColor : Colors.transparent,

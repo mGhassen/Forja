@@ -3,6 +3,7 @@ import 'package:flutter/material.dart'
 import 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/blocks/search/search_block.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/accordion.dart';
 import 'package:forja_foundation/components/alert.dart';
 import 'package:forja_foundation/components/avatar.dart';
@@ -154,7 +155,7 @@ Widget? paintFoundationType(
       );
     case 'verticalMenu':
       return VerticalMenu(
-        width: propsNumOr(props, 'width', ShellTokens.sideRailWidth),
+        width: propsNumOr(props, 'width', catalogSideRailWidth(context)),
         backgroundColor: propsColor(props, 'backgroundColor'),
         minHeight: propsNumOr(props, 'minHeight', 40),
         fontSize: propsNumOr(props, 'fontSize', 14),
@@ -1507,7 +1508,7 @@ Widget? paintFoundationType(
           selectedId: propsString(props, 'selectedId') ??
               (side.isEmpty ? 'all' : side.first.id),
           onSelect: (_) {},
-          width: propsNumOr(props, 'width', ShellTokens.sideRailWidth),
+          width: propsNumOr(props, 'width', catalogSideRailWidth(context)),
         ),
       );
     case 'catalogCategoryRail':
@@ -1521,7 +1522,7 @@ Widget? paintFoundationType(
           selectedId: propsString(props, 'selectedId') ??
               (cats.isEmpty ? 'all' : cats.first.id),
           onSelect: (_) {},
-          width: propsNumOr(props, 'width', ShellTokens.sideRailWidth),
+          width: propsNumOr(props, 'width', catalogSideRailWidth(context)),
           compact: propsBool(props, 'compact'),
           rowHeight: propsNum(props, 'rowHeight'),
           fontSize: propsNum(props, 'fontSize'),

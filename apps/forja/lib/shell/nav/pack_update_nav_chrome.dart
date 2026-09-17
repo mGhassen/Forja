@@ -8,6 +8,9 @@ import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/nav/pack_update_alert_icon.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
+import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 export 'package:forja/shell/nav/pack_update_alert_icon.dart'
     show PackUpdateAlertIcon;
@@ -104,7 +107,6 @@ class _PackUpdateNavChromeState extends State<PackUpdateNavChrome> {
           _syncPortal(show: show);
         });
 
-        final label = EnginePackUpdateCopy.available(count);
         final offset = ShellTokens.packUpdateFlyoutOffset;
 
         return CompositedTransformTarget(
@@ -125,7 +127,7 @@ class _PackUpdateNavChromeState extends State<PackUpdateNavChrome> {
                     ? Offset(0, -offset)
                     : Offset(offset, 0),
                 child: _PackUpdateFlyout(
-                  label: label,
+                  count: count,
                   onTap: PackUpdateNavChrome.openForjaPacks,
                 ),
               );
@@ -153,16 +155,17 @@ class _PackUpdateNavChromeState extends State<PackUpdateNavChrome> {
 
 class _PackUpdateFlyout extends StatelessWidget {
   const _PackUpdateFlyout({
-    required this.label,
+    required this.count,
     required this.onTap,
   });
 
-  final String label;
+  final int count;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final slide = ShellTokens.packUpdateFlyoutSlide;
+    final radius = BorderRadius.circular(ShellTokens.packUpdateFlyoutRadius);
     return Material(
       color: Colors.transparent,
       child: TweenAnimationBuilder<double>(
@@ -182,53 +185,61 @@ class _PackUpdateFlyout extends StatelessWidget {
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
             onTap: onTap,
-            child: Container(
-              constraints: const BoxConstraints(
-                maxWidth: ShellTokens.packUpdateFlyoutMaxWidth,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: ShellTokens.packUpdateFlyoutPadH,
-                vertical: ShellTokens.packUpdateFlyoutPadV,
-              ),
-              decoration: BoxDecoration(
-                color: ForjaShellColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(
-                  ShellTokens.packUpdateFlyoutRadius,
-                ),
-                border: Border.all(color: ForjaShellColors.borderSubtle),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(
-                      alpha: ShellTokens.packUpdateFlyoutShadowAlpha,
-                    ),
-                    blurRadius: ShellTokens.packUpdateFlyoutShadowBlur,
-                    offset: const Offset(
-                      0,
-                      ShellTokens.packUpdateFlyoutShadowY,
-                    ),
+            child: SizedBox(
+              width: ShellTokens.packUpdateFlyoutWidth,
+              child: ForjaFrostedPanel(
+                borderRadius: radius,
+                blurSigma: ShellTokens.packUpdateFlyoutBlur,
+                border: Border.all(color: GuideChromeStyle.border),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    ShellTokens.packUpdateFlyoutPadH,
+                    ShellTokens.packUpdateFlyoutPadV,
+                    ShellTokens.packUpdateFlyoutPadH,
+                    ShellTokens.packUpdateFlyoutPadV,
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const PackUpdateAlertIcon(
-                    size: ShellTokens.packUpdateFlyoutIconSize,
-                    heartbeat: false,
-                  ),
-                  const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
-                  Flexible(
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        color: ForjaShellColors.textPrimary,
-                        fontSize: ShellTokens.packUpdateFlyoutFontSize,
-                        fontWeight: FontWeight.w600,
-                        height: ShellTokens.packUpdateFlyoutLineHeight,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const PackUpdateAlertIcon(
+                            size: ShellTokens.packUpdateFlyoutIconSize,
+                            heartbeat: false,
+                          ),
+                          const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
+                          Expanded(
+                            child: Text(
+                              EnginePackUpdateCopy.available(count),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: ForjaShellColors.brandGreen,
+                                fontSize: ShellTokens.packUpdateFlyoutTitleSize,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                      const SizedBox(
+                        height: ShellTokens.packUpdateFlyoutMetaGap,
+                      ),
+                      Text(
+                        EnginePackUpdateCopy.tipAction,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: Colors.white,
+                          fontSize: ShellTokens.packUpdateFlyoutMetaSize,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

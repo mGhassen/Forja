@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -45,7 +46,7 @@ class CatalogCategoryRail extends StatefulWidget {
     this.onTogglePin,
     this.onReorder,
     this.canReorder = false,
-    this.width = ShellTokens.categoryRailWidth,
+    this.width,
     this.compact = false,
     this.rowHeight,
     this.fontSize,
@@ -64,7 +65,8 @@ class CatalogCategoryRail extends StatefulWidget {
   /// [newIndex] already accounts for the removed item ([onReorderItem]).
   final void Function(int oldIndex, int newIndex)? onReorder;
   final bool canReorder;
-  final double width;
+  /// Null → [catalogSideRailWidth] (TV denser).
+  final double? width;
   final bool compact;
 
   /// Row extent override. Null → compact 42 / desktop 46.
@@ -161,9 +163,10 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
 
   @override
   Widget build(BuildContext context) {
+    final railW = widget.width ?? catalogSideRailWidth(context);
     if (widget.items.isEmpty) {
       return SizedBox(
-        width: widget.width,
+        width: railW,
         child: const Empty(title: 'No categories', size: EmptySize.sm),
       );
     }
@@ -213,7 +216,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
     final list = ColoredBox(
       color: ForjaShellColors.bgDark,
       child: SizedBox(
-        width: widget.width,
+        width: railW,
         child: CustomScrollView(
           controller: _scroll,
           slivers: [

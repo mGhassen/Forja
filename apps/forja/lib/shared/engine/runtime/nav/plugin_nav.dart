@@ -844,24 +844,35 @@ abstract final class PluginNavRegistry {
     return null;
   }
 
+  /// Whether [pluginId] advertises pack capability `details`.
+  static Future<bool> pluginHasDetails(String pluginId) async {
+    final want = pluginId.trim();
+    if (want.isEmpty) return false;
+    for (final pl in await listKitPlugins()) {
+      if (pl.id == want) return pl.hasCapability('details');
+    }
+    return false;
+  }
+
   /// First enabled hub whose pack declares [typeToken] in `engine.types`.
   ///
-  /// Prefers source plugins (`details` / `nav` / `feed`) over enrich-only
-  /// companions (e.g. hub before `iptv-enrich-tmdb`).
+  /// Prefers `details` hubs, then `nav`/`feed`, then enrich-only companions
+  /// (e.g. hub before `iptv-enrich-tmdb`).
   static Future<String?> pluginIdForEngineType(String typeToken) async {
     final want = typeToken.trim();
     if (want.isEmpty) return null;
+    String? navFeedFallback;
     String? enrichFallback;
     for (final pl in await listKitPlugins()) {
       if (!pl.types.contains(want)) continue;
-      if (pl.hasCapability('details') ||
-          pl.hasCapability('nav') ||
-          pl.hasCapability('feed')) {
-        return pl.id;
+      if (pl.hasCapability('details')) return pl.id;
+      if (pl.hasCapability('nav') || pl.hasCapability('feed')) {
+        navFeedFallback ??= pl.id;
+        continue;
       }
       enrichFallback ??= pl.id;
     }
-    return enrichFallback;
+    return navFeedFallback ?? enrichFallback;
   }
 
   /// Resolve hub plugin id without hardcoded tab or pack ids.

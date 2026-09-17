@@ -26,20 +26,14 @@ Future<String?> resolveDetailsShellTabId({
   required String pluginId,
   required MetaItem item,
 }) async {
-  final fromPlugin = hubShellTabIdForPlugin(pluginId);
-  if (fromPlugin != null && fromPlugin.isNotEmpty) return fromPlugin;
-
-  final surface = item.open?.surface.trim() ?? '';
-  String? engineType;
-  if (surface == 'tmdb') {
-    final media = (item.tmdbMediaType ?? item.type).trim().toLowerCase();
-    engineType = media == 'tv' ? 'tv' : 'movie';
-  } else if (surface.isNotEmpty && surface != 'live') {
-    engineType = surface;
-  } else {
-    final t = item.type.trim();
-    if (t.isNotEmpty) engineType = t;
+  // Feed-only packs (My List) still have a nav tab — don't keep that selected
+  // when opening title details; resolve from open.surface instead.
+  if (await PluginNavRegistry.pluginHasDetails(pluginId)) {
+    final fromPlugin = hubShellTabIdForPlugin(pluginId);
+    if (fromPlugin != null && fromPlugin.isNotEmpty) return fromPlugin;
   }
+
+  final engineType = detailsEngineTypeForOpen(item);
   if (engineType == null || engineType.isEmpty) return null;
   final hubPlugin =
       await PluginNavRegistry.pluginIdForEngineType(engineType);

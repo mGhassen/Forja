@@ -24,17 +24,55 @@ String tmdbCatalogTypeToken(MetaItem item) {
   return media == 'tv' ? 'tv' : 'movie';
 }
 
-/// When [item.open.surface] is `tmdb`, prefer the TMDB catalog plugin even if
-/// the caller still passes a browse hub id (Asian Drama More Like This, etc.).
+/// Engine type used to pick the details hub for [item.open].
+@visibleForTesting
+String? detailsEngineTypeForOpen(MetaItem item) {
+  final surface = item.open?.surface.trim() ?? '';
+  if (surface == 'tmdb') return tmdbCatalogTypeToken(item);
+  if (surface.isNotEmpty && surface != 'live') return surface;
+  final t = item.type.trim().toLowerCase();
+  if (t.isEmpty || t == 'list') return null;
+  return t;
+}
+
+/// Remap away from the tap source when it cannot serve details, or when open
+/// is TMDB (cross-hub rails / My List).
+@visibleForTesting
+bool shouldResolveOpenPluginAwayFromCaller({
+  required bool callerHasDetails,
+  required MetaItem item,
+}) {
+  final surface = item.open?.surface.trim() ?? '';
+  if (surface == 'tmdb') return true;
+  if (!callerHasDetails && detailsEngineTypeForOpen(item) != null) {
+    return true;
+  }
+  return false;
+}
+
+/// Resolve the pack that should run `action: details` for [item].
+///
+/// Kit feeds (My List) pass their own plugin id on tap — remap to the hub that
+/// owns [item.open.surface] when the caller has no `details` capability.
+/// TMDB open always remaps (Asian Drama More Like This, etc.).
 Future<String> resolveOpenPluginId({
   required String pluginId,
   required MetaItem item,
 }) async {
-  final surface = item.open?.surface.trim() ?? '';
-  if (surface != 'tmdb') return pluginId;
+  final callerHasDetails =
+      await PluginNavRegistry.pluginHasDetails(pluginId);
+  if (!shouldResolveOpenPluginAwayFromCaller(
+    callerHasDetails: callerHasDetails,
+    item: item,
+  )) {
+    return pluginId;
+  }
+  final engineType = detailsEngineTypeForOpen(item);
+  if (engineType == null || engineType.isEmpty) return pluginId;
   final resolved =
-      await PluginNavRegistry.pluginIdForEngineType(tmdbCatalogTypeToken(item));
-  if (resolved != null && resolved.isNotEmpty) return resolved;
+      await PluginNavRegistry.pluginIdForEngineType(engineType);
+  if (resolved == null || resolved.isEmpty) return pluginId;
+  if (await PluginNavRegistry.pluginHasDetails(resolved)) return resolved;
   return pluginId;
 }
 

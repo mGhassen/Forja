@@ -179,5 +179,92 @@ void main() {
         'movie',
       );
     });
+
+    test('detailsEngineTypeForOpen uses opaque surface', () {
+      final drama = MetaItem(
+        id: '18842',
+        type: 'drama',
+        name: 'Test',
+        open: const MetaOpen(
+          surface: 'drama',
+          id: '18842',
+          extract: MetaOpenExtract(
+            resolveType: 'drama',
+            panelCategory: 'drama',
+          ),
+        ),
+      );
+      expect(detailsEngineTypeForOpen(drama), 'drama');
+
+      final tmdb = MetaItem(
+        id: '603',
+        type: 'movie',
+        name: 'Matrix',
+        tmdbMediaType: 'movie',
+        open: const MetaOpen(
+          surface: 'tmdb',
+          id: '603',
+          extract: MetaOpenExtract(
+            resolveType: 'movie',
+            panelCategory: 'movie',
+            ctx: {'tmdbId': 603},
+          ),
+        ),
+      );
+      expect(detailsEngineTypeForOpen(tmdb), 'movie');
+    });
+
+    test('feed-only caller remaps non-tmdb open; details hub keeps itself', () {
+      final drama = MetaItem(
+        id: '18842',
+        type: 'drama',
+        name: 'Test',
+        open: const MetaOpen(
+          surface: 'drama',
+          id: '18842',
+          extract: MetaOpenExtract(
+            resolveType: 'drama',
+            panelCategory: 'drama',
+          ),
+        ),
+      );
+      expect(
+        shouldResolveOpenPluginAwayFromCaller(
+          callerHasDetails: false,
+          item: drama,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldResolveOpenPluginAwayFromCaller(
+          callerHasDetails: true,
+          item: drama,
+        ),
+        isFalse,
+      );
+
+      final tmdb = MetaItem(
+        id: '603',
+        type: 'movie',
+        name: 'Matrix',
+        tmdbMediaType: 'movie',
+        open: const MetaOpen(
+          surface: 'tmdb',
+          id: '603',
+          extract: MetaOpenExtract(
+            resolveType: 'movie',
+            panelCategory: 'movie',
+            ctx: {'tmdbId': 603},
+          ),
+        ),
+      );
+      expect(
+        shouldResolveOpenPluginAwayFromCaller(
+          callerHasDetails: true,
+          item: tmdb,
+        ),
+        isTrue,
+      );
+    });
   });
 }

@@ -1066,26 +1066,27 @@ class CatalogSideRail extends StatelessWidget {
     required this.items,
     required this.selectedId,
     this.onSelect,
-    this.width = ShellTokens.categoryRailWidth,
+    this.width,
   });
 
   final List<({String id, String label})> items;
   final String? selectedId;
   final ValueChanged<String>? onSelect;
-  final double width;
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
+    final railW = width ?? catalogSideRailWidth(context);
     if (items.isEmpty) {
       return SizedBox(
-        width: width,
+        width: railW,
         child: const Empty(title: 'No categories', size: EmptySize.sm),
       );
     }
     return ColoredBox(
       color: ForjaShellColors.bgDark,
       child: SizedBox(
-        width: width,
+        width: railW,
         child: ListView.builder(
           padding: const EdgeInsets.symmetric(vertical: ShellTokens.categoryRailListPadV),
           itemCount: items.length,

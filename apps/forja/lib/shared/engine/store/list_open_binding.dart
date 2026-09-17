@@ -81,15 +81,6 @@ String _candidateLabel(EnginePlugin pl) {
 abstract final class ListOpenBinding {
   ListOpenBinding._();
 
-  static Future<bool> _pluginHasDetails(String pluginId) async {
-    final want = pluginId.trim();
-    if (want.isEmpty) return false;
-    for (final pl in await PluginNavRegistry.listKitPlugins()) {
-      if (pl.id == want) return pl.hasCapability('details');
-    }
-    return false;
-  }
-
   static Future<List<ListOpenCandidate>> candidatesFor({
     required Map<String, dynamic> item,
     required MetaItem meta,
@@ -136,7 +127,8 @@ abstract final class ListOpenBinding {
     final id = open.id.trim();
     if (id.isEmpty) return null;
     final fromRow = item['pluginId']?.toString().trim() ?? '';
-    if (fromRow.isNotEmpty && await _pluginHasDetails(fromRow)) {
+    if (fromRow.isNotEmpty &&
+        await PluginNavRegistry.pluginHasDetails(fromRow)) {
       return (pluginId: fromRow, meta: meta);
     }
     final surface = open.surface.trim();
@@ -146,14 +138,14 @@ abstract final class ListOpenBinding {
       );
       if (resolved != null &&
           resolved.isNotEmpty &&
-          await _pluginHasDetails(resolved)) {
+          await PluginNavRegistry.pluginHasDetails(resolved)) {
         return (pluginId: resolved, meta: meta);
       }
     } else if (surface.isNotEmpty) {
       final resolved = await PluginNavRegistry.pluginIdForEngineType(surface);
       if (resolved != null &&
           resolved.isNotEmpty &&
-          await _pluginHasDetails(resolved)) {
+          await PluginNavRegistry.pluginHasDetails(resolved)) {
         return (pluginId: resolved, meta: meta);
       }
     }
@@ -170,7 +162,7 @@ abstract final class ListOpenBinding {
     for (final token in tokens) {
       final preferred = await ListOpenPrefs.defaultPluginId(token);
       if (preferred == null || preferred.isEmpty) continue;
-      if (!await _pluginHasDetails(preferred)) continue;
+      if (!await PluginNavRegistry.pluginHasDetails(preferred)) continue;
       EnginePlugin? pl;
       for (final p in await PluginNavRegistry.listKitPlugins()) {
         if (p.id == preferred) {

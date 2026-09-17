@@ -235,15 +235,6 @@ ListFollowTarget? listFollowTargetFromLegacyItemSync(
   return ListFollowTarget.fromMeta(pluginId: pluginId, meta: meta);
 }
 
-Future<bool> _pluginHasDetails(String pluginId) async {
-  final want = pluginId.trim();
-  if (want.isEmpty) return false;
-  for (final pl in await PluginNavRegistry.listKitPlugins()) {
-    if (pl.id == want) return pl.hasCapability('details');
-  }
-  return false;
-}
-
 /// Details plugin for a list row — opaque `open` / row pluginId only.
 Future<String?> resolveLegacyListDetailsPluginId({
   required Map<String, dynamic> item,
@@ -252,7 +243,7 @@ Future<String?> resolveLegacyListDetailsPluginId({
   final fromRow = item['pluginId']?.toString().trim();
   if (fromRow != null &&
       fromRow.isNotEmpty &&
-      await _pluginHasDetails(fromRow)) {
+      await PluginNavRegistry.pluginHasDetails(fromRow)) {
     return fromRow;
   }
 

@@ -12,6 +12,7 @@ abstract final class EnginePackUpdateCopy {
     return '$count updates available';
   }
 
+  static const tipAction = 'Open Forja Packs';
   static const checking = 'Checking for plugin updates…';
   static const upToDate = 'All plugins are up to date';
 }
