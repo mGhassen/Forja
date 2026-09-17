@@ -13,6 +13,8 @@ flutter pub get
 if [ ! -d macos ]; then
   flutter create --platforms=macos .
 fi
+# Keep app deploy target at 10.15; gate PasskeysPlugin to macOS 13.5+ only.
+"$APP/macos/gate_passkeys_registrant.sh"
 # Match CI: compile unsigned, then deep ad-hoc sign (no paid Apple cert).
 FLUTTER_XCODE_CODE_SIGNING_ALLOWED=NO flutter build macos --release
 "$ROOT/scripts/codesign_macos_adhoc.sh"

@@ -83,6 +83,7 @@ dependencies:
   supabase_flutter: ^2.16.0
   app_links: ^7.2.1
   flutter_secure_storage: ^9.2.4
+  passkeys: ^2.22.0
   sentry_flutter: ^9.25.0
   posthog_flutter: ^5.32.1
   flutter_riverpod: ^2.6.1

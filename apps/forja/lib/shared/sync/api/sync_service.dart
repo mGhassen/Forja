@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
+import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
@@ -9,6 +10,9 @@ import 'package:forja/shared/sync/auth/desktop_browser_auth.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Passkeys are @experimental on GoTrueClient.
+// ignore_for_file: experimental_member_use
 
 class SyncProfile {
   const SyncProfile({
@@ -328,6 +332,63 @@ class SyncService {
     );
     _notifyIdentityChanged();
     return response;
+  }
+
+  Future<AuthResponse> signInWithPasskey({String? captchaToken}) async {
+    if (!ForjaPasskeys.supported) {
+      throw const AuthException(
+        'Passkeys are only available on macOS and Windows.',
+      );
+    }
+    await ForjaSupabase.ensureInitialized();
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null) {
+      throw const AuthException('Supabase is not configured for this build.');
+    }
+    final response = await client.auth.signInWithPasskey(
+      ForjaPasskeys.authenticator,
+      captchaToken: captchaToken,
+    );
+    _notifyIdentityChanged();
+    return response;
+  }
+
+  Future<Passkey> registerPasskey() async {
+    if (!ForjaPasskeys.supported) {
+      throw const AuthException(
+        'Passkeys are only available on macOS and Windows.',
+      );
+    }
+    await ForjaSupabase.ensureInitialized();
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null) {
+      throw const AuthException('Supabase is not configured for this build.');
+    }
+    return client.auth.registerPasskey(ForjaPasskeys.authenticator);
+  }
+
+  Future<List<Passkey>> listPasskeys() async {
+    if (!ForjaPasskeys.supported) return const [];
+    await ForjaSupabase.ensureInitialized();
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null || client.auth.currentSession == null) {
+      return const [];
+    }
+    return client.auth.passkey.list();
+  }
+
+  Future<void> deletePasskey(String passkeyId) async {
+    if (!ForjaPasskeys.supported) {
+      throw const AuthException(
+        'Passkeys are only available on macOS and Windows.',
+      );
+    }
+    await ForjaSupabase.ensureInitialized();
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null) {
+      throw const AuthException('Supabase is not configured for this build.');
+    }
+    await client.auth.passkey.delete(passkeyId: passkeyId);
   }
 
   Future<AuthResponse> createAccount({
