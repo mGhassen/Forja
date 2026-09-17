@@ -402,6 +402,23 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     ];
   }
 
+  /// Movies/Series rail — same Categories sort as Live (no pin/reorder).
+  List<CatalogCategoryItem> _vodItems(PortalCatalogSort sort) {
+    final plain = _items.isNotEmpty ? _items : _plainItems();
+    if (sort == PortalCatalogSort.playlist || plain.length < 2) {
+      return plain;
+    }
+    final cats = [
+      for (final e in plain) PortalCategory(id: e.id, name: e.label),
+    ];
+    final sorted = PortalLiveCatalog.sortCategories(cats, sort: sort);
+    final byId = {for (final e in plain) e.id: e};
+    return [
+      for (final c in sorted)
+        if (byId.containsKey(c.id)) byId[c.id]!,
+    ];
+  }
+
   List<CatalogCategoryItem> _buildItems({
     required List<String> pinned,
     required List<String> order,
@@ -655,10 +672,10 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       );
     }
 
-    // Movies/Series/Channels: plain fixed list (no pin/widgets). Prefer cleared _items
-    // over stale Live seed until the VOD/Channels feed republishes kinds.
+    // Movies/Series/Channels: fixed list (no pin/widgets), honor Categories sort.
+    // Prefer cleared _items over stale Live seed until VOD/Channels republishes kinds.
     if (!_isLive) {
-      final vodItems = _items.isNotEmpty ? _items : _plainItems();
+      final vodItems = _vodItems(categorySort);
       if (hitListenable == null) {
         return rail(
           items: applySearchFilter(vodItems, const {}),
