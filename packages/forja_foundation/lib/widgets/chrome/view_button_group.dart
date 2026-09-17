@@ -173,7 +173,6 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
       suppressInkHover: true,
       showFocusFill: false,
       listIndex: widget.listIndex,
-      tvRowId: 'view-button-group',
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.topBar,
       onFocusChange: (f) => setState(() => _focused = f),

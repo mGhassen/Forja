@@ -19,13 +19,13 @@ const _kPortalsRowId = 'portals';
 /// Sources-panel chrome: bordered card, inner left probe/selection strip,
 /// expiry / title / platform+URL / seats, hover action rail.
 ///
-/// When [tvTabId] is set, the row + action chrome register via [ShellPaintScope].
+/// TV row + action chrome register via ambient [ShellPaintTvRowScope] /
+/// [ShellPaintTvTabScope] and [ShellPaintScope].
 class PortalListRow extends StatefulWidget {
   const PortalListRow({
     super.key,
     required this.item,
     this.leanback = false,
-    this.tvTabId,
     this.listIndex = 0,
     this.height = rowHeight,
     this.actionWidth = PortalListTokens.actionWidth,
@@ -49,7 +49,6 @@ class PortalListRow extends StatefulWidget {
 
   final PortalListItem item;
   final bool leanback;
-  final String? tvTabId;
   final int listIndex;
   final double height;
   final double actionWidth;
@@ -101,8 +100,10 @@ class _PortalListRowState extends State<PortalListRow> {
   PortalListItem get item => widget.item;
 
   bool get _tv =>
-      (widget.tvTabId ?? '').trim().isNotEmpty &&
+      ShellPaintTvTabScope.tabIdOf(context) != null &&
       ShellPaintScope.useTvFocusOf(context);
+
+  String? get _tabId => ShellPaintTvTabScope.tabIdOf(context);
 
   bool get _actionChromeFocused =>
       _favoriteFocus.hasFocus ||
@@ -531,7 +532,7 @@ class _PortalListRowState extends State<PortalListRow> {
     }
 
     if (_tv && reveal) {
-      final tab = widget.tvTabId!.trim();
+      final tab = _tabId!;
       tile = ShellPaintScope.tvRow(
         context: context,
         tabId: tab,
@@ -549,7 +550,6 @@ class _PortalListRowState extends State<PortalListRow> {
     final isActive = item.selected;
     final isFav = item.favorite;
     final title = item.label;
-    final tab = (widget.tvTabId ?? '').trim();
     final deleting = item.deleting;
     final titleColor = isFav
         ? const Color(0xFFFBBF24)
@@ -663,7 +663,6 @@ class _PortalListRowState extends State<PortalListRow> {
                         showFocusFill: false,
                         suppressInkHover: true,
                         focusNode: _favoriteFocus,
-                        tvTabId: tab,
                         tvRowId: _actionsRowId,
                         tvItemIndex: 0,
                         ensureVisibleMode: ShellPaintEnsureVisible.off,
@@ -721,8 +720,6 @@ class _PortalListRowState extends State<PortalListRow> {
         suppressInkHover: true,
         focusNode: _rowFocus,
         listIndex: widget.listIndex,
-        tvTabId: tab,
-        tvRowId: _kPortalsRowId,
         tvItemIndex: widget.listIndex,
         tvZone: ShellPaintTvZone.row,
         allowNestedFocus: !deleting,
@@ -762,7 +759,6 @@ class _PortalListRowState extends State<PortalListRow> {
               setState(() => _confirmingDelete = false);
               widget.onDelete?.call();
             },
-            tvTabId: _tv ? widget.tvTabId : null,
             tvRowId: _actionsRowId,
             tvItemIndex: 1,
             focusNode: _confirmYesFocus,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -231,10 +232,14 @@ class _TvKitRowState extends State<TvKitRow> {
 
   @override
   Widget build(BuildContext context) {
-    return TvKitRowScope(
+    return ShellPaintTvRowScope(
       tabId: _tabId,
       rowId: widget.rowId,
-      child: widget.child,
+      child: TvKitRowScope(
+        tabId: _tabId,
+        rowId: widget.rowId,
+        child: widget.child,
+      ),
     );
   }
 }

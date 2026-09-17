@@ -26,7 +26,6 @@ class SourcesPanelChrome extends StatefulWidget {
     this.subtitle,
     this.initialTabId,
     this.onClosed,
-    this.tvTabId,
     this.listRowId = 'sources-list',
     this.tabsRowId = 'sources-tabs',
     this.embedded = false,
@@ -63,7 +62,6 @@ class SourcesPanelChrome extends StatefulWidget {
   final Future<void> Function(SourcesRow row) onPlayRow;
   final VoidCallback? onClosed;
 
-  final String? tvTabId;
   final String listRowId;
   final String tabsRowId;
 

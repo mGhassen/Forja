@@ -31,8 +31,6 @@ class InteractivePosterCard extends StatefulWidget {
     this.listIndex,
     this.gridIndex,
     this.gridColumns,
-    this.tvTabId,
-    this.tvRowId,
     this.onUpEdge,
     this.onLeftEdge,
     this.onRightEdge,
@@ -54,8 +52,6 @@ class InteractivePosterCard extends StatefulWidget {
   final int? listIndex;
   final int? gridIndex;
   final int? gridColumns;
-  final String? tvTabId;
-  final String? tvRowId;
   final VoidCallback? onUpEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -229,8 +225,6 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
       listIndex: widget.listIndex,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
       tvZone: inGrid ? ShellPaintTvZone.grid : ShellPaintTvZone.row,
       tvItemIndex: widget.listIndex ?? widget.gridIndex,
       onUpEdge: widget.onUpEdge,

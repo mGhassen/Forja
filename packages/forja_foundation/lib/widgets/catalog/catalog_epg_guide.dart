@@ -676,7 +676,6 @@ class _ChannelCellState extends State<_ChannelCell> {
       suppressInkHover: true,
       showFocusFill: false,
       listIndex: widget.listIndex,
-      tvRowId: 'epg-channels',
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,
       onFocusChange: (f) => setState(() => _focused = f),

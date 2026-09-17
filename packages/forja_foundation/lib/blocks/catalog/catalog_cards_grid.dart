@@ -79,8 +79,6 @@ class CatalogCardsGrid extends StatelessWidget {
     this.itemHealthListenable,
     this.onItemInteractiveActive,
     this.loadEpgProgrammes,
-    this.tvTabId,
-    this.tvRowId,
     this.landEpoch,
     this.onHoldJumpToCategory,
     this.preferCategoryFocusOnLand = true,
@@ -132,10 +130,6 @@ class CatalogCardsGrid extends StatelessWidget {
   final Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
       loadEpgProgrammes;
 
-  /// TV focus graph tab / row for Live channel grid (pack `items`).
-  final String? tvTabId;
-  final String? tvRowId;
-
   /// Bumped by host to scroll/focus [selectedItemId] (after player / hydrate).
   final ValueListenable<int>? landEpoch;
 
@@ -180,29 +174,12 @@ class CatalogCardsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      Widget empty = Empty(
+      return Empty(
         title: emptyTitle,
         description: emptyDescription,
         icon: Icons.inbox_outlined,
         action: emptyAction,
       );
-      final tab = (tvTabId ?? '').trim();
-      final row = (tvRowId ?? '').trim();
-      // No-portal / empty catalog CTA must register so nav enter can land.
-      if (emptyAction != null &&
-          tab.isNotEmpty &&
-          row.isNotEmpty &&
-          ShellPaintScope.useTvFocusOf(context)) {
-        empty = ShellPaintScope.tvRow(
-          context: context,
-          tabId: tab,
-          rowId: row,
-          sortOrder: 2,
-          itemCount: 1,
-          child: empty,
-        );
-      }
-      return empty;
     }
 
     if (_guide) return _epgGuide(context);
@@ -279,8 +256,6 @@ class CatalogCardsGrid extends StatelessWidget {
       onItemInteractiveActive: onItemInteractiveActive,
       loadEpgProgrammes: loadEpgProgrammes,
       onItemTap: onItemTap,
-      tvTabId: tvTabId,
-      tvRowId: tvRowId,
       landEpoch: landEpoch,
       onHoldJumpToCategory: onHoldJumpToCategory,
       preferCategoryFocusOnLand: preferCategoryFocusOnLand,
@@ -292,9 +267,7 @@ class CatalogCardsGrid extends StatelessWidget {
   Widget _denseList(BuildContext context) {
     final inset = pad ?? ShellTokens.compactChromeLeadingInset(context);
     final trail = pad ?? ShellTokens.bodyHorizontalPadding;
-    final tab = (tvTabId ?? '').trim();
-    final row = (tvRowId ?? '').trim();
-    Widget body = CatalogDenseList(
+    return CatalogDenseList(
       itemCount: items.length,
       leading: inset,
       trailing: trail,
@@ -320,29 +293,12 @@ class CatalogCardsGrid extends StatelessWidget {
               selectedItemId!.isNotEmpty &&
               selectedItemId == id,
           listIndex: i,
-          tvTabId: tab.isEmpty ? null : tab,
-          tvRowId: row.isEmpty ? null : row,
           onLeftEdge: onLeftEdge,
           onRightEdge: onRightEdge,
           onTap: onItemTap == null ? null : () => onItemTap!(item),
         );
       },
     );
-    if (tab.isNotEmpty &&
-        row.isNotEmpty &&
-        items.isNotEmpty &&
-        ShellPaintScope.useTvFocusOf(context)) {
-      body = ShellPaintScope.tvRow(
-        context: context,
-        tabId: tab,
-        rowId: row,
-        sortOrder: 2,
-        itemCount: items.length,
-        axis: ShellPaintTvRowAxis.vertical,
-        child: body,
-      );
-    }
-    return body;
   }
 
   Widget _eventGrid(BuildContext context) {
@@ -477,8 +433,6 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
     this.onItemInteractiveActive,
     this.loadEpgProgrammes,
     this.onItemTap,
-    this.tvTabId,
-    this.tvRowId,
     this.landEpoch,
     this.onHoldJumpToCategory,
     this.preferCategoryFocusOnLand = true,
@@ -505,8 +459,6 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
   final Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
       loadEpgProgrammes;
   final void Function(Map<String, dynamic> item)? onItemTap;
-  final String? tvTabId;
-  final String? tvRowId;
   final ValueListenable<int>? landEpoch;
   final void Function(Map<String, dynamic> item)? onHoldJumpToCategory;
   final bool preferCategoryFocusOnLand;
@@ -763,8 +715,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         height: list ? 56 : layout?.cardH,
         gridIndex: i,
         gridColumns: list ? 1 : layout?.columns,
-        tvTabId: widget.tvTabId,
-        tvRowId: widget.tvRowId,
         onHoldJumpToCategory: widget.onHoldJumpToCategory == null
             ? null
             : () => widget.onHoldJumpToCategory!(item),
@@ -803,8 +753,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     final gap = widget.gap ?? (tv ? ShellTokens.tvPosterCardRowGap : 10.0);
     final leading = widget.pad ?? 8.0;
     final trailing = widget.pad ?? 12.0;
-    final tab = (widget.tvTabId ?? '').trim();
-    final rowId = (widget.tvRowId ?? '').trim();
 
     Widget body;
     if (list) {
@@ -857,22 +805,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       onJump: _letterJump,
       child: body,
     );
-
-    if (tab.isNotEmpty &&
-        rowId.isNotEmpty &&
-        ShellPaintScope.useTvFocusOf(context)) {
-      body = ShellPaintScope.tvRow(
-        context: context,
-        tabId: tab,
-        rowId: rowId,
-        sortOrder: 2,
-        itemCount: widget.items.length,
-        axis: list
-            ? ShellPaintTvRowAxis.vertical
-            : ShellPaintTvRowAxis.horizontal,
-        child: body,
-      );
-    }
     return body;
   }
 }
@@ -995,8 +927,6 @@ class _HoverDenseTile extends StatefulWidget {
     required this.viewers,
     required this.selected,
     this.listIndex,
-    this.tvTabId,
-    this.tvRowId,
     this.onLeftEdge,
     this.onRightEdge,
     this.onTap,
@@ -1008,8 +938,6 @@ class _HoverDenseTile extends StatefulWidget {
   final int viewers;
   final bool selected;
   final int? listIndex;
-  final String? tvTabId;
-  final String? tvRowId;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final VoidCallback? onTap;
@@ -1056,8 +984,6 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
       showFocusFill: false,
       showFocusBorder: false,
       listIndex: widget.listIndex,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,
       onLeftEdge: widget.onLeftEdge,

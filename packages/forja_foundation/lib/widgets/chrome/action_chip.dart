@@ -23,8 +23,6 @@ class ForjaActionChip extends StatefulWidget {
     this.fontSize = ShellTokens.actionChipFontSize,
     this.iconSize,
     this.gap = ShellTokens.actionChipGap,
-    this.tvTabId,
-    this.tvRowId,
     this.tvItemIndex,
     this.onLeftEdge,
     this.onRightEdge,
@@ -48,8 +46,6 @@ class ForjaActionChip extends StatefulWidget {
   /// Label chip icon (default 14) / iconOnly (default 20).
   final double? iconSize;
   final double gap;
-  final String? tvTabId;
-  final String? tvRowId;
   final int? tvItemIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -113,8 +109,6 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         suppressInkHover: true,
         showFocusFill: false,
         listIndex: widget.tvItemIndex,
-        tvTabId: widget.tvTabId,
-        tvRowId: widget.tvRowId,
         tvItemIndex: widget.tvItemIndex,
         tvZone: ShellPaintTvZone.topBar,
         onLeftEdge: widget.onLeftEdge,
@@ -196,8 +190,6 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
       suppressInkHover: true,
       showFocusFill: false,
       listIndex: widget.tvItemIndex,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellPaintTvZone.topBar,
       onLeftEdge: widget.onLeftEdge,

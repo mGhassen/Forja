@@ -14,7 +14,6 @@ class CatalogSearchScreen extends StatelessWidget {
     this.structuredSearch = false,
     this.loadRecommendations,
     this.pageBuilder,
-    this.tvTabId,
   });
 
   final Future<List<CatalogSearchResult>> Function(String query) onSearch;
@@ -25,7 +24,6 @@ class CatalogSearchScreen extends StatelessWidget {
     required String query,
     required List<CatalogSearchResult> results,
   })? loadRecommendations;
-  final String? tvTabId;
 
   /// Host builds the full [CatalogSearchPage] / TV overlay.
   final Widget Function({

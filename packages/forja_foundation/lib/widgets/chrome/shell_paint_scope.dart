@@ -12,6 +12,50 @@ enum ShellPaintEnsureVisible { off, row, item }
 /// Row axis for host [TvKitRow] registration (vertical lists vs rails).
 enum ShellPaintTvRowAxis { horizontal, vertical }
 
+/// Page/surface tab id for composites that invent private chrome rows.
+class ShellPaintTvTabScope extends InheritedWidget {
+  const ShellPaintTvTabScope({
+    super.key,
+    required this.tabId,
+    required super.child,
+  });
+
+  final String tabId;
+
+  static ShellPaintTvTabScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ShellPaintTvTabScope>();
+
+  static String? tabIdOf(BuildContext context) {
+    final s = maybeOf(context);
+    if (s == null) return null;
+    final t = s.tabId.trim();
+    return t.isEmpty ? null : t;
+  }
+
+  @override
+  bool updateShouldNotify(ShellPaintTvTabScope old) => tabId != old.tabId;
+}
+
+/// Current TV row coordinates. Mounted by [ShellPaintScope.tvRow] / host TvKitRow.
+class ShellPaintTvRowScope extends InheritedWidget {
+  const ShellPaintTvRowScope({
+    super.key,
+    required this.tabId,
+    required this.rowId,
+    required super.child,
+  });
+
+  final String tabId;
+  final String rowId;
+
+  static ShellPaintTvRowScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ShellPaintTvRowScope>();
+
+  @override
+  bool updateShouldNotify(ShellPaintTvRowScope old) =>
+      tabId != old.tabId || rowId != old.rowId;
+}
+
 /// Host-provided focus tap (typically wraps app `shellFocusableTap`).
 typedef ShellPaintFocusableTap = Widget Function({
   required BuildContext context,
@@ -168,6 +212,11 @@ class ShellPaintScope extends InheritedWidget {
             : ForjaMotionTheme.of(context)
                 .resolve(ForjaMotionPreset.chipLift)
                 .focusScale);
+    final rowScope = ShellPaintTvRowScope.maybeOf(context);
+    final resolvedTab =
+        (tvTabId ?? rowScope?.tabId ?? ShellPaintTvTabScope.tabIdOf(context))
+            ?.trim();
+    final resolvedRow = (tvRowId ?? rowScope?.rowId)?.trim();
     final scope = maybeOf(context);
     final tap = scope?.focusableTapBuilder;
     if (tap != null) {
@@ -189,8 +238,8 @@ class ShellPaintScope extends InheritedWidget {
         navLeftAlways: navLeftAlways,
         gridIndex: gridIndex,
         gridColumns: gridColumns,
-        tvTabId: tvTabId,
-        tvRowId: tvRowId,
+        tvTabId: (resolvedTab == null || resolvedTab.isEmpty) ? null : resolvedTab,
+        tvRowId: (resolvedRow == null || resolvedRow.isEmpty) ? null : resolvedRow,
         tvItemIndex: tvItemIndex,
         tvZone: tvZone,
         ensureVisibleMode: ensureVisibleMode,
@@ -240,8 +289,13 @@ class ShellPaintScope extends InheritedWidget {
     ShellPaintTvRowAxis axis = ShellPaintTvRowAxis.horizontal,
     required Widget child,
   }) {
+    final scoped = ShellPaintTvRowScope(
+      tabId: tabId,
+      rowId: rowId,
+      child: child,
+    );
     final wrap = maybeOf(context)?.wrapTvRow;
-    if (wrap == null) return child;
+    if (wrap == null) return scoped;
     return wrap(
       tabId: tabId,
       rowId: rowId,
@@ -250,7 +304,7 @@ class ShellPaintScope extends InheritedWidget {
       onFocusUp: onFocusUp,
       onFocusDown: onFocusDown,
       axis: axis,
-      child: child,
+      child: scoped,
     );
   }
 

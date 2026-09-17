@@ -34,8 +34,8 @@ class PortalListHeaderAction {
 /// Owns search chrome + empty/list composition. Host wires inventory → props
 /// and callbacks → engines; pack owns copy / action ids.
 ///
-/// When [tvTabId] is set, header + rows register into the host TV focus graph
-/// via [ShellPaintScope] (no coordinator imports in foundation).
+/// When [ShellPaintTvTabScope] is mounted, header + rows register into the
+/// host TV focus graph via [ShellPaintScope] (no coordinator imports).
 class PortalListView extends StatefulWidget {
   const PortalListView({
     super.key,
@@ -52,7 +52,6 @@ class PortalListView extends StatefulWidget {
     this.statusText = '',
     this.busy = false,
     this.leanback = false,
-    this.tvTabId,
     this.listScrollController,
     this.titleFontSize = 18,
     this.pad = const EdgeInsets.fromLTRB(
@@ -98,8 +97,6 @@ class PortalListView extends StatefulWidget {
   final bool busy;
   final bool leanback;
 
-  /// Host tab id for TV row registration (`iptv`, `live_sports`, …).
-  final String? tvTabId;
   final ScrollController? listScrollController;
   final double titleFontSize;
   final EdgeInsetsGeometry pad;
@@ -174,9 +171,11 @@ class _PortalListViewState extends State<PortalListView> {
   }
 
   bool get _tv {
-    final tab = (widget.tvTabId ?? '').trim();
-    return tab.isNotEmpty && ShellPaintScope.useTvFocusOf(context);
+    final tab = ShellPaintTvTabScope.tabIdOf(context);
+    return tab != null && ShellPaintScope.useTvFocusOf(context);
   }
+
+  String? get _tabId => ShellPaintTvTabScope.tabIdOf(context);
 
   IconData _iconFor(PortalListHeaderAction a) {
     final raw = a.icon.trim().isNotEmpty ? a.icon : a.id;
@@ -216,7 +215,7 @@ class _PortalListViewState extends State<PortalListView> {
     final status = widget.statusText.trim().isNotEmpty
         ? widget.statusText
         : '${filtered.length}';
-    final tab = (widget.tvTabId ?? '').trim();
+    final tab = _tabId ?? '';
 
     Widget header = _buildHeader(context, tab: tab);
     Widget body = filtered.isEmpty
@@ -325,7 +324,6 @@ class _PortalListViewState extends State<PortalListView> {
         icon: icon,
         color: color,
         onPressed: onPressed,
-        tvTabId: _tv ? tab : null,
         tvItemIndex: _tv ? index : null,
         onUpEdge: widget.onHeaderUp,
         onDownEdge: widget.onHeaderDown,
@@ -454,7 +452,6 @@ class _PortalListViewState extends State<PortalListView> {
             item: item,
             leanback: widget.leanback,
             height: widget.rowHeight,
-            tvTabId: _tv ? tab : null,
             listIndex: index,
             hoverOwnerId: widget.leanback ? null : _hoverRowId,
             onSelect: widget.busy || widget.onSelect == null
@@ -514,7 +511,6 @@ class _PortalHeaderIcon extends StatefulWidget {
     required this.tooltip,
     required this.onPressed,
     this.color,
-    this.tvTabId,
     this.tvItemIndex,
     this.onUpEdge,
     this.onDownEdge,
@@ -526,7 +522,6 @@ class _PortalHeaderIcon extends StatefulWidget {
   final String tooltip;
   final VoidCallback? onPressed;
   final Color? color;
-  final String? tvTabId;
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
@@ -564,9 +559,8 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
   @override
   Widget build(BuildContext context) {
     final body = Tooltip(message: widget.tooltip, child: _icon());
-    final tab = (widget.tvTabId ?? '').trim();
 
-    if (_tv && tab.isNotEmpty) {
+    if (_tv && ShellPaintTvRowScope.maybeOf(context) != null) {
       return ShellPaintScope.focusableTap(
         context: context,
         onTap: widget.onPressed,
@@ -574,8 +568,6 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
         motion: ForjaMotionPreset.fillOnly,
         suppressInkHover: true,
         showFocusFill: false,
-        tvTabId: tab,
-        tvRowId: PortalListView.headerRowId,
         tvItemIndex: widget.tvItemIndex,
         tvZone: ShellPaintTvZone.topBar,
         onUpEdge: widget.onUpEdge,

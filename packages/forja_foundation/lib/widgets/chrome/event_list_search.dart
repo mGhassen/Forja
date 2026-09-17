@@ -32,8 +32,6 @@ class EventListSearch extends StatefulWidget {
     this.fontSize = ShellTokens.eventSearchFontSize,
     this.iconSize = ShellTokens.eventSearchIconSize,
     this.fieldIconSize = ShellTokens.eventSearchClearIconSize,
-    this.tvTabId,
-    this.tvRowId,
     this.tvItemIndex,
     this.onLeftEdge,
     this.onRightEdge,
@@ -69,8 +67,6 @@ class EventListSearch extends StatefulWidget {
   final double iconSize;
   final double fieldIconSize;
 
-  final String? tvTabId;
-  final String? tvRowId;
   final int? tvItemIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -274,8 +270,6 @@ class EventListSearchState extends State<EventListSearch>
       motion: ForjaMotionPreset.fillOnly,
       suppressInkHover: true,
       showFocusFill: false,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellPaintTvZone.topBar,
       onLeftEdge: widget.onLeftEdge,

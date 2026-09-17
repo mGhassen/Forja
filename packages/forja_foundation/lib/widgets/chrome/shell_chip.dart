@@ -146,8 +146,6 @@ class ForjaShellChip extends StatefulWidget {
     this.iconSize = ShellTokens.shellChipIconSize,
     this.focusNode,
     this.listIndex,
-    this.tvTabId,
-    this.tvRowId,
     this.onDownEdge,
     this.onUpEdge,
     this.onLeftEdge,
@@ -174,8 +172,6 @@ class ForjaShellChip extends StatefulWidget {
   final double iconSize;
   final FocusNode? focusNode;
   final int? listIndex;
-  final String? tvTabId;
-  final String? tvRowId;
   final VoidCallback? onDownEdge;
   final VoidCallback? onUpEdge;
   final VoidCallback? onLeftEdge;
@@ -371,8 +367,6 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         showFocusBorder: false,
         showFocusFill: false,
         listIndex: widget.listIndex,
-        tvTabId: widget.tvTabId,
-        tvRowId: widget.tvRowId,
         tvItemIndex: widget.listIndex,
         tvZone: ShellPaintTvZone.chipStrip,
         onDownEdge: widget.onDownEdge,

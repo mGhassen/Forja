@@ -53,8 +53,6 @@ class CatalogCategoryRail extends StatefulWidget {
     this.rowPadH,
     this.listPadV = ShellTokens.categoryRailListPadV,
     this.pinSlotWidth = ShellTokens.categoryRailPinSlotWidth,
-    this.tvTabId,
-    this.tvRowId = 'catalog-categories',
   });
 
   final List<CatalogCategoryItem> items;
@@ -78,8 +76,6 @@ class CatalogCategoryRail extends StatefulWidget {
   final double? rowPadH;
   final double listPadV;
   final double pinSlotWidth;
-  final String? tvTabId;
-  final String tvRowId;
 
   static const double rowExtentDesktop = ShellTokens.categoryRailRowExtent;
   static const double rowExtentCompact = ShellTokens.categoryRailRowExtentCompact;
@@ -188,8 +184,6 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
         listIndex: listIndex,
         reorderIndex: canReorder ? reorderIndex : null,
         floating: _floatingId == item.id,
-        tvTabId: widget.tvTabId,
-        tvRowId: widget.tvRowId,
         rowExtent: _rowExtent,
         fontSize: widget.fontSize,
         iconSize: widget.iconSize,
@@ -319,8 +313,6 @@ class _CatalogCategoryRow extends StatefulWidget {
     required this.selected,
     required this.compact,
     required this.listIndex,
-    this.tvTabId,
-    required this.tvRowId,
     required this.rowExtent,
     required this.pinSlotWidth,
     this.fontSize,
@@ -340,8 +332,6 @@ class _CatalogCategoryRow extends StatefulWidget {
   final bool selected;
   final bool compact;
   final int listIndex;
-  final String? tvTabId;
-  final String tvRowId;
   final double rowExtent;
   final double pinSlotWidth;
   final double? fontSize;
@@ -696,8 +686,6 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       suppressInkHover: true,
       listIndex: widget.listIndex,
       navLeftAlways: true,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
       tvItemIndex: widget.listIndex,
       focusNode: _rowFocus,
       ensureVisibleMode: ShellPaintEnsureVisible.off,

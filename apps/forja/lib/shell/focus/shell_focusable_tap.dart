@@ -12,7 +12,10 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 
 export 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
-    show ShellPaintEnsureVisible;
+    show
+        ShellPaintEnsureVisible,
+        ShellPaintTvRowScope,
+        ShellPaintTvTabScope;
 
 /// Prevents nested horizontal rows from scrolling the parent vertical list.
 bool shellAbsorbHorizontalScroll(ScrollNotification notification) =>
@@ -150,7 +153,12 @@ Widget shellFocusableTap({
 }) {
   final policy =
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-  final tabId = tvTabId ?? ShellTvFocus.currentNavTabId;
+  final paintRow = ShellPaintTvRowScope.maybeOf(context);
+  final tabId = tvTabId ??
+      paintRow?.tabId ??
+      ShellPaintTvTabScope.tabIdOf(context) ??
+      ShellTvFocus.currentNavTabId;
+  final resolvedRowId = tvRowId ?? paintRow?.rowId;
   final resolvedLeftEdge = _resolveTvNavLeftEdge(
     context,
     onLeftEdge: onLeftEdge,
@@ -162,7 +170,7 @@ Widget shellFocusableTap({
   );
   final tvMeta = _resolveTvMeta(
     tabId: tabId,
-    tvRowId: tvRowId,
+    tvRowId: resolvedRowId,
     tvItemIndex: tvItemIndex ?? listIndex ?? gridIndex,
     tvZone: tvZone,
     gridColumns: gridColumns,

@@ -32,8 +32,6 @@ class ContinueSection extends StatelessWidget {
     this.onRemove,
     this.onInfo,
     this.resumingMetaId,
-    this.tvTabId,
-    this.tvRowId,
   }) : assert(items != null || children != null || entries != null || rail != null);
 
   final String title;
@@ -54,8 +52,6 @@ class ContinueSection extends StatelessWidget {
   final void Function(ContinueEntry entry)? onRemove;
   final void Function(ContinueEntry entry)? onInfo;
   final String? resumingMetaId;
-  final String? tvTabId;
-  final String? tvRowId;
 
   @override
   Widget build(BuildContext context) {
@@ -104,8 +100,6 @@ class ContinueSection extends StatelessWidget {
                   isLoading: resumingMetaId != null &&
                       entry.metaId == resumingMetaId,
                   listIndex: i,
-                  tvTabId: tvTabId,
-                  tvRowId: tvRowId,
                   onResume: onResume,
                   onRemove: onRemove,
                   onInfo: onInfo,
@@ -178,8 +172,6 @@ class _ContinueHoverCard extends StatefulWidget {
     required this.height,
     required this.isLoading,
     this.listIndex,
-    this.tvTabId,
-    this.tvRowId,
     this.onResume,
     this.onRemove,
     this.onInfo,
@@ -190,8 +182,6 @@ class _ContinueHoverCard extends StatefulWidget {
   final double height;
   final bool isLoading;
   final int? listIndex;
-  final String? tvTabId;
-  final String? tvRowId;
   final void Function(ContinueEntry entry)? onResume;
   final void Function(ContinueEntry entry)? onRemove;
   final void Function(ContinueEntry entry)? onInfo;
@@ -227,17 +217,15 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
             widget.onResume == null ? null : () => widget.onResume!(entry),
       ),
     );
-    final tab = (widget.tvTabId ?? '').trim();
-    final row = (widget.tvRowId ?? '').trim();
-    if (tab.isNotEmpty && row.isNotEmpty && widget.listIndex != null) {
+    if (widget.listIndex != null &&
+        ShellPaintScope.useTvFocusOf(context) &&
+        ShellPaintTvRowScope.maybeOf(context) != null) {
       return ShellPaintScope.focusableTap(
         context: context,
         onTap: widget.onResume == null ? null : () => widget.onResume!(entry),
         borderRadius: 12,
         motion: ForjaMotionPreset.fillOnly,
         listIndex: widget.listIndex,
-        tvTabId: tab,
-        tvRowId: row,
         tvItemIndex: widget.listIndex,
         tvZone: ShellPaintTvZone.row,
         onFocusChange: (f) => setState(() => _active = f),

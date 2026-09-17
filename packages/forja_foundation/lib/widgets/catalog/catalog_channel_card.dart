@@ -36,8 +36,6 @@ class CatalogChannelCard extends StatefulWidget {
     this.height,
     this.gridIndex,
     this.gridColumns,
-    this.tvTabId,
-    this.tvRowId,
     this.onTap,
     this.onInteractiveActive,
     this.onHoldJumpToCategory,
@@ -66,8 +64,6 @@ class CatalogChannelCard extends StatefulWidget {
   final double? height;
   final int? gridIndex;
   final int? gridColumns;
-  final String? tvTabId;
-  final String? tvRowId;
   final VoidCallback? onTap;
   final ValueChanged<bool>? onInteractiveActive;
 
@@ -322,8 +318,6 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         gridIndex: widget.gridIndex,
         gridColumns: widget.gridColumns,
         listIndex: widget.listLayout ? widget.gridIndex : null,
-        tvTabId: widget.tvTabId,
-        tvRowId: widget.tvRowId,
         tvZone: widget.listLayout
             ? ShellPaintTvZone.row
             : ShellPaintTvZone.grid,
