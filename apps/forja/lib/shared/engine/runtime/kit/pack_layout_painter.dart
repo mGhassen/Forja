@@ -6,6 +6,7 @@ import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dar
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
+import 'package:forja/shared/engine/runtime/kit/hub_page_focus.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
@@ -19,7 +20,6 @@ import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
-import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -81,7 +81,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Future<Map<String, List<dynamic>>>? _pageFeedFuture;
   Listenable? _filterListenable;
   final KitRowPrefetchLane _rowPrefetch = KitRowPrefetchLane();
-  String? _tvBoundTab;
+  HubPageFocus _pageFocus = HubPageFocus.empty;
+  String? _tvBoundKey;
 
   String get _pageKey => widget.tabId?.trim() ?? '';
 
@@ -136,18 +137,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   }
 
   void _bindHubTvDefaults(String tab) {
-    if (tab.isEmpty || _tvBoundTab == tab) return;
-    _tvBoundTab = tab;
-    TvHeroActions.bind(
-      tab,
-      heroReveal: _revealHeroScroll,
-      // List hubs (IPTV / Live Sports): land first catalog row when no hero CTA.
-      // Hero hubs overwrite enterFromNav / defaultFocus when the CTA mounts.
-      enterFromNavFocus: () {
-        ShellTvFocusCoordinator.focusFirstContentRow(tab);
-      },
-      restoreFocus: () => ShellTvFocusCoordinator.focusFirstContentRow(tab),
-    );
+    if (tab.isEmpty) return;
+    final key = '$tab|${_pageFocus.signature}';
+    if (_tvBoundKey == key) return;
+    _tvBoundKey = key;
+    bindHubPageFocus(tab, _pageFocus);
+    // Hero CTA merges defaultFocus via TvHeroActions.bind (no enter overwrite).
+    TvHeroActions.bind(tab, heroReveal: _revealHeroScroll);
   }
 
   void _revealHeroScroll() {
@@ -279,6 +275,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _pageFeedFuture = feedFuture;
       _rowPrefetch.reset();
       initLayoutTabSelections(_layoutSelections, widgets);
+      // Page map first; root layout `focus` as fallback.
+      _pageFocus = HubPageFocus.parse(pageMap);
+      if (_pageFocus.isEmpty) {
+        _pageFocus = HubPageFocus.parse(data);
+      }
     }
 
     if (notify && mounted) {
@@ -295,6 +296,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         packSourceUrl: widget.packSourceUrl,
         widgets: widgets,
       );
+      _bindHubTvDefaults(tab);
     }
     markShellTabFresh();
   }

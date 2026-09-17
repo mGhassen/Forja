@@ -2426,17 +2426,11 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   void _bindTv() {
     final tab = widget.tabId;
     if (tab.isEmpty) return;
+    // defaultFocus only — pack page `focus.enter/restore` owns nav land.
     TvHeroActions.bind(
       tab,
       defaultFocus: () => _playFocus,
       heroReveal: _scrollHeroIntoView,
-      enterFromNavFocus: () {
-        if (_playFocus.canRequestFocus && _playFocus.context != null) {
-          FocusScope.of(_playFocus.context!).requestFocus(_playFocus);
-          return;
-        }
-        ShellTvFocusCoordinator.focusFirstContentRow(tab);
-      },
     );
   }
 
@@ -2740,12 +2734,17 @@ class _MoodMountState extends State<_MoodMount> {
           'filter': {'field': 'mood', 'value': _selectedId},
         },
         fallbackSpec: const {'type': 'rail', 'title': ''},
-        builder: (ctx, merged) => PackPaintArtifact.posterRow(
-          ctx,
-          node: merged,
-          pluginId: widget.pluginId,
-          packSourceUrl: widget.packSourceUrl,
-        ),
+        builder: (ctx, merged) {
+          final node = Map<String, dynamic>.from(merged);
+          node['id'] = 'mood-results';
+          node['focusUp'] = 'mood-chips';
+          return PackPaintArtifact.posterRow(
+            ctx,
+            node: node,
+            pluginId: widget.pluginId,
+            packSourceUrl: widget.packSourceUrl,
+          );
+        },
       );
     }
     return MoodSection(
@@ -2769,7 +2768,11 @@ class _MoodMountState extends State<_MoodMount> {
           final chipGap =
               PackPaintArtifact.packDouble(widget.spec['gap']) ??
                   layout.horizontalGap;
-          Widget chipAt(int i) {
+          final tab = (widget.tabId ?? '').trim();
+          const chipRowId = 'mood-chips';
+          const resultsRowId = 'mood-results';
+
+          Widget chipAt(int i, {TvChipEdges? edges}) {
             final m = parsed[i];
             return ShellMoodCircleItem(
               layout: layout,
@@ -2778,9 +2781,17 @@ class _MoodMountState extends State<_MoodMount> {
               accent: m.accent,
               selected: _selectedId == m.id,
               listIndex: i,
-              tvTabId: widget.tabId,
-              tvRowId: 'mood-chips',
-              onTap: () => setState(() => _selectedId = m.id),
+              tvTabId: tab.isEmpty ? null : tab,
+              tvRowId: chipRowId,
+              onTap: () {
+                final already = _selectedId == m.id;
+                setState(() => _selectedId = m.id);
+                if (already) edges?.onSelectAlreadySelected();
+              },
+              onLeftEdge: edges?.onLeft,
+              onRightEdge: edges?.onRight,
+              onUpEdge: edges?.onUp,
+              onDownEdge: edges?.onDown,
             );
           }
 
@@ -2788,14 +2799,17 @@ class _MoodMountState extends State<_MoodMount> {
           final fits =
               layout.contentWidth(parsed.length) <= constraints.maxWidth;
 
-          Widget centeredRow({required bool scaleToFit}) {
+          Widget centeredRow({
+            required bool scaleToFit,
+            TvChipEdges Function(int index)? edgesFor,
+          }) {
             final row = Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 for (var i = 0; i < parsed.length; i++) ...[
                   if (i > 0) SizedBox(width: chipGap),
-                  chipAt(i),
+                  chipAt(i, edges: edgesFor?.call(i)),
                 ],
               ],
             );
@@ -2813,13 +2827,25 @@ class _MoodMountState extends State<_MoodMount> {
           }
 
           if (tvNav) {
-            if (fits) return centeredRow(scaleToFit: true);
-            return HorizontalScroller(
-              height: rowHeight,
-              padding: EdgeInsets.symmetric(horizontal: pad),
+            return TvChipStrip(
+              tabId: tab.isEmpty ? null : tab,
+              rowId: chipRowId,
+              sortOrder: 40,
               itemCount: parsed.length,
-              separatorBuilder: (_, _) => SizedBox(width: chipGap),
-              itemBuilder: (context, i) => chipAt(i),
+              resultsRowId: resultsRowId,
+              builder: (context, edgesFor) {
+                if (fits) {
+                  return centeredRow(scaleToFit: true, edgesFor: edgesFor);
+                }
+                return HorizontalScroller(
+                  height: rowHeight,
+                  padding: EdgeInsets.symmetric(horizontal: pad),
+                  itemCount: parsed.length,
+                  separatorBuilder: (_, _) => SizedBox(width: chipGap),
+                  itemBuilder: (context, i) =>
+                      chipAt(i, edges: edgesFor(i)),
+                );
+              },
             );
           }
 
