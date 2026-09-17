@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:forja_foundation/widgets/guide/guide_browse_text_field.dart';
@@ -113,7 +114,9 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
     if (ctx == null) return;
     Scrollable.ensureVisible(
       ctx,
-      duration: animate ? const Duration(milliseconds: 180) : Duration.zero,
+      duration: animate
+          ? ForjaMotionTheme.of(context).fillOnly.duration
+          : Duration.zero,
       curve: Curves.easeOut,
       alignment: 0.35,
     );

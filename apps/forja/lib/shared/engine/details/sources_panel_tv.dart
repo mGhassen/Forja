@@ -134,15 +134,19 @@ abstract final class SourcesPanelTv {
     );
   }
 
-  static void focusKindItem({int index = 0, int maxTries = 12}) {
+  static void focusKindItem({
+    int index = 0,
+    int maxTries = 12,
+    String? forTabId,
+  }) {
     var tries = 0;
     void attempt() {
-      if (_tryRow(kindRowId, index)) return;
+      if (_tryRow(kindRowId, index, forTabId: forTabId)) return;
       if (tries++ < maxTries) {
         WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
         return;
       }
-      _tryRow(providersRowId, 0);
+      _tryRow(providersRowId, 0, forTabId: forTabId);
     }
 
     attempt();

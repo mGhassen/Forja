@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
@@ -279,7 +280,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     if (useAnimate) {
       controller.animateTo(
         offset,
-        duration: const Duration(milliseconds: 120),
+        duration: ForjaMotionTheme.of(context).fillOnly.duration,
         curve: Curves.easeOut,
       );
     } else {

@@ -48,6 +48,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
 import 'package:forja_foundation/blocks/catalog/columns_header_block.dart';
@@ -62,6 +63,7 @@ import 'package:forja_foundation/blocks/shell/shell_block.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/because_section.dart';
@@ -151,7 +153,7 @@ class PackPaintTree extends StatelessWidget {
         ),
       );
       // Eager rails skip the gate entirely — no placeholder frame on tab show.
-      if (eager) return loadPaint;
+      if (eager) return _withMotion(context, spec, loadPaint);
       // Static structure only (no pulse) — TickerMode on tab show must not
       // look like a rail reload when the gate is still inactive.
       final compact = compactSection || spec['compactTop'] == true;
@@ -162,30 +164,61 @@ class PackPaintTree extends StatelessWidget {
         pageBottomBleed: heroBleed,
         shimmer: false,
       );
-      return LazyViewportGate(
-        detectorKey: Key('lazy-$pluginId-$id'),
-        placeholderHeight: slot.height,
-        placeholder: slot.placeholder,
-        eager: false,
-        builder: (ctx) => loadPaint,
+      return _withMotion(
+        context,
+        spec,
+        LazyViewportGate(
+          detectorKey: Key('lazy-$pluginId-$id'),
+          placeholderHeight: slot.height,
+          placeholder: slot.placeholder,
+          eager: false,
+          builder: (ctx) => loadPaint,
+        ),
       );
     }
 
     if (type == LayoutTypes.list) {
       final listLoad = packLoadSpec(spec['load']) ??
           (action: 'feed', params: <String, dynamic>{});
-      return PackLoadedPaint(
-        pluginId: pluginId,
-        packSourceUrl: packSourceUrl,
-        tabId: tabId,
-        action: listLoad.action,
-        params: listLoad.params,
-        fallbackSpec: spec,
-        builder: (ctx, merged) => _mountList(ctx, merged),
+      return _withMotion(
+        context,
+        spec,
+        PackLoadedPaint(
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+          action: listLoad.action,
+          params: listLoad.params,
+          fallbackSpec: spec,
+          builder: (ctx, merged) => _mountList(ctx, merged),
+        ),
       );
     }
 
-    return _mount(context, spec, type: type);
+    return _withMotion(context, spec, _mount(context, spec, type: type));
+  }
+
+  /// Pack `motion{}` (node or props) → [ForjaMotionScope]. Generic merge only.
+  Widget _withMotion(
+    BuildContext context,
+    Map<String, dynamic> node,
+    Widget child,
+  ) {
+    final props = _propsOf(node);
+    final top = node['motion'];
+    final propsMotion = props['motion'];
+    final hasNums = props.containsKey('hoverScale') ||
+        props.containsKey('focusScale') ||
+        props.containsKey('durationMs') ||
+        props.containsKey('curve');
+    if (top is! Map && propsMotion == null && !hasNums) return child;
+
+    var theme = ForjaMotionTheme.of(context);
+    if (top is Map) {
+      theme = theme.merge(Map<String, Object?>.from(top));
+    }
+    theme = theme.mergeNodeProps(props);
+    return ForjaMotionScope(theme: theme, child: child);
   }
 
   List<Widget> _kids(BuildContext context, Map<String, dynamic> node) {
@@ -1621,6 +1654,15 @@ class PackPaintTree extends StatelessWidget {
                     currentKind == PortalLiveCatalog.watchedId ||
                     currentKind == 'favorites' ||
                     currentKind == 'watched');
+            final scope = LayoutScope.maybeOf(context);
+            final leftEdge = scope?.resolveFocusEdge(
+              (spec['focusLeft'] ?? '').toString(),
+              last: true,
+            );
+            final rightEdge = scope?.resolveFocusEdge(
+              (spec['focusRight'] ?? '').toString(),
+              last: true,
+            );
             return CatalogCardsGrid(
               items: filtered,
               cardKind: cardKind,
@@ -1647,6 +1689,8 @@ class PackPaintTree extends StatelessWidget {
               onHoldJumpToCategory: allowHoldJump ? onHoldJump : null,
               onRequestFocusAt: liveFocusBrowserStreamAt,
               onArmFocusMemory: liveArmBrowserStreamFocusMemory,
+              onLeftEdge: leftEdge,
+              onRightEdge: rightEdge,
             );
           }
 
@@ -1680,6 +1724,15 @@ class PackPaintTree extends StatelessWidget {
                                 currentKind == PortalLiveCatalog.watchedId ||
                                 currentKind == 'favorites' ||
                                 currentKind == 'watched');
+                        final scope = LayoutScope.maybeOf(context);
+                        final leftEdge = scope?.resolveFocusEdge(
+                          (spec['focusLeft'] ?? '').toString(),
+                          last: true,
+                        );
+                        final rightEdge = scope?.resolveFocusEdge(
+                          (spec['focusRight'] ?? '').toString(),
+                          last: true,
+                        );
                         return CatalogCardsGrid(
                           items: filtered,
                           cardKind: cardKind,
@@ -1709,6 +1762,8 @@ class PackPaintTree extends StatelessWidget {
                               allowHoldJump ? onHoldJump : null,
                           onRequestFocusAt: liveFocusBrowserStreamAt,
                           onArmFocusMemory: liveArmBrowserStreamFocusMemory,
+                          onLeftEdge: leftEdge,
+                          onRightEdge: rightEdge,
                         );
                       },
                     );
@@ -1728,6 +1783,7 @@ class PackPaintTree extends StatelessWidget {
 
           if (showPanel) {
             final entry = _listEntryFromItem(selected);
+            final hubTab = (tabId ?? '').trim();
             final panel = KitResolvePanelHost.instance.buildSidePanel(
               context: context,
               entry: entry,
@@ -1742,6 +1798,18 @@ class PackPaintTree extends StatelessWidget {
               shellTabVisible: chrome?.shellTabVisible ?? true,
               refreshEpoch: chrome?.refreshEpoch ?? 0,
               onClosed: () => chrome?.onSelectListItem(null),
+              tvTabId: hubTab.isEmpty ? null : hubTab,
+              onPanelLeftEdge: hubTab.isEmpty
+                  ? null
+                  : () {
+                      final listRow = listId.isEmpty
+                          ? IptvCatalogLand.itemsRowId
+                          : listId;
+                      ShellTvFocusCoordinator.focusRowItemRemembered(
+                        hubTab,
+                        listRow,
+                      );
+                    },
             );
             body = SizedBox(
               width: constraints.maxWidth,
@@ -1858,11 +1926,30 @@ class PackPaintTree extends StatelessWidget {
     if (label.isEmpty) return null;
     final verb = (raw['action'] ?? raw['id'] ?? '').toString().trim().toLowerCase();
     if (verb != 'portals') return null;
-    return Button(
+    final listId = (spec['id'] ?? 'items').toString().trim();
+    final tab = (tabId ?? '').trim();
+    final onOpen = () => _togglePortalsPanel(context);
+    final button = Button(
       label: label,
       icon: Icons.dns_rounded,
       variant: ButtonVariant.primary,
-      onPressed: () => _togglePortalsPanel(context),
+      onPressed: onOpen,
+    );
+    if (tab.isEmpty ||
+        !ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return button;
+    }
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: onOpen,
+      borderRadius: 12,
+      scaleOnFocus: 1.0,
+      listIndex: 0,
+      tvTabId: tab,
+      tvRowId: listId.isEmpty ? IptvCatalogLand.itemsRowId : listId,
+      tvItemIndex: 0,
+      tvZone: ShellPaintTvZone.row,
+      child: button,
     );
   }
 
@@ -2402,6 +2489,8 @@ class _HubTvCinematicHero extends StatefulWidget {
 
 class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   final FocusNode _playFocus = FocusNode(debugLabel: 'hub-hero-details');
+  final FocusNode _galleryFocus = FocusNode(debugLabel: 'hub-hero-gallery');
+  final GlobalKey<CinematicHeroState> _heroKey = GlobalKey<CinematicHeroState>();
 
   @override
   void initState() {
@@ -2420,6 +2509,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     // Do not TvHeroActions.unbind — PackLayoutPainter owns tab teardown and
     // may still need enterFromNav / restore for list hubs after hero unmount.
     _playFocus.dispose();
+    _galleryFocus.dispose();
     super.dispose();
   }
 
@@ -2447,6 +2537,50 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     );
   }
 
+  void _focusGallery() {
+    if (!_galleryFocus.canRequestFocus) return;
+    _galleryFocus.requestFocus();
+  }
+
+  void _focusPlay() {
+    if (!_playFocus.canRequestFocus) return;
+    _playFocus.requestFocus();
+  }
+
+  void _focusTopBar() {
+    final tab = widget.tabId;
+    if (tab.isEmpty) return;
+    if (ShellTvFocusCoordinator.focusRowItem(tab, 'top-bar', 0)) return;
+    if (ShellTvFocusCoordinator.focusRowItem(tab, 'chrome', 0)) return;
+  }
+
+  void _stepFilm(int delta) {
+    _heroKey.currentState?.stepFilm(delta);
+  }
+
+  Widget _galleryOverlay(BuildContext context) {
+    final tab = widget.tabId;
+    return shellFocusableTap(
+      context: context,
+      focusNode: _galleryFocus,
+      tvTabId: tab.isEmpty ? null : tab,
+      tvZone: ShellTvZone.hero,
+      scaleOnFocus: 1,
+      ensureVisibleMode: ShellPaintEnsureVisible.off,
+      onLeftEdge: () => _stepFilm(-1),
+      onRightEdge: () => _stepFilm(1),
+      onUpEdge: _focusTopBar,
+      onDownEdge: _focusPlay,
+      onTap: () {
+        final details = widget.slides.isEmpty
+            ? null
+            : widget.slides[_heroKey.currentState?.heroIndex ?? 0].onDetails;
+        details?.call();
+      },
+      child: const SizedBox.expand(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Keep CTA enter/default focus after PackLayoutPainter's one-shot list bind.
@@ -2458,8 +2592,10 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     final compact = widget.compact;
 
     return CinematicHero(
+      key: _heroKey,
       slides: widget.slides,
       pageBottomChild: widget.pageBottomChild,
+      galleryOverlayBuilder: tv ? _galleryOverlay : null,
       layout: CinematicHeroLayout(
         compact: compact,
         tvDensity: metrics.usesTvDensity,
@@ -2530,6 +2666,10 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
                           return KeyEventResult.handled;
                         }
                       }
+                      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                        _focusGallery();
+                        return KeyEventResult.handled;
+                      }
                       return KeyEventResult.ignored;
                     }
                   : null,
@@ -2560,6 +2700,10 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
             if (event is! KeyDownEvent) return KeyEventResult.ignored;
             if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
               focusDown();
+              return KeyEventResult.handled;
+            }
+            if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+              _focusGallery();
               return KeyEventResult.handled;
             }
             return KeyEventResult.ignored;
@@ -2970,7 +3114,14 @@ class _BecauseMountState extends State<_BecauseMount> {
                     ) ??
                     shellPosterCardRowGap(ctx);
                 final cardH = InteractivePosterCard.cardHeight(ctx);
-                return BecauseSection(
+                final rail = HorizontalScroller(
+                  height: cardH,
+                  padding: EdgeInsets.symmetric(horizontal: pad),
+                  itemCount: cards.length,
+                  separatorBuilder: (_, _) => SizedBox(width: gap),
+                  itemBuilder: (_, i) => cards[i],
+                );
+                final section = BecauseSection(
                   title: (node['heading'] ?? '').toString().isEmpty
                       ? null
                       : (node['heading'] ?? '').toString(),
@@ -2990,14 +3141,17 @@ class _BecauseMountState extends State<_BecauseMount> {
                     pad,
                     titlePad.bottom,
                   ),
-                  rail: HorizontalScroller(
-                    height: cardH,
-                    padding: EdgeInsets.symmetric(horizontal: pad),
-                    itemCount: cards.length,
-                    separatorBuilder: (_, _) => SizedBox(width: gap),
-                    itemBuilder: (_, i) => cards[i],
-                  ),
+                  rail: tab.trim().isEmpty
+                      ? rail
+                      : TvKitRow(
+                          tabId: tab,
+                          rowId: 'because',
+                          sortOrder: 40,
+                          itemCount: cards.length,
+                          child: rail,
+                        ),
                 );
+                return section;
               },
             );
           },
@@ -3209,6 +3363,8 @@ class _ContinueMountState extends State<_ContinueMount> {
         listPadding: EdgeInsets.symmetric(horizontal: pad),
         entries: [for (final e in _entries) ContinueEntry.fromMap(e)],
         resumingMetaId: _resumingMetaId,
+        tvTabId: tab.isEmpty ? null : tab,
+        tvRowId: 'continue_watching',
         onResume: (entry) {
           final raw = _byId(entry.metaId);
           if (raw != null) unawaited(_resume(raw));

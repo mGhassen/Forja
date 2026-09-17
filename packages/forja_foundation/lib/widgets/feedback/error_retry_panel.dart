@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Centered error copy + retry CTA. On TV the retry button autofocuses on show.
 class ShellErrorRetryPanel extends StatefulWidget {
@@ -92,7 +92,7 @@ class _ShellErrorRetryPanelState extends State<ShellErrorRetryPanel> {
                 onTap: widget.onRetry,
                 focusNode: _retryFocus,
                 borderRadius: 24,
-                scaleOnFocus: ShellTokens.focusActiveScale,
+                motion: ForjaMotionPreset.chipLift,
                 ensureVisibleMode: ShellPaintEnsureVisible.item,
                 child: _RetryButtonFace(
                   label: widget.label,

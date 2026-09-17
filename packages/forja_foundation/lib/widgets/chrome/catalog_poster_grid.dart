@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Computed poster / event-card grid metrics for catalog list chrome.
@@ -39,7 +40,9 @@ class CatalogPosterGridLayout {
     final gridW = columns * cardW + (columns - 1) * gap;
     final rightPad = math.max(trailing, maxWidth - leading - gridW);
     final topPad =
-        chromeTop + cardH * (ShellTokens.focusActiveScale - 1) / 2 + 4;
+        chromeTop +
+            cardH * (ForjaMotionTheme.defaults.cardLift.focusScale - 1) / 2 +
+            4;
     return CatalogPosterGridLayout(
       columns: columns,
       cardW: cardW,
@@ -103,7 +106,9 @@ class CatalogPosterGridLayout {
       gap: gap,
       leading: leading,
       rightPad: trailing,
-      topPad: chromeTop + cardH * (ShellTokens.focusActiveScale - 1) / 2 + 4,
+      topPad: chromeTop +
+          cardH * (ForjaMotionTheme.defaults.cardLift.focusScale - 1) / 2 +
+          4,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -223,6 +224,7 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
       context: context,
       onTap: widget.onLongPress != null ? _onTap : widget.onTap,
       borderRadius: radius,
+      motion: ForjaMotionPreset.cardLift,
       showFocusBorder: true,
       listIndex: widget.listIndex,
       gridIndex: widget.gridIndex,

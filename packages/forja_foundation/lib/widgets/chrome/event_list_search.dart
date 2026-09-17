@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -270,7 +271,7 @@ class EventListSearchState extends State<EventListSearch>
       context: context,
       onTap: () => openSearch(),
       borderRadius: size / 2,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       suppressInkHover: true,
       showFocusFill: false,
       tvTabId: widget.tvTabId,
@@ -348,7 +349,7 @@ class EventListSearchState extends State<EventListSearch>
             context: context,
             onTap: () => _close(clearQuery: true),
             borderRadius: 16,
-            scaleOnFocus: 1.0,
+            motion: ForjaMotionPreset.fillOnly,
             suppressInkHover: true,
             showFocusFill: false,
             onRightEdge: widget.onRightEdge,

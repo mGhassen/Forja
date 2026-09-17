@@ -43,6 +43,7 @@ final class KitResolvePanelHost implements KitPanelHost {
     required int refreshEpoch,
     VoidCallback? onClosed,
     VoidCallback? onPanelLeftEdge,
+    String? tvTabId,
   }) {
     return _KitResolveStreamsPanel(
       key: ValueKey('live-panel-${entry.meta.id}'),
@@ -51,6 +52,7 @@ final class KitResolvePanelHost implements KitPanelHost {
       refreshEpoch: refreshEpoch,
       onClosed: onClosed,
       onPanelLeftEdge: onPanelLeftEdge,
+      tvTabId: tvTabId,
     );
   }
 
@@ -96,6 +98,7 @@ class _KitResolveStreamsPanel extends StatefulWidget {
     required this.refreshEpoch,
     this.onClosed,
     this.onPanelLeftEdge,
+    this.tvTabId,
   });
 
   final KitListEntry entry;
@@ -103,6 +106,7 @@ class _KitResolveStreamsPanel extends StatefulWidget {
   final int refreshEpoch;
   final VoidCallback? onClosed;
   final VoidCallback? onPanelLeftEdge;
+  final String? tvTabId;
 
   @override
   State<_KitResolveStreamsPanel> createState() =>
@@ -182,6 +186,8 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
       showInlineSearch: true,
       onClosed: widget.onClosed,
       onTabsLeftEdge: widget.onPanelLeftEdge,
+      tvTabId: widget.tvTabId,
+      embedded: (widget.tvTabId ?? '').isNotEmpty,
       loadTab: (tabId, {onPartial, force = false}) =>
           KitResolvePanelHost.loadTab(
         row,

@@ -6,6 +6,7 @@ export 'epg_guide_tokens.dart';
 export 'event_card_tokens.dart';
 export 'forja_aspects.dart';
 export 'forja_details_tokens.dart';
+export 'forja_motion_theme.dart';
 export 'forja_settings_tokens.dart';
 export 'forja_shell_colors.dart';
 export 'forja_shell_tokens.dart';

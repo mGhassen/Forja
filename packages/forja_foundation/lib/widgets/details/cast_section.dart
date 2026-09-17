@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -40,8 +41,8 @@ class DetailsCastSection extends StatelessWidget {
     letterSpacing: ShellTokens.sectionTitleLetterSpacing,
   );
 
-  static const double _rowHeight =
-      _avatarSize * ShellTokens.focusActiveScale +
+  static double get _rowHeight =>
+      _avatarSize * ForjaMotionTheme.defaults.cardLift.focusScale +
           _avatarNameGap +
           16 +
           _nameCharacterGap +
@@ -168,7 +169,7 @@ class DetailsCastSection extends StatelessWidget {
       showFocusBorder: true,
       showFocusFill: false,
       listIndex: index,
-      scaleOnFocus: ShellTokens.focusActiveScale,
+      motion: ForjaMotionPreset.cardLift,
       child: child,
     );
   }

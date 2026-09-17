@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/epg_guide_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -671,7 +672,7 @@ class _ChannelCellState extends State<_ChannelCell> {
       context: context,
       onTap: widget.onTap,
       borderRadius: 0,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       suppressInkHover: true,
       showFocusFill: false,
       listIndex: widget.listIndex,

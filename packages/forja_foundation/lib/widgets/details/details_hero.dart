@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
@@ -754,7 +755,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
       return SizedBox(
         width: maxContentWidth,
         child: AnimatedSize(
-          duration: const Duration(milliseconds: 450),
+          duration: ForjaMotionTheme.of(context).pageFade.duration,
           curve: Curves.easeOutCubic,
           alignment: Alignment.topLeft,
           child: Column(
@@ -804,7 +805,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
       child: Align(
         alignment: Alignment.topLeft,
         child: AnimatedSize(
-          duration: const Duration(milliseconds: 450),
+          duration: ForjaMotionTheme.of(context).pageFade.duration,
           curve: Curves.easeOutCubic,
           alignment: Alignment.topLeft,
           child: Column(

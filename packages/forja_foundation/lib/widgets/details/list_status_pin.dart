@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// One My List status option — presentational only (RFC-095).
@@ -124,8 +124,8 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
     final lit = active || selected;
     final accent = lit ? widget.statusColor : Colors.white;
     final row = AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
-      curve: Curves.easeOut,
+      duration: ForjaMotionTheme.of(context).fillOnly.duration,
+      curve: ForjaMotionTheme.of(context).fillOnly.resolvedCurve,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       color: active
           ? widget.statusColor.withValues(alpha: 0.12)
@@ -429,7 +429,7 @@ class _ListStatusPinState extends State<ListStatusPin> {
       );
     }
     return Transform.scale(
-      scale: ShellTokens.focusActiveScale,
+      scale: ForjaMotionTheme.of(context).chipLift.focusScale,
       child: FocusableTap(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),

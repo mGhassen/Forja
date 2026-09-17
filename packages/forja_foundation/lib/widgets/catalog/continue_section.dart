@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/continue_watching_card.dart';
 import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 
@@ -30,6 +32,8 @@ class ContinueSection extends StatelessWidget {
     this.onRemove,
     this.onInfo,
     this.resumingMetaId,
+    this.tvTabId,
+    this.tvRowId,
   }) : assert(items != null || children != null || entries != null || rail != null);
 
   final String title;
@@ -50,6 +54,8 @@ class ContinueSection extends StatelessWidget {
   final void Function(ContinueEntry entry)? onRemove;
   final void Function(ContinueEntry entry)? onInfo;
   final String? resumingMetaId;
+  final String? tvTabId;
+  final String? tvRowId;
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +103,9 @@ class ContinueSection extends StatelessWidget {
                   height: cardHeight,
                   isLoading: resumingMetaId != null &&
                       entry.metaId == resumingMetaId,
+                  listIndex: i,
+                  tvTabId: tvTabId,
+                  tvRowId: tvRowId,
                   onResume: onResume,
                   onRemove: onRemove,
                   onInfo: onInfo,
@@ -168,6 +177,9 @@ class _ContinueHoverCard extends StatefulWidget {
     required this.width,
     required this.height,
     required this.isLoading,
+    this.listIndex,
+    this.tvTabId,
+    this.tvRowId,
     this.onResume,
     this.onRemove,
     this.onInfo,
@@ -177,6 +189,9 @@ class _ContinueHoverCard extends StatefulWidget {
   final double width;
   final double height;
   final bool isLoading;
+  final int? listIndex;
+  final String? tvTabId;
+  final String? tvRowId;
   final void Function(ContinueEntry entry)? onResume;
   final void Function(ContinueEntry entry)? onRemove;
   final void Function(ContinueEntry entry)? onInfo;
@@ -191,32 +206,51 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
+    final card = ContinueWatchingCard(
+      title: entry.title,
+      coverUrl: entry.coverUrl,
+      subtitle: entry.subtitle,
+      progress: entry.progress,
+      remainingText: entry.remainingText,
+      width: widget.width,
+      height: widget.height,
+      isLoading: widget.isLoading,
+      active: _active,
+      onTap: widget.onResume == null ? null : () => widget.onResume!(entry),
+      onRemove:
+          widget.onRemove == null ? null : () => widget.onRemove!(entry),
+      onInfo: widget.onInfo == null ? null : () => widget.onInfo!(entry),
+      playOverlay: ShellCardPlayOverlay(
+        active: false,
+        visible: _active && !widget.isLoading,
+        onTap:
+            widget.onResume == null ? null : () => widget.onResume!(entry),
+      ),
+    );
+    final tab = (widget.tvTabId ?? '').trim();
+    final row = (widget.tvRowId ?? '').trim();
+    if (tab.isNotEmpty && row.isNotEmpty && widget.listIndex != null) {
+      return ShellPaintScope.focusableTap(
+        context: context,
+        onTap: widget.onResume == null ? null : () => widget.onResume!(entry),
+        borderRadius: 12,
+        motion: ForjaMotionPreset.fillOnly,
+        listIndex: widget.listIndex,
+        tvTabId: tab,
+        tvRowId: row,
+        tvItemIndex: widget.listIndex,
+        tvZone: ShellPaintTvZone.row,
+        onFocusChange: (f) => setState(() => _active = f),
+        onHoverChange: (h) => setState(() => _active = h),
+        child: card,
+      );
+    }
     return MouseRegion(
       onEnter: (_) => setState(() => _active = true),
       onExit: (_) => setState(() => _active = false),
       child: Focus(
         onFocusChange: (f) => setState(() => _active = f),
-        child: ContinueWatchingCard(
-          title: entry.title,
-          coverUrl: entry.coverUrl,
-          subtitle: entry.subtitle,
-          progress: entry.progress,
-          remainingText: entry.remainingText,
-          width: widget.width,
-          height: widget.height,
-          isLoading: widget.isLoading,
-          active: _active,
-          onTap: widget.onResume == null ? null : () => widget.onResume!(entry),
-          onRemove:
-              widget.onRemove == null ? null : () => widget.onRemove!(entry),
-          onInfo: widget.onInfo == null ? null : () => widget.onInfo!(entry),
-          playOverlay: ShellCardPlayOverlay(
-            active: false,
-            visible: _active && !widget.isLoading,
-            onTap:
-                widget.onResume == null ? null : () => widget.onResume!(entry),
-          ),
-        ),
+        child: card,
       ),
     );
   }

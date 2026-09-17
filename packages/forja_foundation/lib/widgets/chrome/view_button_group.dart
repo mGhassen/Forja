@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -119,7 +120,7 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
   @override
   Widget build(BuildContext context) {
     final slot = AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
+      duration: ForjaMotionTheme.of(context).fillOnly.duration,
       width: widget.height,
       height: widget.height,
       alignment: Alignment.center,
@@ -168,7 +169,7 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
       context: context,
       onTap: widget.onTap,
       borderRadius: widget.height / 2,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       suppressInkHover: true,
       showFocusFill: false,
       listIndex: widget.listIndex,

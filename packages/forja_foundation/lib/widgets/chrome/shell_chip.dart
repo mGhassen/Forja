@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/widgets/feedback/loading_dots.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -295,7 +296,9 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     final leanback = tv && !scaleOnHover;
 
     final face = AnimatedContainer(
-      duration: tv ? Duration.zero : const Duration(milliseconds: 120),
+      duration: tv
+          ? Duration.zero
+          : ForjaMotionTheme.of(context).fillOnly.duration,
       curve: Curves.easeOut,
       decoration: shellChipDecoration(
         selected: selected,
@@ -364,7 +367,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         onTap: leanback && widget.onLongPress != null ? null : _onTap,
         focusNode: widget.focusNode,
         borderRadius: widget.radius,
-        scaleOnFocus: 1.0,
+        motion: ForjaMotionPreset.fillOnly,
         showFocusBorder: false,
         showFocusFill: false,
         listIndex: widget.listIndex,

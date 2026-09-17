@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
@@ -108,7 +109,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         context: context,
         onTap: widget.onTap,
         borderRadius: size / 2,
-        scaleOnFocus: 1.0,
+        motion: ForjaMotionPreset.fillOnly,
         suppressInkHover: true,
         showFocusFill: false,
         listIndex: widget.tvItemIndex,
@@ -142,7 +143,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
 
     // Cap width — Catalog can fall back to a long id (e.g. stremio:<url>).
     final chip = AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
+      duration: ForjaMotionTheme.of(context).fillOnly.duration,
       curve: Curves.easeOutCubic,
       constraints: BoxConstraints(maxWidth: widget.maxWidth),
       decoration: BoxDecoration(
@@ -191,7 +192,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
       context: context,
       onTap: widget.onTap,
       borderRadius: widget.radius,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       suppressInkHover: true,
       showFocusFill: false,
       listIndex: widget.tvItemIndex,

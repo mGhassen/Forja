@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -58,7 +59,7 @@ class DetailsTrailersSection extends StatelessWidget {
     const thumbHeight = cardWidth * 9 / 16;
     const textBlock = 8 + 12 * 1.25 * 2;
     final trailerRowHeight =
-        thumbHeight * ShellTokens.focusActiveScale + textBlock + 4;
+        thumbHeight * ForjaMotionTheme.defaults.cardLift.focusScale + textBlock + 4;
     final outdent = outdentHorizontal;
 
     final row = Column(
@@ -168,7 +169,7 @@ class DetailsTrailersSection extends StatelessWidget {
                       showFocusBorder: true,
                       showFocusFill: false,
                       listIndex: index,
-                      scaleOnFocus: ShellTokens.focusActiveScale,
+                      motion: ForjaMotionPreset.cardLift,
                       child: thumb,
                     );
               return SizedBox(

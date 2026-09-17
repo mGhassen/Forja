@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
@@ -251,10 +252,11 @@ class _AccentMoodCircle extends StatelessWidget {
             : accent.withValues(alpha: 0.35);
     final iconSize = active ? layout.iconSizeActive : layout.iconSize;
     final iconWidget = Icon(icon, size: iconSize, color: Colors.white);
+    final chip = ForjaMotionTheme.of(context).chipLift;
 
     final circle = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
+      duration: chip.duration,
+      curve: chip.resolvedCurve,
       width: layout.circleSize,
       height: layout.circleSize,
       alignment: Alignment.center,
@@ -275,10 +277,9 @@ class _AccentMoodCircle extends StatelessWidget {
             : null,
       ),
       child: scaleOnActive
-          ? AnimatedScale(
-              scale: active ? 1.12 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
+          ? ForjaMotionScale(
+              preset: ForjaMotionPreset.chipLift,
+              active: active,
               child: iconWidget,
             )
           : iconWidget,

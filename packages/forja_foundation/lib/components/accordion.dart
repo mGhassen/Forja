@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Expandable / collapsible section.
@@ -53,6 +54,7 @@ class _AccordionState extends State<Accordion> {
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
     final open = widget.expanded ?? _open;
+    final fill = ForjaMotionTheme.of(context).fillOnly;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -79,7 +81,7 @@ class _AccordionState extends State<Accordion> {
                 ),
                 AnimatedRotation(
                   turns: open ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 180),
+                  duration: fill.duration,
                   child: Icon(
                     Icons.expand_more,
                     color: theme.textSecondary,
@@ -103,7 +105,7 @@ class _AccordionState extends State<Accordion> {
           ),
           crossFadeState:
               open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 180),
+          duration: fill.duration,
         ),
       ],
     );

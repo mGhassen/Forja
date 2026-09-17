@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -182,7 +183,7 @@ class PortalListPanel extends StatelessWidget {
                 child: AnimatedAlign(
                   alignment: Alignment.topCenter,
                   heightFactor: searchOpen ? 1 : 0,
-                  duration: const Duration(milliseconds: 220),
+                  duration: ForjaMotionTheme.of(context).scrollSnap.duration,
                   curve: Curves.easeOutCubic,
                   child: search!,
                 ),

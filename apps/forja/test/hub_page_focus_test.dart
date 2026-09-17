@@ -30,4 +30,16 @@ void main() {
     expect(HubPageFocus.parse({}).isEmpty, isTrue);
     expect(HubPageFocus.parse({'focus': {}}).isEmpty, isTrue);
   });
+
+  test('HubPageFocus signature includes restore mode', () {
+    final remembered = HubPageFocus.parse({
+      'focus': {'enter': 'cats', 'restoreMode': 'remembered'},
+    });
+    final first = HubPageFocus.parse({
+      'focus': {'enter': 'cats', 'restoreMode': 'first'},
+    });
+    expect(remembered.restoreRemembered, isTrue);
+    expect(first.restoreRemembered, isFalse);
+    expect(remembered.signature, isNot(first.signature));
+  });
 }

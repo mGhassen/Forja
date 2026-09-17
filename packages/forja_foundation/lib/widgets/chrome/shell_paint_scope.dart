@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:flutter/services.dart';
 
@@ -134,7 +135,9 @@ class ShellPaintScope extends InheritedWidget {
     required Widget child,
     VoidCallback? onTap,
     double borderRadius = ShellTokens.focusBorderRadius,
-    double scaleOnFocus = ShellTokens.focusIdleScale,
+    /// Prefer [motion]; raw scale kept for host call sites during migration.
+    double? scaleOnFocus,
+    ForjaMotionPreset? motion,
     VoidCallback? onLeftEdge,
     VoidCallback? onUpEdge,
     VoidCallback? onDownEdge,
@@ -159,6 +162,12 @@ class ShellPaintScope extends InheritedWidget {
     bool allowNestedFocus = false,
     FocusOnKeyEventCallback? onKeyEvent,
   }) {
+    final resolvedScale = scaleOnFocus ??
+        (motion != null
+            ? ForjaMotionTheme.of(context).resolve(motion).focusScale
+            : ForjaMotionTheme.of(context)
+                .resolve(ForjaMotionPreset.chipLift)
+                .focusScale);
     final scope = maybeOf(context);
     final tap = scope?.focusableTapBuilder;
     if (tap != null) {
@@ -167,7 +176,7 @@ class ShellPaintScope extends InheritedWidget {
         child: child,
         onTap: onTap,
         borderRadius: borderRadius,
-        scaleOnFocus: scaleOnFocus,
+        scaleOnFocus: resolvedScale,
         onLeftEdge: onLeftEdge,
         onUpEdge: onUpEdge,
         onDownEdge: onDownEdge,

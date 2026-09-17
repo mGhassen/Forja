@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:flutter/rendering.dart';
 
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
@@ -252,7 +253,7 @@ class _ArrowButton extends StatelessWidget {
       child: IgnorePointer(
         ignoring: !visible,
         child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 180),
+          duration: ForjaMotionTheme.of(context).chipLift.duration,
           opacity: visible ? 1 : 0,
           child: Center(
             child: _HoverScaleButton(
@@ -323,9 +324,9 @@ class _HoverScaleButtonState extends State<_HoverScaleButton> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: _hover ? 1.06 : 1.0,
-          duration: const Duration(milliseconds: 120),
+        child: ForjaMotionScale(
+          preset: ForjaMotionPreset.chipLift,
+          active: _hover,
           child: widget.builder(_hover),
         ),
       ),

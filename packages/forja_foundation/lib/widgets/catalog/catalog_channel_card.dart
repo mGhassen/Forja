@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/channel_card_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -317,7 +318,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         context: context,
         onTap: holdJump ? null : widget.onTap,
         borderRadius: radius,
-        scaleOnFocus: 1.0,
+        motion: ForjaMotionPreset.fillOnly,
         gridIndex: widget.gridIndex,
         gridColumns: widget.gridColumns,
         listIndex: widget.listLayout ? widget.gridIndex : null,

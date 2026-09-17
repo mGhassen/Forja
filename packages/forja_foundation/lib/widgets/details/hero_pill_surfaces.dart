@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -145,8 +146,6 @@ class HeroPillPlaySurface extends StatefulWidget {
 
 class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
     with SingleTickerProviderStateMixin {
-  static const _duration = Duration(milliseconds: 420);
-
   late final AnimationController _controller;
   late final Animation<double> _expand;
   late final Animation<double> _labelOpacity;
@@ -154,7 +153,10 @@ class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: _duration);
+    _controller = AnimationController(
+      vsync: this,
+      duration: ForjaMotionTheme.defaults.heroPillExpand.duration,
+    );
     _expand = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0, 0.65, curve: Curves.easeOutCubic),
@@ -164,6 +166,13 @@ class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
       curve: const Interval(0.35, 0.9, curve: Curves.easeOut),
     );
     _syncController(animate: false);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final d = ForjaMotionTheme.of(context).heroPillExpand.duration;
+    if (_controller.duration != d) _controller.duration = d;
   }
 
   @override
@@ -391,8 +400,6 @@ class HeroPillGroupedSlotSurface extends StatefulWidget {
 
 class _HeroPillGroupedSlotSurfaceState extends State<HeroPillGroupedSlotSurface>
     with SingleTickerProviderStateMixin {
-  static const _duration = Duration(milliseconds: 480);
-
   late final AnimationController _controller;
   late final Animation<double> _expand;
   late final Animation<double> _labelOpacity;
@@ -400,7 +407,10 @@ class _HeroPillGroupedSlotSurfaceState extends State<HeroPillGroupedSlotSurface>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: _duration);
+    _controller = AnimationController(
+      vsync: this,
+      duration: ForjaMotionTheme.defaults.heroPillLabel.duration,
+    );
     _expand = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0, 0.65, curve: Curves.easeOutCubic),
@@ -410,6 +420,13 @@ class _HeroPillGroupedSlotSurfaceState extends State<HeroPillGroupedSlotSurface>
       curve: const Interval(0.5, 0.85, curve: Curves.easeOut),
     );
     _syncController(animate: false);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final d = ForjaMotionTheme.of(context).heroPillLabel.duration;
+    if (_controller.duration != d) _controller.duration = d;
   }
 
   @override
@@ -543,8 +560,8 @@ class HeroPillSegmentSurface extends StatelessWidget {
         ? ForjaShellColors.brandGreen
         : Colors.white.withValues(alpha: 0.55);
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
-      curve: Curves.easeOutCubic,
+      duration: ForjaMotionTheme.of(context).heroPillHover.duration,
+      curve: ForjaMotionTheme.of(context).heroPillHover.resolvedCurve,
       height: kHeroPillHeight,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       alignment: Alignment.center,

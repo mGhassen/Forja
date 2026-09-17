@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 enum HeroTitleStyle { details, home }
@@ -268,7 +269,7 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
           ignoring: _logoReady,
           child: AnimatedOpacity(
             opacity: _logoReady ? 0 : 1,
-            duration: const Duration(milliseconds: 450),
+            duration: ForjaMotionTheme.of(context).pageFade.duration,
             curve: Curves.easeOutCubic,
             child: fallback,
           ),

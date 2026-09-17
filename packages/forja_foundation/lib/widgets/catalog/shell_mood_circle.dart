@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 
 export 'package:forja_foundation/components/mood_circle.dart'
     show MoodCircle, MoodCircleLayout;
@@ -95,7 +96,7 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
         context: context,
         onTap: widget.onTap,
         borderRadius: widget.layout.circleSize / 2,
-        scaleOnFocus: 1.0,
+        motion: ForjaMotionPreset.fillOnly,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange: scaleOnHover
             ? (hovered) => setState(() => _hovered = hovered)

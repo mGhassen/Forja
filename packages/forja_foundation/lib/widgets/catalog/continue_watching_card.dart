@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 
@@ -45,15 +46,12 @@ class ContinueWatchingCard extends StatelessWidget {
   /// Optional play glyph overlay (host shell).
   final Widget? playOverlay;
 
-  static const double hoverScale = 1.06;
-
   @override
   Widget build(BuildContext context) {
     final cover = resolveAbsoluteCoverUrl(coverUrl);
-    final card = AnimatedScale(
-      scale: active ? hoverScale : 1.0,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
+    final card = ForjaMotionScale(
+      preset: ForjaMotionPreset.cardLift,
+      active: active,
       child: Container(
         width: width,
         height: height,

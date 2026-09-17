@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
@@ -76,8 +77,8 @@ class CatalogSearchTypeSegment extends StatelessWidget {
                 ),
               ),
               AnimatedPositioned(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
+                duration: ForjaMotionTheme.of(context).cardLift.duration,
+                curve: ForjaMotionTheme.of(context).cardLift.resolvedCurve,
                 left: idx * slot + 2,
                 top: 2,
                 bottom: 2,
@@ -108,7 +109,7 @@ class CatalogSearchTypeSegment extends StatelessWidget {
                           height: ShellTokens.viewButtonHeight,
                           child: Center(
                             child: AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 180),
+                              duration: ForjaMotionTheme.of(context).cardLift.duration,
                               style: TextStyle(
                                 color: value == items[i].$1
                                     ? ForjaShellColors.textPrimary
@@ -304,7 +305,7 @@ class _CatalogSearchScoreArcState extends State<CatalogSearchScoreArc> {
                     : (d) => setFromDx(d.localPosition.dx),
                 onDoubleTap: () => widget.onChanged(null),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
+                  duration: ForjaMotionTheme.of(context).filterChrome.duration,
                   padding: const EdgeInsets.symmetric(
                     vertical: 6,
                     horizontal: 4,
@@ -606,7 +607,7 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
                       },
                 onHorizontalDragEnd: tv ? null : (_) => _dragging = false,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
+                  duration: ForjaMotionTheme.of(context).filterChrome.duration,
                   padding: const EdgeInsets.symmetric(
                     vertical: 6,
                     horizontal: 4,
@@ -805,7 +806,7 @@ class CatalogSearchFilterGhostChip extends StatelessWidget {
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
     final paint = AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
+      duration: ForjaMotionTheme.of(context).filterChrome.duration,
       curve: Curves.easeOut,
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
       decoration: BoxDecoration(
@@ -871,7 +872,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSize(
-      duration: const Duration(milliseconds: 280),
+      duration: ForjaMotionTheme.of(context).filterPanel.duration,
       curve: Curves.easeOutCubic,
       alignment: Alignment.topCenter,
       child: open
@@ -879,7 +880,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
               padding: const EdgeInsets.only(top: 12),
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 280),
+                duration: ForjaMotionTheme.of(context).filterPanel.duration,
                 curve: Curves.easeOut,
                 builder: (context, t, child) => Opacity(
                   opacity: t,

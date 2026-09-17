@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
@@ -28,8 +29,10 @@ class ShellCardPlayOverlay extends StatefulWidget {
   final double diameter;
   final double iconSize;
 
-  /// Card lift on hover/focus - shared with episode rows and continue watching.
-  static const double cardHoverScale = 1.05;
+  /// Card lift on hover/focus — prefer [ForjaMotionTheme.cardLift] at call sites.
+  @Deprecated('Use ForjaMotionTheme.of(context).cardLift.hoverScale')
+  static double get cardHoverScale =>
+      ForjaMotionTheme.defaults.cardLift.hoverScale;
 
   @override
   State<ShellCardPlayOverlay> createState() => _ShellCardPlayOverlayState();
@@ -38,7 +41,7 @@ class ShellCardPlayOverlay extends StatefulWidget {
 class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
-  late final Animation<double> _pulse;
+  late Animation<double> _pulse;
   bool _buttonHovered = false;
   bool _buttonFocused = false;
 
@@ -53,21 +56,26 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
   @override
   void initState() {
     super.initState();
+    final pulse = ForjaMotionTheme.defaults.playPulse;
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2600),
+      duration: pulse.duration,
     );
-    _pulse = TweenSequence<double>([
+    _pulse = _buildPulse(pulse);
+  }
+
+  Animation<double> _buildPulse(ForjaPulseMotionSpec pulse) {
+    return TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween(
           begin: 1.0,
-          end: 1.12,
+          end: pulse.peakScale,
         ).chain(CurveTween(curve: Curves.easeOutCubic)),
         weight: 8,
       ),
       TweenSequenceItem(
         tween: Tween(
-          begin: 1.12,
+          begin: pulse.peakScale,
           end: 1.0,
         ).chain(CurveTween(curve: Curves.easeInCubic)),
         weight: 8,
@@ -75,13 +83,13 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
       TweenSequenceItem(
         tween: Tween(
           begin: 1.0,
-          end: 1.07,
+          end: pulse.midScale,
         ).chain(CurveTween(curve: Curves.easeOutCubic)),
         weight: 6,
       ),
       TweenSequenceItem(
         tween: Tween(
-          begin: 1.07,
+          begin: pulse.midScale,
           end: 1.0,
         ).chain(CurveTween(curve: Curves.easeInCubic)),
         weight: 8,
@@ -93,6 +101,11 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final pulse = ForjaMotionTheme.of(context).playPulse;
+    if (_pulseController.duration != pulse.duration) {
+      _pulseController.duration = pulse.duration;
+    }
+    _pulse = _buildPulse(pulse);
     _syncPulse();
   }
 
@@ -122,6 +135,8 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final motion = ForjaMotionTheme.of(context);
+    final lift = motion.playButtonLift;
     // Attach a tap recognizer only while visible + actionable. An invisible
     // play control must not win the gesture arena over the parent card
     // (episode select). Hover tracking stays enabled for the pulse.
@@ -129,18 +144,18 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
     final lifted = _accented && widget.visible;
     final buttonFace = AnimatedSlide(
       offset: lifted ? const Offset(0, -0.1) : Offset.zero,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
+      duration: lift.duration,
+      curve: lift.resolvedCurve,
       child: AnimatedScale(
-        scale: lifted ? 1.1 : 1.0,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
+        scale: lifted ? lift.hoverScale : 1.0,
+        duration: lift.duration,
+        curve: lift.resolvedCurve,
         child: AnimatedOpacity(
           opacity: widget.visible ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 200),
+          duration: lift.duration,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            curve: Curves.easeOutCubic,
+            duration: motion.fillOnly.duration,
+            curve: motion.fillOnly.resolvedCurve,
             width: widget.diameter,
             height: widget.diameter,
             decoration: BoxDecoration(
@@ -210,7 +225,9 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
         onKeyEvent: (node, event) {
           final custom = widget.onKeyEvent?.call(node, event);
           if (custom == KeyEventResult.handled) return KeyEventResult.handled;
-          if (!ShellPaintScope.isActivateKeyOf(context, event)) return KeyEventResult.ignored;
+          if (!ShellPaintScope.isActivateKeyOf(context, event)) {
+            return KeyEventResult.ignored;
+          }
           widget.onTap?.call();
           return KeyEventResult.handled;
         },
@@ -218,6 +235,6 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
       );
     }
 
-    return Positioned.fill(child: Center(child: button));
+    return button;
   }
 }

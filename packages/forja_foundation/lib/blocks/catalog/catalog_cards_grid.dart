@@ -6,6 +6,7 @@ import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
@@ -85,6 +86,8 @@ class CatalogCardsGrid extends StatelessWidget {
     this.preferCategoryFocusOnLand = true,
     this.onRequestFocusAt,
     this.onArmFocusMemory,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final List<Map<String, dynamic>> items;
@@ -142,6 +145,10 @@ class CatalogCardsGrid extends StatelessWidget {
   /// When landing a restored channel, keep D-pad on category rail (arm memory).
   final bool preferCategoryFocusOnLand;
 
+  /// Pack `focusLeft` / `focusRight` (e.g. IPTV → cats, Live Sports → Providers).
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+
   /// Host focuses TV item after scroll (lazy grid).
   final ValueChanged<int>? onRequestFocusAt;
 
@@ -173,12 +180,29 @@ class CatalogCardsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return Empty(
+      Widget empty = Empty(
         title: emptyTitle,
         description: emptyDescription,
         icon: Icons.inbox_outlined,
         action: emptyAction,
       );
+      final tab = (tvTabId ?? '').trim();
+      final row = (tvRowId ?? '').trim();
+      // No-portal / empty catalog CTA must register so nav enter can land.
+      if (emptyAction != null &&
+          tab.isNotEmpty &&
+          row.isNotEmpty &&
+          ShellPaintScope.useTvFocusOf(context)) {
+        empty = ShellPaintScope.tvRow(
+          context: context,
+          tabId: tab,
+          rowId: row,
+          sortOrder: 2,
+          itemCount: 1,
+          child: empty,
+        );
+      }
+      return empty;
     }
 
     if (_guide) return _epgGuide(context);
@@ -268,7 +292,9 @@ class CatalogCardsGrid extends StatelessWidget {
   Widget _denseList(BuildContext context) {
     final inset = pad ?? ShellTokens.compactChromeLeadingInset(context);
     final trail = pad ?? ShellTokens.bodyHorizontalPadding;
-    return CatalogDenseList(
+    final tab = (tvTabId ?? '').trim();
+    final row = (tvRowId ?? '').trim();
+    Widget body = CatalogDenseList(
       itemCount: items.length,
       leading: inset,
       trailing: trail,
@@ -293,10 +319,30 @@ class CatalogCardsGrid extends StatelessWidget {
           selected: selectedItemId != null &&
               selectedItemId!.isNotEmpty &&
               selectedItemId == id,
+          listIndex: i,
+          tvTabId: tab.isEmpty ? null : tab,
+          tvRowId: row.isEmpty ? null : row,
+          onLeftEdge: onLeftEdge,
+          onRightEdge: onRightEdge,
           onTap: onItemTap == null ? null : () => onItemTap!(item),
         );
       },
     );
+    if (tab.isNotEmpty &&
+        row.isNotEmpty &&
+        items.isNotEmpty &&
+        ShellPaintScope.useTvFocusOf(context)) {
+      body = ShellPaintScope.tvRow(
+        context: context,
+        tabId: tab,
+        rowId: row,
+        sortOrder: 2,
+        itemCount: items.length,
+        axis: ShellPaintTvRowAxis.vertical,
+        child: body,
+      );
+    }
+    return body;
   }
 
   Widget _eventGrid(BuildContext context) {
@@ -929,7 +975,7 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       context: context,
       onTap: widget.onTap,
       borderRadius: radius,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
       tvZone: ShellPaintTvZone.grid,
@@ -948,6 +994,11 @@ class _HoverDenseTile extends StatefulWidget {
     required this.airing,
     required this.viewers,
     required this.selected,
+    this.listIndex,
+    this.tvTabId,
+    this.tvRowId,
+    this.onLeftEdge,
+    this.onRightEdge,
     this.onTap,
   });
 
@@ -956,6 +1007,11 @@ class _HoverDenseTile extends StatefulWidget {
   final bool airing;
   final int viewers;
   final bool selected;
+  final int? listIndex;
+  final String? tvTabId;
+  final String? tvRowId;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
   final VoidCallback? onTap;
 
   @override
@@ -996,10 +1052,16 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
       context: context,
       onTap: widget.onTap,
       borderRadius: 0,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       showFocusFill: false,
       showFocusBorder: false,
+      listIndex: widget.listIndex,
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: (h) => setState(() => _hovered = h),
       child: tile,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/sources/sources_types.dart';
 
@@ -141,7 +142,7 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
     _focus = widget.focusNode ?? FocusNode(debugLabel: widget.debugLabel);
     _anim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 220),
+      duration: ForjaMotionTheme.defaults.scrollSnap.duration,
     );
     _expand = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic);
     _focus.onKeyEvent = (node, event) {
@@ -156,6 +157,13 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
       _open = true;
       _anim.value = 1;
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final d = ForjaMotionTheme.of(context).scrollSnap.duration;
+    if (_anim.duration != d) _anim.duration = d;
   }
 
   @override
@@ -371,7 +379,7 @@ class _SourcesCategoryRailRowState extends State<SourcesCategoryRailRow> {
     final selected = widget.selected;
     final lit = selected || _focused || _hovered;
     final tile = AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+      duration: ForjaMotionTheme.of(context).fillOnly.duration,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: selected

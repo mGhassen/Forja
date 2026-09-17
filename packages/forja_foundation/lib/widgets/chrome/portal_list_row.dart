@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_probe_detail_card.dart';
@@ -441,8 +442,9 @@ class _PortalListRowState extends State<PortalListRow> {
   Widget build(BuildContext context) {
     final deleting = item.deleting;
     final reveal = _reveal;
-    final railAnim =
-        widget.leanback ? Duration.zero : const Duration(milliseconds: 180);
+    final railAnim = widget.leanback
+        ? Duration.zero
+        : ForjaMotionTheme.of(context).cardLift.duration;
     final cardHeight = widget.height - 4;
 
     Widget tile = ExcludeFocus(
@@ -649,7 +651,7 @@ class _PortalListRowState extends State<PortalListRow> {
               opacity: _showStar ? 1 : 0,
               duration: widget.leanback
                   ? Duration.zero
-                  : const Duration(milliseconds: 120),
+                  : ForjaMotionTheme.of(context).fillOnly.duration,
               child: IgnorePointer(
                 ignoring: !_showStar || widget.onFavorite == null,
                 child: _tv
@@ -657,7 +659,7 @@ class _PortalListRowState extends State<PortalListRow> {
                         context: context,
                         onTap: widget.onFavorite,
                         borderRadius: 16,
-                        scaleOnFocus: 1.0,
+                        motion: ForjaMotionPreset.fillOnly,
                         showFocusFill: false,
                         suppressInkHover: true,
                         focusNode: _favoriteFocus,
@@ -714,7 +716,7 @@ class _PortalListRowState extends State<PortalListRow> {
         context: context,
         onTap: _onRowTap,
         borderRadius: 0,
-        scaleOnFocus: 1.0,
+        motion: ForjaMotionPreset.fillOnly,
         showFocusFill: false,
         suppressInkHover: true,
         focusNode: _rowFocus,
@@ -1228,7 +1230,7 @@ class _RailAction extends StatelessWidget {
       context: context,
       onTap: onTap,
       borderRadius: PortalListTokens.chipRadius,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       showFocusFill: false,
       suppressInkHover: true,
       focusNode: focusNode,

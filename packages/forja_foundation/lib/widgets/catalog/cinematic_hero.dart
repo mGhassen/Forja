@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/hero_desktop_layout.dart';
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
@@ -232,7 +233,7 @@ class CinematicHeroState extends State<CinematicHero> {
     } else {
       _heroController.animateToPage(
         target,
-        duration: const Duration(milliseconds: 450),
+        duration: ForjaMotionTheme.of(context).pageFade.duration,
         curve: Curves.easeOutCubic,
       );
     }
@@ -1072,7 +1073,7 @@ class CinematicHeroState extends State<CinematicHero> {
           horizontal: axis == Axis.horizontal ? 4 : 0,
         ),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: ForjaMotionTheme.of(context).playButtonLift.duration,
           width: active ? 18 : 6,
           height: 6,
           decoration: BoxDecoration(

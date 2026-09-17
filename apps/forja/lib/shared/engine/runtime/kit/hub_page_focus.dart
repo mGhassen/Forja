@@ -103,7 +103,8 @@ void bindHubPageFocus(String tabId, HubPageFocus focus) {
   }
 
   void enter() {
-    land(focus.enter, remembered: false);
+    // Same remembered land as restore — selected/last chip, not always index 0.
+    land(focus.enter, remembered: focus.restoreRemembered);
   }
 
   bool restore() {

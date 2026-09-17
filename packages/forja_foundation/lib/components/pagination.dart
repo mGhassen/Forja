@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Page indicator dots.
@@ -30,7 +31,7 @@ class PageDots extends StatelessWidget {
           GestureDetector(
             onTap: onChanged == null ? null : () => onChanged!(i),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
+              duration: ForjaMotionTheme.of(context).chipLift.duration,
               width: i == index ? size * 2.2 : size,
               height: size,
               decoration: BoxDecoration(

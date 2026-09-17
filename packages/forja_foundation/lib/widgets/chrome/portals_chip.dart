@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -211,15 +212,16 @@ class _PortalsChipState extends State<PortalsChip> {
       );
     }
 
+    final fill = ForjaMotionTheme.of(context).fillOnly;
     // Seats prepend left of [body]; AnimatedSize centerRight keeps the chip's
     // right edge fixed (Search/Sort shift left).
     final chip = AnimatedSize(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
+      duration: fill.duration,
+      curve: fill.resolvedCurve,
       alignment: Alignment.centerRight,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
+        duration: fill.duration,
+        curve: fill.resolvedCurve,
         height: widget.height,
         constraints: BoxConstraints(minWidth: minW),
         padding: EdgeInsets.symmetric(horizontal: hPad),

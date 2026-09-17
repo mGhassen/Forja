@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -131,8 +132,6 @@ class _WidgetShelfTab extends StatefulWidget {
 }
 
 class _WidgetShelfTabState extends State<_WidgetShelfTab> {
-  static const _colorThenExpandDelay = Duration(milliseconds: 90);
-  static const _expandDuration = Duration(milliseconds: 200);
   static const _tvReloadHoldDelay = Duration(seconds: 1);
 
   bool _hover = false;
@@ -238,7 +237,11 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
     if (_expandActive) {
       if (_reloadArmed || _tvReloadRevealed) return;
       _revealTimer?.cancel();
-      _revealTimer = Timer(_colorThenExpandDelay, () {
+      _revealTimer = Timer(
+        Duration(
+          milliseconds: ForjaMotionTheme.of(context).shelfRevealDelayMs,
+        ),
+        () {
         if (mounted && _expandActive) setState(() => _reloadArmed = true);
       });
     } else {
@@ -350,7 +353,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
       context: context,
       onTap: widget.onTap,
       borderRadius: widget.radius,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       suppressInkHover: true,
       showFocusFill: false,
       listIndex: widget.listIndex,
@@ -406,7 +409,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
             if (widget.onReload != null)
               ClipRect(
                 child: AnimatedAlign(
-                  duration: _expandDuration,
+                  duration: ForjaMotionTheme.of(context).shelfExpand.duration,
                   curve: Curves.easeOutCubic,
                   alignment: Alignment.centerLeft,
                   widthFactor: _revealReload ? 1 : 0,
@@ -416,7 +419,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                       context: context,
                       onTap: widget.onReload!,
                       borderRadius: ShellTokens.widgetShelfRadius,
-                      scaleOnFocus: 1.0,
+                      motion: ForjaMotionPreset.fillOnly,
                       suppressInkHover: true,
                       showFocusFill: false,
                       listIndex: widget.listIndex,

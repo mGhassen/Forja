@@ -1768,7 +1768,13 @@ class ShellTvFocusMeta {
       final idx = itemIndex!;
       final cols = gridColumns!;
       return () {
-        if (idx % cols <= 0) return true;
+        // Column 0: pack pageBack ladder (e.g. IPTV items → cats).
+        if (idx % cols <= 0) {
+          if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
+            ShellTvFocusCoordinator.tryPageBack(tid);
+          }
+          return true;
+        }
         return ShellTvFocusCoordinator.moveInGrid(
           tabId: tid,
           rowId: rid,

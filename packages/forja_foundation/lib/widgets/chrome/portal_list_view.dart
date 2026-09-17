@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
@@ -538,7 +539,6 @@ class _PortalHeaderIcon extends StatefulWidget {
 
 class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
   static const _iconSize = PortalListTokens.headerIconSize;
-  static const _hoverScale = 1.08;
   static const _pressScale = 0.88;
 
   bool _focused = false;
@@ -571,7 +571,7 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
         context: context,
         onTap: widget.onPressed,
         borderRadius: 24,
-        scaleOnFocus: 1.0,
+        motion: ForjaMotionPreset.fillOnly,
         suppressInkHover: true,
         showFocusFill: false,
         tvTabId: tab,
@@ -589,13 +589,16 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
     }
 
     final enabled = widget.onPressed != null;
+    final chip = ForjaMotionTheme.of(context).chipLift;
     final scale = !enabled
         ? 1.0
         : _pressed
             ? _pressScale
-            : _hovered
-                ? _hoverScale
-                : 1.0;
+            : ForjaMotionTheme.of(context).scaleForActive(
+                context,
+                ForjaMotionPreset.chipLift,
+                _hovered,
+              );
 
     return MouseRegion(
       onEnter: !enabled ? null : (_) => setState(() => _hovered = true),
@@ -614,8 +617,8 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
         onTapCancel: !enabled ? null : () => setState(() => _pressed = false),
         child: AnimatedScale(
           scale: scale,
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOutCubic,
+          duration: chip.duration,
+          curve: chip.resolvedCurve,
           child: body,
         ),
       ),

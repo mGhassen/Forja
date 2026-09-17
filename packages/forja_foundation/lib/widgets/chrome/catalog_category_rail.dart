@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/empty.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -690,7 +691,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
         widget.onSelect?.call();
       },
       borderRadius: 0,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       showFocusFill: false,
       suppressInkHover: true,
       listIndex: widget.listIndex,
@@ -767,7 +768,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       context: context,
       onTap: widget.onTogglePin,
       borderRadius: ShellTokens.categoryRailPinRadius,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       showFocusFill: false,
       suppressInkHover: true,
       focusNode: _pinFocus,

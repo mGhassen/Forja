@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
@@ -260,7 +261,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
         .clamp(0.0, _seasonScrollController.position.maxScrollExtent);
     _seasonScrollController.animateTo(
       target,
-      duration: const Duration(milliseconds: 220),
+      duration: ForjaMotionTheme.of(context).scrollSnap.duration,
       curve: Curves.easeOutCubic,
     );
   }
@@ -294,7 +295,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     if ((target - position.pixels).abs() < 1) return;
     _episodeScrollController.animateTo(
       target,
-      duration: const Duration(milliseconds: 220),
+      duration: ForjaMotionTheme.of(context).scrollSnap.duration,
       curve: Curves.easeOutCubic,
     );
   }
@@ -666,10 +667,10 @@ class _SeasonCard extends StatefulWidget {
   static const double cardWidth = DetailsTokens.episodeSeasonWidth;
   static const double cardHeight = DetailsTokens.episodeSeasonHeight;
   static const double radius = ShellTokens.shellProviderCardRadius;
-  static const double hoverScale = 1.04;
   static const double rowVerticalPadding = 4;
   static double get rowScrollerHeight =>
-      cardHeight * hoverScale + rowVerticalPadding * 2;
+      cardHeight * ForjaMotionTheme.defaults.chipLift.hoverScale +
+      rowVerticalPadding * 2;
 
   @override
   State<_SeasonCard> createState() => _SeasonCardState();
@@ -690,14 +691,14 @@ class _SeasonCardState extends State<_SeasonCard> {
         ? ForjaShellColors.chipSelectedBorder
         : ForjaShellColors.cinematic.borderSubtle;
     final borderWidth = widget.selected || active ? 2.0 : 1.0;
-    final scale = active && !widget.selected ? _SeasonCard.hoverScale : 1.0;
+    final liftActive = active && !widget.selected;
 
     // Avoid shellFocusableTap's Material clip - it ate the decoration stroke.
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onTap,
       borderRadius: _SeasonCard.radius,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       onLeftEdge: widget.onLeftEdge,
@@ -706,10 +707,9 @@ class _SeasonCardState extends State<_SeasonCard> {
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,
-      child: AnimatedScale(
-        scale: scale,
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
+      child: ForjaMotionScale(
+        preset: ForjaMotionPreset.chipLift,
+        active: liftActive,
         child: GestureDetector(
           onSecondaryTap: widget.onDoubleTap,
           onDoubleTap: widget.onDoubleTap,
@@ -770,7 +770,8 @@ class _SeasonCardState extends State<_SeasonCard> {
               ),
               IgnorePointer(
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: ForjaMotionTheme.of(context).chipLift.duration,
+                  curve: ForjaMotionTheme.of(context).chipLift.resolvedCurve,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(_SeasonCard.radius),
                     border: Border.all(color: borderColor, width: borderWidth),
@@ -891,8 +892,6 @@ class _EpisodeCardState extends State<_EpisodeCard> {
   bool _hovered = false;
   bool _focused = false;
 
-  static const double _hoverScale = ShellCardPlayOverlay.cardHoverScale;
-
   @override
   Widget build(BuildContext context) {
     final thumbHeight = _EpisodeCard.thumbHeight;
@@ -910,9 +909,8 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     final showPlayOverlay = tvFocus
         ? (playEnabled || enabled) && (widget.armed || active)
         : (playEnabled || enabled) && (active || widget.selected);
-    final scale = tvFocus
-        ? 1.0
-        : (enabled && (active || widget.selected) ? _hoverScale : 1.0);
+    final liftActive =
+        !tvFocus && enabled && (active || widget.selected);
     final showThumbBorder = widget.selected || active;
     final thumbBorderColor = widget.selected
         ? Colors.white
@@ -922,7 +920,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       context: context,
       onTap: widget.onTap,
       borderRadius: _EpisodeCard.thumbRadius,
-      scaleOnFocus: 1.0,
+      motion: ForjaMotionPreset.fillOnly,
       onFocusChange: (focused) {
         setState(() => _focused = focused);
         widget.onFocusChange?.call(focused);
@@ -934,10 +932,9 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,
-      child: AnimatedScale(
-        scale: scale,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
+      child: ForjaMotionScale(
+        preset: ForjaMotionPreset.cardLift,
+        active: liftActive,
         child: GestureDetector(
           onSecondaryTap: enabled ? widget.onToggleWatched : null,
           onDoubleTap: enabled ? widget.onToggleWatched : null,

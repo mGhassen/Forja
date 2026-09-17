@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Visual tone for [Toggle].
 enum ToggleVariant {
@@ -15,7 +17,7 @@ enum ToggleSize {
 }
 
 /// Pressable on/off segment (toolbar / filter).
-class Toggle extends StatelessWidget {
+class Toggle extends StatefulWidget {
   const Toggle({
     super.key,
     required this.pressed,
@@ -38,31 +40,39 @@ class Toggle extends StatelessWidget {
   final FocusNode? focusNode;
 
   @override
+  State<Toggle> createState() => _ToggleState();
+}
+
+class _ToggleState extends State<Toggle> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
-    final dims = _dims(size);
-    final selected = pressed;
+    final dims = _dims(widget.size);
+    final selected = widget.pressed;
     final bg = selected
         ? ForjaShellColors.chipSelectedBg
-        : (variant == ToggleVariant.ghost
+        : (widget.variant == ToggleVariant.ghost
             ? Colors.transparent
             : Colors.white.withValues(alpha: 0.03));
     final border = selected
         ? ForjaShellColors.chipSelectedBorder
-        : (variant == ToggleVariant.ghost ? null : theme.borderSubtle);
+        : (widget.variant == ToggleVariant.ghost ? null : theme.borderSubtle);
     final fg = selected ? theme.textPrimary : theme.textSecondary;
 
-    Widget content = child ??
+    Widget content = widget.child ??
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[
-              Icon(icon, size: dims.iconSize, color: fg),
-              if (label != null) SizedBox(width: theme.spaceSm),
+            if (widget.icon != null) ...[
+              Icon(widget.icon, size: dims.iconSize, color: fg),
+              if (widget.label != null) SizedBox(width: theme.spaceSm),
             ],
-            if (label != null)
+            if (widget.label != null)
               Text(
-                label!,
+                widget.label!,
                 style: TextStyle(
                   color: fg,
                   fontSize: dims.fontSize,
@@ -72,21 +82,33 @@ class Toggle extends StatelessWidget {
           ],
         );
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        focusNode: focusNode,
-        borderRadius: BorderRadius.circular(theme.radiusMd),
-        child: Container(
-          constraints: BoxConstraints(minHeight: dims.height),
-          padding: dims.padding,
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(theme.radiusMd),
-            border: border != null ? Border.all(color: border) : null,
+    final active = ShellPaintScope.interactiveActive(
+      context,
+      hovered: _hovered,
+      focused: _focused,
+    );
+
+    return ForjaMotionScale(
+      preset: ForjaMotionPreset.chipLift,
+      active: active,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onPressed,
+          focusNode: widget.focusNode,
+          borderRadius: BorderRadius.circular(theme.radiusMd),
+          onHover: (h) => setState(() => _hovered = h),
+          onFocusChange: (f) => setState(() => _focused = f),
+          child: Container(
+            constraints: BoxConstraints(minHeight: dims.height),
+            padding: dims.padding,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(theme.radiusMd),
+              border: border != null ? Border.all(color: border) : null,
+            ),
+            child: content,
           ),
-          child: content,
         ),
       ),
     );

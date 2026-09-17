@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
@@ -26,17 +27,21 @@ class LiveFavoriteStar extends StatefulWidget {
 class _LiveFavoriteStarState extends State<LiveFavoriteStar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _beat;
-  late final Animation<double> _scale;
+  Animation<double>? _scale;
   bool _iconHovered = false;
 
   @override
   void initState() {
     super.initState();
-    _beat = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 420),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 1.28).animate(
+    _beat = AnimationController(vsync: this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final hb = ForjaMotionTheme.of(context).favoriteHeartbeat;
+    _beat.duration = hb.duration;
+    _scale = Tween<double>(begin: hb.midScale, end: hb.peakScale).animate(
       CurvedAnimation(parent: _beat, curve: Curves.easeInOut),
     );
   }
@@ -62,9 +67,11 @@ class _LiveFavoriteStarState extends State<LiveFavoriteStar>
   @override
   Widget build(BuildContext context) {
     final show = widget.reveal || widget.favorited;
+    final scale = _scale;
+    final fade = ForjaMotionTheme.of(context).fillOnly.duration;
     return AnimatedOpacity(
       opacity: show ? 1 : 0,
-      duration: const Duration(milliseconds: 120),
+      duration: fade,
       child: IgnorePointer(
         ignoring: !show,
         child: MouseRegion(
@@ -78,18 +85,30 @@ class _LiveFavoriteStarState extends State<LiveFavoriteStar>
               width: widget.iconSize + 6,
               height: widget.iconSize + 6,
               child: Center(
-                child: ScaleTransition(
-                  scale: _scale,
-                  child: Icon(
-                    widget.favorited
-                        ? Icons.star_rounded
-                        : Icons.star_outline_rounded,
-                    size: widget.iconSize,
-                    color: widget.favorited
-                        ? const Color(0xFFFBBF24)
-                        : ForjaShellColors.textSecondary.withValues(alpha: 0.85),
-                  ),
-                ),
+                child: scale == null
+                    ? Icon(
+                        widget.favorited
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        size: widget.iconSize,
+                        color: widget.favorited
+                            ? const Color(0xFFFBBF24)
+                            : ForjaShellColors.textSecondary
+                                .withValues(alpha: 0.85),
+                      )
+                    : ScaleTransition(
+                        scale: scale,
+                        child: Icon(
+                          widget.favorited
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          size: widget.iconSize,
+                          color: widget.favorited
+                              ? const Color(0xFFFBBF24)
+                              : ForjaShellColors.textSecondary
+                                  .withValues(alpha: 0.85),
+                        ),
+                      ),
               ),
             ),
           ),

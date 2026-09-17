@@ -34,5 +34,6 @@ abstract class KitPanelHost {
     required int refreshEpoch,
     VoidCallback? onClosed,
     VoidCallback? onPanelLeftEdge,
+    String? tvTabId,
   });
 }

@@ -105,7 +105,8 @@ class KitSourcesPanel extends StatelessWidget {
   }
 
   VoidCallback _listFocusUp(String tvTabId) {
-    if (embedded || tvTabId == MediaDetailsTv.tabId) {
+    // Match details: ↑ from stream list → hero. Hub-embedded panels → kind tabs.
+    if (tvTabId == MediaDetailsTv.tabId) {
       return () {
         ShellTvFocusCoordinator.focusRowItem(
           tvTabId,
@@ -114,7 +115,11 @@ class KitSourcesPanel extends StatelessWidget {
         );
       };
     }
-    return () => SourcesPanelTv.focusKindItem();
+    return () => SourcesPanelTv.focusKindItem(forTabId: tvTabId);
+  }
+
+  void _focusListItem(String? forTabId, {int index = 0}) {
+    SourcesPanelTv.focusListItem(index: index, forTabId: forTabId);
   }
 
   @override
@@ -157,7 +162,7 @@ class KitSourcesPanel extends StatelessWidget {
           tvItemIndexStart: 0,
           onLeftEdge: onTabsLeftEdge,
           onDownEdge: effectiveTv != null
-              ? () => SourcesPanelTv.focusListItem(index: 0)
+              ? () => _focusListItem(effectiveTv, index: 0)
               : null,
           segments: [
             for (final tab in tabs)
@@ -177,7 +182,7 @@ class KitSourcesPanel extends StatelessWidget {
                 rowId: tabsRowId,
                 sortOrder: SourcesPanelTv.kindSort,
                 itemCount: itemCount,
-                onFocusDown: () => SourcesPanelTv.focusListItem(index: 0),
+                onFocusDown: () => _focusListItem(effectiveTv, index: 0),
                 child: child,
               );
             },

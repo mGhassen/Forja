@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 
@@ -90,7 +91,7 @@ class EventCard extends StatelessWidget {
       );
     } else {
       card = AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: ForjaMotionTheme.of(context).fillOnly.duration,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(borderRadius),
           color: (active || selected)

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 
 /// Slow cinematic pan & zoom. Host passes [enableMotion] (shell Ken Burns policy).
 class KenBurnsBackdrop extends StatefulWidget {
@@ -9,9 +10,9 @@ class KenBurnsBackdrop extends StatefulWidget {
     this.tintDominant,
     this.tintMuted,
     this.blurSigma = 28,
-    this.cycleDuration = const Duration(seconds: 25),
-    this.minScale = 1.0,
-    this.maxScale = 1.25,
+    this.cycleDuration,
+    this.minScale,
+    this.maxScale,
     this.showColorTint = true,
     this.panBegin = const Alignment(-0.5, -0.3),
     this.panEnd = const Alignment(0.5, 0.2),
@@ -25,9 +26,11 @@ class KenBurnsBackdrop extends StatefulWidget {
   final Color? tintDominant;
   final Color? tintMuted;
   final double blurSigma;
-  final Duration cycleDuration;
-  final double minScale;
-  final double maxScale;
+
+  /// Null → [ForjaMotionTheme.kenBurns] cycle.
+  final Duration? cycleDuration;
+  final double? minScale;
+  final double? maxScale;
   final bool showColorTint;
   final Alignment panBegin;
   final Alignment panEnd;
@@ -46,38 +49,53 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
   Animation<double>? _scaleAnimation;
   Animation<Alignment>? _alignAnimation;
   bool? _motionEnabled;
+  Duration? _appliedCycle;
+  double? _appliedMin;
+  double? _appliedMax;
 
-  void _syncMotion() {
+  void _syncMotion(ForjaKenBurnsMotionSpec kb) {
     final enabled = widget.enableMotion;
-    if (_motionEnabled == enabled) return;
+    final cycle =
+        widget.cycleDuration ?? Duration(seconds: kb.cycleSeconds);
+    final min = widget.minScale ?? kb.minScale;
+    final max = widget.maxScale ?? kb.maxScale;
+
+    if (_motionEnabled == enabled &&
+        _appliedCycle == cycle &&
+        _appliedMin == min &&
+        _appliedMax == max &&
+        (!enabled || _controller != null)) {
+      return;
+    }
+
     _motionEnabled = enabled;
+    _appliedCycle = cycle;
+    _appliedMin = min;
+    _appliedMax = max;
+
     if (enabled) {
-      _setupAnimations();
+      _setupAnimations(cycle: cycle, minScale: min, maxScale: max);
     } else {
       _tearDownAnimations();
     }
   }
 
   @override
-  void initState() {
-    super.initState();
-    _syncMotion();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMotion(ForjaMotionTheme.of(context).kenBurns);
   }
 
   @override
   void didUpdateWidget(KenBurnsBackdrop oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.enableMotion != widget.enableMotion) {
-      _syncMotion();
-    }
-    if (_motionEnabled != true) return;
-    if (oldWidget.cycleDuration != widget.cycleDuration ||
+    if (oldWidget.enableMotion != widget.enableMotion ||
+        oldWidget.cycleDuration != widget.cycleDuration ||
         oldWidget.minScale != widget.minScale ||
         oldWidget.maxScale != widget.maxScale ||
         oldWidget.panBegin != widget.panBegin ||
         oldWidget.panEnd != widget.panEnd) {
-      _tearDownAnimations();
-      _setupAnimations();
+      _syncMotion(ForjaMotionTheme.of(context).kenBurns);
     }
   }
 
@@ -88,16 +106,20 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
     _alignAnimation = null;
   }
 
-  void _setupAnimations() {
+  void _setupAnimations({
+    required Duration cycle,
+    required double minScale,
+    required double maxScale,
+  }) {
     _tearDownAnimations();
     final controller = AnimationController(
-      duration: widget.cycleDuration,
+      duration: cycle,
       vsync: this,
     )..repeat(reverse: true);
     _controller = controller;
     _scaleAnimation = Tween<double>(
-      begin: widget.minScale,
-      end: widget.maxScale,
+      begin: minScale,
+      end: maxScale,
     ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut));
     _alignAnimation = AlignmentTween(
       begin: widget.panBegin,
@@ -147,6 +169,7 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
 
   @override
   Widget build(BuildContext context) {
+    _syncMotion(ForjaMotionTheme.of(context).kenBurns);
     final controller = _controller;
     final scale = _scaleAnimation;
     final align = _alignAnimation;
