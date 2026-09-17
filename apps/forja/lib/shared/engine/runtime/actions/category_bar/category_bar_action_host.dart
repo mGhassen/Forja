@@ -653,22 +653,25 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         rowPadH: _d('rowPadH'),
         listPadV: _d('listPadV') ?? 8,
         pinSlotWidth: _d('pinSlotWidth') ?? 28,
-        tvTabId: tvTab,
-        tvRowId: IptvCatalogLand.catsRowId,
         onSelect: _onSelectCategory,
         onTogglePin: onTogglePin,
         onReorder: onReorder,
         canReorder: canReorder,
       );
-      if (!ShellPaintScope.useTvFocusOf(context)) return child;
-      return ShellPaintScope.tvRow(
-        context: context,
+      if (!ShellPaintScope.useTvFocusOf(context)) {
+        return ShellPaintTvTabScope(tabId: tvTab, child: child);
+      }
+      return ShellPaintTvTabScope(
         tabId: tvTab,
-        rowId: IptvCatalogLand.catsRowId,
-        sortOrder: 1,
-        itemCount: items.length,
-        axis: ShellPaintTvRowAxis.vertical,
-        child: child,
+        child: ShellPaintScope.tvRow(
+          context: context,
+          tabId: tvTab,
+          rowId: IptvCatalogLand.catsRowId,
+          sortOrder: 1,
+          itemCount: items.length,
+          axis: ShellPaintTvRowAxis.vertical,
+          child: child,
+        ),
       );
     }
 

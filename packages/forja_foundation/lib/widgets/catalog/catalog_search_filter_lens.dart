@@ -4,6 +4,7 @@ import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 bool _searchFilterActivateKey(KeyEvent event) {
   if (event is! KeyDownEvent) return false;
@@ -23,7 +24,6 @@ typedef CatalogSearchFilterInteractive =
       VoidCallback? onUpEdge,
       VoidCallback? onLeftEdge,
       int? listIndex,
-      String? tvRowId,
     });
 
 /// Sliding All / Films / Series segment paint.
@@ -151,7 +151,6 @@ class CatalogSearchTypeSegment extends StatelessWidget {
         onUpEdge: onUpEdge,
         onLeftEdge: onLeftEdge,
         listIndex: listIndex,
-        tvRowId: null,
       );
     }
     return GestureDetector(onTap: onTap, child: child);
@@ -734,7 +733,6 @@ class CatalogSearchFilterChipSection extends StatelessWidget {
     required this.options,
     required this.selectedToken,
     required this.onSelected,
-    this.tvRowId,
     this.interactiveBuilder,
   });
 
@@ -742,7 +740,6 @@ class CatalogSearchFilterChipSection extends StatelessWidget {
   final List<(String label, String token)> options;
   final String? selectedToken;
   final ValueChanged<String> onSelected;
-  final String? tvRowId;
   final CatalogSearchFilterInteractive? interactiveBuilder;
 
   @override
@@ -768,7 +765,6 @@ class CatalogSearchFilterChipSection extends StatelessWidget {
                 label: options[i].$1,
                 selected: selectedToken == options[i].$2,
                 listIndex: i,
-                tvRowId: tvRowId,
                 onTap: () => onSelected(options[i].$2),
                 interactiveBuilder: interactiveBuilder,
               ),
@@ -786,7 +782,6 @@ class CatalogSearchFilterGhostChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.listIndex,
-    this.tvRowId,
     this.interactiveBuilder,
   });
 
@@ -794,7 +789,6 @@ class CatalogSearchFilterGhostChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final int? listIndex;
-  final String? tvRowId;
   final CatalogSearchFilterInteractive? interactiveBuilder;
 
   @override
@@ -831,7 +825,6 @@ class CatalogSearchFilterGhostChip extends StatelessWidget {
         child: paint,
         onTap: onTap,
         listIndex: listIndex,
-        tvRowId: tvRowId,
       );
     }
     return GestureDetector(onTap: onTap, child: paint);
@@ -840,6 +833,28 @@ class CatalogSearchFilterGhostChip extends StatelessWidget {
 
 /// Filter lens paint — host wraps taps via [interactiveBuilder].
 class CatalogSearchFilterLens extends StatelessWidget {
+  static const _genreRowId = 'search_filter_genre';
+  static const _countryRowId = 'search_filter_country';
+  static const _languageRowId = 'search_filter_language';
+
+  Widget _maybeTvRow(
+    BuildContext context, {
+    required String rowId,
+    required int itemCount,
+    required Widget child,
+  }) {
+    final tab = ShellPaintTvTabScope.tabIdOf(context);
+    if (tab == null || !ShellPaintScope.useTvFocusOf(context)) return child;
+    return ShellPaintScope.tvRow(
+      context: context,
+      tabId: tab,
+      rowId: rowId,
+      sortOrder: 4,
+      itemCount: itemCount,
+      child: child,
+    );
+  }
+
   const CatalogSearchFilterLens({
     super.key,
     required this.open,
@@ -913,7 +928,6 @@ class CatalogSearchFilterLens extends StatelessWidget {
                                   onUpEdge,
                                   onLeftEdge,
                                   listIndex,
-                                  tvRowId,
                                 }) {
                                   final wrap = interactiveBuilder;
                                   if (wrap == null) {
@@ -931,7 +945,6 @@ class CatalogSearchFilterLens extends StatelessWidget {
                                         ? onLeftFromFirstSegment
                                         : onLeftEdge,
                                     listIndex: listIndex,
-                                    tvRowId: tvRowId,
                                   );
                                 },
                             onChanged: (m) =>
@@ -971,48 +984,60 @@ class CatalogSearchFilterLens extends StatelessWidget {
                         const SizedBox(height: 16),
                         FocusTraversalOrder(
                           order: const NumericFocusOrder(4),
-                          child: CatalogSearchFilterChipSection(
-                            title: 'Genre',
-                            tvRowId: 'search_filter_genre',
-                            options: kSearchFilterGenres,
-                            selectedToken: filters.genreToken,
-                            interactiveBuilder: interactiveBuilder,
-                            onSelected: (token) => onFiltersChanged(
-                              token == filters.genreToken
-                                  ? filters.copyWith(clearGenre: true)
-                                  : filters.copyWith(genreToken: token),
+                          child: _maybeTvRow(
+                            context,
+                            rowId: _genreRowId,
+                            itemCount: kSearchFilterGenres.length,
+                            child: CatalogSearchFilterChipSection(
+                              title: 'Genre',
+                              options: kSearchFilterGenres,
+                              selectedToken: filters.genreToken,
+                              interactiveBuilder: interactiveBuilder,
+                              onSelected: (token) => onFiltersChanged(
+                                token == filters.genreToken
+                                    ? filters.copyWith(clearGenre: true)
+                                    : filters.copyWith(genreToken: token),
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 14),
                         FocusTraversalOrder(
                           order: const NumericFocusOrder(5),
-                          child: CatalogSearchFilterChipSection(
-                            title: 'Country',
-                            tvRowId: 'search_filter_country',
-                            options: kSearchFilterCountries,
-                            selectedToken: filters.countryToken,
-                            interactiveBuilder: interactiveBuilder,
-                            onSelected: (token) => onFiltersChanged(
-                              token == filters.countryToken
-                                  ? filters.copyWith(clearCountry: true)
-                                  : filters.copyWith(countryToken: token),
+                          child: _maybeTvRow(
+                            context,
+                            rowId: _countryRowId,
+                            itemCount: kSearchFilterCountries.length,
+                            child: CatalogSearchFilterChipSection(
+                              title: 'Country',
+                              options: kSearchFilterCountries,
+                              selectedToken: filters.countryToken,
+                              interactiveBuilder: interactiveBuilder,
+                              onSelected: (token) => onFiltersChanged(
+                                token == filters.countryToken
+                                    ? filters.copyWith(clearCountry: true)
+                                    : filters.copyWith(countryToken: token),
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 14),
                         FocusTraversalOrder(
                           order: const NumericFocusOrder(6),
-                          child: CatalogSearchFilterChipSection(
-                            title: 'Language',
-                            tvRowId: 'search_filter_language',
-                            options: kSearchFilterLanguages,
-                            selectedToken: filters.languageToken,
-                            interactiveBuilder: interactiveBuilder,
-                            onSelected: (token) => onFiltersChanged(
-                              token == filters.languageToken
-                                  ? filters.copyWith(clearLanguage: true)
-                                  : filters.copyWith(languageToken: token),
+                          child: _maybeTvRow(
+                            context,
+                            rowId: _languageRowId,
+                            itemCount: kSearchFilterLanguages.length,
+                            child: CatalogSearchFilterChipSection(
+                              title: 'Language',
+                              options: kSearchFilterLanguages,
+                              selectedToken: filters.languageToken,
+                              interactiveBuilder: interactiveBuilder,
+                              onSelected: (token) => onFiltersChanged(
+                                token == filters.languageToken
+                                    ? filters.copyWith(clearLanguage: true)
+                                    : filters.copyWith(languageToken: token),
+                              ),
                             ),
                           ),
                         ),

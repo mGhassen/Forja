@@ -644,6 +644,14 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 
 ---
 
+## Acceptance (foundation TV coords)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A88 | Foundation TV coords via `ShellPaintTvTabScope` / `ShellPaintTvRowScope`; paint widgets drop `tvTabId`/`tvRowId` props — host owns row registration | ✅ |
+
+---
+
 ## Wave N+1 notes (guide out of live player)
 
 | Done | Detail |

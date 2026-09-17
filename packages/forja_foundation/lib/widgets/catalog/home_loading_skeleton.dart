@@ -564,8 +564,10 @@ List<Widget> homeHubLoadingSlivers({
   double rowSpacing = ShellTokens.homeRowSpacing,
 }) {
   final specs = rows ?? kHomeHubDefaultLoadingRows;
-  final cardW = catalogCardWidth ?? 190;
-  final cardH = catalogCardHeight ?? 285;
+  final cardW = catalogCardWidth ?? ShellTokens.posterCardWidthDesktop;
+  final cardH = catalogCardHeight ??
+      (ShellTokens.posterCardWidthDesktop * ShellTokens.posterCardAspectRatio)
+          .roundToDouble();
   return [
     SliverToBoxAdapter(child: heroShimmer),
     SliverToBoxAdapter(

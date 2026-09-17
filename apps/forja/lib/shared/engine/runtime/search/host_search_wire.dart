@@ -251,7 +251,6 @@ class KitSearchFilterLens extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tabId = TvFocusGraph.tabIdOf(context, fallback: 'search');
     return CatalogSearchFilterLens(
       open: open,
       filters: filters,
@@ -271,10 +270,11 @@ class KitSearchFilterLens extends StatelessWidget {
         onUpEdge,
         onLeftEdge,
         listIndex,
-        tvRowId,
       }) {
-        final isSegment = tvRowId == null && listIndex != null;
-        final isSubmit = tvRowId == null && listIndex == null && focusNode == null;
+        final paintRow = ShellPaintTvRowScope.maybeOf(context);
+        final isSegment = paintRow == null && listIndex != null;
+        final isSubmit =
+            paintRow == null && listIndex == null && focusNode == null;
         return shellFocusableTap(
           context: context,
           focusNode: focusNode,
@@ -289,8 +289,6 @@ class KitSearchFilterLens extends StatelessWidget {
                   : 1.04,
           showFocusFill: isSegment,
           onTap: onTap,
-          tvTabId: tabId,
-          tvRowId: tvRowId,
           tvZone: ShellTvZone.row,
           tvItemIndex: listIndex,
           child: child,
@@ -2073,7 +2071,6 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
     return PlayerSurfaceChromeStub(
       builder: (context) => CatalogSearchScreen(
         hintText: widget.hintText,
-        tvTabId: widget.tabId,
         structuredSearch: widget.structuredSearch,
         onSearch: _packSearch,
         loadRecommendations: _packRecommendations,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/addons/addons_host.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/shell/router.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/features/settings/shell/visibility_provider.dart';
@@ -10,6 +11,7 @@ import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
 
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
@@ -428,8 +430,15 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                 itemCount: categories.length,
                 itemBuilder: (context, index) {
                   final c = categories[index];
+                  final packUpdates =
+                      c.id == SettingsCategoryId.forjaPacks
+                      ? ref.watch(enginePackUpdatesProvider).count
+                      : 0;
                   return SettingsCategoryTile(
                     icon: c.icon,
+                    leading: packUpdates > 0
+                        ? const PackUpdateAlertIcon(size: 22)
+                        : null,
                     title: c.title,
                     subtitle: c.subtitle,
                     selected: false,
@@ -448,7 +457,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   }
 }
 
-class _CategorySidebar extends StatelessWidget {
+class _CategorySidebar extends ConsumerWidget {
   const _CategorySidebar({
     required this.categories,
     required this.selectedId,
@@ -466,9 +475,10 @@ class _CategorySidebar extends StatelessWidget {
   final FocusNode? firstTileFocusNode;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final headerTop = tv ? 28.0 : 12.0;
+    final packUpdateCount = ref.watch(enginePackUpdatesProvider).count;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -485,8 +495,13 @@ class _CategorySidebar extends StatelessWidget {
             itemCount: categories.length,
             itemBuilder: (context, index) {
               final c = categories[index];
+              final showPackAlert = c.id == SettingsCategoryId.forjaPacks &&
+                  packUpdateCount > 0;
               return SettingsCategoryTile(
                 icon: c.icon,
+                leading: showPackAlert
+                    ? const PackUpdateAlertIcon(size: 22)
+                    : null,
                 title: c.title,
                 subtitle: c.subtitle,
                 selected: c.id == selectedId,

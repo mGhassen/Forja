@@ -21,6 +21,7 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_view.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Thin host wire — pack inventory → [PortalListView] props + [PortalsHost].
 class PortalsPanelView extends ConsumerStatefulWidget {
@@ -459,7 +460,9 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       );
     }
 
-    Widget panel = PortalListView(
+    Widget panel = ShellPaintTvTabScope(
+      tabId: widget.tabId,
+      child: PortalListView(
       width: widget.width,
       title: (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals',
       items: items,
@@ -472,7 +475,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       statusText: statusText,
       busy: _busy,
       leanback: leanback,
-      tvTabId: useTv ? widget.tabId : null,
       listScrollController: _tv.listScroll,
       titleFontSize: inv?.titleFontSize ?? 18,
       rowHeight: inv?.rowHeight ?? PortalListRow.rowHeight,
@@ -516,6 +518,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       onPortalExitDown: useTv ? _tv.exitDownToCatalog : null,
       onPortalTvFocus: useTv ? _tv.markPortalTvFocus : null,
       onListPointerBrowse: useTv ? _tv.onListPointerBrowse : null,
+      ),
     );
 
     if (useTv) {

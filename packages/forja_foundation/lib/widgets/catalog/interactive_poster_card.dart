@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -110,9 +109,7 @@ class InteractivePosterCard extends StatefulWidget {
 
   static double _layoutScale(BuildContext context) {
     if (!ShellPaintScope.usesTvDensityOf(context)) return 1.0;
-    final raw =
-        _posterWidth(context) / ShellTokens.posterCardWidthDesktop;
-    return math.max(ShellTokens.tvLayoutScaleFloor, raw);
+    return _posterWidth(context) / ShellTokens.posterCardWidthDesktop;
   }
 
   static double scaled(BuildContext context, double value) =>
@@ -127,7 +124,8 @@ class InteractivePosterCard extends StatefulWidget {
     if (ShellPaintScope.usesTvDensityOf(context)) {
       return ShellTokens.posterTitleFontSizeTv;
     }
-    return MediaQuery.sizeOf(context).width <= 600
+    return MediaQuery.sizeOf(context).width <=
+            ShellTokens.shellGridTabletMinWidth
         ? ShellTokens.posterTitleFontSizeMobile
         : ShellTokens.posterTitleFontSizeDesktop;
   }

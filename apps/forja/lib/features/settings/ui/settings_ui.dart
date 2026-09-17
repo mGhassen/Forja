@@ -95,9 +95,12 @@ class SettingsCategoryTile extends StatefulWidget {
     this.tvRowId,
     this.tvItemIndex,
     this.onRightEdge,
+    this.leading,
   });
 
   final IconData icon;
+  /// When set, replaces the default [Icon] (e.g. pack-update alert).
+  final Widget? leading;
   final String title;
   final String? subtitle;
   final bool selected;
@@ -155,7 +158,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       child: Row(
         children: [
-          Icon(widget.icon, size: 22, color: ink),
+          widget.leading ?? Icon(widget.icon, size: 22, color: ink),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

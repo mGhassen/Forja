@@ -10,6 +10,7 @@ import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/action_chip.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// IPTV top-bar Sort — exact pre-wipe PlayerPopupPanel (Categories + Channels).
 abstract final class IptvSortActionHost {
@@ -112,18 +113,25 @@ class _IptvSortChipState extends ConsumerState<_IptvSortChip> {
     final content = ref.watch(iptvLiveContentSortProvider);
     final custom = category != PortalCatalogSort.playlist ||
         content != PortalCatalogSort.playlist;
+    final chip = ForjaActionChip(
+      label: widget.label,
+      icon: widget.icon,
+      iconOnly: true,
+      selected: custom,
+      tvItemIndex: widget.tvItemIndex,
+      onTap: _openMenu,
+    );
+    final tab = widget.tabId.trim();
+    final row = (widget.tvRowId ?? '').trim();
     return KeyedSubtree(
       key: _anchorKey,
-      child: ForjaActionChip(
-        label: widget.label,
-        icon: widget.icon,
-        iconOnly: true,
-        selected: custom,
-        tvTabId: widget.tabId,
-        tvRowId: widget.tvRowId,
-        tvItemIndex: widget.tvItemIndex,
-        onTap: _openMenu,
-      ),
+      child: tab.isEmpty || row.isEmpty
+          ? chip
+          : ShellPaintTvRowScope(
+              tabId: tab,
+              rowId: row,
+              child: chip,
+            ),
     );
   }
 }

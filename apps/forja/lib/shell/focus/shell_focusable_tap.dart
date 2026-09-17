@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';

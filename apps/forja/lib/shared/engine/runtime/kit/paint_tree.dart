@@ -57,6 +57,7 @@ import 'package:forja_foundation/blocks/catalog/top_body_block.dart';
 import 'package:forja_foundation/blocks/details/details_block.dart';
 import 'package:forja_foundation/blocks/details/match_details_block.dart';
 import 'package:forja_foundation/blocks/empty/empty_block.dart';
+import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/blocks/search/catalog_search_page.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/blocks/shell/shell_block.dart';
@@ -73,10 +74,11 @@ import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
 import 'package:forja_foundation/widgets/catalog/continue_section.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/catalog/mood_section.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_menu.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_tabs.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
-import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:rust/rust.dart'
     show WatchHistoryService, canResumeFromSavedProgress;
 
@@ -331,7 +333,7 @@ class PackPaintTree extends StatelessWidget {
       case 'topBody':
         return _mountTopBody(context, node, props: props, scope: scope);
       case 'tabsCards':
-        return _mountTabsCards(context, node, props: props, scope: scope);
+        return _mountTabsCards(context, node, props: props);
       case 'search':
         return CatalogSearchPage.fromProps(props, results: body);
       case 'details':
@@ -647,51 +649,42 @@ class PackPaintTree extends StatelessWidget {
     BuildContext context,
     Map<String, dynamic> node, {
     required Map<String, dynamic> props,
-    required LayoutScope? scope,
   }) {
-    final merged = Map<String, dynamic>.from(props);
+    Widget? menu;
+    Widget? tabs;
     Widget? feed;
-    String menuId = 'kind';
-    String tabsId = 'status';
     final rawKids = node['children'] ?? node['widgets'];
     if (rawKids is List) {
       for (final c in rawKids) {
         if (c is! Map) continue;
         final child = Map<String, dynamic>.from(c);
         final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
+        final painted = PackPaintTree(
+          spec: child,
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+        );
         if (t == LayoutTypes.menu) {
-          menuId = (child['id'] ?? 'kind').toString();
-          merged['menuItems'] ??= child['items'] ?? child['tabs'];
-          final live = scope?.selectedId(menuId);
-          if (live != null && live.isNotEmpty) {
-            merged['selectedMenuId'] = live;
-          }
+          menu = painted;
         } else if (t == LayoutTypes.tabs) {
-          tabsId = (child['id'] ?? 'status').toString();
-          merged['tabItems'] ??= child['tabs'] ?? child['items'];
-          final live = scope?.selectedId(tabsId);
-          merged['selectedTabId'] =
-              (live != null && live.isNotEmpty) ? live : child['default'];
-          merged['defaultTabId'] ??= child['default'];
+          tabs = painted;
         } else if (t == LayoutTypes.list || child['load'] != null) {
-          feed = PackPaintTree(
-            spec: child,
-            pluginId: pluginId,
-            packSourceUrl: packSourceUrl,
-            tabId: tabId,
-          );
+          feed = painted;
         }
       }
     }
     return TabsCardsBlock.fromProps(
-      merged,
-      cards: feed,
-      onMenuSelect: (id) {
-        scope?.onSelect(menuId, id, toggle: true);
-      },
-      onTabSelect: (id) {
-        scope?.onSelect(tabsId, id, toggle: false);
-      },
+      props,
+      menu: menu,
+      tabs: tabs,
+      cards: feed ??
+          CatalogCardsGrid(
+            items: const [],
+            emptyTitle: propsStringOr(props, 'emptyTitle', 'Your list is empty'),
+            emptyDescription: propsString(props, 'emptyDescription'),
+            cardKind: 'poster',
+          ),
     );
   }
 
@@ -759,8 +752,6 @@ class PackPaintTree extends StatelessWidget {
                       accent: meta.accent,
                       selected: on,
                       listIndex: i,
-                      tvTabId: tabId,
-                      tvRowId: barId,
                       onDownEdge: down.isEmpty
                           ? null
                           : () => scope?.resolveFocusEdge(down)?.call(),
@@ -779,7 +770,7 @@ class PackPaintTree extends StatelessWidget {
           final fits =
               layout.contentWidth(items.length) <= constraints.maxWidth;
           // Overflow: scaleDown (pre-cutover Live Sports) — keep centered.
-          return SizedBox(
+          Widget body = SizedBox(
             height: layout.rowHeight,
             width: double.infinity,
             child: fits
@@ -790,6 +781,19 @@ class PackPaintTree extends StatelessWidget {
                     child: row,
                   ),
           );
+          final tab = (tabId ?? '').trim();
+          if (tab.isNotEmpty &&
+              items.isNotEmpty &&
+              ShellPaintScope.useTvFocusOf(context)) {
+            body = TvKitRow(
+              tabId: tab,
+              rowId: barId,
+              sortOrder: 0,
+              itemCount: items.length,
+              child: body,
+            );
+          }
+          return body;
         },
       ),
     );
@@ -1071,17 +1075,18 @@ class PackPaintTree extends StatelessWidget {
           .toString()
           .trim();
       final slotId = (searchAction['id'] ?? 'search').toString().trim();
-      out[slotId.isEmpty ? 'search' : slotId] = KitEventListSearch(
+      out[slotId.isEmpty ? 'search' : slotId] = ShellPaintTvTabScope(
+        tabId: tab,
+        child: KitEventListSearch(
         tooltip: tooltip.isEmpty ? 'Search' : tooltip,
         placeholder: hint.isEmpty ? 'Search…' : hint,
-        tvTabId: tab,
-        tvRowId: 'chrome',
         tvItemIndex: 0,
         collapsedSize: PackPaintArtifact.packDouble(searchAction['collapsedSize']),
         expandedWidth: PackPaintArtifact.packDouble(searchAction['expandedWidth']),
         fontSize: PackPaintArtifact.packDouble(searchAction['fontSize']),
         iconSize: PackPaintArtifact.packDouble(searchAction['iconSize']),
         fieldIconSize: PackPaintArtifact.packDouble(searchAction['fieldIconSize']),
+        ),
       );
     }
     if (sortAction != null) {
@@ -1641,7 +1646,7 @@ class PackPaintTree extends StatelessWidget {
             }
           }
 
-          CatalogCardsGrid buildGrid({
+          Widget buildGrid({
             ValueListenable<bool?>? Function(Map<String, dynamic>)?
                 healthListenableFor,
             void Function(Map<String, dynamic> item, {required bool active})?
@@ -1663,7 +1668,10 @@ class PackPaintTree extends StatelessWidget {
               (spec['focusRight'] ?? '').toString(),
               last: true,
             );
-            return CatalogCardsGrid(
+            final rowId =
+                listId.isEmpty ? IptvCatalogLand.itemsRowId : listId;
+            final tab = (tabId ?? '').trim();
+            final grid = CatalogCardsGrid(
               items: filtered,
               cardKind: cardKind,
               selectedItemId: selectedId,
@@ -1681,8 +1689,6 @@ class PackPaintTree extends StatelessWidget {
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
               onItemTap: onListItemTap,
-              tvTabId: tabId,
-              tvRowId: listId.isEmpty ? IptvCatalogLand.itemsRowId : listId,
               landEpoch: IptvCatalogLand.landEpoch,
               preferCategoryFocusOnLand:
                   IptvCatalogLand.preferCategoryFocusOnLand,
@@ -1691,6 +1697,19 @@ class PackPaintTree extends StatelessWidget {
               onArmFocusMemory: liveArmBrowserStreamFocusMemory,
               onLeftEdge: leftEdge,
               onRightEdge: rightEdge,
+            );
+            if (tab.isEmpty || !ShellPaintScope.useTvFocusOf(context)) {
+              return grid;
+            }
+            final count = filtered.isEmpty
+                ? (_listEmptyAction(context, spec) != null ? 1 : 0)
+                : filtered.length;
+            return TvKitRow(
+              tabId: tab,
+              rowId: rowId,
+              sortOrder: 2,
+              itemCount: count,
+              child: grid,
             );
           }
 
@@ -1733,7 +1752,11 @@ class PackPaintTree extends StatelessWidget {
                           (spec['focusRight'] ?? '').toString(),
                           last: true,
                         );
-                        return CatalogCardsGrid(
+                        final rowId = listId.isEmpty
+                            ? IptvCatalogLand.itemsRowId
+                            : listId;
+                        final tab = (tabId ?? '').trim();
+                        final grid = CatalogCardsGrid(
                           items: filtered,
                           cardKind: cardKind,
                           selectedItemId: effectiveSelected,
@@ -1751,10 +1774,6 @@ class PackPaintTree extends StatelessWidget {
                           onItemInteractiveActive: onInteractiveActive,
                           loadEpgProgrammes: loadShortEpgProgrammes,
                           onItemTap: onListItemTap,
-                          tvTabId: tabId,
-                          tvRowId: listId.isEmpty
-                              ? IptvCatalogLand.itemsRowId
-                              : listId,
                           landEpoch: IptvCatalogLand.landEpoch,
                           preferCategoryFocusOnLand:
                               IptvCatalogLand.preferCategoryFocusOnLand,
@@ -1764,6 +1783,20 @@ class PackPaintTree extends StatelessWidget {
                           onArmFocusMemory: liveArmBrowserStreamFocusMemory,
                           onLeftEdge: leftEdge,
                           onRightEdge: rightEdge,
+                        );
+                        if (tab.isEmpty ||
+                            !ShellPaintScope.useTvFocusOf(context)) {
+                          return grid;
+                        }
+                        final count = filtered.isEmpty
+                            ? (_listEmptyAction(context, spec) != null ? 1 : 0)
+                            : filtered.length;
+                        return TvKitRow(
+                          tabId: tab,
+                          rowId: rowId,
+                          sortOrder: 2,
+                          itemCount: count,
+                          child: grid,
                         );
                       },
                     );
@@ -2128,50 +2161,13 @@ class PackPaintTree extends StatelessWidget {
   }
 
   Widget _chromeMenu(BuildContext context, Map<String, dynamic> spec) {
-    final items = layoutItemsFromSpec(spec);
-    if (items.isEmpty) return const SizedBox.shrink();
-    final scope = LayoutScope.maybeOf(context);
-    final id = (spec['id'] ?? '').toString();
-    final selected = scope?.selectedId(id);
-    final toggle = spec['toggle'] == true;
-    final pad = PackPaintArtifact.packPad(
-      spec['pad'] ?? spec['padding'],
-      fallback: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-    );
-    final gap = PackPaintArtifact.packDouble(spec['gap']) ?? 8.0;
-    return Padding(
-      padding: pad,
-      child: Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [
-          for (final item in items)
-            ForjaShellChip(
-              label: item.label,
-              selected: selected == item.id,
-              onTap: () => scope?.onSelect(id, item.id, toggle: toggle),
-            ),
-        ],
-      ),
-    );
+    if (layoutItemsFromSpec(spec).isEmpty) return const SizedBox.shrink();
+    return CatalogMenu(spec: spec);
   }
 
   Widget _chromeTabs(BuildContext context, Map<String, dynamic> spec) {
-    final items = layoutItemsFromSpec(spec);
-    if (items.isEmpty) return const SizedBox.shrink();
-    final scope = LayoutScope.maybeOf(context);
-    final id = (spec['id'] ?? '').toString();
-    final selected = scope?.selectedId(id) ??
-        (spec['default'] ?? items.first.id).toString();
-    return CatalogChipBar(
-      items: items,
-      selectedId: selected,
-      padding: PackPaintArtifact.packPad(
-        spec['pad'] ?? spec['padding'],
-        fallback: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      ),
-      onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
-    );
+    if (layoutItemsFromSpec(spec).isEmpty) return const SizedBox.shrink();
+    return CatalogTabs(spec: spec);
   }
 
   /// Prefer first portal/mood group — skip pack "All" and `__synthetic__` rows.
@@ -2925,8 +2921,6 @@ class _MoodMountState extends State<_MoodMount> {
               accent: m.accent,
               selected: _selectedId == m.id,
               listIndex: i,
-              tvTabId: tab.isEmpty ? null : tab,
-              tvRowId: chipRowId,
               onTap: () {
                 final already = _selectedId == m.id;
                 setState(() => _selectedId = m.id);
@@ -3076,8 +3070,6 @@ class _BecauseMountState extends State<_BecauseMount> {
                         open: item['open'] ?? paint['open'],
                         meta: item['meta'] ?? paint['meta'],
                         listIndex: i,
-                        tvTabId: tab,
-                        tvRowId: 'because',
                       ),
                     );
                     continue;
@@ -3093,8 +3085,6 @@ class _BecauseMountState extends State<_BecauseMount> {
                       open: item['open'],
                       meta: item['meta'],
                       listIndex: i,
-                      tvTabId: tab,
-                      tvRowId: 'because',
                     ),
                   );
                 }
@@ -3341,9 +3331,10 @@ class _ContinueMountState extends State<_ContinueMount> {
     final gap = PackPaintArtifact.packDouble(widget.spec['gap']) ??
         shellPosterCardRowGap(context);
     final tab = (widget.tabId ?? TvFocusGraph.tabIdOf(context)).trim();
+    final rowId = (widget.spec['id'] ?? 'continue_watching').toString().trim();
     return TvKitRow(
       tabId: tab,
-      rowId: 'continue_watching',
+      rowId: rowId.isEmpty ? 'continue_watching' : rowId,
       sortOrder: 20,
       itemCount: _entries.length,
       onFocusUp: LayoutScope.maybeOf(context)?.resolveFocusEdge('spotlight'),
@@ -3363,8 +3354,6 @@ class _ContinueMountState extends State<_ContinueMount> {
         listPadding: EdgeInsets.symmetric(horizontal: pad),
         entries: [for (final e in _entries) ContinueEntry.fromMap(e)],
         resumingMetaId: _resumingMetaId,
-        tvTabId: tab.isEmpty ? null : tab,
-        tvRowId: 'continue_watching',
         onResume: (entry) {
           final raw = _byId(entry.metaId);
           if (raw != null) unawaited(_resume(raw));

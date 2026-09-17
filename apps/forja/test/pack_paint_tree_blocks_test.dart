@@ -66,25 +66,46 @@ void main() {
     expect(find.text('No matches'), findsOneWidget);
   });
 
-  testWidgets('tabsCards paints menu + tabs + empty', (tester) async {
+  testWidgets('tabsCards paints underline menu + status tabs + empty',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: forjaThemeData(),
         home: Scaffold(
-          body: PackPaintTree(
-            pluginId: 'test-hub-a',
-            spec: {
-              'type': 'tabsCards',
-              'props': {
-                'menuItems': [
-                  {'id': 'movie', 'label': 'Film'},
+          body: LayoutScope(
+            selections: const {'kind': 'movie', 'status': 'watching'},
+            onSelect: (_, __, {required toggle}) {},
+            widgetSpecs: const {},
+            tabId: 'test-list',
+            child: PackPaintTree(
+              pluginId: 'test-hub-a',
+              tabId: 'test-list',
+              spec: {
+                'type': 'tabsCards',
+                'props': {
+                  'emptyTitle': 'Your list is empty',
+                },
+                'children': [
+                  {
+                    'type': 'kit.menu',
+                    'id': 'kind',
+                    'items': [
+                      {'id': 'movie', 'label': 'Film'},
+                      {'id': 'tv', 'label': 'Series'},
+                    ],
+                  },
+                  {
+                    'type': 'kit.tabs',
+                    'id': 'status',
+                    'default': 'watching',
+                    'tabs': [
+                      {'id': 'watching', 'label': 'Watching'},
+                      {'id': 'completed', 'label': 'Completed'},
+                    ],
+                  },
                 ],
-                'tabItems': [
-                  {'id': 'watching', 'label': 'Watching'},
-                ],
-                'emptyTitle': 'Your list is empty',
               },
-            },
+            ),
           ),
         ),
       ),
@@ -93,5 +114,7 @@ void main() {
     expect(find.text('Film'), findsWidgets);
     expect(find.text('Watching'), findsWidgets);
     expect(find.text('Your list is empty'), findsOneWidget);
+    expect(find.byType(ForjaUnderlineTab), findsWidgets);
+    expect(find.byType(ForjaStatusTabs), findsOneWidget);
   });
 }

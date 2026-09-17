@@ -24,6 +24,7 @@ import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
@@ -853,8 +854,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     }
     final heroActionCount = tvIndex;
 
-    final episodePicker = hasEpisodes
-        ? TvSeasonEpisodePicker(
+    Widget? episodePicker;
+    if (hasEpisodes) {
+      final picker = TvSeasonEpisodePicker(
             tmdbId: _watchedMediaId ?? 0,
             seasonCount: seasons.length,
             selectedSeason: _selectedSeason,
@@ -883,13 +885,16 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
               setState(() => _selectedEpisode = ep);
               _playSelected();
             },
-            tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-            tvSeasonRowId: 'seasons',
-            tvEpisodeRowId: 'episodes',
             tvRowOrderBase: 0,
             tvFocusUp: heroFocusUp,
-          )
-        : null;
+          );
+      episodePicker = tvFocus
+          ? ShellPaintTvTabScope(
+              tabId: MediaDetailsTv.tabId,
+              child: picker,
+            )
+          : picker;
+    }
 
     final canResume = _canResumeSelected;
     final progress = _watchProgress;

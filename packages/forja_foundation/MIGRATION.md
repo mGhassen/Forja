@@ -78,7 +78,8 @@ Package `Button` extras required before rewrite: `color`, `iconSize`, `compact`,
 |-----|------------|--------|
 | `ForjaSwitch` / `forjaSwitchThemeData` | `package:forja_foundation/components/switch.dart` | `Switch(value:, onChanged:, scale:, emphasized:)` — hide Material `Switch` on that file only (`import 'package:flutter/material.dart' hide Switch;`) |
 | `ForjaShellChip` | `package:forja_foundation/widgets/chrome/shell_chip.dart` | |
-| `ForjaChipRow` / `ForjaActionChip` / `components/Chip` / `Tabs` / `UnderlineTabBar` / `ForjaStatusTabs` / `ForjaUnderlineTab` | **deleted** (RFC-111) | |
+| `ForjaChipRow` / `ForjaActionChip` / `components/Chip` / `Tabs` / `UnderlineTabBar` | **deleted** (RFC-111) | |
+| `ForjaStatusTabs` / `ForjaUnderlineTab` / `CatalogMenu` / `CatalogTabs` | `widgets/chrome/status_tabs.dart` · `underline_tab.dart` · `catalog_menu.dart` · `catalog_tabs.dart` | Restored for My List / `kit.menu` / `kit.tabs` underline chrome |
 
 ---
 

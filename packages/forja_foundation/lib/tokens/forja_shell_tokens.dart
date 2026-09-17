@@ -85,6 +85,9 @@ abstract final class ShellTokens {
 
   static const double navRailLabelFontSize = 11;
 
+  /// Floor when TV density scales rail labels.
+  static const double navRailLabelFontSizeTvMin = 9;
+
   /// Line-height multiplier for rail labels — slot must match or glyphs clip.
   static const double navRailLabelLineHeight = 1.2;
   static const double navRailItemSpacing = 28;
@@ -553,8 +556,9 @@ abstract final class ShellTokens {
   static const double emptyFeaturesCardGapCompact = 10;
   static const Duration emptyFeaturesCardAnim = Duration(milliseconds: 140);
 
-  /// Floor for TV typography/chrome — tracks [posterCardWidthTv] / desktop (≈0.37).
-  static const double tvLayoutScaleFloor = 0.37;
+  /// TV chrome scale vs desktop poster baseline — derived, not a second magic number.
+  static double get tvLayoutScale =>
+      posterCardWidthTv / posterCardWidthDesktop;
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
   static const double homeSectionTitleTop = 36;

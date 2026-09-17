@@ -607,9 +607,11 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
   Widget build(BuildContext context) {
     if (widget.options.isEmpty) return const SizedBox.shrink();
     final showArrows = widget.options.length > 3;
+    final tab = (widget.tvTabId ?? '').trim();
+    final row = (widget.tvRowId ?? '').trim();
 
     // Vertical pad + Clip.none so dense chip rows don't clip on hover/focus.
-    return DesktopSwipeBackIgnore(
+    Widget body = DesktopSwipeBackIgnore(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
@@ -672,8 +674,6 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                               ),
                               fontSize: 12,
                               listIndex: widget.tvRowId != null ? i : null,
-                              tvTabId: widget.tvTabId,
-                              tvRowId: widget.tvRowId,
                             );
                           },
                         ),
@@ -692,6 +692,10 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
         ),
       ),
     );
+    if (tab.isNotEmpty && row.isNotEmpty) {
+      body = ShellPaintTvRowScope(tabId: tab, rowId: row, child: body);
+    }
+    return body;
   }
 }
 
@@ -2039,7 +2043,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
   }) {
     final metrics = ShellScope.metricsOf(context);
     final tv = SourcesPanelTv.isTv(context);
-    return ForjaShellChip(
+    final chip = ForjaShellChip(
       label: label,
       selected: selected,
       onTap: onTap,
@@ -2054,9 +2058,13 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
         vertical: metrics.torrentPanelChipVerticalPadding,
       ),
       fontSize: metrics.torrentPanelChipFontSize,
-      tvTabId: tv && rowId != null ? SourcesPanelTv.filtersTabId : null,
-      tvRowId: tv ? rowId : null,
       listIndex: tv ? index : null,
+    );
+    if (!tv || rowId == null || rowId.isEmpty) return chip;
+    return ShellPaintTvRowScope(
+      tabId: SourcesPanelTv.filtersTabId,
+      rowId: rowId,
+      child: chip,
     );
   }
 }

@@ -125,13 +125,11 @@ int shellGridCrossAxisCount(
   return w > ShellTokens.shellGridTabletMinWidth ? tablet : phone;
 }
 
-/// TV density vs desktop card baseline (190px). Typography uses [ShellTokens.tvLayoutScaleFloor].
+/// TV density vs desktop card baseline. Scale tracks metrics poster width.
 double shellLayoutScale(BuildContext context) {
   if (!ShellScope.metricsOf(context).usesTvDensity) return 1.0;
-  final raw =
-      ShellScope.metricsOf(context).posterCardWidth /
+  return ShellScope.metricsOf(context).posterCardWidth /
       ShellMetrics.desktop.posterCardWidth;
-  return math.max(ShellTokens.tvLayoutScaleFloor, raw);
 }
 
 double shellHeroMetaGap(BuildContext context) =>
@@ -162,7 +160,7 @@ double shellNavRailIconSize(BuildContext context) =>
 
 double shellNavRailLabelFontSize(BuildContext context) =>
     shellScaled(context, ShellTokens.navRailLabelFontSize).clamp(
-      9.0,
+      ShellTokens.navRailLabelFontSizeTvMin,
       ShellTokens.navRailLabelFontSize,
     );
 

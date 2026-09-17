@@ -109,8 +109,6 @@ abstract final class PackPaintArtifact {
     int? listIndex,
     int? fallbackRank,
     String? fallbackAspect,
-    String? tvTabId,
-    String? tvRowId,
   }) {
     final type = (paint['type'] ?? '').toString().trim();
     final propsRaw = paint['props'];
@@ -163,8 +161,6 @@ abstract final class PackPaintArtifact {
           width: width,
           height:
               props['height'] is num ? (props['height'] as num).toDouble() : null,
-          tvTabId: tvTabId,
-          tvRowId: tvRowId,
         );
       case 'eventCard':
       case 'event':
@@ -507,8 +503,6 @@ class _PackPosterRailState extends State<_PackPosterRail> {
         listIndex: i,
         fallbackRank: ranked ? i + 1 : null,
         fallbackAspect: aspectFallback,
-        tvTabId: tabId,
-        tvRowId: rowId,
       );
     }
     return PackPaintArtifact.fromPaint(
@@ -523,8 +517,6 @@ class _PackPosterRailState extends State<_PackPosterRail> {
       listIndex: i,
       fallbackRank: ranked ? i + 1 : null,
       fallbackAspect: aspectFallback,
-      tvTabId: tabId,
-      tvRowId: rowId,
     );
   }
 

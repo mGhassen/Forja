@@ -638,8 +638,6 @@ class _SettingsEngineCategoryTabStrip extends StatelessWidget {
                 label: groupLabel(groups[i]),
                 selected: selected == groups[i],
                 listIndex: i,
-                tvTabId: 'settings',
-                tvRowId: tabRowId,
                 onTap: () => onChanged(groups[i]),
                 onLeftEdge: edgesFor(i).onLeft,
                 onRightEdge: edgesFor(i).onRight,

@@ -193,26 +193,19 @@ void main() {
       expect(find.text('No matches'), findsOneWidget);
     });
 
-    testWidgets('TabsCardsBlock.fromProps builds menu + tabs + empty',
-        (tester) async {
+    testWidgets('TabsCardsBlock stacks menu + tabs + cards', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          TabsCardsBlock.fromProps({
-            'menuItems': [
-              {'id': 'movie', 'label': 'Film'},
-              {'id': 'tv', 'label': 'Series'},
-            ],
-            'tabItems': [
-              {'id': 'watching', 'label': 'Watching'},
-              {'id': 'completed', 'label': 'Completed'},
-            ],
-            'selectedTabId': 'watching',
-            'emptyTitle': 'Your list is empty',
-          }),
+          TabsCardsBlock.fromProps(
+            const {},
+            menu: const Text('Film'),
+            tabs: const Text('Watching'),
+            cards: const Center(child: Text('Your list is empty')),
+          ),
         ),
       );
-      expect(find.text('Film'), findsWidgets);
-      expect(find.text('Watching'), findsWidgets);
+      expect(find.text('Film'), findsOneWidget);
+      expect(find.text('Watching'), findsOneWidget);
       expect(find.text('Your list is empty'), findsOneWidget);
     });
 

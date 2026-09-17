@@ -10,10 +10,6 @@ import 'package:forja_foundation/widgets/chrome/portal_probe_detail_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Matches [PortalListView.portalsRowId] — keep in sync (avoid import cycle).
-const _kPortalsRowId = 'portals';
-
-
 /// Presentational portal inventory row — props / callbacks only (RFC-095).
 ///
 /// Sources-panel chrome: bordered card, inner left probe/selection strip,
@@ -772,7 +768,6 @@ class _PortalListRowState extends State<PortalListRow> {
             icon: Icons.close_rounded,
             color: Colors.white60,
             onTap: () => setState(() => _confirmingDelete = false),
-            tvTabId: _tv ? widget.tvTabId : null,
             tvRowId: _actionsRowId,
             tvItemIndex: 2,
             focusNode: _confirmNoFocus,
@@ -794,7 +789,6 @@ class _PortalListRowState extends State<PortalListRow> {
                 : Icons.copy_rounded,
             color: Colors.white60,
             onTap: _sharing ? null : () => unawaited(_copy()),
-            tvTabId: _tv ? widget.tvTabId : null,
             tvRowId: _actionsRowId,
             tvItemIndex: 1,
             focusNode: _copyFocus,
@@ -809,7 +803,6 @@ class _PortalListRowState extends State<PortalListRow> {
             icon: Icons.edit_rounded,
             color: Colors.white60,
             onTap: widget.onEdit,
-            tvTabId: _tv ? widget.tvTabId : null,
             tvRowId: _actionsRowId,
             tvItemIndex: 2,
             focusNode: _editFocus,
@@ -824,7 +817,6 @@ class _PortalListRowState extends State<PortalListRow> {
             icon: Icons.delete_rounded,
             color: const Color(0xFFEF4444),
             onTap: () => setState(() => _confirmingDelete = true),
-            tvTabId: _tv ? widget.tvTabId : null,
             tvRowId: _actionsRowId,
             tvItemIndex: 3,
             focusNode: _deleteFocus,
@@ -1180,7 +1172,6 @@ class _RailAction extends StatelessWidget {
     required this.icon,
     required this.color,
     this.onTap,
-    this.tvTabId,
     this.tvRowId,
     this.tvItemIndex,
     this.focusNode,
@@ -1194,7 +1185,6 @@ class _RailAction extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
-  final String? tvTabId;
   final String? tvRowId;
   final int? tvItemIndex;
   final FocusNode? focusNode;
@@ -1210,9 +1200,9 @@ class _RailAction extends StatelessWidget {
       height: 32,
       child: Icon(icon, size: PortalListTokens.rowIconSize, color: color),
     );
-    final tab = (tvTabId ?? '').trim();
     final child = Tooltip(message: tooltip, child: body);
-    if (tab.isEmpty || !ShellPaintScope.useTvFocusOf(context)) {
+    if (!ShellPaintScope.useTvFocusOf(context) ||
+        ShellPaintTvTabScope.tabIdOf(context) == null) {
       return Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1230,7 +1220,6 @@ class _RailAction extends StatelessWidget {
       showFocusFill: false,
       suppressInkHover: true,
       focusNode: focusNode,
-      tvTabId: tab,
       tvRowId: tvRowId,
       tvItemIndex: tvItemIndex,
       ensureVisibleMode: ShellPaintEnsureVisible.off,

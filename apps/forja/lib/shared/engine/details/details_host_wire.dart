@@ -85,8 +85,6 @@ List<Widget> buildKitDetailRailSections({
             pluginId: pluginId,
             item: rail.items[index],
           ),
-          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-          tvRowId: rowId,
         ),
     ];
     Widget section = DetailsRailSection(

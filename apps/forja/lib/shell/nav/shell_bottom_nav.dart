@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav/nav_config.dart';
+import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
@@ -39,55 +40,13 @@ class ShellBottomNav extends StatelessWidget {
                 if (dest == null) return const SizedBox.shrink();
                 final isSelected = selectedIndex == idx;
 
-                return InkWell(
-                  hoverColor: ForjaShellColors.inkHover,
-                  splashColor: ForjaShellColors.inkSplash,
+                return _BottomNavItem(
+                  destination: dest,
+                  selected: isSelected,
                   onTap: () => onItemTapped(idx),
-                  onLongPress:
-                      VerticalFiltersRegistry.hasFilters(id)
+                  onLongPress: VerticalFiltersRegistry.hasFilters(id)
                       ? () => VerticalFiltersRegistry.showMenu(id)
                       : null,
-                  child: SizedBox(
-                    width: ShellTokens.bottomNavItemWidth,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedContainer(
-                            duration: ShellTokens.navSelectionAnimation,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: ShellTokens.bottomNavIconPaddingH,
-                              vertical: ShellTokens.bottomNavIconPaddingV,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? ForjaShellColors.chipSelectedBg
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(ShellTokens.navSelectionBorderRadius),
-                            ),
-                            child: NavDestinationIcon(
-                              destination: dest,
-                              selected: isSelected,
-                              color: isSelected ? Colors.white : Colors.white54,
-                              size: ShellTokens.navRailIconSize,
-                            ),
-                          ),
-                          const SizedBox(height: ShellTokens.bottomNavIconLabelGap),
-                          Text(
-                            dest.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.white54,
-                              fontSize: ShellTokens.bottomNavLabelSize,
-                              height: 1,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 );
               }).toList(),
             ),
@@ -118,6 +77,102 @@ class ShellBottomNav extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BottomNavItem extends StatefulWidget {
+  const _BottomNavItem({
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+    this.onLongPress,
+  });
+
+  final NavDestination destination;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  State<_BottomNavItem> createState() => _BottomNavItemState();
+}
+
+class _BottomNavItemState extends State<_BottomNavItem> {
+  bool _hover = false;
+  bool _focused = false;
+
+  bool get _active => _hover || _focused;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = widget.selected;
+    Widget icon = NavDestinationIcon(
+      destination: widget.destination,
+      selected: isSelected,
+      color: isSelected ? Colors.white : Colors.white54,
+      size: ShellTokens.navRailIconSize,
+    );
+    if (widget.destination.id == 'settings') {
+      icon = PackUpdateNavChrome(
+        expanded: _active,
+        flyoutAbove: true,
+        badgeSize: 13,
+        child: icon,
+      );
+    }
+
+    return Focus(
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: InkWell(
+          hoverColor: ForjaShellColors.inkHover,
+          splashColor: ForjaShellColors.inkSplash,
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+          child: SizedBox(
+            width: ShellTokens.bottomNavItemWidth,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedContainer(
+                    duration: ShellTokens.navSelectionAnimation,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ShellTokens.bottomNavIconPaddingH,
+                      vertical: ShellTokens.bottomNavIconPaddingV,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? ForjaShellColors.chipSelectedBg
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(
+                        ShellTokens.navSelectionBorderRadius,
+                      ),
+                    ),
+                    child: icon,
+                  ),
+                  const SizedBox(height: ShellTokens.bottomNavIconLabelGap),
+                  Text(
+                    widget.destination.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white54,
+                      fontSize: ShellTokens.bottomNavLabelSize,
+                      height: 1,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

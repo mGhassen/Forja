@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -399,10 +398,14 @@ class _TvChipStripState extends State<TvChipStrip> {
 
   @override
   Widget build(BuildContext context) {
-    return TvKitRowScope(
+    return ShellPaintTvRowScope(
       tabId: _tabId,
       rowId: widget.rowId,
-      child: widget.builder(context, _edgesFor),
+      child: TvKitRowScope(
+        tabId: _tabId,
+        rowId: widget.rowId,
+        child: widget.builder(context, _edgesFor),
+      ),
     );
   }
 }
@@ -577,11 +580,15 @@ class _TvGridState extends State<TvGrid> {
 
   @override
   Widget build(BuildContext context) {
-    return TvGridScope(
+    return ShellPaintTvRowScope(
       tabId: _tabId,
       rowId: widget.rowId,
-      columns: widget.columns,
-      child: widget.child,
+      child: TvGridScope(
+        tabId: _tabId,
+        rowId: widget.rowId,
+        columns: widget.columns,
+        child: widget.child,
+      ),
     );
   }
 }

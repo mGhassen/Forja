@@ -49,9 +49,6 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     /// instead of [selectedSeason]. Anime franchise rails use `1` (each AniList
     /// Media keeps its own id + historical `S1_E*` marks).
     this.watchedSeasonForKeys,
-    this.tvTabId,
-    this.tvSeasonRowId,
-    this.tvEpisodeRowId,
     this.tvRowOrderBase = 0,
     this.tvFocusUp,
   });
@@ -75,9 +72,6 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final Map<int, String> seasonPosters;
   final Map<String, Map<String, dynamic>> episodeProgress;
   final Map<int, List<Map<String, dynamic>>>? customEpisodesBySeason;
-  final String? tvTabId;
-  final String? tvSeasonRowId;
-  final String? tvEpisodeRowId;
   final int tvRowOrderBase;
   final VoidCallback? tvFocusUp;
 
@@ -95,8 +89,8 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   int? _tvArmedEpisode;
   final FocusNode _episodePlayFocus = FocusNode(debugLabel: 'episode-play');
 
-  String get _seasonRowId => widget.tvSeasonRowId ?? 'seasons';
-  String get _episodeRowId => widget.tvEpisodeRowId ?? 'episodes';
+  static const _seasonRowId = 'seasons';
+  static const _episodeRowId = 'episodes';
 
   @override
   void dispose() {
@@ -301,7 +295,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   }
 
 
-  Widget _buildSeasonRow(String? tabId) {
+  Widget _buildSeasonRow() {
     return HorizontalScroller(
       height: _SeasonCard.rowScrollerHeight,
       padding: const EdgeInsets.symmetric(
@@ -331,8 +325,6 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                     _episodeNumbersForSeason(season),
                   ),
           onLeftEdge: null,
-          tvTabId: tabId,
-          tvRowId: widget.tvSeasonRowId != null ? _seasonRowId : null,
           listIndex: i,
         );
       },
@@ -355,7 +347,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     return (showDate: showDate, showOverview: showOverview);
   }
 
-  Widget _buildEpisodeRow(String? tabId) {
+  Widget _buildEpisodeRow() {
     final meta = _episodeMetaFlags(_visibleEpisodes);
     return HorizontalScroller(
       height: _EpisodeCard.rowScrollerHeight(
@@ -443,8 +435,6 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           onToggleWatched: () =>
               widget.onToggleWatched(_keysSeason, epNum),
           onLeftEdge: null,
-          tvTabId: tabId,
-          tvRowId: widget.tvEpisodeRowId != null ? _episodeRowId : null,
           listIndex: i,
         );
       },
@@ -473,14 +463,15 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     if (widget.seasonCount <= 0) return const SizedBox.shrink();
 
     final episodeCount = _episodes.length;
-    final tabId = widget.tvTabId;
+    final tabId = ShellPaintTvTabScope.tabIdOf(context);
+    final useTv = tabId != null && ShellPaintScope.useTvFocusOf(context);
     final hasMultiSeason = widget.seasonCount > 1;
     final episodeRowOrder = widget.tvRowOrderBase + (hasMultiSeason ? 1 : 0);
 
     Widget? seasonSection;
     if (hasMultiSeason) {
-      final seasonRow = _buildSeasonRow(tabId);
-      seasonSection = (tabId != null && widget.tvSeasonRowId != null)
+      final seasonRow = _buildSeasonRow();
+      seasonSection = useTv
           ? ShellPaintScope.tvRow(
               context: context,
               tabId: tabId,
@@ -497,8 +488,8 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     if (widget.isLoadingSeason) {
       episodeSection = _buildEpisodeSkeletonRow();
     } else if (_visibleEpisodes.isNotEmpty) {
-      final episodeRow = _buildEpisodeRow(tabId);
-      episodeSection = (tabId != null && widget.tvEpisodeRowId != null)
+      final episodeRow = _buildEpisodeRow();
+      episodeSection = useTv
           ? ShellPaintScope.tvRow(
               context: context,
               tabId: tabId,
@@ -649,8 +640,6 @@ class _SeasonCard extends StatefulWidget {
     this.onTap,
     this.onDoubleTap,
     this.onLeftEdge,
-    this.tvTabId,
-    this.tvRowId,
     this.listIndex,
   });
 
@@ -660,8 +649,6 @@ class _SeasonCard extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onDoubleTap;
   final VoidCallback? onLeftEdge;
-  final String? tvTabId;
-  final String? tvRowId;
   final int? listIndex;
 
   static const double cardWidth = DetailsTokens.episodeSeasonWidth;
@@ -703,8 +690,6 @@ class _SeasonCardState extends State<_SeasonCard> {
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       onLeftEdge: widget.onLeftEdge,
       listIndex: widget.listIndex,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,
       child: ForjaMotionScale(
@@ -822,8 +807,6 @@ class _EpisodeCard extends StatefulWidget {
     required this.onToggleWatched,
     this.onFocusChange,
     this.onLeftEdge,
-    this.tvTabId,
-    this.tvRowId,
     this.listIndex,
   });
 
@@ -846,8 +829,6 @@ class _EpisodeCard extends StatefulWidget {
   final VoidCallback onToggleWatched;
   final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onLeftEdge;
-  final String? tvTabId;
-  final String? tvRowId;
   final int? listIndex;
 
   static const double cardWidth = DetailsTokens.episodeCardWidth;
@@ -928,8 +909,6 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       onLeftEdge: widget.onLeftEdge,
       listIndex: widget.listIndex,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,
       child: ForjaMotionScale(

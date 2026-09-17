@@ -38,7 +38,6 @@ class WidgetShelf extends StatelessWidget {
     this.fontSize = ShellTokens.widgetShelfFontSize,
     this.iconSize = ShellTokens.widgetShelfIconSize,
     this.pad = ShellTokens.widgetShelfGap,
-    this.tvRowId = 'widget-shelf',
     this.onDownEdge,
   });
 
@@ -53,7 +52,6 @@ class WidgetShelf extends StatelessWidget {
   final double fontSize;
   final double iconSize;
   final double pad;
-  final String tvRowId;
   final VoidCallback? onDownEdge;
 
   @override
@@ -81,7 +79,6 @@ class WidgetShelf extends StatelessWidget {
               fontSize: fontSize,
               iconSize: iconSize,
               pad: pad,
-              tvRowId: tvRowId,
               onTap: () => onSelect(items[i].id),
               onReload: onReload == null
                   ? null
@@ -106,7 +103,6 @@ class _WidgetShelfTab extends StatefulWidget {
     required this.fontSize,
     required this.iconSize,
     required this.pad,
-    required this.tvRowId,
     required this.onTap,
     this.onReload,
     this.onDownEdge,
@@ -122,7 +118,6 @@ class _WidgetShelfTab extends StatefulWidget {
   final double fontSize;
   final double iconSize;
   final double pad;
-  final String tvRowId;
   final VoidCallback onTap;
   final VoidCallback? onReload;
   final VoidCallback? onDownEdge;
@@ -310,6 +305,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
 
   @override
   Widget build(BuildContext context) {
+    final shelfRow = ShellPaintTvRowScope.maybeOf(context)?.rowId;
     final accent = _gradient.first;
     final invert = widget.selected && _paintActive;
     final showGradient = !invert && (widget.selected || _paintActive);
@@ -357,7 +353,6 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
       suppressInkHover: true,
       showFocusFill: false,
       listIndex: widget.listIndex,
-      tvRowId: widget.tvRowId,
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.topBar,
       onDownEdge: widget.onDownEdge,
@@ -423,7 +418,8 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                       suppressInkHover: true,
                       showFocusFill: false,
                       listIndex: widget.listIndex,
-                      tvRowId: '${widget.tvRowId}-reload',
+                      tvRowId:
+                          shelfRow == null ? null : '$shelfRow-reload',
                       tvItemIndex: widget.listIndex,
                       tvZone: ShellPaintTvZone.topBar,
                       onDownEdge: widget.onDownEdge,

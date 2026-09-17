@@ -12,6 +12,7 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Renders pack-declared settings fields (RFC-089 / RFC-093).
@@ -389,27 +390,37 @@ class _MultiSelectChipsField extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (var i = 0; i < options.length; i++)
-                ForjaShellChip(
-                  label: options[i].label,
-                  selected: selected.contains(options[i].id),
-                  listIndex: i,
-                  fontSize: 12,
-                  accentHover: true,
-                  tvTabId: tv ? 'settings' : null,
-                  tvRowId: tv ? 'pack-settings-${field.id}' : null,
-                  ensureVisibleMode: ShellPaintEnsureVisible.item,
-                  onTap: () {
-                    final next = Set<String>.from(selected);
-                    if (!next.add(options[i].id)) next.remove(options[i].id);
-                    onChanged(next.toList()..sort());
-                  },
-                ),
-            ],
+          Builder(
+            builder: (context) {
+              Widget chips = Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (var i = 0; i < options.length; i++)
+                    ForjaShellChip(
+                      label: options[i].label,
+                      selected: selected.contains(options[i].id),
+                      listIndex: i,
+                      fontSize: 12,
+                      accentHover: true,
+                      ensureVisibleMode: ShellPaintEnsureVisible.item,
+                      onTap: () {
+                        final next = Set<String>.from(selected);
+                        if (!next.add(options[i].id)) {
+                          next.remove(options[i].id);
+                        }
+                        onChanged(next.toList()..sort());
+                      },
+                    ),
+                ],
+              );
+              if (!tv) return chips;
+              return ShellPaintTvRowScope(
+                tabId: 'settings',
+                rowId: 'pack-settings-${field.id}',
+                child: chips,
+              );
+            },
           ),
         ],
       ),

@@ -8,6 +8,7 @@ import 'package:forja/shared/engine/runtime/shell/shell_bus.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/event_list_search.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Host wire for pack `action: eventSearch` — expanding circle search on the
 /// kit top bar (IPTV / Live Sports). Query lives on [PackChromeScope].
@@ -16,8 +17,6 @@ class KitEventListSearch extends StatefulWidget {
     super.key,
     required this.tooltip,
     required this.placeholder,
-    this.tvTabId,
-    this.tvRowId,
     this.tvItemIndex,
     this.onLeftEdge,
     this.onRightEdge,
@@ -31,8 +30,6 @@ class KitEventListSearch extends StatefulWidget {
 
   final String tooltip;
   final String placeholder;
-  final String? tvTabId;
-  final String? tvRowId;
   final int? tvItemIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -67,7 +64,7 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
   bool _handleFindShortcut() {
     if (!mounted) return false;
     // KeepAlive hubs stay mounted offstage — only the active tab may consume.
-    final tab = (widget.tvTabId ?? '').trim();
+    final tab = (ShellPaintTvTabScope.tabIdOf(context) ?? '').trim();
     if (tab.isEmpty || tab != ShellBus.activeShellTabId) return false;
     if (ShellBus.shellOverlayHasPage.value) return false;
     final search = _searchKey.currentState;
@@ -135,8 +132,6 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
       placeholder: widget.placeholder,
       compact: compact,
       onCompactSearch: () => unawaited(_openCompactDialog()),
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex,
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,

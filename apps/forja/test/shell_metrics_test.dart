@@ -7,6 +7,7 @@ import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 void main() {
   test('tv metrics are denser than desktop for leanback', () {
@@ -21,9 +22,9 @@ void main() {
   });
 
   test('mobile metrics row exists with compact card width', () {
-    expect(ShellMetrics.mobile.posterCardWidth, 165);
-    expect(ShellMetrics.desktop.posterCardWidth, 190);
-    expect(ShellMetrics.tv.posterCardWidth, 70);
+    expect(ShellMetrics.mobile.posterCardWidth, ShellTokens.posterCardWidthMobile);
+    expect(ShellMetrics.desktop.posterCardWidth, ShellTokens.posterCardWidthDesktop);
+    expect(ShellMetrics.tv.posterCardWidth, ShellTokens.posterCardWidthTv);
   });
 
   test('input policies match profile expectations', () {

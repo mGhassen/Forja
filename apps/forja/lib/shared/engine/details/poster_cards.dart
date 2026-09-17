@@ -116,8 +116,6 @@ class KitPosterCard extends StatelessWidget {
     this.badge,
     this.listPin,
     this.listIndex,
-    this.tvTabId,
-    this.tvRowId,
     this.onUpEdge,
     this.onLeftEdge,
     this.onRightEdge,
@@ -132,8 +130,6 @@ class KitPosterCard extends StatelessWidget {
   final String? badge;
   final Widget? listPin;
   final int? listIndex;
-  final String? tvTabId;
-  final String? tvRowId;
   final VoidCallback? onUpEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -174,8 +170,6 @@ class KitPosterCard extends StatelessWidget {
       badge: badge,
       listPin: listPin,
       listIndex: listIndex,
-      tvTabId: tvTabId,
-      tvRowId: tvRowId,
       onUpEdge: onUpEdge,
       onLeftEdge: onLeftEdge,
       onRightEdge: onRightEdge,

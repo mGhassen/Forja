@@ -136,7 +136,6 @@ class KitSourcesPanel extends StatelessWidget {
       onPlayRow: onPlayRow,
       initialTabId: initialTabId,
       onClosed: onClosed,
-      tvTabId: effectiveTv,
       listRowId: listRowId,
       tabsRowId: tabsRowId,
       embedded: embedded,
