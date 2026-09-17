@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 
 void main() {
@@ -60,6 +61,14 @@ void main() {
       );
       expect(msg, contains('timed out'));
       expect(msg, contains('raw.githubusercontent.com'));
+    });
+
+    test('manifest gone local path', () {
+      final msg = PackHttp.humanizeError(
+        ManifestGoneException('/tmp/forja-packs/live/manifest.json'),
+      );
+      expect(msg, contains('Manifest not found'));
+      expect(msg, contains('/tmp/forja-packs/live/manifest.json'));
     });
   });
 }

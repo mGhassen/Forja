@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
+import 'package:forja/shared/engine/packs/install/pack_install_failures.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
@@ -220,7 +221,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     SettingsPackPromptDrill.applying.value = true;
     var installed = 0;
     var removed = 0;
-    final failures = <String>[];
+    final failures = <PackInstallFailure>[];
     final installedPacks = <EnginePack>[];
     try {
       final coordinator = PluginInstallCoordinator.instance;
@@ -263,7 +264,13 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
           }
         } catch (e) {
           debugPrint('[PackPrompt] failed $label: $e');
-          failures.add(label);
+          failures.add(
+            PackInstallFailure.fromError(
+              label: label,
+              manifestUrl: url,
+              error: e,
+            ),
+          );
         }
       }
       // Refresh destinations first, then RFC-086 default-on (even if unmounted).
@@ -273,6 +280,11 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
         await PluginNavRegistry.refresh();
       }
       scheduleForjaSyncPush();
+      if (failures.isNotEmpty) {
+        PackInstallFailures.report(failures);
+      } else {
+        PackInstallFailures.clear();
+      }
       if (!mounted) return;
       if (failures.isEmpty) {
         final bits = <String>[
@@ -283,11 +295,11 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
         ];
         if (bits.isNotEmpty) ForjaToast.success(bits.join(' · '));
       } else {
+        // Details live on the Forja Packs list banner — toast is a short cue.
         ForjaToast.error(
-          'Pack sync: ${failures.length} failed'
-          '${installed > 0 ? ', $installed ok' : ''}'
-          ' (${failures.take(2).join(', ')}'
-          '${failures.length > 2 ? '…' : ''})',
+          failures.length == 1
+              ? 'Pack install failed — see details above'
+              : '${failures.length} packs failed — see details above',
         );
       }
       widget.onDismiss();

@@ -138,6 +138,7 @@ class _SettingsForjaPacksSectionState
               PluginInstallCoordinator.instance.progress,
               EngineService.officialInstallError,
               RemotePackIntentStore.changeNotifier,
+              PackInstallFailures.latest,
             ]),
             builder: (context, _) => _buildEnginePackSection(
               enginePacks,
@@ -164,6 +165,7 @@ class _SettingsForjaPacksSectionState
     PluginInstallProgress? installProgress,
   }) {
     final installError = EngineService.officialInstallError.value;
+    final sessionFailures = PackInstallFailures.latest.value;
     // Pending = lean stubs / empty script set. Reload = packs with scripts on disk.
     final downloadable = [
       for (final pack in packs)
@@ -185,6 +187,10 @@ class _SettingsForjaPacksSectionState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (sessionFailures.isNotEmpty) ...[
+              _PackInstallFailuresBanner(failures: sessionFailures),
+              const SizedBox(height: 12),
+            ],
             if (packs.isEmpty) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
@@ -683,8 +689,15 @@ class _SettingsForjaPacksSectionState
           pack.sourceUrl,
         );
         await DeferredRemoteInstallStore.clear(pack.sourceUrl);
+        PackInstallFailures.clear();
       } catch (e) {
-        if (mounted) ForjaToast.error('Install failed: $e');
+        if (!mounted) return;
+        PackInstallFailures.reportOne(
+          label: pack.name,
+          manifestUrl: pack.sourceUrl,
+          error: e,
+        );
+        ForjaToast.error('Install failed — see details above');
         return;
       } finally {
         if (mounted) setState(() => _engineInstalling = false);
@@ -715,6 +728,7 @@ class _SettingsForjaPacksSectionState
       await DeferredRemoteInstallStore.clear(sourceUrl);
       await PackHubFeatures.refreshAndActivateInstalled([pack]);
       if (!mounted) return;
+      PackInstallFailures.clear();
       scheduleForjaSyncPush();
       await ref.read(enginePacksProvider.notifier).reload();
       ForjaToast.success(
@@ -722,7 +736,12 @@ class _SettingsForjaPacksSectionState
       );
     } catch (e) {
       if (!mounted) return;
-      ForjaToast.error('Install failed: $e');
+      PackInstallFailures.reportOne(
+        label: packInstallRefDisplayName(sourceUrl),
+        manifestUrl: sourceUrl,
+        error: e,
+      );
+      ForjaToast.error('Install failed — see details above');
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }
@@ -760,6 +779,7 @@ class _SettingsForjaPacksSectionState
       final pack = await PluginInstallCoordinator.instance.installManifest(url);
       await PackHubFeatures.refreshAndActivateInstalled([pack]);
       if (!mounted) return;
+      PackInstallFailures.clear();
       _engineController.clear();
       scheduleForjaSyncPush();
       await ref.read(enginePacksProvider.notifier).reload();
@@ -768,7 +788,12 @@ class _SettingsForjaPacksSectionState
       );
     } catch (e) {
       if (!mounted) return;
-      ForjaToast.error('Install failed: $e');
+      PackInstallFailures.reportOne(
+        label: packInstallRefDisplayName(url),
+        manifestUrl: url,
+        error: e,
+      );
+      ForjaToast.error('Install failed — see details above');
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }
@@ -987,6 +1012,98 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
       icon: Icons.delete_outline,
       color: const Color(0xFFF87171),
       onPressed: () => setState(() => _confirming = true),
+    );
+  }
+}
+
+/// Session-only install errors at the top of Settings → Forja Packs.
+class _PackInstallFailuresBanner extends StatelessWidget {
+  const _PackInstallFailuresBanner({required this.failures});
+
+  final List<PackInstallFailure> failures;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF7F1D1D).withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFF87171).withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.error_outline_rounded,
+              size: 18,
+              color: Color(0xFFF87171),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  failures.length == 1
+                      ? 'Pack install failed'
+                      : '${failures.length} packs failed to install',
+                  style: const TextStyle(
+                    color: Color(0xFFFECACA),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                for (var i = 0; i < failures.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  Text(
+                    failures[i].label,
+                    style: const TextStyle(
+                      color: ForjaShellColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (failures[i].manifestUrl.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      failures[i].manifestUrl,
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary.withValues(
+                          alpha: 0.9,
+                        ),
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 2),
+                  Text(
+                    failures[i].message,
+                    style: const TextStyle(
+                      color: Color(0xFFFECACA),
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          _settingsTvIconButton(
+            context,
+            tooltip: 'Dismiss',
+            icon: Icons.close_rounded,
+            color: ForjaShellColors.iconMuted,
+            onPressed: PackInstallFailures.clear,
+          ),
+        ],
+      ),
     );
   }
 }

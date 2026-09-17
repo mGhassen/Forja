@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/models/models.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
+
 
 /// Pack install HTTP: system DNS first, Cloudflare DoH (`1.1.1.1`) when lookup fails.
 ///
@@ -192,6 +194,17 @@ abstract final class PackHttp {
         return null;
       }
     }();
+
+    if (error is ManifestGoneException) {
+      final path = error.url.trim().isNotEmpty
+          ? error.url.trim()
+          : (url ?? '').trim();
+      final code = error.statusCode;
+      if (code != null) {
+        return 'Manifest not found (HTTP $code): $path';
+      }
+      return 'Manifest not found: $path';
+    }
 
     if (error is TimeoutException) {
       final where = host != null ? ' ($host)' : '';
