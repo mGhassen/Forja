@@ -33,13 +33,16 @@ class DetailsScrollPage extends StatelessWidget {
       scrollController: scrollController,
       physics: const BouncingScrollPhysics(),
       backgroundColor: backgroundColor,
+      // Fade must sit *inside* DetailsBody's overlap pull-up. AnimatedOpacity
+      // ancestors reject y < 0 before _OverlapPullUp can hit-test the band
+      // where seasons / cast paint over the hero — hover never fires.
       body: sections.isEmpty
           ? const SizedBox.shrink()
-          : _FadeIn(
-              child: DetailsBody(
-                backgroundColor: backgroundColor,
-                bodyOverlap: bodyOverlap,
-                topSpacing: topSpacing,
+          : DetailsBody(
+              backgroundColor: backgroundColor,
+              bodyOverlap: bodyOverlap,
+              topSpacing: topSpacing,
+              child: _FadeIn(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

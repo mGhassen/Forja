@@ -67,7 +67,9 @@ class DetailsBody extends StatelessWidget {
     if (overlap > 0) {
       // Pull paint onto the backdrop. Stock Transform.translate fails hit tests
       // in the overflow band (y < 0) — seasons/cast never see hover. Use a
-      // render object that hit-tests the painted bounds.
+      // render object that hit-tests the painted bounds. Do not wrap this in
+      // Opacity / AnimatedOpacity / other size.contains hit-testers — they
+      // reject y < 0 before this runs (see DetailsScrollPage fade placement).
       return _OverlapPullUp(
         overlap: overlap,
         child: Column(
