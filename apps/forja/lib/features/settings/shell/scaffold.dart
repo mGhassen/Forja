@@ -11,7 +11,7 @@ import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
+import 'package:forja/shell/nav/pack_update_alert_icon.dart';
 
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';

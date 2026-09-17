@@ -1594,6 +1594,7 @@ class PackPaintTree extends StatelessWidget {
           final showPanel = openMode == 'panel' && selected != null && wide;
           final gap = PackPaintArtifact.packDouble(spec['gap']);
           final pad = PackPaintArtifact.packDouble(spec['pad']);
+          final cardWidth = PackPaintArtifact.packDouble(spec['cardWidth']);
           final listId = (spec['id'] ?? 'items').toString().trim();
           final kindFilterLive = kindMenu == 'cats';
           final currentKind = kindFilter;
@@ -1677,6 +1678,7 @@ class PackPaintTree extends StatelessWidget {
               selectedItemId: selectedId,
               gap: gap,
               pad: pad,
+              cardWidth: cardWidth,
               emptyTitle:
                   (spec['emptyTitle'] ?? 'Nothing here yet.').toString(),
               emptyDescription:
@@ -1762,6 +1764,7 @@ class PackPaintTree extends StatelessWidget {
                           selectedItemId: effectiveSelected,
                           gap: gap,
                           pad: pad,
+                          cardWidth: cardWidth,
                           emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.')
                               .toString(),
                           emptyDescription:

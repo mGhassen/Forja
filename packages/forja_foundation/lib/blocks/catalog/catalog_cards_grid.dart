@@ -74,6 +74,7 @@ class CatalogCardsGrid extends StatelessWidget {
     this.selectedItemId,
     this.gap,
     this.pad,
+    this.cardWidth,
     this.itemAccessory,
     this.itemHealth,
     this.itemHealthListenable,
@@ -105,6 +106,10 @@ class CatalogCardsGrid extends StatelessWidget {
 
   /// Horizontal inset for event/poster grids. Null → catalog density pad.
   final double? pad;
+
+  /// Poster grid target width (desktop). Null → [InteractivePosterCard.cardWidth].
+  /// Ignored on TV density and for channel / event grids.
+  final double? cardWidth;
 
   /// Optional corner control (e.g. live favorite star). [active] = hover/focus.
   final Widget? Function(
@@ -347,12 +352,21 @@ class CatalogCardsGrid extends StatelessWidget {
     final landscape = _catalogGridIsLandscape(items);
     final aspect =
         landscape ? PosterAspect.landscape : PosterAspect.portrait;
-    final cardW = InteractivePosterCard.cardWidth(context, aspect: aspect);
-    final cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final overrideW = cardWidth;
+    final double cardW;
+    final double cardH;
+    if (!tv && overrideW != null && overrideW > 0) {
+      cardW = overrideW;
+      cardH = landscape
+          ? (overrideW * 9 / 16).roundToDouble()
+          : (overrideW * ShellTokens.posterCardAspectRatio).roundToDouble();
+    } else {
+      cardW = InteractivePosterCard.cardWidth(context, aspect: aspect);
+      cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
+    }
     final gap = this.gap ??
-        (ShellPaintScope.usesTvDensityOf(context)
-            ? ShellTokens.tvPosterCardRowGap
-            : ShellTokens.posterCardRowGap);
+        (tv ? ShellTokens.tvPosterCardRowGap : ShellTokens.posterCardRowGap);
     final leading = pad ?? ShellTokens.compactChromeLeadingInset(context);
     final trailing = pad ?? ShellTokens.bodyHorizontalPadding;
 
