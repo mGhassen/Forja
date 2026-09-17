@@ -180,8 +180,8 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
     });
   }
 
-  /// Keep ipdigi live demuxer window after height probe (RFC-113).
-  /// Admin override still widens cache-secs only; demuxer bytes stay ipdigi.
+  /// Keep Forja live demuxer window after height probe (RFC-113).
+  /// Admin override still widens cache-secs only; demuxer bytes stay fixed.
   Future<void> _applyAtvLiveCacheProfile(
     NativePlayer p, {
     required int height,
@@ -212,7 +212,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
 
     _s._liveCacheTierApplied = true;
     debugPrint(
-      '[IPTV Player] MediaKit cache profile=live/ipdigi '
+      '[IPTV Player] MediaKit cache profile=live/forja '
       'height=$height bitrate=${videoBitrate > 0 ? (videoBitrate / 1e6).toStringAsFixed(1) : "?"}Mbps '
       'cache=${secs}s bytes=$demuxerMaxBytes',
     );
@@ -227,7 +227,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
       // a broken VideoToolbox session on macOS (black texture, audio OK).
       // ATV MediaKit: pin mediacodec (matches VideoControllerConfiguration).
       if (_s._atvMediaKit) {
-        // Forja ATV vo=mediacodec_embed needs mediacodec (ipdigi leaves default).
+        // Forja ATV vo=mediacodec_embed needs mediacodec.
         await p.setProperty('hwdec', 'mediacodec');
         await p.setProperty('ao', 'audiotrack');
         await p.setProperty('mute', 'no');
@@ -243,7 +243,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
           _useSoftwareDecode ? 'no' : 'yes',
         );
       } else {
-        // ipdigi live desktop/phone/Windows: no hwdec / vd-lavc-dr pins.
+        // Forja live desktop/phone/Windows: no hwdec / vd-lavc-dr pins.
         await restoreMediaKitAudioOutput(p);
       }
 
@@ -252,10 +252,10 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
         await p.setProperty('vd-lavc-threads', '0');
       }
 
-      // Network: ipdigi uses 30s so lavf reconnect can finish.
+      // Network: 30s so lavf reconnect can finish.
       await p.setProperty('network-timeout', '30');
 
-      // Cache: RFC-113 / ipdigi live profile (desktop + ATV same demuxer bytes).
+      // Cache: RFC-113 Forja live profile (desktop + ATV same demuxer bytes).
       await p.setProperty('cache', 'yes');
       if (_s.widget.vodPlayback) {
         debugPrint('[IPTV Player] MediaKit cache profile=vod (32MiB)');
@@ -268,12 +268,12 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');
       } else {
-        // ipdigi live: 30s / 8s readahead / 128MiB / 64MiB back / cache-pause=no.
+        // Forja live: 30s / 8s readahead / 128MiB / 64MiB back / cache-pause=no.
         const coldSecs = 30;
         const coldReadahead = 8;
         const coldBytes = 128 * 1024 * 1024;
         const coldBackBytes = 64 * 1024 * 1024;
-        debugPrint('[IPTV Player] MediaKit cache profile=live/ipdigi');
+        debugPrint('[IPTV Player] MediaKit cache profile=live/forja');
         await p.setProperty('cache-secs', '$coldSecs');
         await p.setProperty('demuxer-readahead-secs', '$coldReadahead');
         await p.setProperty('demuxer-max-bytes', '$coldBytes');
@@ -281,7 +281,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');
         await p.setProperty('cache-pause-wait', '0');
-        // ipdigi: ATV memory-only; desktop/phone disk cache for track swaps.
+        // ATV memory-only; desktop/phone disk cache for track swaps.
         if (_s._atvMediaKit) {
           await p.setProperty('cache-on-disk', 'no');
         } else if (!kIsWeb) {
@@ -295,7 +295,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
             debugPrint('[IPTV Player] cache-on-disk setup failed: $e');
           }
         }
-        // ipdigi seek/sync (scrub + keep-open EOF during seek).
+        // Live seek/sync (scrub + keep-open EOF during seek).
         await p.setProperty('force-seekable', 'yes');
         await p.setProperty('initial-audio-sync', 'yes');
         await p.setProperty('hr-seek', 'yes');
@@ -304,7 +304,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
       await p.setProperty('sub-auto', 'all');
       await p.setProperty('sub-visibility', 'no');
 
-      // ipdigi: keep-open=always so brief EOF does not tear down the player.
+      // keep-open=always so brief EOF does not tear down the player.
       await p.setProperty('keep-open', 'always');
       if (!liveMk) {
         await p.setProperty('keep-open-pause', 'no');
@@ -312,7 +312,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
         await p.setProperty('rtsp-transport', 'tcp');
       }
 
-      // Panel UA — VOD / non-live only. ipdigi live opens with no UA.
+      // Panel UA — VOD / non-live only. Forja live opens with no UA.
       if (_s.widget.vodPlayback || !_livePlaybackProfile) {
         await p.setProperty('user-agent', _PtPlayerScreenState._ua);
       }
@@ -325,15 +325,15 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
         await _applyStreamLavfReconnect(p, streamUrl: vodUrl);
       }
 
-      // VOD / non-live only — ipdigi does not set demuxer-lavf-o.
-      if (!liveMk) {
-        await p.setProperty(
-          'demuxer-lavf-o',
-          'fflags=+discardcorrupt+genpts+igndts,'
-              'probesize=5000000,'
-              'analyzeduration=5000000',
-        );
-      }
+      // DAI / SCTE HLS often stamps pts < dts (CBS News etc.). Without +igndts
+      // the demuxer can stall cache=0 while segments still download (issue 273).
+      // RFC-113 dropped this for live — restore for live + VOD.
+      await p.setProperty(
+        'demuxer-lavf-o',
+        'fflags=+discardcorrupt+genpts+igndts,'
+            'probesize=5000000,'
+            'analyzeduration=5000000',
+      );
     } catch (e) {
       debugPrint('[IPTV Player] tunables failed: $e');
     }

@@ -8,7 +8,7 @@ import io.flutter.embedding.engine.renderer.FlutterRenderer
 class ForjaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Impeller off globally via AndroidManifest (ipdigi). TV-only:
+        // Impeller off globally via AndroidManifest. TV-only:
         // SurfaceTexture producers — ImageReader → MediaKit audio-only black
         // on Amlogic leanback (issue 114).
         if (PlatformUtils.isAndroidTv(this)) {

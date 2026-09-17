@@ -134,7 +134,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [110-[draft]-…](110-[draft]-pack-surface-contributions.md) | Pack surface contributions (layers / modules / slots) | — | draft | **0 / 8** C · **26 / 28** spec · **0 / 12** registry · **0 / 10** details+player · **0 / 6** conflict UX · **0 / 4** reference packs | — |
 | [111-[fixed]-…](fixed/111-[fixed]-foundation-widgets-delete-dead.md) | Foundation widgets — delete dead / honesty vs PackPaintTree | — | fixed | Complete · 4/4 · 6/6 | — |
 | [112-[open]-…](112-[open]-blocks-json-props.md) | Blocks with JSON props (pack-callable) | — | open | **4 / 4** · **29 / 30** · 1 ⏭️ | [279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md) |
-| [113-[open]-…](113-[open]-iptv-mediakit-ipdigi-direct-reconnect.md) | IPTV MediaKit — ipdigi direct CDN + lavf reconnect | — | open | **11 / 11** · **0 / 9** | — |
+| [113-[open]-…](113-[open]-iptv-mediakit-direct-reconnect.md) | IPTV MediaKit — direct CDN + lavf reconnect | — | open | **12 / 12** · **2 / 9** | — |
 | [114-[open]-…](114-[open]-debrid-magnet-resolve-packs.md) | Debrid magnet-resolve packs (kind: debrid; delete crates/debrid) | — | open | **6 / 6** · **12 / 12** | — |
 | [115-[open]-…](115-[open]-foundation-motion-presets.md) | Foundation motion presets (pack-overridable) | — | open | **6 / 6** · **10 / 10** | — |
 

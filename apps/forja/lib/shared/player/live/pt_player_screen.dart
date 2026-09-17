@@ -713,7 +713,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   /// the last frame with no reconnect banner. Force software from boot.
   bool get _windowsSoftwareDecode => !kIsWeb && Platform.isWindows;
 
-  /// Retired (RFC-113 / ipdigi): macOS/Linux Xtream no longer forces TextureSW.
+  /// Retired (RFC-113): macOS/Linux Xtream no longer forces TextureSW.
   /// Was: software decode after CDN socket close + continuity proxy era.
   bool get _desktopLiveSoftwareDecode => false;
 
@@ -984,10 +984,10 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   /// HLS cold open: allow ABR variant probe + first segments before soft-reopen.
   static const Duration _hlsColdOpenGrace = Duration(seconds: 30);
 
-  /// ipdigi live: silent grace before goLive reopen (desktop / phone).
+  /// Forja live: silent grace before goLive reopen (desktop / phone).
   static const Duration _liveGraceWindow = Duration(milliseconds: 6000);
 
-  /// ipdigi ATV: longer grace so lavf reconnect_delay_max=5 can finish.
+  /// ATV: longer grace so lavf reconnect_delay_max=5 can finish.
   static const Duration _liveGraceWindowAtv = Duration(milliseconds: 9000);
 
   static const Duration _liveGoLivePollWindow = Duration(seconds: 5);
@@ -1064,7 +1064,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
-  /// ATV MediaKit: same 64 MiB Player buffer as ipdigi (demuxer owns readahead).
+  /// ATV MediaKit: 64 MiB Player buffer (demuxer owns readahead).
   PlayerConfiguration get _mediaKitPlayerConfiguration {
     return _playerConfiguration;
   }
@@ -1215,7 +1215,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     }
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onRemoteControlsActivity);
-    // MediaKit live never boots into TextureSW (ipdigi).
+    // MediaKit live never boots into TextureSW.
     _initOrientationAndChrome();
     WakelockPlus.enable();
     void onPipChanged(bool inPip) {

@@ -27,7 +27,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   void _invalidatePendingLiveEdgeSnaps();
   void _clearBufferingChrome();
 
-  /// ipdigi-style: silent grace (≥ lavf reconnect_delay_max) then goLive.
+  /// Silent grace (≥ lavf reconnect_delay_max) then goLive.
   void _scheduleIptvLiveGraceRecovery({required String reason}) {
     if (!_livePlaybackProfile || !_s._mediaKitBackend) return;
     if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
@@ -95,7 +95,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
 
   void _checkIptvLiveGoLive(int maxAttempts, Duration poll) {
     if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
-    // ipdigi poll: playing + position>0 — stable 1.5s is armed from playing.
+    // Poll: playing + position>0 — stable 1.5s is armed from playing.
     final playing = _s._playing && _s._position > Duration.zero;
     if (playing) {
       _armIptvLiveGoLiveStable(maxAttempts, poll);
@@ -117,7 +117,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     );
   }
 
-  /// ipdigi: after playing=true during reconnect, require 1.5s + position>0.
+  /// After playing=true during reconnect, require 1.5s + position>0.
   void _armIptvLiveGoLiveStable([int? maxAttempts, Duration? poll]) {
     final max = maxAttempts ??
         (_s._atvMediaKit
@@ -160,7 +160,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     );
   }
 
-  /// ipdigi playing listener: arm stable while reconnect banner is up.
+  /// Playing listener: arm stable while reconnect banner is up.
   void _onIptvLivePlayingChanged(bool playing) {
     if (!_livePlaybackProfile || !_s._mediaKitBackend) return;
     if (_s._statusBanner != 'Reconnecting…') return;
@@ -172,7 +172,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     }
   }
 
-  /// ipdigi `goLive`: stop + open same CDN URL (no continuity proxy).
+  /// `goLive`: stop + open same CDN URL (no continuity proxy).
   Future<void> _goLiveReopen() async {
     if (_s._disposed || _recoveryInFlight) return;
     _recoveryInFlight = true;
@@ -201,7 +201,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   void _scheduleJumpToLive({bool force = false}) {
     if (_s._exoBackend) return;
     if (!_livePlaybackProfile) return;
-    // ipdigi MediaKit live: never seek/drop-buffers — goLive is stop+open.
+    // MediaKit live: never seek/drop-buffers — goLive is stop+open.
     if (_s._mediaKitBackend) return;
     // Classic: seekable-only open snap (1.3.114). Never force drop-buffers.
     final allowForce = _bufferedRecovery && force;
@@ -571,7 +571,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
       _logHealthyHold('hw→sw');
       return;
     }
-    // ipdigi: MediaKit live never falls back to TextureSW.
+    // MediaKit live never falls back to TextureSW.
     if (_livePlaybackProfile &&
         _s._mediaKitBackend &&
         !_s.widget.vodPlayback) {

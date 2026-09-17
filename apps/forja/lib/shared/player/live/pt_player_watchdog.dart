@@ -252,7 +252,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     );
   }
 
-  /// Clear sticky Buffering when demuxer is healthy (RFC-113 / ipdigi).
+  /// Clear sticky Buffering when demuxer is healthy (RFC-113).
   void _clearBufferingChrome() {
     if (!_s._buffering && _s._bufferingSince == null) return;
     _s._buffering = false;
@@ -430,7 +430,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
       // Recovery stays native error + startup failover only.
       if (_nativeHlsEngine) return;
 
-      // ipdigi: MediaKit live recovery is grace → goLive only. No soft-reopen
+      // MediaKit live recovery is grace → goLive only. No soft-reopen
       // underrun / paint / self-pause (that was Forja's reconnect storm).
       if (_mediaKitLiveProfile) {
         if (_streamWorking) _clearBufferingChrome();

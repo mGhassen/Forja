@@ -35,7 +35,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   bool get _bufferedRecovery;
 
   bool get _useSoftwareDecode {
-    // MediaKit live = ipdigi: never force TextureSW / hwdec=no.
+    // MediaKit live: never force TextureSW / hwdec=no.
     if (_livePlaybackProfile &&
         _s._mediaKitBackend &&
         !_s.widget.vodPlayback) {
@@ -54,7 +54,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     final atv = _s._atvMediaKit;
     final liveMk = _livePlaybackProfile && !_s.widget.vodPlayback;
     if (atv) {
-      // Forja leanback: mediacodec_embed (ipdigi uses default vo=gpu).
+      // Forja leanback: mediacodec_embed.
       _s._controller = VideoController(
         _s._player!,
         configuration: const VideoControllerConfiguration(
@@ -65,7 +65,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         ),
       );
     } else if (liveMk) {
-      // ipdigi: default VideoController — no TextureSW / hwdec pin.
+      // Default VideoController — no TextureSW / hwdec pin.
       _s._controller = VideoController(_s._player!);
     } else {
       _s._controller = VideoController(
@@ -635,7 +635,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         _s._stallFrameDropBaseline = -1;
         _s._stallPaintWatchSince = null;
         await resetPlayerAudioForNewOpen(player);
-        // RFC-113 / ipdigi: CDN direct + lavf reconnect (no continuity proxy).
+        // RFC-113: CDN direct + lavf reconnect (no continuity proxy).
         debugPrint('[IPTV Player] direct open ($kind)');
         final np = player.platform;
         final liveMk = _livePlaybackProfile && !_s.widget.vodPlayback;
@@ -648,7 +648,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
             streamUrl: playUrl,
           );
         }
-        // ipdigi live: Media(url) only — no httpHeaders / panel UA.
+        // Forja live: Media(url) only — no httpHeaders / panel UA.
         if (liveMk) {
           await player.open(Media(playUrl));
         } else {
@@ -1017,7 +1017,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
           );
           return;
         }
-        // MediaKit live (ipdigi): never TextureSW. Hold or grace/goLive only.
+        // MediaKit live: never TextureSW. Hold or grace/goLive only.
         if (_livePlaybackProfile &&
             _s._mediaKitBackend &&
             !_s.widget.vodPlayback) {
@@ -1051,7 +1051,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     });
   }
 
-  /// Socket blip: live MediaKit uses ipdigi silent grace → goLive (RFC-113).
+  /// Socket blip: live MediaKit uses silent grace → goLive (RFC-113).
   void _noteSocketTrouble(String what) {
     _armTransientHwDecodeIgnore();
     if (!_bufferedRecovery) {
@@ -1168,7 +1168,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         _resetDemuxerProbe();
         // Probe DVR window for UI. MediaKit live: never post-open live-edge
         // snap — force-seekable + seek 99999 on thin cache freezes progressive
-        // TS (ipdigi: open+play only; reconnect = goLive stop+open).
+        // TS: open+play only; reconnect = goLive stop+open.
         unawaited(
           _probeStreamCapabilities().then((_) {
             if (!mounted || !_livePlaybackProfile) return;
@@ -1260,7 +1260,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     if (mounted) setState(() => _s._playerReady = true);
   }
 
-  /// Manual reload: MediaKit live → ipdigi goLive (stop+open). Else Stable
+  /// Manual reload: MediaKit live → goLive (stop+open). Else Stable
   /// live-edge flush then escalate; Classic soft reopen.
   Future<void> _reloadCurrent() async {
     _s._retryAttempt = 0;
