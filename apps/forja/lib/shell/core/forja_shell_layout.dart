@@ -140,12 +140,13 @@ double shellCardBorderRadius(BuildContext context) =>
 /// Preferred nav icon size. TV density scales down from the desktop token;
 /// [_navRailFitForHeight] may compress further so every tab fits.
 double shellNavRailIconSize(BuildContext context) =>
-    shellScaled(context, ShellTokens.navRailIconSize)
-        .clamp(20.0, ShellTokens.navRailIconSize);
+    shellScaled(context, ShellTokens.navRailIconSize).clamp(
+      ShellTokens.navRailIconSizeTvMin,
+      ShellTokens.navRailIconSize,
+    );
 
 double shellNavRailLabelFontSize(BuildContext context) =>
-    shellScaled(context, ShellTokens.navRailLabelFontSize)
-        .clamp(11.0, ShellTokens.navRailLabelFontSize);
+    ShellTokens.navRailLabelFontSize;
 
 /// Label row height — includes [MediaQuery.textScalerOf] (Windows accessibility).
 double shellNavRailLabelSlotHeight(BuildContext context, [double? baseFontSize]) {

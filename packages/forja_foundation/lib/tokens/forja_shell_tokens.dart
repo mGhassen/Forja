@@ -52,6 +52,9 @@ abstract final class ShellTokens {
 
   static const double navRailIconSize = 36;
 
+  /// Floor for TV density scale ([shellNavRailIconSize]) before fit-to-height.
+  static const double navRailIconSizeTvMin = 20;
+
   /// Floor when TV compresses the rail to fit every enabled tab.
   static const double navRailIconSizeMin = 22;
 
