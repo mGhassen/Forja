@@ -396,7 +396,11 @@ class _SettingsForjaPacksSectionState
                 }
                 final panelPlugins = [
                   for (final p in pack.plugins)
-                    if (p.isHttp || p.isKitPlugin || p.isTorrent) p,
+                    if (p.isHttp ||
+                        p.isKitPlugin ||
+                        p.isTorrent ||
+                        p.isDebrid)
+                      p,
                 ];
                 if (panelPlugins.isEmpty) return const SizedBox.shrink();
                 final liveSportPlugins = [

@@ -17,6 +17,8 @@ class PortalListHeaderAction {
     this.icon = '',
     this.enabled = true,
     this.tooltip,
+    this.hoverLabel,
+    this.hoverLabelMuted = false,
     this.onPressed,
   });
 
@@ -27,6 +29,10 @@ class PortalListHeaderAction {
   final String icon;
   final bool enabled;
   final String? tooltip;
+
+  /// When set, replaces the icon while hovered / focused (e.g. credits).
+  final String? hoverLabel;
+  final bool hoverLabelMuted;
   final VoidCallback? onPressed;
 }
 
@@ -85,7 +91,8 @@ class PortalListView extends StatefulWidget {
   final Color? surfaceColor;
   final String title;
 
-  /// Optional credits string — shown on Deal hover/focus instead of the icon.
+  /// Unused for header title — prefer [PortalListHeaderAction.hoverLabel].
+  /// Kept for kit / host callers that still pass credits here.
   final String? badgeLabel;
   final bool badgeMuted;
 
@@ -326,15 +333,8 @@ class _PortalListViewState extends State<PortalListView> {
     final searchIndex = 0;
     final actionBase = 1;
     final lastHeader = actionBase + actions.length - 1;
-    final credits = (widget.badgeLabel ?? '').trim();
     final title =
         widget.title.trim().isEmpty ? 'Portals' : widget.title.trim();
-
-    bool isDeal(PortalListHeaderAction a) {
-      final id = a.id.trim().toLowerCase();
-      final icon = a.icon.trim().toLowerCase();
-      return id == 'deal' || icon == 'deal' || icon == 'casino';
-    }
 
     Widget iconAt({
       required int index,
@@ -414,10 +414,10 @@ class _PortalListViewState extends State<PortalListView> {
               index: actionBase + i,
               tooltip: actions[i].tooltip ?? actions[i].label,
               icon: _iconFor(actions[i]),
-              hoverLabel: isDeal(actions[i]) && credits.isNotEmpty
-                  ? credits
+              hoverLabel: (actions[i].hoverLabel ?? '').trim().isNotEmpty
+                  ? actions[i].hoverLabel!.trim()
                   : null,
-              hoverLabelMuted: widget.badgeMuted,
+              hoverLabelMuted: actions[i].hoverLabelMuted,
               onPressed: widget.busy || !actions[i].enabled
                   ? null
                   : actions[i].onPressed,
@@ -583,6 +583,9 @@ class _PortalHeaderIcon extends StatefulWidget {
 
 class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
   static const _iconSize = PortalListTokens.headerIconSize;
+  // Fixed hit box so swapping icon ↔ credits never shrinks under the cursor
+  // (which would fire onExit and cancel the reveal).
+  static const _hit = _iconSize + 20;
   static const _pressScale = 0.88;
 
   bool _focused = false;
@@ -590,6 +593,8 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
   bool _pressed = false;
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
+
+  bool get _hasHoverLabel => (widget.hoverLabel ?? '').trim().isNotEmpty;
 
   bool get _lit =>
       _hovered ||
@@ -602,17 +607,26 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
     return widget.color ?? Colors.white;
   }
 
-  Widget _face() {
+  void _setHovered(bool v) {
+    if (_hovered == v) return;
+    setState(() => _hovered = v);
+  }
+
+  Widget _face(bool hovered) {
     final label = (widget.hoverLabel ?? '').trim();
-    final showLabel = label.isNotEmpty && _lit;
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: showLabel
-          ? SizedBox(
-              height: _iconSize,
-              child: Center(
+    final lit = _litFor(hovered);
+    final showLabel = label.isNotEmpty && lit;
+    return SizedBox(
+      width: _hit,
+      height: _hit,
+      child: Center(
+        child: showLabel
+            ? FittedBox(
+                fit: BoxFit.scaleDown,
                 child: Text(
                   label,
+                  maxLines: 1,
+                  softWrap: false,
                   style: TextStyle(
                     color: widget.hoverLabelMuted
                         ? Colors.white38
@@ -621,15 +635,18 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-            )
-          : Icon(widget.icon, color: _fg, size: _iconSize),
+              )
+            : Icon(widget.icon, color: _fg, size: _iconSize),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final body = Tooltip(message: widget.tooltip, child: _face());
+    // Tooltip fights the credits reveal (nested MouseRegion + size swap).
+    final Widget body = _hasHoverLabel
+        ? _face()
+        : Tooltip(message: widget.tooltip, child: _face());
 
     if (_tv && ShellPaintTvRowScope.maybeOf(context) != null) {
       return ShellPaintScope.focusableTap(
@@ -646,7 +663,7 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
         onFocusChange: (f) => setState(() => _focused = f),
-        onHoverChange: (h) => setState(() => _hovered = h),
+        onHoverChange: _setHovered,
         child: body,
       );
     }
@@ -663,11 +680,12 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
                 _hovered,
               );
 
-    // Deal can show credits on hover even when disabled (0 credits).
-    final trackHover = enabled || (widget.hoverLabel ?? '').trim().isNotEmpty;
+    // Credits reveal still tracks hover when Deal is disabled (0 credits).
+    final trackHover = enabled || _hasHoverLabel;
 
     return MouseRegion(
-      onEnter: !trackHover ? null : (_) => setState(() => _hovered = true),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: !trackHover ? null : (_) => _setHovered(true),
       onExit: !trackHover
           ? null
           : (_) => setState(() {

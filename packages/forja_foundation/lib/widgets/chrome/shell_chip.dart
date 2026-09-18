@@ -198,10 +198,10 @@ class ForjaShellChip extends StatefulWidget {
 }
 
 class _ForjaShellChipState extends State<ForjaShellChip> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  final ValueNotifier<bool> _busyHoveredN = ValueNotifier(false);
+  final ValueNotifier<bool> _reloadHoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _busyHovered = false;
-  bool _reloadHovered = false;
   Timer? _holdTimer;
   bool _longPressFired = false;
   LogicalKeyboardKey? _holdActivateKey;
@@ -209,7 +209,29 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
   @override
   void dispose() {
     _holdTimer?.cancel();
+    _hoveredN.dispose();
+    _busyHoveredN.dispose();
+    _reloadHoveredN.dispose();
     super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+    if (!hovered) {
+      _busyHoveredN.value = false;
+      _reloadHoveredN.value = false;
+    }
+  }
+
+  void _setBusyHovered(bool v) {
+    if (_busyHoveredN.value == v) return;
+    _busyHoveredN.value = v;
+  }
+
+  void _setReloadHovered(bool v) {
+    if (_reloadHoveredN.value == v) return;
+    _reloadHoveredN.value = v;
   }
 
   void _startHold() {
@@ -265,38 +287,31 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     return KeyEventResult.ignored;
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildFace(bool hovered, bool busyHovered, bool reloadHovered) {
     final selected = widget.selected;
-    final useTv = ShellPaintScope.useTvFocusOf(context);
+    final tv = ShellPaintScope.useTvFocusOf(context);
     final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
-    final tv = useTv;
-    final focusStyled = ShellPaintScope.focusStyledOf(context, focused: _focused);
-    final accent = widget.accentHover && (_hovered || focusStyled);
-    // Desktop: reload only on chip hover. Touch/TV: always (no hover).
+    final focusStyled =
+        ShellPaintScope.focusStyledOf(context, focused: _focused);
+    final accent = widget.accentHover && (hovered || focusStyled);
     final showReload = widget.onReload != null &&
-        (!scaleOnHover || _hovered || focusStyled);
+        (!scaleOnHover || hovered || focusStyled);
     final cinematic = ForjaShellColors.cinematic;
     final fg = accent
         ? ForjaShellColors.brandGreen
         : selected
             ? cinematic.textPrimary
             : cinematic.textSecondary;
-    final reloadColor = (_reloadHovered || focusStyled)
+    final reloadColor = (reloadHovered || focusStyled)
         ? ForjaShellColors.brandGreen
         : fg;
-    final borderRadius = BorderRadius.circular(widget.radius);
-    final trackHover = widget.accentHover ||
-        widget.onReload != null ||
-        widget.onLongPress != null;
-    final leanback = tv && !scaleOnHover;
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
     final labelFontSize = tvDensity &&
             widget.fontSize == ShellTokens.shellChipFontSize
         ? ShellTokens.shellChipFontSizeTv
         : widget.fontSize;
 
-    final face = AnimatedContainer(
+    return AnimatedContainer(
       duration: tv
           ? Duration.zero
           : ForjaMotionTheme.of(context).fillOnly.duration,
@@ -319,15 +334,16 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             style: GoogleFonts.plusJakartaSans(
               color: fg,
               fontSize: labelFontSize,
-              fontWeight: selected || accent ? FontWeight.w600 : FontWeight.w500,
+              fontWeight:
+                  selected || accent ? FontWeight.w600 : FontWeight.w500,
             ),
           ),
           if (widget.loading) ...[
             const SizedBox(width: ShellTokens.shellChipGapTight),
             ForjaBusyCancelGlyph(
               color: fg,
-              hovered: _busyHovered,
-              onHover: (v) => setState(() => _busyHovered = v),
+              hovered: busyHovered,
+              onHover: _setBusyHovered,
               onCancel: widget.onCancel,
             ),
           ] else if (showReload) ...[
@@ -335,13 +351,13 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             ExcludeFocus(
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
-                onEnter: (_) => setState(() => _reloadHovered = true),
-                onExit: (_) => setState(() => _reloadHovered = false),
+                onEnter: (_) => _setReloadHovered(true),
+                onExit: (_) => _setReloadHovered(false),
                 child: GestureDetector(
                   onTap: widget.onReload,
                   behavior: HitTestBehavior.opaque,
                   child: AnimatedRotation(
-                    turns: _reloadHovered ? 0.5 : 0,
+                    turns: reloadHovered ? 0.5 : 0,
                     duration: const Duration(milliseconds: 320),
                     curve: Curves.easeOutCubic,
                     child: Icon(
@@ -358,6 +374,31 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             widget.trailing!,
           ],
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final useTv = ShellPaintScope.useTvFocusOf(context);
+    final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
+    final tv = useTv;
+    final borderRadius = BorderRadius.circular(widget.radius);
+    final trackHover = widget.accentHover ||
+        widget.onReload != null ||
+        widget.onLongPress != null;
+    final leanback = tv && !scaleOnHover;
+
+    final face = ListenableBuilder(
+      listenable: Listenable.merge([
+        _hoveredN,
+        _busyHoveredN,
+        _reloadHoveredN,
+      ]),
+      builder: (context, _) => _buildFace(
+        _hoveredN.value,
+        _busyHoveredN.value,
+        _reloadHoveredN.value,
       ),
     );
 
@@ -388,15 +429,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
                 if (!focused) _cancelHold();
               }
             : null,
-        onHoverChange: trackHover
-            ? (hovered) => setState(() {
-                  _hovered = hovered;
-                  if (!hovered) {
-                    _busyHovered = false;
-                    _reloadHovered = false;
-                  }
-                })
-            : null,
+        onHoverChange: trackHover ? _setHovered : null,
         child: Material(
           color: Colors.transparent,
           borderRadius: borderRadius,
@@ -428,12 +461,8 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
 
     if (!trackHover || tv) return body;
     return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() {
-        _hovered = false;
-        _busyHovered = false;
-        _reloadHovered = false;
-      }),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       child: body,
     );
   }

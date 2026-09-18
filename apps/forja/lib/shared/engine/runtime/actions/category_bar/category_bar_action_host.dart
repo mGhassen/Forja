@@ -132,21 +132,18 @@ abstract final class CategoryBarActionHost {
     );
   }
 
+  /// Vault `iptv.active` only — never invent the first inventory row.
+  ///
+  /// Feed params stamp `portalStoreKey` into [EngineCache]. Falling back to the
+  /// first portal while active is empty cached the empty “Choose a portal”
+  /// cover under that portal’s key, so selecting the first portal hit stale
+  /// cache and the grid never loaded.
   static Future<Portal?> _resolveActivePortal({String? preferTabId}) async {
     try {
       final activeRaw = await EngineVault.get(PortalVaultKeys.active);
       final activeKey = (activeRaw ?? '').toString().trim();
-      if (activeKey.isNotEmpty) {
-        final p = await PortalsHost.loadVaultPortal(activeKey);
-        if (p != null) return p;
-      }
-      final raw = await EngineVault.get(PortalVaultKeys.portals);
-      if (raw == null || raw.trim().isEmpty) return null;
-      final parsed = jsonDecode(raw);
-      if (parsed is! List || parsed.isEmpty) return null;
-      final first = parsed.first;
-      if (first is! Map) return null;
-      return Portal.fromJson(Map<String, dynamic>.from(first));
+      if (activeKey.isEmpty) return null;
+      return PortalsHost.loadVaultPortal(activeKey);
     } catch (_) {
       return null;
     }

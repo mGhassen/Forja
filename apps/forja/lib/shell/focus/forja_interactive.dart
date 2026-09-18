@@ -42,8 +42,9 @@ class ForjaInteractive extends StatefulWidget {
 }
 
 class _ForjaInteractiveState extends State<ForjaInteractive> {
-  bool _hover = false;
-  bool _pressed = false;
+  final ValueNotifier<bool> _hoverN = ValueNotifier(false);
+  final ValueNotifier<bool> _pressedN = ValueNotifier(false);
+  static _ForjaInteractiveState? _hoverOwner;
   bool _focused = false;
   FocusNode? _ownedNode;
 
@@ -101,8 +102,8 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   void didUpdateWidget(covariant ForjaInteractive oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.suppressActive && !oldWidget.suppressActive) {
-      _hover = false;
-      _pressed = false;
+      _hoverN.value = false;
+      _pressedN.value = false;
       _focused = false;
       final node = _nodeFor(widget);
       if (node != null && node.hasFocus) {
@@ -173,17 +174,44 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
 
   @override
   void dispose() {
+    if (_hoverOwner == this) _hoverOwner = null;
     _unregisterTvItemNode(widget.tvMeta, node: _nodeFor(widget));
     _disposeOwnedNode();
+    _hoverN.dispose();
+    _pressedN.dispose();
     super.dispose();
   }
 
-  double _scaleFor(BuildContext context, ShellInputPolicy policy) {
+  void _setHover(bool hovered) {
+    if (widget.suppressActive && hovered) return;
+    if (hovered) {
+      final prev = _hoverOwner;
+      if (prev != null && prev != this && prev.mounted) {
+        prev._hoverN.value = false;
+        prev._pressedN.value = false;
+      }
+      _hoverOwner = this;
+      if (_hoverN.value) return;
+      _hoverN.value = true;
+      return;
+    }
+    if (_hoverOwner == this) _hoverOwner = null;
+    if (!_hoverN.value && !_pressedN.value) return;
+    _hoverN.value = false;
+    _pressedN.value = false;
+  }
+
+  double _scaleFor(
+    BuildContext context,
+    ShellInputPolicy policy, {
+    required bool hover,
+    required bool pressed,
+  }) {
     if (widget.suppressActive) return 1.0;
-    if (_pressed) return widget.pressScale;
+    if (pressed) return widget.pressScale;
     if (ShellInputPolicy.interactiveActive(
       policy,
-      hovered: _hover,
+      hovered: hover,
       focused: _focused,
       context: context,
     )) {
@@ -192,11 +220,15 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     return 1.0;
   }
 
-  bool _activeFor(BuildContext context, ShellInputPolicy policy) {
+  bool _activeFor(
+    BuildContext context,
+    ShellInputPolicy policy, {
+    required bool hover,
+  }) {
     if (widget.suppressActive) return false;
     return ShellInputPolicy.interactiveActive(
       policy,
-      hovered: _hover,
+      hovered: hover,
       focused: _focused,
       context: context,
     );
@@ -206,44 +238,35 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   Widget build(BuildContext context) {
     if (_wantsFocus) _ensureOwnedNodeForOnTap();
     final policy = _policy(context);
-    final body = AnimatedScale(
-      scale: _scaleFor(context, policy),
-      alignment: widget.scaleAlignment,
-      duration: policy.instantFocusChrome
-          ? Duration.zero
-          : const Duration(milliseconds: 140),
-      curve: Curves.easeOutCubic,
-      child: widget.builder(_activeFor(context, policy), _pressed),
+    final body = ListenableBuilder(
+      listenable: Listenable.merge([_hoverN, _pressedN]),
+      builder: (context, _) {
+        final hover = _hoverN.value;
+        final pressed = _pressedN.value;
+        return AnimatedScale(
+          scale: _scaleFor(context, policy, hover: hover, pressed: pressed),
+          alignment: widget.scaleAlignment,
+          duration: policy.instantFocusChrome
+              ? Duration.zero
+              : const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          child: widget.builder(_activeFor(context, policy, hover: hover), pressed),
+        );
+      },
     );
 
     Widget interactive = MouseRegion(
-      onEnter: (_) {
-        if (widget.suppressActive) return;
-        if (_hover) return;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted || widget.suppressActive || _hover) return;
-          setState(() => _hover = true);
-        });
-      },
-      onExit: (_) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          if (!_hover && !_pressed) return;
-          setState(() {
-            _hover = false;
-            _pressed = false;
-          });
-        });
-      },
+      onEnter: (_) => _setHover(true),
+      onExit: (_) => _setHover(false),
       cursor: SystemMouseCursors.click,
       child: widget.onTap != null
           ? GestureDetector(
               onTapDown: (_) {
                 if (widget.suppressActive) return;
-                setState(() => _pressed = true);
+                _pressedN.value = true;
               },
-              onTapUp: (_) => setState(() => _pressed = false),
-              onTapCancel: () => setState(() => _pressed = false),
+              onTapUp: (_) => _pressedN.value = false,
+              onTapCancel: () => _pressedN.value = false,
               onTap: widget.onTap,
               behavior: HitTestBehavior.opaque,
               child: body,
@@ -251,10 +274,10 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
           : Listener(
               onPointerDown: (_) {
                 if (widget.suppressActive) return;
-                setState(() => _pressed = true);
+                _pressedN.value = true;
               },
-              onPointerUp: (_) => setState(() => _pressed = false),
-              onPointerCancel: (_) => setState(() => _pressed = false),
+              onPointerUp: (_) => _pressedN.value = false,
+              onPointerCancel: (_) => _pressedN.value = false,
               behavior: HitTestBehavior.translucent,
               child: body,
             ),
@@ -271,11 +294,11 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
           if (focused) {
             _effectiveNode.unfocus();
           }
-          if (_focused || _hover || _pressed) {
+          if (_focused || _hoverN.value || _pressedN.value) {
             setState(() {
               _focused = false;
-              _hover = false;
-              _pressed = false;
+              _hoverN.value = false;
+              _pressedN.value = false;
             });
           }
           return;

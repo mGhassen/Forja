@@ -86,7 +86,6 @@ const List<SettingsAddonMeta> kSettingsAddons = [
     title: 'Debrid',
     subtitle: 'Real-Debrid, TorBox, and more',
     icon: Icons.cloud_download_rounded,
-    adminOnly: true,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.connectedServices,

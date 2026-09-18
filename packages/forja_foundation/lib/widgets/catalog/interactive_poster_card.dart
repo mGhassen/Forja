@@ -150,12 +150,13 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
   Timer? _holdTimer;
   bool _longPressFired = false;
   LogicalKeyboardKey? _holdActivateKey;
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
   void dispose() {
     _holdTimer?.cancel();
+    _hoveredN.dispose();
     super.dispose();
   }
 
@@ -220,18 +221,37 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
         widget.borderRadius ?? InteractivePosterCard.cardBorderRadius(context);
     final inset = InteractivePosterCard.scaled(context, 10).clamp(4.0, 10.0);
     final inGrid = widget.gridIndex != null && widget.gridColumns != null;
-    final active = ShellPaintScope.interactiveActive(
-      context,
-      hovered: _hovered,
-      focused: _focused,
-    );
-    final pin = widget.listPinBuilder?.call(active: active) ?? widget.listPin;
     final titleFs =
         widget.titleFontSize ?? InteractivePosterCard.defaultTitleFontSize(context);
     final metaFs = widget.metaFontSize ??
         (ShellPaintScope.usesTvDensityOf(context)
             ? ShellTokens.tvMetaFontSize
             : InteractivePosterCard.scaled(context, 11).clamp(7.0, 11.0));
+
+    Widget paintCard({required bool hovered}) {
+      final active = ShellPaintScope.interactiveActive(
+        context,
+        hovered: hovered,
+        focused: _focused,
+      );
+      final pin = widget.listPinBuilder?.call(active: active) ?? widget.listPin;
+      return PosterCard(
+        imageUrl: widget.imageUrl,
+        title: widget.title,
+        subtitle: widget.subtitle,
+        rating: widget.rating,
+        rank: widget.rank,
+        badge: widget.badge,
+        listPin: pin,
+        aspect: widget.aspect,
+        width: w,
+        height: h,
+        borderRadius: radius,
+        titleFontSize: titleFs,
+        metaFontSize: metaFs,
+        inset: inset,
+      );
+    }
 
     Widget card = ShellPaintScope.focusableTap(
       context: context,
@@ -249,23 +269,14 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
+      onHoverChange: (h) {
+        if (_hoveredN.value == h) return;
+        _hoveredN.value = h;
+      },
       onKeyEvent: widget.onLongPress != null ? _onTvKey : null,
-      child: PosterCard(
-        imageUrl: widget.imageUrl,
-        title: widget.title,
-        subtitle: widget.subtitle,
-        rating: widget.rating,
-        rank: widget.rank,
-        badge: widget.badge,
-        listPin: pin,
-        aspect: widget.aspect,
-        width: w,
-        height: h,
-        borderRadius: radius,
-        titleFontSize: titleFs,
-        metaFontSize: metaFs,
-        inset: inset,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => paintCard(hovered: _hoveredN.value),
       ),
     );
 

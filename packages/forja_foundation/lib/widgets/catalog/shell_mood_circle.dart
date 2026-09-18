@@ -57,12 +57,23 @@ class ShellMoodCircleItem extends StatefulWidget {
 }
 
 class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
   /// Hover / D-pad focus only — selection is [MoodCircle.selected].
-  bool _hoveredOrFocused(BuildContext context) {
-    return _hovered ||
+  bool _hoveredOrFocused(BuildContext context, bool hovered) {
+    return hovered ||
         ShellPaintScope.focusStyledOf(context, focused: _focused);
   }
 
@@ -70,15 +81,21 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
   Widget build(BuildContext context) {
     final useTv = ShellPaintScope.useTvFocusOf(context);
     final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
-    final paint = MoodCircle(
-      label: widget.label,
-      icon: widget.icon,
-      accent: widget.accent,
-      layout: widget.layout,
-      selected: widget.selected,
-      active: _hoveredOrFocused(context),
-      scaleOnActive: scaleOnHover,
-      size: widget.layout.circleSize,
+
+    Widget paint(bool hovered) => MoodCircle(
+          label: widget.label,
+          icon: widget.icon,
+          accent: widget.accent,
+          layout: widget.layout,
+          selected: widget.selected,
+          active: _hoveredOrFocused(context, hovered),
+          scaleOnActive: scaleOnHover,
+          size: widget.layout.circleSize,
+        );
+
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => paint(_hoveredN.value),
     );
 
     if (useTv) {
@@ -88,9 +105,7 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
         borderRadius: widget.layout.circleSize / 2,
         motion: ForjaMotionPreset.fillOnly,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: scaleOnHover
-            ? (hovered) => setState(() => _hovered = hovered)
-            : null,
+        onHoverChange: scaleOnHover ? _setHovered : null,
         listIndex: widget.listIndex,
         tvItemIndex: widget.listIndex,
         tvZone: ShellPaintTvZone.chipStrip,
@@ -98,18 +113,18 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
         onUpEdge: widget.onUpEdge,
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
-        child: paint,
+        child: painted,
       );
     }
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
-        child: paint,
+        child: painted,
       ),
     );
   }

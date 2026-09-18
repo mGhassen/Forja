@@ -127,7 +127,18 @@ class _VerticalMenuItem extends StatefulWidget {
 }
 
 class _VerticalMenuItemState extends State<_VerticalMenuItem> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,69 +147,78 @@ class _VerticalMenuItemState extends State<_VerticalMenuItem> {
     final minHeight = style?.minHeight ?? 40;
     final fontSize = style?.fontSize ?? 14;
     final leadingSize = style?.leadingSize ?? 28;
-    final lit = widget.selected || (widget.accentHover && _hovered);
-    final fg = lit ? theme.textPrimary : theme.textSecondary;
-    final fill = widget.selected
-        ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
-        : (_hovered && widget.accentHover)
-            ? ForjaShellColors.inkHover
-            : Colors.transparent;
-
-    final row = DecoratedBox(
-      decoration: BoxDecoration(
-        color: fill,
-        border: Border(
-          left: BorderSide(
-            color: widget.selected
-                ? ForjaShellColors.brandGreen
-                : Colors.transparent,
-            width: 3,
-          ),
-        ),
-      ),
-      child: Container(
-        constraints: BoxConstraints(minHeight: minHeight),
-        padding: EdgeInsets.symmetric(
-          horizontal: theme.spaceMd,
-          vertical: theme.spaceSm,
-        ),
-        child: Row(
-          children: [
-            if (widget.leading != null) ...[
-              SizedBox(
-                width: leadingSize,
-                height: leadingSize,
-                child: widget.leading,
-              ),
-              SizedBox(width: theme.spaceSm),
-            ],
-            Expanded(
-              child: Text(
-                widget.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: fg,
-                  fontSize: fontSize,
-                  fontWeight: lit ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       cursor: widget.onTap != null
           ? SystemMouseCursors.click
           : MouseCursor.defer,
       child: GestureDetector(
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
-        child: Focus(focusNode: widget.focusNode, child: row),
+        child: Focus(
+          focusNode: widget.focusNode,
+          child: ListenableBuilder(
+            listenable: _hoveredN,
+            builder: (context, _) {
+              final hovered = _hoveredN.value;
+              final lit =
+                  widget.selected || (widget.accentHover && hovered);
+              final fg = lit ? theme.textPrimary : theme.textSecondary;
+              final fill = widget.selected
+                  ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
+                  : (hovered && widget.accentHover)
+                      ? ForjaShellColors.inkHover
+                      : Colors.transparent;
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  color: fill,
+                  border: Border(
+                    left: BorderSide(
+                      color: widget.selected
+                          ? ForjaShellColors.brandGreen
+                          : Colors.transparent,
+                      width: 3,
+                    ),
+                  ),
+                ),
+                child: Container(
+                  constraints: BoxConstraints(minHeight: minHeight),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: theme.spaceMd,
+                    vertical: theme.spaceSm,
+                  ),
+                  child: Row(
+                    children: [
+                      if (widget.leading != null) ...[
+                        SizedBox(
+                          width: leadingSize,
+                          height: leadingSize,
+                          child: widget.leading,
+                        ),
+                        SizedBox(width: theme.spaceSm),
+                      ],
+                      Expanded(
+                        child: Text(
+                          widget.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: fg,
+                            fontSize: fontSize,
+                            fontWeight:
+                                lit ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

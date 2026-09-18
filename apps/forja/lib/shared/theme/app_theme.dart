@@ -224,7 +224,10 @@ class FocusableControl extends StatefulWidget {
 
 class _FocusableControlState extends State<FocusableControl> with SingleTickerProviderStateMixin {
   bool _isFocused = false;
-  bool _isHovered = false;
+  /// Never setState on hover — rebuilding [MouseRegion] mid-hit-test sticks
+  /// chrome across Settings / catalogs / chips (see pack choice cards).
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  static _FocusableControlState? _hoverOwner;
   late AnimationController _controller;
   late Animation<double> _scale;
   FocusNode? _ownedNode;
@@ -236,6 +239,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   static const _activateCoalesce = Duration(milliseconds: 800);
 
   FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
+
+  bool get _isHovered => _hoveredN.value;
 
   String _tvDebugLabel(ShellTvFocusMeta? meta) {
     if (meta == null || meta.rowId == null) return 'focusable-control';
@@ -338,6 +343,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
   @override
   void dispose() {
+    if (_hoverOwner == this) _hoverOwner = null;
     _unregisterTvItemNode(widget.tvMeta);
     final owned = _ownedNode;
     if (owned != null) {
@@ -347,6 +353,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       owned.dispose();
       _ownedNode = null;
     }
+    _hoveredN.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -367,23 +374,49 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     }
   }
 
-  void _queueHover(bool hovered) {
+  void _applyLocalHover(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+    if (!mounted) return;
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    if (!policy.scaleOnHover && !widget.showFocusRail && !widget.showFocusBorder) {
+      return;
+    }
+    _updateState(
+      ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: hovered,
+        focused: _isFocused,
+        context: context,
+      ),
+    );
+  }
+
+  void _onHover(bool hovered) {
+    if (hovered) {
+      final prev = _hoverOwner;
+      if (prev != null && prev != this && prev.mounted) {
+        prev._applyLocalHover(false);
+        final prevCb = prev.widget.onHoverChange;
+        if (prevCb != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => prevCb(false));
+        }
+      }
+      _hoverOwner = this;
+      _applyLocalHover(true);
+    } else {
+      if (_hoverOwner == this) _hoverOwner = null;
+      _applyLocalHover(false);
+    }
+    // Defer parent callback — may setState; must not run inside deviceUpdate.
+    final cb = widget.onHoverChange;
+    if (cb == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final policy =
-          ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-      widget.onHoverChange?.call(hovered);
-      if (!policy.scaleOnHover) return;
-      if (_isHovered == hovered) return;
-      setState(() => _isHovered = hovered);
-      _updateState(
-        ShellInputPolicy.interactiveActive(
-          policy,
-          hovered: hovered,
-          focused: _isFocused,
-          context: context,
-        ),
-      );
+      if (hovered && _hoverOwner != this) return;
+      if (!hovered && _hoveredN.value) return;
+      cb(hovered);
     });
   }
 
@@ -554,11 +587,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         return KeyEventResult.ignored;
       },
       child: MouseRegion(
-        // Defer out of MouseTracker.deviceUpdate — sync setState / parent
-        // onHoverChange rebuilds MouseRegions mid-hit-test and trips
-        // `!_debugDuringDeviceUpdate` (cascades into null-check floods).
-        onEnter: (_) => _queueHover(true),
-        onExit: (_) => _queueHover(false),
+        // Sync exclusive paint via [_hoveredN]; parent [onHoverChange] is
+        // deferred in [_onHover] so setState never runs mid deviceUpdate.
+        onEnter: (_) => _onHover(true),
+        onExit: (_) => _onHover(false),
         cursor: SystemMouseCursors.click,
         // Leanback: DPAD_CENTER synthesizes a click after Select. Key path
         // already ran onTap — a second pointer activate flips switches off
@@ -568,7 +600,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
           onTap: widget.onTap == null || policy.leanbackOnly
               ? null
               : () => _invokeOnTap(),
-          child: _buildFocusedChild(context),
+          child: ListenableBuilder(
+            listenable: _hoveredN,
+            builder: (context, _) => _buildFocusedChild(context),
+          ),
         ),
       ),
     );

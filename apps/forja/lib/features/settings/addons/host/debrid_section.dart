@@ -128,7 +128,6 @@ class _SettingsDebridSectionState extends ConsumerState<SettingsDebridSection> {
 
     return SettingsGroup(
       label: 'Debrid',
-      adminOnly: true,
       children: [
         settingsFocusableToggle(
           context,

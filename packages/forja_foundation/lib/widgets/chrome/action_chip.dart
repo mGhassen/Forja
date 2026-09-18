@@ -57,13 +57,24 @@ class ForjaActionChip extends StatefulWidget {
 
 class _ForjaActionChipState extends State<ForjaActionChip> {
   bool _focused = false;
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
 
-  bool get _active => ShellPaintScope.interactiveActive(
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  bool _activeFor(bool hovered) => ShellPaintScope.interactiveActive(
         context,
-        hovered: _hovered,
+        hovered: hovered,
         focused: _focused,
       );
 
@@ -83,38 +94,10 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
             vertical: ShellTokens.actionChipPadV,
           )
         : widget.padding;
-    final active = _active || widget.selected;
     final tvFocused = ShellPaintScope.focusStyledOf(context, focused: _focused);
 
     if (widget.iconOnly) {
       final size = height;
-      final fg = active || tvFocused ? Colors.white : Colors.white70;
-      final idleAlpha = widget.selected ? 0.12 : 0.08;
-      final circle = Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(
-            alpha: active || tvFocused ? 0.16 : idleAlpha,
-          ),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.white.withValues(
-              alpha: tvFocused
-                  ? 0.45
-                  : active || widget.selected
-                      ? 0.28
-                      : 0.12,
-            ),
-            width: tvFocused ? 1.5 : 1,
-          ),
-        ),
-        child: Icon(
-          widget.icon ?? Icons.refresh_rounded,
-          color: fg,
-          size: iconSize,
-        ),
-      );
       return ShellPaintScope.focusableTap(
         context: context,
         onTap: widget.onTap,
@@ -129,69 +112,108 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         onRightEdge: widget.onRightEdge,
         onDownEdge: widget.onDownEdge,
         onFocusChange: (f) => setState(() => _focused = f),
-        onHoverChange: (h) => setState(() => _hovered = h),
-        child: Tooltip(
-          message: widget.label.isEmpty ? 'Refresh' : widget.label,
-          child: circle,
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final active =
+                _activeFor(_hoveredN.value) || widget.selected;
+            final fg = active || tvFocused ? Colors.white : Colors.white70;
+            final idleAlpha = widget.selected ? 0.12 : 0.08;
+            final circle = Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(
+                  alpha: active || tvFocused ? 0.16 : idleAlpha,
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(
+                    alpha: tvFocused
+                        ? 0.45
+                        : active || widget.selected
+                            ? 0.28
+                            : 0.12,
+                  ),
+                  width: tvFocused ? 1.5 : 1,
+                ),
+              ),
+              child: Icon(
+                widget.icon ?? Icons.refresh_rounded,
+                color: fg,
+                size: iconSize,
+              ),
+            );
+            return Tooltip(
+              message: widget.label.isEmpty ? 'Refresh' : widget.label,
+              child: circle,
+            );
+          },
         ),
       );
     }
 
-    final bg = active
-        ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
-        : Colors.white.withValues(alpha: 0.06);
-    final border = tvFocused
-        ? ForjaShellColors.brandGreen
-        : active
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
-            : ForjaShellColors.borderSubtle.withValues(alpha: 0.55);
-    final fg = tvFocused || active
-        ? ForjaShellColors.brandGreen
-        : ForjaShellColors.cinematic.textSecondary;
+    Widget buildChip(bool hovered) {
+      final active = _activeFor(hovered) || widget.selected;
+      final bg = active
+          ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
+          : Colors.white.withValues(alpha: 0.06);
+      final border = tvFocused
+          ? ForjaShellColors.brandGreen
+          : active
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+              : ForjaShellColors.borderSubtle.withValues(alpha: 0.55);
+      final fg = tvFocused || active
+          ? ForjaShellColors.brandGreen
+          : ForjaShellColors.cinematic.textSecondary;
 
-    // Cap width — Catalog can fall back to a long id (e.g. stremio:<url>).
-    final chip = AnimatedContainer(
-      duration: ForjaMotionTheme.of(context).fillOnly.duration,
-      curve: Curves.easeOutCubic,
-      constraints: BoxConstraints(maxWidth: widget.maxWidth),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(widget.radius),
-        border: Border.all(color: border, width: tvFocused ? 1.5 : 1),
-      ),
-      padding: padding,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (widget.icon != null) ...[
-            Icon(widget.icon, size: iconSize, color: fg),
-            if (widget.label.isNotEmpty) SizedBox(width: widget.gap),
-          ],
-          if (widget.label.isNotEmpty)
-            Flexible(
-              child: Text(
-                widget.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: fg,
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
+      return AnimatedContainer(
+        duration: ForjaMotionTheme.of(context).fillOnly.duration,
+        curve: Curves.easeOutCubic,
+        constraints: BoxConstraints(maxWidth: widget.maxWidth),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(widget.radius),
+          border: Border.all(color: border, width: tvFocused ? 1.5 : 1),
+        ),
+        padding: padding,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.icon != null) ...[
+              Icon(widget.icon, size: iconSize, color: fg),
+              if (widget.label.isNotEmpty) SizedBox(width: widget.gap),
+            ],
+            if (widget.label.isNotEmpty)
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    }
 
     if (!_tv) {
       return MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
         child: shellRoundedInkHost(
           radius: widget.radius,
           onTap: widget.onTap,
-          child: chip,
+          child: ListenableBuilder(
+            listenable: _hoveredN,
+            builder: (context, _) => buildChip(_hoveredN.value),
+          ),
         ),
       );
     }
@@ -210,8 +232,11 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
       onRightEdge: widget.onRightEdge,
       onDownEdge: widget.onDownEdge,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
-      child: chip,
+      onHoverChange: _setHovered,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => buildChip(_hoveredN.value),
+      ),
     );
   }
 }

@@ -212,6 +212,8 @@ Widget shellFocusableTap({
 
   if (policy.scaleOnHover && onHoverChange != null) {
     body = MouseRegion(
+      // Parent may setState — defer out of MouseTracker.deviceUpdate. Prefer
+      // ValueNotifier in callers so hover paint does not rebuild this region.
       onEnter: (_) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           onHoverChange(true);

@@ -141,6 +141,10 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
     if (!mounted) return;
 
+    // Soft switch: wipe EngineCache + paint memos (pack may still disk-hit).
+    // Without wipe, an empty “Choose a portal” cover cached under this
+    // portalStoreKey (pre-active fallback) paints forever after select.
+    EngineCache.instance.wipePlugin(pluginId);
     PackLoadedPaint.clearMemosForPlugin(pluginId);
     final chrome = PackChromeScope.maybeOf(context);
     // Drop stale "Choose a portal" cover so loading paints while feed runs.
@@ -418,6 +422,8 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
             label: a.label,
             icon: a.icon,
             enabled: !_busy && credits >= 1,
+            hoverLabel: '$credits cr',
+            hoverLabelMuted: credits < 1,
             tooltip: credits > 0
                 ? '${a.label} ($credits credits)'
                 : '${a.label} (no credits)',
@@ -470,8 +476,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       width: widget.width,
       title: (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals',
       items: items,
-      badgeLabel: canDeal ? '$credits cr' : null,
-      badgeMuted: canDeal && credits < 1,
       headerActions: headerActions,
       searchPlaceholder: inv?.searchPlaceholder ?? '',
       emptyTitle: inv?.emptyTitle ?? '',

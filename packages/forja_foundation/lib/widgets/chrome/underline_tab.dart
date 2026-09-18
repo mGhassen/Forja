@@ -42,11 +42,25 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
   static const _hoverT = 0.62;
   static const _selectedT = 1.0;
 
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
   /// After toggle-deselect, pointer/focus is still on the tab — hover paint
   /// looks like selection. Hold idle until the pointer/focus actually leaves.
   bool _suppressHighlightUntilLeave = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+    if (!hovered && _suppressHighlightUntilLeave) {
+      setState(() => _suppressHighlightUntilLeave = false);
+    }
+  }
 
   @override
   void didUpdateWidget(covariant ForjaUnderlineTab oldWidget) {
@@ -61,17 +75,11 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
   double get _visualTarget {
     if (widget.isActive) return _selectedT;
     if (_suppressHighlightUntilLeave) return 0;
-    if (_hovered || ShellPaintScope.focusStyledOf(context, focused: _focused)) {
+    if (_hoveredN.value ||
+        ShellPaintScope.focusStyledOf(context, focused: _focused)) {
       return _hoverT;
     }
     return 0;
-  }
-
-  void _onHoverChange(bool hovered) {
-    setState(() {
-      _hovered = hovered;
-      if (!hovered) _suppressHighlightUntilLeave = false;
-    });
   }
 
   void _onFocusChange(bool focused) {
@@ -161,19 +169,25 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
         onRightEdge: widget.onRightEdge,
         focusNode: widget.focusNode,
         onFocusChange: _onFocusChange,
-        onHoverChange: _onHoverChange,
-        child: child,
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => child,
+        ),
       );
     }
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => _onHoverChange(true),
-      onExit: (_) => _onHoverChange(false),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       child: GestureDetector(
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
-        child: child,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => child,
+        ),
       ),
     );
   }

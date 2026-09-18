@@ -50,18 +50,28 @@ class FilterSheetOption extends StatefulWidget {
 
 class _FilterSheetOptionState extends State<FilterSheetOption> {
   bool _focused = false;
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
 
-  bool get _highlight => ShellPaintScope.interactiveActive(
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  bool _highlightFor(bool hovered) => ShellPaintScope.interactiveActive(
         context,
-        hovered: _hovered,
+        hovered: hovered,
         focused: _focused,
       );
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(bool hovered) {
     final radius = widget.radius;
-
+    final highlight = _highlightFor(hovered);
     final tile = ListTile(
       leading: Icon(
         widget.icon,
@@ -75,7 +85,7 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
           color: Colors.white,
           fontSize: widget.fontSize,
           fontWeight:
-              _highlight || widget.selected ? FontWeight.bold : FontWeight.w600,
+              highlight || widget.selected ? FontWeight.bold : FontWeight.w600,
         ),
       ),
       subtitle: (widget.subtitle ?? '').trim().isEmpty
@@ -90,46 +100,49 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
       onTap: widget.tvFocus ? null : widget.onSelected,
     );
 
-    final body = Material(
-      color: _highlight ? ForjaShellColors.inkHover : Colors.transparent,
-      borderRadius: BorderRadius.circular(radius),
-      clipBehavior: Clip.antiAlias,
-      child: tile,
-    );
-
-    final padded = Padding(
+    return Padding(
       padding: widget.padding,
-      child: body,
+      child: Material(
+        color: highlight ? ForjaShellColors.inkHover : Colors.transparent,
+        borderRadius: BorderRadius.circular(radius),
+        clipBehavior: Clip.antiAlias,
+        child: tile,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildBody(_hoveredN.value),
     );
 
     final wrap = widget.interactiveBuilder;
     if (wrap != null) {
       return wrap(
-        child: padded,
+        child: painted,
         onTap: widget.onSelected,
         focusNode: widget.focusNode,
         onFocusChange: (f) => setState(() => _focused = f),
-        onHoverChange: widget.scaleOnHover
-            ? (h) => setState(() => _hovered = h)
-            : null,
+        onHoverChange: widget.scaleOnHover ? _setHovered : null,
       );
     }
 
     if (!widget.tvFocus) {
+      if (!widget.scaleOnHover) return painted;
       return MouseRegion(
-        onEnter:
-            widget.scaleOnHover ? (_) => setState(() => _hovered = true) : null,
-        onExit:
-            widget.scaleOnHover ? (_) => setState(() => _hovered = false) : null,
-        child: padded,
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
+        child: painted,
       );
     }
 
     return FocusableTap(
       onTap: widget.onSelected,
       focusNode: widget.focusNode,
-      borderRadius: BorderRadius.circular(radius),
-      child: padded,
+      borderRadius: BorderRadius.circular(widget.radius),
+      child: painted,
     );
   }
 }

@@ -80,19 +80,27 @@ class PortalsChip extends StatefulWidget {
 
 class _PortalsChipState extends State<PortalsChip> {
   bool _focused = false;
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+    widget.onHoverChange?.call(hovered);
+  }
 
   Color get _accent => widget.accentColor ?? ForjaShellColors.brandGreen;
 
-  bool get _chromeActive => ShellPaintScope.interactiveActive(
+  bool _chromeActiveFor(bool hovered) => ShellPaintScope.interactiveActive(
         context,
-        hovered: _hovered,
+        hovered: hovered,
         focused: _focused,
       );
-
-  bool get _revealSeats => widget.hasPortal && _chromeActive;
-
-  bool get _active => _chromeActive;
 
   Color _statusColor() {
     if (widget.checking) return const Color(0xFF38BDF8);
@@ -101,8 +109,7 @@ class _PortalsChipState extends State<PortalsChip> {
     return const Color(0x3DFFFFFF);
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildChip(bool hovered) {
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
     final height = tvDensity ? ShellTokens.portalsChipHeightTv : widget.height;
     final fontSize =
@@ -113,7 +120,9 @@ class _PortalsChipState extends State<PortalsChip> {
         tvDensity ? ShellTokens.portalsChipChevronSizeTv : widget.chevronSize;
     final tvFocused = widget.tvFocus &&
         ShellPaintScope.focusStyledOf(context, focused: _focused);
-    final showHighlight = widget.selected || _active;
+    final active = _chromeActiveFor(hovered);
+    final revealSeats = widget.hasPortal && active;
+    final showHighlight = widget.selected || active;
 
     final chipRadius = BorderRadius.circular(widget.radius);
     final borderColor = tvFocused
@@ -126,7 +135,7 @@ class _PortalsChipState extends State<PortalsChip> {
     final fg = Colors.white;
     final fgMuted = tvFocused
         ? ForjaShellColors.brandGreen
-        : _active
+        : active
             ? Colors.white
             : Colors.white60;
     final hPad = widget.pad ??
@@ -137,7 +146,7 @@ class _PortalsChipState extends State<PortalsChip> {
                 : ShellTokens.portalsChipPad);
     final packWidth = widget.width;
     final minW = packWidth ??
-        (widget.compact && !_revealSeats ? height : 0.0);
+        (widget.compact && !revealSeats ? height : 0.0);
     // Pack body column (inside pads). Seats prepend left of this so the chip
     // grows left while the body/chevron right edge stays put.
     final bodyW = packWidth != null ? (packWidth - hPad * 2) : null;
@@ -175,7 +184,7 @@ class _PortalsChipState extends State<PortalsChip> {
                 size: iconSize,
                 color: tvFocused
                     ? ForjaShellColors.brandGreen
-                    : _active
+                    : active
                         ? Colors.white
                         : _accent,
               ),
@@ -249,7 +258,7 @@ class _PortalsChipState extends State<PortalsChip> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (widget.hasPortal && _revealSeats) ...[
+            if (widget.hasPortal && revealSeats) ...[
               _seats(),
               SizedBox(
                 width: widget.compact
@@ -262,31 +271,36 @@ class _PortalsChipState extends State<PortalsChip> {
         ),
       ),
     );
+    return chip;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final chipRadius = BorderRadius.circular(widget.radius);
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildChip(_hoveredN.value),
+    );
 
     void onFocus(bool focused) {
       setState(() => _focused = focused);
       widget.onFocusChange?.call(focused);
     }
 
-    void onHover(bool hovered) {
-      setState(() => _hovered = hovered);
-      widget.onHoverChange?.call(hovered);
-    }
-
     final wrap = widget.interactiveBuilder;
     if (wrap != null) {
       return wrap(
-        child: chip,
+        child: painted,
         onTap: widget.onTap,
         onFocusChange: onFocus,
-        onHoverChange: onHover,
+        onHoverChange: _setHovered,
       );
     }
 
     return FocusableTap(
       onTap: widget.onTap,
       borderRadius: chipRadius,
-      child: chip,
+      child: painted,
     );
   }
 

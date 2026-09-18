@@ -168,6 +168,9 @@ class PluginInstallCoordinator {
         '(${pack.plugins.length} plugins) $manifestUrl',
       );
       await DeferredRemoteInstallStore.clear(manifestUrl);
+      if (pack.plugins.any((p) => p.isDebrid)) {
+        await syncDebridResolveCatalog();
+      }
       return pack;
     } catch (e) {
       debugPrint('[PluginInstall] failed $manifestUrl: $e');

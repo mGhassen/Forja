@@ -111,32 +111,43 @@ class _ViewButtonSlot extends StatefulWidget {
 }
 
 class _ViewButtonSlotState extends State<_ViewButtonSlot> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
 
-  bool get _active =>
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  bool _activeFor(bool hovered) =>
       widget.selected ||
       ShellPaintScope.interactiveActive(
         context,
-        hovered: _hovered,
+        hovered: hovered,
         focused: _focused,
       );
 
-  @override
-  Widget build(BuildContext context) {
-    final slot = AnimatedContainer(
+  Widget _buildSlot(bool hovered) {
+    final active = _activeFor(hovered);
+    return AnimatedContainer(
       duration: ForjaMotionTheme.of(context).fillOnly.duration,
       width: widget.height,
       height: widget.height,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: _active
+        color: active
             ? Colors.white.withValues(
                 alpha: ShellPaintScope.interactiveActive(
                   context,
-                  hovered: _hovered,
+                  hovered: hovered,
                   focused: _focused,
                 )
                     ? 0.16
@@ -154,20 +165,29 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
         color: widget.selected ? Colors.white : Colors.white60,
       ),
     );
+  }
 
-    final child = widget.item.label.isEmpty
-        ? slot
-        : Tooltip(message: widget.item.label, child: slot);
+  @override
+  Widget build(BuildContext context) {
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) {
+        final slot = _buildSlot(_hoveredN.value);
+        return widget.item.label.isEmpty
+            ? slot
+            : Tooltip(message: widget.item.label, child: slot);
+      },
+    );
 
     if (!_tv) {
       return MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
         child: shellRoundedInkHost(
           radius: widget.height / 2,
           onTap: widget.onTap,
           suppressInkHover: true,
-          child: child,
+          child: painted,
         ),
       );
     }
@@ -183,8 +203,8 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.topBar,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
-      child: child,
+      onHoverChange: _setHovered,
+      child: painted,
     );
   }
 }

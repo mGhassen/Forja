@@ -142,82 +142,92 @@ class SettingsCategoryTile extends StatefulWidget {
 
 class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
   bool _focused = false;
-  bool _hovered = false;
+  /// Never setState on hover — FocusableControl MouseRegion must stay put.
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    // Desktop: green ink only for hover / keyboard chrome — not mouse-retained focus.
-    final chromeActive = widget.selected ||
-        ShellInputPolicy.interactiveActive(
-          policy,
-          hovered: _hovered,
-          focused: _focused,
-          context: context,
-        );
-    final ink = chromeActive
-        ? ForjaShellColors.brandGreen
-        : ForjaShellColors.iconMuted;
-    final titleColor = chromeActive
-        ? ForjaShellColors.brandGreen
-        : ForjaShellColors.textSecondary;
-    final subtitleColor = chromeActive
-        ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
-        : ForjaShellColors.textSecondary;
     final rail = widget.tvRowId != null;
 
-    // Rail chrome (selected + hover/focus) lives only on FocusableControl —
-    // a nested Border.left was inset by the outer transparent rail border.
-    final child = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      child: Row(
-        children: [
-          widget.leading ??
-              Icon(widget.icon, size: SettingsTokens.categoryIconSizeOf(context), color: ink),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                settingsTitleText(
-                  widget.title,
-                  TextStyle(
-                    color: titleColor,
-                    fontSize: SettingsTokens.categoryTitleSizeOf(context),
-                    fontWeight:
-                        chromeActive ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                  adminOnly: widget.adminOnly,
-                  sparkSize: 13,
-                ),
-                if (widget.subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: subtitleColor,
-                      fontSize: 12,
+    Widget paintChild({required bool hovered}) {
+      // Desktop: green ink only for hover / keyboard chrome — not mouse-retained focus.
+      final chromeActive = widget.selected ||
+          ShellInputPolicy.interactiveActive(
+            policy,
+            hovered: hovered,
+            focused: _focused,
+            context: context,
+          );
+      final ink = chromeActive
+          ? ForjaShellColors.brandGreen
+          : ForjaShellColors.iconMuted;
+      final titleColor = chromeActive
+          ? ForjaShellColors.brandGreen
+          : ForjaShellColors.textSecondary;
+      final subtitleColor = chromeActive
+          ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
+          : ForjaShellColors.textSecondary;
+
+      // Rail chrome (selected + hover/focus) lives only on FocusableControl —
+      // a nested Border.left was inset by the outer transparent rail border.
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Row(
+          children: [
+            widget.leading ??
+                Icon(widget.icon, size: SettingsTokens.categoryIconSizeOf(context), color: ink),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  settingsTitleText(
+                    widget.title,
+                    TextStyle(
+                      color: titleColor,
+                      fontSize: SettingsTokens.categoryTitleSizeOf(context),
+                      fontWeight:
+                          chromeActive ? FontWeight.w700 : FontWeight.w500,
                     ),
+                    adminOnly: widget.adminOnly,
+                    sparkSize: 13,
                   ),
+                  if (widget.subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: subtitleColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          if (widget.trailing != null) ...[
-            const SizedBox(width: 8),
-            widget.trailing!,
+            if (widget.trailing != null) ...[
+              const SizedBox(width: 8),
+              widget.trailing!,
+            ],
+            if (!SettingsTokens.useSplitLayout(context))
+              Icon(
+                Icons.chevron_right_rounded,
+                color: ink,
+                size: 22,
+              ),
           ],
-          if (!SettingsTokens.useSplitLayout(context))
-            Icon(
-              Icons.chevron_right_rounded,
-              color: ink,
-              size: 22,
-            ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
 
     return shellFocusableTap(
       context: context,
@@ -239,8 +249,8 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
       onRightEdge: widget.onRightEdge,
       focusNode: widget.focusNode,
       onHoverChange: (hovered) {
-        if (_hovered == hovered) return;
-        setState(() => _hovered = hovered);
+        if (_hoveredN.value == hovered) return;
+        _hoveredN.value = hovered;
       },
       onFocusChange: (focused) {
         if (_focused != focused) {
@@ -261,7 +271,10 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
           });
         }
       },
-      child: child,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => paintChild(hovered: _hoveredN.value),
+      ),
     );
   }
 }
@@ -1632,11 +1645,17 @@ class SettingsSliderRow extends StatefulWidget {
 
 class _SettingsSliderRowState extends State<SettingsSliderRow> {
   bool _focused = false;
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
 
-  bool get _chromeActive => ShellInputPolicy.interactiveActive(
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  bool _chromeActiveFor(bool hovered) => ShellInputPolicy.interactiveActive(
         ShellScope.inputPolicyOf(context),
-        hovered: _hovered,
+        hovered: hovered,
         focused: _focused,
         context: context,
       );
@@ -1680,33 +1699,39 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
           ],
           MouseRegion(
             onEnter: (_) {
-              if (_hovered) return;
-              setState(() => _hovered = true);
+              if (_hoveredN.value) return;
+              _hoveredN.value = true;
             },
             onExit: (_) {
-              if (!_hovered) return;
-              setState(() => _hovered = false);
+              if (!_hoveredN.value) return;
+              _hoveredN.value = false;
             },
             child: ExcludeFocus(
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  // Focus/hover chrome is the thumb — not a row left-bar fill.
-                  thumbColor: _chromeActive
-                      ? Colors.white
-                      : ForjaShellColors.brandGreen,
-                  overlayColor: Colors.transparent,
-                  activeTrackColor: ForjaShellColors.brandGreen,
-                  inactiveTrackColor: ForjaShellColors.borderSubtle,
-                ),
-                child: Slider(
-                  value: widget.value.clamp(widget.min, widget.max).toDouble(),
-                  min: widget.min,
-                  max: widget.max,
-                  divisions: widget.divisions,
-                  label: widget.label,
-                  onChanged: widget.onChanged,
-                  onChangeEnd: widget.onChangeEnd,
-                ),
+              child: ListenableBuilder(
+                listenable: _hoveredN,
+                builder: (context, _) {
+                  final chrome = _chromeActiveFor(_hoveredN.value);
+                  return SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      // Focus/hover chrome is the thumb — not a row left-bar fill.
+                      thumbColor: chrome
+                          ? Colors.white
+                          : ForjaShellColors.brandGreen,
+                      overlayColor: Colors.transparent,
+                      activeTrackColor: ForjaShellColors.brandGreen,
+                      inactiveTrackColor: ForjaShellColors.borderSubtle,
+                    ),
+                    child: Slider(
+                      value: widget.value.clamp(widget.min, widget.max).toDouble(),
+                      min: widget.min,
+                      max: widget.max,
+                      divisions: widget.divisions,
+                      label: widget.label,
+                      onChanged: widget.onChanged,
+                      onChangeEnd: widget.onChangeEnd,
+                    ),
+                  );
+                },
               ),
             ),
           ),

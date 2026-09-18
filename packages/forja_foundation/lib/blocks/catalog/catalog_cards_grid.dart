@@ -961,17 +961,27 @@ class InteractiveEventCard extends StatefulWidget {
 }
 
 class _InteractiveEventCardState extends State<InteractiveEventCard> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  Widget _buildPaint(bool hovered) {
     final props = widget.props;
     final live = props['live'] == true;
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final active = ShellPaintScope.interactiveActive(
           context,
-          hovered: _hovered,
+          hovered: hovered,
           focused: _focused,
         ) ||
         widget.selected;
@@ -1012,10 +1022,15 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
           : null,
     );
 
+    return paint;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: radius,
+      borderRadius: EventCardTokens.radius,
       motion: ForjaMotionPreset.fillOnly,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
@@ -1024,11 +1039,11 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) {
-        if (_hovered == h) return;
-        setState(() => _hovered = h);
-      },
-      child: paint,
+      onHoverChange: _setHovered,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildPaint(_hoveredN.value),
+      ),
     );
   }
 }
@@ -1061,40 +1076,48 @@ class _HoverDenseTile extends StatefulWidget {
 }
 
 class _HoverDenseTileState extends State<_HoverDenseTile> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
-  void _queueHover(bool hovered) {
-    if (_hovered == hovered) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _hovered == hovered) return;
-      setState(() => _hovered = hovered);
-    });
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
   }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildTile(bool hovered) => EventDenseTile(
+        title: widget.title,
+        meta: widget.meta,
+        airing: widget.airing,
+        viewers: widget.viewers,
+        selected: widget.selected,
+        hovered: hovered,
+        focused: _focused,
+        onTap: null,
+      );
 
   @override
   Widget build(BuildContext context) {
-    final tile = EventDenseTile(
-      title: widget.title,
-      meta: widget.meta,
-      airing: widget.airing,
-      viewers: widget.viewers,
-      selected: widget.selected,
-      hovered: _hovered,
-      focused: _focused,
-      onTap: null,
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildTile(_hoveredN.value),
     );
     if (!ShellPaintScope.useTvFocusOf(context)) {
       return MouseRegion(
-        onEnter: (_) => _queueHover(true),
-        onExit: (_) => _queueHover(false),
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
         cursor: widget.onTap != null
             ? SystemMouseCursors.click
             : MouseCursor.defer,
         child: GestureDetector(
           onTap: widget.onTap,
           behavior: HitTestBehavior.opaque,
-          child: tile,
+          child: painted,
         ),
       );
     }
@@ -1111,11 +1134,8 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) {
-        if (_hovered == h) return;
-        setState(() => _hovered = h);
-      },
-      child: tile,
+      onHoverChange: _setHovered,
+      child: painted,
     );
   }
 }
