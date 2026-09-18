@@ -427,8 +427,12 @@ KeyEventResult shellTvHandleRowArrows({
 
   if (key == LogicalKeyboardKey.arrowLeft) {
     if (onLeftEdge != null) {
+      ShellTvFocusCoordinator.beginKitEdgeAttempt();
       onLeftEdge();
-      return KeyEventResult.handled;
+      if (!ShellTvFocusCoordinator.takeKitEdgeMiss()) {
+        return KeyEventResult.handled;
+      }
+      // kitFocusEdge miss — fall through to meta / spatial.
     }
     final left = tvMeta?.resolveLeftEdge();
     if (left != null) {
@@ -443,8 +447,11 @@ KeyEventResult shellTvHandleRowArrows({
   }
   if (key == LogicalKeyboardKey.arrowUp) {
     if (onUpEdge != null) {
+      ShellTvFocusCoordinator.beginKitEdgeAttempt();
       onUpEdge();
-      return KeyEventResult.handled;
+      if (!ShellTvFocusCoordinator.takeKitEdgeMiss()) {
+        return KeyEventResult.handled;
+      }
     }
     final up = tvMeta?.resolveUpEdge();
     if (up != null) {
@@ -457,8 +464,11 @@ KeyEventResult shellTvHandleRowArrows({
   }
   if (key == LogicalKeyboardKey.arrowDown) {
     if (onDownEdge != null) {
+      ShellTvFocusCoordinator.beginKitEdgeAttempt();
       onDownEdge();
-      return KeyEventResult.handled;
+      if (!ShellTvFocusCoordinator.takeKitEdgeMiss()) {
+        return KeyEventResult.handled;
+      }
     }
     final down = tvMeta?.resolveDownEdge();
     if (down != null) {
@@ -469,8 +479,12 @@ KeyEventResult shellTvHandleRowArrows({
   }
   if (key == LogicalKeyboardKey.arrowRight) {
     if (onRightEdge != null) {
+      ShellTvFocusCoordinator.beginKitEdgeAttempt();
       onRightEdge();
-      return KeyEventResult.handled;
+      if (!ShellTvFocusCoordinator.takeKitEdgeMiss()) {
+        return KeyEventResult.handled;
+      }
+      // kitFocusEdge miss (e.g. sources-kind unmounted) — fall through.
     }
     final right = tvMeta?.resolveRightEdge();
     if (right != null) {

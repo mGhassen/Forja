@@ -1322,6 +1322,7 @@ class SyncDomainBridge {
       'content_warnings': await _settings.getContentWarnings(),
       'auto_pip_on_desktop_switch': await _settings.getAutoPipOnDesktopSwitch(),
       // play_in_background is device-local (desktop on / phone·TV off).
+      // tv_nav_sound is Android TV-only / device-local.
       'iptv_epg_enabled': await _settings.isIptvEpgEnabled(),
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
       'anime_title_language': await _settings.getAnimeTitleLanguage(),

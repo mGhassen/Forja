@@ -118,6 +118,8 @@ class SettingsService {
   /// One-shot: stop honoring cloud-polluted `play_in_background` on phone/TV.
   static const String _playInBackgroundDeviceLocalKey =
       'play_in_background_device_local_v1';
+  /// Android TV D-pad focus / OK system UI sounds (default on). Device-local.
+  static const String _tvNavSoundKey = 'tv_nav_sound';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
   /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
@@ -353,6 +355,8 @@ class SettingsService {
       ValueNotifier<bool>(false);
   static final ValueNotifier<bool> playInBackgroundNotifier =
       ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> tvNavSoundNotifier =
+      ValueNotifier<bool>(true);
 
   Future<String> getPreferredAudioLanguage() async =>
       await kvGetString(_preferredAudioLangKey) ?? 'None';
@@ -499,6 +503,20 @@ class SettingsService {
   Future<void> setPlayInBackground(bool v) async {
     await kvSetBool(_playInBackgroundKey, v);
     playInBackgroundNotifier.value = v;
+  }
+
+  /// Android TV D-pad focus / OK system UI clicks. Default on. Device-local.
+  Future<bool> getTvNavSound() async {
+    final v = await kvGetBool(_tvNavSoundKey, fallback: true);
+    if (tvNavSoundNotifier.value != v) {
+      tvNavSoundNotifier.value = v;
+    }
+    return v;
+  }
+
+  Future<void> setTvNavSound(bool v) async {
+    await kvSetBool(_tvNavSoundKey, v);
+    tvNavSoundNotifier.value = v;
   }
 
   /// Lifecycle gate: Android TV always pauses on background (process stays warm).

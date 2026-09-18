@@ -79,6 +79,7 @@ abstract final class PlatformChannel {
     await SettingsService().ensurePlatformDefaultsSeeded(profile);
     // Hydrate live notifiers that use platform-aware fallbacks.
     await SettingsService().getPlayInBackground();
+    await SettingsService().getTvNavSound();
   }
 
   /// Android TV only — one-shot Chromium warm-up. Prefer [TvWebViewWarm.ensure]
@@ -141,6 +142,18 @@ abstract final class PlatformChannel {
       await _channel.invokeMethod<void>('clearDisplayFrameRate');
     } catch (e) {
       debugPrint('[PlatformChannel] clearDisplayFrameRate failed: $e');
+    }
+  }
+
+  /// Android TV leanback UI tick (`AudioManager.playSoundEffect`).
+  ///
+  /// [kind]: `up` / `down` / `left` / `right` / `activate`.
+  static Future<void> playSoundEffect(String kind) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('playSoundEffect', {'kind': kind});
+    } catch (e) {
+      debugPrint('[PlatformChannel] playSoundEffect failed: $e');
     }
   }
 }

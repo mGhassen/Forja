@@ -85,7 +85,7 @@ class PortalListView extends StatefulWidget {
   final Color? surfaceColor;
   final String title;
 
-  /// Optional trailing badge next to title (e.g. credits) — opaque string.
+  /// Optional credits string — shown on Deal hover/focus instead of the icon.
   final String? badgeLabel;
   final bool badgeMuted;
 
@@ -222,9 +222,8 @@ class _PortalListViewState extends State<PortalListView> {
     final hint = widget.searchPlaceholder.trim().isEmpty
         ? 'Search…'
         : widget.searchPlaceholder;
-    final status = widget.statusText.trim().isNotEmpty
-        ? widget.statusText
-        : '${filtered.length}';
+    // Busy / loading only — portal count lives in the title row.
+    final status = widget.statusText.trim();
     final tab = _tabId ?? '';
 
     Widget header = _buildHeader(
@@ -232,6 +231,7 @@ class _PortalListViewState extends State<PortalListView> {
       tab: tab,
       titleFontSize: headerTitleFontSize,
       badgeFontSize: badgeFontSize,
+      portalCount: widget.items.length,
     );
     Widget body = filtered.isEmpty
         ? _buildEmpty(context)
@@ -319,12 +319,22 @@ class _PortalListViewState extends State<PortalListView> {
     required String tab,
     required double titleFontSize,
     required double badgeFontSize,
+    required int portalCount,
   }) {
     // L→R paint: Search · Scrape · Deal · Add  (indices for TV L/R).
     final actions = widget.headerActions;
     final searchIndex = 0;
     final actionBase = 1;
     final lastHeader = actionBase + actions.length - 1;
+    final credits = (widget.badgeLabel ?? '').trim();
+    final title =
+        widget.title.trim().isEmpty ? 'Portals' : widget.title.trim();
+
+    bool isDeal(PortalListHeaderAction a) {
+      final id = a.id.trim().toLowerCase();
+      final icon = a.icon.trim().toLowerCase();
+      return id == 'deal' || icon == 'deal' || icon == 'casino';
+    }
 
     Widget iconAt({
       required int index,
@@ -332,6 +342,8 @@ class _PortalListViewState extends State<PortalListView> {
       required IconData icon,
       required VoidCallback? onPressed,
       Color? color,
+      String? hoverLabel,
+      bool hoverLabelMuted = false,
     }) {
       final left = index > searchIndex
           ? () => widget.onHeaderFocusAt?.call(index - 1)
@@ -343,6 +355,9 @@ class _PortalListViewState extends State<PortalListView> {
         tooltip: tooltip,
         icon: icon,
         color: color,
+        hoverLabel: hoverLabel,
+        hoverLabelMuted: hoverLabelMuted,
+        hoverLabelFontSize: badgeFontSize,
         onPressed: onPressed,
         tvItemIndex: _tv ? index : null,
         onUpEdge: widget.onHeaderUp,
@@ -362,26 +377,22 @@ class _PortalListViewState extends State<PortalListView> {
       child: Row(
         children: [
           Text(
-            widget.title.trim().isEmpty ? 'Portals' : widget.title,
+            '$portalCount',
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white54,
+              fontSize: badgeFontSize,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: PortalListTokens.sectionGap),
+          Text(
+            title,
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white,
               fontSize: titleFontSize,
               fontWeight: FontWeight.w600,
             ),
           ),
-          if ((widget.badgeLabel ?? '').trim().isNotEmpty) ...[
-            const SizedBox(width: PortalListTokens.sectionGap),
-            Text(
-              widget.badgeLabel!.trim(),
-              style: TextStyle(
-                color: widget.badgeMuted
-                    ? Colors.white38
-                    : ForjaShellColors.brandGreen,
-                fontSize: badgeFontSize,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
           const Spacer(),
           iconAt(
             index: searchIndex,
@@ -403,6 +414,10 @@ class _PortalListViewState extends State<PortalListView> {
               index: actionBase + i,
               tooltip: actions[i].tooltip ?? actions[i].label,
               icon: _iconFor(actions[i]),
+              hoverLabel: isDeal(actions[i]) && credits.isNotEmpty
+                  ? credits
+                  : null,
+              hoverLabelMuted: widget.badgeMuted,
               onPressed: widget.busy || !actions[i].enabled
                   ? null
                   : actions[i].onPressed,
@@ -529,13 +544,17 @@ class _PortalListViewState extends State<PortalListView> {
   }
 }
 
-/// Classic IPTV portal header icon — white idle / hover, press scale.
+/// Classic IPTV portal header icon — white idle, brand-green hover, press scale.
+/// Optional [hoverLabel] replaces the icon while hovered / focused (e.g. credits).
 class _PortalHeaderIcon extends StatefulWidget {
   const _PortalHeaderIcon({
     required this.icon,
     required this.tooltip,
     required this.onPressed,
     this.color,
+    this.hoverLabel,
+    this.hoverLabelMuted = false,
+    this.hoverLabelFontSize = 12,
     this.tvItemIndex,
     this.onUpEdge,
     this.onDownEdge,
@@ -547,6 +566,11 @@ class _PortalHeaderIcon extends StatefulWidget {
   final String tooltip;
   final VoidCallback? onPressed;
   final Color? color;
+
+  /// When non-empty, shown instead of [icon] while hovered or focused.
+  final String? hoverLabel;
+  final bool hoverLabelMuted;
+  final double hoverLabelFontSize;
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
@@ -567,23 +591,45 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
 
+  bool get _lit =>
+      _hovered ||
+      ShellPaintScope.focusStyledOf(context, focused: _focused);
+
   Color get _fg {
     final enabled = widget.onPressed != null;
     if (!enabled) return Colors.white.withValues(alpha: 0.38);
-    if (ShellPaintScope.focusStyledOf(context, focused: _focused)) {
-      return ForjaShellColors.brandGreen;
-    }
+    if (_lit) return ForjaShellColors.brandGreen;
     return widget.color ?? Colors.white;
   }
 
-  Widget _icon() => Padding(
-        padding: const EdgeInsets.all(10),
-        child: Icon(widget.icon, color: _fg, size: _iconSize),
-      );
+  Widget _face() {
+    final label = (widget.hoverLabel ?? '').trim();
+    final showLabel = label.isNotEmpty && _lit;
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: showLabel
+          ? SizedBox(
+              height: _iconSize,
+              child: Center(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: widget.hoverLabelMuted
+                        ? Colors.white38
+                        : ForjaShellColors.brandGreen,
+                    fontSize: widget.hoverLabelFontSize,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            )
+          : Icon(widget.icon, color: _fg, size: _iconSize),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final body = Tooltip(message: widget.tooltip, child: _icon());
+    final body = Tooltip(message: widget.tooltip, child: _face());
 
     if (_tv && ShellPaintTvRowScope.maybeOf(context) != null) {
       return ShellPaintScope.focusableTap(
@@ -617,9 +663,12 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
                 _hovered,
               );
 
+    // Deal can show credits on hover even when disabled (0 credits).
+    final trackHover = enabled || (widget.hoverLabel ?? '').trim().isNotEmpty;
+
     return MouseRegion(
-      onEnter: !enabled ? null : (_) => setState(() => _hovered = true),
-      onExit: !enabled
+      onEnter: !trackHover ? null : (_) => setState(() => _hovered = true),
+      onExit: !trackHover
           ? null
           : (_) => setState(() {
                 _hovered = false;

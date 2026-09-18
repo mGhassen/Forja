@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 2** acceptance (legacy ladder) · **1 / 1** acceptance (corrected Back) · **0 / 2** acceptance (Addons ↑ + ← exit) · **0 / 2** acceptance (spatial pages) |
+| **Progress** | **8 / 8** fix · **0 / 2** acceptance (legacy ladder) · **1 / 1** acceptance (corrected Back) · **0 / 2** acceptance (Addons ↑ + ← exit) · **2 / 2** acceptance (spatial pages) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -38,8 +38,8 @@
 | 2 | I127-A02 | Back from detail returns to the selected category; further Back steps to first category then nav rail | ⬜ |
 | 3 | I127-A03 | Back: nested drill → detail list → selected category → nav (no hop to first category); Addons→Stremio restores list focus | ✅ |
 | 4 | I127-A04 | Addons: ↑ from IPTV lands on Playback with green focus chrome (not category rail / invisible) | ⬜ |
-| 5 | I127-A05 | Detail: ↑/↓/→ stay in the right page; ← or Back returns to the selected category (or closes nested drill first) | ⬜ |
-| 6 | I127-A06 | Settings pages are spatial (→ ≠ next-in-list); ↑ on first control stays in-page (Packs install + Playback) | ⬜ |
+| 5 | I127-A05 | Detail: ↑/↓/→ stay in the right page; ← or Back returns to the selected category (or closes nested drill first) | ✅ |
+| 6 | I127-A06 | Settings pages are spatial (→ ≠ next-in-list); ↑ on first control stays in-page (Packs install + Playback) | ✅ |
 | 7 | I127-A07 | Forja Packs chip strip / install checklist ↑ never lands on the category rail | ⬜ |
 
 ---

@@ -44,6 +44,7 @@ class SettingsPlaybackSnapshot {
     required this.autoPipOnDesktopSwitch,
     required this.inAppMiniPlayer,
     required this.playInBackground,
+    required this.tvNavSound,
     required this.iptvEpgEnabled,
     required this.iptvLiveMaxHeightLabel,
     required this.iptvLiveRecoveryModeLabel,
@@ -78,6 +79,7 @@ class SettingsPlaybackSnapshot {
   final bool autoPipOnDesktopSwitch;
   final bool inAppMiniPlayer;
   final bool playInBackground;
+  final bool tvNavSound;
   final bool iptvEpgEnabled;
   final String iptvLiveMaxHeightLabel;
   final String iptvLiveRecoveryModeLabel;
@@ -112,6 +114,7 @@ class SettingsPlaybackSnapshot {
     bool? autoPipOnDesktopSwitch,
     bool? inAppMiniPlayer,
     bool? playInBackground,
+    bool? tvNavSound,
     bool? iptvEpgEnabled,
     String? iptvLiveMaxHeightLabel,
     String? iptvLiveRecoveryModeLabel,
@@ -155,6 +158,7 @@ class SettingsPlaybackSnapshot {
           autoPipOnDesktopSwitch ?? this.autoPipOnDesktopSwitch,
       inAppMiniPlayer: inAppMiniPlayer ?? this.inAppMiniPlayer,
       playInBackground: playInBackground ?? this.playInBackground,
+      tvNavSound: tvNavSound ?? this.tvNavSound,
       iptvEpgEnabled: iptvEpgEnabled ?? this.iptvEpgEnabled,
       iptvLiveMaxHeightLabel:
           iptvLiveMaxHeightLabel ?? this.iptvLiveMaxHeightLabel,
@@ -229,6 +233,7 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
       autoPipOnDesktopSwitch: await s.getAutoPipOnDesktopSwitch(),
       inAppMiniPlayer: await s.getInAppMiniPlayer(),
       playInBackground: await s.getPlayInBackground(),
+      tvNavSound: await s.getTvNavSound(),
       iptvEpgEnabled: iptvEpgEnabled,
       iptvLiveMaxHeightLabel: SettingsService.iptvLiveMaxHeightLabel(
         await s.getIptvLiveMaxHeight(),

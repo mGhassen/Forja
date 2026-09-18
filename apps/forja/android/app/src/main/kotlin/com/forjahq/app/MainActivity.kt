@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -88,9 +89,27 @@ class MainActivity : AudioServiceActivity() {
                     ForjaDisplayFrameRate.clear(this)
                     result.success(null)
                 }
+                // Leanback UI ticks for D-pad focus / OK (issue 293).
+                "playSoundEffect" -> {
+                    playTvSoundEffect(call.argument<String>("kind"))
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun playTvSoundEffect(kind: String?) {
+        val am = getSystemService(AUDIO_SERVICE) as? AudioManager ?: return
+        val effect = when (kind) {
+            "up" -> AudioManager.FX_FOCUS_NAVIGATION_UP
+            "down" -> AudioManager.FX_FOCUS_NAVIGATION_DOWN
+            "left" -> AudioManager.FX_FOCUS_NAVIGATION_LEFT
+            "right" -> AudioManager.FX_FOCUS_NAVIGATION_RIGHT
+            "activate" -> AudioManager.FX_KEY_CLICK
+            else -> AudioManager.FX_KEY_CLICK
+        }
+        am.playSoundEffect(effect)
     }
 
     private fun registerTvStandbyExit() {

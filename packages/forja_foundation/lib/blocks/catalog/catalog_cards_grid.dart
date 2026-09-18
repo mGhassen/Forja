@@ -247,6 +247,22 @@ class CatalogCardsGrid extends StatelessWidget {
     return _posterGrid(context);
   }
 
+  /// Pack `focusLeft` — only column 0 (or every row in a 1-col list).
+  VoidCallback? _gridOnLeftEdge(int index, int columns) {
+    if (onLeftEdge == null || columns <= 0) return null;
+    if (index % columns != 0) return null;
+    return onLeftEdge;
+  }
+
+  /// Pack `focusRight` — last column of a row, or last item overall.
+  VoidCallback? _gridOnRightEdge(int index, int columns) {
+    if (onRightEdge == null || columns <= 0) return null;
+    final lastCol = index % columns >= columns - 1;
+    final lastItem = index >= items.length - 1;
+    if (!lastCol && !lastItem) return null;
+    return onRightEdge;
+  }
+
   Widget _epgGuide(BuildContext context) {
     final channels = <CatalogEpgChannel>[
       for (final item in items)
@@ -320,6 +336,8 @@ class CatalogCardsGrid extends StatelessWidget {
       preferCategoryFocusOnLand: preferCategoryFocusOnLand,
       onRequestFocusAt: onRequestFocusAt,
       onArmFocusMemory: onArmFocusMemory,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
     );
   }
 
@@ -393,6 +411,8 @@ class CatalogCardsGrid extends StatelessWidget {
                   selectedItemId == id,
               gridIndex: i,
               gridColumns: layout.columns,
+              onLeftEdge: _gridOnLeftEdge(i, layout.columns),
+              onRightEdge: _gridOnRightEdge(i, layout.columns),
               onTap: onItemTap == null ? null : () => onItemTap!(item),
             );
           },
@@ -469,6 +489,8 @@ class CatalogCardsGrid extends StatelessWidget {
               height: layout.cardH,
               gridIndex: i,
               gridColumns: layout.columns,
+              onLeftEdge: _gridOnLeftEdge(i, layout.columns),
+              onRightEdge: _gridOnRightEdge(i, layout.columns),
             );
           },
         );
@@ -507,6 +529,8 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
     this.preferCategoryFocusOnLand = true,
     this.onRequestFocusAt,
     this.onArmFocusMemory,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final List<Map<String, dynamic>> items;
@@ -535,6 +559,8 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
   final bool preferCategoryFocusOnLand;
   final ValueChanged<int>? onRequestFocusAt;
   final ValueChanged<int>? onArmFocusMemory;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   State<_ChannelLetterJumpGrid> createState() => _ChannelLetterJumpGridState();
@@ -769,6 +795,22 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         widget.selectedItemId!.isNotEmpty &&
         widget.selectedItemId == id;
     final layout = _layout;
+    final cols = list ? 1 : (layout?.columns ?? 1);
+    VoidCallback? leftEdge;
+    VoidCallback? rightEdge;
+    if (list) {
+      leftEdge = widget.onLeftEdge;
+      rightEdge = widget.onRightEdge;
+    } else if (cols > 0) {
+      if (widget.onLeftEdge != null && i % cols == 0) {
+        leftEdge = widget.onLeftEdge;
+      }
+      final lastCol = i % cols >= cols - 1;
+      final lastItem = i >= widget.items.length - 1;
+      if (widget.onRightEdge != null && (lastCol || lastItem)) {
+        rightEdge = widget.onRightEdge;
+      }
+    }
     return KeyedSubtree(
       key: key,
       child: CatalogChannelCard(
@@ -786,7 +828,9 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         width: list ? null : layout?.cardW,
         height: list ? 56 : layout?.cardH,
         gridIndex: i,
-        gridColumns: list ? 1 : layout?.columns,
+        gridColumns: cols,
+        onLeftEdge: leftEdge,
+        onRightEdge: rightEdge,
         onHoldJumpToCategory: widget.onHoldJumpToCategory == null
             ? null
             : () => widget.onHoldJumpToCategory!(item),
@@ -884,6 +928,8 @@ class InteractiveEventCard extends StatefulWidget {
     this.selected = false,
     this.gridIndex,
     this.gridColumns,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final Map<String, dynamic> props;
@@ -893,6 +939,8 @@ class InteractiveEventCard extends StatefulWidget {
   final bool selected;
   final int? gridIndex;
   final int? gridColumns;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   static double cardWidth(BuildContext context) {
     final base = catalogContinueCardWidth(context, wide: true);
@@ -973,6 +1021,8 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       gridColumns: widget.gridColumns,
       tvZone: ShellPaintTvZone.grid,
       tvItemIndex: widget.gridIndex,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: (h) {
         if (_hovered == h) return;

@@ -10,13 +10,17 @@ import 'package:forja_foundation/widgets/chrome/portal_probe_detail_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Must match [PortalListView.portalsRowId] — main row stays on this id when
+/// action chrome reveals (actions use portal-N-actions only).
+const _kPortalsRowId = 'portals';
+
 /// Presentational portal inventory row — props / callbacks only (RFC-095).
 ///
 /// Sources-panel chrome: bordered card, inner left probe/selection strip,
 /// expiry / title / platform+URL / seats, hover action rail.
 ///
-/// TV row + action chrome register via ambient [ShellPaintTvRowScope] /
-/// [ShellPaintTvTabScope] and [ShellPaintScope].
+/// TV: main row pins [_kPortalsRowId]; action chrome registers under
+/// `portal-N-actions` only (never wrap the whole tile as the actions row).
 class PortalListRow extends StatefulWidget {
   const PortalListRow({
     super.key,
@@ -119,12 +123,15 @@ class _PortalListRowState extends State<PortalListRow> {
       _confirmYesFocus.hasFocus ||
       _confirmNoFocus.hasFocus;
 
-  /// Leanback: keep rail closed while ↑/↓ skims — open only on → / action focus.
+  /// Leanback / TV focus: keep rail closed while ↑/↓ skims — open only on → /
+  /// action focus. Desktop mouse: reveal on hover or keyboard focus chrome.
   bool get _reveal {
     if (_confirmingDelete || _actionChromeFocused) return true;
     if (_lineHover) return true;
-    if (!widget.leanback &&
-        ShellPaintScope.focusStyledOf(context, focused: _focused)) {
+    // D-pad / TV focus graph: do not reveal on main-row focus (avoids remapping
+    // the row into portal-N-actions while skimming).
+    if (_tv || widget.leanback) return false;
+    if (ShellPaintScope.focusStyledOf(context, focused: _focused)) {
       return true;
     }
     return false;
@@ -507,7 +514,9 @@ class _PortalListRowState extends State<PortalListRow> {
                                     child: SizedBox(
                                       width: widget.actionWidth,
                                       height: cardHeight,
-                                      child: _buildActionRail(),
+                                      child: _tvActionRailScope(
+                                        _buildActionRail(),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -546,19 +555,22 @@ class _PortalListRowState extends State<PortalListRow> {
       tile = CompositedTransformTarget(link: _detailLink, child: tile);
     }
 
-    if (_tv && reveal) {
-      final tab = _tabId!;
-      tile = ShellPaintScope.tvRow(
-        context: context,
-        tabId: tab,
-        rowId: _actionsRowId,
-        sortOrder: 200 + widget.listIndex,
-        itemCount: _confirmingDelete ? 3 : 4,
-        child: tile,
-      );
-    }
-
     return tile;
+  }
+
+  /// Action chrome only — never wraps the main portals row focusable.
+  Widget _tvActionRailScope(Widget rail) {
+    if (!_tv) return rail;
+    final tab = _tabId;
+    if (tab == null || tab.isEmpty) return rail;
+    return ShellPaintScope.tvRow(
+      context: context,
+      tabId: tab,
+      rowId: _actionsRowId,
+      sortOrder: 200 + widget.listIndex,
+      itemCount: _confirmingDelete ? 3 : 4,
+      child: rail,
+    );
   }
 
   Widget _buildMain() {
@@ -735,6 +747,7 @@ class _PortalListRowState extends State<PortalListRow> {
         suppressInkHover: true,
         focusNode: _rowFocus,
         listIndex: widget.listIndex,
+        tvRowId: _kPortalsRowId,
         tvItemIndex: widget.listIndex,
         tvZone: ShellPaintTvZone.row,
         allowNestedFocus: !deleting,

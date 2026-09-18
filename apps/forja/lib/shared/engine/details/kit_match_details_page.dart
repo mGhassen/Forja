@@ -284,29 +284,34 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                 width: double.infinity,
                 child: Row(
                   children: [
-                    HeroPillSegmentedChoice<String>(
-                      segments: [
-                        for (final t in chrome.tabs)
-                          HeroPillSegment(
-                            value: t.id,
-                            label: t.label,
-                            icon: kitPanelTabIcon(t.icon),
-                          ),
-                      ],
-                      selected: _tabId,
-                      onSelected: _selectTab,
-                      onUpEdge:
-                          tvFocus ? () => _backFocus.requestFocus() : null,
-                      onDownEdge: tvFocus
-                          ? () => SourcesPanelTv.focusListItem(
-                                index: 0,
-                                listOnly: true,
-                                forTabId: MediaDetailsTv.tabId,
-                              )
-                          : null,
-                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                      tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                      tvItemIndexStart: 0,
+                    Flexible(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: HeroPillSegmentedChoice<String>(
+                          segments: [
+                            for (final t in chrome.tabs)
+                              HeroPillSegment(
+                                value: t.id,
+                                label: t.label,
+                                icon: kitPanelTabIcon(t.icon),
+                              ),
+                          ],
+                          selected: _tabId,
+                          onSelected: _selectTab,
+                          onUpEdge:
+                              tvFocus ? () => _backFocus.requestFocus() : null,
+                          onDownEdge: tvFocus
+                              ? () => SourcesPanelTv.focusListItem(
+                                    index: 0,
+                                    listOnly: true,
+                                    forTabId: MediaDetailsTv.tabId,
+                                  )
+                              : null,
+                          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                          tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                          tvItemIndexStart: 0,
+                        ),
+                      ),
                     ),
                     if (showBrowseSearch) ...[
                       const SizedBox(width: 16),
@@ -319,14 +324,14 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                         debugLabel: 'live-match-details-live-tv-search',
                       ),
                     ],
-                    const Spacer(),
+                    const SizedBox(width: 12),
                     if (_streamsLoading)
                       ExcludeFocus(
                         child: Text(
                           browseIds.contains(_tabId)
                               ? 'Matching Live TV…'
                               : 'Fetching streams…',
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: ForjaShellColors.textSecondary,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,

@@ -187,7 +187,9 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
       onClosed: widget.onClosed,
       onTabsLeftEdge: widget.onPanelLeftEdge,
       tvTabId: widget.tvTabId,
-      embedded: (widget.tvTabId ?? '').isNotEmpty,
+      // Side panel owns title + Reload/status. `embedded` is only for hero
+      // details (KitMatchDetailsPage) — do not key it off tvTabId.
+      embedded: false,
       loadTab: (tabId, {onPartial, force = false}) =>
           KitResolvePanelHost.loadTab(
         row,

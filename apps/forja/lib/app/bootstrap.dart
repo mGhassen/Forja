@@ -41,6 +41,7 @@ import 'package:forja/features/settings/packs/plugin_install_progress_banner.dar
 
 import 'package:forja/shell/tv/shell_tv_back_handler.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/tv_nav_sound.dart';
 import 'package:forja/shell/tv/tv_remote_debug.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/lan/lan.dart';
@@ -173,6 +174,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
     overlayCanPop: shellOverlayCanPop,
     overlayMaybePop: maybePopShellOverlay,
   );
+  TvNavSound.install();
 
   // Phone: WebView debug. TV Chromium warm-up waits for first real WebView
   // (ForjaInAppWebView / ForjaHeadlessInAppWebView → TvWebViewWarm).

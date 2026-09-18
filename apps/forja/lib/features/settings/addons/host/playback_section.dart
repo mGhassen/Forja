@@ -198,6 +198,17 @@ class _SettingsPlaybackSectionState
                   );
                 },
               ),
+            if (SettingsService.platformProfile == PlatformProfile.androidTv)
+              settingsFocusableToggle(
+                context,
+                'Remote click sounds',
+                'Play a short system click when you move D-pad focus or press OK. Off while a video is playing.',
+                snap.tvNavSound,
+                (val) async {
+                  await _settings.setTvNavSound(val);
+                  await _playback.patch((s) => s.copyWith(tvNavSound: val));
+                },
+              ),
             if (!kIsWeb &&
                 SettingsService.platformProfile == PlatformProfile.desktop)
               settingsFocusableToggle(

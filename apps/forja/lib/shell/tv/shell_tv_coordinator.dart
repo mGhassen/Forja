@@ -119,6 +119,22 @@ abstract final class ShellTvFocusCoordinator {
   /// → selected category, not a skimmed group / last channel tile).
   static final Set<String> _tabPreferCustomNavRestore = {};
 
+  /// Pack [kitFocusEdge] miss — [shellTvHandleRowArrows] must not swallow →/←
+  /// when the target row is unregistered (e.g. Live schedule → sources-kind
+  /// while the side panel is closed).
+  static bool _kitEdgeMiss = false;
+
+  static void beginKitEdgeAttempt() => _kitEdgeMiss = false;
+
+  static void markKitEdgeMiss() => _kitEdgeMiss = true;
+
+  /// True when the last [kitFocusEdge] call failed to land focus.
+  static bool takeKitEdgeMiss() {
+    final miss = _kitEdgeMiss;
+    _kitEdgeMiss = false;
+    return miss;
+  }
+
   /// Details overlay Back control - first remote Back focuses it, second pops.
   static FocusNode? _detailBackFocus;
   static bool _detailBackExitArmed = false;
