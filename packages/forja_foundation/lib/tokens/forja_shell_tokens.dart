@@ -129,7 +129,7 @@ abstract final class ShellTokens {
   static const double navRailBottomPaddingDesktop = 16;
   static const double navRailBottomPaddingTv =
       navRailBottomPaddingDesktop * tvLayoutScale;
-  static const double navRailTopPaddingTv = shellHeaderTopPadding * tvLayoutScale;
+  static const double navRailTopPaddingTv = shellHeaderTopPaddingTv;
   static const double navRailProfileSpacingTv = 4 * tvLayoutScale;
   static const double navRailNavPadVTv = 4 * tvLayoutScale;
   static const double navRailNavReserveDesktop = 16;
@@ -190,6 +190,8 @@ abstract final class ShellTokens {
   static const double shellButtonRadius = 6;
   static const double shellNavUnderlineHeight = 3;
   static const double shellHeaderTopPadding = 16;
+  static const double shellHeaderTopPaddingTv =
+      shellHeaderTopPadding * tvLayoutScale;
   /// Compact ☰ glyph — smaller than rail destination icons.
   static const double shellNavMenuButtonIconSize = 22;
   static const double navRailLogoWidth = 80;
@@ -281,7 +283,7 @@ abstract final class ShellTokens {
       shellCategoryUnderlineGap +
       shellNavUnderlineHeight;
   static const double homeTopBarHeightTv =
-      shellHeaderTopPadding * tvLayoutScale +
+      shellHeaderTopPaddingTv +
       homeMenuRowHeightTv +
       shellCategoryUnderlineGap * tvLayoutScale +
       shellNavUnderlineHeight;

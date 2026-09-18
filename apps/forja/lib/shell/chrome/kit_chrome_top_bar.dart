@@ -344,7 +344,11 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                             (usesTv
                                 ? ShellTokens.homeTopBarMenuLeadingInsetTv
                                 : ShellTokens.homeTopBarMenuLeadingInset),
-                  ShellTokens.shellHeaderTopPadding,
+                  // Must match homeTopBarHeight(Tv) budget — unscaled pad on TV
+                  // steals ~2.4px and overflows the tab Column by ~1.9px.
+                  usesTv
+                      ? ShellTokens.shellHeaderTopPaddingTv
+                      : ShellTokens.shellHeaderTopPadding,
                   ShellTokens.bodyHorizontalPadding,
                   0,
                 ),
