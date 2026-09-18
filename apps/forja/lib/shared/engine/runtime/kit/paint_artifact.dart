@@ -7,7 +7,6 @@ import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
-import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
@@ -210,7 +209,6 @@ abstract final class PackPaintArtifact {
           width: w,
           height: h,
           onTap: onTap,
-          tvDensity: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
         );
       default:
         if (props.isEmpty) return const SizedBox.shrink();

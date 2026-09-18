@@ -8,8 +8,74 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 
 void main() {
+  test('tv layout scale is iso-desktop 0.85', () {
+    expect(ShellTokens.tvLayoutScale, 0.85);
+    expect(
+      ShellTokens.posterCardWidthTv,
+      closeTo(ShellTokens.posterCardWidthDesktop * ShellTokens.tvLayoutScale, 0.001),
+    );
+    expect(
+      ShellTokens.tvPosterCardRowGap,
+      closeTo(ShellTokens.posterCardRowGap * ShellTokens.tvLayoutScale, 0.001),
+    );
+    expect(
+      ShellTokens.tvHomeRowSpacing,
+      closeTo(ShellTokens.homeRowSpacing * ShellTokens.tvLayoutScale, 0.001),
+    );
+    expect(
+      ShellTokens.continueWatchingCardWidthTv,
+      closeTo(
+        ShellTokens.shellContinueWatchingCardWidthDesktop *
+            ShellTokens.tvLayoutScale,
+        0.001,
+      ),
+    );
+    expect(
+      ShellTokens.navRailWidthTv /
+          ShellTokens.navRailWidth,
+      closeTo(ShellTokens.tvLayoutScale, 0.001),
+    );
+  });
+
+  test('channelCards packing fills row — not fixed poster cells', () {
+    const maxWidth = 960.0;
+    const minW = 140.0;
+    const minH = 140.0;
+    const gap = 10.0;
+    const leading = 8.0;
+    const trailing = 12.0;
+
+    final channels = CatalogPosterGridLayout.channelCards(
+      maxWidth: maxWidth,
+      minW: minW,
+      minH: minH,
+      gap: gap,
+      leading: leading,
+      trailing: trailing,
+    );
+    final posters = CatalogPosterGridLayout.poster(
+      maxWidth: maxWidth,
+      cardW: minW,
+      cardH: minH,
+      gap: gap,
+      leading: leading,
+      trailing: trailing,
+    );
+
+    // Channel packing stretches cells to fill the inner width.
+    final channelRowW =
+        channels.columns * channels.cardW + (channels.columns - 1) * gap;
+    final posterRowW =
+        posters.columns * posters.cardW + (posters.columns - 1) * gap;
+    final inner = maxWidth - leading - trailing;
+    expect(channelRowW, closeTo(inner, 0.5));
+    expect(posterRowW, lessThan(inner));
+    expect(channels.cardW, isNot(equals(posters.cardW)));
+  });
+
   test('tv metrics are denser than desktop for leanback', () {
     const desktop = ShellMetrics.desktop;
     const tv = ShellMetrics.tv;

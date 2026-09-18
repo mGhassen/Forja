@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -40,62 +38,21 @@ class MoodCircleLayout {
     labelMaxLines: 2,
   );
 
+  /// Desktop metrics × [ShellTokens.tvLayoutScale] — same packing, no shrink-fit.
   static final tvScrollable = MoodCircleLayout(
-    circleSize: ShellTokens.moodCircleSizeTv,
-    itemWidth: ShellTokens.moodCircleItemWidthTv,
-    horizontalGap: ShellTokens.moodCircleGapTv,
-    rowHeight: ShellTokens.moodCircleSizeTv +
-        ShellTokens.moodCircleLabelGapTv +
-        ShellTokens.moodCircleLabelFontSizeTv *
-            ShellTokens.moodCircleLabelLineHeightTv +
-        8,
-    labelFontSize: ShellTokens.moodCircleLabelFontSizeTv,
-    iconSize: ShellTokens.moodCircleSizeTv * 0.42,
-    iconSizeActive: ShellTokens.moodCircleSizeTv * 0.52,
-    labelMaxLines: 1,
+    circleSize: desktop.circleSize * ShellTokens.tvLayoutScale,
+    itemWidth: desktop.itemWidth * ShellTokens.tvLayoutScale,
+    horizontalGap: desktop.horizontalGap * ShellTokens.tvLayoutScale,
+    rowHeight: desktop.rowHeight * ShellTokens.tvLayoutScale,
+    labelFontSize: ShellTokens.tvTypeSize(desktop.labelFontSize),
+    iconSize: desktop.iconSize * ShellTokens.tvLayoutScale,
+    iconSizeActive: desktop.iconSizeActive * ShellTokens.tvLayoutScale,
+    labelMaxLines: desktop.labelMaxLines,
   );
 
   double contentWidth(int itemCount) {
     if (itemCount <= 0) return 0;
     return itemCount * itemWidth + (itemCount - 1) * horizontalGap;
-  }
-
-  /// Shrink items so every chip fits without horizontal scroll.
-  static MoodCircleLayout forTv({
-    required int itemCount,
-    required double maxWidth,
-  }) {
-    if (itemCount <= 0) return desktop;
-
-    const edgePad = 12.0;
-    final available = (maxWidth - edgePad * 2).clamp(240.0, double.infinity);
-
-    var gap = 10.0;
-    var itemWidth = 78.0;
-    while (itemCount * itemWidth + (itemCount - 1) * gap > available &&
-        itemWidth > 52) {
-      itemWidth -= 2;
-      gap = math.max(4, gap - 1);
-    }
-
-    final circleSize = (itemWidth * 0.74).clamp(40.0, 54.0);
-    final labelFontSize = (itemWidth < 64 ? 9.5 : 10.5)
-        .clamp(ShellTokens.tvMetaFontSize, double.infinity);
-    const labelLineHeight = 1.15;
-    final rowHeight = circleSize + 6 + labelFontSize * labelLineHeight + 8;
-    final iconSize = circleSize * 0.42;
-    final iconSizeActive = circleSize * 0.52;
-
-    return MoodCircleLayout(
-      circleSize: circleSize,
-      itemWidth: itemWidth,
-      horizontalGap: gap,
-      rowHeight: rowHeight,
-      labelFontSize: labelFontSize,
-      iconSize: iconSize,
-      iconSizeActive: iconSizeActive,
-      labelMaxLines: 1,
-    );
   }
 }
 

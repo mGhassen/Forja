@@ -11,19 +11,13 @@ abstract final class ShellMoodCircleLayout {
   static MoodCircleLayout get desktop => MoodCircleLayout.desktop;
   static MoodCircleLayout get tvScrollable => MoodCircleLayout.tvScrollable;
 
-  static MoodCircleLayout forTv({
-    required int itemCount,
-    required double maxWidth,
-  }) =>
-      MoodCircleLayout.forTv(itemCount: itemCount, maxWidth: maxWidth);
-
   static MoodCircleLayout resolve(
     BuildContext context, {
     required int itemCount,
     required double maxWidth,
   }) {
-    if (ShellPaintScope.useTvFocusOf(context)) {
-      return MoodCircleLayout.forTv(itemCount: itemCount, maxWidth: maxWidth);
+    if (ShellPaintScope.usesTvDensityOf(context)) {
+      return MoodCircleLayout.tvScrollable;
     }
     return MoodCircleLayout.desktop;
   }

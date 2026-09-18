@@ -109,7 +109,7 @@ class InteractivePosterCard extends StatefulWidget {
 
   static double _layoutScale(BuildContext context) {
     if (!ShellPaintScope.usesTvDensityOf(context)) return 1.0;
-    return _posterWidth(context) / ShellTokens.posterCardWidthDesktop;
+    return ShellTokens.tvLayoutScale;
   }
 
   static double scaled(BuildContext context, double value) =>

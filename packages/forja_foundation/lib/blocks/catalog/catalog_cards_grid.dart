@@ -356,8 +356,7 @@ class CatalogCardsGrid extends StatelessWidget {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final minW = InteractiveEventCard.cardWidth(context);
     final minH = InteractiveEventCard.cardHeight(context);
-    final gap = this.gap ??
-        (tv ? ShellTokens.tvPosterCardRowGap : 14.0).clamp(8.0, 12.0);
+    final gap = this.gap ?? ShellTokens.densityScale(14.0, tv: tv);
     final pad = this.pad ?? catalogSectionHorizontalPadding(context);
 
     return LayoutBuilder(
@@ -402,7 +401,7 @@ class CatalogCardsGrid extends StatelessWidget {
     final overrideW = cardWidth;
     final double cardW;
     final double cardH;
-    if (!tv && overrideW != null && overrideW > 0) {
+    if (overrideW != null && overrideW > 0) {
       cardW = overrideW;
       cardH = landscape
           ? (overrideW * 9 / 16).roundToDouble()
@@ -883,23 +882,15 @@ class InteractiveEventCard extends StatefulWidget {
 
   static double cardWidth(BuildContext context) {
     final base = catalogContinueCardWidth(context, wide: true);
-    if (ShellPaintScope.usesTvDensityOf(context)) return base;
     return base * EventCardTokens.desktopWidthScale;
   }
 
   static double cardHeight(BuildContext context) {
     final base = catalogContinueCardHeight(context, wide: true);
-    if (ShellPaintScope.usesTvDensityOf(context)) {
-      return base +
-          InteractivePosterCard.scaled(context, EventCardTokens.tvCaptionExtra)
-              .clamp(
-                EventCardTokens.tvCaptionExtraMin,
-                EventCardTokens.tvCaptionExtraMax,
-              );
-    }
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return (base * EventCardTokens.desktopHeightScale).clamp(
-      EventCardTokens.desktopHeightMin,
-      EventCardTokens.desktopHeightMax,
+      ShellTokens.densityScale(EventCardTokens.desktopHeightMin, tv: tv),
+      ShellTokens.densityScale(EventCardTokens.desktopHeightMax, tv: tv),
     );
   }
 
@@ -922,9 +913,15 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
           focused: _focused,
         ) ||
         widget.selected;
-    final radius = tv
-        ? InteractivePosterCard.cardBorderRadius(context)
-        : EventCardTokens.radius;
+    final radius = EventCardTokens.radius;
+    final playDia = ShellTokens.densityScale(
+      EventCardTokens.playOverlaySize,
+      tv: tv,
+    );
+    final playIcon = ShellTokens.densityScale(
+      EventCardTokens.playIconSize,
+      tv: tv,
+    );
 
     final paint = EventCard(
       title: (props['title'] ?? '').toString(),
@@ -940,20 +937,15 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       live: live,
       selected: widget.selected,
       active: active,
-      tvDensity: tv,
       width: widget.width,
       height: widget.height,
       borderRadius: radius,
       playOverlay: live
           ? ShellCardPlayOverlay(
-              active: tv ? true : active,
+              active: active,
               visible: true,
-              diameter: tv
-                  ? EventCardTokens.playIconSize
-                  : EventCardTokens.playOverlaySize,
-              iconSize: tv
-                  ? EventCardTokens.playIconSizeTv
-                  : EventCardTokens.playIconSize,
+              diameter: playDia,
+              iconSize: playIcon,
             )
           : null,
     );

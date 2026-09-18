@@ -1540,11 +1540,9 @@ class PackPaintTree extends StatelessWidget {
               style = viewOverride;
             }
           }
-          // Desktop Live catalog EPG grid — not dense timeline list.
-          // TV / compact: fall back to channel cards (old IPTV behaviour).
+          // Live catalog EPG grid — same ≥760 width rule on TV and desktop.
           final wantGuide = (style == 'epg' || style == 'guide') &&
               _itemsLookLikeLiveChannels(filtered) &&
-              !ShellPaintScope.usesTvDensityOf(context) &&
               constraints.maxWidth >= 760;
           if ((style == 'epg' || style == 'guide') && !wantGuide) {
             style = 'grid';
