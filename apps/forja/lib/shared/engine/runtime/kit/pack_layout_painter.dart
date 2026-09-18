@@ -655,7 +655,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading && _widgets.isEmpty) {
-      return _hubPageLoadingSkeleton(context);
+      return _hubPageLoadingSkeleton(context, tabId: _pageKey);
     }
     if (_error != null && _widgets.isEmpty) {
       return ColoredBox(
@@ -897,7 +897,7 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return _hubPageLoadingSkeleton(context);
+      return _hubPageLoadingSkeleton(context, tabId: widget.tabId);
     }
     final id = _pluginId?.trim() ?? '';
     if (id.isEmpty) {
@@ -912,8 +912,8 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
 }
 
 /// Neutral full-page wait — pack layout owns structure; do not invent rails.
-Widget _hubPageLoadingSkeleton(BuildContext context) {
-  return hubNeutralLoadingSkeleton(context);
+Widget _hubPageLoadingSkeleton(BuildContext context, {String? tabId}) {
+  return hubNeutralLoadingSkeleton(context, tabId: tabId);
 }
 
 /// Backward-compatible aliases while call sites migrate.

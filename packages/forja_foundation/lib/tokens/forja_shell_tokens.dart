@@ -34,7 +34,8 @@ abstract final class ShellTokens {
   /// Scaled desktop body/title/meta (14 / 20 / 11) with floors.
   static const double tvBodyFontSize = 14 * tvLayoutScale; // 11.9
   static const double tvTitleFontSize = 20 * tvLayoutScale; // 17
-  static const double tvMetaFontSize = tvMetaFontSizeMin; // 11*0.85 < 10 → floor
+  static const double tvMetaFontSize =
+      tvMetaFontSizeMin; // 11*0.85 < 10 → floor
 
   /// Map a desktop font size onto TV (scale + floors).
   static double tvTypeSize(double desktop) {
@@ -192,6 +193,7 @@ abstract final class ShellTokens {
   static const double shellHeaderTopPadding = 16;
   static const double shellHeaderTopPaddingTv =
       shellHeaderTopPadding * tvLayoutScale;
+
   /// Compact ☰ glyph — smaller than rail destination icons.
   static const double shellNavMenuButtonIconSize = 22;
   static const double navRailLogoWidth = 80;
@@ -213,6 +215,7 @@ abstract final class ShellTokens {
   static const double shellProviderTileHeight = 54;
   static const double shellProviderTileSize = shellProviderTileHeight;
   static const double shellProviderTileRadius = 6.5;
+
   /// TV VF / provider rail — desktop × [tvLayoutScale].
   static const double shellProviderTileWidthTv =
       shellProviderTileWidth * tvLayoutScale;
@@ -254,6 +257,7 @@ abstract final class ShellTokens {
   /// Selected-provider mark before Films — rectangle (wordmark-friendly).
   static const double shellProviderTopBarIconWidth = 88;
   static const double shellProviderTopBarIconHeight = 40;
+
   /// TV — desktop × [tvLayoutScale].
   static const double shellProviderTopBarIconWidthTv =
       shellProviderTopBarIconWidth * tvLayoutScale;
@@ -424,7 +428,7 @@ abstract final class ShellTokens {
   static const double heroTextColumnWidthDesktop = 480;
 
   /// Top inset for hero text: clears [homeTopBarHeight] plus breathing room.
-  static double get heroTextColumnTopInsetDesktop => homeTopBarHeight + 16;
+  static double get heroTextColumnTopInsetDesktop => homeTopBarHeight + 28;
 
   /// Vertical align for hero text within the hero band (-1 top … 1 bottom).
   static const double heroTextColumnVerticalAlign = -0.82;
@@ -521,8 +525,7 @@ abstract final class ShellTokens {
   /// TV chrome — desktop × [tvLayoutScale].
   static const double navRailWidthTv = navRailWidth * tvLayoutScale;
   static const double navRailLogoWidthTv = navRailLogoWidth * tvLayoutScale;
-  static const double navRailLogoHeightTv =
-      navRailLogoWidthTv * 160 / 370;
+  static const double navRailLogoHeightTv = navRailLogoWidthTv * 160 / 370;
 
   /// TV hero chrome — desktop × [tvLayoutScale].
   static const double heroLogoMaxHeightTv =
@@ -693,8 +696,7 @@ abstract final class ShellTokens {
   static const double actionChipFontSizeTv = tvMetaFontSize;
   static const double actionChipGap = 6;
   static const double actionChipIconSize = 16;
-  static const double actionChipIconSizeTv =
-      actionChipIconSize * tvLayoutScale;
+  static const double actionChipIconSizeTv = actionChipIconSize * tvLayoutScale;
 
   static const double shellChipRadiusPill = 20;
   static const double shellChipRadius = 8;
@@ -718,8 +720,7 @@ abstract final class ShellTokens {
   static const double viewButtonHeight = 36;
   static const double viewButtonHeightTv = viewButtonHeight * tvLayoutScale;
   static const double viewButtonIconSize = 18;
-  static const double viewButtonIconSizeTv =
-      viewButtonIconSize * tvLayoutScale;
+  static const double viewButtonIconSizeTv = viewButtonIconSize * tvLayoutScale;
   static const double viewButtonGap = 16;
   static const double viewButtonGapTv = viewButtonGap * tvLayoutScale;
 
