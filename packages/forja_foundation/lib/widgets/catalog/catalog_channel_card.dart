@@ -126,17 +126,21 @@ class CatalogChannelCard extends StatefulWidget {
 }
 
 class _CatalogChannelCardState extends State<CatalogChannelCard> {
-  bool _hovered = false;
-  bool _focused = false;
+  /// Never setState on hover — rebuilding focusableTap mid-hit-test sticks /
+  /// freezes the grid (same class as category rail).
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  final ValueNotifier<bool> _focusedN = ValueNotifier(false);
+  static _CatalogChannelCardState? _hoverOwner;
   Future<List<GuideEpgProgramme>>? _epgFuture;
   Timer? _okHoldTimer;
   bool _okHoldFired = false;
   static const _okHoldDelay = Duration(seconds: 1);
 
-  bool get _active => ShellPaintScope.interactiveActive(
+  bool _activeFor({required bool hovered, required bool focused}) =>
+      ShellPaintScope.interactiveActive(
         context,
-        hovered: _hovered,
-        focused: _focused,
+        hovered: hovered,
+        focused: focused,
       );
 
   bool get _epgEnabled =>
@@ -178,27 +182,43 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   }
 
   void _setHovered(bool v) {
-    if (_hovered == v) return;
-    setState(() => _hovered = v);
-    widget.onInteractiveActive?.call(v || _focused);
+    if (v) {
+      final prev = _hoverOwner;
+      if (prev != null && prev != this && prev.mounted) {
+        prev._hoveredN.value = false;
+        prev.widget.onInteractiveActive?.call(prev._focusedN.value);
+      }
+      _hoverOwner = this;
+      if (_hoveredN.value) return;
+      _hoveredN.value = true;
+      widget.onInteractiveActive?.call(true);
+      return;
+    }
+    if (_hoverOwner == this) _hoverOwner = null;
+    if (!_hoveredN.value) return;
+    _hoveredN.value = false;
+    widget.onInteractiveActive?.call(_focusedN.value);
   }
 
   void _setFocused(bool v) {
-    if (_focused == v) return;
+    if (_focusedN.value == v) return;
     if (!v) {
       _okHoldTimer?.cancel();
       _okHoldTimer = null;
       _okHoldFired = false;
     }
-    setState(() => _focused = v);
-    widget.onInteractiveActive?.call(v || _hovered);
+    _focusedN.value = v;
+    widget.onInteractiveActive?.call(v || _hoveredN.value);
     if (v) widget.onTvFocusGained?.call();
   }
 
   @override
   void dispose() {
     _okHoldTimer?.cancel();
+    if (_hoverOwner == this) _hoverOwner = null;
     widget.onInteractiveActive?.call(false);
+    _hoveredN.dispose();
+    _focusedN.dispose();
     super.dispose();
   }
 
@@ -323,38 +343,53 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   }
 
   Widget _buildCard(BuildContext context, {required bool? health}) {
-    final active = _active;
-    if (widget.listLayout) {
-      return _buildSourcesListRow(context, active: active, health: health);
-    }
-    final radius = widget.radius ?? ChannelCardTokens.radius;
-    // Iso desktop: same channel tile chrome on TV (not a separate poster body).
-    final body = _buildDesktopBody(context, active: active, health: health);
-
     final holdJump =
         widget.onHoldJumpToCategory != null && _leanbackOnly;
+    final radius = widget.radius ?? ChannelCardTokens.radius;
 
-    Widget card = Container(
-      width: widget.width,
-      height: widget.height,
-      decoration: BoxDecoration(
-        color: _surface(health, active || widget.highlighted),
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: _border(health, active)),
-      ),
-      child: ShellPaintScope.focusableTap(
-        context: context,
-        onTap: holdJump ? null : widget.onTap,
-        borderRadius: radius,
-        motion: ForjaMotionPreset.fillOnly,
-        gridIndex: widget.gridIndex,
-        gridColumns: widget.gridColumns,
-        tvZone: ShellPaintTvZone.grid,
-        tvItemIndex: widget.gridIndex,
-        onFocusChange: _setFocused,
-        onHoverChange: _setHovered,
-        onKeyEvent: holdJump ? _onKeyEvent : null,
-        child: body,
+    final painted = ListenableBuilder(
+      listenable: Listenable.merge([_hoveredN, _focusedN]),
+      builder: (context, _) {
+        final active = _activeFor(
+          hovered: _hoveredN.value,
+          focused: _focusedN.value,
+        );
+        if (widget.listLayout) {
+          return _buildSourcesListRow(
+            context,
+            active: active,
+            health: health,
+          );
+        }
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            color: _surface(health, active || widget.highlighted),
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: _border(health, active)),
+          ),
+          child: _buildDesktopBody(context, active: active, health: health),
+        );
+      },
+    );
+
+    Widget card = ShellPaintScope.focusableTap(
+      context: context,
+      onTap: holdJump ? null : widget.onTap,
+      borderRadius: widget.listLayout ? 0 : radius,
+      motion: ForjaMotionPreset.fillOnly,
+      gridIndex: widget.gridIndex,
+      gridColumns: widget.gridColumns,
+      listIndex: widget.listLayout ? widget.gridIndex : null,
+      tvZone: widget.listLayout ? ShellPaintTvZone.row : ShellPaintTvZone.grid,
+      tvItemIndex: widget.gridIndex,
+      onFocusChange: _setFocused,
+      onKeyEvent: holdJump ? _onKeyEvent : null,
+      child: MouseRegion(
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
+        child: painted,
       ),
     );
 
@@ -381,10 +416,8 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         : health == false
             ? Colors.white54
             : ForjaShellColors.cinematic.textPrimary;
-    final holdJump =
-        widget.onHoldJumpToCategory != null && _leanbackOnly;
 
-    Widget row = SizedBox(
+    return SizedBox(
       width: widget.width,
       height: widget.height ?? 56,
       child: DecoratedBox(
@@ -444,29 +477,6 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         ),
       ),
     );
-
-    row = ShellPaintScope.focusableTap(
-      context: context,
-      onTap: holdJump ? null : widget.onTap,
-      borderRadius: 0,
-      motion: ForjaMotionPreset.fillOnly,
-      listIndex: widget.gridIndex,
-      tvZone: ShellPaintTvZone.row,
-      tvItemIndex: widget.gridIndex,
-      onFocusChange: _setFocused,
-      onHoverChange: _setHovered,
-      onKeyEvent: holdJump ? _onKeyEvent : null,
-      child: row,
-    );
-
-    if (!_leanbackOnly && _epgEnabled) {
-      row = GestureDetector(
-        onLongPress: _showEpgSheet,
-        child: row,
-      );
-    }
-
-    return row;
   }
 
   Widget _buildDesktopBody(
@@ -511,27 +521,24 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         ),
         Padding(
           padding: const EdgeInsets.all(8),
-          child: Tooltip(
-            message: widget.title,
-            waitDuration: const Duration(milliseconds: 600),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 220),
-                child: Text(
-                  widget.title,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: true,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: health == false
-                        ? Colors.white54
-                        : Colors.white,
-                    fontSize: 12,
-                    height: 1.15,
-                    fontWeight: FontWeight.w500,
-                  ),
+          // No Tooltip — hover overlay steals MouseRegion and freezes the grid.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: Text(
+                widget.title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                softWrap: true,
+                style: GoogleFonts.plusJakartaSans(
+                  color: health == false
+                      ? Colors.white54
+                      : Colors.white,
+                  fontSize: 12,
+                  height: 1.15,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),

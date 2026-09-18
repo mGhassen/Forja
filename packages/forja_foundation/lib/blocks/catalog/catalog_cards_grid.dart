@@ -101,8 +101,11 @@ Map<String, dynamic> catalogItemProps(Map<String, dynamic> item) {
     ];
     if (parts.isNotEmpty) raw['subtitle'] = parts.join(' • ');
   }
-  final badge = (raw['badge'] ?? item['badge'] ?? '').toString().trim();
-  if (badge.isNotEmpty) raw['badge'] = badge;
+  // Flat rows only — when paint.props exists, omit means omit (no meta.badge re-inject).
+  if (!(paint is Map && paint['props'] is Map)) {
+    final badge = (raw['badge'] ?? item['badge'] ?? '').toString().trim();
+    if (badge.isNotEmpty) raw['badge'] = badge;
+  }
 
   return raw;
 }

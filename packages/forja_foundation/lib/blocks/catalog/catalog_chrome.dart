@@ -200,11 +200,37 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
   static bool _expandOnHover(Map<String, dynamic> action) =>
       action['expandOnHover'] == true || action['collapse'] == true;
 
-  /// Pack `hideWhenCompact` / `compactOnly` — host compact = nav drawer width.
-  static bool _actionVisible(BuildContext context, Map<String, dynamic> action) {
+  /// Pack `hideWhenCompact` / `compactOnly` / `showWhen` — host compact =
+  /// nav drawer width; `showWhen: { menuId: 'value' | ['a','b'] }` gates on
+  /// [selections] for sibling chrome menus (e.g. catalog shelf).
+  static bool _actionVisible(
+    BuildContext context,
+    Map<String, dynamic> action,
+    Map<String, String> selections,
+  ) {
     final compact = ShellTokens.usesCompactNavDrawer(context);
     if (action['hideWhenCompact'] == true && compact) return false;
     if (action['compactOnly'] == true && !compact) return false;
+    final when = action['showWhen'];
+    if (when is Map) {
+      for (final e in when.entries) {
+        final menuId = e.key.toString().trim();
+        if (menuId.isEmpty) continue;
+        final selected = (selections[menuId] ?? '').trim();
+        final want = e.value;
+        if (want is List) {
+          final ids = <String>{
+            for (final raw in want)
+              raw.toString().trim(),
+          }..removeWhere((s) => s.isEmpty);
+          if (ids.isEmpty) continue;
+          if (!ids.contains(selected)) return false;
+        } else {
+          final id = want.toString().trim();
+          if (id.isNotEmpty && selected != id) return false;
+        }
+      }
+    }
     return true;
   }
 
@@ -363,7 +389,7 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
     for (final action in widget.actions) {
       final actionId = (action['id'] ?? '').toString().trim();
       if (actionId.isEmpty) continue;
-      if (!_actionVisible(context, action)) continue;
+      if (!_actionVisible(context, action, widget.selections)) continue;
       final bucket = _isTrailing(action) ? trailing : leading;
       final slot = widget.actionSlots[actionId];
       if (slot != null) {

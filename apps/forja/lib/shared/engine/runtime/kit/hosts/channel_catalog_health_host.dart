@@ -38,10 +38,16 @@ class ChannelCatalogHealthHost extends StatefulWidget {
 
 class _ChannelCatalogHealthHostState extends State<ChannelCatalogHealthHost> {
   final _probe = LazyUrlHealthProbe();
-  int _activeGen = 0;
+  final Map<String, int> _resolveGen = {};
+  final Map<String, Timer> _resolveDebounce = {};
+  static const _resolveDwell = Duration(milliseconds: 350);
 
   @override
   void dispose() {
+    for (final t in _resolveDebounce.values) {
+      t.cancel();
+    }
+    _resolveDebounce.clear();
     _probe.dispose();
     super.dispose();
   }
@@ -119,11 +125,24 @@ class _ChannelCatalogHealthHostState extends State<ChannelCatalogHealthHost> {
     return _probe.listenableFor(key);
   }
 
+  int _bumpGen(String key) {
+    final next = (_resolveGen[key] ?? 0) + 1;
+    _resolveGen[key] = next;
+    return next;
+  }
+
+  void _cancelResolve(String key) {
+    _resolveDebounce[key]?.cancel();
+    _resolveDebounce.remove(key);
+    _bumpGen(key);
+  }
+
   void _onActive(Map<String, dynamic> item, {required bool active}) {
     final key = _probeKey(item);
     if (key == null) return;
     if (!active) {
       _probe.cancel(key);
+      _cancelResolve(key);
       return;
     }
     // No catalog probes under the opaque player (I120) — seats + decode.
@@ -131,21 +150,36 @@ class _ChannelCatalogHealthHostState extends State<ChannelCatalogHealthHost> {
     // Already painted — skip create_link + CDN wait on re-hover.
     if (_probe.isFresh(key)) return;
 
-    final gen = ++_activeGen;
-    unawaited(() async {
-      final resolved = await _resolveProbeUrl(item);
-      if (!mounted || gen != _activeGen) return;
-      if (ShellBus.playerSurfaceActive.value) return;
-      // create_link miss → leave unknown (null), never paint false-red on
-      // the pending token.
-      if (resolved == null ||
-          resolved.isEmpty ||
-          resolved.startsWith('pending:') ||
-          !(resolved.startsWith('http://') || resolved.startsWith('https://'))) {
-        return;
-      }
-      _probe.schedule(key, resolved, onlyThis: true);
-    }());
+    final raw = _rawProbeUrl(item);
+    // Xtream / M3U — probe URL is ready; dwell lives inside [LazyUrlHealthProbe].
+    if (raw != null &&
+        !raw.startsWith('pending:') &&
+        (raw.startsWith('http://') || raw.startsWith('https://'))) {
+      _probe.schedule(key, raw, onlyThis: true);
+      return;
+    }
+
+    // Stalker pending — dwell before create_link so sweeps do not mint links.
+    _resolveDebounce[key]?.cancel();
+    final gen = _bumpGen(key);
+    _resolveDebounce[key] = Timer(_resolveDwell, () {
+      _resolveDebounce.remove(key);
+      unawaited(() async {
+        final resolved = await _resolveProbeUrl(item);
+        if (!mounted || (_resolveGen[key] ?? 0) != gen) return;
+        if (ShellBus.playerSurfaceActive.value) return;
+        // create_link miss → leave unknown (null), never paint false-red on
+        // the pending token.
+        if (resolved == null ||
+            resolved.isEmpty ||
+            resolved.startsWith('pending:') ||
+            !(resolved.startsWith('http://') ||
+                resolved.startsWith('https://'))) {
+          return;
+        }
+        _probe.schedule(key, resolved, onlyThis: true);
+      }());
+    });
   }
 
   @override
