@@ -28,7 +28,9 @@ class WidgetShelfItem {
 /// Grouped section tabs (e.g. Live / Movies / Series) — old IPTV shelf paint.
 ///
 /// [expandOnHover]: collapsed to the selected tab; hover (or TV focus) expands
-/// the full shelf. [onExpandChanged] lets chrome hide sibling top-bar actions.
+/// with the selected tab staying first and the others appending after — so the
+/// selected chip does not jump. [onExpandChanged] lets chrome hide sibling
+/// top-bar actions.
 class WidgetShelf extends StatefulWidget {
   const WidgetShelf({
     super.key,
@@ -119,10 +121,21 @@ class _WidgetShelfState extends State<WidgetShelf> {
     final selectedId = (widget.selectedId ?? '').trim();
     var selectedIndex = widget.items.indexWhere((e) => e.id == selectedId);
     if (selectedIndex < 0) selectedIndex = 0;
+    final selected = widget.items[selectedIndex];
 
-    final visible = !widget.expandOnHover || _expanded
-        ? widget.items
-        : [widget.items[selectedIndex]];
+    // Compact expand: keep selected first so it doesn't jump when opening.
+    final List<WidgetShelfItem> visible;
+    if (!widget.expandOnHover) {
+      visible = widget.items;
+    } else if (!_expanded) {
+      visible = [selected];
+    } else {
+      visible = [
+        selected,
+        for (final e in widget.items)
+          if (e.id != selected.id) e,
+      ];
+    }
 
     Widget shelf = Container(
       height: resolvedHeight,
