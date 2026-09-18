@@ -532,15 +532,16 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     }
   }
 
-  /// Opens [src] (or the next Providers row after an unlock miss).
-  /// Returns false when every remaining source failed unlock / open setup.
+  /// Opens [src]. IPTV multi-mirror may skip unlock misses; Live Sports pins.
+  /// Returns false when unlock / open setup fails (pinned) or all remainings fail.
   Future<bool> _engineOpenSource(
     LivePlaySource src, {
     bool forceLiveRefresh = false,
   }) async {
     var candidate = src;
     var force = forceLiveRefresh;
-    // Bound skips so a pathological list cannot spin forever.
+    final pin = _pinLiveProvidersSource;
+    // Bound skips so a pathological IPTV list cannot spin forever.
     for (var skip = 0; skip < _s._sources.length; skip++) {
       final resolved = await _maybeResolveLiveEngineSource(
         candidate,
@@ -548,7 +549,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         announceFailure: false,
       );
       if (resolved == null) {
-        if (_s._sourceIdx >= _s._sources.length - 1) {
+        if (pin || _s._sourceIdx >= _s._sources.length - 1) {
           LivePluginEngine.engineResolveFailed();
           return false;
         }
@@ -1114,17 +1115,17 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
 
   /// Soft reconnects on the same URL before hopping to the next Sources row.
-  /// Live Sports Providers / Stremio: hop after 2 when siblings exist.
-  int get _retriesBeforeSourceRotate {
-    if (_s._sources.length <= 1) {
-      return _PtPlayerScreenState._maxRetries;
-    }
-    final kind = _liveSourceKindFor(_s._sources[_s._sourceIdx]);
-    if (kind == PortalLiveSourceKind.liveEngine ||
-        kind == PortalLiveSourceKind.stremio) {
-      return _PtPlayerScreenState._maxRetriesLiveMultiSource;
-    }
-    return _PtPlayerScreenState._maxRetries;
+  /// Live Sports Providers / Stremio never auto-hop — user picks Source.
+  int get _retriesBeforeSourceRotate => _PtPlayerScreenState._maxRetries;
+
+  /// Pin the selected Providers / Stremio row — never rotate `_sourceIdx`.
+  bool get _pinLiveProvidersSource {
+    if (_s._sources.isEmpty) return false;
+    final kind = _liveSourceKindFor(
+      _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)],
+    );
+    return kind == PortalLiveSourceKind.liveEngine ||
+        kind == PortalLiveSourceKind.stremio;
   }
 
   Future<void> _openCurrent({

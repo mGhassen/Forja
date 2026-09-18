@@ -168,6 +168,7 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
             curve: motion.fillOnly.resolvedCurve,
             width: widget.diameter,
             height: widget.diameter,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: lifted
                   ? ForjaShellColors.brandGreen
@@ -192,10 +193,14 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
             child: ScaleTransition(
               key: const ValueKey('shell-card-play-pulse'),
               scale: _pulse,
-              child: Icon(
-                Icons.play_arrow_rounded,
-                color: lifted ? const Color(0xFF111827) : Colors.white,
-                size: widget.iconSize,
+              // Play glyph is left-heavy in the font; nudge so it reads centered.
+              child: Transform.translate(
+                offset: Offset(widget.iconSize * 0.06, 0),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: lifted ? const Color(0xFF111827) : Colors.white,
+                  size: widget.iconSize,
+                ),
               ),
             ),
           ),

@@ -1012,6 +1012,7 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       width: widget.width,
       height: widget.height,
       borderRadius: radius,
+      playOverlaySize: playDia,
       playOverlay: live
           ? ShellCardPlayOverlay(
               active: active,

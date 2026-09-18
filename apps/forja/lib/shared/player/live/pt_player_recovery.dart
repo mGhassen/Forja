@@ -10,6 +10,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     bool forceLiveRefresh = false,
   });
   int get _retriesBeforeSourceRotate;
+  bool get _pinLiveProvidersSource;
   Future<void> _probeStreamCapabilities();
   bool _giveUpDeadStalkerStream();
   void _initPlayerInstances();
@@ -321,9 +322,10 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     try {
       if (_s._disposed) return;
 
-      // Multi-source: dead TCP/open → next source immediately. Burning 8
-      // retries on skybeyondplus timeouts leaves the user on Buffering forever.
+      // IPTV multi-source: dead TCP/open → next source immediately.
+      // Live Sports Providers / Stremio: never — stay on the picked row.
       if (!userInitiated &&
+          !_pinLiveProvidersSource &&
           _s._sources.length > 1 &&
           _s._sourceIdx < _s._sources.length - 1 &&
           iptvIsDeadEndpointFail(reason)) {
@@ -341,8 +343,9 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
       }
 
       if (_s._retryAttempt >= _retriesBeforeSourceRotate) {
-        // Rotate to the next source if we have one.
-        if (_s._sourceIdx < _s._sources.length - 1) {
+        // IPTV only — Live Sports stays on the selected Source.
+        if (!_pinLiveProvidersSource &&
+            _s._sourceIdx < _s._sources.length - 1) {
           _s._sourceIdx++;
           _s._retryAttempt = 0;
           _s._syncTitleToActiveSource();

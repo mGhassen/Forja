@@ -176,10 +176,12 @@ class EventCard extends StatelessWidget {
               ),
             ),
             if (live && playOverlay != null)
-              SizedBox(
-                width: playOverlaySize,
-                height: playOverlaySize,
-                child: playOverlay,
+              Center(
+                child: SizedBox(
+                  width: playOverlaySize,
+                  height: playOverlaySize,
+                  child: playOverlay,
+                ),
               ),
             if (categoryLabel.isNotEmpty)
               _CornerBadge(

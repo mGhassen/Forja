@@ -936,9 +936,6 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   ];
   static const int _maxRetries = 8;
 
-  /// Providers / Stremio multi-mirror: hop sooner than portal single-channel
-  /// reconnect (issue 264).
-  static const int _maxRetriesLiveMultiSource = 2;
   static const Duration _healthyStreakNeeded = Duration(seconds: 6);
   // After exhausting per-source retries on a single-source stream, keep
   // probing every N seconds forever - live IPTV channels routinely come
