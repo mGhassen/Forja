@@ -1138,6 +1138,41 @@ class PackPaintTree extends StatelessWidget {
     return out;
   }
 
+  /// Always-open list search painted above a vertical category rail.
+  Widget? _categoryBarSearchHeader(
+    BuildContext context,
+    Map<String, dynamic> spec,
+  ) {
+    final raw = spec['search'];
+    if (raw is! Map) return null;
+    final search = Map<String, dynamic>.from(raw);
+    final verb = (search['action'] ?? search['id'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (verb != 'eventsearch' && search['open'] != true) return null;
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty) return null;
+    final tooltip = (search['label'] ?? 'Search').toString().trim();
+    final hint = (search['placeholder'] ?? search['hint'] ?? 'Search…')
+        .toString()
+        .trim();
+    return ShellPaintTvTabScope(
+      tabId: tab,
+      child: KitEventListSearch(
+        tooltip: tooltip.isEmpty ? 'Search' : tooltip,
+        placeholder: hint.isEmpty ? 'Search…' : hint,
+        alwaysOpen: true,
+        tvItemIndex: 0,
+        collapsedSize: PackPaintArtifact.packDouble(search['collapsedSize']),
+        expandedWidth: PackPaintArtifact.packDouble(search['expandedWidth']),
+        fontSize: PackPaintArtifact.packDouble(search['fontSize']),
+        iconSize: PackPaintArtifact.packDouble(search['iconSize']),
+        fieldIconSize: PackPaintArtifact.packDouble(search['fieldIconSize']),
+      ),
+    );
+  }
+
   String? _childIdOfType(Map<String, dynamic> node, String type) {
     final raw = node['children'] ?? node['widgets'];
     if (raw is! List) return null;
@@ -2329,6 +2364,7 @@ class PackPaintTree extends StatelessWidget {
     if (vertical) {
       final width =
           (spec['width'] is num) ? (spec['width'] as num).toDouble() : 220.0;
+      final searchHeader = _categoryBarSearchHeader(context, spec);
       if (CategoryBarActionHost.featuresEnabled(spec)) {
         return Consumer(
           builder: (ctx, ref, _) => CategoryBarActionHost.buildRail(
@@ -2338,15 +2374,30 @@ class PackPaintTree extends StatelessWidget {
             seedItems: items,
             selectedId: selected,
             tabId: tabId,
+            header: searchHeader,
             onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
           ),
         );
       }
-      return CatalogSideRail(
+      final rail = CatalogSideRail(
         items: [for (final e in items) (id: e.id, label: e.label)],
         selectedId: selected,
         width: width,
         onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
+      );
+      if (searchHeader == null) return rail;
+      return SizedBox(
+        width: width,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: searchHeader,
+            ),
+            Expanded(child: rail),
+          ],
+        ),
       );
     }
     return CatalogChipBar(
@@ -3223,40 +3274,6 @@ class _BecauseMountState extends State<_BecauseMount> {
                 final tab = widget.tabId ??
                     LayoutScope.maybeOf(ctx)?.tabId ??
                     TvFocusGraph.tabIdOf(ctx);
-                final cards = <Widget>[];
-                for (var i = 0; i < items.length; i++) {
-                  final raw = items[i];
-                  if (raw is! Map) continue;
-                  final item = Map<String, dynamic>.from(raw);
-                  final paint = item['paint'];
-                  if (paint is Map) {
-                    cards.add(
-                      PackPaintArtifact.fromPaint(
-                        ctx,
-                        pluginId: widget.pluginId,
-                        paint: Map<String, dynamic>.from(paint),
-                        open: item['open'] ?? paint['open'],
-                        meta: item['meta'] ?? paint['meta'],
-                        listIndex: i,
-                      ),
-                    );
-                    continue;
-                  }
-                  cards.add(
-                    PackPaintArtifact.fromPaint(
-                      ctx,
-                      pluginId: widget.pluginId,
-                      paint: {
-                        'type': 'posterCard',
-                        'props': PackPaintArtifact.propsOf(item),
-                      },
-                      open: item['open'],
-                      meta: item['meta'],
-                      listIndex: i,
-                    ),
-                  );
-                }
-                if (cards.isEmpty) return const SizedBox.shrink();
                 final defaultPad = catalogSectionHorizontalPadding(ctx);
                 final pad = PackPaintArtifact.packDouble(
                       widget.spec['pad'] ?? node['pad'],
@@ -3271,13 +3288,69 @@ class _BecauseMountState extends State<_BecauseMount> {
                       widget.spec['gap'] ?? node['gap'],
                     ) ??
                     shellPosterCardRowGap(ctx);
-                final cardH = InteractivePosterCard.cardHeight(ctx);
+                final packCardW = PackPaintArtifact.packDouble(
+                  widget.spec['cardWidth'] ?? node['cardWidth'],
+                );
+                final packCardH = PackPaintArtifact.packDouble(
+                  widget.spec['cardHeight'] ?? node['cardHeight'],
+                );
+                final cardH =
+                    packCardH ?? InteractivePosterCard.cardHeight(ctx);
+                final sizedCards = <Widget>[];
+                for (var i = 0; i < items.length; i++) {
+                  final raw = items[i];
+                  if (raw is! Map) continue;
+                  final item = Map<String, dynamic>.from(raw);
+                  final paint = item['paint'];
+                  if (paint is Map) {
+                    final paintMap = Map<String, dynamic>.from(paint);
+                    if (packCardW != null || packCardH != null) {
+                      final p = Map<String, dynamic>.from(
+                        paintMap['props'] is Map
+                            ? Map<String, dynamic>.from(
+                                paintMap['props'] as Map,
+                              )
+                            : PackPaintArtifact.propsOf(item),
+                      );
+                      if (packCardW != null) p.putIfAbsent('width', () => packCardW);
+                      if (packCardH != null) {
+                        p.putIfAbsent('height', () => packCardH);
+                      }
+                      paintMap['props'] = p;
+                    }
+                    sizedCards.add(
+                      PackPaintArtifact.fromPaint(
+                        ctx,
+                        pluginId: widget.pluginId,
+                        paint: paintMap,
+                        open: item['open'] ?? paint['open'],
+                        meta: item['meta'] ?? paint['meta'],
+                        listIndex: i,
+                      ),
+                    );
+                    continue;
+                  }
+                  final props = PackPaintArtifact.propsOf(item);
+                  if (packCardW != null) props['width'] = packCardW;
+                  if (packCardH != null) props['height'] = packCardH;
+                  sizedCards.add(
+                    PackPaintArtifact.fromPaint(
+                      ctx,
+                      pluginId: widget.pluginId,
+                      paint: {'type': 'posterCard', 'props': props},
+                      open: item['open'],
+                      meta: item['meta'],
+                      listIndex: i,
+                    ),
+                  );
+                }
+                if (sizedCards.isEmpty) return const SizedBox.shrink();
                 final rail = HorizontalScroller(
                   height: cardH,
                   padding: EdgeInsets.symmetric(horizontal: pad),
-                  itemCount: cards.length,
+                  itemCount: sizedCards.length,
                   separatorBuilder: (_, _) => SizedBox(width: gap),
-                  itemBuilder: (_, i) => cards[i],
+                  itemBuilder: (_, i) => sizedCards[i],
                 );
                 final section = BecauseSection(
                   title: (node['heading'] ?? '').toString().isEmpty
@@ -3286,6 +3359,15 @@ class _BecauseMountState extends State<_BecauseMount> {
                   seedPosterUrl: (node['seedPoster'] ?? '').toString().isEmpty
                       ? null
                       : (node['seedPoster'] ?? '').toString(),
+                  kickerFontSize: PackPaintArtifact.packDouble(
+                    widget.spec['kickerFontSize'] ?? node['kickerFontSize'],
+                  ),
+                  titleFontSize: PackPaintArtifact.packDouble(
+                    widget.spec['titleFontSize'] ?? node['titleFontSize'],
+                  ),
+                  seeAllFontSize: PackPaintArtifact.packDouble(
+                    widget.spec['seeAllFontSize'] ?? node['seeAllFontSize'],
+                  ),
                   trailing: canShuffle
                       ? IconButton(
                           onPressed: () => setState(() => _shuffleKey++),
@@ -3305,7 +3387,7 @@ class _BecauseMountState extends State<_BecauseMount> {
                           tabId: tab,
                           rowId: 'because',
                           sortOrder: 40,
-                          itemCount: cards.length,
+                          itemCount: sizedCards.length,
                           child: rail,
                         ),
                 );
@@ -3513,6 +3595,14 @@ class _ContinueMountState extends State<_ContinueMount> {
         cardWidth: cardW,
         cardHeight: cardH,
         cardGap: gap,
+        titleFontSize:
+            PackPaintArtifact.packDouble(widget.spec['titleFontSize']),
+        cardTitleFontSize:
+            PackPaintArtifact.packDouble(widget.spec['cardTitleFontSize']),
+        cardSubtitleFontSize:
+            PackPaintArtifact.packDouble(widget.spec['cardSubtitleFontSize']),
+        cardRemainingFontSize:
+            PackPaintArtifact.packDouble(widget.spec['cardRemainingFontSize']),
         titlePadding: EdgeInsets.fromLTRB(
           pad,
           titlePad.top,

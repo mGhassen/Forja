@@ -24,6 +24,9 @@ class BecauseSection extends StatelessWidget {
     this.cardWidth,
     this.cardHeight,
     this.gap,
+    this.kickerFontSize,
+    this.titleFontSize,
+    this.seeAllFontSize,
     this.onSeeAll,
   }) : assert(items != null || children != null || rail != null);
 
@@ -49,6 +52,9 @@ class BecauseSection extends StatelessWidget {
   final double? cardWidth;
   final double? cardHeight;
   final double? gap;
+  final double? kickerFontSize;
+  final double? titleFontSize;
+  final double? seeAllFontSize;
   final VoidCallback? onSeeAll;
 
   String get _seedTitle {
@@ -69,11 +75,11 @@ class BecauseSection extends StatelessWidget {
     final seedUrl = resolveAbsoluteCoverUrl(seedPosterUrl ?? '');
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final kickerFontSize =
-        tv ? ShellTokens.tvMetaFontSize : 11.5;
+        this.kickerFontSize ?? (tv ? ShellTokens.tvMetaFontSize : 11.5);
     final titleFontSize =
-        tv ? ShellTokens.tvTitleFontSize : 19.0;
+        this.titleFontSize ?? (tv ? ShellTokens.tvTitleFontSize : 19.0);
     final seeAllFontSize =
-        tv ? ShellTokens.tvBodyFontSize : 13.0;
+        this.seeAllFontSize ?? (tv ? ShellTokens.tvBodyFontSize : 13.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

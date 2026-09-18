@@ -40,7 +40,7 @@ void main() {
     );
   });
 
-  test('channelCards packing fills row — not fixed poster cells', () {
+  test('channelCards and poster packing fill the row', () {
     const maxWidth = 960.0;
     const minW = 140.0;
     const minH = 140.0;
@@ -65,15 +65,14 @@ void main() {
       trailing: trailing,
     );
 
-    // Channel packing stretches cells to fill the inner width.
     final channelRowW =
         channels.columns * channels.cardW + (channels.columns - 1) * gap;
     final posterRowW =
         posters.columns * posters.cardW + (posters.columns - 1) * gap;
     final inner = maxWidth - leading - trailing;
     expect(channelRowW, closeTo(inner, 0.5));
-    expect(posterRowW, lessThan(inner));
-    expect(channels.cardW, isNot(equals(posters.cardW)));
+    expect(posterRowW, closeTo(inner, 0.5));
+    expect(posters.cardW, greaterThan(minW));
   });
 
   test('tv metrics are denser than desktop for leanback', () {

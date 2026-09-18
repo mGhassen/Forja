@@ -13,11 +13,14 @@ import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/event_card.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 
 /// Shared pack-item → foundation card paint. Rails + kit.list tiles.
@@ -161,6 +164,12 @@ abstract final class PackPaintArtifact {
             : PosterAspect.portrait;
         final width =
             props['width'] is num ? (props['width'] as num).toDouble() : null;
+        final motion = ForjaMotionTheme.presetFromName(
+          props['motion']?.toString(),
+        );
+        final hover = packDouble(props['hoverScale']);
+        final focus = packDouble(props['focusScale']);
+        // durationMs reserved for motion theme; focusableTap uses preset duration.
         return InteractivePosterCard(
           imageUrl: (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
           title: (props['title'] ?? '').toString(),
@@ -184,15 +193,23 @@ abstract final class PackPaintArtifact {
           width: width,
           height:
               props['height'] is num ? (props['height'] as num).toDouble() : null,
+          borderRadius: packDouble(props['borderRadius'] ?? props['radius']),
+          titleFontSize: packDouble(props['titleFontSize']),
+          metaFontSize: packDouble(props['metaFontSize']),
+          motion: motion,
+          scaleOnFocus: focus ?? hover,
         );
       case 'eventCard':
       case 'event':
+        final tv = packBool(props['tvDensity']) == true ||
+            ShellPaintScope.usesTvDensityOf(context);
+        final scale = tv ? ShellTokens.tvLayoutScale : 1.0;
         final w = (props['width'] is num)
             ? (props['width'] as num).toDouble()
-            : EventCardTokens.paintFallbackWidth;
+            : EventCardTokens.paintFallbackWidth * scale;
         final h = (props['height'] is num)
             ? (props['height'] as num).toDouble()
-            : EventCardTokens.paintFallbackHeight;
+            : EventCardTokens.paintFallbackHeight * scale;
         return EventCard(
           title: (props['title'] ?? '').toString(),
           posterUrl: (props['posterUrl'] ?? props['imageUrl'] ?? '').toString(),
@@ -208,6 +225,23 @@ abstract final class PackPaintArtifact {
           live: props['live'] == true,
           width: w,
           height: h,
+          tvDensity: tv,
+          borderRadius: packDouble(props['borderRadius'] ?? props['radius']) ??
+              EventCardTokens.radius,
+          titleFontSize:
+              (packDouble(props['titleFontSize']) ?? EventCardTokens.titleFontSize) *
+                  scale,
+          metaFontSize:
+              (packDouble(props['metaFontSize']) ?? EventCardTokens.metaFontSize) *
+                  scale,
+          badgeFontSize:
+              (packDouble(props['badgeFontSize']) ?? EventCardTokens.badgeFontSize) *
+                  scale,
+          playOverlaySize:
+              (packDouble(props['playOverlaySize']) ??
+                      EventCardTokens.playOverlaySize) *
+                  scale,
+          padV: packDouble(props['padV']) ?? EventCardTokens.padV,
           onTap: onTap,
         );
       default:
@@ -529,13 +563,26 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     required String aspectFallback,
     required String? tabId,
     required String rowId,
+    double? itemWidth,
+    double? itemHeight,
   }) {
     final paint = item['paint'];
     if (paint is Map) {
+      final paintMap = Map<String, dynamic>.from(paint);
+      if (itemWidth != null || itemHeight != null) {
+        final p = Map<String, dynamic>.from(
+          paintMap['props'] is Map
+              ? Map<String, dynamic>.from(paintMap['props'] as Map)
+              : PackPaintArtifact.propsOf(item),
+        );
+        if (itemWidth != null) p.putIfAbsent('width', () => itemWidth);
+        if (itemHeight != null) p.putIfAbsent('height', () => itemHeight);
+        paintMap['props'] = p;
+      }
       return PackPaintArtifact.fromPaint(
         context,
         pluginId: widget.pluginId,
-        paint: Map<String, dynamic>.from(paint),
+        paint: paintMap,
         open: item['open'] ?? paint['open'],
         meta: item['meta'] ?? paint['meta'],
         listIndex: i,
@@ -543,12 +590,15 @@ class _PackPosterRailState extends State<_PackPosterRail> {
         fallbackAspect: aspectFallback,
       );
     }
+    final props = PackPaintArtifact.propsOf(item);
+    if (itemWidth != null) props['width'] = itemWidth;
+    if (itemHeight != null) props['height'] = itemHeight;
     return PackPaintArtifact.fromPaint(
       context,
       pluginId: widget.pluginId,
       paint: {
         'type': 'posterCard',
-        'props': PackPaintArtifact.propsOf(item),
+        'props': props,
       },
       open: item['open'],
       meta: item['meta'],
@@ -587,7 +637,12 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     final aspect = aspectFallback == 'landscape'
         ? PosterAspect.landscape
         : PosterAspect.portrait;
-    final cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
+    final itemWidth = PackPaintArtifact.packDouble(node['itemWidth']);
+    final itemHeight = PackPaintArtifact.packDouble(
+      node['itemHeight'] ?? node['height'],
+    );
+    final cardH = itemHeight ??
+        InteractivePosterCard.cardHeight(context, aspect: aspect);
     final sep = ranked ? rankedGap : gap;
     final pageLoad = packLoadSpec(node['pageLoad']);
     final canPage = pageLoad != null && _hasMore;
@@ -596,6 +651,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
       if (title.isEmpty) return const SizedBox.shrink();
       return ShellSectionTitle(
         title: title,
+        fontSize: PackPaintArtifact.packDouble(node['titleFontSize']),
         padding: EdgeInsetsDirectional.only(
           start: pad,
           top: titlePad.top,
@@ -615,6 +671,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
           aspectFallback: aspectFallback,
           tabId: tabId,
           rowId: rowId,
+          itemWidth: itemWidth,
+          itemHeight: itemHeight,
         ),
     ];
 
@@ -631,6 +689,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
           if (title.isNotEmpty)
             ShellSectionTitle(
               title: title,
+              fontSize: PackPaintArtifact.packDouble(node['titleFontSize']),
               padding: EdgeInsetsDirectional.only(
                 start: pad,
                 top: titlePad.top,

@@ -27,6 +27,11 @@ class EventCard extends StatelessWidget {
     this.onTap,
     this.borderRadius = EventCardTokens.radius,
     this.titleFontSize = EventCardTokens.titleFontSize,
+    this.metaFontSize = EventCardTokens.metaFontSize,
+    this.badgeFontSize = EventCardTokens.badgeFontSize,
+    this.playOverlaySize = EventCardTokens.playOverlaySize,
+    this.padV = EventCardTokens.padV,
+    this.tvDensity = false,
     this.playOverlay,
   });
 
@@ -47,6 +52,11 @@ class EventCard extends StatelessWidget {
   final double height;
   final double borderRadius;
   final double titleFontSize;
+  final double metaFontSize;
+  final double badgeFontSize;
+  final double playOverlaySize;
+  final double padV;
+  final bool tvDensity;
   final VoidCallback? onTap;
 
   /// Optional play glyph (host [ShellCardPlayOverlay]).
@@ -112,7 +122,7 @@ class EventCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(padV + 2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -126,6 +136,7 @@ class EventCard extends StatelessWidget {
                                   badge: resolveAbsoluteCoverUrl(homeBadgeUrl),
                                   name: homeTeam!,
                                   showName: false,
+                                  badgeFontSize: badgeFontSize,
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -137,7 +148,7 @@ class EventCard extends StatelessWidget {
                                       color: Colors.white.withValues(
                                         alpha: 0.7,
                                       ),
-                                      fontSize: 11,
+                                      fontSize: metaFontSize + 1,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 1.5,
                                     ),
@@ -147,6 +158,7 @@ class EventCard extends StatelessWidget {
                                   badge: resolveAbsoluteCoverUrl(awayBadgeUrl),
                                   name: awayTeam!,
                                   showName: false,
+                                  badgeFontSize: badgeFontSize,
                                 ),
                               ],
                             ),
@@ -157,11 +169,18 @@ class EventCard extends StatelessWidget {
                     title: title,
                     schedule: scheduleLabel.isEmpty ? null : scheduleLabel,
                     rightPadding: viewers > 0 ? 52 : 0,
+                    titleFontSize: titleFontSize,
+                    metaFontSize: metaFontSize,
                   ),
                 ],
               ),
             ),
-            if (live && playOverlay != null) playOverlay!,
+            if (live && playOverlay != null)
+              SizedBox(
+                width: playOverlaySize,
+                height: playOverlaySize,
+                child: playOverlay,
+              ),
             if (categoryLabel.isNotEmpty)
               _CornerBadge(
                 label: categoryLabel.toUpperCase(),
@@ -191,11 +210,13 @@ class _TeamBadge extends StatelessWidget {
     required this.badge,
     required this.name,
     this.showName = true,
+    this.badgeFontSize = EventCardTokens.badgeFontSize,
   });
 
   final String badge;
   final String name;
   final bool showName;
+  final double badgeFontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +259,7 @@ class _TeamBadge extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70, fontSize: EventCardTokens.badgeFontSize),
+            style: TextStyle(color: Colors.white70, fontSize: badgeFontSize),
           ),
         ),
       ],
@@ -340,11 +361,15 @@ class _TitleStack extends StatelessWidget {
     required this.title,
     this.schedule,
     this.rightPadding = 0,
+    this.titleFontSize = EventCardTokens.titleFontSize,
+    this.metaFontSize = EventCardTokens.metaFontSize,
   });
 
   final String title;
   final String? schedule;
   final double rightPadding;
+  final double titleFontSize;
+  final double metaFontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -359,9 +384,9 @@ class _TitleStack extends StatelessWidget {
               schedule!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white54,
-                fontSize: EventCardTokens.metaFontSize,
+                fontSize: metaFontSize,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -371,9 +396,9 @@ class _TitleStack extends StatelessWidget {
             title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: EventCardTokens.titleFontSize,
+              fontSize: titleFontSize,
               fontWeight: FontWeight.w600,
             ),
           ),

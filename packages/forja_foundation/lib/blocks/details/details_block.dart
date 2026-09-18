@@ -53,6 +53,10 @@ class DetailsBlock extends StatelessWidget {
     final bg = propsColor(props, 'backgroundColor') ??
         fallbackBackground ??
         const Color(0xFF141414);
+    final sectionSpacing = propsNum(props, 'sectionSpacing');
+    final heroBodyOverlap = propsNum(props, 'heroBodyOverlap');
+    final contentPadding = propsNum(props, 'contentPadding');
+    final descriptionWidthFraction = propsNum(props, 'descriptionWidthFraction');
     final hero = DetailsHero(
       backdropUrl: propsStringOr(props, 'backdropUrl', ''),
       backdropUrls: propsStringList(props, 'backdropUrls'),
@@ -71,6 +75,9 @@ class DetailsBlock extends StatelessWidget {
       chromeOnly: propsBool(props, 'chromeOnly'),
       contentScrim: propsBool(props, 'contentScrim'),
       height: propsNum(props, 'height'),
+      bodyOverlap: heroBodyOverlap,
+      contentPadding: contentPadding,
+      descriptionWidthFraction: descriptionWidthFraction,
     );
 
     final scroll = DetailsBlock(
@@ -81,12 +88,16 @@ class DetailsBlock extends StatelessWidget {
           ? const SizedBox.shrink()
           : DetailsBody(
               backgroundColor: bg,
+              bodyOverlap: heroBodyOverlap,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (var i = 0; i < sections.length; i++) ...[
                     if (i > 0)
-                      const SizedBox(height: DetailsTokens.sectionSpacing),
+                      SizedBox(
+                        height:
+                            sectionSpacing ?? DetailsTokens.sectionSpacing,
+                      ),
                     sections[i],
                   ],
                 ],

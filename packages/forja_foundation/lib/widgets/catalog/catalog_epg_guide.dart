@@ -97,6 +97,9 @@ class CatalogEpgGuide extends StatefulWidget {
     this.accessoryBuilder,
     this.timeline,
     this.emptyTitle = 'No channels in this view',
+    this.columnWidth = EpgGuideTokens.columnWidth,
+    this.rowHeight = EpgGuideTokens.rowHeight,
+    this.headerHeight = EpgGuideTokens.headerHeight,
   });
 
   final List<CatalogEpgChannel> channels;
@@ -116,6 +119,11 @@ class CatalogEpgGuide extends StatefulWidget {
 
   final CatalogEpgTimeline? timeline;
   final String emptyTitle;
+
+  /// Pack overrides — omit → [EpgGuideTokens].
+  final double columnWidth;
+  final double rowHeight;
+  final double headerHeight;
 
   @override
   State<CatalogEpgGuide> createState() => _CatalogEpgGuideState();
@@ -299,7 +307,7 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
     final idx = widget.channels.indexWhere((c) => c.id == id);
     if (idx < 0 || !_vChannels.hasClients) return;
     final target =
-        (idx * EpgGuideTokens.rowHeight).clamp(0.0, _vChannels.position.maxScrollExtent);
+        (idx * widget.rowHeight).clamp(0.0, _vChannels.position.maxScrollExtent);
     _syncingV = true;
     _vChannels.jumpTo(target);
     if (_vGrid.hasClients) {
@@ -378,10 +386,10 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
     return Column(
       children: [
         SizedBox(
-          height: EpgGuideTokens.headerHeight,
+          height: widget.headerHeight,
           child: Row(
             children: [
-              const SizedBox(width: EpgGuideTokens.columnWidth),
+              SizedBox(width: widget.columnWidth),
               Expanded(
                 child: SingleChildScrollView(
                   controller: _hRuler,
@@ -389,7 +397,7 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
                   physics: const ClampingScrollPhysics(),
                   child: SizedBox(
                     width: _timeline.totalWidth,
-                    height: EpgGuideTokens.headerHeight,
+                    height: widget.headerHeight,
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -447,15 +455,16 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: EpgGuideTokens.columnWidth,
+                width: widget.columnWidth,
                 child: ListView.builder(
                   controller: _vChannels,
                   physics: const ClampingScrollPhysics(),
-                  itemExtent: EpgGuideTokens.rowHeight,
+                  itemExtent: widget.rowHeight,
                   itemCount: channels.length,
                   itemBuilder: (_, i) => _ChannelCell(
                     channel: channels[i],
                     listIndex: i,
+                    rowHeight: widget.rowHeight,
                     highlighted: channels[i].id == widget.highlightChannelId,
                     onTap: () => widget.onChannelTap(channels[i]),
                     accessoryBuilder: widget.accessoryBuilder,
@@ -472,14 +481,16 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
                     child: Stack(
                       children: [
                         ListView.builder(
-                          scrollCacheExtent: ScrollCacheExtent.pixels(EpgGuideTokens.rowHeight * 12), controller: _vGrid,
+                          scrollCacheExtent: ScrollCacheExtent.pixels(
+                              widget.rowHeight * 12),
+                          controller: _vGrid,
                           physics: const ClampingScrollPhysics(),
-                          itemExtent: EpgGuideTokens.rowHeight,
+                          itemExtent: widget.rowHeight,
                           itemCount: channels.length,
                           itemBuilder: (_, i) {
                             final ch = channels[i];
                             return SizedBox(
-                              height: EpgGuideTokens.rowHeight,
+                              height: widget.rowHeight,
                               width: _timeline.totalWidth,
                               child: _ProgrammeRow(
                                 future: _futureFor(ch),
@@ -540,6 +551,7 @@ class _ChannelCell extends StatefulWidget {
   const _ChannelCell({
     required this.channel,
     required this.onTap,
+    required this.rowHeight,
     this.listIndex,
     this.highlighted = false,
     this.accessoryBuilder,
@@ -547,6 +559,7 @@ class _ChannelCell extends StatefulWidget {
 
   final CatalogEpgChannel channel;
   final VoidCallback onTap;
+  final double rowHeight;
   final int? listIndex;
   final bool highlighted;
   final Widget? Function(
@@ -575,7 +588,7 @@ class _ChannelCellState extends State<_ChannelCell> {
     );
 
     final body = Container(
-      height: EpgGuideTokens.rowHeight,
+      height: widget.rowHeight,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: active

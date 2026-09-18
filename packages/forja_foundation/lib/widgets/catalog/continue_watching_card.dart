@@ -24,6 +24,9 @@ class ContinueWatchingCard extends StatelessWidget {
     this.active = false,
     this.borderRadius = 14,
     this.showActionButtons = true,
+    this.titleFontSize,
+    this.subtitleFontSize,
+    this.remainingFontSize,
     this.onTap,
     this.onRemove,
     this.onInfo,
@@ -41,6 +44,9 @@ class ContinueWatchingCard extends StatelessWidget {
   final bool active;
   final double borderRadius;
   final bool showActionButtons;
+  final double? titleFontSize;
+  final double? subtitleFontSize;
+  final double? remainingFontSize;
   final VoidCallback? onTap;
   final VoidCallback? onRemove;
   final VoidCallback? onInfo;
@@ -53,11 +59,11 @@ class ContinueWatchingCard extends StatelessWidget {
     final cover = resolveAbsoluteCoverUrl(coverUrl);
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final titleFontSize =
-        tv ? ShellTokens.tvBodyFontSize : 13.0;
+        this.titleFontSize ?? (tv ? ShellTokens.tvBodyFontSize : 13.0);
     final subtitleFontSize =
-        tv ? ShellTokens.tvMetaFontSize : 12.0;
+        this.subtitleFontSize ?? (tv ? ShellTokens.tvMetaFontSize : 12.0);
     final remainingFontSize =
-        tv ? ShellTokens.tvMetaFontSize : 11.0;
+        this.remainingFontSize ?? (tv ? ShellTokens.tvMetaFontSize : 11.0);
     final card = ForjaMotionScale(
       preset: ForjaMotionPreset.cardLift,
       active: active,

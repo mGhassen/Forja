@@ -36,6 +36,11 @@ class InteractivePosterCard extends StatefulWidget {
     this.aspect = PosterAspect.portrait,
     this.width,
     this.height,
+    this.borderRadius,
+    this.titleFontSize,
+    this.metaFontSize,
+    this.motion,
+    this.scaleOnFocus,
   });
 
   final String imageUrl;
@@ -60,6 +65,13 @@ class InteractivePosterCard extends StatefulWidget {
   final PosterAspect aspect;
   final double? width;
   final double? height;
+
+  /// Pack overrides — omit → ShellTokens / density helpers.
+  final double? borderRadius;
+  final double? titleFontSize;
+  final double? metaFontSize;
+  final ForjaMotionPreset? motion;
+  final double? scaleOnFocus;
 
   static double cardWidth(
     BuildContext context, {
@@ -120,7 +132,7 @@ class InteractivePosterCard extends StatefulWidget {
         ShellTokens.posterCardRadius,
       ).clamp(ShellTokens.posterCardRadiusMin, ShellTokens.posterCardRadius);
 
-  static double titleFontSize(BuildContext context) {
+  static double defaultTitleFontSize(BuildContext context) {
     if (ShellPaintScope.usesTvDensityOf(context)) {
       return ShellTokens.posterTitleFontSizeTv;
     }
@@ -204,7 +216,8 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
         InteractivePosterCard.cardWidth(context, aspect: widget.aspect);
     final h = widget.height ??
         InteractivePosterCard.cardHeight(context, aspect: widget.aspect);
-    final radius = InteractivePosterCard.cardBorderRadius(context);
+    final radius =
+        widget.borderRadius ?? InteractivePosterCard.cardBorderRadius(context);
     final inset = InteractivePosterCard.scaled(context, 10).clamp(4.0, 10.0);
     final inGrid = widget.gridIndex != null && widget.gridColumns != null;
     final active = ShellPaintScope.interactiveActive(
@@ -213,12 +226,19 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
       focused: _focused,
     );
     final pin = widget.listPinBuilder?.call(active: active) ?? widget.listPin;
+    final titleFs =
+        widget.titleFontSize ?? InteractivePosterCard.defaultTitleFontSize(context);
+    final metaFs = widget.metaFontSize ??
+        (ShellPaintScope.usesTvDensityOf(context)
+            ? ShellTokens.tvMetaFontSize
+            : InteractivePosterCard.scaled(context, 11).clamp(7.0, 11.0));
 
     Widget card = ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onLongPress != null ? _onTap : widget.onTap,
       borderRadius: radius,
-      motion: ForjaMotionPreset.cardLift,
+      motion: widget.motion ?? ForjaMotionPreset.cardLift,
+      scaleOnFocus: widget.scaleOnFocus,
       showFocusBorder: true,
       listIndex: widget.listIndex,
       gridIndex: widget.gridIndex,
@@ -243,10 +263,8 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
         width: w,
         height: h,
         borderRadius: radius,
-        titleFontSize: InteractivePosterCard.titleFontSize(context),
-        metaFontSize: ShellPaintScope.usesTvDensityOf(context)
-            ? ShellTokens.tvMetaFontSize
-            : InteractivePosterCard.scaled(context, 11).clamp(7.0, 11.0),
+        titleFontSize: titleFs,
+        metaFontSize: metaFs,
         inset: inset,
       ),
     );

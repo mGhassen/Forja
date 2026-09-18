@@ -42,6 +42,7 @@ import 'package:forja_foundation/components/typography.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
+import 'package:forja_foundation/tokens/epg_guide_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_epg_guide.dart';
@@ -1314,6 +1315,11 @@ Widget? paintFoundationType(
         highlighted: propsBool(props, 'highlighted'),
         width: propsNum(props, 'width'),
         height: propsNum(props, 'height'),
+        radius: propsNum(props, 'radius'),
+        epgSlotHeight: propsNum(props, 'epgSlotHeight'),
+        titleFontSize: propsNum(props, 'titleFontSize'),
+        metaFontSize: propsNum(props, 'metaFontSize'),
+        badgeFontSize: propsNum(props, 'badgeFontSize'),
         health: props['health'] is bool ? props['health'] as bool : null,
         onTap: () {},
       );
@@ -1329,6 +1335,12 @@ Widget? paintFoundationType(
             'emptyTitle',
             'No channels in this view',
           ),
+          columnWidth: propsNum(props, 'columnWidth') ??
+              EpgGuideTokens.columnWidth,
+          rowHeight:
+              propsNum(props, 'rowHeight') ?? EpgGuideTokens.rowHeight,
+          headerHeight: propsNum(props, 'headerHeight') ??
+              EpgGuideTokens.headerHeight,
         ),
       );
     case 'shellMoodCircle':

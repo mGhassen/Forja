@@ -323,7 +323,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
       context,
       preferredLabelFont,
     );
-    final profileAvatarScale = shellNavRailProfileAvatarScale(context);
 
     Widget buildNavColumn({
       required double itemSpacing,
@@ -387,44 +386,85 @@ class _ShellNavRailState extends State<ShellNavRail> {
                   onExit: (_) => setState(() => _mouseInRail = false),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final profileIconSize =
-                          preferredIconSize * profileAvatarScale;
-                      // Paint at hover size; idle AnimatedScale downscales —
-                      // upscaling a smaller SVG was the stutter/flash.
-                      final profilePaintSize =
-                          profileIconSize * ShellTokens.navRailIconHoverScale;
-                      final profileSpacing =
-                          isTv
-                              ? ShellTokens.navRailProfileSpacingTv
-                              : metrics.navRailItemSpacing;
+                      const navPadV = ShellTokens.navRailNavPadVTv;
+                      final chromeReserve = isTv
+                          ? navPadV * 2
+                          : ShellTokens.navRailNavReserveDesktop;
+                      final available = math.max(
+                        0.0,
+                        constraints.maxHeight - chromeReserve,
+                      );
+                      final profileSpacing = isTv
+                          ? ShellTokens.navRailProfileSpacingTv
+                          : metrics.navRailItemSpacing;
                       final profileLabelSlot = math.max(
                         preferredLabelSlot,
                         LanPresenceMark.railSlotHeight(tv: isTv),
                       );
-                      final profileBlockHeight = settingsIndex == null
-                          ? 0.0
-                          : profilePaintSize +
-                              ShellTokens.navRailIconUnderlineGap +
-                              ShellTokens.shellNavUnderlineHeight +
-                              ShellTokens.navRailIconLabelGap +
-                              profileLabelSlot +
-                              profileSpacing;
-                      const navPadV = ShellTokens.navRailNavPadVTv;
-                      final navMaxHeight = math.max(
-                        0.0,
-                        constraints.maxHeight -
-                            profileBlockHeight -
-                            (isTv
-                                ? navPadV * 2
-                                : ShellTokens.navRailNavReserveDesktop),
-                      );
-                      final fit = _navRailFitForHeight(
-                        itemCount: _navIds.length,
-                        maxHeight: navMaxHeight,
-                        preferredIconSize: preferredIconSize,
-                        preferredLabelSlotHeight: preferredLabelSlot,
-                        preferredSpacing: metrics.navRailItemSpacing,
-                      );
+                      final profileBoost =
+                          shellNavRailProfileAvatarScale(context);
+                      final showBoostedProfile =
+                          settingsIndex != null && showDesktopProfile;
+
+                      late final double profileIconSize;
+                      late final ({
+                        double iconSize,
+                        double labelSlotHeight,
+                        double itemSpacing,
+                      }) fit;
+
+                      if (!showBoostedProfile) {
+                        fit = _navRailFitForHeight(
+                          itemCount: _navIds.length +
+                              (settingsIndex == null ? 0 : 1),
+                          maxHeight: available,
+                          preferredIconSize: preferredIconSize,
+                          preferredLabelSlotHeight: preferredLabelSlot,
+                          preferredSpacing: metrics.navRailItemSpacing,
+                        );
+                        profileIconSize = fit.iconSize;
+                      } else {
+                        // Prefer large avatar; if nav icons must compress to
+                        // leave room for it, drop the boost and size profile
+                        // like every other rail button.
+                        final boostedPaint = preferredIconSize *
+                            profileBoost *
+                            ShellTokens.navRailIconHoverScale;
+                        final boostedBlock = boostedPaint +
+                            ShellTokens.navRailIconUnderlineGap +
+                            ShellTokens.shellNavUnderlineHeight +
+                            ShellTokens.navRailIconLabelGap +
+                            profileLabelSlot +
+                            profileSpacing;
+                        final navOnly = _navRailFitForHeight(
+                          itemCount: _navIds.length,
+                          maxHeight: math.max(0.0, available - boostedBlock),
+                          preferredIconSize: preferredIconSize,
+                          preferredLabelSlotHeight: preferredLabelSlot,
+                          preferredSpacing: metrics.navRailItemSpacing,
+                        );
+                        final cramped =
+                            navOnly.iconSize < preferredIconSize - 0.01;
+                        if (cramped) {
+                          fit = _navRailFitForHeight(
+                            itemCount: _navIds.length + 1,
+                            maxHeight: available,
+                            preferredIconSize: preferredIconSize,
+                            preferredLabelSlotHeight: preferredLabelSlot,
+                            preferredSpacing: metrics.navRailItemSpacing,
+                          );
+                          profileIconSize = fit.iconSize;
+                        } else {
+                          fit = navOnly;
+                          profileIconSize =
+                              preferredIconSize * profileBoost;
+                        }
+                      }
+
+                      // Paint at hover size; idle AnimatedScale downscales —
+                      // upscaling a smaller SVG was the stutter/flash.
+                      final profilePaintSize =
+                          profileIconSize * ShellTokens.navRailIconHoverScale;
 
                       final navColumn = buildNavColumn(
                         itemSpacing: fit.itemSpacing,
@@ -445,7 +485,21 @@ class _ShellNavRailState extends State<ShellNavRail> {
                               ),
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
-                                  minHeight: math.max(0, navMaxHeight),
+                                  minHeight: math.max(
+                                    0,
+                                    available -
+                                        (settingsIndex == null
+                                            ? 0.0
+                                            : profilePaintSize +
+                                                ShellTokens
+                                                    .navRailIconUnderlineGap +
+                                                ShellTokens
+                                                    .shellNavUnderlineHeight +
+                                                ShellTokens
+                                                    .navRailIconLabelGap +
+                                                profileLabelSlot +
+                                                profileSpacing),
+                                  ),
                                 ),
                                 child: navColumn,
                               ),

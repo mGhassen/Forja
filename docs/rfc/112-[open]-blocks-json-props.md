@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **29 / 30** acceptance · **1** ⏭️ deferred |
-| **Current slice** | Full foundation visual-props inventory mounted · A06 remount note obsolete |
+| **Progress** | **4 / 4** components · **30 / 31** acceptance · **1** ⏭️ deferred |
+| **Current slice** | Visual-props fidelity follow-through tracked in issue 292 |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -78,6 +78,7 @@ Every foundation inventory class ends `mounted` (props wired) or `shell_forbidde
 | 28 | R112-A28 | Pack-facing chrome: shellSectionTitle, shellChip, horizontalScroller, sidePanel, portals*, grids; HubTopBar/LogoMenuRail forbidden | ✅ |
 | 29 | R112-A29 | Sources / guide / feedback look props: sourcesPanel, guide panels, frostedPanel, loadingDots, errorRetry, … | ✅ |
 | 30 | R112-A30 | shell_forbidden audit (nav/brand/Toast/TV focus/SettingsPlayer/LayoutScope/EmptyShellFrame) + components.md + checklist | ✅ |
+| 31 | R112-A31 | Wiring-fidelity follow-through for density props beyond curated set → [issue 292](../issues/292-[open]-pack-visual-props-all-components.md) (hero done in [291](../issues/fixed/291-[fixed]-cinematic-hero-pack-visual-props.md)) | ✅ |
 
 ---
 
@@ -88,6 +89,8 @@ Blocks are **prebuilt composed surfaces** with JSON props (`title`, `backdropUrl
 `kit.menu` / `kit.tabs` / `kit.list` / `kit.topBar` / `kit.categoryBar` **mount** in `PackPaintTree`. Remaining IPTV/Live/My List chrome fidelity (selection→feed, dynamic bars, verbs) is [issue 279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md), not a blocks remount.
 
 **Visual props:** every pack-paintable foundation surface accepts optional JSON look props (omit → ShellTokens / Dart default). Atoms and catalog/details/chrome/sources/guide/feedback widgets mount via `paintFoundationType`. Chassis (nav rail, empty-shell frame, Toast stacking, TV focus policy, playback engines) stays `shell_forbidden`.
+
+**Wiring fidelity:** A24–A30 inventoried mounts; residual schema-lies and token density gaps closed in [issue 292](../issues/292-[open]-pack-visual-props-all-components.md) (+ cinematic hero [291](../issues/fixed/291-[fixed]-cinematic-hero-pack-visual-props.md)).
 
 **Packs updated:** none (schema + host only).
 

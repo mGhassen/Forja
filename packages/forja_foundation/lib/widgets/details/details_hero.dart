@@ -37,6 +37,8 @@ class DetailsHero extends StatelessWidget {
     this.height,
     this.progressBar,
     this.bodyOverlap,
+    this.contentPadding,
+    this.descriptionWidthFraction,
     this.seriesProgress,
     this.chromeOnly = false,
     this.enableKenBurns = true,
@@ -74,6 +76,12 @@ class DetailsHero extends StatelessWidget {
   /// Host wires [WatchProgressBar] (or any progress paint).
   final Widget? progressBar;
   final double? bodyOverlap;
+
+  /// Pack override — omit → [DetailsTokens.contentHorizontalPadding].
+  final double? contentPadding;
+
+  /// Pack override — omit → [DetailsTokens.heroDescriptionWidthFraction].
+  final double? descriptionWidthFraction;
   final Widget? seriesProgress;
 
   /// Title / meta / actions only — backdrop drawn elsewhere (e.g. live match
@@ -96,7 +104,8 @@ class DetailsHero extends StatelessWidget {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final topInset = MediaQuery.paddingOf(context).top;
     final viewportWidth = MediaQuery.sizeOf(context).width;
-    final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
+    final contentInset = contentPadding ??
+        DetailsTokens.contentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset +
         (tvDensity
             ? DetailsTokens.heroContentTopInsetTv
@@ -170,6 +179,7 @@ class DetailsHero extends StatelessWidget {
                         plainTitle: plainTitle,
                         selectableTitle: selectableTitle,
                         factsValueMaxLines: factsValueMaxLines,
+                        descriptionWidthFraction: descriptionWidthFraction,
                         // Inside horizontal padding — do not re-count inset.
                         availableWidth:
                             (constraints.maxWidth - 2 * contentInset)
@@ -324,6 +334,7 @@ class _DetailsHeroLayout extends StatelessWidget {
     this.plainTitle = false,
     this.selectableTitle = false,
     this.factsValueMaxLines = 1,
+    this.descriptionWidthFraction,
   });
 
   final String title;
@@ -347,6 +358,7 @@ class _DetailsHeroLayout extends StatelessWidget {
   final bool plainTitle;
   final bool selectableTitle;
   final int factsValueMaxLines;
+  final double? descriptionWidthFraction;
 
   Widget? _factsChild() {
     final panel = FactsPanel(
@@ -362,7 +374,9 @@ class _DetailsHeroLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 900;
-    final leftColumnWidth = width * DetailsTokens.heroDescriptionWidthFraction;
+    final leftColumnWidth = width *
+        (descriptionWidthFraction ??
+            DetailsTokens.heroDescriptionWidthFraction);
     final rawLogo = (logoUrl ?? '').trim();
     final resolvedLogo =
         rawLogo.isEmpty ? null : resolveAbsoluteCoverUrl(rawLogo);

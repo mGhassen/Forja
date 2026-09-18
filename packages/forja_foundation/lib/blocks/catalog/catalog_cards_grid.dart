@@ -153,8 +153,8 @@ class CatalogCardsGrid extends StatelessWidget {
   /// Horizontal inset for event/poster grids. Null → catalog density pad.
   final double? pad;
 
-  /// Poster grid target width (desktop). Null → [InteractivePosterCard.cardWidth].
-  /// Ignored on TV density and for channel / event grids.
+  /// Poster grid min cell width (desktop) — cells stretch to fill the row.
+  /// Null → [InteractivePosterCard.cardWidth]. Ignored for channel / event grids.
   final double? cardWidth;
 
   /// Optional corner control (e.g. live favorite star). [active] = hover/focus.

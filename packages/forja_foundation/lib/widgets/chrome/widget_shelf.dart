@@ -26,13 +26,18 @@ class WidgetShelfItem {
 }
 
 /// Grouped section tabs (e.g. Live / Movies / Series) — old IPTV shelf paint.
-class WidgetShelf extends StatelessWidget {
+///
+/// [expandOnHover]: collapsed to the selected tab; hover (or TV focus) expands
+/// the full shelf. [onExpandChanged] lets chrome hide sibling top-bar actions.
+class WidgetShelf extends StatefulWidget {
   const WidgetShelf({
     super.key,
     required this.items,
     required this.selectedId,
     required this.onSelect,
     this.onReload,
+    this.expandOnHover = false,
+    this.onExpandChanged,
     this.height = ShellTokens.widgetShelfHeight,
     this.radius = ShellTokens.widgetShelfRadius,
     this.fontSize = ShellTokens.widgetShelfFontSize,
@@ -47,6 +52,10 @@ class WidgetShelf extends StatelessWidget {
 
   /// Per-tab reload (hover / hold OK). Null → no reload chip.
   final ValueChanged<String>? onReload;
+
+  /// Show only the selected tab until hover / TV focus expands the shelf.
+  final bool expandOnHover;
+  final ValueChanged<bool>? onExpandChanged;
   final double height;
   final double radius;
   final double fontSize;
@@ -55,52 +64,119 @@ class WidgetShelf extends StatelessWidget {
   final VoidCallback? onDownEdge;
 
   @override
+  State<WidgetShelf> createState() => _WidgetShelfState();
+}
+
+class _WidgetShelfState extends State<WidgetShelf> {
+  bool _hover = false;
+  int _focusedTabs = 0;
+
+  bool get _expanded =>
+      !widget.expandOnHover || _hover || _focusedTabs > 0;
+
+  void _setHover(bool value) {
+    if (_hover == value) return;
+    final was = _expanded;
+    setState(() => _hover = value);
+    _notifyExpand(was);
+  }
+
+  void _onTabFocus(bool focused) {
+    final was = _expanded;
+    setState(() {
+      _focusedTabs += focused ? 1 : -1;
+      if (_focusedTabs < 0) _focusedTabs = 0;
+    });
+    _notifyExpand(was);
+  }
+
+  void _notifyExpand(bool wasExpanded) {
+    final now = _expanded;
+    if (wasExpanded == now) return;
+    widget.onExpandChanged?.call(now);
+  }
+
+  @override
+  void didUpdateWidget(covariant WidgetShelf oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.expandOnHover && !widget.expandOnHover && _expanded) {
+      widget.onExpandChanged?.call(false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
+    if (widget.items.isEmpty) return const SizedBox.shrink();
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final resolvedHeight =
-        tv ? ShellTokens.widgetShelfHeightTv : height;
+        tv ? ShellTokens.widgetShelfHeightTv : widget.height;
     final resolvedFontSize =
-        tv ? ShellTokens.widgetShelfFontSizeTv : fontSize;
+        tv ? ShellTokens.widgetShelfFontSizeTv : widget.fontSize;
     final resolvedIconSize =
-        tv ? ShellTokens.widgetShelfIconSizeTv : iconSize;
-    final resolvedPad = tv ? ShellTokens.widgetShelfGapTv : pad;
-    return Container(
+        tv ? ShellTokens.widgetShelfIconSizeTv : widget.iconSize;
+    final resolvedPad = tv ? ShellTokens.widgetShelfGapTv : widget.pad;
+
+    final selectedId = (widget.selectedId ?? '').trim();
+    var selectedIndex = widget.items.indexWhere((e) => e.id == selectedId);
+    if (selectedIndex < 0) selectedIndex = 0;
+
+    final visible = !widget.expandOnHover || _expanded
+        ? widget.items
+        : [widget.items[selectedIndex]];
+
+    Widget shelf = Container(
       height: resolvedHeight,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(widget.radius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < items.length; i++)
-            _WidgetShelfTab(
-              item: items[i],
-              selected: selectedId == items[i].id,
-              listIndex: i,
-              isFirst: i == 0,
-              isLast: i == items.length - 1,
-              height: resolvedHeight,
-              radius: radius,
-              fontSize: resolvedFontSize,
-              iconSize: resolvedIconSize,
-              pad: resolvedPad,
-              onTap: () => onSelect(items[i].id),
-              onReload: onReload == null
-                  ? null
-                  : () => onReload!(items[i].id),
-              onDownEdge: onDownEdge,
-            ),
-        ],
+      child: AnimatedSize(
+        duration: ForjaMotionTheme.of(context).shelfExpand.duration,
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < visible.length; i++)
+              _WidgetShelfTab(
+                key: ValueKey(visible[i].id),
+                item: visible[i],
+                selected: selectedId == visible[i].id ||
+                    (selectedId.isEmpty && i == 0 && visible.length == 1),
+                listIndex: widget.items.indexWhere((e) => e.id == visible[i].id),
+                isFirst: i == 0,
+                isLast: i == visible.length - 1,
+                height: resolvedHeight,
+                radius: widget.radius,
+                fontSize: resolvedFontSize,
+                iconSize: resolvedIconSize,
+                pad: resolvedPad,
+                onTap: () => widget.onSelect(visible[i].id),
+                onReload: widget.onReload == null
+                    ? null
+                    : () => widget.onReload!(visible[i].id),
+                onDownEdge: widget.onDownEdge,
+                onFocusChange:
+                    widget.expandOnHover ? _onTabFocus : null,
+              ),
+          ],
+        ),
       ),
+    );
+
+    if (!widget.expandOnHover) return shelf;
+    return MouseRegion(
+      onEnter: (_) => _setHover(true),
+      onExit: (_) => _setHover(false),
+      child: shelf,
     );
   }
 }
 
 class _WidgetShelfTab extends StatefulWidget {
   const _WidgetShelfTab({
+    super.key,
     required this.item,
     required this.selected,
     required this.listIndex,
@@ -114,6 +190,7 @@ class _WidgetShelfTab extends StatefulWidget {
     required this.onTap,
     this.onReload,
     this.onDownEdge,
+    this.onFocusChange,
   });
 
   final WidgetShelfItem item;
@@ -129,6 +206,7 @@ class _WidgetShelfTab extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback? onReload;
   final VoidCallback? onDownEdge;
+  final ValueChanged<bool>? onFocusChange;
 
   @override
   State<_WidgetShelfTab> createState() => _WidgetShelfTabState();
@@ -199,6 +277,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
       }
       _syncReveal();
     });
+    widget.onFocusChange?.call(value);
   }
 
   void _setReloadChipFocused(bool value) {

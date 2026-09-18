@@ -54,6 +54,7 @@ class CatalogCategoryRail extends StatefulWidget {
     this.rowPadH,
     this.listPadV = ShellTokens.categoryRailListPadV,
     this.pinSlotWidth = ShellTokens.categoryRailPinSlotWidth,
+    this.header,
   });
 
   final List<CatalogCategoryItem> items;
@@ -78,6 +79,9 @@ class CatalogCategoryRail extends StatefulWidget {
   final double? rowPadH;
   final double listPadV;
   final double pinSlotWidth;
+
+  /// Optional first row above categories (e.g. always-open search field).
+  final Widget? header;
 
   static const double rowExtentDesktop = ShellTokens.categoryRailRowExtent;
   static const double rowExtentCompact = ShellTokens.categoryRailRowExtentCompact;
@@ -166,9 +170,35 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   Widget build(BuildContext context) {
     final railW = widget.width ?? catalogSideRailWidth(context);
     if (widget.items.isEmpty) {
+      final empty = const Empty(title: 'No categories', size: EmptySize.sm);
+      if (widget.header == null) {
+        return SizedBox(width: railW, child: empty);
+      }
       return SizedBox(
         width: railW,
-        child: const Empty(title: 'No categories', size: EmptySize.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                widget.rowPadH ??
+                    catalogCategoryRailRowPadH(
+                      context,
+                      compact: widget.compact,
+                    ),
+                _listPadV(context),
+                widget.rowPadH ??
+                    catalogCategoryRailRowPadH(
+                      context,
+                      compact: widget.compact,
+                    ),
+                ShellTokens.topBarActionsGap,
+              ),
+              child: widget.header!,
+            ),
+            Expanded(child: empty),
+          ],
+        ),
       );
     }
 
@@ -225,50 +255,59 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
       color: ForjaShellColors.bgDark,
       child: SizedBox(
         width: railW,
-        child: CustomScrollView(
-          controller: _scroll,
-          slivers: [
-            SliverPadding(
-              padding: EdgeInsets.symmetric(vertical: _listPadV(context)),
-              sliver: SliverMainAxisGroup(
-                slivers: [
-                  if (fixed.isNotEmpty)
-                    SliverFixedExtentList(
-                      itemExtent: _rowExtent(context),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, i) => rowFor(fixed[i], i),
-                        childCount: fixed.length,
-                        addAutomaticKeepAlives: false,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification &&
+                (notification.scrollDelta ?? 0) != 0) {
+              _CatalogCategoryRowState.clearHover();
+            }
+            return false;
+          },
+          child: CustomScrollView(
+            controller: _scroll,
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.symmetric(vertical: _listPadV(context)),
+                sliver: SliverMainAxisGroup(
+                  slivers: [
+                    if (fixed.isNotEmpty)
+                      SliverFixedExtentList(
+                        itemExtent: _rowExtent(context),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) => rowFor(fixed[i], i),
+                          childCount: fixed.length,
+                          addAutomaticKeepAlives: false,
+                        ),
                       ),
-                    ),
-                  if (movable.isNotEmpty)
-                    canReorder
-                        ? SliverReorderableList(
-                            itemCount: movable.length,
-                            itemExtent: _rowExtent(context),
-                            proxyDecorator: _reorderProxy,
-                            onReorderItem: (oldIndex, newIndex) {
-                              widget.onReorder?.call(oldIndex, newIndex);
-                            },
-                            itemBuilder: (context, i) => rowFor(
-                              movable[i],
-                              fixed.length + i,
-                              reorderIndex: i,
+                    if (movable.isNotEmpty)
+                      canReorder
+                          ? SliverReorderableList(
+                              itemCount: movable.length,
+                              itemExtent: _rowExtent(context),
+                              proxyDecorator: _reorderProxy,
+                              onReorderItem: (oldIndex, newIndex) {
+                                widget.onReorder?.call(oldIndex, newIndex);
+                              },
+                              itemBuilder: (context, i) => rowFor(
+                                movable[i],
+                                fixed.length + i,
+                                reorderIndex: i,
+                              ),
+                            )
+                          : SliverFixedExtentList(
+                              itemExtent: _rowExtent(context),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, i) =>
+                                    rowFor(movable[i], fixed.length + i),
+                                childCount: movable.length,
+                                addAutomaticKeepAlives: false,
+                              ),
                             ),
-                          )
-                        : SliverFixedExtentList(
-                            itemExtent: _rowExtent(context),
-                            delegate: SliverChildBuilderDelegate(
-                              (context, i) =>
-                                  rowFor(movable[i], fixed.length + i),
-                              childCount: movable.length,
-                              addAutomaticKeepAlives: false,
-                            ),
-                          ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -282,7 +321,34 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
         return name.isEmpty ? jump[i].id : name;
       },
       onJump: _letterJump,
-      child: list,
+      child: widget.header == null
+          ? list
+          : SizedBox(
+              width: railW,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      widget.rowPadH ??
+                          catalogCategoryRailRowPadH(
+                            context,
+                            compact: widget.compact,
+                          ),
+                      _listPadV(context),
+                      widget.rowPadH ??
+                          catalogCategoryRailRowPadH(
+                            context,
+                            compact: widget.compact,
+                          ),
+                      ShellTokens.topBarActionsGap,
+                    ),
+                    child: widget.header!,
+                  ),
+                  Expanded(child: list),
+                ],
+              ),
+            ),
     );
   }
 
@@ -366,6 +432,16 @@ class _CatalogCategoryRow extends StatefulWidget {
 class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     with SingleTickerProviderStateMixin {
   static _CatalogCategoryRowState? _chromeOwner;
+  /// Only one row paints hover — MouseRegion onExit is often skipped when a
+  /// sibling enters, a Tooltip overlays, or the list scrolls under the cursor.
+  static _CatalogCategoryRowState? _hoverOwner;
+
+  static void clearHover() {
+    final s = _hoverOwner;
+    if (s == null) return;
+    _hoverOwner = null;
+    if (s.mounted) s._hoveredN.value = false;
+  }
 
   /// Host Back handlers may call this to dismiss pin / floating chrome.
   static bool tryConsumeBack() {
@@ -387,7 +463,6 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     return false;
   }
 
-  bool _hovered = false;
   bool _okHoldFired = false;
   bool _tvPinRevealed = false;
   Timer? _okHoldTimer;
@@ -395,6 +470,9 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
   late final FocusNode _pinFocus;
   late final AnimationController _holdSunrise;
   final ValueNotifier<Offset?> _holdOriginN = ValueNotifier<Offset?>(null);
+  /// Never setState on hover — rebuilding MouseRegion/FocusableControl mid
+  /// hit-test sticks hover and stops following the pointer (pack choice cards).
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   Offset? _pointerDownGlobal;
 
   static const _okHoldDelay = Duration(seconds: 1);
@@ -414,9 +492,9 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
   bool get _tvFocused =>
       ShellPaintScope.focusStyledOf(context, focused: _chromeLit);
 
-  bool get _active => ShellPaintScope.interactiveActive(
+  bool _activeFor(bool hovered) => ShellPaintScope.interactiveActive(
         context,
-        hovered: _hovered,
+        hovered: hovered,
         focused: _chromeLit,
       );
 
@@ -426,12 +504,12 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
 
   bool get _canTvPin => widget.onTogglePin != null && widget.item.pinnable;
 
-  bool get _showPin {
+  bool _showPinFor(bool hovered) {
     if (!_canTvPin) return false;
     if (_leanbackOnly) {
       return widget.floating || _tvPinRevealed || _pinFocus.hasFocus;
     }
-    return widget.item.pinned || _hovered || _tvFocused;
+    return widget.item.pinned || hovered || _tvFocused;
   }
 
   @override
@@ -440,23 +518,16 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     _holdSunrise = AnimationController(vsync: this);
     _rowFocus = FocusNode(debugLabel: 'catalog-cat-${widget.listIndex}');
     _pinFocus = FocusNode(debugLabel: 'catalog-cat-pin-${widget.listIndex}');
-    // Paint from FocusNode — do not lag behind FocusableControl.onFocusChange.
-    _rowFocus.addListener(_onChromeFocusChanged);
-    _pinFocus.addListener(_onChromeFocusChanged);
-  }
-
-  void _onChromeFocusChanged() {
-    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _okHoldTimer?.cancel();
+    if (_hoverOwner == this) _hoverOwner = null;
     _holdOriginN.dispose();
+    _hoveredN.dispose();
     _holdSunrise.dispose();
     _releaseChrome();
-    _pinFocus.removeListener(_onChromeFocusChanged);
-    _rowFocus.removeListener(_onChromeFocusChanged);
     _pinFocus.dispose();
     _rowFocus.dispose();
     super.dispose();
@@ -466,6 +537,22 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
 
   void _releaseChrome() {
     if (_chromeOwner == this) _chromeOwner = null;
+  }
+
+  void _setHovered(bool hovered) {
+    if (hovered) {
+      final prev = _hoverOwner;
+      if (prev != null && prev != this && prev.mounted) {
+        prev._hoveredN.value = false;
+      }
+      _hoverOwner = this;
+      if (_hoveredN.value) return;
+      _hoveredN.value = true;
+      return;
+    }
+    if (_hoverOwner == this) _hoverOwner = null;
+    if (!_hoveredN.value) return;
+    _hoveredN.value = false;
   }
 
   void _cancelHold() {
@@ -572,129 +659,158 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     // Desktop drag proxy wraps the row — same brighter green as TV floating.
     final lifted =
         widget.floating || _CategoryDragProxyScope.isProxy(context);
-    // Focus / hover / lift own the “lit” look. Selected alone = faint open
-    // tick (not brand-green icon) — leanback skim mutes selected via policy.
-    final lit = _tvFocused || lifted || _active;
-    final iconColor = _tvFocused || lifted
-        ? ForjaShellColors.brandGreen
-        : _active
-            ? Colors.white
-            : selected
-                ? (leanback
-                    ? ForjaShellColors.textSecondary
-                    : ForjaShellColors.brandGreen.withValues(alpha: 0.7))
-                : ForjaShellColors.textSecondary;
-    final titleColor = _tvFocused || lifted
-        ? ForjaShellColors.brandGreen
-        : _active
-            ? Colors.white
-            : selected
-                ? Colors.white.withValues(alpha: leanback ? 0.7 : 0.88)
-                : ForjaShellColors.textSecondary;
-    final leftBar = lifted || _tvFocused
-        ? ForjaShellColors.brandGreen
-        : _active
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
-            : selected
-                ? ForjaShellColors.brandGreen
-                    .withValues(alpha: leanback ? 0.22 : 0.4)
-                : Colors.transparent;
-    // Fill only for focus / hover / floating. Snap colors — no fade trail.
-    final fillColor = lifted
-        ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
-        : _tvFocused
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : (!leanback && _active)
-                ? ForjaShellColors.inkHover
-                : Colors.transparent;
 
-    Widget rowBody = Container(
-      width: double.infinity,
-      height: widget.rowExtent,
-      clipBehavior: Clip.hardEdge,
-      decoration: BoxDecoration(
-        color: fillColor,
-        border: Border(left: BorderSide(color: leftBar, width: ShellTokens.categoryRailLeftBarWidth)),
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(
-              left: widget.rowPadH ??
-                  catalogCategoryRailRowPadH(context, compact: widget.compact),
-              right: widget.rowPadV ??
-                  catalogCategoryRailRowPadV(context, compact: widget.compact),
+    Widget paintRow({required bool hovered}) {
+      final active = _activeFor(hovered);
+      // Focus / hover / lift own the “lit” look. Selected alone = faint open
+      // tick (not brand-green icon) — leanback skim mutes selected via policy.
+      final lit = _tvFocused || lifted || active;
+      final iconColor = _tvFocused || lifted
+          ? ForjaShellColors.brandGreen
+          : active
+              ? Colors.white
+              : selected
+                  ? (leanback
+                      ? ForjaShellColors.textSecondary
+                      : ForjaShellColors.brandGreen.withValues(alpha: 0.7))
+                  : ForjaShellColors.textSecondary;
+      final titleColor = _tvFocused || lifted
+          ? ForjaShellColors.brandGreen
+          : active
+              ? Colors.white
+              : selected
+                  ? Colors.white.withValues(alpha: leanback ? 0.7 : 0.88)
+                  : ForjaShellColors.textSecondary;
+      final leftBar = lifted || _tvFocused
+          ? ForjaShellColors.brandGreen
+          : active
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
+              : selected
+                  ? ForjaShellColors.brandGreen
+                      .withValues(alpha: leanback ? 0.22 : 0.4)
+                  : Colors.transparent;
+      // Fill only for focus / hover / floating. Snap colors — no fade trail.
+      final fillColor = lifted
+          ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
+          : _tvFocused
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : (!leanback && active)
+                  ? ForjaShellColors.inkHover
+                  : Colors.transparent;
+
+      return Container(
+        width: double.infinity,
+        height: widget.rowExtent,
+        clipBehavior: Clip.hardEdge,
+        decoration: BoxDecoration(
+          color: fillColor,
+          border: Border(
+            left: BorderSide(
+              color: leftBar,
+              width: ShellTokens.categoryRailLeftBarWidth,
             ),
-            child: Row(
-              children: [
-                if (widget.item.icon != null) ...[
-                  Icon(
-                    widget.item.icon,
-                    size: widget.iconSize ??
-                        catalogCategoryRailIconSize(
-                          context,
-                          compact: widget.compact,
-                        ),
-                    color: iconColor,
-                  ),
-                  SizedBox(
-                    width: catalogUsesTvDensity(context)
-                        ? ShellTokens.categoryRailItemGapTv
-                        : widget.compact
-                            ? ShellTokens.categoryRailItemGapCompact
-                            : ShellTokens.categoryRailItemGap,
-                  ),
-                ],
-                Expanded(
-                  child: Text(
-                    widget.item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: titleColor,
-                      fontSize: widget.fontSize ??
-                          catalogCategoryRailFontSize(
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(
+                left: widget.rowPadH ??
+                    catalogCategoryRailRowPadH(
+                      context,
+                      compact: widget.compact,
+                    ),
+                right: widget.rowPadV ??
+                    catalogCategoryRailRowPadV(
+                      context,
+                      compact: widget.compact,
+                    ),
+              ),
+              child: Row(
+                children: [
+                  if (widget.item.icon != null) ...[
+                    Icon(
+                      widget.item.icon,
+                      size: widget.iconSize ??
+                          catalogCategoryRailIconSize(
                             context,
                             compact: widget.compact,
                           ),
-                      fontWeight: lit || selected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
+                      color: iconColor,
+                    ),
+                    SizedBox(
+                      width: catalogUsesTvDensity(context)
+                          ? ShellTokens.categoryRailItemGapTv
+                          : widget.compact
+                              ? ShellTokens.categoryRailItemGapCompact
+                              : ShellTokens.categoryRailItemGap,
+                    ),
+                  ],
+                  Expanded(
+                    child: Text(
+                      widget.item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: titleColor,
+                        fontSize: widget.fontSize ??
+                            catalogCategoryRailFontSize(
+                              context,
+                              compact: widget.compact,
+                            ),
+                        fontWeight: lit || selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-                // Reserve pin slot so hover pin does not reflow the label.
-                if (_canTvPin)
-                  SizedBox(
-                    width: widget.pinSlotWidth,
-                    child: _showPin ? _buildPin(leanback) : null,
-                  ),
-              ],
-            ),
-          ),
-          Positioned.fill(
-            child: IgnorePointer(
-              child: AnimatedBuilder(
-                animation: Listenable.merge([_holdSunrise, _holdOriginN]),
-                builder: (context, _) {
-                  final origin = _holdOriginN.value;
-                  final progress = _holdSunrise.value;
-                  if (origin == null || progress <= 0) {
-                    return const SizedBox.shrink();
-                  }
-                  return CustomPaint(
-                    painter: _HoldSunrisePainter(
-                      origin: origin,
-                      progress: progress,
+                  // Reserve pin slot so hover pin does not reflow the label.
+                  if (_canTvPin)
+                    SizedBox(
+                      width: widget.pinSlotWidth,
+                      child: _showPinFor(hovered) ? _buildPin(leanback) : null,
                     ),
-                  );
-                },
+                ],
               ),
             ),
-          ),
-        ],
-      ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_holdSunrise, _holdOriginN]),
+                  builder: (context, _) {
+                    final origin = _holdOriginN.value;
+                    final progress = _holdSunrise.value;
+                    if (origin == null || progress <= 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return CustomPaint(
+                      painter: _HoldSunrisePainter(
+                        origin: origin,
+                        progress: progress,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Paint listens to hover/focus — outer focusableTap stays put (no setState).
+    final rowBody = ListenableBuilder(
+      listenable: Listenable.merge([_hoveredN, _rowFocus, _pinFocus]),
+      builder: (context, _) => paintRow(hovered: _hoveredN.value),
+    );
+
+    // Sync MouseRegion — shellFocusableTap defers hover via post-frame, which
+    // races Tooltip overlays / sibling enter and leaves hover stuck.
+    final hoveredBody = MouseRegion(
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      child: rowBody,
     );
 
     // Flat rail: no FocusableControl scale, no Material ink fade — row paints
@@ -719,10 +835,6 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       focusNode: _rowFocus,
       ensureVisibleMode: ShellPaintEnsureVisible.off,
       onKeyEvent: ShellPaintScope.useTvFocusOf(context) ? _onRowKey : null,
-      onHoverChange: (h) {
-        if (_hovered == h) return;
-        setState(() => _hovered = h);
-      },
       onRightEdge: () {
         if (widget.floating || _tvPinRevealed) {
           if (_canTvPin) _pinFocus.requestFocus();
@@ -730,7 +842,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
         }
         widget.onSelect?.call();
       },
-      child: rowBody,
+      child: hoveredBody,
     );
 
     final reorderIndex = widget.reorderIndex;
@@ -768,16 +880,13 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
           : ForjaShellColors.iconMuted,
     );
     if (!leanback) {
-      return Tooltip(
-        message: widget.item.pinned ? 'Unpin category' : 'Pin category',
-        waitDuration: const Duration(milliseconds: 400),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: widget.onTogglePin,
-            borderRadius: BorderRadius.circular(ShellTokens.categoryRailPinRadius),
-            child: Padding(padding: const EdgeInsets.all(ShellTokens.categoryRailPinPad), child: icon),
-          ),
+      // No Tooltip — hover-triggered overlay steals MouseRegion and sticks hover.
+      return Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: widget.onTogglePin,
+          borderRadius: BorderRadius.circular(ShellTokens.categoryRailPinRadius),
+          child: Padding(padding: const EdgeInsets.all(ShellTokens.categoryRailPinPad), child: icon),
         ),
       );
     }

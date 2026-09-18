@@ -23,6 +23,7 @@ class EventListSearch extends StatefulWidget {
     this.tooltip = 'Search',
     this.placeholder = 'Search…',
     this.compact = false,
+    this.alwaysOpen = false,
     this.onCompactSearch,
     this.focusNode,
     this.debugLabel = 'event-list-search',
@@ -48,6 +49,9 @@ class EventListSearch extends StatefulWidget {
   /// Narrow layouts — host opens a dialog instead of expanding inline.
   final bool compact;
   final VoidCallback? onCompactSearch;
+
+  /// Always show the open input (no circle tool). Used on category rail.
+  final bool alwaysOpen;
 
   final FocusNode? focusNode;
   final String debugLabel;
@@ -118,6 +122,9 @@ class EventListSearchState extends State<EventListSearch>
     if (widget.query.trim().isNotEmpty) {
       _open = true;
       _anim.value = 1;
+    } else if (widget.alwaysOpen) {
+      _open = true;
+      _anim.value = 1;
     }
   }
 
@@ -145,6 +152,10 @@ class EventListSearchState extends State<EventListSearch>
   }
 
   void openSearch({bool edit = true}) {
+    if (widget.alwaysOpen) {
+      _focus.requestFocus();
+      return;
+    }
     if (widget.compact) {
       widget.onCompactSearch?.call();
       return;
@@ -171,12 +182,23 @@ class EventListSearchState extends State<EventListSearch>
       _ctrl.clear();
       _commit('');
     }
+    if (widget.alwaysOpen) {
+      setState(() {});
+      return;
+    }
     setState(() => _open = false);
     unawaited(_anim.reverse());
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.alwaysOpen) {
+      return SizedBox(
+        height: widget.collapsedSize,
+        width: double.infinity,
+        child: _fieldChrome(),
+      );
+    }
     if (widget.compact) {
       return _collapsedIcon(hasQuery: widget.query.trim().isNotEmpty);
     }

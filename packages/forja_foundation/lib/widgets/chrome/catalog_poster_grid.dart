@@ -25,7 +25,8 @@ class CatalogPosterGridLayout {
   final double rightPad;
   final double topPad;
 
-  /// Portrait poster grid (My List / plantowatch).
+  /// Portrait poster grid — cells stretch to fill the row (same packing as
+  /// [channelCards]; [cardW]/[cardH] are the min / aspect targets).
   factory CatalogPosterGridLayout.poster({
     required double maxWidth,
     required double cardW,
@@ -33,23 +34,26 @@ class CatalogPosterGridLayout {
     required double gap,
     required double leading,
     required double trailing,
+    int minColumns = 1,
+    int maxColumns = 12,
     double chromeTop = 0,
   }) {
     final inner = math.max(0.0, maxWidth - leading - trailing);
-    final columns = math.max(1, ((inner + gap) / (cardW + gap)).floor());
-    final gridW = columns * cardW + (columns - 1) * gap;
-    final rightPad = math.max(trailing, maxWidth - leading - gridW);
+    final columns = (maxWidth ~/ cardW).clamp(minColumns, maxColumns);
+    final stretchW =
+        columns <= 1 ? inner : (inner - (columns - 1) * gap) / columns;
+    final stretchH = cardW > 0 ? cardH * (stretchW / cardW) : cardH;
     final topPad =
         chromeTop +
-            cardH * (ForjaMotionTheme.defaults.cardLift.focusScale - 1) / 2 +
+            stretchH * (ForjaMotionTheme.defaults.cardLift.focusScale - 1) / 2 +
             4;
     return CatalogPosterGridLayout(
       columns: columns,
-      cardW: cardW,
-      cardH: cardH,
+      cardW: stretchW,
+      cardH: stretchH,
       gap: gap,
       leading: leading,
-      rightPad: rightPad,
+      rightPad: trailing,
       topPad: topPad,
     );
   }

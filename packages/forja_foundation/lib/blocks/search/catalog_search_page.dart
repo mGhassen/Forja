@@ -43,6 +43,9 @@ class CatalogSearchPage extends StatelessWidget {
     this.emptyChild,
     this.backgroundColor,
     this.backdropUrl,
+    this.resultCardWidth,
+    this.resultCardAspect,
+    this.sectionPad,
   });
 
   factory CatalogSearchPage.fromProps(
@@ -70,6 +73,9 @@ class CatalogSearchPage extends StatelessWidget {
       emptyChild: emptyChild,
       backgroundColor: propsColor(props, 'backgroundColor'),
       backdropUrl: propsString(props, 'backdropUrl'),
+      resultCardWidth: propsNum(props, 'resultCardWidth'),
+      resultCardAspect: propsNum(props, 'resultCardAspect'),
+      sectionPad: propsNum(props, 'sectionPad'),
     );
   }
 
@@ -85,6 +91,11 @@ class CatalogSearchPage extends StatelessWidget {
   final Widget? emptyChild;
   final Color? backgroundColor;
   final String? backdropUrl;
+
+  /// Pack overrides — omit → ShellTokens.searchCardWidth* at host result grids.
+  final double? resultCardWidth;
+  final double? resultCardAspect;
+  final double? sectionPad;
 
   @override
   Widget build(BuildContext context) {
@@ -112,9 +123,16 @@ class CatalogSearchPage extends StatelessWidget {
             ],
           );
 
+    final densified = CatalogSearchDensity(
+      resultCardWidth: resultCardWidth,
+      resultCardAspect: resultCardAspect,
+      sectionPad: sectionPad,
+      child: content,
+    );
+
     final url = backdropUrl;
     if (url == null || url.isEmpty) {
-      return ColoredBox(color: bg, child: content);
+      return ColoredBox(color: bg, child: densified);
     }
 
     return Stack(
@@ -144,8 +162,34 @@ class CatalogSearchPage extends StatelessWidget {
             ),
           ),
         ),
-        ColoredBox(color: Colors.transparent, child: content),
+        ColoredBox(color: Colors.transparent, child: densified),
       ],
     );
+  }
+}
+
+/// Pack search density for host result grids under [CatalogSearchPage].
+class CatalogSearchDensity extends InheritedWidget {
+  const CatalogSearchDensity({
+    super.key,
+    this.resultCardWidth,
+    this.resultCardAspect,
+    this.sectionPad,
+    required super.child,
+  });
+
+  final double? resultCardWidth;
+  final double? resultCardAspect;
+  final double? sectionPad;
+
+  static CatalogSearchDensity? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<CatalogSearchDensity>();
+  }
+
+  @override
+  bool updateShouldNotify(CatalogSearchDensity oldWidget) {
+    return resultCardWidth != oldWidget.resultCardWidth ||
+        resultCardAspect != oldWidget.resultCardAspect ||
+        sectionPad != oldWidget.sectionPad;
   }
 }

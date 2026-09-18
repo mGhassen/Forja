@@ -32,6 +32,11 @@ class CatalogChannelCard extends StatefulWidget {
     this.listLayout = false,
     this.width,
     this.height,
+    this.radius,
+    this.epgSlotHeight,
+    this.titleFontSize,
+    this.metaFontSize,
+    this.badgeFontSize,
     this.gridIndex,
     this.gridColumns,
     this.onTap,
@@ -60,6 +65,13 @@ class CatalogChannelCard extends StatefulWidget {
   final bool listLayout;
   final double? width;
   final double? height;
+
+  /// Pack overrides — omit → [ChannelCardTokens].
+  final double? radius;
+  final double? epgSlotHeight;
+  final double? titleFontSize;
+  final double? metaFontSize;
+  final double? badgeFontSize;
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onTap;
@@ -291,6 +303,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
       builder: (_) => _ChannelEpgSheet(
         title: widget.title,
         programmes: list,
+        titleFontSize:
+            widget.titleFontSize ?? ChannelCardTokens.titleFontSize,
+        metaFontSize: widget.metaFontSize ?? ChannelCardTokens.metaFontSize,
       ),
     );
   }
@@ -312,7 +327,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     if (widget.listLayout) {
       return _buildSourcesListRow(context, active: active, health: health);
     }
-    final radius = ChannelCardTokens.radius;
+    final radius = widget.radius ?? ChannelCardTokens.radius;
     // Iso desktop: same channel tile chrome on TV (not a separate poster body).
     final body = _buildDesktopBody(context, active: active, health: health);
 
@@ -460,6 +475,8 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     required bool? health,
   }) {
     final fav = widget.favoriteBuilder?.call(active: active);
+    final radius = widget.radius ?? ChannelCardTokens.radius;
+    final topRadius = BorderRadius.vertical(top: Radius.circular(radius));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -468,19 +485,15 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
             fit: StackFit.expand,
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(ChannelCardTokens.radius),
-                ),
+                borderRadius: topRadius,
                 child: _logoThumb(contain: true, padding: 10),
               ),
               if (active)
-                const Positioned.fill(
+                Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: Color(0x52000000),
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(ChannelCardTokens.radius),
-                      ),
+                      color: const Color(0x52000000),
+                      borderRadius: topRadius,
                     ),
                   ),
                 ),
@@ -524,7 +537,13 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
             ),
           ),
         ),
-        _EpgNowFooter(future: _epgFuture),
+        _EpgNowFooter(
+          future: _epgFuture,
+          epgSlotHeight:
+              widget.epgSlotHeight ?? ChannelCardTokens.epgSlotHeight,
+          badgeFontSize:
+              widget.badgeFontSize ?? ChannelCardTokens.badgeFontSize,
+        ),
       ],
     );
   }
@@ -575,22 +594,27 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
 }
 
 class _EpgNowFooter extends StatefulWidget {
-  const _EpgNowFooter({required this.future});
+  const _EpgNowFooter({
+    required this.future,
+    required this.epgSlotHeight,
+    required this.badgeFontSize,
+  });
 
   final Future<List<GuideEpgProgramme>>? future;
+  final double epgSlotHeight;
+  final double badgeFontSize;
 
   @override
   State<_EpgNowFooter> createState() => _EpgNowFooterState();
 }
 
 class _EpgNowFooterState extends State<_EpgNowFooter> {
-  static const _slotHeight = ChannelCardTokens.epgSlotHeight;
   List<GuideEpgProgramme> _last = const [];
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: _slotHeight,
+      height: widget.epgSlotHeight,
       child: widget.future == null
           ? const SizedBox.shrink()
           : FutureBuilder<List<GuideEpgProgramme>>(
@@ -633,7 +657,7 @@ class _EpgNowFooterState extends State<_EpgNowFooter> {
                           now.isNow ? 'NOW' : 'NEXT',
                           style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
-                            fontSize: ChannelCardTokens.badgeFontSize,
+                            fontSize: widget.badgeFontSize,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.5,
                           ),
@@ -665,10 +689,14 @@ class _ChannelEpgSheet extends StatelessWidget {
   const _ChannelEpgSheet({
     required this.title,
     required this.programmes,
+    required this.titleFontSize,
+    required this.metaFontSize,
   });
 
   final String title;
   final List<GuideEpgProgramme> programmes;
+  final double titleFontSize;
+  final double metaFontSize;
 
   String _fmt(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
@@ -692,7 +720,7 @@ class _ChannelEpgSheet extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontSize: ChannelCardTokens.titleFontSize,
+                  fontSize: titleFontSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -716,7 +744,7 @@ class _ChannelEpgSheet extends StatelessWidget {
                                     color: e.isNow
                                         ? const Color(0xFFEF4444)
                                         : Colors.white60,
-                                    fontSize: ChannelCardTokens.metaFontSize,
+                                    fontSize: metaFontSize,
                                     fontWeight: e.isNow
                                         ? FontWeight.w700
                                         : FontWeight.w500,

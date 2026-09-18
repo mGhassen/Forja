@@ -139,7 +139,7 @@ List<Map<String, dynamic>> _actionItemMaps(Map<String, dynamic> action) {
 }
 
 /// Top action chrome — pack `actions[]` as shelf / view group / chips.
-class CatalogTopChrome extends StatelessWidget {
+class CatalogTopChrome extends StatefulWidget {
   const CatalogTopChrome({
     super.key,
     required this.actions,
@@ -175,6 +175,13 @@ class CatalogTopChrome extends StatelessWidget {
   /// Pack `gap` between leading/trailing chips — omit → 8.
   final double? gap;
 
+  @override
+  State<CatalogTopChrome> createState() => _CatalogTopChromeState();
+}
+
+class _CatalogTopChromeState extends State<CatalogTopChrome> {
+  bool _shelfExpanded = false;
+
   static bool _isTrailing(Map<String, dynamic> action) {
     if (action['trailing'] == true) return true;
     final slot = (action['slot'] ?? '').toString().trim().toLowerCase();
@@ -189,6 +196,9 @@ class CatalogTopChrome extends StatelessWidget {
 
   static String _style(Map<String, dynamic> action) =>
       (action['style'] ?? action['paint'] ?? '').toString().trim().toLowerCase();
+
+  static bool _expandOnHover(Map<String, dynamic> action) =>
+      action['expandOnHover'] == true || action['collapse'] == true;
 
   static String _selectedLabel(
     Map<String, dynamic> action,
@@ -231,21 +241,30 @@ class CatalogTopChrome extends StatelessWidget {
     return Icons.grid_view_rounded;
   }
 
+  void _onShelfExpandChanged(bool expanded) {
+    if (_shelfExpanded == expanded) return;
+    setState(() => _shelfExpanded = expanded);
+  }
+
   Widget? _buildShelf(Map<String, dynamic> action, String actionId) {
     final maps = _actionItemMaps(action);
     if (maps.isEmpty) return null;
-    final selected = (selections[actionId] ??
+    final selected = (widget.selections[actionId] ??
             (action['default'] ?? maps.first['id'] ?? '').toString())
         .trim();
     final allowReload = action['reload'] == true;
+    final expandOnHover = _expandOnHover(action);
     return WidgetShelf(
+      key: ValueKey('shelf-$actionId'),
       selectedId: selected.isEmpty ? null : selected,
-      onSelect: onSelect == null
+      expandOnHover: expandOnHover,
+      onExpandChanged: expandOnHover ? _onShelfExpandChanged : null,
+      onSelect: widget.onSelect == null
           ? (_) {}
-          : (id) => onSelect!(actionId, id),
-      onReload: !allowReload || onSelect == null
+          : (id) => widget.onSelect!(actionId, id),
+      onReload: !allowReload || widget.onSelect == null
           ? null
-          : (id) => onSelect!(actionId, '__reload__:$id'),
+          : (id) => widget.onSelect!(actionId, '__reload__:$id'),
       height: propsOptDouble(action, 'height') ?? ShellTokens.widgetShelfHeight,
       radius: propsOptDouble(action, 'radius') ?? ShellTokens.widgetShelfRadius,
       fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.widgetShelfFontSize,
@@ -266,14 +285,14 @@ class CatalogTopChrome extends StatelessWidget {
   Widget? _buildViewGroup(Map<String, dynamic> action, String actionId) {
     final maps = _actionItemMaps(action);
     if (maps.isEmpty) return null;
-    final selected = (selections[actionId] ??
+    final selected = (widget.selections[actionId] ??
             (action['default'] ?? maps.first['id'] ?? '').toString())
         .trim();
     return ViewButtonGroup(
       selectedId: selected.isEmpty ? null : selected,
-      onSelect: onSelect == null
+      onSelect: widget.onSelect == null
           ? (_) {}
-          : (id) => onSelect!(actionId, id),
+          : (id) => widget.onSelect!(actionId, id),
       height: propsOptDouble(action, 'height'),
       iconSize: propsOptDouble(action, 'iconSize'),
       dividerHeight: propsOptDouble(action, 'dividerHeight'),
@@ -293,8 +312,8 @@ class CatalogTopChrome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (actions.isEmpty) {
-      final t = title?.trim() ?? '';
+    if (widget.actions.isEmpty) {
+      final t = widget.title?.trim() ?? '';
       if (t.isEmpty) return const SizedBox(height: 8);
       return SizedBox(
         height: ShellTokens.topBarTitleHeight,
@@ -319,11 +338,12 @@ class CatalogTopChrome extends StatelessWidget {
 
     final leading = <Widget>[];
     final trailing = <Widget>[];
-    for (final action in actions) {
+    Widget? expandShelf;
+    for (final action in widget.actions) {
       final actionId = (action['id'] ?? '').toString().trim();
       if (actionId.isEmpty) continue;
       final bucket = _isTrailing(action) ? trailing : leading;
-      final slot = actionSlots[actionId];
+      final slot = widget.actionSlots[actionId];
       if (slot != null) {
         bucket.add(slot);
         continue;
@@ -356,6 +376,7 @@ class CatalogTopChrome extends StatelessWidget {
       if (isShelf && nested.isNotEmpty) {
         final shelf = _buildShelf(action, actionId);
         if (shelf != null) {
+          if (_expandOnHover(action)) expandShelf = shelf;
           bucket.add(shelf);
           continue;
         }
@@ -380,16 +401,16 @@ class CatalogTopChrome extends StatelessWidget {
                         ? Icons.filter_list_rounded
                         : Icons.refresh_rounded),
             iconOnly: true,
-            selected: isSortIcon && _isSelectedMenu(action, selections),
+            selected: isSortIcon && _isSelectedMenu(action, widget.selections),
             height: propsOptDouble(action, 'height') ?? ShellTokens.actionChipHeight,
             radius: propsOptDouble(action, 'radius') ?? ShellTokens.actionChipRadius,
             maxWidth: propsOptDouble(action, 'maxWidth') ?? ShellTokens.actionChipMaxWidth,
             fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
             iconSize: propsOptDouble(action, 'iconSize'),
             gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
-            onTap: onSelect == null
+            onTap: widget.onSelect == null
                 ? () {}
-                : () => onSelect!(
+                : () => widget.onSelect!(
                       actionId,
                       nested.isEmpty ? actionId : '__open__',
                     ),
@@ -401,19 +422,23 @@ class CatalogTopChrome extends StatelessWidget {
       if (nested.isNotEmpty) {
         bucket.add(
           ForjaActionChip(
-            label: _selectedLabel(action, selections, selectionLabels),
+            label: _selectedLabel(
+              action,
+              widget.selections,
+              widget.selectionLabels,
+            ),
             icon: icon,
-            selected: _isSelectedMenu(action, selections),
+            selected: _isSelectedMenu(action, widget.selections),
             height: propsOptDouble(action, 'height') ?? ShellTokens.actionChipHeight,
             radius: propsOptDouble(action, 'radius') ?? ShellTokens.actionChipRadius,
             maxWidth: propsOptDouble(action, 'maxWidth') ?? ShellTokens.actionChipMaxWidth,
             fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
             iconSize: propsOptDouble(action, 'iconSize'),
             gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
-            onTap: onSelect == null
+            onTap: widget.onSelect == null
                 ? () {}
                 // Host opens the real Catalog / Schedule sheet (not a flat fallback).
-                : () => onSelect!(actionId, '__open__'),
+                : () => widget.onSelect!(actionId, '__open__'),
           ),
         );
         continue;
@@ -430,20 +455,22 @@ class CatalogTopChrome extends StatelessWidget {
           fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
           iconSize: propsOptDouble(action, 'iconSize'),
           gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
-          onTap: onSelect == null
+          onTap: widget.onSelect == null
               ? () {}
-              : () => onSelect!(actionId, actionId),
+              : () => widget.onSelect!(actionId, actionId),
         ),
       );
     }
 
+    final shelfOnly = expandShelf;
+    final hideSiblings = _shelfExpanded && shelfOnly != null;
     return TopBarActions(
-      leading: leading,
-      trailing: trailing,
-      center: center,
-      height: height,
-      gap: gap ?? ShellTokens.topBarActionsGap,
-      padding: padding ??
+      leading: hideSiblings ? [shelfOnly] : leading,
+      trailing: hideSiblings ? const [] : trailing,
+      center: hideSiblings ? null : widget.center,
+      height: widget.height,
+      gap: widget.gap ?? ShellTokens.topBarActionsGap,
+      padding: widget.padding ??
           EdgeInsets.fromLTRB(
             ShellTokens.compactChromeLeadingInset(context),
             ShellTokens.tabHeaderTopPadding,

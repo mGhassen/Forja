@@ -28,6 +28,10 @@ class ContinueSection extends StatelessWidget {
     this.cardWidth = ShellTokens.shellContinueWatchingCardWidthDesktop,
     this.cardHeight = ShellTokens.shellContinueWatchingCardHeightDesktop,
     this.cardGap = ShellTokens.posterCardRowGap,
+    this.titleFontSize,
+    this.cardTitleFontSize,
+    this.cardSubtitleFontSize,
+    this.cardRemainingFontSize,
     this.onResume,
     this.onRemove,
     this.onInfo,
@@ -48,6 +52,10 @@ class ContinueSection extends StatelessWidget {
   final double cardWidth;
   final double cardHeight;
   final double cardGap;
+  final double? titleFontSize;
+  final double? cardTitleFontSize;
+  final double? cardSubtitleFontSize;
+  final double? cardRemainingFontSize;
   final void Function(ContinueEntry entry)? onResume;
   final void Function(ContinueEntry entry)? onRemove;
   final void Function(ContinueEntry entry)? onInfo;
@@ -62,6 +70,7 @@ class ContinueSection extends StatelessWidget {
           ShellSectionTitle(
             title: title,
             padding: titlePadding ?? ShellSectionTitle.defaultPadding(context),
+            fontSize: titleFontSize,
             trailing: _trailingList(context),
           ),
           rail!,
@@ -78,6 +87,7 @@ class ContinueSection extends StatelessWidget {
           ShellSectionTitle(
             title: title,
             padding: titlePadding ?? ShellSectionTitle.defaultPadding(context),
+            fontSize: titleFontSize,
             trailing: _trailingList(context),
           ),
           SizedBox(
@@ -100,6 +110,9 @@ class ContinueSection extends StatelessWidget {
                   isLoading: resumingMetaId != null &&
                       entry.metaId == resumingMetaId,
                   listIndex: i,
+                  titleFontSize: cardTitleFontSize,
+                  subtitleFontSize: cardSubtitleFontSize,
+                  remainingFontSize: cardRemainingFontSize,
                   onResume: onResume,
                   onRemove: onRemove,
                   onInfo: onInfo,
@@ -118,6 +131,7 @@ class ContinueSection extends StatelessWidget {
         ShellSectionTitle(
           title: title,
           padding: titlePadding ?? ShellSectionTitle.defaultPadding(context),
+          fontSize: titleFontSize,
           trailing: _trailingList(context),
         ),
         PosterRail(
@@ -175,6 +189,9 @@ class _ContinueHoverCard extends StatefulWidget {
     required this.height,
     required this.isLoading,
     this.listIndex,
+    this.titleFontSize,
+    this.subtitleFontSize,
+    this.remainingFontSize,
     this.onResume,
     this.onRemove,
     this.onInfo,
@@ -185,6 +202,9 @@ class _ContinueHoverCard extends StatefulWidget {
   final double height;
   final bool isLoading;
   final int? listIndex;
+  final double? titleFontSize;
+  final double? subtitleFontSize;
+  final double? remainingFontSize;
   final void Function(ContinueEntry entry)? onResume;
   final void Function(ContinueEntry entry)? onRemove;
   final void Function(ContinueEntry entry)? onInfo;
@@ -217,6 +237,9 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
       height: widget.height,
       isLoading: widget.isLoading,
       active: _active,
+      titleFontSize: widget.titleFontSize,
+      subtitleFontSize: widget.subtitleFontSize,
+      remainingFontSize: widget.remainingFontSize,
       onTap: widget.onResume == null ? null : () => widget.onResume!(entry),
       onRemove:
           widget.onRemove == null ? null : () => widget.onRemove!(entry),

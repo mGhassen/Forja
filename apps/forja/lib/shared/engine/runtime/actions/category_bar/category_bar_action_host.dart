@@ -42,6 +42,7 @@ abstract final class CategoryBarActionHost {
     required String selectedId,
     required ValueChanged<String> onSelect,
     String? tabId,
+    Widget? header,
   }) {
     return _CategoryBarRailHost(
       spec: spec,
@@ -49,6 +50,7 @@ abstract final class CategoryBarActionHost {
       selectedId: selectedId,
       onSelect: onSelect,
       tabId: tabId,
+      header: header,
     );
   }
 
@@ -247,6 +249,7 @@ class _CategoryBarRailHost extends ConsumerStatefulWidget {
     required this.selectedId,
     required this.onSelect,
     this.tabId,
+    this.header,
   });
 
   final Map<String, dynamic> spec;
@@ -254,6 +257,7 @@ class _CategoryBarRailHost extends ConsumerStatefulWidget {
   final String selectedId;
   final ValueChanged<String> onSelect;
   final String? tabId;
+  final Widget? header;
 
   @override
   ConsumerState<_CategoryBarRailHost> createState() =>
@@ -610,9 +614,22 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     final tvTab = tab.isNotEmpty ? tab : 'iptv';
 
     if (_loading && _items.isEmpty) {
+      final loading = const ColoredBox(color: Color(0xFF141414));
+      if (widget.header == null) {
+        return SizedBox(width: width, child: loading);
+      }
       return SizedBox(
         width: width,
-        child: const ColoredBox(color: Color(0xFF141414)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: widget.header!,
+            ),
+            Expanded(child: loading),
+          ],
+        ),
       );
     }
 
@@ -651,6 +668,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         onTogglePin: onTogglePin,
         onReorder: onReorder,
         canReorder: canReorder,
+        header: widget.header,
       );
       if (!ShellPaintScope.useTvFocusOf(context)) {
         return ShellPaintTvTabScope(tabId: tvTab, child: child);

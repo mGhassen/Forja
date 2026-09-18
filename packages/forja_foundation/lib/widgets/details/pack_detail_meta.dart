@@ -31,6 +31,13 @@ class KitDetailsLayout {
     this.fullBleedBackdrop = false,
     this.backdropFraction,
     this.firstBodyRowFraction,
+    this.sectionSpacing,
+    this.heroBodyOverlap,
+    this.contentPadding,
+    this.heroDescriptionWidthFraction,
+    this.sectionTitleFontSize,
+    this.bodyFontSize,
+    this.metaFontSize,
   });
 
   static const classic = KitDetailsLayout();
@@ -48,6 +55,15 @@ class KitDetailsLayout {
 
   /// Viewport Y for the first body row when overlapping the hero. Null = no pull-up.
   final double? firstBodyRowFraction;
+
+  /// Pack density overrides — omit → [DetailsTokens].
+  final double? sectionSpacing;
+  final double? heroBodyOverlap;
+  final double? contentPadding;
+  final double? heroDescriptionWidthFraction;
+  final double? sectionTitleFontSize;
+  final double? bodyFontSize;
+  final double? metaFontSize;
 
   bool get overlapsFirstRow =>
       firstBodyRowFraction != null &&
@@ -67,6 +83,14 @@ KitDetailsLayout parseKitDetailsLayout(Map<String, dynamic>? data) {
     fullBleedBackdrop: fullBleed,
     backdropFraction: backdropFrac,
     firstBodyRowFraction: firstRow,
+    sectionSpacing: _layoutDouble(m['sectionSpacing']),
+    heroBodyOverlap: _layoutDouble(m['heroBodyOverlap']),
+    contentPadding: _layoutDouble(m['contentPadding']),
+    heroDescriptionWidthFraction:
+        _layoutFraction(m['heroDescriptionWidthFraction']),
+    sectionTitleFontSize: _layoutDouble(m['sectionTitleFontSize']),
+    bodyFontSize: _layoutDouble(m['bodyFontSize']),
+    metaFontSize: _layoutDouble(m['metaFontSize']),
   );
 }
 
@@ -74,6 +98,13 @@ double? _layoutFraction(dynamic raw) {
   if (raw is! num) return null;
   final v = raw.toDouble();
   if (!v.isFinite || v <= 0 || v > 1) return null;
+  return v;
+}
+
+double? _layoutDouble(dynamic raw) {
+  if (raw is! num) return null;
+  final v = raw.toDouble();
+  if (!v.isFinite) return null;
   return v;
 }
 

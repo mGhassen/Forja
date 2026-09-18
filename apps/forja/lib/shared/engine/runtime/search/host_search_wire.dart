@@ -1745,9 +1745,13 @@ class _KitSearchPageState extends State<KitSearchPage> {
       return _buildEmpty(hint: 'No results found');
     }
 
-    final cardWidth = ShellTokens.searchCardWidthCompact;
-    final cardHeight = cardWidth * 1.5;
-    final padding = ShellTokens.homeSectionHorizontalPadding;
+    final dens = CatalogSearchDensity.maybeOf(context);
+    final cardWidth =
+        dens?.resultCardWidth ?? ShellTokens.searchCardWidthCompact;
+    final aspect = dens?.resultCardAspect ?? 1.5;
+    final cardHeight = cardWidth * aspect;
+    final padding =
+        dens?.sectionPad ?? ShellTokens.homeSectionHorizontalPadding;
     const skeletonCount = 4;
     final itemCount = _results.length + (_loadingMore ? skeletonCount : 0);
 

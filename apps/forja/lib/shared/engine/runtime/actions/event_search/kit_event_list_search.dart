@@ -17,6 +17,7 @@ class KitEventListSearch extends StatefulWidget {
     super.key,
     required this.tooltip,
     required this.placeholder,
+    this.alwaysOpen = false,
     this.tvItemIndex,
     this.onLeftEdge,
     this.onRightEdge,
@@ -30,6 +31,7 @@ class KitEventListSearch extends StatefulWidget {
 
   final String tooltip;
   final String placeholder;
+  final bool alwaysOpen;
   final int? tvItemIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -121,7 +123,8 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
   Widget build(BuildContext context) {
     final chrome = PackChromeScope.maybeOf(context);
     final query = chrome?.eventQuery ?? '';
-    final compact = MediaQuery.sizeOf(context).width < 760;
+    final compact = !widget.alwaysOpen &&
+        MediaQuery.sizeOf(context).width < 760;
     final useTv = shellTvBrowseSearch(context);
 
     return EventListSearch(
@@ -131,6 +134,7 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
       tooltip: widget.tooltip,
       placeholder: widget.placeholder,
       compact: compact,
+      alwaysOpen: widget.alwaysOpen,
       onCompactSearch: () => unawaited(_openCompactDialog()),
       tvItemIndex: widget.tvItemIndex,
       onLeftEdge: widget.onLeftEdge,
