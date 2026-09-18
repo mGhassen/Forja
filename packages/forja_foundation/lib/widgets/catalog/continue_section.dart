@@ -214,20 +214,22 @@ class _ContinueHoverCard extends StatefulWidget {
 }
 
 class _ContinueHoverCardState extends State<_ContinueHoverCard> {
-  bool _active = false;
-
-  void _queueActive(bool active) {
-    if (_active == active) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _active == active) return;
-      setState(() => _active = active);
-    });
-  }
+  final ValueNotifier<bool> _activeN = ValueNotifier(false);
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _activeN.dispose();
+    super.dispose();
+  }
+
+  void _setActive(bool active) {
+    if (_activeN.value == active) return;
+    _activeN.value = active;
+  }
+
+  Widget _buildCard(bool active) {
     final entry = widget.entry;
-    final card = ContinueWatchingCard(
+    return ContinueWatchingCard(
       title: entry.title,
       coverUrl: entry.coverUrl,
       subtitle: entry.subtitle,
@@ -236,7 +238,7 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
       width: widget.width,
       height: widget.height,
       isLoading: widget.isLoading,
-      active: _active,
+      active: active,
       titleFontSize: widget.titleFontSize,
       subtitleFontSize: widget.subtitleFontSize,
       remainingFontSize: widget.remainingFontSize,
@@ -246,36 +248,43 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
       onInfo: widget.onInfo == null ? null : () => widget.onInfo!(entry),
       playOverlay: ShellCardPlayOverlay(
         active: false,
-        visible: _active && !widget.isLoading,
+        visible: active && !widget.isLoading,
         onTap:
             widget.onResume == null ? null : () => widget.onResume!(entry),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final painted = ListenableBuilder(
+      listenable: _activeN,
+      builder: (context, _) => _buildCard(_activeN.value),
     );
     if (widget.listIndex != null &&
         ShellPaintScope.useTvFocusOf(context) &&
         ShellPaintTvRowScope.maybeOf(context) != null) {
       return ShellPaintScope.focusableTap(
         context: context,
-        onTap: widget.onResume == null ? null : () => widget.onResume!(entry),
+        onTap: widget.onResume == null
+            ? null
+            : () => widget.onResume!(widget.entry),
         borderRadius: 12,
         motion: ForjaMotionPreset.fillOnly,
         listIndex: widget.listIndex,
         tvItemIndex: widget.listIndex,
         tvZone: ShellPaintTvZone.row,
-        onFocusChange: (f) => setState(() => _active = f),
-        onHoverChange: (h) {
-          if (_active == h) return;
-          setState(() => _active = h);
-        },
-        child: card,
+        onFocusChange: _setActive,
+        onHoverChange: _setActive,
+        child: painted,
       );
     }
     return MouseRegion(
-      onEnter: (_) => _queueActive(true),
-      onExit: (_) => _queueActive(false),
+      onEnter: (_) => _setActive(true),
+      onExit: (_) => _setActive(false),
       child: Focus(
-        onFocusChange: (f) => setState(() => _active = f),
-        child: card,
+        onFocusChange: (f) => _setActive(f),
+        child: painted,
       ),
     );
   }

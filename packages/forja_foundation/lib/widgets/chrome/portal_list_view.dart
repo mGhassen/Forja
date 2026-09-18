@@ -589,27 +589,34 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
   static const _pressScale = 0.88;
 
   bool _focused = false;
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _pressed = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
 
   bool get _hasHoverLabel => (widget.hoverLabel ?? '').trim().isNotEmpty;
 
-  bool get _lit =>
-      _hovered ||
+  bool _litFor(bool hovered) =>
+      hovered ||
       ShellPaintScope.focusStyledOf(context, focused: _focused);
 
-  Color get _fg {
+  Color _fgFor(bool hovered) {
     final enabled = widget.onPressed != null;
     if (!enabled) return Colors.white.withValues(alpha: 0.38);
-    if (_lit) return ForjaShellColors.brandGreen;
+    if (_litFor(hovered)) return ForjaShellColors.brandGreen;
     return widget.color ?? Colors.white;
   }
 
   void _setHovered(bool v) {
-    if (_hovered == v) return;
-    setState(() => _hovered = v);
+    if (_hoveredN.value == v) return;
+    _hoveredN.value = v;
+    if (!v) _pressed = false;
   }
 
   Widget _face(bool hovered) {
@@ -636,18 +643,18 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
                   ),
                 ),
               )
-            : Icon(widget.icon, color: _fg, size: _iconSize),
+            : Icon(widget.icon, color: _fgFor(hovered), size: _iconSize),
       ),
     );
   }
 
+  Widget _paintedFace(bool hovered) {
+    if (_hasHoverLabel) return _face(hovered);
+    return Tooltip(message: widget.tooltip, child: _face(hovered));
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Tooltip fights the credits reveal (nested MouseRegion + size swap).
-    final Widget body = _hasHoverLabel
-        ? _face()
-        : Tooltip(message: widget.tooltip, child: _face());
-
     if (_tv && ShellPaintTvRowScope.maybeOf(context) != null) {
       return ShellPaintScope.focusableTap(
         context: context,
@@ -664,34 +671,21 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
         onRightEdge: widget.onRightEdge,
         onFocusChange: (f) => setState(() => _focused = f),
         onHoverChange: _setHovered,
-        child: body,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => _paintedFace(_hoveredN.value),
+        ),
       );
     }
 
     final enabled = widget.onPressed != null;
     final chip = ForjaMotionTheme.of(context).chipLift;
-    final scale = !enabled
-        ? 1.0
-        : _pressed
-            ? _pressScale
-            : ForjaMotionTheme.of(context).scaleForActive(
-                context,
-                ForjaMotionPreset.chipLift,
-                _hovered,
-              );
-
-    // Credits reveal still tracks hover when Deal is disabled (0 credits).
     final trackHover = enabled || _hasHoverLabel;
 
     return MouseRegion(
       hitTestBehavior: HitTestBehavior.opaque,
       onEnter: !trackHover ? null : (_) => _setHovered(true),
-      onExit: !trackHover
-          ? null
-          : (_) => setState(() {
-                _hovered = false;
-                _pressed = false;
-              }),
+      onExit: !trackHover ? null : (_) => _setHovered(false),
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -699,11 +693,25 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
         onTapDown: !enabled ? null : (_) => setState(() => _pressed = true),
         onTapUp: !enabled ? null : (_) => setState(() => _pressed = false),
         onTapCancel: !enabled ? null : () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: scale,
-          duration: chip.duration,
-          curve: chip.resolvedCurve,
-          child: body,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final scale = !enabled
+                ? 1.0
+                : _pressed
+                    ? _pressScale
+                    : ForjaMotionTheme.of(context).scaleForActive(
+                        context,
+                        ForjaMotionPreset.chipLift,
+                        _hoveredN.value,
+                      );
+            return AnimatedScale(
+              scale: scale,
+              duration: chip.duration,
+              curve: chip.resolvedCurve,
+              child: _paintedFace(_hoveredN.value),
+            );
+          },
         ),
       ),
     );

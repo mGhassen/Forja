@@ -994,21 +994,28 @@ class _PopupSettingsCloseButton extends StatefulWidget {
 }
 
 class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
-    final policy = ShellScope.inputPolicyOf(context);
-    final tvFocus = policy.useFocusableMoodChips;
-    final mouseHover = policy.scaleOnHover;
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildFace(bool hovered) {
     final highlight = ShellInputPolicy.interactiveActive(
       ShellScope.inputPolicyOf(context),
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
       context: context,
     );
-    final face = Container(
+    return Container(
       width: 28,
       height: 28,
       alignment: Alignment.center,
@@ -1028,13 +1035,24 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
         color: PlayerPopupTokens.accent,
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
+    final mouseHover = policy.scaleOnHover;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildFace(_hoveredN.value),
+    );
     if (!tvFocus) {
       return MouseRegion(
         onEnter: (_) {
-          if (mouseHover) setState(() => _hovered = true);
+          if (mouseHover) _setHovered(true);
         },
         onExit: (_) {
-          if (mouseHover) setState(() => _hovered = false);
+          if (mouseHover) _setHovered(false);
         },
         child: Material(
           color: Colors.transparent,
@@ -1044,7 +1062,7 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
             hoverColor: PlayerPopupTokens.accentFill,
-            child: face,
+            child: painted,
           ),
         ),
       );
@@ -1056,8 +1074,8 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
       showFocusBorder: false,
       showFocusFill: false,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: mouseHover ? (h) => setState(() => _hovered = h) : null,
-      child: face,
+      onHoverChange: mouseHover ? _setHovered : null,
+      child: painted,
     );
   }
 }
@@ -1083,16 +1101,24 @@ class _SelectFontChip extends StatefulWidget {
 }
 
 class _SelectFontChipState extends State<_SelectFontChip> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
-    final mouseHover =
-        ShellScope.inputPolicyOf(context).scaleOnHover;
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildFace(bool hovered) {
     final highlight = ShellInputPolicy.interactiveActive(
       ShellScope.inputPolicyOf(context),
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
       context: context,
     );
@@ -1100,7 +1126,7 @@ class _SelectFontChipState extends State<_SelectFontChip> {
       selected: widget.selected,
       highlight: highlight,
     );
-    final face = Container(
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: chrome.bg,
@@ -1117,17 +1143,27 @@ class _SelectFontChipState extends State<_SelectFontChip> {
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mouseHover =
+        ShellScope.inputPolicyOf(context).scaleOnHover;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildFace(_hoveredN.value),
+    );
 
     if (!widget.tv) {
       return MouseRegion(
         key: ValueKey('sub-font-${widget.font}'),
         onEnter: (_) {
-          if (mouseHover) setState(() => _hovered = true);
+          if (mouseHover) _setHovered(true);
         },
         onExit: (_) {
-          if (mouseHover) setState(() => _hovered = false);
+          if (mouseHover) _setHovered(false);
         },
-        child: GestureDetector(onTap: widget.onSelect, child: face),
+        child: GestureDetector(onTap: widget.onSelect, child: painted),
       );
     }
     return KeyedSubtree(
@@ -1145,7 +1181,7 @@ class _SelectFontChipState extends State<_SelectFontChip> {
         tvItemIndex: widget.index,
         tvZone: ShellTvZone.chipStrip,
         onFocusChange: (f) => setState(() => _focused = f),
-        child: face,
+        child: painted,
       ),
     );
   }

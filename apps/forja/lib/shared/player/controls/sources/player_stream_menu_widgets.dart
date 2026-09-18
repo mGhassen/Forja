@@ -72,7 +72,7 @@ class _ServerMenuHeader extends StatefulWidget {
 }
 
 class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
   bool _reloadFocused = false;
   final FocusNode _serverFocus = FocusNode(debugLabel: 'source-server');
@@ -80,26 +80,31 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
 
   @override
   void dispose() {
+    _hoveredN.dispose();
     _serverFocus.dispose();
     _reloadFocus.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final policy = ShellScope.inputPolicyOf(context);
-    final tvFocus = policy.useFocusableMoodChips;
-    final canReload = widget.onReload != null && !widget.isReloading;
-    final showReloadGlyph = widget.showReload &&
-        (_reloadFocused ||
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: _hovered,
-              focused: _focused,
-              context: context,
-            ));
-    final playingColor = PlayerPopupTokens.accent;
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
 
+  bool _showReloadGlyph(bool hovered) {
+    if (!widget.showReload) return false;
+    final policy = ShellScope.inputPolicyOf(context);
+    return _reloadFocused ||
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: hovered,
+          focused: _focused,
+          context: context,
+        );
+  }
+
+  Widget _nameColumn() {
+    final playingColor = PlayerPopupTokens.accent;
     final labelColor = widget.isPlaying
         ? Colors.white
         : widget.status == PlayerSourceStatus.failed
@@ -107,8 +112,7 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
             : widget.isLoaded
                 ? Colors.white.withValues(alpha: 0.92)
                 : Colors.white.withValues(alpha: 0.62);
-
-    final nameColumn = Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -142,54 +146,57 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
           ),
       ],
     );
+  }
 
-    Widget reloadButton({required bool focusable}) {
-      final icon = Center(
-        child: Icon(
-          Icons.refresh_rounded,
-          size: 16,
-          color: Colors.white.withValues(
-            alpha: widget.isReloading
-                ? 0.28
-                : (_reloadFocused ? 0.95 : 0.55),
-          ),
+  Widget _reloadButton(bool hovered, {required bool focusable}) {
+    final canReload = widget.onReload != null && !widget.isReloading;
+    final showReloadGlyph = _showReloadGlyph(hovered);
+    final icon = Center(
+      child: Icon(
+        Icons.refresh_rounded,
+        size: 16,
+        color: Colors.white.withValues(
+          alpha: widget.isReloading ? 0.28 : (_reloadFocused ? 0.95 : 0.55),
         ),
-      );
-      final visible = showReloadGlyph || (focusable && canReload);
-      final body = SizedBox(
-        width: 28,
-        height: 28,
-        child: visible
-            ? Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  canRequestFocus: false,
-                  onTap: focusable || !canReload ? null : widget.onReload,
-                  borderRadius: BorderRadius.circular(6),
-                  hoverColor: Colors.white.withValues(alpha: 0.08),
-                  child: icon,
-                ),
-              )
-            : const SizedBox.shrink(),
-      );
-      if (!focusable || !canReload) return body;
-      return shellFocusableTap(
-        context: context,
-        focusNode: _reloadFocus,
-        onTap: widget.onReload,
-        borderRadius: 6,
-        scaleOnFocus: 1.0,
-        showFocusBorder: false,
-        showFocusFill: false,
-        ensureVisibleMode: ShellPaintEnsureVisible.item,
-        onLeftEdge: () => _serverFocus.requestFocus(),
-        onFocusChange: (focused) => setState(() => _reloadFocused = focused),
-        child: body,
-      );
-    }
+      ),
+    );
+    final visible = showReloadGlyph || (focusable && canReload);
+    final body = SizedBox(
+      width: 28,
+      height: 28,
+      child: visible
+          ? Material(
+              color: Colors.transparent,
+              child: InkWell(
+                canRequestFocus: false,
+                onTap: focusable || !canReload ? null : widget.onReload,
+                borderRadius: BorderRadius.circular(6),
+                hoverColor: Colors.white.withValues(alpha: 0.08),
+                child: icon,
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+    if (!focusable || !canReload) return body;
+    return shellFocusableTap(
+      context: context,
+      focusNode: _reloadFocus,
+      onTap: widget.onReload,
+      borderRadius: 6,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
+      onLeftEdge: () => _serverFocus.requestFocus(),
+      onFocusChange: (focused) => setState(() => _reloadFocused = focused),
+      child: body,
+    );
+  }
 
-    final content = Padding(
-      padding: const EdgeInsets.fromLTRB(4, 5, 4, 4),
+  Widget _buildContent(bool hovered, {required bool includeReload}) {
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(4, 5, includeReload ? 4 : 0, 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -198,10 +205,10 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
             isLoaded: widget.isLoaded,
           ),
           const SizedBox(width: 8),
-          Expanded(child: nameColumn),
-          if (widget.showReload) ...[
+          Expanded(child: _nameColumn()),
+          if (includeReload && widget.showReload) ...[
             const SizedBox(width: 4),
-            reloadButton(focusable: tvFocus),
+            _reloadButton(hovered, focusable: tvFocus),
           ],
           PlayerStreamMenu._serverTrailingBadges(
             categoryBadge: widget.categoryBadge,
@@ -212,85 +219,79 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
         ],
       ),
     );
+  }
 
-    final row = MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          // Outer FocusableControl owns TV focus - InkWell must not.
-          canRequestFocus: false,
-          onTap: tvFocus ? null : widget.onTap,
-          hoverColor: ForjaShellColors.inkHover,
-          splashColor: ForjaShellColors.inkSplash,
-          child: content,
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
+    final canReload = widget.onReload != null && !widget.isReloading;
+    final mouseHover = policy.scaleOnHover;
+
+    if (!tvFocus || widget.onTap == null) {
+      return MouseRegion(
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            canRequestFocus: false,
+            onTap: widget.onTap,
+            hoverColor: ForjaShellColors.inkHover,
+            splashColor: ForjaShellColors.inkSplash,
+            child: ListenableBuilder(
+              listenable: _hoveredN,
+              builder: (context, _) =>
+                  _buildContent(_hoveredN.value, includeReload: true),
+            ),
+          ),
         ),
-      ),
-    );
-
-    if (!tvFocus || widget.onTap == null) return row;
-
-    final mouseHover =
-        ShellScope.inputPolicyOf(context).scaleOnHover;
+      );
+    }
 
     // Split focus: server row ↔ reload (→ / ←). Nested reload FocusableControl
     // must sit outside the server control so D-pad can reach it.
     return MouseRegion(
       onEnter: (_) {
-        if (mouseHover) setState(() => _hovered = true);
+        if (mouseHover) _setHovered(true);
       },
       onExit: (_) {
-        if (mouseHover) setState(() => _hovered = false);
+        if (mouseHover) _setHovered(false);
       },
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: shellFocusableTap(
-              context: context,
-              focusNode: _serverFocus,
-              onTap: widget.onTap,
-              borderRadius: 8,
-              scaleOnFocus: 1.0,
-              showFocusBorder: false,
-              showFocusFill: false,
-              ensureVisibleMode: ShellPaintEnsureVisible.item,
-              onRightEdge: widget.showReload && canReload
-                  ? () => _reloadFocus.requestFocus()
-                  : null,
-              onFocusChange: (focused) => setState(() => _focused = focused),
-              onHoverChange: mouseHover
-                  ? (h) => setState(() => _hovered = h)
-                  : null,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 5, 0, 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    PlayerStreamMenu._statusGlyph(
-                      status: widget.status,
-                      isLoaded: widget.isLoaded,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: nameColumn),
-                    PlayerStreamMenu._serverTrailingBadges(
-                      categoryBadge: widget.categoryBadge,
-                      scoreScope: widget.scoreScope,
-                      providerId: widget.providerId,
-                      hideCategoryBadge: widget.hideCategoryBadge,
-                    ),
-                  ],
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final hovered = _hoveredN.value;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: shellFocusableTap(
+                  context: context,
+                  focusNode: _serverFocus,
+                  onTap: widget.onTap,
+                  borderRadius: 8,
+                  scaleOnFocus: 1.0,
+                  showFocusBorder: false,
+                  showFocusFill: false,
+                  ensureVisibleMode: ShellPaintEnsureVisible.item,
+                  onRightEdge: widget.showReload && canReload
+                      ? () => _reloadFocus.requestFocus()
+                      : null,
+                  onFocusChange: (focused) =>
+                      setState(() => _focused = focused),
+                  onHoverChange: mouseHover ? _setHovered : null,
+                  child: _buildContent(hovered, includeReload: false),
                 ),
               ),
-            ),
-          ),
-          if (widget.showReload)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: reloadButton(focusable: true),
-            ),
-        ],
+              if (widget.showReload)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: _reloadButton(hovered, focusable: true),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -326,14 +327,21 @@ class _FlatMenuRow extends StatefulWidget {
 class _FlatMenuRowState extends State<_FlatMenuRow> {
   static const _hoverProbeDelay = Duration(milliseconds: 1000);
 
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
   Timer? _hoverProbeTimer;
 
   @override
   void dispose() {
     _cancelHoverProbe();
+    _hoveredN.dispose();
     super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+    _syncHoverProbe(hovered || _focused);
   }
 
   @override
@@ -405,19 +413,17 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     };
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildRow(bool hovered) {
     final failed = widget.status == PlayerSourceStatus.failed;
     final isUp = widget.status == PlayerSourceStatus.ready ||
         widget.status == PlayerSourceStatus.active;
     final canPlay = widget.onPlay != null && !widget.isPlaying && isUp;
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
-    // Up rows: idle ✓, hover/keyboard focus → play arrow (same trailing slot).
     final showPlayOnUp = canPlay &&
         ShellInputPolicy.interactiveActive(
           policy,
-          hovered: _hovered,
+          hovered: hovered,
           focused: _focused,
           context: context,
         );
@@ -428,7 +434,6 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     } else if (showPlayOnUp) {
       trailingTap = widget.onPlay;
     } else if (canPlay) {
-      // Green ✓ - tap to start this stream.
       trailingTap = widget.onPlay;
     }
 
@@ -447,88 +452,96 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
             : const SizedBox(width: 28, height: 28);
     final statusDot = _statusDot();
 
-    final row = MouseRegion(
-      onEnter: (_) {
-        setState(() => _hovered = true);
-        _syncHoverProbe(true);
-      },
-      onExit: (_) {
-        setState(() => _hovered = false);
-        _syncHoverProbe(false);
-      },
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          canRequestFocus: false,
-          onTap: tvFocus ? null : widget.onCheck,
-          hoverColor: ForjaShellColors.inkHover,
-          splashColor: ForjaShellColors.inkSplash,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
-            child: Row(
-              children: [
-                if (widget.meta != null) ...[
-                  SizedBox(
-                    width: 34,
-                    child: Text(
-                      widget.meta!,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.38),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ),
-                ] else
-                  const SizedBox(width: 8),
-                if (statusDot != null) ...[
-                  statusDot,
-                  const SizedBox(width: 6),
-                ],
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: failed
-                          ? Colors.white.withValues(alpha: 0.38)
-                          : widget.isPlaying
-                              ? Colors.white
-                              : widget.selected
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.82),
-                      fontSize: 13,
-                      fontWeight: widget.isPlaying || widget.selected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                      decoration: failed ? TextDecoration.lineThrough : null,
-                      decorationColor: Colors.white38,
-                    ),
-                  ),
-                ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        canRequestFocus: false,
+        onTap: tvFocus ? null : widget.onCheck,
+        hoverColor: ForjaShellColors.inkHover,
+        splashColor: ForjaShellColors.inkSplash,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
+          child: Row(
+            children: [
+              if (widget.meta != null) ...[
                 SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: trailingTap != null
-                      ? Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            canRequestFocus: false,
-                            onTap: trailingTap,
-                            borderRadius: BorderRadius.circular(4),
-                            hoverColor: Colors.white.withValues(alpha: 0.08),
-                            child: Center(child: trailingGlyph),
-                          ),
-                        )
-                      : Center(child: trailingGlyph),
+                  width: 34,
+                  child: Text(
+                    widget.meta!,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.38),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
                 ),
+              ] else
+                const SizedBox(width: 8),
+              if (statusDot != null) ...[
+                statusDot,
+                const SizedBox(width: 6),
               ],
-            ),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: failed
+                        ? Colors.white.withValues(alpha: 0.38)
+                        : widget.isPlaying
+                            ? Colors.white
+                            : widget.selected
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.82),
+                    fontSize: 13,
+                    fontWeight: widget.isPlaying || widget.selected
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                    decoration: failed ? TextDecoration.lineThrough : null,
+                    decorationColor: Colors.white38,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: trailingTap != null
+                    ? Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          canRequestFocus: false,
+                          onTap: trailingTap,
+                          borderRadius: BorderRadius.circular(4),
+                          hoverColor: Colors.white.withValues(alpha: 0.08),
+                          child: Center(child: trailingGlyph),
+                        ),
+                      )
+                    : Center(child: trailingGlyph),
+              ),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isUp = widget.status == PlayerSourceStatus.ready ||
+        widget.status == PlayerSourceStatus.active;
+    final canPlay = widget.onPlay != null && !widget.isPlaying && isUp;
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildRow(_hoveredN.value),
+    );
+
+    final row = MouseRegion(
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      child: painted,
     );
 
     if (!tvFocus) return row;
@@ -550,12 +563,9 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
       ensureVisibleMode: ShellPaintEnsureVisible.item,
       onFocusChange: (focused) {
         setState(() => _focused = focused);
-        _syncHoverProbe(focused || _hovered);
+        _syncHoverProbe(focused || _hoveredN.value);
       },
-      onHoverChange: (h) {
-              setState(() => _hovered = h);
-              _syncHoverProbe(h || _focused);
-            },
+      onHoverChange: _setHovered,
       child: row,
     );
   }

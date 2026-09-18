@@ -53,8 +53,8 @@ class RecentSearchHelperTile extends StatefulWidget {
 
 class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
   late final FocusNode _removeFocus;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _removeFocused = false;
-  bool _hovered = false;
 
   @override
   void initState() {
@@ -67,7 +67,13 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
   void dispose() {
     _removeFocus.removeListener(_onRemoveFocusChange);
     _removeFocus.dispose();
+    _hoveredN.dispose();
     super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
   }
 
   void _onRemoveFocusChange() {
@@ -80,7 +86,7 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
   @override
   Widget build(BuildContext context) {
     final highlighted = widget.selected || _removeFocused;
-    final showHoverFill = widget.scaleOnHover && _hovered;
+    final showHoverFill = widget.scaleOnHover && _hoveredN.value;
     final color = highlighted
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
@@ -161,26 +167,37 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
             child: removeChild,
           );
 
-    Widget row = Row(
+    final innerRow = Row(
       children: [
         Expanded(child: titleChild),
         removeChild,
       ],
     );
 
-    row = Material(
-      color: showHoverFill ? ForjaShellColors.inkHover : Colors.transparent,
-      borderRadius: BorderRadius.circular(4),
-      clipBehavior: Clip.antiAlias,
-      child: row,
-    );
-
+    Widget row;
     if (widget.scaleOnHover) {
       row = MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
         cursor: SystemMouseCursors.click,
-        child: row,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => Material(
+            color: _hoveredN.value
+                ? ForjaShellColors.inkHover
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+            clipBehavior: Clip.antiAlias,
+            child: innerRow,
+          ),
+        ),
+      );
+    } else {
+      row = Material(
+        color: showHoverFill ? ForjaShellColors.inkHover : Colors.transparent,
+        borderRadius: BorderRadius.circular(4),
+        clipBehavior: Clip.antiAlias,
+        child: innerRow,
       );
     }
 

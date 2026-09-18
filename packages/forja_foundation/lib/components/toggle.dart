@@ -44,11 +44,21 @@ class Toggle extends StatefulWidget {
 }
 
 class _ToggleState extends State<Toggle> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  Widget _buildToggle(bool hovered) {
     final theme = ForjaThemeExtension.of(context);
     final dims = _dims(widget.size);
     final selected = widget.pressed;
@@ -84,7 +94,7 @@ class _ToggleState extends State<Toggle> {
 
     final active = ShellPaintScope.interactiveActive(
       context,
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
     );
 
@@ -97,7 +107,6 @@ class _ToggleState extends State<Toggle> {
           onTap: widget.onPressed,
           focusNode: widget.focusNode,
           borderRadius: BorderRadius.circular(theme.radiusMd),
-          onHover: (h) => setState(() => _hovered = h),
           onFocusChange: (f) => setState(() => _focused = f),
           child: Container(
             constraints: BoxConstraints(minHeight: dims.height),
@@ -110,6 +119,18 @@ class _ToggleState extends State<Toggle> {
             child: content,
           ),
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildToggle(_hoveredN.value),
       ),
     );
   }

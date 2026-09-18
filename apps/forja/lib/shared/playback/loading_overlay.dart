@@ -1101,22 +1101,27 @@ class _LoadingServerRow extends StatefulWidget {
 }
 
 class _LoadingServerRowState extends State<_LoadingServerRow> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   static final Color _greenTint =
       ForjaShellColors.brandGreen.withValues(alpha: 0.14);
 
   @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final active = ShellInputPolicy.interactiveActive(
-      policy,
-      hovered: _hovered,
-      focused: _focused,
-      context: context,
-    );
     return FocusableControl(
       focusNode: widget.focusNode,
       borderRadius: 8,
@@ -1126,23 +1131,31 @@ class _LoadingServerRowState extends State<_LoadingServerRow> {
       onTap: widget.onTap,
       onDownEdge: widget.onDownEdge,
       onUpEdge: widget.onUpEdge,
-      onHoverChange: (h) {
-        if (_hovered == h) return;
-        setState(() => _hovered = h);
-      },
+      onHoverChange: _setHovered,
       onFocusChange: (f) {
         if (_focused == f) return;
         setState(() => _focused = f);
       },
-      child: AnimatedContainer(
-        duration: policy.instantFocusChrome
-            ? Duration.zero
-            : const Duration(milliseconds: 120),
-        decoration: BoxDecoration(
-          color: active ? _greenTint : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: widget.child,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final active = ShellInputPolicy.interactiveActive(
+            policy,
+            hovered: _hoveredN.value,
+            focused: _focused,
+            context: context,
+          );
+          return AnimatedContainer(
+            duration: policy.instantFocusChrome
+                ? Duration.zero
+                : const Duration(milliseconds: 120),
+            decoration: BoxDecoration(
+              color: active ? _greenTint : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: widget.child,
+          );
+        },
       ),
     );
   }

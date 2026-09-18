@@ -33,35 +33,42 @@ class ShellBackIconButton extends StatefulWidget {
 }
 
 class _ShellBackIconButtonState extends State<ShellBackIconButton> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
-  bool get _active {
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _activeFor(bool hovered) {
     final policy = ShellScope.inputPolicyOf(context);
     return ShellInputPolicy.interactiveActive(
       policy,
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
-        context: context,
+      context: context,
     );
   }
 
   Color get _idle =>
       widget.idleColor ?? ShellBackIconButton.defaultIdle(context);
 
-  @override
-  Widget build(BuildContext context) {
-    if (widget.onTap == null) return const SizedBox.shrink();
-
+  Widget _buildBody(bool hovered) {
     final resolvedHit = widget.hitSize ?? widget.size + 12;
-    final fg = _active
+    final active = _activeFor(hovered);
+    final fg = active
         ? ForjaShellColors.cinematic.chromeIconActive
         : _idle;
-    final fillAlpha = _active ? 0.10 : 0.0;
+    final fillAlpha = active ? 0.10 : 0.0;
 
-    // Full hit box must stay hittable - Align+smaller child made most of the
-    // target miss with GestureDetector's default deferToChild behavior.
-    final body = SizedBox(
+    return SizedBox(
       width: resolvedHit,
       height: resolvedHit,
       child: DecoratedBox(
@@ -74,7 +81,13 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
         ),
       ),
     );
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    if (widget.onTap == null) return const SizedBox.shrink();
+
+    final resolvedHit = widget.hitSize ?? widget.size + 12;
     final button = shellFocusableTap(
       context: context,
       onTap: widget.onTap,
@@ -83,8 +96,11 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
       suppressInkHover: true,
       focusNode: widget.focusNode,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
-      child: body,
+      onHoverChange: _setHovered,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildBody(_hoveredN.value),
+      ),
     );
 
     if (widget.tooltip == null) return button;

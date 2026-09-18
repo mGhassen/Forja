@@ -14,10 +14,15 @@ abstract final class SettingsAddonId {
   /// Pack-owned bucket id (`settings.addon: "iptv"` on the IPTV hub).
   /// Not a host built-in Addons row — appears only when the pack is installed.
   static const iptv = 'iptv';
+
+  /// Pack-owned bucket id (`settings.addon: "debrid"` on debrid plugins).
+  /// Not a host built-in Addons row — appears only when the pack is installed.
+  /// Host still paints magnet-resolve prefs under this bucket when open.
+  static const debrid = 'debrid';
+
   static const torrent = 'torrent';
   static const stremio = 'stremio';
   static const nuvio = 'nuvio';
-  static const debrid = 'debrid';
   static const connectedServices = 'connected_services';
   static const lan = 'lan';
 
@@ -82,12 +87,6 @@ const List<SettingsAddonMeta> kSettingsAddons = [
     icon: Icons.travel_explore_rounded,
   ),
   SettingsAddonMeta(
-    id: SettingsAddonId.debrid,
-    title: 'Debrid',
-    subtitle: 'Real-Debrid, TorBox, and more',
-    icon: Icons.cloud_download_rounded,
-  ),
-  SettingsAddonMeta(
     id: SettingsAddonId.connectedServices,
     title: 'Connected services',
     subtitle: 'Simkl; MDBlist (admin)',
@@ -103,6 +102,14 @@ const List<SettingsAddonMeta> kSettingsAddons = [
 ];
 
 final Set<String> _hostAddonIds = {for (final a in kSettingsAddons) a.id};
+
+String _titleFromAddonId(String id) {
+  return id
+      .split(RegExp(r'[_\-]+'))
+      .where((p) => p.isNotEmpty)
+      .map((p) => '${p[0].toUpperCase()}${p.substring(1)}')
+      .join(' ');
+}
 
 /// Pack-only Addons rows from enabled plugins that declare `settings.addon`
 /// for an id that is **not** already a host built-in (those still get fields
@@ -131,11 +138,15 @@ List<SettingsAddonMeta> packContributedAddonMetas(
     });
     final first = list.first;
     final navLabel = (first.$1.nav?['label'] ?? '').toString().trim();
+    // Multi-plugin buckets share one Addons row — prefer humanized addon id
+    // over the first plugin name (e.g. debrid → "Debrid", not "Real-Debrid").
     final title = navLabel.isNotEmpty
         ? navLabel
-        : (first.$2.pluginName.trim().isNotEmpty
-            ? first.$2.pluginName
-            : id);
+        : (list.length > 1
+            ? _titleFromAddonId(id)
+            : (first.$2.pluginName.trim().isNotEmpty
+                ? first.$2.pluginName
+                : _titleFromAddonId(id)));
     out.add(
       SettingsAddonMeta(
         id: id,

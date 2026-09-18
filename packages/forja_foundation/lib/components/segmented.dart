@@ -76,11 +76,21 @@ class _Segment<T> extends StatefulWidget {
 }
 
 class _SegmentState<T> extends State<_Segment<T>> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  Widget _buildSegment(bool hovered) {
     final theme = ForjaThemeExtension.of(context);
     final radius = BorderRadius.horizontal(
       left: widget.isFirst ? Radius.circular(theme.radiusMd - 1) : Radius.zero,
@@ -88,7 +98,7 @@ class _SegmentState<T> extends State<_Segment<T>> {
     );
     final active = ShellPaintScope.interactiveActive(
       context,
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
     );
     return ForjaMotionScale(
@@ -102,7 +112,6 @@ class _SegmentState<T> extends State<_Segment<T>> {
         child: InkWell(
           onTap: widget.onTap,
           borderRadius: radius,
-          onHover: (h) => setState(() => _hovered = h),
           onFocusChange: (f) => setState(() => _focused = f),
           child: Padding(
             padding: EdgeInsets.symmetric(
@@ -137,6 +146,18 @@ class _SegmentState<T> extends State<_Segment<T>> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildSegment(_hoveredN.value),
       ),
     );
   }

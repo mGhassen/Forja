@@ -542,7 +542,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   static const _hoverProbeDelay = Duration(milliseconds: 400);
   static const _probeBarWidth = 4.0;
 
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
   bool? _probeHealth;
   bool _probeChecking = false;
@@ -550,9 +550,21 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   int _probeGen = 0;
   Timer? _hoverProbeTimer;
 
-  bool get _hover => ShellInputPolicy.interactiveActive(
+  @override
+  void dispose() {
+    _cancelHoverProbe();
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _hoverFor(bool hovered) => ShellInputPolicy.interactiveActive(
         ShellScope.inputPolicyOf(context),
-        hovered: _hovered,
+        hovered: hovered,
         focused: _focused,
         context: context,
       );
@@ -570,12 +582,6 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     if (cached != null && cached != _probeHealth) {
       _probeHealth = cached;
     }
-  }
-
-  @override
-  void dispose() {
-    _cancelHoverProbe();
-    super.dispose();
   }
 
   bool _shouldScheduleHoverProbe() {
@@ -624,11 +630,12 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     });
   }
 
-  Color _backgroundColor() {
+  Color _backgroundColor(bool hovered) {
+    final active = _hoverFor(hovered);
     if (widget.selected) {
       return ForjaShellColors.brandGreen.withValues(alpha: 0.16);
     }
-    if (_hover) return ForjaShellColors.chipSelectedBg;
+    if (active) return ForjaShellColors.chipSelectedBg;
     if (widget.accentFill != null) return widget.accentFill!;
     if (widget.highlightStart) {
       return ForjaShellColors.chipSelectedBg;
@@ -636,13 +643,14 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     return Colors.white.withValues(alpha: 0.04);
   }
 
-  Color _borderColor() {
+  Color _borderColor(bool hovered) {
+    final active = _hoverFor(hovered);
     if (widget.selected) {
-      return _hover
+      return active
           ? ForjaShellColors.brandGreen
           : ForjaShellColors.brandGreen.withValues(alpha: 0.40);
     }
-    if (_hover) return ForjaShellColors.chipSelectedBorder;
+    if (active) return ForjaShellColors.chipSelectedBorder;
     if (widget.accentBorder != null) return widget.accentBorder!;
     if (widget.highlightStart) {
       return ForjaShellColors.chipSelectedBorder;
@@ -650,8 +658,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     return Colors.white.withValues(alpha: 0.07);
   }
 
-  double _borderWidth() {
-    if (widget.selected || _hover) return 1.5;
+  double _borderWidth(bool hovered) {
+    if (widget.selected || _hoverFor(hovered)) return 1.5;
     return 1;
   }
 
@@ -668,8 +676,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     };
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildFace(bool hovered) {
     final metrics = ShellScope.metricsOf(context);
     const padV = 10.0;
     const titleSize = 13.0;
@@ -692,7 +699,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         widget.seeders != null && widget.seeders!.trim().isNotEmpty;
     final hasLanguageFlags = widget.languageCodes.isNotEmpty;
     final magnet = widget.magnet;
-    final showCopyMagnet = magnet != null && magnet.isNotEmpty && _hovered;
+    final showCopyMagnet = magnet != null && magnet.isNotEmpty && hovered;
     const seedColor = Color(0xFF22C55E);
     final providerLines = hasProvider
         ? _providerLines(widget.provider!)
@@ -700,16 +707,16 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final footerLabel = (widget.footerLabel ?? '').trim();
     final hasFooterLabel = footerLabel.isNotEmpty;
     final leftBarColor = _probeLeftBarColor();
-    // Fill parent when a grid row stretches siblings to equal height.
-    final face = AnimatedContainer(
+    return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: _backgroundColor(),
-        // Full rectangle — probe strip is an *inner* accent, not a missing
-        // left edge (transparent strip used to leave a gap on hover).
-        border: Border.all(color: _borderColor(), width: _borderWidth()),
+        color: _backgroundColor(hovered),
+        border: Border.all(
+          color: _borderColor(hovered),
+          width: _borderWidth(hovered),
+        ),
       ),
       child: Stack(
         fit: StackFit.passthrough,
@@ -941,20 +948,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         ],
       ),
     );
+  }
 
-    final card = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) {
-        setState(() => _hovered = true);
-        _syncHoverProbe(true);
-      },
-      onExit: (_) {
-        setState(() => _hovered = false);
-        _syncHoverProbe(false);
-      },
-      child: face,
-    );
-
+  @override
+  Widget build(BuildContext context) {
     final tv = widget.tvItemIndex != null &&
         (widget.tvTabId != null || SourcesPanelTv.isTv(context));
     final tabId = widget.tvTabId ?? SourcesPanelTv.tabId;
@@ -978,9 +975,23 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       onLeftEdge: widget.onLeftEdge,
       onFocusChange: (focused) {
         setState(() => _focused = focused);
-        _syncHoverProbe(focused || _hovered);
+        _syncHoverProbe(focused || _hoveredN.value);
       },
-      child: card,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) {
+          _setHovered(true);
+          _syncHoverProbe(true);
+        },
+        onExit: (_) {
+          _setHovered(false);
+          _syncHoverProbe(false);
+        },
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => _buildFace(_hoveredN.value),
+        ),
+      ),
     );
   }
 }

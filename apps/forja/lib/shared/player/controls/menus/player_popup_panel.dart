@@ -707,25 +707,30 @@ class _PopupChromeButton extends StatefulWidget {
 }
 
 class _PopupChromeButtonState extends State<_PopupChromeButton> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
-    final input = _popupInput(context);
-    final tvFocus = input.tvFocus;
-    final mouseHover = input.mouseHover;
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildFace(bool hovered) {
     final highlight = _popupHighlight(
       context,
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
     );
-    // Match select-card close: green X + border idle; brighter on hover/focus.
     final borderColor = highlight
         ? PlayerPopupTokens.accent
         : PlayerPopupTokens.accentBorder;
-    final iconColor = PlayerPopupTokens.accent;
-    final face = Container(
+    return Container(
       width: 28,
       height: 28,
       alignment: Alignment.center,
@@ -734,14 +739,25 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
         border: Border.all(color: borderColor, width: highlight ? 1.5 : 1),
       ),
-      child: Icon(widget.icon, size: 14, color: iconColor),
+      child: Icon(widget.icon, size: 14, color: PlayerPopupTokens.accent),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final input = _popupInput(context);
+    final tvFocus = input.tvFocus;
+    final mouseHover = input.mouseHover;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildFace(_hoveredN.value),
     );
     final button = MouseRegion(
       onEnter: (_) {
-        if (mouseHover) setState(() => _hovered = true);
+        if (mouseHover) _setHovered(true);
       },
       onExit: (_) {
-        if (mouseHover) setState(() => _hovered = false);
+        if (mouseHover) _setHovered(false);
       },
       child: Material(
         color: Colors.transparent,
@@ -757,15 +773,13 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
                 showFocusBorder: false,
                 showFocusFill: false,
                 onFocusChange: (f) => setState(() => _focused = f),
-                onHoverChange: mouseHover
-                    ? (h) => setState(() => _hovered = h)
-                    : null,
-                child: face,
+                onHoverChange: mouseHover ? _setHovered : null,
+                child: painted,
               )
             : InkWell(
                 onTap: widget.onTap,
                 hoverColor: PlayerPopupTokens.accentFill,
-                child: face,
+                child: painted,
               ),
       ),
     );
@@ -836,8 +850,19 @@ class PlayerPopupNavRow extends StatefulWidget {
 }
 
 class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
 
   bool get _valueActive {
     if (widget.selected) return true;
@@ -849,21 +874,18 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
         (!v.contains('off') && v != '-');
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final input = _popupInput(context);
-    final tvFocus = input.tvFocus;
-    final mouseHover = input.mouseHover;
+  Widget _buildRow(bool hovered) {
+    final tvFocus = _popupInput(context).tvFocus;
     final highlight = _popupHighlight(
       context,
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
     );
     final chrome = playerPopupSelectChrome(
       selected: widget.selected,
       highlight: highlight,
     );
-    final row = Material(
+    return Material(
       color: chrome.bg,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
       clipBehavior: Clip.antiAlias,
@@ -940,13 +962,24 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final input = _popupInput(context);
+    final tvFocus = input.tvFocus;
+    final mouseHover = input.mouseHover;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildRow(_hoveredN.value),
+    );
 
     if (!tvFocus || widget.onTap == null) {
-      if (!mouseHover) return row;
+      if (!mouseHover) return painted;
       return MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: row,
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
+        child: painted,
       );
     }
     return FocusableControl(
@@ -960,9 +993,8 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
       showFocusFill: false,
       ensureVisibleMode: ShellPaintEnsureVisible.item,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange:
-          mouseHover ? (h) => setState(() => _hovered = h) : null,
-      child: row,
+      onHoverChange: mouseHover ? _setHovered : null,
+      child: painted,
     );
   }
 }
@@ -1029,19 +1061,28 @@ class PlayerPopupOptionChip extends StatefulWidget {
 }
 
 class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildChip(bool hovered) {
     final input = _popupInput(context);
     final tvFocus = input.tvFocus;
-    final mouseHover = input.mouseHover;
     final selected = widget.selected;
     final highlight = !widget.disabled &&
         _popupHighlight(
           context,
-          hovered: _hovered,
+          hovered: hovered,
           focused: _focused,
         );
     final chromeDuration = input.instantChrome
@@ -1096,7 +1137,7 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
       );
     }
 
-    final chip = Material(
+    return Material(
       color: chrome.bg,
       borderRadius: BorderRadius.circular(radius),
       clipBehavior: Clip.antiAlias,
@@ -1139,14 +1180,25 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final input = _popupInput(context);
+    final tvFocus = input.tvFocus;
+    final mouseHover = input.mouseHover;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildChip(_hoveredN.value),
+    );
 
     if (!tvFocus || widget.onTap == null) {
       final body = !mouseHover
-          ? chip
+          ? painted
           : MouseRegion(
-              onEnter: (_) => setState(() => _hovered = true),
-              onExit: (_) => setState(() => _hovered = false),
-              child: chip,
+              onEnter: (_) => _setHovered(true),
+              onExit: (_) => _setHovered(false),
+              child: painted,
             );
       return widget.grouped
           ? body
@@ -1157,18 +1209,19 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
           ? EdgeInsets.zero
           : PlayerPopupTokens.selectCardGap,
       child: FocusableControl(
-        autoFocus:
-            selected && PlayerPopupListFocusScope.claimAutofocus(context),
+        autoFocus: widget.selected &&
+            PlayerPopupListFocusScope.claimAutofocus(context),
         onTap: widget.onTap,
-        borderRadius: radius,
+        borderRadius: widget.grouped
+            ? PlayerPopupTokens.chipRadius
+            : PlayerPopupTokens.cardRadius,
         scaleOnFocus: 1.0,
         showFocusBorder: false,
         showFocusFill: false,
         ensureVisibleMode: ShellPaintEnsureVisible.item,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange:
-            mouseHover ? (h) => setState(() => _hovered = h) : null,
-        child: chip,
+        onHoverChange: mouseHover ? _setHovered : null,
+        child: painted,
       ),
     );
   }
@@ -1200,22 +1253,27 @@ class PlayerPopupHeaderChip extends StatefulWidget {
 }
 
 class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
-    final input = _popupInput(context);
-    final tvFocus = input.tvFocus;
-    final mouseHover = input.mouseHover;
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildFace(bool hovered) {
     final selected = widget.selected;
     final highlight = _popupHighlight(
       context,
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
     );
-    // Select-card chrome: selected = green tint; hover/focus on idle uses
-    // the same accent recipe so header chips match list cards.
     final chrome = playerPopupSelectChrome(
       selected: selected,
       highlight: highlight,
@@ -1223,7 +1281,7 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
     final fg = selected || highlight
         ? (selected ? PlayerPopupTokens.accent : Colors.white)
         : PlayerPopupTokens.muted;
-    final face = Container(
+    return Container(
       height: 28,
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1258,13 +1316,24 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
         ],
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final input = _popupInput(context);
+    final tvFocus = input.tvFocus;
+    final mouseHover = input.mouseHover;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildFace(_hoveredN.value),
+    );
     if (!tvFocus) {
       return MouseRegion(
         onEnter: (_) {
-          if (mouseHover) setState(() => _hovered = true);
+          if (mouseHover) _setHovered(true);
         },
         onExit: (_) {
-          if (mouseHover) setState(() => _hovered = false);
+          if (mouseHover) _setHovered(false);
         },
         child: Material(
           color: Colors.transparent,
@@ -1274,7 +1343,7 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
             hoverColor: Colors.transparent,
-            child: face,
+            child: painted,
           ),
         ),
       );
@@ -1288,9 +1357,9 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
       showFocusBorder: false,
       showFocusFill: false,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: mouseHover ? (h) => setState(() => _hovered = h) : null,
+      onHoverChange: mouseHover ? _setHovered : null,
       onRightEdge: widget.onRightEdge,
-      child: face,
+      child: painted,
     );
   }
 }
@@ -1344,24 +1413,46 @@ class PlayerPopupListTile extends StatefulWidget {
 class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
   static const double _statusSlot = 18;
 
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
 
-  void _setInteractive({bool? hovered, bool? focused}) {
-    final nextHovered = hovered ?? _hovered;
-    final nextFocused = focused ?? _focused;
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
     final wasActive = _popupHighlight(
       context,
-      hovered: _hovered,
+      hovered: _hoveredN.value,
       focused: _focused,
     );
+    _hoveredN.value = hovered;
     final nextActive = _popupHighlight(
       context,
-      hovered: nextHovered,
-      focused: nextFocused,
+      hovered: hovered,
+      focused: _focused,
     );
-    if (hovered != null) _hovered = hovered;
-    if (focused != null) _focused = focused;
+    if (wasActive != nextActive) {
+      widget.onInteractiveChange?.call(nextActive);
+    }
+  }
+
+  void _setFocused(bool focused) {
+    if (_focused == focused) return;
+    final wasActive = _popupHighlight(
+      context,
+      hovered: _hoveredN.value,
+      focused: _focused,
+    );
+    setState(() => _focused = focused);
+    final nextActive = _popupHighlight(
+      context,
+      hovered: _hoveredN.value,
+      focused: focused,
+    );
     if (wasActive != nextActive) {
       widget.onInteractiveChange?.call(nextActive);
     }
@@ -1405,18 +1496,16 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTile(bool hovered) {
     final failed = widget.status == PlayerSourceStatus.failed;
     final active = widget.status == PlayerSourceStatus.active;
     final selected = widget.selected;
     final statusGlyph = _statusGlyph();
     final input = _popupInput(context);
     final tvFocus = input.tvFocus;
-    final mouseHover = input.mouseHover;
     final highlight = _popupHighlight(
       context,
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
     );
     final chromeDuration = input.instantChrome
@@ -1470,7 +1559,7 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
       );
     }
 
-    final tile = Material(
+    return Material(
       color: chrome.bg,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
       clipBehavior: Clip.antiAlias,
@@ -1578,14 +1667,25 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
         ),
       ),
     );
+  }
 
-    Widget body = tile;
+  @override
+  Widget build(BuildContext context) {
+    final input = _popupInput(context);
+    final tvFocus = input.tvFocus;
+    final mouseHover = input.mouseHover;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildTile(_hoveredN.value),
+    );
+
+    Widget body = painted;
     if (!tvFocus || widget.onTap == null) {
       if (mouseHover) {
         body = MouseRegion(
-          onEnter: (_) => setState(() => _setInteractive(hovered: true)),
-          onExit: (_) => setState(() => _setInteractive(hovered: false)),
-          child: tile,
+          onEnter: (_) => _setHovered(true),
+          onExit: (_) => _setHovered(false),
+          child: painted,
         );
       }
       return Padding(padding: PlayerPopupTokens.selectCardGap, child: body);
@@ -1596,7 +1696,7 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
       child: FocusableControl(
         // Prefer the current value; else first row claims via fallback nextFocus.
         autoFocus: widget.autofocusIfSelected &&
-            selected &&
+            widget.selected &&
             PlayerPopupListFocusScope.claimAutofocus(context),
         focusNode: widget.focusNode,
         onTap: widget.onTap,
@@ -1606,14 +1706,13 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
         showFocusBorder: false,
         showFocusFill: false,
         ensureVisibleMode: ShellPaintEnsureVisible.item,
-        onFocusChange: (focused) => setState(() => _setInteractive(focused: focused)),
-        onHoverChange:
-            mouseHover ? (h) => setState(() => _setInteractive(hovered: h)) : null,
+        onFocusChange: _setFocused,
+        onHoverChange: mouseHover ? _setHovered : null,
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
         onUpEdge: widget.onUpEdge,
         onDownEdge: widget.onDownEdge,
-        child: tile,
+        child: painted,
       ),
     );
   }

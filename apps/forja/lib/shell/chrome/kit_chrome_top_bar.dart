@@ -566,14 +566,24 @@ class _CategoryTabState extends State<_CategoryTab> {
   static const _hoverT = 0.62;
   static const _selectedT = 1.0;
 
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
-  double get _visualTarget {
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  double _visualTargetFor(bool hovered) {
     if (widget.isActive) return _selectedT;
     final policy = ShellScope.inputPolicyOf(context);
-    if (_hovered ||
-        policy.focusStyled(context, focused: _focused)) {
+    if (hovered || policy.focusStyled(context, focused: _focused)) {
       return _hoverT;
     }
     return 0;
@@ -608,9 +618,9 @@ class _CategoryTabState extends State<_CategoryTab> {
     return hoverW + selectedExtra * ((t - _hoverT) / (_selectedT - _hoverT));
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(bool hovered) {
     return TweenAnimationBuilder<double>(
-      tween: Tween<double>(end: _visualTarget),
+      tween: Tween<double>(end: _visualTargetFor(hovered)),
       duration: _animDuration,
       curve: _animCurve,
       builder: (context, t, _) {
@@ -729,19 +739,25 @@ class _CategoryTabState extends State<_CategoryTab> {
         onUpEdge: widget.onUpEdge,
         focusNode: widget.focusNode,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: _buildContent(),
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => _buildContent(_hoveredN.value),
+        ),
       );
     }
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       child: GestureDetector(
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
-        child: _buildContent(),
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => _buildContent(_hoveredN.value),
+        ),
       ),
     );
   }
@@ -775,17 +791,27 @@ class _FlatMenuRow extends StatefulWidget {
 }
 
 class _FlatMenuRowState extends State<_FlatMenuRow> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildRow(bool hovered) {
     final cinematic = ForjaShellColors.cinematic;
     final policy = ShellScope.inputPolicyOf(context);
     final usesTv = ShellScope.metricsOf(context).usesTvDensity;
     final focusStyled = policy.focusStyled(context, focused: _focused);
-    final highlight = widget.selected || _hovered || focusStyled;
-    final row = Padding(
+    final highlight = widget.selected || hovered || focusStyled;
+    return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: usesTv
             ? ShellTokens.homeCategoriesMenuRowPadHTv
@@ -805,7 +831,10 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
         ),
       ),
     );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
@@ -815,11 +844,14 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
       onUpEdge: widget.onUpEdge,
       onLeftEdge: widget.onLeftEdge,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      onHoverChange: _setHovered,
       tvTabId: widget.tvFocus ? widget.tabId : null,
       tvZone: widget.tvFocus ? ShellTvZone.topBar : null,
       tvItemIndex: widget.listIndex,
-      child: row,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildRow(_hoveredN.value),
+      ),
     );
   }
 }

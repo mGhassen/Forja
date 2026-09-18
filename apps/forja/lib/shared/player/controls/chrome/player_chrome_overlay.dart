@@ -132,13 +132,24 @@ class PlayerFlatIconButton extends StatefulWidget {
 }
 
 class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
-  bool get _highlight => playerChromeFocusActive(
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _highlightFor(bool hovered) => playerChromeFocusActive(
     context,
     tvFocusable: widget.tvFocusable,
-    hovered: _hovered,
+    hovered: hovered,
     focused: _focused,
   );
 
@@ -149,33 +160,27 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
         focused: _focused,
       );
 
-  Color get _iconColor => playerChromeIconColor(
-    enabled: true,
-    active: widget.active,
-    highlight: _highlight,
-    tvFocused: _tvFocused,
-  );
-
-  Color get _labelColor => _iconColor;
-
-  Color get _backgroundColor => playerChromeBackgroundColor(
-    active: widget.active,
-    highlight: _highlight,
-    tvFocused: _tvFocused,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    final onTap = widget.onPressedWithContext != null
-        ? () => widget.onPressedWithContext!(context)
-        : widget.onPressed;
-    final borderRadius = widget.label == null ? widget.size / 2 : 8.0;
+  Widget _buildChild(bool hovered) {
+    final highlight = _highlightFor(hovered);
+    final iconColor = playerChromeIconColor(
+      enabled: true,
+      active: widget.active,
+      highlight: highlight,
+      tvFocused: _tvFocused,
+    );
     final shape = playerChromeButtonShape(
       isCircle: widget.label == null,
       tvFocused: _tvFocused,
     );
-    final child = Material(
-      color: _backgroundColor,
+    final onTap = widget.onPressedWithContext != null
+        ? () => widget.onPressedWithContext!(context)
+        : widget.onPressed;
+    return Material(
+      color: playerChromeBackgroundColor(
+        active: widget.active,
+        highlight: highlight,
+        tvFocused: _tvFocused,
+      ),
       shape: shape,
       child: InkWell(
         // FocusableControl owns TV focus - InkWell must not take D-pad stops.
@@ -188,7 +193,7 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
           width: widget.label == null ? widget.size : null,
           height: widget.size,
           child: widget.label == null
-              ? Icon(widget.icon, color: _iconColor, size: widget.iconSize)
+              ? Icon(widget.icon, color: iconColor, size: widget.iconSize)
               : ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 148),
                   child: Padding(
@@ -198,7 +203,7 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
                       children: [
                         Icon(
                           widget.icon,
-                          color: _iconColor,
+                          color: iconColor,
                           size: widget.iconSize - 2,
                         ),
                         const SizedBox(width: 5),
@@ -209,7 +214,7 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: _labelColor,
+                              color: iconColor,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
@@ -221,6 +226,18 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
                 ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onTap = widget.onPressedWithContext != null
+        ? () => widget.onPressedWithContext!(context)
+        : widget.onPressed;
+    final borderRadius = widget.label == null ? widget.size / 2 : 8.0;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildChild(_hoveredN.value),
     );
     final button = widget.tvFocusable
         ? FocusableControl(
@@ -235,22 +252,20 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) {
               if (hovered) playerChromeCancelSeekScrubs();
-              setState(() => _hovered = hovered);
+              _setHovered(hovered);
             },
-            child: child,
+            child: painted,
           )
         : MouseRegion(
             onEnter: (_) {
               // Drop seek-bar scrub capture before Quality / Settings hover -
               // otherwise the thumb stays magnetized to the pointer over chrome.
               playerChromeCancelSeekScrubs();
-              setState(() => _hovered = true);
+              _setHovered(true);
             },
-            onExit: (_) => setState(() {
-              _hovered = false;
-            }),
+            onExit: (_) => _setHovered(false),
             cursor: SystemMouseCursors.click,
-            child: child,
+            child: painted,
           );
     if (widget.tooltip == null) return button;
     return Tooltip(message: widget.tooltip!, child: button);
@@ -295,13 +310,24 @@ class PlayerStreamPickerButton extends StatefulWidget {
 }
 
 class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
-  bool get _highlight => playerChromeFocusActive(
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _highlightFor(bool hovered) => playerChromeFocusActive(
     context,
     tvFocusable: widget.tvFocusable,
-    hovered: _hovered,
+    hovered: hovered,
     focused: _focused,
   );
 
@@ -312,15 +338,12 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
         focused: _focused,
       );
 
-  @override
-  Widget build(BuildContext context) {
-    final onTap = widget.enabled && widget.onPressedWithContext != null
-        ? () => widget.onPressedWithContext!(context)
-        : null;
+  Widget _buildChild(bool hovered) {
+    final highlight = _highlightFor(hovered);
     final fgAlpha = widget.enabled
         ? (_tvFocused
               ? 1.0
-              : _highlight
+              : highlight
               ? 0.95
               : 0.88)
         : 0.4;
@@ -331,10 +354,13 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
       isCircle: false,
       tvFocused: _tvFocused,
     );
-    final child = Material(
+    final onTap = widget.enabled && widget.onPressedWithContext != null
+        ? () => widget.onPressedWithContext!(context)
+        : null;
+    return Material(
       color: playerChromeBackgroundColor(
         active: false,
-        highlight: _highlight,
+        highlight: highlight,
         tvFocused: _tvFocused,
       ),
       shape: shape,
@@ -382,6 +408,17 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onTap = widget.enabled && widget.onPressedWithContext != null
+        ? () => widget.onPressedWithContext!(context)
+        : null;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildChild(_hoveredN.value),
+    );
     final button = widget.tvFocusable
         ? FocusableControl(
             focusNode: widget.focusNode,
@@ -395,20 +432,20 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) {
               if (hovered) playerChromeCancelSeekScrubs();
-              setState(() => _hovered = hovered);
+              _setHovered(hovered);
             },
-            child: child,
+            child: painted,
           )
         : MouseRegion(
             onEnter: (_) {
               playerChromeCancelSeekScrubs();
-              setState(() => _hovered = true);
+              _setHovered(true);
             },
-            onExit: (_) => setState(() => _hovered = false),
+            onExit: (_) => _setHovered(false),
             cursor: widget.enabled
                 ? SystemMouseCursors.click
                 : SystemMouseCursors.basic,
-            child: child,
+            child: painted,
           );
     final server = widget.server?.trim();
     final tip = server != null && server.isNotEmpty
@@ -456,13 +493,24 @@ class PlayerSourcesPanelButton extends StatefulWidget {
 }
 
 class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
-  bool get _highlight => playerChromeFocusActive(
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _highlightFor(bool hovered) => playerChromeFocusActive(
     context,
     tvFocusable: widget.tvFocusable,
-    hovered: _hovered,
+    hovered: hovered,
     focused: _focused,
   );
 
@@ -473,25 +521,25 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
         focused: _focused,
       );
 
-  @override
-  Widget build(BuildContext context) {
-    final onTap = widget.onPressedWithContext != null
-        ? () => widget.onPressedWithContext!(context)
-        : widget.onPressed;
+  Widget _buildChild(bool hovered) {
+    final highlight = _highlightFor(hovered);
     final fg = playerChromeIconColor(
       enabled: true,
       active: false,
-      highlight: _highlight,
+      highlight: highlight,
       tvFocused: _tvFocused,
     );
     final shape = playerChromeButtonShape(
       isCircle: false,
       tvFocused: _tvFocused,
     );
-    final child = Material(
+    final onTap = widget.onPressedWithContext != null
+        ? () => widget.onPressedWithContext!(context)
+        : widget.onPressed;
+    return Material(
       color: playerChromeBackgroundColor(
         active: false,
-        highlight: _highlight,
+        highlight: highlight,
         tvFocused: _tvFocused,
       ),
       shape: shape,
@@ -532,6 +580,17 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onTap = widget.onPressedWithContext != null
+        ? () => widget.onPressedWithContext!(context)
+        : widget.onPressed;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildChild(_hoveredN.value),
+    );
     final button = widget.tvFocusable
         ? FocusableControl(
             focusNode: widget.focusNode,
@@ -545,18 +604,18 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) {
               if (hovered) playerChromeCancelSeekScrubs();
-              setState(() => _hovered = hovered);
+              _setHovered(hovered);
             },
-            child: child,
+            child: painted,
           )
         : MouseRegion(
             onEnter: (_) {
               playerChromeCancelSeekScrubs();
-              setState(() => _hovered = true);
+              _setHovered(true);
             },
-            onExit: (_) => setState(() => _hovered = false),
+            onExit: (_) => _setHovered(false),
             cursor: SystemMouseCursors.click,
-            child: child,
+            child: painted,
           );
     final server = widget.server?.trim();
     final tip = server != null && server.isNotEmpty
@@ -645,8 +704,19 @@ class PlayerFloatingChip extends StatefulWidget {
 }
 
 class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
 
   bool get _tvFocused =>
       playerChromeTvFocused(
@@ -655,24 +725,24 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
         focused: _focused,
       );
 
-  bool get _highlight => playerChromeFocusActive(
+  bool _highlightFor(bool hovered) => playerChromeFocusActive(
     context,
     tvFocusable: widget.tvFocusable,
-    hovered: _hovered,
+    hovered: hovered,
     focused: _focused,
   );
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(bool hovered) {
+    final highlight = _highlightFor(hovered);
     final borderColor = _tvFocused
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.borderSubtle;
     final fill = _tvFocused
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-        : Colors.white.withValues(alpha: _highlight ? 0.22 : 0.15);
+        : Colors.white.withValues(alpha: highlight ? 0.22 : 0.15);
     final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
 
-    final body = DecoratedBox(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(8),
@@ -706,6 +776,14 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildBody(_hoveredN.value),
+    );
 
     if (widget.tvFocusable) {
       return FocusableControl(
@@ -714,13 +792,13 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
         borderRadius: 8,
         scaleOnFocus: 1.0,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        child: body,
+        child: painted,
       );
     }
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       cursor: SystemMouseCursors.click,
       child: Material(
         color: Colors.transparent,
@@ -730,7 +808,7 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
           borderRadius: BorderRadius.circular(8),
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
-          child: body,
+          child: painted,
         ),
       ),
     );

@@ -213,9 +213,20 @@ class PlayerCenterActionButton extends StatefulWidget {
 }
 
 class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _pressed = false;
   bool _focused = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
 
   Widget _buildCore({required bool highlight, required bool tvFocused}) {
     final borderColor = tvFocused
@@ -287,12 +298,6 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
       );
     }
 
-    final highlight = playerChromeFocusActive(
-      context,
-      tvFocusable: false,
-      hovered: _hovered,
-      focused: false,
-    );
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
@@ -302,18 +307,27 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         final policy =
             ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
         if (!policy.scaleOnHover) return;
-        setState(() => _hovered = true);
+        _setHovered(true);
       },
       onExit: (_) {
         final policy =
             ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
         if (!policy.scaleOnHover) return;
-        setState(() {
-          _hovered = false;
-          _pressed = false;
-        });
+        _setHovered(false);
+        setState(() => _pressed = false);
       },
-      child: _buildCore(highlight: highlight, tvFocused: false),
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final highlight = playerChromeFocusActive(
+            context,
+            tvFocusable: false,
+            hovered: _hoveredN.value,
+            focused: false,
+          );
+          return _buildCore(highlight: highlight, tvFocused: false);
+        },
+      ),
     );
   }
 }
@@ -350,12 +364,17 @@ class PlayerVolumeControl extends StatefulWidget {
 }
 
 class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
-  bool _hovering = false;
+  final ValueNotifier<bool> _hoveringN = ValueNotifier(false);
   bool _sliderPinned = false;
   double? _volumeBeforeMute;
   Timer? _hideSliderTimer;
 
-  bool get _showSlider => _hovering || _sliderPinned;
+  bool _showSliderFor(bool hovering) => hovering || _sliderPinned;
+
+  void _setHovering(bool hovering) {
+    if (_hoveringN.value == hovering) return;
+    _hoveringN.value = hovering;
+  }
 
   double get _sliderWidth => widget.compact ? 110.0 : 160.0;
 
@@ -368,6 +387,7 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
   @override
   void dispose() {
     _hideSliderTimer?.cancel();
+    _hoveringN.dispose();
     super.dispose();
   }
 
@@ -408,68 +428,74 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
     return MouseRegion(
       onEnter: (_) {
         playerChromeCancelSeekScrubs();
-        setState(() => _hovering = true);
+        _setHovering(true);
         _hideSliderTimer?.cancel();
       },
       onExit: (_) {
-        setState(() => _hovering = false);
+        _setHovering(false);
         _scheduleHideSlider();
       },
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onLongPress: _toggleSliderPinned,
-            child: PlayerFlatIconButton(
-              icon: _iconFor(widget.volume),
-              tooltip: widget.volume > 0 ? 'Mute' : 'Unmute',
-              size: widget.size,
-              iconSize: widget.iconSize,
-              tvFocusable: widget.tvFocusable,
-              onPressed: _toggleMute,
-            ),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            child: SizedBox(
-              width: _showSlider ? _sliderWidth : 0,
-              child: ClipRect(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      inactiveTrackColor: Colors.white24,
-                      activeTrackColor: Colors.white,
-                      thumbColor: Colors.white,
-                      trackHeight: 3,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 7,
+      child: ListenableBuilder(
+        listenable: _hoveringN,
+        builder: (context, _) {
+          final showSlider = _showSliderFor(_hoveringN.value);
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onLongPress: _toggleSliderPinned,
+                child: PlayerFlatIconButton(
+                  icon: _iconFor(widget.volume),
+                  tooltip: widget.volume > 0 ? 'Mute' : 'Unmute',
+                  size: widget.size,
+                  iconSize: widget.iconSize,
+                  tvFocusable: widget.tvFocusable,
+                  onPressed: _toggleMute,
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                child: SizedBox(
+                  width: showSlider ? _sliderWidth : 0,
+                  child: ClipRect(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          inactiveTrackColor: Colors.white24,
+                          activeTrackColor: Colors.white,
+                          thumbColor: Colors.white,
+                          trackHeight: 3,
+                          thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 7,
+                          ),
+                        ),
+                        child: Slider(
+                          value: widget.volume.clamp(0, widget.maxVolume),
+                          min: 0,
+                          max: widget.maxVolume,
+                          onChangeStart: (_) {
+                            widget.onDragStart?.call();
+                            _hideSliderTimer?.cancel();
+                          },
+                          onChanged: (v) {
+                            _setVolume(v);
+                            _scheduleHideSlider();
+                          },
+                          onChangeEnd: (_) {
+                            widget.onDragEnd?.call();
+                            _scheduleHideSlider();
+                          },
+                        ),
                       ),
-                    ),
-                    child: Slider(
-                      value: widget.volume.clamp(0, widget.maxVolume),
-                      min: 0,
-                      max: widget.maxVolume,
-                      onChangeStart: (_) {
-                        widget.onDragStart?.call();
-                        _hideSliderTimer?.cancel();
-                      },
-                      onChanged: (v) {
-                        _setVolume(v);
-                        _scheduleHideSlider();
-                      },
-                      onChangeEnd: (_) {
-                        widget.onDragEnd?.call();
-                        _scheduleHideSlider();
-                      },
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

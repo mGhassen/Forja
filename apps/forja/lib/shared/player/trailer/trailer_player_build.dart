@@ -822,7 +822,7 @@ class _TrailerMoreVideosCard extends StatefulWidget {
 }
 
 class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
   int _slideDir = 1;
 
@@ -830,9 +830,20 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
   static const double _h = 158;
   static const double _radius = 12;
 
-  bool get _active => ShellInputPolicy.interactiveActive(
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _activeFor(bool hovered) => ShellInputPolicy.interactiveActive(
         ShellScope.inputPolicyOf(context),
-        hovered: _hovered,
+        hovered: hovered,
         focused: _focused,
         context: context,
       );
@@ -854,8 +865,7 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildFace(bool hovered) {
     final type = widget.trailer.type.trim();
     final autoLeft = widget.autoNextSecondsLeft;
     final meta = widget.autoNext
@@ -865,9 +875,10 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
             '${widget.index + 1}/${widget.count}',
             if (widget.playing) 'Playing',
           ].join(' · ');
+    final active = _activeFor(hovered);
 
-    final face = AnimatedScale(
-      scale: _active || widget.autoNext ? 1.06 : 1.0,
+    return AnimatedScale(
+      scale: active || widget.autoNext ? 1.06 : 1.0,
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       alignment: Alignment.bottomRight,
@@ -879,10 +890,10 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(_radius),
           border: Border.all(
-            color: (_active || widget.autoNext) ? Colors.white : Colors.white24,
-            width: (_active || widget.autoNext) ? 2.5 : 1,
+            color: (active || widget.autoNext) ? Colors.white : Colors.white24,
+            width: (active || widget.autoNext) ? 2.5 : 1,
           ),
-          boxShadow: (_active || widget.autoNext)
+          boxShadow: (active || widget.autoNext)
               ? [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.55),
@@ -992,7 +1003,7 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
                 ),
               ShellCardPlayOverlay(
                 active: false,
-                visible: _active || widget.tvFocus || widget.autoNext,
+                visible: active || widget.tvFocus || widget.autoNext,
                 diameter: 44,
                 iconSize: 26,
                 onTap: () {
@@ -1051,95 +1062,105 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
         ),
       ),
     );
+  }
 
-    Widget withChevrons(Widget child) {
-      if (widget.count <= 1 || widget.autoNext) return child;
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          child,
-          Positioned(
-            left: 4,
-            top: 0,
-            bottom: 0,
-            width: 36,
-            child: Center(
-              child: _ChevronButton(
-                icon: Icons.chevron_left_rounded,
-                visible: _active || widget.tvFocus,
-                onTap: () {
-                  widget.onPointerActivity();
-                  widget.onPrev();
-                },
-              ),
+  Widget _withChevrons(Widget child, bool active) {
+    if (widget.count <= 1 || widget.autoNext) return child;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          left: 4,
+          top: 0,
+          bottom: 0,
+          width: 36,
+          child: Center(
+            child: _ChevronButton(
+              icon: Icons.chevron_left_rounded,
+              visible: active || widget.tvFocus,
+              onTap: () {
+                widget.onPointerActivity();
+                widget.onPrev();
+              },
             ),
           ),
-          Positioned(
-            right: 4,
-            top: 0,
-            bottom: 0,
-            width: 36,
-            child: Center(
-              child: _ChevronButton(
-                icon: Icons.chevron_right_rounded,
-                visible: _active || widget.tvFocus,
-                onTap: () {
-                  widget.onPointerActivity();
-                  widget.onNext();
-                },
-              ),
+        ),
+        Positioned(
+          right: 4,
+          top: 0,
+          bottom: 0,
+          width: 36,
+          child: Center(
+            child: _ChevronButton(
+              icon: Icons.chevron_right_rounded,
+              visible: active || widget.tvFocus,
+              onTap: () {
+                widget.onPointerActivity();
+                widget.onNext();
+              },
             ),
           ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     void play() {
       widget.onPointerActivity();
       widget.onPlay();
     }
 
     if (widget.tvFocus) {
-      return withChevrons(
-        FocusableControl(
-          focusNode: widget.focusNode,
-          // OK on the card plays — ←/→ cycle the preview (cancels Up next).
-          onTap: play,
-          borderRadius: _radius,
-          scaleOnFocus: 1.0,
-          showFocusBorder: true,
-          showFocusFill: false,
-          onLeftEdge: widget.count > 1
-              ? () {
-                  widget.onPointerActivity();
-                  widget.onPrev();
-                }
-              : null,
-          onRightEdge: widget.count > 1
-              ? () {
-                  widget.onPointerActivity();
-                  widget.onNext();
-                }
-              : null,
-          onUpEdge: widget.onFocusUp == null
-              ? null
-              : () {
-                  widget.onPointerActivity();
-                  widget.onFocusUp!();
-                },
-          onDownEdge: widget.onFocusDown == null
-              ? null
-              : () {
-                  widget.onPointerActivity();
-                  widget.onFocusDown!();
-                },
-          onFocusChange: (f) {
-            if (_focused == f) return;
-            setState(() => _focused = f);
-            if (f) widget.onPointerActivity();
-          },
-          child: face,
-        ),
+      return ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final face = _buildFace(_hoveredN.value);
+          return _withChevrons(
+            FocusableControl(
+              focusNode: widget.focusNode,
+              // OK on the card plays — ←/→ cycle the preview (cancels Up next).
+              onTap: play,
+              borderRadius: _radius,
+              scaleOnFocus: 1.0,
+              showFocusBorder: true,
+              showFocusFill: false,
+              onLeftEdge: widget.count > 1
+                  ? () {
+                      widget.onPointerActivity();
+                      widget.onPrev();
+                    }
+                  : null,
+              onRightEdge: widget.count > 1
+                  ? () {
+                      widget.onPointerActivity();
+                      widget.onNext();
+                    }
+                  : null,
+              onUpEdge: widget.onFocusUp == null
+                  ? null
+                  : () {
+                      widget.onPointerActivity();
+                      widget.onFocusUp!();
+                    },
+              onDownEdge: widget.onFocusDown == null
+                  ? null
+                  : () {
+                      widget.onPointerActivity();
+                      widget.onFocusDown!();
+                    },
+              onFocusChange: (f) {
+                if (_focused == f) return;
+                setState(() => _focused = f);
+                if (f) widget.onPointerActivity();
+              },
+              child: face,
+            ),
+            _activeFor(_hoveredN.value),
+          );
+        },
       );
     }
 
@@ -1147,13 +1168,17 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
     return MouseRegion(
       onEnter: (_) {
         widget.onPointerActivity();
-        if (!_hovered) setState(() => _hovered = true);
+        _setHovered(true);
       },
-      onExit: (_) {
-        if (_hovered) setState(() => _hovered = false);
-      },
+      onExit: (_) => _setHovered(false),
       onHover: (_) => widget.onPointerActivity(),
-      child: withChevrons(face),
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final active = _activeFor(_hoveredN.value);
+          return _withChevrons(_buildFace(_hoveredN.value), active);
+        },
+      ),
     );
   }
 }

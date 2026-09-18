@@ -872,9 +872,13 @@ class _EnginePackActions extends StatefulWidget {
 }
 
 class _EnginePackActionsState extends State<_EnginePackActions> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
 
-  bool get _chromeActive => _hovered;
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -899,19 +903,22 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
         else
           MouseRegion(
             onEnter: (_) {
-              if (_hovered) return;
-              setState(() => _hovered = true);
+              if (_hoveredN.value) return;
+              _hoveredN.value = true;
             },
             onExit: (_) {
-              if (!_hovered) return;
-              setState(() => _hovered = false);
+              if (!_hoveredN.value) return;
+              _hoveredN.value = false;
             },
             cursor: SystemMouseCursors.click,
-            child: Switch(
-              value: widget.packEnabled,
-              scale: Switch.settingsScale,
-              onChanged: (v) => widget.onTogglePack(v),
-              emphasized: _chromeActive,
+            child: ListenableBuilder(
+              listenable: _hoveredN,
+              builder: (context, _) => Switch(
+                value: widget.packEnabled,
+                scale: Switch.settingsScale,
+                onChanged: (v) => widget.onTogglePack(v),
+                emphasized: _hoveredN.value,
+              ),
             ),
           ),
         if (widget.showOfficialBadge)

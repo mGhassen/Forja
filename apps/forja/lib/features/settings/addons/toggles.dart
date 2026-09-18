@@ -158,16 +158,9 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
 class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   bool _lanEnabled = false;
   bool _focused = false;
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _busy = false;
   bool? _optimisticEnabled;
-
-  bool get _chromeActive => ShellInputPolicy.interactiveActive(
-        ShellScope.inputPolicyOf(context),
-        hovered: _hovered,
-        focused: _focused,
-        context: context,
-      );
 
   @override
   void initState() {
@@ -176,6 +169,24 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       _hydrateLan();
     }
   }
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  bool _chromeActiveFor(bool hovered) => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: hovered,
+        focused: _focused,
+        context: context,
+      );
 
   @override
   void didUpdateWidget(covariant AddonMasterToggle oldWidget) {
@@ -253,17 +264,17 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     }
     final enabled = optimistic ?? computed;
 
-    final switchChrome = Switch(
-      value: enabled,
-      onChanged: null,
-      scale: Switch.settingsScale,
-      emphasized: _chromeActive,
-    );
+    Widget switchChrome(bool hovered) => Switch(
+          value: enabled,
+          onChanged: null,
+          scale: Switch.settingsScale,
+          emphasized: _chromeActiveFor(hovered),
+        );
 
     if (widget.chromeOnly) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: IgnorePointer(child: switchChrome),
+        child: IgnorePointer(child: switchChrome(false)),
       );
     }
 
@@ -295,34 +306,35 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
             if (_focused == f) return;
             setState(() => _focused = f);
           },
-          onHoverChange: (h) {
-            if (_hovered == h) return;
-            setState(() => _hovered = h);
-          },
-          child: SizedBox(
-            width: 56,
-            height: 44,
-            child: Center(child: IgnorePointer(child: switchChrome)),
+          onHoverChange: _setHovered,
+          child: ListenableBuilder(
+            listenable: _hoveredN,
+            builder: (context, _) => SizedBox(
+              width: 56,
+              height: 44,
+              child: Center(
+                child: IgnorePointer(
+                  child: switchChrome(_hoveredN.value),
+                ),
+              ),
+            ),
           ),
         ),
       );
     }
 
     return MouseRegion(
-      onEnter: (_) {
-        if (_hovered) return;
-        setState(() => _hovered = true);
-      },
-      onExit: (_) {
-        if (!_hovered) return;
-        setState(() => _hovered = false);
-      },
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       cursor: SystemMouseCursors.click,
-      child: Switch(
-        value: enabled,
-        onChanged: (v) => unawaited(_flipTo(v)),
-        scale: Switch.settingsScale,
-        emphasized: _chromeActive,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => Switch(
+          value: enabled,
+          onChanged: (v) => unawaited(_flipTo(v)),
+          scale: Switch.settingsScale,
+          emphasized: _chromeActiveFor(_hoveredN.value),
+        ),
       ),
     );
   }

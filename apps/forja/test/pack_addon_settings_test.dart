@@ -255,13 +255,13 @@ void main() {
         },
       });
       final intoHost = EnginePlugin.fromJson({
-        'id': 'hub-iptv',
-        'name': 'Iptv Extra',
+        'id': 'hub-into-playback',
+        'name': 'Playback Extra',
         'entry': 'i.js',
         'kind': 'catalog',
         'enabled': true,
         'settings': {
-          'addon': 'iptv',
+          'addon': 'playback',
           'fields': [
             {'id': 'z', 'type': 'toggle', 'label': 'Z', 'default': false},
           ],
@@ -271,6 +271,45 @@ void main() {
       expect(metas.length, 1);
       expect(metas.single.id, 'live_sports');
       expect(metas.single.title, 'Live Sports');
+      expect(metas.single.packContributed, isTrue);
+      expect(metas.single.hasToggle, isFalse);
+    });
+
+    test('packContributedAddonMetas titles multi-plugin buckets from addon id',
+        () {
+      final a = EnginePlugin.fromJson({
+        'id': 'svc-a',
+        'name': 'Service A',
+        'entry': 'a.js',
+        'kind': 'debrid',
+        'enabled': true,
+        'settings': {
+          'addon': 'cloud_resolve',
+          'order': 10,
+          'fields': [
+            {'id': 'apiKey', 'type': 'password', 'label': 'API key'},
+          ],
+        },
+      });
+      final b = EnginePlugin.fromJson({
+        'id': 'svc-b',
+        'name': 'Service B',
+        'entry': 'b.js',
+        'kind': 'debrid',
+        'enabled': true,
+        'settings': {
+          'addon': 'cloud_resolve',
+          'order': 20,
+          'fields': [
+            {'id': 'apiKey', 'type': 'password', 'label': 'API key'},
+          ],
+        },
+      });
+      final metas = packContributedAddonMetas([a, b]);
+      expect(metas.length, 1);
+      expect(metas.single.id, 'cloud_resolve');
+      expect(metas.single.title, 'Cloud Resolve');
+      expect(metas.single.subtitle, '2 pack settings');
       expect(metas.single.packContributed, isTrue);
       expect(metas.single.hasToggle, isFalse);
     });

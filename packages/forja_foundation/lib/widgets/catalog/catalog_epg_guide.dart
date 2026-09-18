@@ -572,22 +572,92 @@ class _ChannelCell extends StatefulWidget {
 }
 
 class _ChannelCellState extends State<_ChannelCell> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
 
   @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final channel = widget.channel;
-    final active = _hovered || _focused;
-    final selected = widget.highlighted && !active;
-    final accessory = widget.accessoryBuilder?.call(
-      channel,
-      active: active,
-    );
 
-    final body = Container(
+    if (!_tv) {
+      return MouseRegion(
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
+        child: shellRoundedInkHost(
+          radius: 0,
+          onTap: widget.onTap,
+          suppressInkHover: true,
+          child: ListenableBuilder(
+            listenable: _hoveredN,
+            builder: (context, _) {
+              final hovered = _hoveredN.value;
+              final active = hovered || _focused;
+              return _channelBody(
+                channel: channel,
+                active: active,
+                selected: widget.highlighted && !active,
+                accessory: widget.accessoryBuilder?.call(
+                  channel,
+                  active: active,
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 0,
+      motion: ForjaMotionPreset.fillOnly,
+      suppressInkHover: true,
+      showFocusFill: false,
+      listIndex: widget.listIndex,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellPaintTvZone.row,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onHoverChange: _setHovered,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final hovered = _hoveredN.value;
+          final active = hovered || _focused;
+          return _channelBody(
+            channel: channel,
+            active: active,
+            selected: widget.highlighted && !active,
+            accessory: widget.accessoryBuilder?.call(
+              channel,
+              active: active,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _channelBody({
+    required CatalogEpgChannel channel,
+    required bool active,
+    required bool selected,
+    required Widget? accessory,
+  }) {
+    return Container(
       height: widget.rowHeight,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
@@ -666,34 +736,6 @@ class _ChannelCellState extends State<_ChannelCell> {
             ),
         ],
       ),
-    );
-
-    if (!_tv) {
-      return MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: shellRoundedInkHost(
-          radius: 0,
-          onTap: widget.onTap,
-          suppressInkHover: true,
-          child: body,
-        ),
-      );
-    }
-
-    return ShellPaintScope.focusableTap(
-      context: context,
-      onTap: widget.onTap,
-      borderRadius: 0,
-      motion: ForjaMotionPreset.fillOnly,
-      suppressInkHover: true,
-      showFocusFill: false,
-      listIndex: widget.listIndex,
-      tvItemIndex: widget.listIndex,
-      tvZone: ShellPaintTvZone.row,
-      onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
-      child: body,
     );
   }
 }

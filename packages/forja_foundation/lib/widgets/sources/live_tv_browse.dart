@@ -371,14 +371,24 @@ class SourcesCategoryRailRow extends StatefulWidget {
 }
 
 class _SourcesCategoryRailRowState extends State<SourcesCategoryRailRow> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  Widget _tile(bool hovered) {
     final selected = widget.selected;
-    final lit = selected || _focused || _hovered;
-    final tile = AnimatedContainer(
+    final lit = selected || _focused || hovered;
+    return AnimatedContainer(
       duration: ForjaMotionTheme.of(context).fillOnly.duration,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
@@ -424,10 +434,13 @@ class _SourcesCategoryRailRowState extends State<SourcesCategoryRailRow> {
         ],
       ),
     );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return FocusableActionDetector(
       onShowFocusHighlight: (f) => setState(() => _focused = f),
-      onShowHoverHighlight: (h) => setState(() => _hovered = h),
+      onShowHoverHighlight: _setHovered,
       actions: <Type, Action<Intent>>{
         ActivateIntent: CallbackAction<ActivateIntent>(
           onInvoke: (_) {
@@ -440,7 +453,10 @@ class _SourcesCategoryRailRowState extends State<SourcesCategoryRailRow> {
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: widget.onTap,
-          child: tile,
+          child: ListenableBuilder(
+            listenable: _hoveredN,
+            builder: (context, _) => _tile(_hoveredN.value),
+          ),
         ),
       ),
     );

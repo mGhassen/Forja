@@ -14,7 +14,7 @@ Whatever `kind: debrid` plugins you have installed (ForjaHQ Debrid pack includes
 
 ## How to open it
 
-**Settings → Addons → Debrid** — pick the active plugin and enter its API key.
+**Settings → Addons → Debrid** (only while a debrid pack is installed) — pick the active plugin and enter its API key.
 
 ## What you can do
 

@@ -59,6 +59,7 @@ Widget _hostAddonDetailBody(String addonId, SettingsVisibility visibility) {
         nuvioOnly: true,
       );
     case SettingsAddonId.debrid:
+      // Pack-contributed Addons → Debrid bucket; host magnet-resolve prefs.
       return const SettingsDebridSection();
     case SettingsAddonId.connectedServices:
       return Column(

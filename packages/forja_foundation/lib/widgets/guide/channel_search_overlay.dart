@@ -516,83 +516,98 @@ class _SearchResultTile extends StatefulWidget {
 }
 
 class _SearchResultTileState extends State<_SearchResultTile> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
 
   static Color get _accent => ForjaShellColors.brandGreen;
 
   @override
-  Widget build(BuildContext context) {
-    final active = widget.active;
-    final focused = widget.focused || _hovered;
-    final highlighted = active || focused;
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
 
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MouseRegion(
       onEnter: (_) {
-        setState(() => _hovered = true);
+        _setHovered(true);
         widget.onHover();
       },
-      onExit: (_) => setState(() => _hovered = false),
+      onExit: (_) => _setHovered(false),
       // No hover/focus scale — panel ClipRRect would clip the lift into the pad.
       // Green left bar + fill already mark focus.
-      child: InkWell(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: active
-                ? _accent.withValues(alpha: 0.18)
-                : focused
-                    ? _accent.withValues(alpha: 0.10)
-                    : Colors.transparent,
-            border: Border(
-              left: BorderSide(
-                color: active || focused ? _accent : Colors.transparent,
-                width: 3,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              _ChannelLogo(url: widget.channel.logoUrl ?? ''),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.channel.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: focused
-                            ? _accent
-                            : active
-                                ? Colors.white
-                                : Colors.white60,
-                        fontSize: 12,
-                        fontWeight:
-                            highlighted ? FontWeight.w700 : FontWeight.w400,
-                      ),
-                    ),
-                    if (widget.groupName.isNotEmpty)
-                      Text(
-                        widget.groupName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white38,
-                          fontSize: 10,
-                        ),
-                      ),
-                  ],
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final active = widget.active;
+          final focused = widget.focused || _hoveredN.value;
+          final highlighted = active || focused;
+          return InkWell(
+            onTap: widget.onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: active
+                    ? _accent.withValues(alpha: 0.18)
+                    : focused
+                        ? _accent.withValues(alpha: 0.10)
+                        : Colors.transparent,
+                border: Border(
+                  left: BorderSide(
+                    color: active || focused ? _accent : Colors.transparent,
+                    width: 3,
+                  ),
                 ),
               ),
-              if (active)
-                Icon(Icons.play_arrow_rounded, color: _accent, size: 18),
-            ],
-          ),
-        ),
+              child: Row(
+                children: [
+                  _ChannelLogo(url: widget.channel.logoUrl ?? ''),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.channel.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: focused
+                                ? _accent
+                                : active
+                                    ? Colors.white
+                                    : Colors.white60,
+                            fontSize: 12,
+                            fontWeight:
+                                highlighted ? FontWeight.w700 : FontWeight.w400,
+                          ),
+                        ),
+                        if (widget.groupName.isNotEmpty)
+                          Text(
+                            widget.groupName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white38,
+                              fontSize: 10,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (active)
+                    Icon(Icons.play_arrow_rounded, color: _accent, size: 18),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

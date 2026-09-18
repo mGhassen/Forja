@@ -663,19 +663,23 @@ class _ChooserAction extends StatefulWidget {
 }
 
 class _ChooserActionState extends State<_ChooserAction> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
 
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onTap != null;
-    final highlighted = enabled &&
-        ShellInputPolicy.interactiveActive(
-          ShellScope.inputPolicyOf(context),
-          hovered: _hovered,
-          focused: _focused,
-          context: context,
-        );
     final fg = widget.primary
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.textPrimary;
@@ -689,21 +693,35 @@ class _ChooserActionState extends State<_ChooserAction> {
         showFocusBorder: false,
         showFocusFill: false,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: AnimatedOpacity(
-          opacity: enabled ? 1 : 0.45,
-          duration: const Duration(milliseconds: 120),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Text(
-              widget.label,
-              style: TextStyle(
-                color: fg,
-                fontSize: 15,
-                fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final highlighted = enabled &&
+                ShellInputPolicy.interactiveActive(
+                  ShellScope.inputPolicyOf(context),
+                  hovered: _hoveredN.value,
+                  focused: _focused,
+                  context: context,
+                );
+            return AnimatedOpacity(
+              opacity: enabled ? 1 : 0.45,
+              duration: const Duration(milliseconds: 120),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: 15,
+                    fontWeight:
+                        highlighted ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -728,17 +746,22 @@ class _AddProfileTile extends StatefulWidget {
 }
 
 class _AddProfileTileState extends State<_AddProfileTile> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = ShellInputPolicy.interactiveActive(
-      ShellScope.inputPolicyOf(context),
-      hovered: _hovered,
-      focused: _focused,
-      context: context,
-    );
     final m = widget.metrics;
     return ExcludeFocus(
       excluding: !widget.enabled,
@@ -750,45 +773,56 @@ class _AddProfileTileState extends State<_AddProfileTile> {
         showFocusBorder: false,
         showFocusFill: false,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: SizedBox(
-          width: m.tileWidth,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: m.avatarSize,
-                height: m.avatarSize,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4.5),
-                  border: Border.all(
-                    color: highlighted
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.25),
-                    width: 3,
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final highlighted = ShellInputPolicy.interactiveActive(
+              ShellScope.inputPolicyOf(context),
+              hovered: _hoveredN.value,
+              focused: _focused,
+              context: context,
+            );
+            return SizedBox(
+              width: m.tileWidth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: m.avatarSize,
+                    height: m.avatarSize,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4.5),
+                      border: Border.all(
+                        color: highlighted
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.25),
+                        width: 3,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.add_rounded,
+                      size: m.avatarSize * 0.5,
+                      color: highlighted
+                          ? ForjaShellColors.textPrimary
+                          : ForjaShellColors.textSecondary,
+                    ),
                   ),
-                ),
-                child: Icon(
-                  Icons.add_rounded,
-                  size: m.avatarSize * 0.5,
-                  color: highlighted
-                      ? ForjaShellColors.textPrimary
-                      : ForjaShellColors.textSecondary,
-                ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Add profile',
+                    style: TextStyle(
+                      color: highlighted
+                          ? ForjaShellColors.textPrimary
+                          : ForjaShellColors.textSecondary,
+                      fontSize: m.isTv ? 13 : 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Add profile',
-                style: TextStyle(
-                  color: highlighted
-                      ? ForjaShellColors.textPrimary
-                      : ForjaShellColors.textSecondary,
-                  fontSize: m.isTv ? 13 : 15,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -818,8 +852,19 @@ class _ProfileChoice extends StatefulWidget {
 
 class _ProfileChoiceState extends State<_ProfileChoice> {
   final GlobalKey _avatarKey = GlobalKey();
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
 
   Rect? _avatarOriginRect() {
     final box = _avatarKey.currentContext?.findRenderObject() as RenderBox?;
@@ -835,12 +880,6 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = ShellInputPolicy.interactiveActive(
-      ShellScope.inputPolicyOf(context),
-      hovered: _hovered,
-      focused: _focused,
-      context: context,
-    );
     final m = widget.metrics;
     return ExcludeFocus(
       excluding: !widget.enabled,
@@ -854,39 +893,50 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
         showFocusBorder: false,
         showFocusFill: false,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: SizedBox(
-          width: m.tileWidth,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              KeyedSubtree(
-                key: _avatarKey,
-                child: ForjaProfileAvatar(
-                  avatarKey: widget.profile.avatarKey,
-                  name: widget.profile.name,
-                  size: m.avatarSize,
-                  selected: highlighted,
-                  editing: widget.managing,
-                ),
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final highlighted = ShellInputPolicy.interactiveActive(
+              ShellScope.inputPolicyOf(context),
+              hovered: _hoveredN.value,
+              focused: _focused,
+              context: context,
+            );
+            return SizedBox(
+              width: m.tileWidth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  KeyedSubtree(
+                    key: _avatarKey,
+                    child: ForjaProfileAvatar(
+                      avatarKey: widget.profile.avatarKey,
+                      name: widget.profile.name,
+                      size: m.avatarSize,
+                      selected: highlighted,
+                      editing: widget.managing,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.profile.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: highlighted
+                          ? ForjaShellColors.textPrimary
+                          : ForjaShellColors.textSecondary,
+                      fontSize: m.isTv ? 13 : 15,
+                      fontWeight:
+                          highlighted ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                widget.profile.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: highlighted
-                      ? ForjaShellColors.textPrimary
-                      : ForjaShellColors.textSecondary,
-                  fontSize: m.isTv ? 13 : 15,
-                  fontWeight:
-                      highlighted ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -1150,18 +1200,22 @@ class _ProfileAvatarPick extends StatefulWidget {
 }
 
 class _ProfileAvatarPickState extends State<_ProfileAvatarPick> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = widget.selected ||
-        ShellInputPolicy.interactiveActive(
-          ShellScope.inputPolicyOf(context),
-          hovered: _hovered,
-          focused: _focused,
-          context: context,
-        );
     return ExcludeFocus(
       excluding: !widget.enabled,
       child: FocusableControl(
@@ -1171,12 +1225,24 @@ class _ProfileAvatarPickState extends State<_ProfileAvatarPick> {
         showFocusBorder: false,
         showFocusFill: false,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: ForjaProfileAvatar(
-          avatarKey: widget.avatarKey,
-          name: widget.avatarKey,
-          size: 56,
-          selected: highlighted,
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final highlighted = widget.selected ||
+                ShellInputPolicy.interactiveActive(
+                  ShellScope.inputPolicyOf(context),
+                  hovered: _hoveredN.value,
+                  focused: _focused,
+                  context: context,
+                );
+            return ForjaProfileAvatar(
+              avatarKey: widget.avatarKey,
+              name: widget.avatarKey,
+              size: 56,
+              selected: highlighted,
+            );
+          },
         ),
       ),
     );

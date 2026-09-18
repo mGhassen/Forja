@@ -112,14 +112,23 @@ class ListStatusMenuRow extends StatefulWidget {
 }
 
 class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
-  bool get _active => _hovered || (widget.tvFocus && _focused);
-
   @override
-  Widget build(BuildContext context) {
-    final active = _active;
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  bool _active(bool hovered) => hovered || (widget.tvFocus && _focused);
+
+  Widget _row(bool active) {
     final selected = widget.selected;
     final labelFontSize = ShellPaintScope.usesTvDensityOf(context)
         ? ShellTokens.tvBodyFontSize
@@ -128,7 +137,7 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
     // color — desktop has no autofocus, so weight-only was invisible.
     final lit = active || selected;
     final accent = lit ? widget.statusColor : Colors.white;
-    final row = AnimatedContainer(
+    return AnimatedContainer(
       duration: ForjaMotionTheme.of(context).fillOnly.duration,
       curve: ForjaMotionTheme.of(context).fillOnly.resolvedCurve,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -158,16 +167,24 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
         ],
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _row(_active(_hoveredN.value)),
+    );
 
     if (!widget.tvFocus) {
       return MouseRegion(
         cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
         child: GestureDetector(
           onTap: widget.onTap,
           behavior: HitTestBehavior.opaque,
-          child: row,
+          child: content,
         ),
       );
     }
@@ -176,12 +193,12 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
       autofocus: widget.autoFocus,
       onFocusChange: (f) => setState(() => _focused = f),
       child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
         child: FocusableTap(
           onTap: widget.onTap,
           borderRadius: BorderRadius.zero,
-          child: row,
+          child: content,
         ),
       ),
     );

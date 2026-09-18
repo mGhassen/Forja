@@ -215,6 +215,8 @@ abstract final class PortalsHost {
 
   /// Store → vault mirror. Keeps pack `url|user` active (never host password key).
   /// Never wipe vault with an empty store (cloud pull miss / race).
+  /// Never clear `iptv.active` when the store cannot resolve the current key
+  /// (select race with panel cloud prepare).
   static Future<void> _mirrorStoreToVault() async {
     final portals = await PortalStore.load();
     if (portals.isEmpty) return;
@@ -227,7 +229,7 @@ abstract final class PortalsHost {
     await PortalVaultInventory.mirrorFromStore(
       portals: portals,
       favoriteKeys: favs,
-      activeKey: activePack,
+      activeKey: activePack.isNotEmpty ? activePack : null,
     );
   }
 

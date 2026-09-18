@@ -683,17 +683,27 @@ class _SeasonCard extends StatefulWidget {
 }
 
 class _SeasonCardState extends State<_SeasonCard> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildCard(bool hovered) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final seasonFontSize =
         tv ? DetailsTokens.bodyFontSizeTv : 12.0;
     final active = ShellPaintScope.interactiveActive(
       context,
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
     );
     final borderColor = widget.selected || active
@@ -702,19 +712,7 @@ class _SeasonCardState extends State<_SeasonCard> {
     final borderWidth = widget.selected || active ? 2.0 : 1.0;
     final liftActive = active && !widget.selected;
 
-    // Avoid shellFocusableTap's Material clip - it ate the decoration stroke.
-    return ShellPaintScope.focusableTap(
-      context: context,
-      onTap: widget.onTap,
-      borderRadius: _SeasonCard.radius,
-      motion: ForjaMotionPreset.fillOnly,
-      onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
-      onLeftEdge: widget.onLeftEdge,
-      listIndex: widget.listIndex,
-      tvItemIndex: widget.listIndex,
-      tvZone: ShellPaintTvZone.row,
-      child: ForjaMotionScale(
+    return ForjaMotionScale(
         preset: ForjaMotionPreset.chipLift,
         active: liftActive,
         child: GestureDetector(
@@ -797,7 +795,26 @@ class _SeasonCardState extends State<_SeasonCard> {
             ],
           ),
         ),
-        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: _SeasonCard.radius,
+      motion: ForjaMotionPreset.fillOnly,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: _setHovered,
+      onLeftEdge: widget.onLeftEdge,
+      listIndex: widget.listIndex,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellPaintTvZone.row,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildCard(_hoveredN.value),
       ),
     );
   }
@@ -903,11 +920,21 @@ class _EpisodeCard extends StatefulWidget {
 }
 
 class _EpisodeCardState extends State<_EpisodeCard> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildCard(bool hovered) {
     final cardWidth = _EpisodeCard.cardWidthOf(context);
     final thumbHeight = _EpisodeCard.thumbHeightOf(context);
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
@@ -921,7 +948,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     final tvFocus = ShellPaintScope.useTvFocusOf(context);
     final active = ShellPaintScope.interactiveActive(
       context,
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
     );
     final enabled = widget.onTap != null;
@@ -936,21 +963,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
         ? Colors.white
         : ForjaShellColors.chipSelectedBorder;
 
-    return ShellPaintScope.focusableTap(
-      context: context,
-      onTap: widget.onTap,
-      borderRadius: _EpisodeCard.thumbRadius,
-      motion: ForjaMotionPreset.fillOnly,
-      onFocusChange: (focused) {
-        setState(() => _focused = focused);
-        widget.onFocusChange?.call(focused);
-      },
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
-      onLeftEdge: widget.onLeftEdge,
-      listIndex: widget.listIndex,
-      tvItemIndex: widget.listIndex,
-      tvZone: ShellPaintTvZone.row,
-      child: ForjaMotionScale(
+    return ForjaMotionScale(
         preset: ForjaMotionPreset.cardLift,
         active: liftActive,
         child: GestureDetector(
@@ -1089,11 +1102,33 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                     ),
                   ),
                 ],
-                ],
-              ),
+              ],
             ),
           ),
         ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: _EpisodeCard.thumbRadius,
+      motion: ForjaMotionPreset.fillOnly,
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        widget.onFocusChange?.call(focused);
+      },
+      onHoverChange: _setHovered,
+      onLeftEdge: widget.onLeftEdge,
+      listIndex: widget.listIndex,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellPaintTvZone.row,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildCard(_hoveredN.value),
+      ),
     );
   }
 

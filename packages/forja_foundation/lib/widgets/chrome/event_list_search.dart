@@ -89,9 +89,9 @@ class EventListSearchState extends State<EventListSearch>
   late final Animation<double> _expand;
   bool _open = false;
   bool _toolFocused = false;
-  bool _toolHovered = false;
+  final ValueNotifier<bool> _toolHoveredN = ValueNotifier(false);
   bool _closeFocused = false;
-  bool _closeHovered = false;
+  final ValueNotifier<bool> _closeHoveredN = ValueNotifier(false);
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
 
@@ -147,8 +147,20 @@ class EventListSearchState extends State<EventListSearch>
   void dispose() {
     _anim.dispose();
     _ctrl.dispose();
+    _toolHoveredN.dispose();
+    _closeHoveredN.dispose();
     if (_ownsFocus) _focus.dispose();
     super.dispose();
+  }
+
+  void _setToolHovered(bool h) {
+    if (_toolHoveredN.value == h) return;
+    _toolHoveredN.value = h;
+  }
+
+  void _setCloseHovered(bool h) {
+    if (_closeHoveredN.value == h) return;
+    _closeHoveredN.value = h;
   }
 
   void openSearch({bool edit = true}) {
@@ -242,17 +254,17 @@ class EventListSearchState extends State<EventListSearch>
     );
   }
 
-  Widget _collapsedIcon({required bool hasQuery}) {
+  Widget _collapsedIconPaint({required bool hasQuery, required bool hovered}) {
     final active = ShellPaintScope.interactiveActive(
           context,
-          hovered: _toolHovered,
+          hovered: hovered,
           focused: _toolFocused,
         ) ||
         hasQuery;
     final tvFocused = _tv && _toolFocused;
     final idleAlpha = hasQuery ? 0.12 : 0.08;
     final size = widget.collapsedSize;
-    final child = Tooltip(
+    return Tooltip(
       message: widget.tooltip,
       child: Container(
         width: size,
@@ -284,7 +296,10 @@ class EventListSearchState extends State<EventListSearch>
         ),
       ),
     );
+  }
 
+  Widget _collapsedIcon({required bool hasQuery}) {
+    final size = widget.collapsedSize;
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: () => openSearch(),
@@ -298,18 +313,18 @@ class EventListSearchState extends State<EventListSearch>
       onRightEdge: widget.onRightEdge,
       onDownEdge: widget.onDownEdge,
       onFocusChange: (f) => setState(() => _toolFocused = f),
-      onHoverChange: (h) => setState(() => _toolHovered = h),
-      child: child,
+      onHoverChange: _setToolHovered,
+      child: ListenableBuilder(
+        listenable: _toolHoveredN,
+        builder: (context, _) => _collapsedIconPaint(
+          hasQuery: hasQuery,
+          hovered: _toolHoveredN.value,
+        ),
+      ),
     );
   }
 
   Widget _fieldChrome() {
-    final closeActive = ShellPaintScope.interactiveActive(
-          context,
-          hovered: _closeHovered,
-          focused: _closeFocused,
-        );
-    final closeTv = _tv && _closeFocused;
     final field = widget.fieldBuilder?.call(
           context,
           controller: _ctrl,
@@ -371,14 +386,27 @@ class EventListSearchState extends State<EventListSearch>
             onRightEdge: widget.onRightEdge,
             onDownEdge: widget.onDownEdge,
             onFocusChange: (f) => setState(() => _closeFocused = f),
-            onHoverChange: (h) => setState(() => _closeHovered = h),
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Icon(
-                Icons.close_rounded,
-                size: widget.fieldIconSize,
-                color: closeActive || closeTv ? Colors.white : Colors.white54,
-              ),
+            onHoverChange: _setCloseHovered,
+            child: ListenableBuilder(
+              listenable: _closeHoveredN,
+              builder: (context, _) {
+                final closeActive = ShellPaintScope.interactiveActive(
+                  context,
+                  hovered: _closeHoveredN.value,
+                  focused: _closeFocused,
+                );
+                final closeTv = _tv && _closeFocused;
+                return Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: widget.fieldIconSize,
+                    color: closeActive || closeTv
+                        ? Colors.white
+                        : Colors.white54,
+                  ),
+                );
+              },
             ),
           ),
         ],

@@ -127,18 +127,28 @@ class _IptvSortRow extends StatefulWidget {
 }
 
 class _IptvSortRowState extends State<_IptvSortRow> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  Widget _rowContent(bool hovered) {
     final input = (
       tvFocus: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
       mouseHover: ShellScope.inputPolicyOf(context).scaleOnHover,
     );
     final highlight = ShellInputPolicy.interactiveActive(
       ShellScope.inputPolicyOf(context),
-      hovered: _hovered,
+      hovered: hovered,
       focused: _focused,
       context: context,
     );
@@ -147,63 +157,66 @@ class _IptvSortRowState extends State<_IptvSortRow> {
         ? PlayerPopupTokens.accentFill
         : Colors.transparent;
 
-    final row = MouseRegion(
-      onEnter: input.mouseHover
-          ? (_) {
-              if (_hovered) return;
-              setState(() => _hovered = true);
-            }
-          : null,
-      onExit: input.mouseHover
-          ? (_) {
-              if (!_hovered) return;
-              setState(() => _hovered = false);
-            }
-          : null,
-      child: Material(
-        color: bg,
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        canRequestFocus: false,
+        onTap: input.tvFocus ? null : widget.onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          canRequestFocus: false,
-          onTap: input.tvFocus ? null : widget.onTap,
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-          hoverColor: Colors.transparent,
-          splashColor: ForjaShellColors.inkSplash,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              children: [
+        hoverColor: Colors.transparent,
+        splashColor: ForjaShellColors.inkSplash,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                widget.icon,
+                size: 18,
+                color: widget.selected || highlight
+                    ? PlayerPopupTokens.accent
+                    : Colors.white.withValues(alpha: 0.75),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: widget.selected || highlight
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (widget.selected)
                 Icon(
-                  widget.icon,
+                  Icons.check_rounded,
                   size: 18,
-                  color: widget.selected || highlight
-                      ? PlayerPopupTokens.accent
-                      : Colors.white.withValues(alpha: 0.75),
+                  color: PlayerPopupTokens.accent,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: widget.selected || highlight
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (widget.selected)
-                  Icon(
-                    Icons.check_rounded,
-                    size: 18,
-                    color: PlayerPopupTokens.accent,
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final input = (
+      tvFocus: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+      mouseHover: ShellScope.inputPolicyOf(context).scaleOnHover,
+    );
+
+    final row = MouseRegion(
+      onEnter: input.mouseHover ? (_) => _setHovered(true) : null,
+      onExit: input.mouseHover ? (_) => _setHovered(false) : null,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _rowContent(_hoveredN.value),
       ),
     );
 
@@ -229,12 +242,7 @@ class _IptvSortRowState extends State<_IptvSortRow> {
           if (_focused == f) return;
           setState(() => _focused = f);
         },
-        onHoverChange: input.mouseHover
-            ? (h) {
-                if (_hovered == h) return;
-                setState(() => _hovered = h);
-              }
-            : null,
+        onHoverChange: input.mouseHover ? _setHovered : null,
         child: row,
       ),
     );

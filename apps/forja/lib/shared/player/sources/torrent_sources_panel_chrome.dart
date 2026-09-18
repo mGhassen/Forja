@@ -526,21 +526,46 @@ class _KindTabState extends State<_KindTab> {
   final _tabFocus = FocusNode(debugLabel: 'sources-kind-tab');
   final _reloadFocus = FocusNode(debugLabel: 'sources-kind-reload');
 
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  final ValueNotifier<bool> _reloadHoveredN = ValueNotifier(false);
+  final ValueNotifier<bool> _busyHoveredN = ValueNotifier(false);
   bool _focused = false;
   bool _reloadFocused = false;
-  bool _reloadHovered = false;
-  bool _busyHovered = false;
 
   @override
   void dispose() {
+    _hoveredN.dispose();
+    _reloadHoveredN.dispose();
+    _busyHoveredN.dispose();
     _tabFocus.dispose();
     _reloadFocus.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+    if (!hovered) {
+      _setReloadHovered(false);
+      _setBusyHovered(false);
+    }
+  }
+
+  void _setReloadHovered(bool hovered) {
+    if (_reloadHoveredN.value == hovered) return;
+    _reloadHoveredN.value = hovered;
+  }
+
+  void _setBusyHovered(bool hovered) {
+    if (_busyHoveredN.value == hovered) return;
+    _busyHoveredN.value = hovered;
+  }
+
+  Widget _buildTabFace(
+    bool hovered,
+    bool reloadHovered,
+    bool busyHovered,
+  ) {
     final cinematic = ForjaShellColors.cinematic;
     final selected = widget.selected;
     final policy = ShellScope.inputPolicyOf(context);
@@ -549,19 +574,13 @@ class _KindTabState extends State<_KindTab> {
       context,
       focused: _focused || _reloadFocused,
     );
-    final emphasize = selected || _hovered || focusStyled;
-    // Focus / hover → brand green text (selected idle stays white + green bar).
-    final color = (_hovered || focusStyled)
+    final emphasize = selected || hovered || focusStyled;
+    final color = (hovered || focusStyled)
         ? ForjaShellColors.brandGreen
-        : (selected
-              ? cinematic.textPrimary
-              : cinematic.textSecondary);
-    final reloadColor = (_reloadFocused || _reloadHovered)
-        ? ForjaShellColors.brandGreen
-        : color;
+        : (selected ? cinematic.textPrimary : cinematic.textSecondary);
     final indicatorColor = selected
         ? ForjaShellColors.brandGreen
-        : (_hovered || focusStyled
+        : (hovered || focusStyled
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
               : Colors.transparent);
     final topPad = tv ? 8.0 : 0.0;
@@ -598,8 +617,8 @@ class _KindTabState extends State<_KindTab> {
             const SizedBox(width: 4),
             ForjaBusyCancelGlyph(
               color: color,
-              hovered: _busyHovered,
-              onHover: (v) => setState(() => _busyHovered = v),
+              hovered: busyHovered,
+              onHover: _setBusyHovered,
               onCancel: widget.onCancel,
             ),
           ],
@@ -607,7 +626,7 @@ class _KindTabState extends State<_KindTab> {
       ),
     );
 
-    final tabFace = AnimatedContainer(
+    return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       padding: EdgeInsets.fromLTRB(
@@ -618,7 +637,7 @@ class _KindTabState extends State<_KindTab> {
       ),
       transform: Matrix4.translationValues(
         0,
-        (_hovered || focusStyled) && !selected ? -0.5 : 0,
+        (hovered || focusStyled) && !selected ? -0.5 : 0,
         0,
       ),
       transformAlignment: Alignment.center,
@@ -635,96 +654,133 @@ class _KindTabState extends State<_KindTab> {
         child: label,
       ),
     );
+  }
 
-    Widget reloadBtn = const SizedBox.shrink();
-    if (widget.onReload != null) {
-      final reloadIcon = AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding: EdgeInsets.fromLTRB(2, topPad, 12, 0),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: indicatorColor,
-              width: selected ? 2.0 : 1.5,
-            ),
+  Widget _buildReloadBtn(
+    bool hovered,
+    bool reloadHovered, {
+    required bool tv,
+  }) {
+    if (widget.onReload == null) return const SizedBox.shrink();
+    final cinematic = ForjaShellColors.cinematic;
+    final selected = widget.selected;
+    final policy = ShellScope.inputPolicyOf(context);
+    final focusStyled = policy.focusStyled(
+      context,
+      focused: _focused || _reloadFocused,
+    );
+    final emphasize = selected || hovered || focusStyled;
+    final color = (hovered || focusStyled)
+        ? ForjaShellColors.brandGreen
+        : (selected ? cinematic.textPrimary : cinematic.textSecondary);
+    final reloadColor = (_reloadFocused || reloadHovered)
+        ? ForjaShellColors.brandGreen
+        : color;
+    final indicatorColor = selected
+        ? ForjaShellColors.brandGreen
+        : (hovered || focusStyled
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
+              : Colors.transparent);
+    final topPad = tv ? 8.0 : 0.0;
+
+    final reloadIcon = AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.fromLTRB(2, topPad, 12, 0),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: indicatorColor,
+            width: selected ? 2.0 : 1.5,
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 9),
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            onEnter: (_) => setState(() => _reloadHovered = true),
-            onExit: (_) => setState(() => _reloadHovered = false),
-            child: AnimatedOpacity(
-              opacity: emphasize ? 1 : 0.7,
-              duration: const Duration(milliseconds: 160),
-              child: AnimatedRotation(
-                turns: _reloadHovered || _reloadFocused ? 0.5 : 0,
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-                child: Icon(
-                  Icons.refresh_rounded,
-                  size: 14,
-                  color: reloadColor,
-                ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => _setReloadHovered(true),
+          onExit: (_) => _setReloadHovered(false),
+          child: AnimatedOpacity(
+            opacity: emphasize ? 1 : 0.7,
+            duration: const Duration(milliseconds: 160),
+            child: AnimatedRotation(
+              turns: reloadHovered || _reloadFocused ? 0.5 : 0,
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              child: Icon(
+                Icons.refresh_rounded,
+                size: 14,
+                color: reloadColor,
               ),
             ),
           ),
         ),
+      ),
+    );
+    if (!tv) {
+      return GestureDetector(
+        onTap: widget.onReload,
+        behavior: HitTestBehavior.opaque,
+        child: reloadIcon,
       );
-      reloadBtn = tv
-          ? shellFocusableTap(
-              context: context,
-              focusNode: _reloadFocus,
-              onTap: widget.onReload,
-              borderRadius: 0,
-              scaleOnFocus: 1.0,
-              suppressInkHover: true,
-              showFocusFill: false,
-              showFocusBorder: false,
-              onLeftEdge: () => _tabFocus.requestFocus(),
-              onFocusChange: (focused) =>
-                  setState(() => _reloadFocused = focused),
-              child: reloadIcon,
-            )
-          : GestureDetector(
-              onTap: widget.onReload,
-              behavior: HitTestBehavior.opaque,
-              child: reloadIcon,
-            );
     }
+    return shellFocusableTap(
+      context: context,
+      focusNode: _reloadFocus,
+      onTap: widget.onReload,
+      borderRadius: 0,
+      scaleOnFocus: 1.0,
+      suppressInkHover: true,
+      showFocusFill: false,
+      showFocusBorder: false,
+      onLeftEdge: () => _tabFocus.requestFocus(),
+      onFocusChange: (focused) => setState(() => _reloadFocused = focused),
+      child: reloadIcon,
+    );
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    final tv = SourcesPanelTv.isTv(context);
     return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() {
-        _hovered = false;
-        _reloadHovered = false;
-        _busyHovered = false;
-      }),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       cursor: SystemMouseCursors.click,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          shellFocusableTap(
-            context: context,
-            focusNode: _tabFocus,
-            onTap: widget.onTap,
-            borderRadius: 0,
-            scaleOnFocus: 1.0,
-            suppressInkHover: true,
-            listIndex: widget.tvItemIndex,
-            tvTabId: SourcesPanelTv.tabId,
-            tvRowId: SourcesPanelTv.kindRowId,
-            tvItemIndex: widget.tvItemIndex,
-            onRightEdge: widget.onReload == null || !tv
-                ? null
-                : () => _reloadFocus.requestFocus(),
-            onFocusChange: (focused) => setState(() => _focused = focused),
-            child: tabFace,
-          ),
-          if (widget.onReload != null) reloadBtn,
-        ],
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          _hoveredN,
+          _reloadHoveredN,
+          _busyHoveredN,
+        ]),
+        builder: (context, _) {
+          final hovered = _hoveredN.value;
+          final reloadHovered = _reloadHoveredN.value;
+          final busyHovered = _busyHoveredN.value;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              shellFocusableTap(
+                context: context,
+                focusNode: _tabFocus,
+                onTap: widget.onTap,
+                borderRadius: 0,
+                scaleOnFocus: 1.0,
+                suppressInkHover: true,
+                listIndex: widget.tvItemIndex,
+                tvTabId: SourcesPanelTv.tabId,
+                tvRowId: SourcesPanelTv.kindRowId,
+                tvItemIndex: widget.tvItemIndex,
+                onRightEdge: widget.onReload == null || !tv
+                    ? null
+                    : () => _reloadFocus.requestFocus(),
+                onFocusChange: (focused) => setState(() => _focused = focused),
+                child: _buildTabFace(hovered, reloadHovered, busyHovered),
+              ),
+              _buildReloadBtn(hovered, reloadHovered, tv: tv),
+            ],
+          );
+        },
       ),
     );
   }

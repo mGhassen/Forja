@@ -319,19 +319,30 @@ class _FocusIconTap extends StatefulWidget {
 }
 
 class _FocusIconTapState extends State<_FocusIconTap> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
 
-  bool get _active =>
-      liveFocusActive(context, hovered: _hovered, focused: _focused);
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _activeFor(bool hovered) =>
+      liveFocusActive(context, hovered: hovered, focused: _focused);
 
   bool get _tvFocused =>
       liveTvFocused(context, focused: _focused);
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(bool hovered) {
     final policy = ShellScope.inputPolicyOf(context);
-    final pointerActive = _active && !_tvFocused;
+    final active = _activeFor(hovered);
+    final pointerActive = active && !_tvFocused;
     final fg = _tvFocused
         ? ForjaShellColors.brandGreen
         : pointerActive
@@ -344,7 +355,7 @@ class _FocusIconTapState extends State<_FocusIconTap> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: guideFocusSurfaceColor(
-            active: _active,
+            active: active,
             tvFocused: _tvFocused,
             idleAlpha: 0,
             hoverAlpha: 0.14,
@@ -368,6 +379,11 @@ class _FocusIconTapState extends State<_FocusIconTap> {
         child: body,
       );
     }
+    return body;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tap = liveTap(
       context: context,
       onTap: widget.onTap,
@@ -383,8 +399,11 @@ class _FocusIconTapState extends State<_FocusIconTap> {
         setState(() => _focused = focused);
         widget.onFocusChange?.call(focused);
       },
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
-      child: body,
+      onHoverChange: _setHovered,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildBody(_hoveredN.value),
+      ),
     );
     if (widget.tooltip == null) return tap;
     return Tooltip(message: widget.tooltip!, child: tap);
@@ -426,11 +445,22 @@ class FocusIconAction extends StatefulWidget {
 }
 
 class _FocusIconActionState extends State<FocusIconAction> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
 
-  bool get _active =>
-      liveFocusActive(context, hovered: _hovered, focused: _focused);
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _activeFor(bool hovered) =>
+      liveFocusActive(context, hovered: hovered, focused: _focused);
 
   bool get _tvFocused =>
       liveTvFocused(context, focused: _focused);
@@ -457,7 +487,6 @@ class _FocusIconActionState extends State<FocusIconAction> {
   @override
   Widget build(BuildContext context) {
     if (liveUseTvFocus(context)) {
-      final fg = _fg(active: _active, tvFocused: _tvFocused);
       return liveTap(
         context: context,
         onTap: widget.onPressed,
@@ -470,10 +499,19 @@ class _FocusIconActionState extends State<FocusIconAction> {
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: Tooltip(
-          message: widget.tooltip,
-          child: _icon(fg),
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final fg = _fg(
+              active: _activeFor(_hoveredN.value),
+              tvFocused: _tvFocused,
+            );
+            return Tooltip(
+              message: widget.tooltip,
+              child: _icon(fg),
+            );
+          },
         ),
       );
     }
@@ -511,11 +549,22 @@ class FocusTextAction extends StatefulWidget {
 }
 
 class _FocusTextActionState extends State<FocusTextAction> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
 
-  bool get _active =>
-      liveFocusActive(context, hovered: _hovered, focused: _focused);
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _activeFor(bool hovered) =>
+      liveFocusActive(context, hovered: hovered, focused: _focused);
 
   bool get _tvFocused =>
       liveTvFocused(context, focused: _focused);
@@ -523,24 +572,36 @@ class _FocusTextActionState extends State<FocusTextAction> {
   @override
   Widget build(BuildContext context) {
     final idle = widget.color ?? GuideChromeStyle.accent;
-    final fg = guideFocusFg(idle, active: _active, tvFocused: _tvFocused);
     if (liveUseTvFocus(context)) {
       return liveTap(
         context: context,
         onTap: widget.onPressed,
         borderRadius: 8,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(widget.icon, color: fg, size: 18),
-              const SizedBox(width: 6),
-              Text(widget.label, style: GoogleFonts.plusJakartaSans(color: fg)),
-            ],
-          ),
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final fg = guideFocusFg(
+              idle,
+              active: _activeFor(_hoveredN.value),
+              tvFocused: _tvFocused,
+            );
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(widget.icon, color: fg, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.label,
+                    style: GoogleFonts.plusJakartaSans(color: fg),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       );
     }
@@ -589,11 +650,22 @@ class FocusPrimaryButton extends StatefulWidget {
 }
 
 class _FocusPrimaryButtonState extends State<FocusPrimaryButton> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
 
-  bool get _active =>
-      liveFocusActive(context, hovered: _hovered, focused: _focused);
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _activeFor(bool hovered) =>
+      liveFocusActive(context, hovered: hovered, focused: _focused);
 
   bool get _tvFocused =>
       liveTvFocused(context, focused: _focused);
@@ -601,71 +673,76 @@ class _FocusPrimaryButtonState extends State<FocusPrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final tv = liveUseTvFocus(context);
-    final decoration = tv
-        ? guideFocusButtonDecoration(
-            active: _active,
-            tvFocused: _tvFocused,
-            borderRadius: 14,
-            subtle: widget.subtle,
-          )
-        : GuideChromeStyle.primaryButtonDecoration(subtle: widget.subtle);
-    final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
-
     return Material(
       color: Colors.transparent,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOutCubic,
-        decoration: decoration,
-        child: liveTap(
-          context: context,
-          onTap: widget.busy ? null : widget.onPressed,
-          borderRadius: 14,
-          tvRowId: widget.tvRowId,
-          tvItemIndex: widget.tvItemIndex,
-          focusNode: widget.focusNode,
-          onUpEdge: widget.onUpEdge,
-          onDownEdge: widget.onDownEdge,
-          onLeftEdge: widget.onLeftEdge,
-          onRightEdge: widget.onRightEdge,
-          onFocusChange: tv
-              ? (focused) => setState(() => _focused = focused)
-              : null,
-          onHoverChange: tv
-              ? (hovered) => setState(() => _hovered = hovered)
-              : null,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: widget.dense ? 10 : 14,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (widget.busy)
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: fg,
-                    ),
+      child: liveTap(
+        context: context,
+        onTap: widget.busy ? null : widget.onPressed,
+        borderRadius: 14,
+        tvRowId: widget.tvRowId,
+        tvItemIndex: widget.tvItemIndex,
+        focusNode: widget.focusNode,
+        onUpEdge: widget.onUpEdge,
+        onDownEdge: widget.onDownEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
+        onFocusChange: tv
+            ? (focused) => setState(() => _focused = focused)
+            : null,
+        onHoverChange: tv ? _setHovered : null,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final active = _activeFor(_hoveredN.value);
+            final decoration = tv
+                ? guideFocusButtonDecoration(
+                    active: active,
+                    tvFocused: _tvFocused,
+                    borderRadius: 14,
+                    subtle: widget.subtle,
                   )
-                else
-                  Icon(widget.icon, color: fg, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  widget.label,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: fg,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
+                : GuideChromeStyle.primaryButtonDecoration(
+                    subtle: widget.subtle,
+                  );
+            final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOutCubic,
+              decoration: decoration,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: widget.dense ? 10 : 14,
                 ),
-              ],
-            ),
-          ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (widget.busy)
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: fg,
+                        ),
+                      )
+                    else
+                      Icon(widget.icon, color: fg, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.label,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: fg,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -705,58 +782,79 @@ class FocusRoundIcon extends StatefulWidget {
 }
 
 class _FocusRoundIconState extends State<FocusRoundIcon> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
 
-  bool get _active =>
-      liveFocusActive(context, hovered: _hovered, focused: _focused);
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _activeFor(bool hovered) =>
+      liveFocusActive(context, hovered: hovered, focused: _focused);
 
   bool get _tvFocused => liveTvFocused(context, focused: _focused);
 
   @override
   Widget build(BuildContext context) {
     final size = widget.big ? 56.0 : 44.0;
-    final fg = guideFocusFg(
-      Colors.white,
-      active: _active,
-      tvFocused: _tvFocused,
-    );
-    final shape = CircleBorder(
-      side: _tvFocused
-          ? const BorderSide(color: ForjaShellColors.brandGreen, width: 1.5)
-          : BorderSide.none,
-    );
+    if (liveUseTvFocus(context)) {
+      return ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final active = _activeFor(_hoveredN.value);
+          final fg = guideFocusFg(
+            Colors.white,
+            active: active,
+            tvFocused: _tvFocused,
+          );
+          final shape = CircleBorder(
+            side: _tvFocused
+                ? const BorderSide(color: ForjaShellColors.brandGreen, width: 1.5)
+                : BorderSide.none,
+          );
+          return Material(
+            color: guideFocusSurfaceColor(
+              active: active,
+              tvFocused: _tvFocused,
+              idleAlpha: 0.12,
+              hoverAlpha: 0.22,
+            ),
+            shape: shape,
+            child: liveTap(
+              context: context,
+              onTap: widget.onTap,
+              borderRadius: size / 2,
+              focusNode: widget.focusNode,
+              tvRowId: widget.tvRowId,
+              tvItemIndex: widget.tvItemIndex,
+              onUpEdge: widget.onUpEdge,
+              onDownEdge: widget.onDownEdge,
+              onLeftEdge: widget.onLeftEdge,
+              onRightEdge: widget.onRightEdge,
+              onFocusChange: (focused) => setState(() => _focused = focused),
+              onHoverChange: _setHovered,
+              child: SizedBox(
+                width: size,
+                height: size,
+                child: Icon(widget.icon, color: fg, size: widget.big ? 32 : 22),
+              ),
+            ),
+          );
+        },
+      );
+    }
     final child = SizedBox(
       width: size,
       height: size,
-      child: Icon(widget.icon, color: fg, size: widget.big ? 32 : 22),
+      child: Icon(widget.icon, color: Colors.white, size: widget.big ? 32 : 22),
     );
-    if (liveUseTvFocus(context)) {
-      return Material(
-        color: guideFocusSurfaceColor(
-          active: _active,
-          tvFocused: _tvFocused,
-          idleAlpha: 0.12,
-          hoverAlpha: 0.22,
-        ),
-        shape: shape,
-        child: liveTap(
-          context: context,
-          onTap: widget.onTap,
-          borderRadius: size / 2,
-          focusNode: widget.focusNode,
-          tvRowId: widget.tvRowId,
-          tvItemIndex: widget.tvItemIndex,
-          onUpEdge: widget.onUpEdge,
-          onDownEdge: widget.onDownEdge,
-          onLeftEdge: widget.onLeftEdge,
-          onRightEdge: widget.onRightEdge,
-          onFocusChange: (focused) => setState(() => _focused = focused),
-          onHoverChange: (hovered) => setState(() => _hovered = hovered),
-          child: child,
-        ),
-      );
-    }
     return Material(
       color: Colors.white.withValues(alpha: 0.12),
       shape: const CircleBorder(),
