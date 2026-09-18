@@ -405,6 +405,10 @@ class _ShellNavRailState extends State<ShellNavRail> {
                           shellNavRailProfileAvatarScale(context);
                       final showBoostedProfile =
                           settingsIndex != null && showDesktopProfile;
+                      // Peer-size profile only in compact shell (☰ drawer width).
+                      // Wide desktop keeps the large avatar even if tabs compress.
+                      final compactShell =
+                          ShellTokens.usesCompactNavDrawer(context);
 
                       late final double profileIconSize;
                       late final ({
@@ -423,10 +427,17 @@ class _ShellNavRailState extends State<ShellNavRail> {
                           preferredSpacing: metrics.navRailItemSpacing,
                         );
                         profileIconSize = fit.iconSize;
+                      } else if (compactShell) {
+                        fit = _navRailFitForHeight(
+                          itemCount: _navIds.length + 1,
+                          maxHeight: available,
+                          preferredIconSize: preferredIconSize,
+                          preferredLabelSlotHeight: preferredLabelSlot,
+                          preferredSpacing: metrics.navRailItemSpacing,
+                        );
+                        profileIconSize = fit.iconSize;
                       } else {
-                        // Prefer large avatar; if nav icons must compress to
-                        // leave room for it, drop the boost and size profile
-                        // like every other rail button.
+                        // Wide: reserve boosted profile; nav icons may compress.
                         final boostedPaint = preferredIconSize *
                             profileBoost *
                             ShellTokens.navRailIconHoverScale;
@@ -436,29 +447,14 @@ class _ShellNavRailState extends State<ShellNavRail> {
                             ShellTokens.navRailIconLabelGap +
                             profileLabelSlot +
                             profileSpacing;
-                        final navOnly = _navRailFitForHeight(
+                        fit = _navRailFitForHeight(
                           itemCount: _navIds.length,
                           maxHeight: math.max(0.0, available - boostedBlock),
                           preferredIconSize: preferredIconSize,
                           preferredLabelSlotHeight: preferredLabelSlot,
                           preferredSpacing: metrics.navRailItemSpacing,
                         );
-                        final cramped =
-                            navOnly.iconSize < preferredIconSize - 0.01;
-                        if (cramped) {
-                          fit = _navRailFitForHeight(
-                            itemCount: _navIds.length + 1,
-                            maxHeight: available,
-                            preferredIconSize: preferredIconSize,
-                            preferredLabelSlotHeight: preferredLabelSlot,
-                            preferredSpacing: metrics.navRailItemSpacing,
-                          );
-                          profileIconSize = fit.iconSize;
-                        } else {
-                          fit = navOnly;
-                          profileIconSize =
-                              preferredIconSize * profileBoost;
-                        }
+                        profileIconSize = preferredIconSize * profileBoost;
                       }
 
                       // Paint at hover size; idle AnimatedScale downscales —

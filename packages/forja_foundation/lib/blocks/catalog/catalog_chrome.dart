@@ -200,6 +200,14 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
   static bool _expandOnHover(Map<String, dynamic> action) =>
       action['expandOnHover'] == true || action['collapse'] == true;
 
+  /// Pack `hideWhenCompact` / `compactOnly` — host compact = nav drawer width.
+  static bool _actionVisible(BuildContext context, Map<String, dynamic> action) {
+    final compact = ShellTokens.usesCompactNavDrawer(context);
+    if (action['hideWhenCompact'] == true && compact) return false;
+    if (action['compactOnly'] == true && !compact) return false;
+    return true;
+  }
+
   static String _selectedLabel(
     Map<String, dynamic> action,
     Map<String, String> selections,
@@ -246,14 +254,20 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
     setState(() => _shelfExpanded = expanded);
   }
 
-  Widget? _buildShelf(Map<String, dynamic> action, String actionId) {
+  Widget? _buildShelf(
+    BuildContext context,
+    Map<String, dynamic> action,
+    String actionId,
+  ) {
     final maps = _actionItemMaps(action);
     if (maps.isEmpty) return null;
     final selected = (widget.selections[actionId] ??
             (action['default'] ?? maps.first['id'] ?? '').toString())
         .trim();
     final allowReload = action['reload'] == true;
-    final expandOnHover = _expandOnHover(action);
+    // expandOnHover is compact-shell only — wide desktop keeps the full shelf.
+    final expandOnHover = _expandOnHover(action) &&
+        ShellTokens.usesCompactNavDrawer(context);
     return WidgetShelf(
       key: ValueKey('shelf-$actionId'),
       selectedId: selected.isEmpty ? null : selected,
@@ -336,12 +350,20 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
       );
     }
 
+    final compact = ShellTokens.usesCompactNavDrawer(context);
+    if (!compact && _shelfExpanded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _shelfExpanded) setState(() => _shelfExpanded = false);
+      });
+    }
+
     final leading = <Widget>[];
     final trailing = <Widget>[];
     Widget? expandShelf;
     for (final action in widget.actions) {
       final actionId = (action['id'] ?? '').toString().trim();
       if (actionId.isEmpty) continue;
+      if (!_actionVisible(context, action)) continue;
       final bucket = _isTrailing(action) ? trailing : leading;
       final slot = widget.actionSlots[actionId];
       if (slot != null) {
@@ -374,9 +396,9 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
               style == 'iconOnly');
 
       if (isShelf && nested.isNotEmpty) {
-        final shelf = _buildShelf(action, actionId);
+        final shelf = _buildShelf(context, action, actionId);
         if (shelf != null) {
-          if (_expandOnHover(action)) expandShelf = shelf;
+          if (_expandOnHover(action) && compact) expandShelf = shelf;
           bucket.add(shelf);
           continue;
         }

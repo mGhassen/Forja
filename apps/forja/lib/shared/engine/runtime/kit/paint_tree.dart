@@ -1053,6 +1053,14 @@ class PackPaintTree extends StatelessWidget {
     for (final a in actions) {
       final id = (a['id'] ?? '').toString().trim();
       final verb = (a['action'] ?? '').toString().trim().toLowerCase();
+      if (a['hideWhenCompact'] == true &&
+          ShellTokens.usesCompactNavDrawer(context)) {
+        continue;
+      }
+      if (a['compactOnly'] == true &&
+          !ShellTokens.usesCompactNavDrawer(context)) {
+        continue;
+      }
       if (portalsAction == null &&
           (id == 'portals' || verb == 'portals')) {
         portalsAction = a;
@@ -1146,6 +1154,12 @@ class PackPaintTree extends StatelessWidget {
     final raw = spec['search'];
     if (raw is! Map) return null;
     final search = Map<String, dynamic>.from(raw);
+    final compactOnly = search['compactOnly'] == true;
+    final compact = ShellTokens.usesCompactNavDrawer(context);
+    if (compactOnly && !compact) return null;
+    if (!compactOnly && search['hideWhenCompact'] == true && compact) {
+      return null;
+    }
     final verb = (search['action'] ?? search['id'] ?? '')
         .toString()
         .trim()

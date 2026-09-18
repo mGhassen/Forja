@@ -152,10 +152,10 @@ abstract final class ShellTokens {
   );
 
   /// Pack-update badge on profile / Settings nav chrome.
-  static const double packUpdateBadgeSize = 20;
-  static const double packUpdateBadgeSizeTv = 18;
-  static const double packUpdateBadgeSizeBottomNav = 17;
-  static const double packUpdateBadgeCornerInset = 7;
+  static const double packUpdateBadgeSize = 22;
+  static const double packUpdateBadgeSizeTv = 20;
+  static const double packUpdateBadgeSizeBottomNav = 18;
+  static const double packUpdateBadgeCornerInset = 12;
   static const double packUpdateFlyoutIconSize = 16;
   static const double packUpdateSettingsIconSize = 24;
   static const double packUpdateFlyoutWidth = 168;
