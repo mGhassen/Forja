@@ -375,7 +375,10 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
       final icon = catalogChromeActionIcon(action);
       final nested = propsIdLabelList(action, 'items');
       final isView = actionId == 'view' || verb == 'view';
-      final isShelf = style == 'shelf' || style == 'segment';
+      // expandOnHover implies shelf paint (don't fall through to Section chip).
+      final isShelf = style == 'shelf' ||
+          style == 'segment' ||
+          _expandOnHover(action);
       final isViewGroup = isView &&
           nested.isNotEmpty &&
           (style == 'group' ||
