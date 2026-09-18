@@ -60,9 +60,9 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
   bool _hovered = false;
   bool _focused = false;
 
-  bool _active(BuildContext context) {
-    return widget.selected ||
-        _hovered ||
+  /// Hover / D-pad focus only — selection is [MoodCircle.selected].
+  bool _hoveredOrFocused(BuildContext context) {
+    return _hovered ||
         ShellPaintScope.focusStyledOf(context, focused: _focused);
   }
 
@@ -76,7 +76,7 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
       accent: widget.accent,
       layout: widget.layout,
       selected: widget.selected,
-      active: _active(context),
+      active: _hoveredOrFocused(context),
       scaleOnActive: scaleOnHover,
       size: widget.layout.circleSize,
     );

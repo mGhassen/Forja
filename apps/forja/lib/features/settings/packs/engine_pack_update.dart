@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/nav/pack_update_alert_icon.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
@@ -55,7 +56,7 @@ abstract final class PackUpdateAlertGlyph {
   static const IconData icon = Icons.wb_sunny_rounded;
 }
 
-/// Banner above installed packs when one or more updates are available.
+/// Pack toolbar: optional update status on the left, actions on the right.
 class SettingsEnginePackUpdatesBar extends StatelessWidget {
   const SettingsEnginePackUpdatesBar({
     super.key,
@@ -64,6 +65,7 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
     required this.onUpdateAll,
     required this.onCheckAgain,
     this.updating = false,
+    this.actions = const [],
   });
 
   final int updateCount;
@@ -71,62 +73,79 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
   final bool updating;
   final VoidCallback onUpdateAll;
   final VoidCallback onCheckAgain;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
-    if (updateCount == 0 && !checking) return const SizedBox.shrink();
-
     final hasUpdates = updateCount > 0;
+    final showStatus = hasUpdates || checking;
+    if (!showStatus && actions.isEmpty) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          if (hasUpdates)
-            const PackUpdateAlertIcon(
-              size: ShellTokens.packUpdateFlyoutIconSize,
-              heartbeat: false,
-            )
-          else
-            const Icon(
-              Icons.sync_rounded,
-              size: ShellTokens.packUpdateFlyoutIconSize,
-              color: ForjaShellColors.textSecondary,
-            ),
-          const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
-          Expanded(
-            child: Text(
-              checking
-                  ? EnginePackUpdateCopy.checking
-                  : hasUpdates
-                  ? EnginePackUpdateCopy.available(updateCount)
-                  : EnginePackUpdateCopy.upToDate,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: hasUpdates
-                    ? ForjaShellColors.packUpdateAlert
-                    : ForjaShellColors.textSecondary,
+          if (showStatus) ...[
+            if (hasUpdates)
+              const PackUpdateAlertIcon(
+                size: ShellTokens.packUpdateFlyoutIconSize,
+                heartbeat: false,
+              )
+            else
+              const Icon(
+                Icons.sync_rounded,
+                size: ShellTokens.packUpdateFlyoutIconSize,
+                color: ForjaShellColors.textSecondary,
+              ),
+            const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
+            Expanded(
+              child: Text(
+                checking
+                    ? EnginePackUpdateCopy.checking
+                    : hasUpdates
+                    ? EnginePackUpdateCopy.available(updateCount)
+                    : EnginePackUpdateCopy.upToDate,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: hasUpdates
+                      ? ForjaShellColors.packUpdateAlert
+                      : ForjaShellColors.textSecondary,
+                ),
               ),
             ),
-          ),
-          if (checking)
+          ] else
+            const Spacer(),
+          for (var i = 0; i < actions.length; i++) ...[
+            if (i > 0) const SizedBox(width: 12),
+            actions[i],
+          ],
+          if (checking) ...[
+            if (actions.isNotEmpty) const SizedBox(width: 12),
             const SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else if (hasUpdates) ...[
-            SettingsFilledButton(
+            ),
+          ] else if (hasUpdates) ...[
+            if (actions.isNotEmpty) const SizedBox(width: 12),
+            Button(
               label: updating ? 'Updating…' : 'Update all',
               icon: Icons.download_rounded,
-              busy: updating,
+              variant: ButtonVariant.primary,
+              height: 36,
+              loading: updating,
               onPressed: updating ? null : onUpdateAll,
             ),
-          ] else
+          ] else if (showStatus) ...[
+            if (actions.isNotEmpty) const SizedBox(width: 12),
             SettingsTextAction(
               label: 'Check again',
               onPressed: onCheckAgain,
             ),
+          ],
         ],
       ),
     );

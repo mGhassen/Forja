@@ -417,8 +417,9 @@ class CatalogCardsGrid extends StatelessWidget {
     }
     final gap = this.gap ??
         (tv ? ShellTokens.tvPosterCardRowGap : ShellTokens.posterCardRowGap);
-    final leading = pad ?? ShellTokens.compactChromeLeadingInset(context);
-    final trailing = pad ?? ShellTokens.bodyHorizontalPadding;
+    // Beside category rail — same pads as Live channels (not ☰ chrome inset).
+    final leading = pad ?? ShellTokens.catalogSplitGridLeadingPad;
+    final trailing = pad ?? ShellTokens.catalogSplitGridTrailingPad;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -819,8 +820,8 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     final cardW = CatalogChannelCard.cardWidth(context);
     final cardH = CatalogChannelCard.cardHeight(context);
     final gap = widget.gap ?? 10.0;
-    final leading = widget.pad ?? 8.0;
-    final trailing = widget.pad ?? 12.0;
+    final leading = widget.pad ?? ShellTokens.catalogSplitGridLeadingPad;
+    final trailing = widget.pad ?? ShellTokens.catalogSplitGridTrailingPad;
 
     Widget body;
     if (list) {

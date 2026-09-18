@@ -98,7 +98,8 @@ class MoodCircle extends StatelessWidget {
         icon: icon!,
         accent: accent!,
         selected: selected,
-        active: active || selected,
+        // Hover/focus only — selected paints via [selected] (label color vs bold).
+        active: active,
         scaleOnActive: scaleOnActive,
         onTap: onTap,
         focusNode: focusNode,
@@ -211,13 +212,14 @@ class _AccentMoodCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lit = selected || active;
     final bgAlpha = selected ? 0.62 : (active ? 0.42 : 0.22);
     final borderColor = selected
         ? accent
         : active
             ? accent.withValues(alpha: 0.95)
             : accent.withValues(alpha: 0.35);
-    final iconSize = active ? layout.iconSizeActive : layout.iconSize;
+    final iconSize = lit ? layout.iconSizeActive : layout.iconSize;
     final iconWidget = Icon(icon, size: iconSize, color: Colors.white);
     final chip = ForjaMotionTheme.of(context).chipLift;
 
@@ -234,7 +236,7 @@ class _AccentMoodCircle extends StatelessWidget {
           color: borderColor,
           width: selected ? 2.5 : 1.5,
         ),
-        boxShadow: active && scaleOnActive
+        boxShadow: lit && scaleOnActive
             ? [
                 BoxShadow(
                   color: accent.withValues(alpha: 0.4),
@@ -246,7 +248,7 @@ class _AccentMoodCircle extends StatelessWidget {
       child: scaleOnActive
           ? ForjaMotionScale(
               preset: ForjaMotionPreset.chipLift,
-              active: active,
+              active: lit,
               child: iconWidget,
             )
           : iconWidget,
@@ -265,9 +267,11 @@ class _AccentMoodCircle extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: active ? Colors.white : Colors.white.withValues(alpha: 0.72),
+              color: selected
+                  ? accent
+                  : Colors.white.withValues(alpha: active ? 1.0 : 0.72),
               fontSize: layout.labelFontSize,
-              fontWeight: selected || active ? FontWeight.w700 : FontWeight.w600,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w600,
               height: 1.15,
             ),
           ),

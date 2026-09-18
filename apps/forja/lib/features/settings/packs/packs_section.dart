@@ -25,6 +25,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -253,28 +254,34 @@ class _SettingsForjaPacksSectionState
               },
             ),
             const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (downloadable.isNotEmpty) ...[
-                  SettingsFilledButton(
+            SettingsEnginePackUpdatesBar(
+              updateCount: packs.isEmpty ? 0 : packUpdates.count,
+              checking: packs.isNotEmpty && packUpdates.checking,
+              updating: _engineUpdatingAll,
+              onUpdateAll: () => _updateAllEnginePacks(packUpdates.updates),
+              onCheckAgain: () =>
+                  ref.read(enginePackUpdatesProvider.notifier).refresh(),
+              actions: [
+                if (downloadable.isNotEmpty)
+                  Button(
                     label: 'Download all',
                     icon: Icons.download_rounded,
-                    secondary: true,
-                    busy: _engineInstalling,
+                    variant: ButtonVariant.secondary,
+                    height: 36,
+                    loading: _engineInstalling,
                     onPressed: _engineReloading || _engineUpdatingAll
                         ? null
                         : () =>
                               unawaited(_downloadAllPendingPacks(downloadable)),
                   ),
-                  const SizedBox(width: 12),
-                ],
-                if (reloadable.isNotEmpty) ...[
-                  SettingsFilledButton(
-                    label: 'Reload',
+                if (reloadable.isNotEmpty)
+                  Button(
                     icon: Icons.refresh_rounded,
-                    secondary: true,
-                    busy: _engineReloading,
+                    tooltip: 'Reload',
+                    variant: ButtonVariant.secondary,
+                    size: ButtonSize.icon,
+                    height: 36,
+                    loading: _engineReloading,
                     onPressed:
                         _engineInstalling ||
                             _engineReloading ||
@@ -282,26 +289,17 @@ class _SettingsForjaPacksSectionState
                         ? null
                         : () => unawaited(_reloadAllEnginePacks(reloadable)),
                   ),
-                  const SizedBox(width: 12),
-                ],
-                SettingsFilledButton(
+                Button(
                   label: 'Install',
                   icon: Icons.add_rounded,
-                  busy: _engineInstalling,
+                  variant: ButtonVariant.primary,
+                  height: 36,
+                  loading: _engineInstalling,
                   onPressed: _engineReloading ? null : _installEnginePack,
                 ),
               ],
             ),
             if (packs.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              SettingsEnginePackUpdatesBar(
-                updateCount: packUpdates.count,
-                checking: packUpdates.checking,
-                updating: _engineUpdatingAll,
-                onUpdateAll: () => _updateAllEnginePacks(packUpdates.updates),
-                onCheckAgain: () =>
-                    ref.read(enginePackUpdatesProvider.notifier).refresh(),
-              ),
               if (_bulkPackBusy) ...[
                 Padding(
                   padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),

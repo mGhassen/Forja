@@ -633,6 +633,13 @@ abstract final class ShellTokens {
 
   static const double categoryRailWidth = sideRailWidth;
   static const double categoryRailWidthTv = sideRailWidthTv;
+
+  /// Grid inset beside a category rail (Live / Movies / Series).
+  ///
+  /// Not [compactChromeLeadingInset] — the rail already clears the ☰ lane.
+  static const double catalogSplitGridLeadingPad = 8;
+  static const double catalogSplitGridTrailingPad = 12;
+
   static const double categoryRailListPadV = 8;
   static const double categoryRailListPadVTv =
       categoryRailListPadV * tvLayoutScale;
