@@ -21,38 +21,57 @@ class HeroDesktopTextLayout {
 /// title slot and overview lines before dropping the synopsis entirely.
 /// Pass [reservedBelowOverview] for extra chrome under the overview (e.g. upcoming
 /// notice) so that height is part of the fit budget.
+///
+/// Nullable chrome overrides: omit → [ShellTokens] (pack visual props).
 HeroDesktopTextLayout heroDesktopTextLayout({
   required double maxHeight,
   required bool hasOverview,
   required double minTitleHeight,
   double reservedBelowOverview = 0,
+  double? titleSlotHeight,
+  double? metaSlotHeight,
+  double? titleMetaGap,
+  double? metaActionsGap,
+  double? metaOverviewGap,
+  int? overviewMaxLines,
+  double? overviewFontSize,
+  double? overviewLineHeight,
 }) {
-  const titleGap = 20.0;
-  const actionGap = 16.0;
+  final titleGap = titleMetaGap ?? ShellTokens.heroTitleMetaGapDesktop;
+  final actionGap = metaActionsGap ?? ShellTokens.heroMetaActionsGapDesktop;
+  final metaH = metaSlotHeight ?? ShellTokens.heroMetaSlotHeightDesktop;
+  final titleSlotMax = titleSlotHeight ?? ShellTokens.heroTitleSlotHeightDesktop;
+  final metaGap = metaOverviewGap ?? ShellTokens.heroMetaOverviewGapDesktop;
+  final maxLines = overviewMaxLines ?? ShellTokens.heroOverviewMaxLinesDesktop;
+  final fontSize = overviewFontSize ?? ShellTokens.heroOverviewFontSizeDesktop;
+  final lineHeight =
+      overviewLineHeight ?? ShellTokens.heroOverviewLineHeightDesktop;
+
   final baseWithoutOverview =
       titleGap +
-      ShellTokens.heroMetaSlotHeightDesktop +
+      metaH +
       actionGap +
       ShellTokens.shellButtonHeight +
       reservedBelowOverview;
-  final metaGap = ShellTokens.heroMetaOverviewGapDesktop;
+
+  double textH(int lines) => fontSize * lineHeight * lines;
 
   double slotFor(int lines, {required bool includeReadMore}) {
-    final text = ShellTokens.heroOverviewTextHeightDesktop(lines);
+    final text = textH(lines);
     if (!includeReadMore) return text;
-    return ShellTokens.heroOverviewSlotHeightForLines(lines);
+    return text + ShellTokens.heroOverviewReadMoreGap + fontSize * lineHeight;
   }
 
   bool fits(double titleH, double overviewBlock) =>
       titleH + baseWithoutOverview + overviewBlock <= maxHeight;
 
-  var titleHeight = ShellTokens.heroTitleSlotHeightDesktop;
+  var titleHeight = titleSlotMax;
 
   if (!hasOverview) {
     if (!fits(titleHeight, 0)) {
       titleHeight = (maxHeight - baseWithoutOverview).clamp(
         minTitleHeight,
-        ShellTokens.heroTitleSlotHeightDesktop,
+        titleSlotMax,
       );
     }
     return HeroDesktopTextLayout(
@@ -63,7 +82,7 @@ HeroDesktopTextLayout heroDesktopTextLayout({
     );
   }
 
-  var lines = ShellTokens.heroOverviewMaxLinesDesktop;
+  var lines = maxLines;
   var includeReadMore = true;
   var slot = slotFor(lines, includeReadMore: includeReadMore);
   var overviewBlock = metaGap + slot;
@@ -71,7 +90,7 @@ HeroDesktopTextLayout heroDesktopTextLayout({
   if (!fits(titleHeight, overviewBlock)) {
     titleHeight = (maxHeight - baseWithoutOverview - overviewBlock).clamp(
       minTitleHeight,
-      ShellTokens.heroTitleSlotHeightDesktop,
+      titleSlotMax,
     );
   }
 
@@ -81,7 +100,7 @@ HeroDesktopTextLayout heroDesktopTextLayout({
     overviewBlock = metaGap + slot;
     titleHeight = (maxHeight - baseWithoutOverview - overviewBlock).clamp(
       minTitleHeight,
-      ShellTokens.heroTitleSlotHeightDesktop,
+      titleSlotMax,
     );
   }
 
@@ -97,11 +116,11 @@ HeroDesktopTextLayout heroDesktopTextLayout({
         overviewSlotHeight: slot,
       );
     }
-    titleHeight = ShellTokens.heroTitleSlotHeightDesktop;
+    titleHeight = titleSlotMax;
     if (!fits(titleHeight, 0)) {
       titleHeight = (maxHeight - baseWithoutOverview).clamp(
         minTitleHeight,
-        ShellTokens.heroTitleSlotHeightDesktop,
+        titleSlotMax,
       );
     }
     return HeroDesktopTextLayout(
@@ -119,4 +138,3 @@ HeroDesktopTextLayout heroDesktopTextLayout({
     overviewSlotHeight: slot,
   );
 }
-

@@ -60,6 +60,8 @@ class CinematicHeroSlide {
 }
 
 /// Layout flags — host maps [ShellScope] into these (Zone A has no ShellScope).
+///
+/// Nullable visual fields are pack overrides; omit / null → [ShellTokens].
 class CinematicHeroLayout {
   const CinematicHeroLayout({
     this.compact = false,
@@ -79,6 +81,20 @@ class CinematicHeroLayout {
     this.firstCatalogRowHeight = 0,
     this.bleedDownOffset,
     this.scale = 1.0,
+    this.imageStartFraction,
+    this.textColumnWidth,
+    this.textColumnTopInset,
+    this.textColumnVerticalAlign,
+    this.titleSlotHeight,
+    this.logoMaxHeight,
+    this.metaSlotHeight,
+    this.titleMetaGap,
+    this.metaOverviewGap,
+    this.metaActionsGap,
+    this.overviewMaxLines,
+    this.overviewFontSize,
+    this.overviewLineHeight,
+    this.upcomingNoticeReserve,
   });
 
   final bool compact;
@@ -101,6 +117,22 @@ class CinematicHeroLayout {
   final double? bleedDownOffset;
   final double scale;
 
+  /// Pack `imageStartFraction`. Null → compact/desktop ShellTokens.
+  final double? imageStartFraction;
+  final double? textColumnWidth;
+  final double? textColumnTopInset;
+  final double? textColumnVerticalAlign;
+  final double? titleSlotHeight;
+  final double? logoMaxHeight;
+  final double? metaSlotHeight;
+  final double? titleMetaGap;
+  final double? metaOverviewGap;
+  final double? metaActionsGap;
+  final int? overviewMaxLines;
+  final double? overviewFontSize;
+  final double? overviewLineHeight;
+  final double? upcomingNoticeReserve;
+
   double scaled(double value) => value * scale;
 
   /// Scale without fighting TV density with desktop floor clamps.
@@ -121,6 +153,55 @@ class CinematicHeroLayout {
   double get resolvedBleedDownOffset {
     final base = bleedDownOffset ?? ShellTokens.homePageBottomSectionDownOffset;
     return tvDensity ? base * scale : base;
+  }
+
+  double get resolvedImageStartFraction =>
+      imageStartFraction ??
+      (compact
+          ? ShellTokens.heroImageStartFractionCompact
+          : ShellTokens.heroImageStartFraction);
+
+  double get resolvedTextColumnWidth =>
+      textColumnWidth ?? ShellTokens.heroTextColumnWidthDesktop;
+
+  double get resolvedTextColumnTopInset =>
+      textColumnTopInset ?? ShellTokens.heroTextColumnTopInsetDesktop;
+
+  double get resolvedTextColumnVerticalAlign =>
+      textColumnVerticalAlign ?? ShellTokens.heroTextColumnVerticalAlign;
+
+  double get resolvedTitleSlotHeight =>
+      titleSlotHeight ?? ShellTokens.heroTitleSlotHeightDesktop;
+
+  double get resolvedMetaSlotHeight =>
+      metaSlotHeight ?? ShellTokens.heroMetaSlotHeightDesktop;
+
+  double get resolvedTitleMetaGap =>
+      titleMetaGap ?? ShellTokens.heroTitleMetaGapDesktop;
+
+  double get resolvedMetaOverviewGap =>
+      metaOverviewGap ?? ShellTokens.heroMetaOverviewGapDesktop;
+
+  double get resolvedMetaActionsGap =>
+      metaActionsGap ?? ShellTokens.heroMetaActionsGapDesktop;
+
+  int get resolvedOverviewMaxLines =>
+      overviewMaxLines ?? ShellTokens.heroOverviewMaxLinesDesktop;
+
+  double get resolvedOverviewFontSize =>
+      overviewFontSize ?? ShellTokens.heroOverviewFontSizeDesktop;
+
+  double get resolvedOverviewLineHeight =>
+      overviewLineHeight ?? ShellTokens.heroOverviewLineHeightDesktop;
+
+  double get resolvedUpcomingNoticeReserve =>
+      upcomingNoticeReserve ?? ShellTokens.heroUpcomingNoticeReserveDesktop;
+
+  double get resolvedLogoMaxHeight {
+    if (logoMaxHeight != null) return logoMaxHeight!;
+    if (tvDensity) return ShellTokens.heroLogoMaxHeightTv;
+    if (compact) return ShellTokens.heroLogoMaxHeightCompact;
+    return ShellTokens.heroLogoMaxHeightDesktop;
   }
 }
 
@@ -356,7 +437,7 @@ class CinematicHeroState extends State<CinematicHero> {
       });
     }
     final textTop = layout.topBarBleed +
-        layout.scaledChrome(ShellTokens.heroTextColumnTopInsetDesktop);
+        layout.scaledChrome(layout.resolvedTextColumnTopInset);
     final compactRightInset = compact ? layout.heroCompactRightInset : 48.0;
     final textRight = compact
         ? layout.scaledChrome(compactRightInset, floor: 12.0, ceil: compactRightInset)
@@ -371,12 +452,10 @@ class CinematicHeroState extends State<CinematicHero> {
     final textLeft = layout.scaledChrome(layout.sectionHorizontalPadding);
     final desktopTextWidth = math.min(
       MediaQuery.sizeOf(context).width * 0.34,
-      layout.scaledChrome(ShellTokens.heroTextColumnWidthDesktop),
+      layout.scaledChrome(layout.resolvedTextColumnWidth),
     );
     final shellBg = Theme.of(context).scaffoldBackgroundColor;
-    final imageStartFraction = compact
-        ? ShellTokens.heroImageStartFractionCompact
-        : ShellTokens.heroImageStartFraction;
+    final imageStartFraction = layout.resolvedImageStartFraction;
     final solidLeftWidth =
         MediaQuery.sizeOf(context).width * imageStartFraction;
     final textColumnWidth = compact
@@ -741,9 +820,9 @@ class CinematicHeroState extends State<CinematicHero> {
         : LayoutBuilder(
             builder: (context, constraints) {
               return Align(
-                alignment: const Alignment(
+                alignment: Alignment(
                   -1,
-                  ShellTokens.heroTextColumnVerticalAlign,
+                  widget.layout.resolvedTextColumnVerticalAlign,
                 ),
                 child: SizedBox(
                   width: desktopTextWidth,
@@ -765,22 +844,30 @@ class CinematicHeroState extends State<CinematicHero> {
   }) {
     final layout = widget.layout;
     final overviewStyle = TextStyle(
-      fontSize: layout.scaledChrome(ShellTokens.heroOverviewFontSizeDesktop),
-      height: ShellTokens.heroOverviewLineHeightDesktop,
+      fontSize: layout.scaledChrome(layout.resolvedOverviewFontSize),
+      height: layout.resolvedOverviewLineHeight,
       letterSpacing: 0.1,
       color: const Color(0x99FFFFFF),
     );
-    final titleGap = layout.scaledChrome(ShellTokens.heroTitleMetaGapDesktop);
-    final actionGap = layout.scaledChrome(ShellTokens.heroMetaActionsGapDesktop);
+    final titleGap = layout.scaledChrome(layout.resolvedTitleMetaGap);
+    final actionGap = layout.scaledChrome(layout.resolvedMetaActionsGap);
     final overview = slide.overview.trim();
     final upcomingReserve = slide.isUpcoming
-        ? layout.scaledChrome(ShellTokens.heroUpcomingNoticeReserveDesktop)
+        ? layout.scaledChrome(layout.resolvedUpcomingNoticeReserve)
         : 0.0;
     final layoutFit = heroDesktopTextLayout(
       maxHeight: maxHeight,
       hasOverview: overview.isNotEmpty,
       minTitleHeight: layout.scaledChrome(widget.layout.heroMinTitleHeight),
       reservedBelowOverview: upcomingReserve,
+      titleSlotHeight: layout.titleSlotHeight,
+      metaSlotHeight: layout.metaSlotHeight,
+      titleMetaGap: layout.titleMetaGap,
+      metaActionsGap: layout.metaActionsGap,
+      metaOverviewGap: layout.metaOverviewGap,
+      overviewMaxLines: layout.overviewMaxLines,
+      overviewFontSize: layout.overviewFontSize,
+      overviewLineHeight: layout.overviewLineHeight,
     );
 
     return Column(
@@ -805,7 +892,7 @@ class CinematicHeroState extends State<CinematicHero> {
               ),
               SizedBox(height: titleGap),
               SizedBox(
-                height: layout.scaledChrome(ShellTokens.heroMetaSlotHeightDesktop),
+                height: layout.scaledChrome(layout.resolvedMetaSlotHeight),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: _buildMetaRow(slide, singleLine: true),
@@ -813,9 +900,7 @@ class CinematicHeroState extends State<CinematicHero> {
               ),
               if (layoutFit.showOverview) ...[
                 SizedBox(
-                  height: layout.scaledChrome(
-                    ShellTokens.heroMetaOverviewGapDesktop,
-                  ),
+                  height: layout.scaledChrome(layout.resolvedMetaOverviewGap),
                 ),
                 SizedBox(
                   height: layoutFit.overviewSlotHeight,
@@ -927,6 +1012,8 @@ class CinematicHeroState extends State<CinematicHero> {
       desktop: desktop,
       compact: compact,
       slotHeight: slotHeight,
+      logoMaxHeight: widget.layout.logoMaxHeight,
+      maxWidth: desktop ? widget.layout.resolvedTextColumnWidth : null,
       tvDensity: widget.layout.tvDensity,
       plainTitle: widget.layout.plainTitle,
       selectable: widget.layout.selectableTitle,

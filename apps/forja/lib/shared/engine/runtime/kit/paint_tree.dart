@@ -1214,7 +1214,6 @@ class PackPaintTree extends StatelessWidget {
     final items = node['items'];
     if (items is! List || items.isEmpty) return const SizedBox.shrink();
     final slideCap = _packInt(node['slideCap'], 5).clamp(1, 20);
-    final bleedDownOffset = _packDouble(node['bleedDownOffset']);
     final actionSpecs = _heroActionSpecs(node['actions']);
 
     final slides = <CinematicHeroSlide>[];
@@ -1326,9 +1325,8 @@ class PackPaintTree extends StatelessWidget {
       actionSpecs: actionSpecs,
       pageBottomChild: pageBottomChild,
       compact: compact,
-      bleedDownOffset: bleedDownOffset,
-      heightFraction: PackPaintArtifact.packDouble(node['heightFraction']),
       focusDown: focusDown,
+      pack: _HeroPackVisuals.fromNode(node),
     );
   }
 
@@ -1402,12 +1400,6 @@ class PackPaintTree extends StatelessWidget {
     if (raw is int) return raw;
     if (raw is num) return raw.round();
     return int.tryParse((raw ?? '').toString()) ?? fallback;
-  }
-
-  static double? _packDouble(Object? raw) {
-    if (raw == null) return null;
-    if (raw is num) return raw.toDouble();
-    return double.tryParse(raw.toString());
   }
 
   Widget _mountList(BuildContext context, Map<String, dynamic> spec) {
@@ -2513,6 +2505,95 @@ class PackPaintTree extends StatelessWidget {
   }
 }
 
+/// Pack optional cinematic-hero visual props (omit → ShellTokens / shell metrics).
+class _HeroPackVisuals {
+  const _HeroPackVisuals({
+    this.height,
+    this.kenBurns,
+    this.heightFraction,
+    this.bleedDownOffset,
+    this.minHeight,
+    this.nextRowPeekFraction,
+    this.imageStartFraction,
+    this.textColumnWidth,
+    this.textColumnTopInset,
+    this.textColumnVerticalAlign,
+    this.titleSlotHeight,
+    this.logoMaxHeight,
+    this.minTitleHeight,
+    this.metaSlotHeight,
+    this.titleMetaGap,
+    this.metaOverviewGap,
+    this.metaActionsGap,
+    this.overviewMaxLines,
+    this.overviewFontSize,
+    this.overviewLineHeight,
+    this.upcomingNoticeReserve,
+    this.sectionPad,
+    this.compactRightInset,
+  });
+
+  factory _HeroPackVisuals.fromNode(Map<String, dynamic> node) {
+    final maxLines = PackPaintArtifact.packInt(node['overviewMaxLines']);
+    return _HeroPackVisuals(
+      height: PackPaintArtifact.packDouble(node['height']),
+      kenBurns: PackPaintArtifact.packBool(node['kenBurns']),
+      heightFraction: PackPaintArtifact.packDouble(node['heightFraction']),
+      bleedDownOffset: PackPaintArtifact.packDouble(node['bleedDownOffset']),
+      minHeight: PackPaintArtifact.packDouble(node['minHeight']),
+      nextRowPeekFraction:
+          PackPaintArtifact.packDouble(node['nextRowPeekFraction']),
+      imageStartFraction:
+          PackPaintArtifact.packDouble(node['imageStartFraction']),
+      textColumnWidth: PackPaintArtifact.packDouble(node['textColumnWidth']),
+      textColumnTopInset:
+          PackPaintArtifact.packDouble(node['textColumnTopInset']),
+      textColumnVerticalAlign:
+          PackPaintArtifact.packDouble(node['textColumnVerticalAlign']),
+      titleSlotHeight: PackPaintArtifact.packDouble(node['titleSlotHeight']),
+      logoMaxHeight: PackPaintArtifact.packDouble(node['logoMaxHeight']),
+      minTitleHeight: PackPaintArtifact.packDouble(node['minTitleHeight']),
+      metaSlotHeight: PackPaintArtifact.packDouble(node['metaSlotHeight']),
+      titleMetaGap: PackPaintArtifact.packDouble(node['titleMetaGap']),
+      metaOverviewGap: PackPaintArtifact.packDouble(node['metaOverviewGap']),
+      metaActionsGap: PackPaintArtifact.packDouble(node['metaActionsGap']),
+      overviewMaxLines: maxLines?.clamp(1, 12),
+      overviewFontSize: PackPaintArtifact.packDouble(node['overviewFontSize']),
+      overviewLineHeight:
+          PackPaintArtifact.packDouble(node['overviewLineHeight']),
+      upcomingNoticeReserve:
+          PackPaintArtifact.packDouble(node['upcomingNoticeReserve']),
+      sectionPad: PackPaintArtifact.packDouble(node['sectionPad']),
+      compactRightInset:
+          PackPaintArtifact.packDouble(node['compactRightInset']),
+    );
+  }
+
+  final double? height;
+  final bool? kenBurns;
+  final double? heightFraction;
+  final double? bleedDownOffset;
+  final double? minHeight;
+  final double? nextRowPeekFraction;
+  final double? imageStartFraction;
+  final double? textColumnWidth;
+  final double? textColumnTopInset;
+  final double? textColumnVerticalAlign;
+  final double? titleSlotHeight;
+  final double? logoMaxHeight;
+  final double? minTitleHeight;
+  final double? metaSlotHeight;
+  final double? titleMetaGap;
+  final double? metaOverviewGap;
+  final double? metaActionsGap;
+  final int? overviewMaxLines;
+  final double? overviewFontSize;
+  final double? overviewLineHeight;
+  final double? upcomingNoticeReserve;
+  final double? sectionPad;
+  final double? compactRightInset;
+}
+
 /// Hub cinematic hero + TV default focus (nav RIGHT / OK land on details CTA).
 ///
 /// Restores [TvHeroActions.bind] lost when pack_layout_host_wire was deleted.
@@ -2525,8 +2606,7 @@ class _HubTvCinematicHero extends StatefulWidget {
     required this.actionSpecs,
     required this.pageBottomChild,
     required this.compact,
-    required this.bleedDownOffset,
-    required this.heightFraction,
+    required this.pack,
     required this.focusDown,
   });
 
@@ -2537,8 +2617,7 @@ class _HubTvCinematicHero extends StatefulWidget {
   final List<_HeroActionSpec> actionSpecs;
   final Widget? pageBottomChild;
   final bool compact;
-  final double? bleedDownOffset;
-  final double? heightFraction;
+  final _HeroPackVisuals pack;
   final VoidCallback? focusDown;
 
   @override
@@ -2654,32 +2733,52 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     final tv = policy.useFocusableMoodChips;
     final tab = widget.tabId;
     final compact = widget.compact;
+    final pack = widget.pack;
 
     return CinematicHero(
       key: _heroKey,
       slides: widget.slides,
       pageBottomChild: widget.pageBottomChild,
+      height: pack.height,
       galleryOverlayBuilder: tv ? _galleryOverlay : null,
       layout: CinematicHeroLayout(
         compact: compact,
         tvDensity: metrics.usesTvDensity,
-        kenBurns: policy.kenBurnsBackdrop,
+        kenBurns: pack.kenBurns ?? policy.kenBurnsBackdrop,
         plainTitle: policy.useFocusableMoodChips,
-        heroMinTitleHeight: metrics.heroMinTitleHeight,
+        heroMinTitleHeight:
+            pack.minTitleHeight ?? metrics.heroMinTitleHeight,
         heroActionUseFittedBox: metrics.heroActionUseFittedBox,
-        heroCompactRightInset: metrics.heroCompactRightInset,
-        sectionHorizontalPadding: ShellTokens.homeSectionHorizontalPadding,
+        heroCompactRightInset:
+            pack.compactRightInset ?? metrics.heroCompactRightInset,
+        sectionHorizontalPadding:
+            pack.sectionPad ?? ShellTokens.homeSectionHorizontalPadding,
         heroHeightFraction:
-            widget.heightFraction ?? shellHeroHeightFraction(context),
-        heroMinHeight: shellHeroMinHeight(context),
-        nextRowPeekFraction: shellHeroNextRowPeekFraction(context),
+            pack.heightFraction ?? shellHeroHeightFraction(context),
+        heroMinHeight: pack.minHeight ?? shellHeroMinHeight(context),
+        nextRowPeekFraction:
+            pack.nextRowPeekFraction ?? shellHeroNextRowPeekFraction(context),
         firstCatalogRowHeight: widget.pageBottomChild == null
             ? 0
             : catalogSectionTitleTop(context) +
                 shellPosterCardHeight(context) +
                 shellPosterCardRowGap(context),
-        bleedDownOffset: widget.bleedDownOffset,
+        bleedDownOffset: pack.bleedDownOffset,
         scale: shellLayoutScale(context),
+        imageStartFraction: pack.imageStartFraction,
+        textColumnWidth: pack.textColumnWidth,
+        textColumnTopInset: pack.textColumnTopInset,
+        textColumnVerticalAlign: pack.textColumnVerticalAlign,
+        titleSlotHeight: pack.titleSlotHeight,
+        logoMaxHeight: pack.logoMaxHeight,
+        metaSlotHeight: pack.metaSlotHeight,
+        titleMetaGap: pack.titleMetaGap,
+        metaOverviewGap: pack.metaOverviewGap,
+        metaActionsGap: pack.metaActionsGap,
+        overviewMaxLines: pack.overviewMaxLines,
+        overviewFontSize: pack.overviewFontSize,
+        overviewLineHeight: pack.overviewLineHeight,
+        upcomingNoticeReserve: pack.upcomingNoticeReserve,
       ),
       onHeight: tab.isEmpty
           ? null

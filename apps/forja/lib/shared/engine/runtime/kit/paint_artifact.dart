@@ -268,6 +268,22 @@ abstract final class PackPaintArtifact {
     return double.tryParse(raw.toString());
   }
 
+  static bool? packBool(Object? raw) {
+    if (raw == null) return null;
+    if (raw is bool) return raw;
+    final s = raw.toString().trim().toLowerCase();
+    if (s == 'true' || s == '1') return true;
+    if (s == 'false' || s == '0') return false;
+    return null;
+  }
+
+  static int? packInt(Object? raw) {
+    if (raw == null) return null;
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    return int.tryParse(raw.toString().trim());
+  }
+
   /// Pack `pad` / `padding`: number → horizontal (keeps [fallback] vertical);
   /// `{ l|left, t|top, r|right, b|bottom }` map; null → [fallback].
   static EdgeInsets packPad(

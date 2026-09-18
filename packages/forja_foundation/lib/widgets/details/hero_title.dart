@@ -170,6 +170,7 @@ class HeroTitle extends StatelessWidget {
     this.compact = false,
     this.maxWidth,
     this.slotHeight,
+    this.logoMaxHeight,
     this.tvDensity = false,
     this.plainTitle = false,
     this.selectable = false,
@@ -183,6 +184,8 @@ class HeroTitle extends StatelessWidget {
   final bool compact;
   final double? maxWidth;
   final double? slotHeight;
+  /// Pack override; null → ShellTokens logo max for density/desktop/compact.
+  final double? logoMaxHeight;
   final bool tvDensity;
   final bool plainTitle;
   final bool selectable;
@@ -207,6 +210,7 @@ class HeroTitle extends StatelessWidget {
       compact: compact,
       maxWidth: maxWidth,
       slotHeight: slotHeight,
+      logoMaxHeight: logoMaxHeight,
       tvDensity: tvDensity,
       selectable: selectable,
     );
@@ -340,6 +344,7 @@ class _HomeHeroTitleSlot extends StatelessWidget {
     this.compact = false,
     this.maxWidth,
     this.slotHeight,
+    this.logoMaxHeight,
     required this.tvDensity,
     required this.selectable,
   });
@@ -351,19 +356,21 @@ class _HomeHeroTitleSlot extends StatelessWidget {
   final bool compact;
   final double? maxWidth;
   final double? slotHeight;
+  final double? logoMaxHeight;
   final bool tvDensity;
   final bool selectable;
 
   @override
   Widget build(BuildContext context) {
     final bodyWidth = MediaQuery.sizeOf(context).width;
-    final logoMaxHeight = tvDensity
-        ? ShellTokens.heroLogoMaxHeightTv
-        : compact
-            ? ShellTokens.heroLogoMaxHeightCompact
-            : desktop
-                ? ShellTokens.heroLogoMaxHeightDesktop
-                : (isLandscape ? 140.0 : 110.0);
+    final resolvedLogoMax = logoMaxHeight ??
+        (tvDensity
+            ? ShellTokens.heroLogoMaxHeightTv
+            : compact
+                ? ShellTokens.heroLogoMaxHeightCompact
+                : desktop
+                    ? ShellTokens.heroLogoMaxHeightDesktop
+                    : (isLandscape ? 140.0 : 110.0));
     final resolvedMaxWidth = maxWidth ??
         (compact
             ? bodyWidth * 0.72
@@ -377,9 +384,9 @@ class _HomeHeroTitleSlot extends StatelessWidget {
                 ? ShellTokens.heroTitleSlotHeightTv
                 : desktop
                     ? ShellTokens.heroTitleSlotHeightDesktop
-                    : logoMaxHeight + 14);
+                    : resolvedLogoMax + 14);
     final hasLogo = logoUrl != null && logoUrl!.isNotEmpty;
-    final textMaxHeight = hasLogo ? logoMaxHeight : resolvedSlotHeight;
+    final textMaxHeight = hasLogo ? resolvedLogoMax : resolvedSlotHeight;
     final fallback = _plainTitleText(
       context,
       title,
@@ -399,13 +406,13 @@ class _HomeHeroTitleSlot extends StatelessWidget {
           padding: EdgeInsets.only(bottom: desktop || compact ? 0 : 14),
           child: hasLogo
               ? SizedBox(
-                  height: logoMaxHeight,
+                  height: resolvedLogoMax,
                   width: resolvedMaxWidth,
                   child: Align(
                     alignment: Alignment.bottomLeft,
                     child: Image.network(
                       logoUrl!,
-                      height: logoMaxHeight,
+                      height: resolvedLogoMax,
                       width: resolvedMaxWidth,
                       fit: BoxFit.contain,
                       alignment: Alignment.centerLeft,
