@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/meta_line.dart';
 
 /// Right-column production metadata on a details hero — label/value rows only.
@@ -246,6 +247,8 @@ class _FactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final size = tv ? DetailsTokens.bodyFontSizeTv : 13.0;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -254,7 +257,7 @@ class _FactRow extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: size,
               color: Colors.white.withValues(alpha: 0.45),
             ),
           ),
@@ -266,8 +269,8 @@ class _FactRow extends StatelessWidget {
             textAlign: TextAlign.right,
             maxLines: valueMaxLines,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 13,
+            style: TextStyle(
+              fontSize: size,
               fontWeight: FontWeight.w600,
               color: Colors.white,
               height: 1.35,

@@ -5,22 +5,27 @@ import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
 
 /// Debounced live URL probe — mirrors IPTV catalog lazy checks (350ms dwell).
-/// Only live URLs land in [_sessionHealth]; misses are not cached across panels.
+/// Fresh results skip re-probe for [ttl] (stale-while-revalidate paint stays).
+/// Only alive URLs land in [_sessionHealth]; misses stay instance-local.
 class LazyUrlHealthProbe extends ChangeNotifier
     implements KitUrlHealthProbe {
   LazyUrlHealthProbe({
     this.delay = const Duration(milliseconds: 350),
     this.maxConcurrent = 2,
+    this.ttl = const Duration(minutes: 2),
     this.onResult,
   });
 
   final Duration delay;
   final int maxConcurrent;
+  final Duration ttl;
   final void Function(String key, bool ok)? onResult;
 
   static final Map<String, bool> _sessionHealth = {};
+  static final Map<String, DateTime> _sessionCheckedAt = {};
 
   final Map<String, bool> _health = {};
+  final Map<String, DateTime> _checkedAt = {};
   final Map<String, ValueNotifier<bool?>> _listenables = {};
   final Set<String> _inFlight = {};
   final List<({String key, String url})> _queue = [];
@@ -29,6 +34,15 @@ class LazyUrlHealthProbe extends ChangeNotifier
 
   @override
   bool? healthFor(String key) => _health[key] ?? _sessionHealth[key];
+
+  /// True when [healthFor] is set and last check is inside [ttl].
+  bool isFresh(String key) {
+    final k = key.trim();
+    if (k.isEmpty || healthFor(k) == null) return false;
+    final at = _checkedAt[k] ?? _sessionCheckedAt[k];
+    if (at == null) return false;
+    return DateTime.now().difference(at) < ttl;
+  }
 
   /// Per-key listenable — catalog cards subscribe so one probe does not rebuild
   /// the whole grid ([ChangeNotifier] still fires for short picker lists).
@@ -45,6 +59,12 @@ class LazyUrlHealthProbe extends ChangeNotifier
     if (n != null && n.value != ok) n.value = ok;
   }
 
+  void _markChecked(String key) {
+    final now = DateTime.now();
+    _checkedAt[key] = now;
+    _sessionCheckedAt[key] = now;
+  }
+
   /// Cache a probe result from a header-aware check (no URL re-fetch).
   @override
   void remember(String key, bool ok) {
@@ -58,6 +78,7 @@ class LazyUrlHealthProbe extends ChangeNotifier
       _health[k] = false;
       _sessionHealth.remove(k);
     }
+    _markChecked(k);
     _publish(k, ok);
     notifyListeners();
     onResult?.call(k, ok);
@@ -67,7 +88,7 @@ class LazyUrlHealthProbe extends ChangeNotifier
   @override
   Future<bool> checkNow(String key, String url) async {
     final cached = healthFor(key);
-    if (cached != null) return cached;
+    if (cached != null && isFresh(key)) return cached;
     if (_disposed) return false;
     final trimmed = url.trim();
     if (trimmed.isEmpty) return false;
@@ -89,6 +110,8 @@ class LazyUrlHealthProbe extends ChangeNotifier
     final trimmed = url.trim();
     if (trimmed.isEmpty) return;
     if (_inFlight.contains(key)) return;
+    // Keep last border/dot — re-hover must not wait on CDN again.
+    if (isFresh(key)) return;
 
     if (onlyThis) {
       for (final id in _debounce.keys.toList()) {
@@ -137,23 +160,26 @@ class LazyUrlHealthProbe extends ChangeNotifier
     try {
       final ok = await PortalAliveChecker.checkOne(url);
       if (_disposed) return;
+      final prev = _health[key] ?? _sessionHealth[key];
       if (ok) {
-        if (_health[key] == true && _sessionHealth[key] == true) return;
         _health[key] = true;
         _sessionHealth[key] = true;
       } else {
-        if (_health[key] == false) return;
         _health[key] = false;
         _sessionHealth.remove(key);
       }
+      _markChecked(key);
+      if (prev == ok) return;
       _publish(key, ok);
       notifyListeners();
       onResult?.call(key, ok);
     } catch (_) {
       if (_disposed) return;
-      if (_health[key] == false) return;
+      final prev = _health[key] ?? _sessionHealth[key];
       _health[key] = false;
       _sessionHealth.remove(key);
+      _markChecked(key);
+      if (prev == false) return;
       _publish(key, false);
       notifyListeners();
       onResult?.call(key, false);

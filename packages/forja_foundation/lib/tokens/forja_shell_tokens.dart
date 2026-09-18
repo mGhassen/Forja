@@ -23,6 +23,19 @@ abstract final class ShellTokens {
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
 
+  /// Leanback type steps — one ladder for rail / top bar / details / settings.
+  /// Spatial layout still uses [tvLayoutScale]; type never does.
+  static const double tvBodyFontSize = 11;
+  static const double tvTitleFontSize = 14;
+  static const double tvMetaFontSize = 10;
+
+  /// Map a desktop font size onto the leanback ladder.
+  static double tvTypeSize(double desktop) {
+    if (desktop >= 16) return tvTitleFontSize;
+    if (desktop >= 12) return tvBodyFontSize;
+    return tvMetaFontSize;
+  }
+
   /// Below this window width the nav rail collapses to a menu button + drawer.
   static const double shellNavCompactMaxWidth = 1000;
 
@@ -85,8 +98,11 @@ abstract final class ShellTokens {
 
   static const double navRailLabelFontSize = 11;
 
-  /// Floor when TV density scales rail labels.
-  static const double navRailLabelFontSizeTvMin = 9;
+  /// Leanback body type — same step as category / top-bar / details body.
+  static const double navRailLabelFontSizeTv = tvBodyFontSize;
+
+  /// @Deprecated — use [navRailLabelFontSizeTv].
+  static const double navRailLabelFontSizeTvMin = tvBodyFontSize;
 
   /// Line-height multiplier for rail labels — slot must match or glyphs clip.
   static const double navRailLabelLineHeight = 1.2;
@@ -252,7 +268,7 @@ abstract final class ShellTokens {
   static const double kitTopBarTabGapWide = 36;
   static const double kitTopBarTabGapCompactMaxWidth = 560;
   static const double kitTopBarTabFontSize = 17;
-  static const double kitTopBarTabFontSizeTv = 12;
+  static const double kitTopBarTabFontSizeTv = tvTitleFontSize;
   static const double kitTopBarChevronSize = 18;
   static const double kitTopBarChevronSizeTv = 14;
   static const double kitTopBarIconGap = 6;
@@ -268,7 +284,7 @@ abstract final class ShellTokens {
   static const double homeCategoriesMenuRowPadV = 10;
   static const double homeCategoriesMenuRowPadVTv = 6;
   static const double homeCategoriesMenuFontSize = 14;
-  static const double homeCategoriesMenuFontSizeTv = 11;
+  static const double homeCategoriesMenuFontSizeTv = tvBodyFontSize;
   static double get kitTopBarTwoRowHeight =>
       homeTopBarHeight + kitTopBarStatusRowTopGap + kitTopBarStatusRowHeight;
   static double get kitTopBarTwoRowHeightTv =>
@@ -473,7 +489,7 @@ abstract final class ShellTokens {
   static const double posterCardRadiusMin = 4;
   static const double posterTitleFontSizeMobile = 13;
   static const double posterTitleFontSizeDesktop = 14;
-  static const double posterTitleFontSizeTv = 10;
+  static const double posterTitleFontSizeTv = tvBodyFontSize;
   static const double cardFocusBorderWidth = 1.5;
   static const double cardFocusBleedExtra = 1;
   static const double continueWatchingCardWidthTv = 120;
@@ -491,7 +507,7 @@ abstract final class ShellTokens {
 
   static const double hubCardTitleFontSizeMobile = 13;
   static const double hubCardTitleFontSizeDesktop = 14;
-  static const double hubCardTitleFontSizeTv = 9;
+  static const double hubCardTitleFontSizeTv = tvBodyFontSize;
   static const double heroCompactRightInsetDesktop = 20;
   static const double heroCompactRightInsetTv = 16;
   static const double heroMinTitleHeightDesktop = 72;
@@ -512,10 +528,10 @@ abstract final class ShellTokens {
   static const double shellGridTabletMinWidth = 600;
 
   static const double sectionTitleFontSize = 20;
-  static const double sectionTitleFontSizeMin = 11;
+  static const double sectionTitleFontSizeMin = tvTitleFontSize;
   static const double sectionTitleLetterSpacing = -0.3;
   static const double sectionSubtitleFontSize = 11;
-  static const double sectionSubtitleFontSizeMin = 8;
+  static const double sectionSubtitleFontSizeMin = tvMetaFontSize;
 
   static const double torrentPanelPaddingDesktop = 16;
   static const double torrentPanelPaddingTv = 14;
@@ -541,7 +557,7 @@ abstract final class ShellTokens {
   static const double portalsChipHeightTv = controlHeightTv;
   static const double portalsChipRadius = 8;
   static const double portalsChipFontSize = 12.5;
-  static const double portalsChipFontSizeTv = 10;
+  static const double portalsChipFontSizeTv = tvBodyFontSize;
   static const double portalsChipIconSize = 16;
   static const double portalsChipIconSizeTv = 12;
   static const double portalsChipChevronSize = 18;
@@ -583,7 +599,7 @@ abstract final class ShellTokens {
   static const double categoryRailItemGapTv = 8;
   static const double categoryRailFontSize = 14;
   static const double categoryRailFontSizeCompact = 13;
-  static const double categoryRailFontSizeTv = 11;
+  static const double categoryRailFontSizeTv = tvBodyFontSize;
   static const double categoryRailPinRadius = 6;
   static const double categoryRailPinPad = 4;
 
@@ -597,7 +613,7 @@ abstract final class ShellTokens {
   static const double hubTopBarTabPadV = 8;
   static const double hubTopBarTabPadVTv = 4;
   static const double hubTopBarTabFontSize = 14;
-  static const double hubTopBarTabFontSizeTv = 11;
+  static const double hubTopBarTabFontSizeTv = tvBodyFontSize;
 
   static const double topBarActionsHeight = controlHeight;
   static const double topBarActionsGap = 8;
@@ -613,7 +629,7 @@ abstract final class ShellTokens {
   static const double actionChipPadHTv = 8;
   static const double actionChipPadV = 6;
   static const double actionChipFontSize = 11.5;
-  static const double actionChipFontSizeTv = 10;
+  static const double actionChipFontSizeTv = tvMetaFontSize;
   static const double actionChipGap = 6;
   static const double actionChipIconSize = 16;
   static const double actionChipIconSizeTv = 12;
@@ -621,7 +637,7 @@ abstract final class ShellTokens {
   static const double shellChipRadiusPill = 20;
   static const double shellChipRadius = 8;
   static const double shellChipFontSize = 12.5;
-  static const double shellChipFontSizeTv = 10;
+  static const double shellChipFontSizeTv = tvBodyFontSize;
   static const double shellChipIconSize = 14;
   static const double shellChipGap = 6;
   static const double shellChipGapTight = 4;
@@ -630,7 +646,7 @@ abstract final class ShellTokens {
   static const double widgetShelfHeightTv = 28;
   static const double widgetShelfRadius = 8;
   static const double widgetShelfFontSize = 12.5;
-  static const double widgetShelfFontSizeTv = 10;
+  static const double widgetShelfFontSizeTv = tvBodyFontSize;
   static const double widgetShelfIconSize = 16;
   static const double widgetShelfIconSizeTv = 12;
   static const double widgetShelfGap = 14;
@@ -647,7 +663,7 @@ abstract final class ShellTokens {
   static const double moodCircleSizeTv = 42;
   static const double moodCircleItemWidthTv = 58;
   static const double moodCircleGapTv = 6;
-  static const double moodCircleLabelFontSizeTv = 9;
+  static const double moodCircleLabelFontSizeTv = tvMetaFontSize;
   static const double moodCircleLabelGapTv = 6;
   static const double moodCircleLabelLineHeightTv = 1.15;
 

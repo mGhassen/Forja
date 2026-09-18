@@ -508,11 +508,16 @@ class _DetailsHeroMainColumn extends StatelessWidget {
     this.selectableTitle = false,
   });
 
-  static const _overviewStyle = TextStyle(
-    fontSize: 14,
-    height: 1.6,
-    color: Color(0xB8FFFFFF),
-  );
+  static TextStyle overviewStyle({required bool tvDensity}) => TextStyle(
+        fontSize: tvDensity
+            ? DetailsTokens.bodyFontSizeTv
+            : DetailsTokens.bodyFontSize,
+        height: 1.6,
+        color: const Color(0xB8FFFFFF),
+      );
+
+  TextStyle get _overviewStyle => overviewStyle(tvDensity: tvDensity);
+
   /// Room for up to 3 lines of text title (auto-shrinks in [HeroTitle]).
   double get _textTitleBlockHeight => tvDensity
       ? DetailsTokens.heroTitleBlockHeightTv
@@ -523,6 +528,9 @@ class _DetailsHeroMainColumn extends StatelessWidget {
   double get _subtitleBlockHeight => tvDensity
       ? DetailsTokens.heroActionsBlockHeightTv
       : DetailsTokens.heroActionsBlockHeight;
+  double get _bodyFont => tvDensity
+      ? DetailsTokens.bodyFontSizeTv
+      : DetailsTokens.bodyFontSize;
   static const _genreBlockHeight = 20.0;
   static const _metaBlockHeight = 24.0;
   static const _overviewGap = 14.0;
@@ -549,7 +557,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
   final bool plainTitle;
   final bool selectableTitle;
 
-  static double get _overviewSlotHeight =>
+  double get _overviewSlotHeight =>
       _overviewStyle.fontSize! *
           _overviewStyle.height! *
           ShellTokens.heroOverviewMaxLinesDesktop +
@@ -696,7 +704,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: _bodyFont,
             fontWeight: FontWeight.w500,
             color: Colors.white.withValues(alpha: 0.62),
           ),
@@ -709,7 +717,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: _bodyFont,
             fontWeight: FontWeight.w500,
             color: Colors.white.withValues(alpha: 0.78),
             letterSpacing: 0.2,
@@ -722,6 +730,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
           parts: metaParts,
           rating: rating,
           singleLine: bounded,
+          tvDensity: tvDensity,
         ),
       ],
       if (showOverview) ...[
@@ -837,11 +846,17 @@ class DetailsHeroMetaLine extends StatelessWidget {
     required this.parts,
     this.rating,
     this.singleLine = false,
+    this.tvDensity = false,
   });
 
   final List<String> parts;
   final double? rating;
   final bool singleLine;
+  final bool tvDensity;
+
+  double get _body => tvDensity
+      ? DetailsTokens.bodyFontSizeTv
+      : DetailsTokens.bodyFontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -850,13 +865,17 @@ class DetailsHeroMetaLine extends StatelessWidget {
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.star_rounded, size: 16, color: Colors.amber.shade400),
+              Icon(
+                Icons.star_rounded,
+                size: tvDensity ? 12 : 16,
+                color: Colors.amber.shade400,
+              ),
               const SizedBox(width: 4),
               Text(
                 rating!.toStringAsFixed(1),
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.85),
-                  fontSize: 14,
+                  fontSize: _body,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -880,7 +899,7 @@ class DetailsHeroMetaLine extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.85),
-                  fontSize: 14,
+                  fontSize: _body,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -909,7 +928,10 @@ class DetailsHeroMetaLine extends StatelessWidget {
           if (i > 0)
             Text(
               '•',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 12),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.25),
+                fontSize: _body - 2,
+              ),
             ),
           items[i],
         ],
@@ -922,7 +944,7 @@ class DetailsHeroMetaLine extends StatelessWidget {
       text,
       style: TextStyle(
         color: Colors.white.withValues(alpha: 0.72),
-        fontSize: 14,
+        fontSize: _body,
         fontWeight: FontWeight.w500,
       ),
     );

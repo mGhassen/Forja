@@ -104,12 +104,15 @@ class CinematicHeroLayout {
   double scaled(double value) => value * scale;
 
   /// Scale without fighting TV density with desktop floor clamps.
+  /// On TV, type snaps to [ShellTokens.tvBodyFontSize] / title / meta — never
+  /// poster [scale] (that made hero meta ~5–9 while details stayed at 14).
   double scaledChrome(double value, {double? floor, double? ceil}) {
-    final s = scaled(value);
     if (tvDensity) {
-      if (ceil != null) return math.min(s, ceil);
-      return s;
+      if (value >= 16) return ShellTokens.tvTitleFontSize;
+      if (value >= 12) return ShellTokens.tvBodyFontSize;
+      return ShellTokens.tvMetaFontSize;
     }
+    final s = scaled(value);
     final lo = floor ?? s;
     final hi = ceil ?? s;
     return s.clamp(lo, hi);

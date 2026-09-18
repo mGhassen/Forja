@@ -19,13 +19,13 @@ abstract final class SettingsTokens {
   static const double pagePadding = 20;
   static const double pagePaddingTv = 12;
   static const double groupLabelSize = 11;
-  static const double groupLabelSizeTv = 9;
+  static const double groupLabelSizeTv = 10; // ShellTokens.tvMetaFontSize — keep literal to avoid cycle
   static const double categoryTitleSize = 15;
-  static const double categoryTitleSizeTv = 12;
+  static const double categoryTitleSizeTv = 11;
   static const double categoryIconSize = 22;
   static const double categoryIconSizeTv = 16;
   static const double pageTitleSize = 22;
-  static const double pageTitleSizeTv = 16;
+  static const double pageTitleSizeTv = 14;
 
   /// True when Settings should show the split sidebar layout.
   /// Desktop / wide and Android TV (1080p+) use the same hub chrome.

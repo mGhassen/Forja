@@ -6,11 +6,13 @@ import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
+import 'package:forja/shared/engine/runtime/shell/shell_bus.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 
 /// Hover/focus URL probe for IPTV live catalog channel cards.
 ///
 /// Cards subscribe per stream key — a probe result must not rebuild the grid.
+/// Fresh results skip CDN / create_link for [LazyUrlHealthProbe.ttl].
 /// Stalker rows ship `pending:stalker:…` until create_link; resolve before probe
 /// so status matches play (plain HTTP on the pending token is always red).
 class ChannelCatalogHealthHost extends StatefulWidget {
@@ -124,11 +126,16 @@ class _ChannelCatalogHealthHostState extends State<ChannelCatalogHealthHost> {
       _probe.cancel(key);
       return;
     }
+    // No catalog probes under the opaque player (I120) — seats + decode.
+    if (ShellBus.playerSurfaceActive.value) return;
+    // Already painted — skip create_link + CDN wait on re-hover.
+    if (_probe.isFresh(key)) return;
 
     final gen = ++_activeGen;
     unawaited(() async {
       final resolved = await _resolveProbeUrl(item);
       if (!mounted || gen != _activeGen) return;
+      if (ShellBus.playerSurfaceActive.value) return;
       // create_link miss → leave unknown (null), never paint false-red on
       // the pending token.
       if (resolved == null ||

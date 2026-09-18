@@ -101,14 +101,18 @@ abstract final class DetailsTokens {
   static const double episodeRangeMenuRadius = 20;
   static const double factsRadius = 12;
   static const double sectionTitleFontSize = 18;
-  static const double sectionTitleFontSizeTv = 13;
+  static const double sectionTitleFontSizeTv = ShellTokens.tvTitleFontSize;
+  static const double bodyFontSize = 14;
+  static const double bodyFontSizeTv = ShellTokens.tvBodyFontSize;
+  static const double metaFontSize = 12;
+  static const double metaFontSizeTv = ShellTokens.tvMetaFontSize;
   static const double railsGap = 12;
   static const double railsGapTv = 8;
   static const double railsSectionGap = 24;
   static const double railsSectionGapTv = 14;
   static const double detailsHeaderGap = 8;
   static const double detailsHeaderFontSize = 18;
-  static const double detailsHeaderFontSizeTv = 13;
+  static const double detailsHeaderFontSizeTv = ShellTokens.tvTitleFontSize;
 
   static const double heroTitleBlockHeight = 96;
   static const double heroTitleBlockHeightTv = 64;

@@ -158,11 +158,12 @@ double shellNavRailIconSize(BuildContext context) =>
       ShellTokens.navRailIconSize,
     );
 
-double shellNavRailLabelFontSize(BuildContext context) =>
-    shellScaled(context, ShellTokens.navRailLabelFontSize).clamp(
-      ShellTokens.navRailLabelFontSizeTvMin,
-      ShellTokens.navRailLabelFontSize,
-    );
+double shellNavRailLabelFontSize(BuildContext context) {
+  if (ShellScope.metricsOf(context).usesTvDensity) {
+    return ShellTokens.navRailLabelFontSizeTv;
+  }
+  return ShellTokens.navRailLabelFontSize;
+}
 
 /// Label row height — includes [MediaQuery.textScalerOf] (Windows accessibility).
 double shellNavRailLabelSlotHeight(BuildContext context, [double? baseFontSize]) {
@@ -195,20 +196,19 @@ double shellNavRailItemContentHeight(
 
 TextStyle shellSectionTitleTextStyle(BuildContext context) => TextStyle(
   color: Colors.white,
-  fontSize: shellScaled(context, ShellTokens.sectionTitleFontSize).clamp(
-    ShellTokens.sectionTitleFontSizeMin,
-    ShellTokens.sectionTitleFontSize,
-  ),
+  fontSize: ShellScope.metricsOf(context).usesTvDensity
+      ? ShellTokens.tvTitleFontSize
+      : ShellTokens.sectionTitleFontSize,
   fontWeight: FontWeight.w800,
   letterSpacing: ShellTokens.sectionTitleLetterSpacing,
 );
 
 TextStyle shellSectionSubtitleTextStyle(BuildContext context) => TextStyle(
   color: Colors.white.withValues(alpha: 0.3),
-  fontSize: shellScaled(context, ShellTokens.sectionSubtitleFontSize).clamp(
-    ShellTokens.sectionSubtitleFontSizeMin,
-    ShellTokens.sectionSubtitleFontSize,
-  ),
+  fontSize: ShellScope.metricsOf(context).usesTvDensity
+      ? ShellTokens.tvMetaFontSize
+      : ShellTokens.sectionSubtitleFontSize,
+  fontWeight: FontWeight.w500,
 );
 
 /// Desktop cinematic hero text column - prefer synopsis over a full logo slot.
