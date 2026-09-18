@@ -141,7 +141,68 @@ void main() {
     VerticalFiltersRegistry.showMenu('home');
     VerticalFiltersRegistry.hideMenu('home');
     expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isFalse);
+
+    VerticalFiltersRegistry.onNavRepress('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isTrue);
+    VerticalFiltersRegistry.onNavRepress('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isFalse);
   });
+
+  testWidgets(
+    'shared TapRegion group keeps menu open on the open tap',
+    (tester) async {
+      final group = Object();
+      var visible = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                return Stack(
+                  children: [
+                    if (visible)
+                      Positioned(
+                        left: 80,
+                        top: 0,
+                        child: TapRegion(
+                          groupId: group,
+                          onTapOutside: (_) => setState(() => visible = false),
+                          child: const SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: ColoredBox(color: Colors.blue),
+                          ),
+                        ),
+                      ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TapRegion(
+                        groupId: group,
+                        child: GestureDetector(
+                          key: const Key('vf-nav'),
+                          onTap: () => setState(() => visible = true),
+                          child: const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: ColoredBox(color: Colors.red),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('vf-nav')));
+      await tester.pump();
+      expect(visible, isTrue);
+    },
+  );
 
   test('ShellBus.selectDefaultTabOnNextNavLoad defaults false and is mutable', () {
     expect(ShellBus.selectDefaultTabOnNextNavLoad, isFalse);

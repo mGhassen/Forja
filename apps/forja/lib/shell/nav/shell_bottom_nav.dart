@@ -47,6 +47,8 @@ class ShellBottomNav extends StatelessWidget {
                   onLongPress: VerticalFiltersRegistry.hasFilters(id)
                       ? () => VerticalFiltersRegistry.showMenu(id)
                       : null,
+                  shareFilterMenuTapGroup:
+                      VerticalFiltersRegistry.hasFilters(id),
                 );
               }).toList(),
             ),
@@ -88,12 +90,17 @@ class _BottomNavItem extends StatefulWidget {
     required this.selected,
     required this.onTap,
     this.onLongPress,
+    this.shareFilterMenuTapGroup = false,
   });
 
   final NavDestination destination;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+
+  /// Same [TapRegion] group as [VerticalFiltersRail] so re-press opens
+  /// without the tap counting as outside and hiding the menu.
+  final bool shareFilterMenuTapGroup;
 
   @override
   State<_BottomNavItem> createState() => _BottomNavItemState();
@@ -123,7 +130,7 @@ class _BottomNavItemState extends State<_BottomNavItem> {
       );
     }
 
-    return Focus(
+    Widget item = Focus(
       onFocusChange: (focused) => setState(() => _focused = focused),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hover = true),
@@ -175,5 +182,12 @@ class _BottomNavItemState extends State<_BottomNavItem> {
         ),
       ),
     );
+    if (widget.shareFilterMenuTapGroup) {
+      item = TapRegion(
+        groupId: VerticalFiltersRegistry.menuTapGroup,
+        child: item,
+      );
+    }
+    return item;
   }
 }

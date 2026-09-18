@@ -1206,116 +1206,123 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         child: Builder(
           builder: (context) {
             final railW = ShellScope.metricsOf(context).navRailWidth;
-            return SizedBox(
-              width: railW,
-              height: contentHeight,
-              child: Center(
-                child: MouseRegion(
-                  onEnter: (_) => _onHoverEnter(),
-                  onExit: (_) => _onHoverExit(),
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTapDown: (_) => setState(() => _pressed = true),
-                    onTapUp: (_) => setState(() => _pressed = false),
-                    onTapCancel: () => setState(() => _pressed = false),
-                    onTap: _enterPageFromNav,
-                    onLongPress: _hasVerticalFilters
-                        ? () {
-                            VerticalFiltersRegistry.showMenu(
-                              widget.destination.id,
-                            );
-                          }
-                        : null,
-                    behavior: HitTestBehavior.opaque,
-                    child: SizedBox(
-                      width: railW,
-                      height: contentHeight,
-                      // Top-pin icon stack so focus scale + label never shift the
-                      // icon baseline relative to unlabeled neighbors.
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: railW,
-                            height: renderedIconSize *
-                                ShellTokens.navRailIconHoverScale,
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: AnimatedScale(
-                                alignment: Alignment.bottomCenter,
-                                scale: _scaleFor(policy),
-                                duration: chromeAnim,
-                                curve: Curves.easeOutCubic,
-                                // Bilinear — Impeller defaults can nearest-neighbor
-                                // the focus grow and make pack PNGs look 8-bit.
-                                filterQuality: FilterQuality.medium,
-                                child: SizedBox(
-                                  width: widget.customIconSize != null
-                                      ? renderedIconSize *
-                                          ShellTokens.navRailIconHoverScale
-                                      : renderedIconSize,
-                                  height: widget.customIconSize != null
-                                      ? renderedIconSize *
-                                          ShellTokens.navRailIconHoverScale
-                                      : renderedIconSize,
-                                  child: Center(child: icon),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(
-                            height: ShellTokens.navRailIconUnderlineGap,
-                          ),
-                          AnimatedContainer(
-                            key: ValueKey(
-                              'nav-${widget.destination.id}-underline',
-                            ),
+            Widget hitTarget = MouseRegion(
+              onEnter: (_) => _onHoverEnter(),
+              onExit: (_) => _onHoverExit(),
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTapDown: (_) => setState(() => _pressed = true),
+                onTapUp: (_) => setState(() => _pressed = false),
+                onTapCancel: () => setState(() => _pressed = false),
+                onTap: _enterPageFromNav,
+                onLongPress: _hasVerticalFilters
+                    ? () {
+                        VerticalFiltersRegistry.showMenu(
+                          widget.destination.id,
+                        );
+                      }
+                    : null,
+                behavior: HitTestBehavior.opaque,
+                child: SizedBox(
+                  width: railW,
+                  height: contentHeight,
+                  // Top-pin icon stack so focus scale + label never shift the
+                  // icon baseline relative to unlabeled neighbors.
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: railW,
+                        height: renderedIconSize *
+                            ShellTokens.navRailIconHoverScale,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: AnimatedScale(
+                            alignment: Alignment.bottomCenter,
+                            scale: _scaleFor(policy),
                             duration: chromeAnim,
                             curve: Curves.easeOutCubic,
-                            height: ShellTokens.shellNavUnderlineHeight,
-                            width: widget.selected ? underlineWidth : 0,
-                            decoration: BoxDecoration(
-                              color: widget.selected
-                                  ? (useDestinationAccent
-                                        ? destinationAccent
-                                        : selectedFocused
-                                        ? Colors.white
-                                        : ForjaShellColors.navUnderline)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(
-                                ShellTokens.shellNavUnderlineRadius,
-                              ),
+                            // Bilinear — Impeller defaults can nearest-neighbor
+                            // the focus grow and make pack PNGs look 8-bit.
+                            filterQuality: FilterQuality.medium,
+                            child: SizedBox(
+                              width: widget.customIconSize != null
+                                  ? renderedIconSize *
+                                      ShellTokens.navRailIconHoverScale
+                                  : renderedIconSize,
+                              height: widget.customIconSize != null
+                                  ? renderedIconSize *
+                                      ShellTokens.navRailIconHoverScale
+                                  : renderedIconSize,
+                              child: Center(child: icon),
                             ),
                           ),
-                          const SizedBox(
-                            height: ShellTokens.navRailIconLabelGap,
-                          ),
-                          SizedBox(
-                            height: labelSlotHeight,
-                            width: railW,
-                            child: Center(
-                              child: showLabel
-                                  ? _NavRailLabel(
-                                      text: label,
-                                      style: labelStyle,
-                                      presence: widget.labelPresence,
-                                      markSize: lanMarkSize,
-                                      showBar: lanShowBar,
-                                    )
-                                  : _TypewriterLabel(
-                                      text: label,
-                                      active: _typing,
-                                      style: labelStyle,
-                                    ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(
+                        height: ShellTokens.navRailIconUnderlineGap,
+                      ),
+                      AnimatedContainer(
+                        key: ValueKey(
+                          'nav-${widget.destination.id}-underline',
+                        ),
+                        duration: chromeAnim,
+                        curve: Curves.easeOutCubic,
+                        height: ShellTokens.shellNavUnderlineHeight,
+                        width: widget.selected ? underlineWidth : 0,
+                        decoration: BoxDecoration(
+                          color: widget.selected
+                              ? (useDestinationAccent
+                                    ? destinationAccent
+                                    : selectedFocused
+                                    ? Colors.white
+                                    : ForjaShellColors.navUnderline)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(
+                            ShellTokens.shellNavUnderlineRadius,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(
+                        height: ShellTokens.navRailIconLabelGap,
+                      ),
+                      SizedBox(
+                        height: labelSlotHeight,
+                        width: railW,
+                        child: Center(
+                          child: showLabel
+                              ? _NavRailLabel(
+                                  text: label,
+                                  style: labelStyle,
+                                  presence: widget.labelPresence,
+                                  markSize: lanMarkSize,
+                                  showBar: lanShowBar,
+                                )
+                              : _TypewriterLabel(
+                                  text: label,
+                                  active: _typing,
+                                  style: labelStyle,
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+            );
+            // Same TapRegion group as VerticalFiltersRail — otherwise the
+            // re-press tap that opens the menu is also tap-outside and hides it.
+            if (_hasVerticalFilters) {
+              hitTarget = TapRegion(
+                groupId: VerticalFiltersRegistry.menuTapGroup,
+                child: hitTarget,
+              );
+            }
+            return SizedBox(
+              width: railW,
+              height: contentHeight,
+              child: Center(child: hitTarget),
             );
           },
         ),

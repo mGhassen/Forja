@@ -205,28 +205,34 @@ class VerticalFilterTopBarLogo extends StatelessWidget {
         final option = spec?.optionById(selectedId);
         if (spec == null || option == null) return const SizedBox.shrink();
         if (tvFocus) {
-          return _TvSelectedFilterLogo(
-            tabId: tabId,
-            option: option,
-            packSourceUrl: spec.packSourceUrl,
-            width: width,
-            height: height,
-            focusNode: focusNode,
-            listIndex: listIndex,
-            onDownEdge: onDownEdge,
+          return TapRegion(
+            groupId: VerticalFiltersRegistry.menuTapGroup,
+            child: _TvSelectedFilterLogo(
+              tabId: tabId,
+              option: option,
+              packSourceUrl: spec.packSourceUrl,
+              width: width,
+              height: height,
+              focusNode: focusNode,
+              listIndex: listIndex,
+              onDownEdge: onDownEdge,
+            ),
           );
         }
-        return ForjaInteractive(
-          onTap: () => VerticalFiltersRegistry.onTopLogoTap(tabId),
-          hoverScale: 1.0,
-          builder: (_, _) => VerticalFilterLogoMark(
-            option: option,
-            packSourceUrl: spec.packSourceUrl,
-            width: width,
-            height: height,
-            inset: ShellTokens.shellProviderTopBarLogoInset,
-            borderRadius: BorderRadius.circular(
-              ShellTokens.shellProviderTileRadius,
+        return TapRegion(
+          groupId: VerticalFiltersRegistry.menuTapGroup,
+          child: ForjaInteractive(
+            onTap: () => VerticalFiltersRegistry.onTopLogoTap(tabId),
+            hoverScale: 1.0,
+            builder: (_, _) => VerticalFilterLogoMark(
+              option: option,
+              packSourceUrl: spec.packSourceUrl,
+              width: width,
+              height: height,
+              inset: ShellTokens.shellProviderTopBarLogoInset,
+              borderRadius: BorderRadius.circular(
+                ShellTokens.shellProviderTileRadius,
+              ),
             ),
           ),
         );
