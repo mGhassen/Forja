@@ -16,7 +16,9 @@ bool packChromeKindReloadsFeed(Map<String, dynamic> listSpec) {
   return kindMenu.isNotEmpty && horizonMenu.isNotEmpty;
 }
 
-/// IPTV Movies/Series/Channels — category/sort/search must re-query.
+/// IPTV Live/Movies/Series/Channels — category/sort/search must re-query
+/// `catalog_page` (host shelf). Live used to paint-filter a full feed; under
+/// issue 290 the feed is one page, so paint-filter leaves other cats empty.
 bool packChromeVodPagedFeed(
   Map<String, dynamic> listSpec,
   LayoutScope? scope,
@@ -24,7 +26,10 @@ bool packChromeVodPagedFeed(
   final catalogMenu = (listSpec['catalogMenu'] ?? '').toString().trim();
   if (catalogMenu.isEmpty) return false;
   final section = (scope?.selectedId(catalogMenu) ?? '').trim().toLowerCase();
-  return section == 'movies' || section == 'series' || section == 'channels';
+  return section == 'live' ||
+      section == 'movies' ||
+      section == 'series' ||
+      section == 'channels';
 }
 
 /// Params safe to satisfy from page `feed.rails[rail]` (no per-row extras
@@ -118,7 +123,7 @@ Map<String, dynamic> packChromeFeedParams(
   final vodPaged = packChromeVodPagedFeed(listSpec, scope);
 
   // Live Sports (horizonMenu): kind → feed sportFilter (schedule re-query).
-  // IPTV Live: kind is paint-only. IPTV Movies/Series: kind re-queries page 1.
+  // IPTV Live/Movies/Series: kind re-queries catalog_page (issue 290).
   if (kindReloadsFeed || vodPaged) {
     final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
     final kind = scope?.selectedId(kindMenu);
@@ -132,7 +137,7 @@ Map<String, dynamic> packChromeFeedParams(
     }
   }
 
-  // Live Sports + IPTV VOD: sort/search re-query. IPTV Live stays paint-only.
+  // Live Sports + IPTV catalog sections: sort/search re-query.
   if (kindReloadsFeed || vodPaged) {
     injectMenu('sortMenu', 'sort');
   }
@@ -196,7 +201,7 @@ String packChromeSelectionEpoch(
 
   return [
     status,
-    // Sport chips + IPTV VOD cats reload feed; IPTV Live cats stay paint-only.
+    // Sport chips + IPTV catalog cats reload feed (catalog_page).
     kindBustsFeed ? sel('kindMenu') : '',
     sel('catalogMenu'),
     kindBustsFeed ? sel('sortMenu') : '',

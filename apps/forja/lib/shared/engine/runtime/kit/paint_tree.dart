@@ -1449,9 +1449,9 @@ class PackPaintTree extends StatelessWidget {
           final kindFilter = kindMenu.isEmpty
               ? (spec['kind'] ?? '').toString().trim()
               : (layoutScope?.selectedId(kindMenu) ?? '').trim();
-          // IPTV Live: paint-filter cats/search/sort. Movies/Series re-query
-          // feed (paged) — paint must not kind-filter the stale previous page
-          // or the grid flashes empty while the new page loads.
+          // IPTV Live/Movies/Series: category/search re-query catalog_page
+          // (issue 290). Paint must not kind-filter a stale previous page or
+          // the grid flashes empty while the new page loads.
           final vodPaged = packChromeVodPagedFeed(spec, layoutScope);
           final paintOnlySearch =
               !packChromeKindReloadsFeed(spec) && !vodPaged;

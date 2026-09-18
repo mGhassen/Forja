@@ -4,6 +4,7 @@ import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
+import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 
 /// Lightweight shimmer wrapper (no third-party deps).
 Widget homeLoadingShimmer(Widget child) {
@@ -346,21 +347,16 @@ double catalogContinueRowSkeletonHeight({
   );
 }
 
-/// Neutral full-page wait — no invented hub rails (pack layout owns structure).
+/// Full-page wait while pack layout resolves — solid fill + ticker.
 ///
-/// Static fill only — no opacity pulse. Pulsing shimmer on cold hub remount
-/// (shell nav / TV tab eviction) reads as the page background flashing.
+/// No invented rails and no elevated band / shimmer (those read as the page
+/// background flashing on cold hub remount).
 Widget hubNeutralLoadingSkeleton(BuildContext context) {
-  final size = MediaQuery.sizeOf(context);
-  final heroH = homeCinematicHeroBodyHeight(
-    screenHeight: size.height,
-    pageBottomBleed: false,
-  );
-  return ColoredBox(
+  return const ColoredBox(
     color: ForjaShellColors.bgDark,
-    child: ColoredBox(
-      color: ForjaShellColors.surfaceElevated,
-      child: SizedBox(width: double.infinity, height: heroH),
+    child: CatalogLoadingTicker(
+      title: 'Loading',
+      detail: 'Opening this hub…',
     ),
   );
 }

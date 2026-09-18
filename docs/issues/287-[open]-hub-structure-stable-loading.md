@@ -42,7 +42,7 @@
 
 Cold hub open painted a host-invented full-page skeleton (`homeHubLoadingSlivers`), then remounted the pack `layout` tree, then per-rail skeletons with wrong metrics (`topPadding: 12`, undersized gate height). Structure is pack-owned (`nav.page.action` + `_layout.js`); host must paint that tree (from `EngineCache` when warm) and reserve type-matched slots while feed/rail fills.
 
-**Shipped:** `MetaRuntime.peekCached` + `PackLayoutPainter` sync shell; `hubNeutralLoadingSkeleton` on cold miss; `kitSectionLoadingSlot` + foundation density helpers for LazyViewportGate / PackLoadedPaint.
+**Shipped:** `MetaRuntime.peekCached` + `PackLayoutPainter` sync shell; `hubNeutralLoadingSkeleton` on cold miss (`CatalogLoadingTicker` on solid `bgDark` — no elevated band); `kitSectionLoadingSlot` + foundation density helpers for LazyViewportGate / PackLoadedPaint.
 
 Follow-on to [279](279-[open]-hub-catalog-design-regressions-thin-painter.md) A24/A25 — A24’s fake page skeleton becomes the anti-pattern to remove.
 
