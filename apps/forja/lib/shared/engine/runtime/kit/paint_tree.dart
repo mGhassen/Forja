@@ -623,25 +623,33 @@ class PackPaintTree extends StatelessWidget {
             focusDown: categoryChild['focusDown']?.toString(),
           )
         : null;
-    return TopBodyBlock.fromProps(
-      merged,
-      grid: feed,
-      kindsBar: kindsBar,
-      actionSelections: actionSelections,
-      actionSelectionLabels: _topBarSelectionLabels(actionSelections, actions),
-      actionSlots: _portalsActionSlots(context, actions: actions),
-      wrapBody: _portalsWrapBody(context, actions: actions),
-      onActionSelect: (actionId, value) {
-        _dispatchTopBarAction(
-          context,
-          actions: actions,
-          actionId: actionId,
-          value: value,
-          scope: scope,
+    return Consumer(
+      builder: (context, ref, _) {
+        final status = _topBarFeedStatus(ref);
+        return TopBodyBlock.fromProps(
+          merged,
+          grid: feed,
+          kindsBar: kindsBar,
+          actions: status.actions(actions),
+          actionSelections: actionSelections,
+          actionSelectionLabels:
+              _topBarSelectionLabels(actionSelections, actions),
+          actionSlots: _portalsActionSlots(context, actions: actions),
+          center: status.center,
+          wrapBody: _portalsWrapBody(context, actions: actions),
+          onActionSelect: (actionId, value) {
+            _dispatchTopBarAction(
+              context,
+              actions: actions,
+              actionId: actionId,
+              value: value,
+              scope: scope,
+            );
+          },
+          onKindSelect: (id) {
+            scope?.onSelect(barId, id, toggle: false);
+          },
         );
-      },
-      onKindSelect: (id) {
-        scope?.onSelect(barId, id, toggle: false);
       },
     );
   }
@@ -2490,24 +2498,47 @@ class PackPaintTree extends StatelessWidget {
               4,
             ),
           );
-    return CatalogTopChrome(
-      actions: actions,
-      title: (spec['title'] ?? spec['label'] ?? '').toString(),
-      actionSlots: _portalsActionSlots(context, actions: actions),
-      selections: selections,
-      selectionLabels: _topBarSelectionLabels(selections, actions),
-      height: height,
-      gap: gap,
-      padding: padding,
-      onSelect: (actionId, value) {
-        _dispatchTopBarAction(
-          context,
-          actions: actions,
-          actionId: actionId,
-          value: value,
-          scope: scope,
+    return Consumer(
+      builder: (context, ref, _) {
+        final status = _topBarFeedStatus(ref);
+        return CatalogTopChrome(
+          actions: status.actions(actions),
+          title: (spec['title'] ?? spec['label'] ?? '').toString(),
+          actionSlots: _portalsActionSlots(context, actions: actions),
+          selections: selections,
+          selectionLabels: _topBarSelectionLabels(selections, actions),
+          center: status.center,
+          height: height,
+          gap: gap,
+          padding: padding,
+          onSelect: (actionId, value) {
+            _dispatchTopBarAction(
+              context,
+              actions: actions,
+              actionId: actionId,
+              value: value,
+              scope: scope,
+            );
+          },
         );
       },
+    );
+  }
+
+  /// Live schedule scrape chip for the top-bar center (issue 278).
+  _TopBarFeedStatus _topBarFeedStatus(WidgetRef ref) {
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty || KitTopBarHostHooks.readFeedBusy == null) {
+      return const _TopBarFeedStatus();
+    }
+    final feedBusy = KitTopBarHostHooks.readFeedBusy!(ref, tabId: tab);
+    if (!feedBusy.busy) return const _TopBarFeedStatus();
+    final raw = (feedBusy.label ?? '').trim();
+    return _TopBarFeedStatus(
+      busy: true,
+      center: _KitTopBarCatalogProgressChip(
+        label: raw.isEmpty ? 'Loading…' : raw,
+      ),
     );
   }
 
@@ -2567,6 +2598,82 @@ class PackPaintTree extends StatelessWidget {
     controller.dispose();
     if (result == null || !context.mounted) return;
     chrome?.onEventQuery(result.trim());
+  }
+}
+
+class _TopBarFeedStatus {
+  const _TopBarFeedStatus({this.busy = false, this.center});
+
+  final bool busy;
+  final Widget? center;
+
+  List<Map<String, dynamic>> actions(List<Map<String, dynamic>> all) {
+    if (!busy) return all;
+    return [
+      for (final a in all)
+        if (!_isTopBarRefreshAction(a)) a,
+    ];
+  }
+
+  static bool _isTopBarRefreshAction(Map<String, dynamic> action) {
+    final verb = (action['action'] ?? '').toString().trim().toLowerCase();
+    final id = (action['id'] ?? '').toString().trim().toLowerCase();
+    return verb == 'refresh' || id == 'refresh';
+  }
+}
+
+/// Centered scrape progress for Live Sports top bar (`Loading ESPN… 2/10`).
+class _KitTopBarCatalogProgressChip extends StatelessWidget {
+  const _KitTopBarCatalogProgressChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxW = (MediaQuery.sizeOf(context).width * 0.42).clamp(160.0, 360.0);
+    return ExcludeFocus(
+      child: Tooltip(
+        message: label,
+        child: Container(
+          constraints: BoxConstraints(maxWidth: maxW),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.8,
+                  color: ForjaShellColors.sectionAccent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

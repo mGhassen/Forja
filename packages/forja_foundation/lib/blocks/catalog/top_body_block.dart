@@ -26,6 +26,7 @@ class TopBodyBlock extends StatelessWidget {
     this.actionSelections = const {},
     this.actionSelectionLabels = const {},
     this.actionSlots = const {},
+    this.center,
     this.kindItems = const [],
     this.selectedKindId,
     this.items = const [],
@@ -49,16 +50,19 @@ class TopBodyBlock extends StatelessWidget {
     Map<String, String> actionSelections = const {},
     Map<String, String> actionSelectionLabels = const {},
     Map<String, Widget> actionSlots = const {},
+    Widget? center,
+    List<Map<String, dynamic>>? actions,
     void Function(String actionId, String value)? onActionSelect,
     ValueChanged<String>? onKindSelect,
     void Function(Map<String, dynamic> item)? onItemTap,
     Widget Function(Widget body)? wrapBody,
   }) {
     return TopBodyBlock(
-      actions: propsActionMaps(props),
+      actions: actions ?? propsActionMaps(props),
       actionSelections: actionSelections,
       actionSelectionLabels: actionSelectionLabels,
       actionSlots: actionSlots,
+      center: center,
       kindItems: propsIdLabelList(props, 'kindItems'),
       selectedKindId: propsString(props, 'selectedKindId') ??
           propsString(props, 'defaultKindId'),
@@ -81,6 +85,9 @@ class TopBodyBlock extends StatelessWidget {
   final Map<String, String> actionSelections;
   final Map<String, String> actionSelectionLabels;
   final Map<String, Widget> actionSlots;
+
+  /// Optional center overlay (live schedule scrape progress).
+  final Widget? center;
   final List<({String id, String label})> kindItems;
   final String? selectedKindId;
   final List<Map<String, dynamic>> items;
@@ -108,6 +115,7 @@ class TopBodyBlock extends StatelessWidget {
       selections: actionSelections,
       selectionLabels: actionSelectionLabels,
       actionSlots: actionSlots,
+      center: center,
       onSelect: onActionSelect,
       title: title,
     );

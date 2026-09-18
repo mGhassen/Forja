@@ -341,6 +341,9 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
         tv ? ShellTokens.tvBodyFontSize : 15.0;
     final subtitleFontSize =
         tv ? ShellTokens.tvMetaFontSize : 12.0;
+    final loadingFontSize =
+        tv ? ShellTokens.tvMetaFontSize : 12.0;
+    final loading = _loadingByTab[_tabId] == true;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
       child: Row(
@@ -374,12 +377,27 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'Reload',
-            onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            color: ForjaShellColors.textSecondary,
-          ),
+          if (loading)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ExcludeFocus(
+                child: Text(
+                  _browseActive ? 'Matching Live TV…' : 'Fetching streams…',
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: loadingFontSize,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            )
+          else
+            IconButton(
+              tooltip: 'Reload',
+              onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              color: ForjaShellColors.textSecondary,
+            ),
           if (widget.onClosed != null)
             IconButton(
               tooltip: 'Close',
@@ -416,33 +434,35 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
               ),
           ],
         );
-    final choice = Align(
-      alignment: Alignment.centerLeft,
-      child: Row(
-        children: [
-          Flexible(child: tabsChrome),
-          const Spacer(),
-          if (showSearch)
-            SourcesExpandingSearch(
-              query: _effectiveQuery,
-              onQueryChanged: _onQueryChanged,
-              useTvBrowse: widget.useFocusableChips,
-            ),
-          if (loading) ...[
-            if (showSearch) const SizedBox(width: 10),
-            ExcludeFocus(
-              child: Text(
-                _browseActive ? 'Matching Live TV…' : 'Fetching streams…',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: loadingFontSize,
-                  fontWeight: FontWeight.w600,
-                ),
+    // Expanded tabs + trailing status — avoid Flexible+Spacer (clips the label).
+    final choice = Row(
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: tabsChrome,
+          ),
+        ),
+        if (showSearch)
+          SourcesExpandingSearch(
+            query: _effectiveQuery,
+            onQueryChanged: _onQueryChanged,
+            useTvBrowse: widget.useFocusableChips,
+          ),
+        if (loading) ...[
+          if (showSearch) const SizedBox(width: 10),
+          ExcludeFocus(
+            child: Text(
+              _browseActive ? 'Matching Live TV…' : 'Fetching streams…',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: loadingFontSize,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
     final padded = Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
