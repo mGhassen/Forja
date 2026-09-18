@@ -536,13 +536,13 @@ abstract final class ShellTokens {
   static const double torrentPanelPaddingDesktop = 16;
   static const double torrentPanelPaddingTv = 14;
   static const double torrentPanelTitleFontSizeDesktop = 16;
-  static const double torrentPanelTitleFontSizeTv = 15;
+  static const double torrentPanelTitleFontSizeTv = tvTitleFontSize;
   static const double torrentPanelChipPadHDesktop = 12;
   static const double torrentPanelChipPadHTv = 10;
   static const double torrentPanelChipPadVDesktop = 8;
   static const double torrentPanelChipPadVTv = 6;
   static const double torrentPanelChipFontSizeDesktop = 12;
-  static const double torrentPanelChipFontSizeTv = 11;
+  static const double torrentPanelChipFontSizeTv = tvBodyFontSize;
   static const double torrentPanelMetaIconSizeDesktop = 14;
   static const double torrentPanelMetaIconSizeTv = 13;
   static const double torrentPanelMetaFontSizeDesktop = 11;
@@ -550,7 +550,7 @@ abstract final class ShellTokens {
   static const double torrentPanelLeadingIconSizeDesktop = 22;
   static const double torrentPanelLeadingIconSizeTv = 20;
   static const double torrentPanelSectionFontSizeDesktop = 16;
-  static const double torrentPanelSectionFontSizeTv = 15;
+  static const double torrentPanelSectionFontSizeTv = tvTitleFontSize;
 
   // --- Pack chrome defaults (overridable via layout props) ---
   static const double portalsChipHeight = controlHeight;

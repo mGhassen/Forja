@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 enum MetaLineStyle { details, home }
 
@@ -77,10 +79,15 @@ class _DetailsMetaLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final bodySize =
+        tv ? ShellTokens.tvBodyFontSize : 14.0;
+    final metaSize =
+        tv ? ShellTokens.tvMetaFontSize : 12.0;
     final items = <Widget>[];
 
     if (releaseDate.length >= 4) {
-      items.add(_metaText(releaseDate.substring(0, 4)));
+      items.add(_metaText(releaseDate.substring(0, 4), bodySize));
     }
     if (mediaType == 'tv') {
       items.add(const _MediaTypeBadge('SERIES'));
@@ -88,7 +95,7 @@ class _DetailsMetaLine extends StatelessWidget {
       items.add(const _MediaTypeBadge('FILM'));
     }
     final runtime = MetaLine.formatRuntime(runtimeMinutes);
-    if (runtime.isNotEmpty) items.add(_metaText(runtime));
+    if (runtime.isNotEmpty) items.add(_metaText(runtime, bodySize));
     final cert = certification?.trim();
     if (cert != null && cert.isNotEmpty) items.add(CertBadge(label: cert));
     final rating = (imdbRating != null && imdbRating! > 0)
@@ -104,7 +111,7 @@ class _DetailsMetaLine extends StatelessWidget {
             rating.toStringAsFixed(1),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 14,
+              fontSize: bodySize,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -125,7 +132,7 @@ class _DetailsMetaLine extends StatelessWidget {
               '•',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.25),
-                fontSize: 12,
+                fontSize: metaSize,
               ),
             ),
           items[i],
@@ -134,12 +141,12 @@ class _DetailsMetaLine extends StatelessWidget {
     );
   }
 
-  Widget _metaText(String text) {
+  Widget _metaText(String text, double fontSize) {
     return Text(
       text,
       style: TextStyle(
         color: Colors.white.withValues(alpha: 0.72),
-        fontSize: 14,
+        fontSize: fontSize,
         fontWeight: FontWeight.w500,
       ),
     );
@@ -163,6 +170,11 @@ class _HomeMetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final bodySize =
+        tv ? ShellTokens.tvBodyFontSize : 13.0;
+    final metaSize =
+        tv ? ShellTokens.tvMetaFontSize : 12.0;
     final rating = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -177,10 +189,10 @@ class _HomeMetaRow extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             voteAverage.toStringAsFixed(1),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.amber,
-              fontSize: 13,
+              fontSize: bodySize,
             ),
           ),
         ],
@@ -197,7 +209,7 @@ class _HomeMetaRow extends StatelessWidget {
               releaseDate.split('-').first,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.55),
-                fontSize: 13,
+                fontSize: bodySize,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -218,7 +230,7 @@ class _HomeMetaRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 12,
+                  fontSize: metaSize,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -241,7 +253,7 @@ class _HomeMetaRow extends StatelessWidget {
               releaseDate.split('-').first,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.55),
-                fontSize: 13,
+                fontSize: bodySize,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -254,7 +266,7 @@ class _HomeMetaRow extends StatelessWidget {
               genres.take(3).join('  ·  '),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 12,
+                fontSize: metaSize,
                 fontWeight: FontWeight.w500,
               ),
             ),

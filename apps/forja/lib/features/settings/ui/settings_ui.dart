@@ -13,6 +13,17 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
+double _tvBody(BuildContext context, {double desktop = 15}) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.tvBodyFontSize
+        : desktop;
+
+double _tvMeta(BuildContext context, {double desktop = 12.5}) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.tvMetaFontSize
+        : desktop;
+
 /// Green sparkles beside admin-only Settings titles (`accounts.is_admin`).
 class SettingsAdminTitle extends StatelessWidget {
   const SettingsAdminTitle({
@@ -1038,7 +1049,7 @@ class SettingsToggleRow extends StatelessWidget {
                     title,
                     TextStyle(
                       color: titleColor,
-                      fontSize: 15,
+                      fontSize: _tvBody(context),
                       fontWeight: FontWeight.w600,
                     ),
                     adminOnly: adminOnly,
@@ -1047,9 +1058,9 @@ class SettingsToggleRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: 12.5,
+                      fontSize: _tvMeta(context),
                       height: 1.35,
                     ),
                   ),
@@ -1104,7 +1115,7 @@ class SettingsToggleRow extends StatelessWidget {
                                 color: checkEnabled
                                     ? ForjaShellColors.textPrimary
                                     : ForjaShellColors.textSecondary,
-                                fontSize: 12.5,
+                                fontSize: _tvMeta(context),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -1188,9 +1199,9 @@ class SettingsSelectRow extends StatelessWidget {
               children: [
                 settingsTitleText(
                   title,
-                  const TextStyle(
+                  TextStyle(
                     color: ForjaShellColors.textPrimary,
-                    fontSize: 15,
+                    fontSize: _tvBody(context),
                     fontWeight: FontWeight.w600,
                   ),
                   adminOnly: adminOnly,
@@ -1199,9 +1210,9 @@ class SettingsSelectRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ForjaShellColors.textSecondary,
-                    fontSize: 12.5,
+                    fontSize: _tvMeta(context),
                     height: 1.35,
                   ),
                 ),
@@ -1398,7 +1409,7 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
                   color: emphasize
                       ? ForjaShellColors.textPrimary
                       : ForjaShellColors.textSecondary,
-                  fontSize: 15,
+                  fontSize: _tvBody(context),
                   fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
@@ -1529,7 +1540,7 @@ class SettingsActionRow extends StatelessWidget {
                   title,
                   TextStyle(
                     color: titleColor,
-                    fontSize: 15,
+                    fontSize: _tvBody(context),
                     fontWeight: FontWeight.w600,
                   ),
                   adminOnly: adminOnly,
@@ -1539,9 +1550,9 @@ class SettingsActionRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: 12.5,
+                      fontSize: _tvMeta(context),
                       height: 1.35,
                     ),
                   ),
@@ -1644,9 +1655,9 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
         children: [
           Text(
             widget.title,
-            style: const TextStyle(
+            style: TextStyle(
               color: ForjaShellColors.textPrimary,
-              fontSize: 14,
+              fontSize: _tvBody(context, desktop: 14),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1654,9 +1665,9 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
             const SizedBox(height: 4),
             Text(
               widget.subtitle!,
-              style: const TextStyle(
+              style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: 11,
+                fontSize: _tvMeta(context, desktop: 11),
               ),
             ),
           ],
@@ -2243,9 +2254,9 @@ class SettingsStatusRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ForjaShellColors.textPrimary,
-                    fontSize: 14,
+                    fontSize: _tvBody(context, desktop: 14),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -2253,9 +2264,9 @@ class SettingsStatusRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: 12,
+                      fontSize: _tvMeta(context, desktop: 12),
                     ),
                   ),
                 ],
@@ -2293,14 +2304,14 @@ class SettingsSidebarFooter extends StatelessWidget {
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                  style: const TextStyle(
-                    fontSize: 12.5,
+                  style: TextStyle(
+                    fontSize: _tvMeta(context),
                     height: 1.45,
                     color: ForjaShellColors.textSecondary,
                   ),
-                  children: const [
-                    TextSpan(text: 'Made with '),
-                    WidgetSpan(
+                  children: [
+                    const TextSpan(text: 'Made with '),
+                    const WidgetSpan(
                       alignment: PlaceholderAlignment.middle,
                       child: Icon(
                         Icons.favorite_rounded,
@@ -2308,7 +2319,7 @@ class SettingsSidebarFooter extends StatelessWidget {
                         color: _loveAccent,
                       ),
                     ),
-                    TextSpan(text: ' by '),
+                    const TextSpan(text: ' by '),
                     TextSpan(
                       text: 'Schmenka',
                       style: TextStyle(
@@ -2324,7 +2335,7 @@ class SettingsSidebarFooter extends StatelessWidget {
                 prefix: 'v',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
-                  fontSize: 15,
+                  fontSize: _tvBody(context),
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.8,
                 ),

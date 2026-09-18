@@ -62,6 +62,10 @@ class DetailsCastSection extends StatelessWidget {
     );
     const homePad = ShellTokens.homeSectionHorizontalPadding;
     final outdent = outdentHorizontal;
+    final nameFontSize =
+        tv ? DetailsTokens.bodyFontSizeTv : 13.0;
+    final characterFontSize =
+        tv ? DetailsTokens.metaFontSizeTv : 12.0;
 
     final row = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,9 +128,9 @@ class DetailsCastSection extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
+                        fontSize: nameFontSize,
                         fontWeight: FontWeight.w700,
                         height: 1.2,
                       ),
@@ -140,7 +144,7 @@ class DetailsCastSection extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.45),
-                          fontSize: 12,
+                          fontSize: characterFontSize,
                           height: 1.2,
                         ),
                       ),

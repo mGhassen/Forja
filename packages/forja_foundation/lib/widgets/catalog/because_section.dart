@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
 
@@ -65,6 +67,13 @@ class BecauseSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeSeed = _seedTitle;
     final seedUrl = resolveAbsoluteCoverUrl(seedPosterUrl ?? '');
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final kickerFontSize =
+        tv ? ShellTokens.tvMetaFontSize : 11.5;
+    final titleFontSize =
+        tv ? ShellTokens.tvTitleFontSize : 19.0;
+    final seeAllFontSize =
+        tv ? ShellTokens.tvBodyFontSize : 13.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,7 +95,7 @@ class BecauseSection extends StatelessWidget {
                       'Because you watched',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 11.5,
+                        fontSize: kickerFontSize,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.6,
                       ),
@@ -96,9 +105,9 @@ class BecauseSection extends StatelessWidget {
                       themeSeed.isEmpty ? 'recently' : themeSeed,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 19,
+                        fontSize: titleFontSize,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.3,
                       ),
@@ -114,7 +123,7 @@ class BecauseSection extends StatelessWidget {
                     'See all',
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: 13,
+                      fontSize: seeAllFontSize,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

@@ -506,6 +506,10 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           : episodeRow;
     }
 
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final countFontSize =
+        tvDensity ? ShellTokens.tvTitleFontSize : 14.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -518,7 +522,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                 '$episodeCount',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 14,
+                  fontSize: countFontSize,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -684,6 +688,9 @@ class _SeasonCardState extends State<_SeasonCard> {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final seasonFontSize =
+        tv ? DetailsTokens.bodyFontSizeTv : 12.0;
     final active = ShellPaintScope.interactiveActive(
       context,
       hovered: _hovered,
@@ -758,7 +765,7 @@ class _SeasonCardState extends State<_SeasonCard> {
                           color: Colors.white.withValues(
                             alpha: widget.selected ? 1.0 : 0.85,
                           ),
-                          fontSize: 12,
+                          fontSize: seasonFontSize,
                           fontWeight: widget.selected
                               ? FontWeight.w700
                               : FontWeight.w600,
@@ -903,6 +910,11 @@ class _EpisodeCardState extends State<_EpisodeCard> {
   Widget build(BuildContext context) {
     final cardWidth = _EpisodeCard.cardWidthOf(context);
     final thumbHeight = _EpisodeCard.thumbHeightOf(context);
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final titleFontSize =
+        tvDensity ? DetailsTokens.bodyFontSizeTv : 14.0;
+    final metaFontSize =
+        tvDensity ? DetailsTokens.metaFontSizeTv : 12.0;
     final showProgress =
         WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
     final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
@@ -1038,9 +1050,9 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                   widget.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w700,
                     height: 1.25,
                   ),
@@ -1056,7 +1068,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                         notShippedYet: widget.dateNotShippedYet,
                         normal: Colors.white.withValues(alpha: 0.45),
                       ),
-                      fontSize: 12,
+                      fontSize: metaFontSize,
                       fontWeight: widget.dateNotShippedYet
                           ? FontWeight.w600
                           : FontWeight.w500,
@@ -1072,7 +1084,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.45),
-                      fontSize: 12,
+                      fontSize: metaFontSize,
                       height: 1.4,
                     ),
                   ),
@@ -1097,6 +1109,9 @@ class _ThumbBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final badgeFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? DetailsTokens.metaFontSizeTv
+        : 11.0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
@@ -1107,7 +1122,7 @@ class _ThumbBadge extends StatelessWidget {
         label,
         style: TextStyle(
           color: Colors.black.withValues(alpha: 0.88),
-          fontSize: 11,
+          fontSize: badgeFontSize,
           fontWeight: FontWeight.w600,
         ),
       ),

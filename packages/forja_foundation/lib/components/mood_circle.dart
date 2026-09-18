@@ -5,6 +5,7 @@ import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Layout metrics for circular mood / category pickers.
 class MoodCircleLayout {
@@ -78,7 +79,8 @@ class MoodCircleLayout {
     }
 
     final circleSize = (itemWidth * 0.74).clamp(40.0, 54.0);
-    final labelFontSize = itemWidth < 64 ? 9.5 : 10.5;
+    final labelFontSize = (itemWidth < 64 ? 9.5 : 10.5)
+        .clamp(ShellTokens.tvMetaFontSize, double.infinity);
     const labelLineHeight = 1.15;
     final rowHeight = circleSize + 6 + labelFontSize * labelLineHeight + 8;
     final iconSize = circleSize * 0.42;
@@ -147,6 +149,9 @@ class MoodCircle extends StatelessWidget {
     }
 
     final theme = ForjaThemeExtension.of(context);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final labelFontSize = layout?.labelFontSize ??
+        (tv ? ShellTokens.tvMetaFontSize : 12.0);
     final border = selected ? theme.brandGreen : theme.borderSubtle;
     final bg =
         selected ? ForjaShellColors.chipSelectedBg : theme.surfaceElevated;
@@ -214,7 +219,7 @@ class MoodCircle extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: selected ? theme.textPrimary : theme.textSecondary,
-              fontSize: 12,
+              fontSize: labelFontSize,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             ),
           ),

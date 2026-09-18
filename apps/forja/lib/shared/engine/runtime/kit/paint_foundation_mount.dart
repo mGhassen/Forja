@@ -769,14 +769,24 @@ Widget? paintFoundationType(
       );
 
     // ── Chrome ─────────────────────────────────────────────────────────
-    case 'shellSectionTitle':
+    case 'shellSectionTitle': {
+      final tv = catalogUsesTvDensity(context);
       return ShellSectionTitle(
         title: propsStringOr(props, 'title', ''),
         subtitle: propsString(props, 'subtitle'),
-        fontSize: propsNumOr(props, 'fontSize', ShellTokens.sectionTitleFontSize),
-        subtitleFontSize: propsNumOr(props, 'subtitleFontSize', ShellTokens.sectionSubtitleFontSize),
+        fontSize: propsNumOr(
+          props,
+          'fontSize',
+          tv ? ShellTokens.tvTitleFontSize : ShellTokens.sectionTitleFontSize,
+        ),
+        subtitleFontSize: propsNumOr(
+          props,
+          'subtitleFontSize',
+          tv ? ShellTokens.tvMetaFontSize : ShellTokens.sectionSubtitleFontSize,
+        ),
         trailing: children.isEmpty ? null : kids(),
       );
+    }
     case 'shellTabHeader':
       return ShellTabHeader(
         title: propsStringOr(props, 'title', ''),
@@ -790,21 +800,27 @@ Widget? paintFoundationType(
         itemBuilder: (_, i) => kids()[i],
         arrowOffset: propsNumOr(props, 'arrowOffset', ShellTokens.scrollerArrowOffset),
       );
-    case 'shellChip':
+    case 'shellChip': {
       final padN = propsNum(props, 'pad') ?? propsNum(props, 'padding');
+      final tv = catalogUsesTvDensity(context);
       return ForjaShellChip(
         label: propsStringOr(props, 'label', ''),
         selected: propsBool(props, 'selected'),
         onTap: () {},
         loading: propsBool(props, 'loading'),
         accentHover: propsBool(props, 'accentHover'),
-        fontSize: propsNumOr(props, 'fontSize', ShellTokens.shellChipFontSize),
+        fontSize: propsNumOr(
+          props,
+          'fontSize',
+          tv ? ShellTokens.shellChipFontSizeTv : ShellTokens.shellChipFontSize,
+        ),
         radius: propsNumOr(props, 'radius', ShellTokens.shellChipRadiusPill),
         iconSize: propsNumOr(props, 'iconSize', ShellTokens.shellChipIconSize),
         padding: padN != null
             ? EdgeInsets.symmetric(horizontal: padN, vertical: padN * 0.57)
             : const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       );
+    }
     case 'sidePanelOverlay':
       return SidePanelOverlay(
         open: propsBool(props, 'open', true),
@@ -1479,8 +1495,9 @@ Widget? paintFoundationType(
         iconSize: propsNumOr(props, 'iconSize', ShellTokens.categoryRailIconSize),
         dividerHeight: propsNumOr(props, 'dividerHeight', 16),
       );
-    case 'widgetShelf':
+    case 'widgetShelf': {
       final shelf = _widgetShelfItems(props);
+      final tv = catalogUsesTvDensity(context);
       return WidgetShelf(
         items: shelf.isEmpty
             ? const [
@@ -1493,10 +1510,15 @@ Widget? paintFoundationType(
         onSelect: (_) {},
         height: propsNumOr(props, 'height', 36),
         radius: propsNumOr(props, 'radius', 8),
-        fontSize: propsNumOr(props, 'fontSize', ShellTokens.shellChipFontSize),
+        fontSize: propsNumOr(
+          props,
+          'fontSize',
+          tv ? ShellTokens.shellChipFontSizeTv : ShellTokens.shellChipFontSize,
+        ),
         iconSize: propsNumOr(props, 'iconSize', ShellTokens.actionChipIconSize),
         pad: propsNumOr(props, 'pad', 14),
       );
+    }
     case 'catalogSideRail':
       final side = _idLabelList(props, 'items');
       return SizedBox(

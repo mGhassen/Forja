@@ -244,8 +244,9 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
         height: h,
         borderRadius: radius,
         titleFontSize: InteractivePosterCard.titleFontSize(context),
-        metaFontSize:
-            InteractivePosterCard.scaled(context, 11).clamp(7.0, 11.0),
+        metaFontSize: ShellPaintScope.usesTvDensityOf(context)
+            ? ShellTokens.tvMetaFontSize
+            : InteractivePosterCard.scaled(context, 11).clamp(7.0, 11.0),
         inset: inset,
       ),
     );

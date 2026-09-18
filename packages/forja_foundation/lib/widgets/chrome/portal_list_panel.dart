@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Probe fields for the desktop hover detail card — opaque strings only.
@@ -128,14 +129,21 @@ class PortalListPanel extends StatelessWidget {
     if (body != null) return body!;
     final list = items!;
     final build = itemBuilder!;
+    final emptyFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? PortalListTokens.titleFontSizeTv
+        : PortalListTokens.titleFontSize;
     if (list.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Text(
             'No portals yet.\nTap + to add one.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white54, fontSize: 13, height: 1.4),
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: emptyFontSize,
+              height: 1.4,
+            ),
           ),
         ),
       );
@@ -150,6 +158,9 @@ class PortalListPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final surface =
         surfaceColor ?? ForjaShellColors.cinematic.menuSurface;
+    final resolvedStatusFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? PortalListTokens.metaFontSizeTv
+        : statusFontSize;
 
     Widget? statusChild = status;
     if (statusChild == null && statusText.isNotEmpty) {
@@ -163,7 +174,7 @@ class PortalListPanel extends StatelessWidget {
           statusText,
           style: GoogleFonts.plusJakartaSans(
             color: Colors.white54,
-            fontSize: statusFontSize,
+            fontSize: resolvedStatusFontSize,
           ),
         ),
       );

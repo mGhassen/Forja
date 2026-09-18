@@ -157,8 +157,10 @@ class _ShellEmptyFeaturesScreenState
         : profile == ShellProfile.mobile
             ? 72.0
             : 88.0;
-    final titleSize = tv ? 20.0 : 22.0;
-    final bodySize = tv ? 13.0 : 14.0;
+    final titleSize =
+        tv ? ShellTokens.tvTitleFontSize : 22.0;
+    final bodySize =
+        tv ? ShellTokens.tvBodyFontSize : 14.0;
     final hPad = tv
         ? 16.0
         : profile == ShellProfile.mobile
@@ -367,8 +369,13 @@ class _HintCardState extends State<_HintCard> {
     final lit = _isLit(context);
     final accent = widget.spec.accent;
     final pad = widget.compact ? 14.0 : 18.0;
-    final titleSize = widget.compact ? 15.0 : 16.0;
-    final bodySize = widget.compact ? 12.0 : 13.0;
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final titleSize = tv
+        ? ShellTokens.tvBodyFontSize
+        : (widget.compact ? 15.0 : 16.0);
+    final bodySize = tv
+        ? ShellTokens.tvMetaFontSize
+        : (widget.compact ? 12.0 : 13.0);
     final iconSize = widget.compact ? 22.0 : 24.0;
     final radius = 16.0;
 

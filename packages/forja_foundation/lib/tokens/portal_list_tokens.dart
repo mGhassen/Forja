@@ -1,9 +1,13 @@
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
 /// Layout tokens for portal list / probe chrome.
 abstract final class PortalListTokens {
   static const double rowHeight = 98;
   static const double actionWidth = 108;
   static const double titleFontSize = 13;
+  static const double titleFontSizeTv = ShellTokens.tvBodyFontSize;
   static const double metaFontSize = 11;
+  static const double metaFontSizeTv = ShellTokens.tvMetaFontSize;
   static const double statusSlot = 18;
   static const double rowPadH = 12;
   static const double rowPadV = 10;

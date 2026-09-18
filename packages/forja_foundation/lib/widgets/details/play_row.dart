@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/button_group.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Details play / action row — [ButtonGroup] of play/actions (RFC-106 G5).
 class PlayRow extends StatelessWidget {
@@ -74,6 +75,9 @@ class DetailsUpcomingNotice extends StatelessWidget {
     final date = releaseDateLabel?.trim() ?? '';
     final hasDate = date.isNotEmpty;
     final label = hasDate ? 'Coming soon · $date' : 'Coming soon';
+    final bodyFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.tvBodyFontSize
+        : 14.0;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 380),
       child: SizedBox(
@@ -102,7 +106,7 @@ class DetailsUpcomingNotice extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.96),
-                      fontSize: 14,
+                      fontSize: bodyFontSize,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'Poppins',
                       height: 1.0,

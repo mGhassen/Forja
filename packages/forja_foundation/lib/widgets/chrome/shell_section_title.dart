@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Plain text title for horizontal catalog rows (no icon, no underline).
@@ -14,17 +15,30 @@ class ShellSectionTitle extends StatelessWidget {
       bottom: 16,
     ),
     this.trailing,
-    this.fontSize = ShellTokens.sectionTitleFontSize,
-    this.subtitleFontSize = ShellTokens.sectionSubtitleFontSize,
+    this.fontSize,
+    this.subtitleFontSize,
   });
 
   final String title;
   final String? subtitle;
   final EdgeInsetsGeometry padding;
   final List<Widget>? trailing;
-  final double fontSize;
-  final double subtitleFontSize;
+  final double? fontSize;
+  final double? subtitleFontSize;
 
+  static TextStyle titleStyleFor(BuildContext context) {
+    final tv = catalogUsesTvDensity(context);
+    return TextStyle(
+      color: Colors.white,
+      fontSize: tv
+          ? ShellTokens.tvTitleFontSize
+          : ShellTokens.sectionTitleFontSize,
+      fontWeight: FontWeight.w800,
+      letterSpacing: ShellTokens.sectionTitleLetterSpacing,
+    );
+  }
+
+  /// Desktop title style (gallery / const callers). Prefer [titleStyleFor].
   static const TextStyle titleStyle = TextStyle(
     color: Colors.white,
     fontSize: ShellTokens.sectionTitleFontSize,
@@ -32,24 +46,36 @@ class ShellSectionTitle extends StatelessWidget {
     letterSpacing: ShellTokens.sectionTitleLetterSpacing,
   );
 
-  static TextStyle subtitleStyle(BuildContext context, {double fontSize = ShellTokens.sectionSubtitleFontSize}) =>
-      TextStyle(
-        color: Colors.white.withValues(alpha: 0.3),
-        fontSize: fontSize,
-      );
+  static TextStyle subtitleStyle(BuildContext context, {double? fontSize}) {
+    final tv = catalogUsesTvDensity(context);
+    return TextStyle(
+      color: Colors.white.withValues(alpha: 0.3),
+      fontSize: fontSize ??
+          (tv
+              ? ShellTokens.tvMetaFontSize
+              : ShellTokens.sectionSubtitleFontSize),
+    );
+  }
 
   static EdgeInsetsDirectional defaultPadding(BuildContext context) {
-    final h = ShellTokens.homeSectionHorizontalPadding;
+    final h = catalogSectionHorizontalPadding(context);
     return EdgeInsetsDirectional.only(
       start: h,
-      top: ShellTokens.homeSectionTitleTop,
+      top: catalogSectionTitleTop(context),
       end: h,
-      bottom: 16,
+      bottom: catalogSectionBottomGap(context),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final tv = catalogUsesTvDensity(context);
+    final titleSize = fontSize ??
+        (tv ? ShellTokens.tvTitleFontSize : ShellTokens.sectionTitleFontSize);
+    final subSize = subtitleFontSize ??
+        (tv
+            ? ShellTokens.tvMetaFontSize
+            : ShellTokens.sectionSubtitleFontSize);
     final resolvedPadding =
         padding ==
             const EdgeInsetsDirectional.only(
@@ -60,7 +86,7 @@ class ShellSectionTitle extends StatelessWidget {
             )
             ? defaultPadding(context)
             : padding;
-    final resolvedTitleStyle = titleStyle.copyWith(fontSize: fontSize);
+    final resolvedTitleStyle = titleStyleFor(context).copyWith(fontSize: titleSize);
     final titleBlock = subtitle == null
         ? Text(title, style: resolvedTitleStyle)
         : Column(
@@ -70,7 +96,7 @@ class ShellSectionTitle extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle!,
-                style: subtitleStyle(context, fontSize: subtitleFontSize),
+                style: subtitleStyle(context, fontSize: subSize),
               ),
             ],
           );

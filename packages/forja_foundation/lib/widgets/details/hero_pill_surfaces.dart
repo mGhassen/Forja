@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -249,6 +250,9 @@ class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
   }) {
     final pillHeight = heroPillHeightOf(context);
     final iconSize = heroPillIconSizeOf(context);
+    final labelFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.tvBodyFontSize
+        : 15.0;
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -284,7 +288,7 @@ class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
                     overflow: TextOverflow.clip,
                     style: GoogleFonts.plusJakartaSans(
                       color: widget.style.foreground,
-                      fontSize: 15,
+                      fontSize: labelFontSize,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.2,
                       height: 1.0,
@@ -499,6 +503,9 @@ class _HeroPillGroupedSlotSurfaceState extends State<HeroPillGroupedSlotSurface>
     final pillHeight = heroPillHeightOf(context);
     final iconSize = heroPillIconSizeOf(context);
     final leading = _leading(context);
+    final labelFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.tvBodyFontSize
+        : 15.0;
 
     return AnimatedBuilder(
       animation: _controller,
@@ -550,7 +557,7 @@ class _HeroPillGroupedSlotSurfaceState extends State<HeroPillGroupedSlotSurface>
                           overflow: TextOverflow.clip,
                           style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
-                            fontSize: 15,
+                            fontSize: labelFontSize,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.2,
                             height: 1.0,
@@ -592,6 +599,9 @@ class HeroPillSegmentSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final pillHeight = heroPillHeightOf(context);
     final iconSize = heroPillIconSizeOf(context);
+    final labelFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.tvBodyFontSize
+        : 13.0;
     final foreground = lit || selected
         ? ForjaShellColors.brandGreen
         : Colors.white.withValues(alpha: 0.55);
@@ -621,7 +631,7 @@ class HeroPillSegmentSurface extends StatelessWidget {
             label,
             style: GoogleFonts.plusJakartaSans(
               color: foreground,
-              fontSize: 13,
+              fontSize: labelFontSize,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.4,
             ),

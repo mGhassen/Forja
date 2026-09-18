@@ -3,7 +3,9 @@ import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Continue-watching card paint — props only (RFC-106 Zone A).
 ///
@@ -49,6 +51,13 @@ class ContinueWatchingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cover = resolveAbsoluteCoverUrl(coverUrl);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final titleFontSize =
+        tv ? ShellTokens.tvBodyFontSize : 13.0;
+    final subtitleFontSize =
+        tv ? ShellTokens.tvMetaFontSize : 12.0;
+    final remainingFontSize =
+        tv ? ShellTokens.tvMetaFontSize : 11.0;
     final card = ForjaMotionScale(
       preset: ForjaMotionPreset.cardLift,
       active: active,
@@ -157,10 +166,10 @@ class ContinueWatchingCard extends StatelessWidget {
                             title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                              fontSize: titleFontSize,
                             ),
                           ),
                           if (subtitle.isNotEmpty)
@@ -168,7 +177,7 @@ class ContinueWatchingCard extends StatelessWidget {
                               subtitle,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.6),
-                                fontSize: 12,
+                                fontSize: subtitleFontSize,
                               ),
                             ),
                           if (remainingText.isNotEmpty)
@@ -176,7 +185,7 @@ class ContinueWatchingCard extends StatelessWidget {
                               remainingText,
                               style: TextStyle(
                                 color: ForjaShellColors.badgeLabel,
-                                fontSize: 11,
+                                fontSize: remainingFontSize,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

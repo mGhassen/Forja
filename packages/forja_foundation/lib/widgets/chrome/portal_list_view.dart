@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
@@ -208,6 +209,15 @@ class _PortalListViewState extends State<PortalListView> {
 
   @override
   Widget build(BuildContext context) {
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final searchFontSize = tvDensity
+        ? PortalListTokens.titleFontSizeTv
+        : PortalListTokens.titleFontSize;
+    final headerTitleFontSize = tvDensity
+        ? ShellTokens.tvTitleFontSize
+        : widget.titleFontSize;
+    final badgeFontSize =
+        tvDensity ? ShellTokens.tvMetaFontSize : 12.0;
     final filtered = _filtered;
     final hint = widget.searchPlaceholder.trim().isEmpty
         ? 'Search…'
@@ -217,9 +227,14 @@ class _PortalListViewState extends State<PortalListView> {
         : '${filtered.length}';
     final tab = _tabId ?? '';
 
-    Widget header = _buildHeader(context, tab: tab);
+    Widget header = _buildHeader(
+      context,
+      tab: tab,
+      titleFontSize: headerTitleFontSize,
+      badgeFontSize: badgeFontSize,
+    );
     Widget body = filtered.isEmpty
-        ? _buildEmpty()
+        ? _buildEmpty(context)
         : _buildList(filtered, tab: tab);
 
     if (_tv && tab.isNotEmpty) {
@@ -263,13 +278,13 @@ class _PortalListViewState extends State<PortalListView> {
           controller: _searchCtrl,
           style: GoogleFonts.plusJakartaSans(
             color: Colors.white,
-            fontSize: PortalListTokens.titleFontSize,
+            fontSize: searchFontSize,
           ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.plusJakartaSans(
               color: Colors.white38,
-              fontSize: PortalListTokens.titleFontSize,
+              fontSize: searchFontSize,
             ),
             prefixIcon: const Icon(
               Icons.search_rounded,
@@ -299,7 +314,12 @@ class _PortalListViewState extends State<PortalListView> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, {required String tab}) {
+  Widget _buildHeader(
+    BuildContext context, {
+    required String tab,
+    required double titleFontSize,
+    required double badgeFontSize,
+  }) {
     // L→R paint: Search · Scrape · Deal · Add  (indices for TV L/R).
     final actions = widget.headerActions;
     final searchIndex = 0;
@@ -345,7 +365,7 @@ class _PortalListViewState extends State<PortalListView> {
             widget.title.trim().isEmpty ? 'Portals' : widget.title,
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white,
-              fontSize: widget.titleFontSize,
+              fontSize: titleFontSize,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -357,7 +377,7 @@ class _PortalListViewState extends State<PortalListView> {
                 color: widget.badgeMuted
                     ? Colors.white38
                     : ForjaShellColors.brandGreen,
-                fontSize: 12,
+                fontSize: badgeFontSize,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -392,7 +412,12 @@ class _PortalListViewState extends State<PortalListView> {
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final titleFontSize =
+        tv ? ShellTokens.tvTitleFontSize : 16.0;
+    final bodyFontSize =
+        tv ? ShellTokens.tvBodyFontSize : 12.0;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -410,7 +435,7 @@ class _PortalListViewState extends State<PortalListView> {
                 widget.emptyTitle,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: titleFontSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -422,7 +447,7 @@ class _PortalListViewState extends State<PortalListView> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white60,
-                  fontSize: 12,
+                  fontSize: bodyFontSize,
                 ),
               ),
             ],

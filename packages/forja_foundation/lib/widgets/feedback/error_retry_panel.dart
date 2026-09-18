@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Centered error copy + retry CTA. On TV the retry button autofocuses on show.
 class ShellErrorRetryPanel extends StatefulWidget {
@@ -64,6 +65,9 @@ class _ShellErrorRetryPanelState extends State<ShellErrorRetryPanel> {
   @override
   Widget build(BuildContext context) {
     final tvFocus = ShellPaintScope.useTvFocusOf(context);
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final messageFontSize =
+        tvDensity ? ShellTokens.tvBodyFontSize : 14.0;
 
     return Center(
       child: Padding(
@@ -82,7 +86,7 @@ class _ShellErrorRetryPanelState extends State<ShellErrorRetryPanel> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 14,
+                fontSize: messageFontSize,
               ),
             ),
             const SizedBox(height: 16),
@@ -98,6 +102,7 @@ class _ShellErrorRetryPanelState extends State<ShellErrorRetryPanel> {
                   label: widget.label,
                   icon: widget.buttonIcon,
                   enabled: widget.onRetry != null,
+                  fontSize: messageFontSize,
                 ),
               )
             else
@@ -122,11 +127,13 @@ class _RetryButtonFace extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.enabled,
+    required this.fontSize,
   });
 
   final String label;
   final IconData icon;
   final bool enabled;
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +154,7 @@ class _RetryButtonFace extends StatelessWidget {
               label,
               style: TextStyle(
                 color: fg,
-                fontSize: 14,
+                fontSize: fontSize,
                 fontWeight: FontWeight.w600,
               ),
             ),

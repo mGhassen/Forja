@@ -96,6 +96,9 @@ class ForjaStatusTabs extends StatelessWidget {
   ) {
     final tab = statusTabs[i];
     final on = tab.id == selected;
+    final tabFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.tvBodyFontSize
+        : 13.0;
     if (!useTv) {
       final label = Text(
         tab.title,
@@ -107,7 +110,7 @@ class ForjaStatusTabs extends StatelessWidget {
               ? ForjaShellColors.textPrimary
               : ForjaShellColors.textSecondary,
           fontWeight: on ? FontWeight.w600 : FontWeight.w500,
-          fontSize: 13,
+          fontSize: tabFontSize,
         ),
       );
       return InkWell(
@@ -126,6 +129,7 @@ class ForjaStatusTabs extends StatelessWidget {
     }
     return _StatusTabFocus(
       label: tab.title,
+      fontSize: tabFontSize,
       selected: on,
       listIndex: i,
       tabId: tabId,
@@ -142,6 +146,7 @@ class ForjaStatusTabs extends StatelessWidget {
 class _StatusTabFocus extends StatefulWidget {
   const _StatusTabFocus({
     required this.label,
+    required this.fontSize,
     required this.selected,
     required this.listIndex,
     required this.tabId,
@@ -154,6 +159,7 @@ class _StatusTabFocus extends StatefulWidget {
   });
 
   final String label;
+  final double fontSize;
   final bool selected;
   final int listIndex;
   final String tabId;
@@ -185,7 +191,7 @@ class _StatusTabFocusState extends State<_StatusTabFocus> {
             ? ForjaShellColors.textPrimary
             : ForjaShellColors.textSecondary,
         fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
-        fontSize: 13,
+        fontSize: widget.fontSize,
       ),
     );
     return ShellPaintScope.focusableTap(

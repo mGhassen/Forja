@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
@@ -24,6 +26,14 @@ class PortalProbeDetailCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final statusFontSize =
+        tv ? ShellTokens.tvBodyFontSize : 12.0;
+    final titleFontSize =
+        tv ? ShellTokens.tvTitleFontSize : 14.0;
+    final metaFontSize = tv
+        ? PortalListTokens.metaFontSizeTv
+        : PortalListTokens.metaFontSize;
     final detail = item.probeDetail;
     final checking = item.checking;
     final status = checking && detail == null
@@ -89,7 +99,7 @@ class PortalProbeDetailCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
                           color: statusColor,
-                          fontSize: 12,
+                          fontSize: statusFontSize,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -103,7 +113,7 @@ class PortalProbeDetailCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w600,
                     height: 1.25,
                   ),
@@ -113,7 +123,7 @@ class PortalProbeDetailCard extends StatelessWidget {
                   for (var i = 0; i < lines.length; i++) ...[
                     if (i > 0)
                       const SizedBox(height: PortalListTokens.probeLineGap),
-                    _detailRow(lines[i].$1, lines[i].$2),
+                    _detailRow(lines[i].$1, lines[i].$2, metaFontSize),
                   ],
                 ],
               ],
@@ -130,7 +140,7 @@ class PortalProbeDetailCard extends StatelessWidget {
     return '${t.substring(0, 40)}…';
   }
 
-  Widget _detailRow(String label, String value) {
+  Widget _detailRow(String label, String value, double metaFontSize) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -140,7 +150,7 @@ class PortalProbeDetailCard extends StatelessWidget {
             label,
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white54,
-              fontSize: PortalListTokens.metaFontSize,
+              fontSize: metaFontSize,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -150,7 +160,7 @@ class PortalProbeDetailCard extends StatelessWidget {
             value,
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white,
-              fontSize: PortalListTokens.metaFontSize,
+              fontSize: metaFontSize,
               fontWeight: FontWeight.w500,
               height: 1.3,
             ),

@@ -185,7 +185,9 @@ class EpisodeRangeSelector extends StatelessWidget {
                       selected.label,
                       style: TextStyle(
                         color: cinematic.textPrimary,
-                        fontSize: 13,
+                        fontSize: tv
+                            ? ShellTokens.tvBodyFontSize
+                            : 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

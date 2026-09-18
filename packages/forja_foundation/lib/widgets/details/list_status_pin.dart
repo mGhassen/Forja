@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// One My List status option — presentational only (RFC-095).
@@ -119,6 +121,9 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
   Widget build(BuildContext context) {
     final active = _active;
     final selected = widget.selected;
+    final labelFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.tvBodyFontSize
+        : 12.0;
     // Hover / D-pad wins the strong tint. Selected (idle) still uses status
     // color — desktop has no autofocus, so weight-only was invisible.
     final lit = active || selected;
@@ -142,7 +147,7 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
+                fontSize: labelFontSize,
                 fontWeight: selected || active
                     ? FontWeight.w700
                     : FontWeight.w500,

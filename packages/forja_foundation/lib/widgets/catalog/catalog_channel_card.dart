@@ -6,10 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/channel_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
-import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
-import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
@@ -72,18 +70,13 @@ class CatalogChannelCard extends StatefulWidget {
   final VoidCallback? onTvFocusGained;
   final Widget? Function({required bool active})? favoriteBuilder;
 
-  /// Desktop ~165 target (fill-width grid); TV = portrait poster cell.
+  /// Desktop/TV live channel tile — ~165 target, near-square fill-width grid.
+  /// Do not use portrait poster cells on leanback (iso desktop structure).
   static double cardWidth(BuildContext context) {
-    if (ShellPaintScope.usesTvDensityOf(context)) {
-      return InteractivePosterCard.cardWidth(context);
-    }
     return ShellTokens.posterCardWidthMobile;
   }
 
   static double cardHeight(BuildContext context) {
-    if (ShellPaintScope.usesTvDensityOf(context)) {
-      return InteractivePosterCard.cardHeight(context);
-    }
     return (cardWidth(context) / 0.9).roundToDouble();
   }
 
@@ -282,18 +275,13 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   }
 
   Widget _buildCard(BuildContext context, {required bool? health}) {
-    final tv = ShellPaintScope.usesTvDensityOf(context);
     final active = _active;
-    final radius = widget.listLayout
-        ? 10.0
-        : (tv
-            ? InteractivePosterCard.cardBorderRadius(context)
-            : ChannelCardTokens.radius);
+    final radius =
+        widget.listLayout ? 10.0 : ChannelCardTokens.radius;
+    // Iso desktop: same channel tile chrome on TV (not a separate poster body).
     final body = widget.listLayout
         ? _buildListBody(context, active: active, health: health)
-        : tv
-            ? _buildTvBody(context, active: active, health: health)
-            : _buildDesktopBody(context, active: active, health: health);
+        : _buildDesktopBody(context, active: active, health: health);
 
     final holdJump =
         widget.onHoldJumpToCategory != null && _leanbackOnly;
@@ -302,13 +290,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
-        color: tv && !widget.listLayout
-            ? Colors.transparent
-            : _surface(health, active || widget.highlighted),
+        color: _surface(health, active || widget.highlighted),
         borderRadius: BorderRadius.circular(radius),
-        border: tv && !widget.listLayout && !active && !widget.highlighted
-            ? Border.all(color: Colors.transparent)
-            : Border.all(color: _border(health, active)),
+        border: Border.all(color: _border(health, active)),
       ),
       child: ShellPaintScope.focusableTap(
         context: context,
@@ -329,7 +313,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
       ),
     );
 
-    if (!tv && _epgEnabled) {
+    if (!_leanbackOnly && _epgEnabled) {
       card = GestureDetector(
         onLongPress: _showEpgSheet,
         child: card,
@@ -466,78 +450,6 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         ),
         _EpgNowFooter(future: _epgFuture),
       ],
-    );
-  }
-
-  Widget _buildTvBody(
-    BuildContext context, {
-    required bool active,
-    required bool? health,
-  }) {
-    final radius = InteractivePosterCard.cardBorderRadius(context);
-    final inset = InteractivePosterCard.scaled(context, 8).clamp(4.0, 8.0);
-    final titleSize = InteractivePosterCard.titleFontSize(context);
-    final fav = widget.favoriteBuilder?.call(active: active);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ColoredBox(
-            color: Colors.white.withValues(alpha: 0.03),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(inset, inset + 2, inset, 4),
-                    child: Center(
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: _logoThumb(
-                          contain: true,
-                          padding: 6,
-                          cacheWidth: 160,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(inset, 0, inset, inset),
-                  child: Text(
-                    widget.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: health == false
-                          ? Colors.white54
-                          : Colors.white,
-                      fontSize: titleSize,
-                      height: 1.15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ShellCardPlayOverlay(
-            active: false,
-            visible: active,
-            diameter: EventCardTokens.playIconSize,
-            iconSize: EventCardTokens.playIconSizeTv,
-          ),
-          if (fav != null)
-            Positioned(top: inset, left: inset, child: fav),
-          if (health != null)
-            Positioned(
-              top: inset,
-              right: inset,
-              child: _healthDot(health, compact: true),
-            ),
-        ],
-      ),
     );
   }
 

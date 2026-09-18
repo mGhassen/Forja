@@ -290,6 +290,11 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         widget.onReload != null ||
         widget.onLongPress != null;
     final leanback = tv && !scaleOnHover;
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final labelFontSize = tvDensity &&
+            widget.fontSize == ShellTokens.shellChipFontSize
+        ? ShellTokens.shellChipFontSizeTv
+        : widget.fontSize;
 
     final face = AnimatedContainer(
       duration: tv
@@ -313,7 +318,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             widget.label,
             style: GoogleFonts.plusJakartaSans(
               color: fg,
-              fontSize: widget.fontSize,
+              fontSize: labelFontSize,
               fontWeight: selected || accent ? FontWeight.w600 : FontWeight.w500,
             ),
           ),

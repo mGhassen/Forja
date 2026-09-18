@@ -66,7 +66,9 @@ class DetailsTrailersSection extends StatelessWidget {
     );
     const homePad = ShellTokens.homeSectionHorizontalPadding;
     final thumbHeight = cardWidth * 9 / 16;
-    const textBlock = 8 + 12 * 1.25 * 2;
+    final captionFontSize =
+        tv ? DetailsTokens.bodyFontSizeTv : 12.0;
+    final textBlock = 8 + captionFontSize * 1.25 * 2;
     final trailerRowHeight =
         thumbHeight * ForjaMotionTheme.defaults.cardLift.focusScale + textBlock + 4;
     final outdent = outdentHorizontal;
@@ -192,9 +194,9 @@ class DetailsTrailersSection extends StatelessWidget {
                       trailer.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: captionFontSize,
                         fontWeight: FontWeight.w600,
                         height: 1.25,
                       ),

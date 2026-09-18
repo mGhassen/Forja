@@ -259,9 +259,12 @@ class _ArrowButton extends StatelessWidget {
             child: _HoverScaleButton(
               onTap: onTap,
               builder: (hover) {
+                final controlSize = ShellPaintScope.usesTvDensityOf(context)
+                    ? ShellTokens.controlHeightTv
+                    : ShellTokens.controlHeight;
                 return Container(
-                  width: ShellTokens.controlHeight,
-                  height: ShellTokens.controlHeight,
+                  width: controlSize,
+                  height: controlSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: ForjaShellColors.surfaceElevated

@@ -101,6 +101,16 @@ class _PortalListRowState extends State<PortalListRow> {
 
   String? get _tabId => ShellPaintTvTabScope.tabIdOf(context);
 
+  double get _titleFontSize {
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    return tvDensity ? PortalListTokens.titleFontSizeTv : widget.fontSize;
+  }
+
+  double get _metaFontSize {
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    return tvDensity ? PortalListTokens.metaFontSizeTv : widget.metaFontSize;
+  }
+
   bool get _actionChromeFocused =>
       _favoriteFocus.hasFocus ||
       _copyFocus.hasFocus ||
@@ -590,7 +600,7 @@ class _PortalListRowState extends State<PortalListRow> {
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.plusJakartaSans(
                                     color: titleColor,
-                                    fontSize: widget.fontSize,
+                                    fontSize: _titleFontSize,
                                     fontWeight: isFav ||
                                             isActive ||
                                             _showNewChrome
@@ -626,7 +636,7 @@ class _PortalListRowState extends State<PortalListRow> {
                                         : _showNewChrome
                                             ? Colors.white54
                                             : Colors.white38,
-                                    fontSize: widget.metaFontSize,
+                                    fontSize: _metaFontSize,
                                     height: 1.25,
                                   ),
                                 ),
@@ -835,7 +845,7 @@ class _PortalListRowState extends State<PortalListRow> {
         'Delete this portal?',
         style: GoogleFonts.plusJakartaSans(
           color: const Color(0xFFEF4444),
-          fontSize: widget.fontSize,
+          fontSize: _titleFontSize,
           fontWeight: FontWeight.w600,
           height: 1.25,
         ),
@@ -860,7 +870,7 @@ class _PortalListRowState extends State<PortalListRow> {
             'Creating share code…',
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white54,
-              fontSize: 12,
+              fontSize: _metaFontSize,
             ),
           ),
         ],
@@ -915,7 +925,7 @@ class _PortalListRowState extends State<PortalListRow> {
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
               color: tone.labelColor,
-              fontSize: widget.metaFontSize,
+              fontSize: _metaFontSize,
               fontWeight: FontWeight.w600,
               height: 1.25,
             ),
@@ -948,7 +958,7 @@ class _PortalListRowState extends State<PortalListRow> {
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
               color: color,
-              fontSize: widget.metaFontSize,
+              fontSize: _metaFontSize,
               fontWeight: FontWeight.w600,
               height: 1.25,
             ),

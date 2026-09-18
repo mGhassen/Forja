@@ -806,11 +806,11 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
 
   @override
   Widget build(BuildContext context) {
-    final tv = ShellPaintScope.usesTvDensityOf(context);
+    // Iso desktop: same square channel tiles + packing on TV (not poster cells).
     final list = _compactList;
     final cardW = CatalogChannelCard.cardWidth(context);
     final cardH = CatalogChannelCard.cardHeight(context);
-    final gap = widget.gap ?? (tv ? ShellTokens.tvPosterCardRowGap : 10.0);
+    final gap = widget.gap ?? 10.0;
     final leading = widget.pad ?? 8.0;
     final trailing = widget.pad ?? 12.0;
 
@@ -826,23 +826,14 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     } else {
       body = LayoutBuilder(
         builder: (context, constraints) {
-          final layout = tv
-              ? CatalogPosterGridLayout.poster(
-                  maxWidth: constraints.maxWidth,
-                  cardW: cardW,
-                  cardH: cardH,
-                  gap: gap,
-                  leading: leading,
-                  trailing: trailing,
-                )
-              : CatalogPosterGridLayout.channelCards(
-                  maxWidth: constraints.maxWidth,
-                  minW: cardW,
-                  minH: cardH,
-                  gap: gap,
-                  leading: leading,
-                  trailing: trailing,
-                );
+          final layout = CatalogPosterGridLayout.channelCards(
+            maxWidth: constraints.maxWidth,
+            minW: cardW,
+            minH: cardH,
+            gap: gap,
+            leading: leading,
+            trailing: trailing,
+          );
           _layout = layout;
 
           return CatalogPosterGrid(

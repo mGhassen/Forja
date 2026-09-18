@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Vertical selectable flyout menu (Home platforms, etc.).
 ///
@@ -53,9 +55,12 @@ class VerticalMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
+    final resolvedFontSize = ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.tvBodyFontSize
+        : fontSize;
     return _VerticalMenuStyle(
       minHeight: minHeight,
-      fontSize: fontSize,
+      fontSize: resolvedFontSize,
       leadingSize: leadingSize,
       child: Material(
         color: backgroundColor ?? ForjaShellColors.bgDark,

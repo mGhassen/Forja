@@ -134,6 +134,9 @@ class ContinueSection extends StatelessWidget {
 
   List<Widget>? _trailingList(BuildContext context) {
     if (onSeeAll != null) {
+      final seeAllFontSize = ShellPaintScope.usesTvDensityOf(context)
+          ? ShellTokens.tvBodyFontSize
+          : 13.0;
       return [
         GestureDetector(
           onTap: onSeeAll,
@@ -141,7 +144,7 @@ class ContinueSection extends StatelessWidget {
             'See all',
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
-              fontSize: 13,
+              fontSize: seeAllFontSize,
               fontWeight: FontWeight.w600,
             ),
           ),

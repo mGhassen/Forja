@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart' show kitPanelTabIcon;
 import 'package:forja_foundation/widgets/sources/live_tv_browse.dart';
 import 'package:forja_foundation/widgets/sources/sources_types.dart';
@@ -335,6 +336,11 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
   }
 
   Widget _header(BuildContext context) {
+    final tv = widget.usesTvDensity;
+    final titleFontSize =
+        tv ? ShellTokens.tvBodyFontSize : 15.0;
+    final subtitleFontSize =
+        tv ? ShellTokens.tvMetaFontSize : 12.0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
       child: Row(
@@ -347,9 +353,9 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
                   widget.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 15,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -361,7 +367,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: 12,
+                      fontSize: subtitleFontSize,
                     ),
                   ),
                 ],
@@ -387,6 +393,9 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
   }
 
   Widget _tabs(BuildContext context) {
+    final tv = widget.usesTvDensity;
+    final loadingFontSize =
+        tv ? ShellTokens.tvMetaFontSize : 12.0;
     final showSearch = widget.showInlineSearch && _browseActive;
     final loading = _loadingByTab[_tabId] == true;
     final tabsChrome = widget.tabsBuilder?.call(
@@ -426,7 +435,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
                 _browseActive ? 'Matching Live TV…' : 'Fetching streams…',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
-                  fontSize: 12,
+                  fontSize: loadingFontSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -523,7 +532,9 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: 13,
+                fontSize: widget.usesTvDensity
+                    ? ShellTokens.tvBodyFontSize
+                    : 13,
               ),
             ),
           ],
@@ -753,6 +764,13 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
     }
     final footer = (row.footer ?? '').trim();
     final provider = hideCategorySubtitle ? null : row.subtitle;
+    final tv = widget.usesTvDensity;
+    final titleFontSize =
+        tv ? ShellTokens.tvBodyFontSize : 13.0;
+    final providerFontSize =
+        tv ? ShellTokens.tvMetaFontSize : 11.0;
+    final footerFontSize =
+        tv ? ShellTokens.tvMetaFontSize : 10.0;
     return Material(
       color: ForjaShellColors.surfaceElevated,
       borderRadius: BorderRadius.circular(10),
@@ -768,10 +786,10 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
                 row.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
-                  fontSize: 13,
+                  fontSize: titleFontSize,
                 ),
               ),
               if ((provider ?? '').trim().isNotEmpty) ...[
@@ -782,7 +800,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
-                    fontSize: 11,
+                    fontSize: providerFontSize,
                   ),
                 ),
               ],
@@ -794,7 +812,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
-                    fontSize: 10,
+                    fontSize: footerFontSize,
                   ),
                 ),
               ],

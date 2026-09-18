@@ -649,24 +649,17 @@ class _CategoryTabState extends State<_CategoryTab> {
         )!;
         final underlineWidth = _underlineWidth(t, context);
         final usesTv = ShellScope.metricsOf(context).usesTvDensity;
-        final tabHeight = shellScaled(
-          context,
-          usesTv
-              ? ShellTokens.homeMenuRowHeightTv
-              : ShellTokens.homeMenuRowHeight,
-        );
-        final tabFont = shellScaled(
-          context,
-          usesTv
-              ? ShellTokens.kitTopBarTabFontSizeTv
-              : ShellTokens.kitTopBarTabFontSize,
-        );
-        final chevronSize = shellScaled(
-          context,
-          usesTv
-              ? ShellTokens.kitTopBarChevronSizeTv
-              : ShellTokens.kitTopBarChevronSize,
-        );
+        // Spatial + type: use TV tokens directly — never shellScaled on type
+        // (poster layout scale would crush tab text to ~5px).
+        final tabHeight = usesTv
+            ? ShellTokens.homeMenuRowHeightTv
+            : ShellTokens.homeMenuRowHeight;
+        final tabFont = usesTv
+            ? ShellTokens.kitTopBarTabFontSizeTv
+            : ShellTokens.kitTopBarTabFontSize;
+        final chevronSize = usesTv
+            ? ShellTokens.kitTopBarChevronSizeTv
+            : ShellTokens.kitTopBarChevronSize;
 
         return Column(
           mainAxisSize: MainAxisSize.min,
