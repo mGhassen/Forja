@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
@@ -637,6 +638,10 @@ class SyncService {
   }) async {
     await LocalDataScope.configure(accountId: accountId, profileId: profileId);
     await PluginScriptDiskStore.configureScope(
+      accountId: accountId,
+      profileId: profileId,
+    );
+    await PortalCatalogShelfStore.configureScope(
       accountId: accountId,
       profileId: profileId,
     );

@@ -143,7 +143,7 @@ class CatalogCardsGrid extends StatelessWidget {
   /// Optional CTA under the empty copy (e.g. Open portal).
   final Widget? emptyAction;
 
-  /// `poster` · `event`/`cards` · `dense`/`list` · `channel` · `guide`/`epg`
+  /// `poster` · `event`/`cards` · `dense`/`list` · `channel` · `channelList` · `guide`/`epg`
   final String cardKind;
   final String? selectedItemId;
 
@@ -218,9 +218,13 @@ class CatalogCardsGrid extends StatelessWidget {
       cardKind == 'cards';
 
   bool get _channel =>
-      cardKind == 'channel' || cardKind == 'liveChannel';
+      cardKind == 'channel' ||
+      cardKind == 'liveChannel' ||
+      cardKind == 'channelList';
 
   bool get _guide => cardKind == 'guide' || cardKind == 'epg';
+
+  bool get _forceChannelList => cardKind == 'channelList';
 
   @override
   Widget build(BuildContext context) {
@@ -301,6 +305,7 @@ class CatalogCardsGrid extends StatelessWidget {
       selectedItemId: selectedItemId,
       gap: gap,
       pad: pad,
+      forceList: _forceChannelList,
       itemAccessory: itemAccessory,
       itemHealth: itemHealth,
       itemHealthListenable: itemHealthListenable,
@@ -486,6 +491,7 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
     this.selectedItemId,
     this.gap,
     this.pad,
+    this.forceList = false,
     this.itemAccessory,
     this.itemHealth,
     this.itemHealthListenable,
@@ -503,6 +509,8 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
   final String? selectedItemId;
   final double? gap;
   final double? pad;
+  /// IPTV View → List (and Sources-style rows) — always list, never cards grid.
+  final bool forceList;
   final Widget? Function(
     BuildContext context,
     Map<String, dynamic> item, {
@@ -545,6 +553,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       !ShellPaintScope.scaleOnHoverOf(context);
 
   bool get _compactList {
+    if (widget.forceList) return true;
     if (_leanbackOnly || ShellPaintScope.usesTvDensityOf(context)) {
       return false;
     }
@@ -815,12 +824,13 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
 
     Widget body;
     if (list) {
-      body = CatalogDenseList(
+      body = ListView.separated(
         controller: _scroll,
+        padding: EdgeInsets.fromLTRB(leading, 4, trailing, 12),
         itemCount: widget.items.length,
-        leading: leading,
-        trailing: trailing,
-        itemBuilder: (context, i) => _buildChannelTile(context, i, list: true),
+        separatorBuilder: (_, _) => const SizedBox(height: 6),
+        itemBuilder: (context, i) =>
+            _buildChannelTile(context, i, list: true),
       );
     } else {
       body = LayoutBuilder(

@@ -77,6 +77,9 @@ abstract final class ShellTokens {
     return compactMenuLeadingInset(context) + shellNavMenuButtonWidth;
   }
 
+  /// Hot strip on the window's left edge — hover opens the compact nav drawer.
+  static const double compactNavEdgeHoverWidth = 12;
+
   static const double navRailIconSize = 36;
 
   /// Floor for TV density scale ([shellNavRailIconSize]) before fit-to-height.
@@ -148,11 +151,12 @@ abstract final class ShellTokens {
   );
 
   /// Pack-update badge on profile / Settings nav chrome.
-  static const double packUpdateBadgeSize = 15;
-  static const double packUpdateBadgeSizeTv = 14;
-  static const double packUpdateBadgeSizeBottomNav = 13;
-  static const double packUpdateBadgeCornerInset = 2;
-  static const double packUpdateFlyoutIconSize = 14;
+  static const double packUpdateBadgeSize = 20;
+  static const double packUpdateBadgeSizeTv = 18;
+  static const double packUpdateBadgeSizeBottomNav = 17;
+  static const double packUpdateBadgeCornerInset = 7;
+  static const double packUpdateFlyoutIconSize = 16;
+  static const double packUpdateSettingsIconSize = 24;
   static const double packUpdateFlyoutWidth = 168;
   static const double packUpdateFlyoutPadH = 14;
   static const double packUpdateFlyoutPadV = 12;
@@ -164,6 +168,10 @@ abstract final class ShellTokens {
   static const double packUpdateFlyoutBlur = 28;
   static const double packUpdateFlyoutOffset = 10;
   static const double packUpdateFlyoutSlide = 8;
+  static const double packUpdateMenuBadgePadH = 6;
+  static const double packUpdateMenuBadgePadV = 2;
+  static const double packUpdateMenuBadgeRadius = 4;
+  static const double packUpdateMenuBadgeFontSize = 10;
   static const double packUpdateHeartbeatScaleMin = 0.88;
   static const double packUpdateHeartbeatScaleMax = 1.08;
   static const double packUpdateGlyphScale = 0.62;
@@ -182,6 +190,8 @@ abstract final class ShellTokens {
   static const double shellButtonRadius = 6;
   static const double shellNavUnderlineHeight = 3;
   static const double shellHeaderTopPadding = 16;
+  /// Compact ☰ glyph — smaller than rail destination icons.
+  static const double shellNavMenuButtonIconSize = 22;
   static const double navRailLogoWidth = 80;
   static const double navRailLogoHeight = navRailLogoWidth * 160 / 370;
   static const double shellCategoryUnderlineGap = 6;
@@ -344,9 +354,11 @@ abstract final class ShellTokens {
   static const double musicDesktopSidebarWidth = 260;
   static const double musicDesktopBreakpoint = 900;
 
-  /// Minimum Home body width for the full cinematic hero; narrower uses compact hero.
+  /// Below this body width the hero text column goes full-width (compact
+  /// horizontal). Height stays cinematic — do not shrink the band.
   static const double heroDesktopMinBodyWidth = 1000;
 
+  /// @Deprecated — height no longer shrinks on narrow; kept for callers/tests.
   static const double heroHeightFractionCompact = 0.50;
   static const double heroMinHeightCompact = 280;
   static const double heroLogoMaxHeightCompact = 72;

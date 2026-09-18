@@ -165,9 +165,9 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
                 child: Icon(
                   Icons.menu_rounded,
                   color: active
-                      ? ForjaShellColors.iconHover
-                      : ForjaShellColors.iconMuted,
-                  size: ShellTokens.navRailIconSize,
+                      ? ForjaShellColors.cinematic.chromeIconActive
+                      : ForjaShellColors.cinematic.chromeIconIdle,
+                  size: ShellTokens.shellNavMenuButtonIconSize,
                 ),
               ),
             ),

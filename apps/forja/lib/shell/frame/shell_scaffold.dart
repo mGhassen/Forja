@@ -146,7 +146,10 @@ class _ShellScaffoldState extends State<ShellScaffold> {
           right: tvSafeRight,
           child: widget.shellTopBar ?? const SizedBox.shrink(),
         ),
-        if (compactNav && widget.shellTopBar == null)
+        // Compact ☰ always lives here — even when a pack hub mounts an empty
+        // shellTopBar (layout-only hubs). Kit chrome pads for this lane; it
+        // must not paint a second button.
+        if (compactNav) ...[
           Positioned(
             top: 0,
             left: tvSafeLeft,
@@ -165,6 +168,17 @@ class _ShellScaffoldState extends State<ShellScaffold> {
               ),
             ),
           ),
+          Positioned(
+            left: tvSafeLeft,
+            top: 0,
+            bottom: 0,
+            width: ShellTokens.compactNavEdgeHoverWidth,
+            child: MouseRegion(
+              onEnter: (_) => _scaffoldKey.currentState?.openDrawer(),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ],
         if (mountRail)
           Positioned(
             key: const ValueKey('shell-nav-rail'),

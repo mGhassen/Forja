@@ -1,11 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
-import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 
 /// Lightweight shimmer wrapper (no third-party deps).
@@ -355,14 +352,8 @@ double catalogContinueRowSkeletonHeight({
 /// (shell nav / TV tab eviction) reads as the page background flashing.
 Widget hubNeutralLoadingSkeleton(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
-  // TV is full-bleed regardless of logical width (720p ATV ≈ 960dp < 1000).
-  final compact = !cinematicHeroIsFullBleed(
-    width: size.width,
-    tvDensity: catalogUsesTvDensity(context),
-  );
   final heroH = homeCinematicHeroBodyHeight(
     screenHeight: size.height,
-    compact: compact,
     pageBottomBleed: false,
   );
   return ColoredBox(
@@ -517,13 +508,8 @@ Widget homeCatalogCardRowSkeleton({
 
 double homeCinematicHeroBodyHeight({
   required double screenHeight,
-  required bool compact,
   bool pageBottomBleed = false,
 }) {
-  if (compact) {
-    final target = screenHeight * ShellTokens.heroHeightFractionCompact;
-    return math.max(ShellTokens.heroMinHeightCompact, target);
-  }
   if (pageBottomBleed) {
     return screenHeight * ShellTokens.homeBackdropViewportFraction +
         ShellTokens.homePageBottomSectionDownOffset;

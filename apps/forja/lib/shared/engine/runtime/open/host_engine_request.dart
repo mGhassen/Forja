@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/portals/store/portal_catalog_page.dart';
 import 'package:rust/rust.dart';
 
 /// Opaque pack → Rust/engine jobs. No product `host.iptv` namespace (RFC-109).
@@ -38,6 +39,9 @@ abstract final class HostEngineRequest {
   static Future<Map<String, dynamic>> _iptv(Map<String, dynamic> body) async {
     final action = (body['action'] ?? '').toString().trim().toLowerCase();
     switch (action) {
+      case 'catalog_page':
+        // Host-owned shelf + page (issue 290). Full streams never enter JS.
+        return PortalCatalogPage.run(body);
       case 'xtream':
       case 'request':
         // Body is the Rust iptvXtream JSON request (action/login/catalog/…).

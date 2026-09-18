@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
 /// Muted back icon that turns white on hover or D-pad focus (cinematic overlays).
 class ShellBackIconButton extends StatefulWidget {
   const ShellBackIconButton({
@@ -24,7 +26,7 @@ class ShellBackIconButton extends StatefulWidget {
   final Color? idleColor;
 
   static Color defaultIdle(BuildContext context) =>
-      Colors.white.withValues(alpha: 0.54);
+      ForjaShellColors.cinematic.chromeIconIdle;
 
   @override
   State<ShellBackIconButton> createState() => _ShellBackIconButtonState();
@@ -52,7 +54,9 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
     if (widget.onTap == null) return const SizedBox.shrink();
 
     final resolvedHit = widget.hitSize ?? widget.size + 12;
-    final fg = _active ? Colors.white : _idle;
+    final fg = _active
+        ? ForjaShellColors.cinematic.chromeIconActive
+        : _idle;
     final fillAlpha = _active ? 0.10 : 0.0;
 
     // Full hit box must stay hittable - Align+smaller child made most of the

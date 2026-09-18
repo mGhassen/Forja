@@ -189,12 +189,30 @@ class CinematicHeroState extends State<CinematicHero> {
 
   late final PageController _heroController;
   late final bool _ownsController;
+  /// Keeps the [PageView] element across compact/bleed parent shape changes so
+  /// the controller never briefly has two scroll positions.
+  final GlobalKey _heroPageViewKey = GlobalKey(debugLabel: 'cinematic-hero-page');
   Timer? _heroTimer;
   int _heroIndex = 0;
   double? _heroPageViewportWidth;
 
   PageController get pageController => _heroController;
   int get heroIndex => _heroIndex;
+
+  /// [PageController.page] asserts exactly one attached [PageView].
+  /// [hasClients] is only "≥1" — remount / reparent can briefly attach two.
+  bool get _heroHasSingleClient => _heroController.positions.length == 1;
+
+  /// Never call [PageController.page] — read pixels from the sole position.
+  double? _safeHeroPage() {
+    final positions = _heroController.positions;
+    if (positions.length != 1) return null;
+    final position = positions.first;
+    if (!position.hasPixels || !position.hasContentDimensions) return null;
+    final extent = position.viewportDimension;
+    if (extent <= 0) return null;
+    return position.pixels / (extent * _heroController.viewportFraction);
+  }
 
   @override
   void initState() {
@@ -233,7 +251,7 @@ class CinematicHeroState extends State<CinematicHero> {
     _heroTimer?.cancel();
     if (widget.slides.length < 2) return;
     _heroTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (!_heroController.hasClients) return;
+      if (!_heroHasSingleClient) return;
       _heroController.nextPage(
         duration: const Duration(milliseconds: 1000),
         curve: Curves.easeInOutCubic,
@@ -243,7 +261,7 @@ class CinematicHeroState extends State<CinematicHero> {
 
   void _goToHeroStep(int realIndex, {required bool instant}) {
     final count = widget.slides.length;
-    if (count <= 0 || !_heroController.hasClients) return;
+    if (count <= 0 || !_heroHasSingleClient) return;
     final target = _heroLoopStart + (realIndex % count);
     if (instant) {
       _heroController.jumpToPage(target);
@@ -257,9 +275,9 @@ class CinematicHeroState extends State<CinematicHero> {
   }
 
   void _jumpHeroToReal(int realIndex, int count) {
-    if (!mounted || !_heroController.hasClients || count <= 0) return;
+    if (!mounted || !_heroHasSingleClient || count <= 0) return;
     final target = _heroLoopStart + (realIndex % count);
-    if ((_heroController.page?.round() ?? target) == target) return;
+    if ((_safeHeroPage()?.round() ?? target) == target) return;
     _heroController.jumpToPage(target);
   }
 
@@ -275,7 +293,7 @@ class CinematicHeroState extends State<CinematicHero> {
     if (pageIndex < _heroLoopStart ~/ 2 ||
         pageIndex > _heroLoopLength - _heroLoopStart ~/ 2) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _heroController.hasClients) {
+        if (mounted && _heroHasSingleClient) {
           _heroController.jumpToPage(target);
         }
       });
@@ -290,8 +308,9 @@ class CinematicHeroState extends State<CinematicHero> {
   double _backdropHeight(BuildContext context) {
     if (widget.height != null) return widget.height!;
     final layout = widget.layout;
-    final compact = layout.compact;
-    final pageBleed = widget.pageBottomChild != null && !compact;
+    // Featured-row bleed owns height. Narrow windows still get the tall
+    // cinematic band — compact only changes the text column, not height.
+    final pageBleed = widget.pageBottomChild != null;
     if (pageBleed) {
       return _snapToDevicePixels(
         context,
@@ -326,6 +345,7 @@ class CinematicHeroState extends State<CinematicHero> {
     }
     final layout = widget.layout;
     final compact = layout.compact;
+    // Overlay bleed only on wide layout — compact stacks Featured under the hero.
     final pageBleed = widget.pageBottomChild != null && !compact;
     final imageHeight = _backdropHeight(context);
     final onHeight = widget.onHeight;
@@ -429,18 +449,16 @@ class CinematicHeroState extends State<CinematicHero> {
       ),
     );
 
-    // Narrow layouts: no backdrop bleed — stack Featured under the hero.
-    if (compact && widget.pageBottomChild != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          heroBody,
-          widget.pageBottomChild!,
-        ],
-      );
-    }
-    return heroBody;
+    // Stable outer shape so the PageView element is not remounted when compact
+    // / Featured appear (that briefly attaches two positions to one controller).
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        heroBody,
+        if (compact && widget.pageBottomChild != null) widget.pageBottomChild!,
+      ],
+    );
   }
 
   Widget _buildCarousel({
@@ -462,6 +480,7 @@ class CinematicHeroState extends State<CinematicHero> {
         }
         _heroPageViewportWidth = pageW;
         return PageView.builder(
+          key: _heroPageViewKey,
           clipBehavior: Clip.hardEdge,
           controller: _heroController,
           itemCount: _heroLoopLength,
@@ -517,9 +536,7 @@ class CinematicHeroState extends State<CinematicHero> {
         AnimatedBuilder(
           animation: _heroController,
           builder: (context, _) {
-            final page = _heroController.hasClients
-                ? (_heroController.page ?? index.toDouble())
-                : index.toDouble();
+            final page = _safeHeroPage() ?? index.toDouble();
             final rightEdgeViewportFraction = index - page + 1.0;
             final opacity = _rightEdgeJoinOpacity(rightEdgeViewportFraction);
             return _buildTrailingEdge(opacity: opacity);
@@ -578,8 +595,8 @@ class CinematicHeroState extends State<CinematicHero> {
   }
 
   Widget _buildHeroSeamScrim() {
-    if (!_heroController.hasClients) return const SizedBox.shrink();
-    final page = _heroController.page ?? _heroLoopStart.toDouble();
+    final page = _safeHeroPage();
+    if (page == null) return const SizedBox.shrink();
     final t = page - page.floor();
     if (t < _heroSeamTransitionEpsilon || t > 1 - _heroSeamTransitionEpsilon) {
       return const SizedBox.shrink();

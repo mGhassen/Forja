@@ -3,7 +3,7 @@ import 'package:forja/features/settings/packs/engine_pack_update.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
-/// Heartbeating green circle with sun + exclamation.
+/// Heartbeating yellow circle with sun + exclamation.
 class PackUpdateAlertIcon extends StatefulWidget {
   const PackUpdateAlertIcon({
     super.key,
@@ -62,11 +62,11 @@ class _PackUpdateAlertIconState extends State<PackUpdateAlertIcon>
       width: widget.size,
       height: widget.size,
       decoration: BoxDecoration(
-        color: ForjaShellColors.brandGreen,
+        color: ForjaShellColors.packUpdateAlert,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: ForjaShellColors.brandGreen.withValues(
+            color: ForjaShellColors.packUpdateAlert.withValues(
               alpha: ShellTokens.packUpdateGlowAlpha,
             ),
             blurRadius: widget.size * ShellTokens.packUpdateGlowBlurScale,

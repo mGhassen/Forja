@@ -246,6 +246,39 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     return const Color(0xFFEF4444).withValues(alpha: active ? 0.72 : 0.55);
   }
 
+  /// Sources / Portals list chrome (bordered rect + inner left probe bar).
+  Color _listBackground(bool active) {
+    if (widget.highlighted) {
+      return ForjaShellColors.brandGreen.withValues(alpha: 0.16);
+    }
+    if (active) return ForjaShellColors.chipSelectedBg;
+    return Colors.white.withValues(alpha: 0.04);
+  }
+
+  Color _listBorder(bool active) {
+    if (widget.highlighted) {
+      return active
+          ? ForjaShellColors.brandGreen
+          : ForjaShellColors.brandGreen.withValues(alpha: 0.40);
+    }
+    if (active) return ForjaShellColors.chipSelectedBorder;
+    return Colors.white.withValues(alpha: 0.07);
+  }
+
+  double _listBorderWidth(bool active) {
+    if (widget.highlighted || active) return 1.5;
+    return 1;
+  }
+
+  Color _listLeftBar(bool? health) {
+    if (widget.highlighted) return ForjaShellColors.brandGreen;
+    return switch (health) {
+      true => const Color(0xFF22C55E),
+      false => const Color(0xFFEF4444),
+      null => Colors.transparent,
+    };
+  }
+
   Future<void> _showEpgSheet() async {
     if (!_epgEnabled) return;
     final future = _epgFuture ?? _resolveEpg();
@@ -276,12 +309,12 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
 
   Widget _buildCard(BuildContext context, {required bool? health}) {
     final active = _active;
-    final radius =
-        widget.listLayout ? 10.0 : ChannelCardTokens.radius;
+    if (widget.listLayout) {
+      return _buildSourcesListRow(context, active: active, health: health);
+    }
+    final radius = ChannelCardTokens.radius;
     // Iso desktop: same channel tile chrome on TV (not a separate poster body).
-    final body = widget.listLayout
-        ? _buildListBody(context, active: active, health: health)
-        : _buildDesktopBody(context, active: active, health: health);
+    final body = _buildDesktopBody(context, active: active, health: health);
 
     final holdJump =
         widget.onHoldJumpToCategory != null && _leanbackOnly;
@@ -301,10 +334,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         motion: ForjaMotionPreset.fillOnly,
         gridIndex: widget.gridIndex,
         gridColumns: widget.gridColumns,
-        listIndex: widget.listLayout ? widget.gridIndex : null,
-        tvZone: widget.listLayout
-            ? ShellPaintTvZone.row
-            : ShellPaintTvZone.grid,
+        tvZone: ShellPaintTvZone.grid,
         tvItemIndex: widget.gridIndex,
         onFocusChange: _setFocused,
         onHoverChange: _setHovered,
@@ -323,59 +353,105 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     return card;
   }
 
-  Widget _buildListBody(
+  /// Flat Sources-panel row — bordered rect + inner left health/selection bar.
+  Widget _buildSourcesListRow(
     BuildContext context, {
     required bool active,
     required bool? health,
   }) {
     final fav = widget.favoriteBuilder?.call(active: active);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _logoThumb(contain: true, padding: 4, cacheWidth: 88),
-                  if (active)
-                    const ColoredBox(color: Color(0x52000000)),
-                  ShellCardPlayOverlay(
-                    active: false,
-                    visible: active,
-                    diameter: 30,
-                    iconSize: 18,
-                  ),
-                ],
+    final selected = widget.highlighted;
+    final titleColor = selected
+        ? ForjaShellColors.brandGreen
+        : health == false
+            ? Colors.white54
+            : ForjaShellColors.cinematic.textPrimary;
+    final holdJump =
+        widget.onHoldJumpToCategory != null && _leanbackOnly;
+
+    Widget row = SizedBox(
+      width: widget.width,
+      height: widget.height ?? 56,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: _listBackground(active),
+          border: Border.all(
+            color: _listBorder(active),
+            width: _listBorderWidth(active),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ColoredBox(
+              color: _listLeftBar(health),
+              child: const SizedBox(width: 4),
+            ),
+            Expanded(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: _logoThumb(
+                          contain: true,
+                          padding: 2,
+                          cacheWidth: 72,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: titleColor,
+                          fontSize: 13,
+                          height: 1.25,
+                          fontWeight:
+                              selected ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    if (fav != null) ...[const SizedBox(width: 8), fav],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              widget.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
-                color: health == false ? Colors.white54 : Colors.white,
-                fontSize: 12,
-                height: 1.18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          if (fav != null) ...[const SizedBox(width: 4), fav],
-          if (health != null) ...[
-            const SizedBox(width: 6),
-            _healthDot(health, compact: true),
           ],
-        ],
+        ),
       ),
     );
+
+    row = ShellPaintScope.focusableTap(
+      context: context,
+      onTap: holdJump ? null : widget.onTap,
+      borderRadius: 0,
+      motion: ForjaMotionPreset.fillOnly,
+      listIndex: widget.gridIndex,
+      tvZone: ShellPaintTvZone.row,
+      tvItemIndex: widget.gridIndex,
+      onFocusChange: _setFocused,
+      onHoverChange: _setHovered,
+      onKeyEvent: holdJump ? _onKeyEvent : null,
+      child: row,
+    );
+
+    if (!_leanbackOnly && _epgEnabled) {
+      row = GestureDetector(
+        onLongPress: _showEpgSheet,
+        child: row,
+      );
+    }
+
+    return row;
   }
 
   Widget _buildDesktopBody(

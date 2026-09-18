@@ -10,6 +10,7 @@ import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/shell/visibility_provider.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 Widget buildSettingsCategoryBody(
   String categoryId,
@@ -61,13 +62,15 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage> {
     final visibility = visibilityAsync.valueOrNull ?? _visibility;
     if (visibility == null) {
       return const Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: ForjaShellColors.bgDark,
         body: SizedBox.expand(),
       );
     }
     final meta = settingsCategoryById(widget.categoryId, visibility);
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // Overlay sits above the Settings hub Stack — must be opaque or the
+      // category list bleeds through on compact list→push.
+      backgroundColor: ForjaShellColors.bgDark,
       body: ShellTvContainDpad(
         child: FocusTraversalGroup(
           policy: ReadingOrderTraversalPolicy(),

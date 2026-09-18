@@ -8,6 +8,7 @@ import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/features/settings/shell/visibility_provider.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
+import 'package:forja/features/settings/packs/engine_pack_update.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/nav/pack_update_alert_icon.dart';
@@ -20,6 +21,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_tab_header.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 int _packUpdateCount() {
   return PluginInstallCoordinator.instance.pendingUpdateCount.value;
@@ -413,7 +415,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
           children: [
             Padding(
               padding: EdgeInsets.fromLTRB(
-                SettingsTokens.pagePaddingOf(context),
+                ShellTokens.usesCompactNavDrawer(context)
+                    ? ShellTokens.compactChromeLeadingInset(context)
+                    : SettingsTokens.pagePaddingOf(context),
                 tv ? 28 : 8,
                 SettingsTokens.pagePaddingOf(context),
                 4,
@@ -444,9 +448,12 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                       return SettingsCategoryTile(
                         icon: c.icon,
                         leading: packUpdates > 0
-                            ? PackUpdateAlertIcon(
-                                size: SettingsTokens.categoryIconSizeOf(context),
+                            ? const PackUpdateAlertIcon(
+                                size: ShellTokens.packUpdateSettingsIconSize,
                               )
+                            : null,
+                        trailing: packUpdates > 0
+                            ? const PackUpdateMenuBadge()
                             : null,
                         title: c.title,
                         subtitle: c.subtitle,
@@ -498,7 +505,14 @@ class _CategorySidebar extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(16, headerTop, 16, 8),
+              padding: EdgeInsets.fromLTRB(
+                ShellTokens.usesCompactNavDrawer(context)
+                    ? ShellTokens.compactChromeLeadingInset(context)
+                    : 16,
+                headerTop,
+                16,
+                8,
+              ),
               child: const ShellTabHeader(
                 title: 'Settings',
                 padding: EdgeInsets.zero,
@@ -515,9 +529,12 @@ class _CategorySidebar extends ConsumerWidget {
                   return SettingsCategoryTile(
                     icon: c.icon,
                     leading: showPackAlert
-                        ? PackUpdateAlertIcon(
-                            size: SettingsTokens.categoryIconSizeOf(context),
+                        ? const PackUpdateAlertIcon(
+                            size: ShellTokens.packUpdateSettingsIconSize,
                           )
+                        : null,
+                    trailing: showPackAlert
+                        ? const PackUpdateMenuBadge()
                         : null,
                     title: c.title,
                     subtitle: c.subtitle,

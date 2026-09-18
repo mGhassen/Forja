@@ -1552,6 +1552,13 @@ class PackPaintTree extends StatelessWidget {
           final liveChannels = _itemsLookLikeLiveChannels(filtered);
           final cardKind = () {
             if (wantGuide) return 'guide';
+            // IPTV Live list → Sources-style channel rows (not schedule dense).
+            if (liveChannels &&
+                (style == 'list' ||
+                    packCardKind == 'list' ||
+                    packCardKind == 'channellist')) {
+              return 'channelList';
+            }
             // IPTV View "Cards" is style=cards — must not map live rows to
             // Live Sports event cards (landscape poster + title overlay).
             if (liveChannels &&
@@ -1561,10 +1568,8 @@ class PackPaintTree extends StatelessWidget {
                     packCardKind == 'channel' ||
                     packCardKind == 'livechannel' ||
                     packCardKind.isEmpty)) {
-              if (packCardKind == 'list' ||
-                  packCardKind == 'timeline' ||
+              if (packCardKind == 'timeline' ||
                   packCardKind == 'dense' ||
-                  style == 'list' ||
                   style == 'timeline') {
                 return 'dense';
               }
@@ -1780,7 +1785,7 @@ class PackPaintTree extends StatelessWidget {
                 return buildGrid(loadEpgProgrammes: loadEpgProgrammes);
               },
             );
-          } else if (cardKind == 'channel') {
+          } else if (cardKind == 'channel' || cardKind == 'channelList') {
             grid = ValueListenableBuilder<String?>(
               valueListenable: IptvCatalogLand.highlightedStreamId,
               builder: (context, highlight, _) {
@@ -2664,10 +2669,8 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
         heroActionUseFittedBox: metrics.heroActionUseFittedBox,
         heroCompactRightInset: metrics.heroCompactRightInset,
         sectionHorizontalPadding: ShellTokens.homeSectionHorizontalPadding,
-        heroHeightFraction: widget.heightFraction ??
-            (compact
-                ? ShellTokens.heroHeightFractionCompact
-                : shellHeroHeightFraction(context)),
+        heroHeightFraction:
+            widget.heightFraction ?? shellHeroHeightFraction(context),
         heroMinHeight: shellHeroMinHeight(context),
         nextRowPeekFraction: shellHeroNextRowPeekFraction(context),
         firstCatalogRowHeight: widget.pageBottomChild == null

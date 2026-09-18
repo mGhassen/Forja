@@ -23,6 +23,8 @@ abstract final class PortalListTokens {
   static const double headerIconSize = 24;
   static const double probeCardWidth = 280;
   static const double probeCardRadius = 12;
+  /// Below this window width, skip the hover probe peek (no room beside the list).
+  static const double probeDetailMinWindowWidth = 900;
   static const double probeDotSize = 8;
   static const double probeGap = 8;
   static const double probeMetaGap = 6;

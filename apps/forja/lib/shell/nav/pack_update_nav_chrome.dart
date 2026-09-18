@@ -205,43 +205,24 @@ class _PackUpdateFlyout extends StatelessWidget {
                     ShellTokens.packUpdateFlyoutPadH,
                     ShellTokens.packUpdateFlyoutPadV,
                   ),
-                  child: Column(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Row(
-                        children: [
-                          const PackUpdateAlertIcon(
-                            size: ShellTokens.packUpdateFlyoutIconSize,
-                            heartbeat: false,
-                          ),
-                          const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
-                          Expanded(
-                            child: Text(
-                              EnginePackUpdateCopy.available(count),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.plusJakartaSans(
-                                color: ForjaShellColors.brandGreen,
-                                fontSize: ShellTokens.packUpdateFlyoutTitleSize,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+                      const PackUpdateAlertIcon(
+                        size: ShellTokens.packUpdateFlyoutIconSize,
+                        heartbeat: false,
                       ),
-                      const SizedBox(
-                        height: ShellTokens.packUpdateFlyoutMetaGap,
-                      ),
-                      Text(
-                        EnginePackUpdateCopy.tipAction,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white,
-                          fontSize: ShellTokens.packUpdateFlyoutMetaSize,
-                          fontWeight: FontWeight.w600,
-                          height: 1.25,
+                      const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
+                      Flexible(
+                        child: Text(
+                          EnginePackUpdateCopy.available(count),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: ForjaShellColors.packUpdateAlert,
+                            fontSize: ShellTokens.packUpdateFlyoutTitleSize,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],

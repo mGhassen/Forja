@@ -248,6 +248,10 @@ class _PortalListRowState extends State<PortalListRow> {
 
   void _scheduleDetailCard() {
     if (widget.leanback) return;
+    if (MediaQuery.sizeOf(context).width <
+        PortalListTokens.probeDetailMinWindowWidth) {
+      return;
+    }
     _detailTimer?.cancel();
     _detailTimer = Timer(_detailHoverDelay, () {
       if (!mounted || !_lineHover) return;
@@ -261,6 +265,11 @@ class _PortalListRowState extends State<PortalListRow> {
 
   void _showDetailCard() {
     if (widget.leanback) return;
+    if (MediaQuery.sizeOf(context).width <
+        PortalListTokens.probeDetailMinWindowWidth) {
+      _hideDetailCard();
+      return;
+    }
     final existing = _detailOverlay;
     if (existing != null) {
       if (!existing.mounted) {

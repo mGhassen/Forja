@@ -6,6 +6,7 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 import 'package:forja/shared/services/update/app_update_download_storage.dart';
+import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/probe/provider_score_probe_sync.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
@@ -35,8 +36,10 @@ abstract final class SettingsDataCleaner {
     } catch (_) {}
   }
 
-  /// Pack-owned portal caches (RFC-109 Wave C) — host no longer keeps IPTV disk stores.
-  static Future<void> clearPortalCaches() async {}
+  /// Portal catalog shelves (host file cache for `catalog_page`).
+  static Future<void> clearPortalCaches() async {
+    await PortalCatalogShelfStore.clearAll();
+  }
 
   static Future<void> clearImageAndWebViewCaches() async {
     imageCache.clear();

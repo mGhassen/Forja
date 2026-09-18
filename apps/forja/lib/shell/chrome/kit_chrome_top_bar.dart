@@ -8,7 +8,6 @@ import 'package:forja/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
-import 'package:forja/shell/nav/shell_nav_rail.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -274,37 +273,11 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
     }
   }
 
-  Widget _buildMenuScroll({
-    required Widget tabs,
-    required bool compactNav,
-    required bool tvFocus,
-    required double tabGap,
-  }) {
-    if (!compactNav || tvFocus) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const ClampingScrollPhysics(),
-        child: tabs,
-      );
-    }
+  Widget _buildMenuScroll({required Widget tabs}) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const ClampingScrollPhysics(),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: ShellTokens.homeMenuRowHeight,
-            child: Center(
-              child: ShellNavMenuButton(
-                onPressed: () => Scaffold.of(context).openDrawer(),
-              ),
-            ),
-          ),
-          SizedBox(width: tabGap),
-          tabs,
-        ],
-      ),
+      child: tabs,
     );
   }
 
@@ -364,8 +337,9 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
               height: barContentHeight,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
+                  // Compact: clear scaffold-owned ☰ lane (not a second button).
                   compactNav
-                      ? ShellTokens.compactMenuLeadingInset(context)
+                      ? ShellTokens.compactChromeLeadingInset(context)
                       : ShellTokens.bodyHorizontalPadding +
                             (usesTv
                                 ? ShellTokens.homeTopBarMenuLeadingInsetTv
@@ -528,12 +502,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                           ),
                         );
 
-                        final menuRow = _buildMenuScroll(
-                          tabs: tabs,
-                          compactNav: compactNav,
-                          tvFocus: tvFocus,
-                          tabGap: tabGap,
-                        );
+                        final menuRow = _buildMenuScroll(tabs: tabs);
 
                         return TvKitRow(
                           tabId: widget.tabId,

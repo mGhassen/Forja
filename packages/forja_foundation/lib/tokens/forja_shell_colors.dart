@@ -8,6 +8,9 @@ abstract final class ForjaShellColors {
   /// Brand green from the Forja logo - hero Play CTA fill.
   static const Color brandGreen = Color(0xFF1CE783);
 
+  /// Pack-update alert (nav badge, Settings tip / tile).
+  static const Color packUpdateAlert = Color(0xFFFBBF24);
+
   static const Color iconMuted = Color(0xFF6B7280);
   static const Color iconActive = Color(0xFF9CA3AF);
   static const Color iconHover = Color(0xFFD1D5DB);
@@ -40,4 +43,10 @@ final class _CinematicShellPalette {
   Color get navUnderline => ForjaShellColors.navUnderline;
   Color get borderSubtle => ForjaShellColors.borderSubtle;
   Color get menuSurface => ForjaShellColors.bgDark;
+
+  /// Back / compact ☰ idle on imagery (matches [ShellBackIconButton]).
+  Color get chromeIconIdle => Colors.white.withValues(alpha: 0.54);
+
+  /// Back / compact ☰ hover + focus.
+  Color get chromeIconActive => Colors.white;
 }

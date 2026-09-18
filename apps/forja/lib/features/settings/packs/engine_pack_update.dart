@@ -12,9 +12,42 @@ abstract final class EnginePackUpdateCopy {
     return '$count updates available';
   }
 
-  static const tipAction = 'Open Forja Packs';
+  static const menuBadge = 'Update available';
   static const checking = 'Checking for plugin updates…';
   static const upToDate = 'All plugins are up to date';
+}
+
+/// Yellow “Update available” chip for Settings → Forja Packs row.
+class PackUpdateMenuBadge extends StatelessWidget {
+  const PackUpdateMenuBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: ShellTokens.packUpdateMenuBadgePadH,
+        vertical: ShellTokens.packUpdateMenuBadgePadV,
+      ),
+      decoration: BoxDecoration(
+        color: ForjaShellColors.packUpdateAlert.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(
+          ShellTokens.packUpdateMenuBadgeRadius,
+        ),
+        border: Border.all(
+          color: ForjaShellColors.packUpdateAlert.withValues(alpha: 0.55),
+        ),
+      ),
+      child: Text(
+        EnginePackUpdateCopy.menuBadge,
+        style: TextStyle(
+          fontSize: ShellTokens.packUpdateMenuBadgeFontSize,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+          color: ForjaShellColors.packUpdateAlert,
+        ),
+      ),
+    );
+  }
 }
 
 /// Shared sun glyph for pack-update chrome (nav badge + Settings tile).
@@ -71,7 +104,7 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: hasUpdates
-                    ? ForjaShellColors.brandGreen
+                    ? ForjaShellColors.packUpdateAlert
                     : ForjaShellColors.textSecondary,
               ),
             ),
