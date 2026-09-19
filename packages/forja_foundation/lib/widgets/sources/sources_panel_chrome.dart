@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart' show kitPanelTabIcon;
 import 'package:forja_foundation/widgets/sources/live_tv_browse.dart';
 import 'package:forja_foundation/widgets/sources/sources_types.dart';
@@ -298,14 +299,14 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
       thumbVisibility: true,
       trackVisibility: true,
       interactive: interactive,
-      thickness: 4,
-      radius: const Radius.circular(2),
-      mainAxisMargin: 6,
-      crossAxisMargin: 2,
-      thumbColor: ForjaShellColors.brandGreen.withValues(alpha: 0.55),
-      trackColor: Colors.white.withValues(alpha: 0.08),
+      thickness: ForjaScrollbarStyle.thickness,
+      radius: ForjaScrollbarStyle.radius,
+      mainAxisMargin: ForjaScrollbarStyle.mainAxisMargin,
+      crossAxisMargin: ForjaScrollbarStyle.crossAxisMargin,
+      thumbColor: ForjaScrollbarStyle.thumbColor,
+      trackColor: ForjaScrollbarStyle.trackColor,
       trackBorderColor: Colors.transparent,
-      child: child,
+      child: forjaSuppressAutoScrollbar(context: context, child: child),
     );
   }
 

@@ -266,10 +266,12 @@ void main() {
       const tab = 'live_sports';
       ShellTvFocus.currentNavTabId = tab;
       final kind = FocusNode();
-      final schedule = FocusNode();
+      final schedule0 = FocusNode();
+      final schedule1 = FocusNode();
       addTearDown(() {
         kind.dispose();
-        schedule.dispose();
+        schedule0.dispose();
+        schedule1.dispose();
       });
 
       await tester.pumpWidget(
@@ -288,8 +290,12 @@ void main() {
                   index: 0,
                   node: kind,
                   autoFocus: true,
+                  // Pack focusDown: schedule with last:true (remembered).
                   onDown: () {
-                    ShellTvFocusCoordinator.focusRowItem(tab, 'schedule', 0);
+                    ShellTvFocusCoordinator.focusRowItemRemembered(
+                      tab,
+                      'schedule',
+                    );
                   },
                 ),
               ),
@@ -297,23 +303,44 @@ void main() {
                 tabId: tab,
                 rowId: 'schedule',
                 sortOrder: 2,
-                itemCount: 1,
-                child: _rowItem(
-                  tabId: tab,
-                  rowId: 'schedule',
-                  index: 0,
-                  node: schedule,
-                  onUp: () {
-                    ShellTvFocusCoordinator.focusRowItem(tab, 'kind', 0);
-                  },
-                  // Pack focusRight: sources-kind — unregistered → miss.
-                  onRight: () {
-                    final ok = ShellTvFocusCoordinator.focusRowItemRemembered(
-                      tab,
-                      'sources-kind',
-                    );
-                    if (!ok) ShellTvFocusCoordinator.markKitEdgeMiss();
-                  },
+                itemCount: 2,
+                child: Column(
+                  children: [
+                    _rowItem(
+                      tabId: tab,
+                      rowId: 'schedule',
+                      index: 0,
+                      node: schedule0,
+                      onUp: () {
+                        ShellTvFocusCoordinator.focusRowItem(tab, 'kind', 0);
+                      },
+                      onRight: () {
+                        final ok =
+                            ShellTvFocusCoordinator.focusRowItemRemembered(
+                          tab,
+                          'sources-kind',
+                        );
+                        if (!ok) ShellTvFocusCoordinator.markKitEdgeMiss();
+                      },
+                    ),
+                    _rowItem(
+                      tabId: tab,
+                      rowId: 'schedule',
+                      index: 1,
+                      node: schedule1,
+                      onUp: () {
+                        ShellTvFocusCoordinator.focusRowItem(tab, 'kind', 0);
+                      },
+                      onRight: () {
+                        final ok =
+                            ShellTvFocusCoordinator.focusRowItemRemembered(
+                          tab,
+                          'sources-kind',
+                        );
+                        if (!ok) ShellTvFocusCoordinator.markKitEdgeMiss();
+                      },
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -322,18 +349,76 @@ void main() {
       );
       await tester.pump();
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      // Land on mid schedule, then ↑ to kind, then ↓ restores last index.
+      expect(ShellTvFocusCoordinator.focusRowItem(tab, 'schedule', 1), isTrue);
       await tester.pump();
-      expect(schedule.hasFocus, isTrue);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
-      // Miss must not leave focus stuck dead — schedule still focused.
-      expect(schedule.hasFocus, isTrue);
+      expect(schedule1.hasFocus, isTrue);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
       expect(kind.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(schedule1.hasFocus, isTrue, reason: 'kind↓ restores last match');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      // Miss must not leave focus stuck dead — schedule still focused.
+      expect(schedule1.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(kind.hasFocus, isTrue);
+    });
+
+    testWidgets('Live schedule scroll registry invoked on remembered restore',
+        (tester) async {
+      const tab = 'live_sports';
+      ShellTvFocus.currentNavTabId = tab;
+      final scrolled = <int>[];
+      ShellTvFocusCoordinator.setRowScrollIntoView(
+        tab,
+        'schedule',
+        scrolled.add,
+      );
+      addTearDown(() {
+        ShellTvFocusCoordinator.setRowScrollIntoView(tab, 'schedule', null);
+      });
+
+      final schedule0 = FocusNode();
+      addTearDown(schedule0.dispose);
+
+      await tester.pumpWidget(
+        _wrapTv(
+          tab,
+          TvKitRow(
+            tabId: tab,
+            rowId: 'schedule',
+            sortOrder: 2,
+            itemCount: 2,
+            child: _rowItem(
+              tabId: tab,
+              rowId: 'schedule',
+              index: 0,
+              node: schedule0,
+              autoFocus: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(schedule0.hasFocus, isTrue);
+
+      // Index 1 has no mounted tile (lazy off-screen) — exact focus fails, scroll runs.
+      scrolled.clear();
+      final ok = ShellTvFocusCoordinator.focusRowItemRemembered(
+        tab,
+        'schedule',
+        index: 1,
+      );
+      expect(ok, isTrue);
+      expect(scrolled, [1], reason: 'scroll-into-view for off-screen index');
     });
 
     testWidgets('My List kind↓status↓grid + pageBack ladder', (tester) async {

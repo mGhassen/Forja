@@ -41,6 +41,8 @@ class TopBodyBlock extends StatelessWidget {
     this.onKindSelect,
     this.onItemTap,
     this.wrapBody,
+    this.onDownEdge,
+    this.wrapChrome,
   });
 
   factory TopBodyBlock.fromProps(
@@ -56,6 +58,8 @@ class TopBodyBlock extends StatelessWidget {
     ValueChanged<String>? onKindSelect,
     void Function(Map<String, dynamic> item)? onItemTap,
     Widget Function(Widget body)? wrapBody,
+    VoidCallback? onDownEdge,
+    Widget Function(Widget child)? wrapChrome,
   }) {
     return TopBodyBlock(
       actions: actions ?? propsActionMaps(props),
@@ -78,6 +82,8 @@ class TopBodyBlock extends StatelessWidget {
       onKindSelect: onKindSelect,
       onItemTap: onItemTap,
       wrapBody: wrapBody,
+      onDownEdge: onDownEdge,
+      wrapChrome: wrapChrome,
     );
   }
 
@@ -107,6 +113,12 @@ class TopBodyBlock extends StatelessWidget {
   /// Host wrap below the top bar (e.g. Portals panel over kinds + schedule).
   final Widget Function(Widget body)? wrapBody;
 
+  /// Pack top-bar `focusDown` (TV).
+  final VoidCallback? onDownEdge;
+
+  /// Host wraps the top chrome strip in a TV row.
+  final Widget Function(Widget child)? wrapChrome;
+
   @override
   Widget build(BuildContext context) {
     final bg = backgroundColor ?? ForjaShellColors.bgDark;
@@ -118,6 +130,8 @@ class TopBodyBlock extends StatelessWidget {
       center: center,
       onSelect: onActionSelect,
       title: title,
+      onDownEdge: onDownEdge,
+      wrapRow: wrapChrome,
     );
     final kinds = kindsBar ??
         CatalogChipBar(

@@ -77,6 +77,13 @@ class ShellInputPolicy {
   /// Leanback TV remote policy — not desktop hybrid (which also has mood chips).
   bool get leanbackOnly => useFocusableMoodChips && !scaleOnHover;
 
+  /// Keyboard / D-pad land on text fields is browse-only until Enter / OK / tap.
+  ///
+  /// True on desktop hybrid and leanback TV ([useFocusableMoodChips]). Phone
+  /// keeps type-on-focus. Do **not** reuse [leanbackOnly] for this — that gate
+  /// hides pointer chrome.
+  bool get browseTextUntilActivate => useFocusableMoodChips;
+
   /// TV leanback: snap focus chrome (no 200ms tweens). Weak SoCs stutter
   /// when every D-pad step runs [AnimatedScale] / color / saturation tweens.
   bool get instantFocusChrome => scaleOnFocus && !scaleOnHover;

@@ -136,6 +136,7 @@ class CatalogCardsGrid extends StatelessWidget {
     this.onArmFocusMemory,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onScrollIntoViewChanged,
   });
 
   final List<Map<String, dynamic>> items;
@@ -202,6 +203,10 @@ class CatalogCardsGrid extends StatelessWidget {
 
   /// Host arms D-pad memory without stealing category focus.
   final ValueChanged<int>? onArmFocusMemory;
+
+  /// Host registers scroll-into-view for lazy TV restore (shelf / chrome ↓).
+  /// Called with the scroller on mount; `null` on dispose.
+  final ValueChanged<void Function(int)?>? onScrollIntoViewChanged;
 
   static List<Map<String, dynamic>> itemsFromProps(Map<String, dynamic> props) {
     final v = props['items'];
@@ -338,43 +343,60 @@ class CatalogCardsGrid extends StatelessWidget {
       onArmFocusMemory: onArmFocusMemory,
       onLeftEdge: onLeftEdge,
       onRightEdge: onRightEdge,
+      onScrollIntoViewChanged: onScrollIntoViewChanged,
     );
   }
 
   Widget _denseList(BuildContext context) {
     final inset = pad ?? ShellTokens.compactChromeLeadingInset(context);
     final trail = pad ?? ShellTokens.bodyHorizontalPadding;
-    return CatalogDenseList(
-      itemCount: items.length,
-      leading: inset,
-      trailing: trail,
-      itemBuilder: (context, i) {
-        final item = items[i];
-        final props = catalogItemProps(item);
-        final id = (item['id'] ?? props['id'] ?? '').toString();
-        final live = props['live'] == true || props['airing'] == true;
-        final title = (props['title'] ?? '').toString();
-        final meta = eventDenseMetaLine(
-          airing: live,
-          startsAt: (props['startsAt'] ?? props['timeLabel'] ?? '').toString(),
-          badge: (props['categoryLabel'] ?? props['badge'] ?? '').toString(),
+    return _OwnedScrollHost(
+      onScrollIntoViewChanged: onScrollIntoViewChanged,
+      scrollToIndex: (scroll, index) {
+        if (!scroll.hasClients || index < 0) return;
+        const rowH = 56.0;
+        const topPad = 4.0;
+        final target = (topPad + index * rowH).clamp(
+          0.0,
+          scroll.position.maxScrollExtent,
         );
-        final viewers =
-            props['viewers'] is num ? (props['viewers'] as num).toInt() : 0;
-        return _HoverDenseTile(
-          title: title,
-          meta: meta,
-          airing: live,
-          viewers: viewers,
-          selected: selectedItemId != null &&
-              selectedItemId!.isNotEmpty &&
-              selectedItemId == id,
-          listIndex: i,
-          onLeftEdge: onLeftEdge,
-          onRightEdge: onRightEdge,
-          onTap: onItemTap == null ? null : () => onItemTap!(item),
-        );
+        if ((scroll.offset - target).abs() < 0.5) return;
+        scroll.jumpTo(target);
       },
+      builder: (context, controller) => CatalogDenseList(
+        controller: controller,
+        itemCount: items.length,
+        leading: inset,
+        trailing: trail,
+        itemBuilder: (context, i) {
+          final item = items[i];
+          final props = catalogItemProps(item);
+          final id = (item['id'] ?? props['id'] ?? '').toString();
+          final live = props['live'] == true || props['airing'] == true;
+          final title = (props['title'] ?? '').toString();
+          final meta = eventDenseMetaLine(
+            airing: live,
+            startsAt:
+                (props['startsAt'] ?? props['timeLabel'] ?? '').toString(),
+            badge: (props['categoryLabel'] ?? props['badge'] ?? '').toString(),
+          );
+          final viewers =
+              props['viewers'] is num ? (props['viewers'] as num).toInt() : 0;
+          return _HoverDenseTile(
+            title: title,
+            meta: meta,
+            airing: live,
+            viewers: viewers,
+            selected: selectedItemId != null &&
+                selectedItemId!.isNotEmpty &&
+                selectedItemId == id,
+            listIndex: i,
+            onLeftEdge: onLeftEdge,
+            onRightEdge: onRightEdge,
+            onTap: onItemTap == null ? null : () => onItemTap!(item),
+          );
+        },
+      ),
     );
   }
 
@@ -394,28 +416,44 @@ class CatalogCardsGrid extends StatelessWidget {
           gap: gap,
           pad: pad,
         );
-        return CatalogPosterGrid(
-          layout: layout,
-          itemCount: items.length,
-          useAspectRatio: false,
-          itemBuilder: (context, i) {
-            final item = items[i];
-            final props = catalogItemProps(item);
-            final id = (item['id'] ?? props['id'] ?? '').toString();
-            return InteractiveEventCard(
-              props: props,
-              width: layout.cardW,
-              height: layout.cardH,
-              selected: selectedItemId != null &&
-                  selectedItemId!.isNotEmpty &&
-                  selectedItemId == id,
-              gridIndex: i,
-              gridColumns: layout.columns,
-              onLeftEdge: _gridOnLeftEdge(i, layout.columns),
-              onRightEdge: _gridOnRightEdge(i, layout.columns),
-              onTap: onItemTap == null ? null : () => onItemTap!(item),
+        return _OwnedScrollHost(
+          onScrollIntoViewChanged: onScrollIntoViewChanged,
+          scrollToIndex: (scroll, index) {
+            if (!scroll.hasClients || index < 0) return;
+            final cols = layout.columns.clamp(1, 999);
+            final row = index ~/ cols;
+            final rowExtent = layout.cardH + layout.gap;
+            final target = (layout.topPad + row * rowExtent).clamp(
+              0.0,
+              scroll.position.maxScrollExtent,
             );
+            if ((scroll.offset - target).abs() < 0.5) return;
+            scroll.jumpTo(target);
           },
+          builder: (context, controller) => CatalogPosterGrid(
+            controller: controller,
+            layout: layout,
+            itemCount: items.length,
+            useAspectRatio: false,
+            itemBuilder: (context, i) {
+              final item = items[i];
+              final props = catalogItemProps(item);
+              final id = (item['id'] ?? props['id'] ?? '').toString();
+              return InteractiveEventCard(
+                props: props,
+                width: layout.cardW,
+                height: layout.cardH,
+                selected: selectedItemId != null &&
+                    selectedItemId!.isNotEmpty &&
+                    selectedItemId == id,
+                gridIndex: i,
+                gridColumns: layout.columns,
+                onLeftEdge: _gridOnLeftEdge(i, layout.columns),
+                onRightEdge: _gridOnRightEdge(i, layout.columns),
+                onTap: onItemTap == null ? null : () => onItemTap!(item),
+              );
+            },
+          ),
         );
       },
     );
@@ -509,6 +547,57 @@ bool _catalogGridIsLandscape(List<Map<String, dynamic>> items) {
   return false;
 }
 
+/// Owns a [ScrollController] and offers scroll-into-view to the host.
+class _OwnedScrollHost extends StatefulWidget {
+  const _OwnedScrollHost({
+    required this.builder,
+    required this.scrollToIndex,
+    this.onScrollIntoViewChanged,
+  });
+
+  final Widget Function(BuildContext context, ScrollController controller)
+      builder;
+  final void Function(ScrollController scroll, int index) scrollToIndex;
+  final ValueChanged<void Function(int)?>? onScrollIntoViewChanged;
+
+  @override
+  State<_OwnedScrollHost> createState() => _OwnedScrollHostState();
+}
+
+class _OwnedScrollHostState extends State<_OwnedScrollHost> {
+  final ScrollController _scroll = ScrollController();
+
+  void _scrollTo(int index) => widget.scrollToIndex(_scroll, index);
+
+  void _offer() => widget.onScrollIntoViewChanged?.call(_scrollTo);
+
+  @override
+  void initState() {
+    super.initState();
+    _offer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _OwnedScrollHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(
+        oldWidget.onScrollIntoViewChanged, widget.onScrollIntoViewChanged)) {
+      oldWidget.onScrollIntoViewChanged?.call(null);
+      _offer();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.onScrollIntoViewChanged?.call(null);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _scroll);
+}
+
 /// Channel cards + type-to-jump. Competes with category rail via last hover
 /// ([ListLetterJumpScope] active ownership).
 class _ChannelLetterJumpGrid extends StatefulWidget {
@@ -531,6 +620,7 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
     this.onArmFocusMemory,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onScrollIntoViewChanged,
   });
 
   final List<Map<String, dynamic>> items;
@@ -561,6 +651,7 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
   final ValueChanged<int>? onArmFocusMemory;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final ValueChanged<void Function(int)?>? onScrollIntoViewChanged;
 
   @override
   State<_ChannelLetterJumpGrid> createState() => _ChannelLetterJumpGridState();
@@ -595,6 +686,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     super.initState();
     _scroll.addListener(_onScroll);
     widget.landEpoch?.addListener(_onLandEpoch);
+    _offerScrollIntoView();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (_leanbackOnly) {
@@ -608,11 +700,16 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
 
   @override
   void dispose() {
+    widget.onScrollIntoViewChanged?.call(null);
     widget.landEpoch?.removeListener(_onLandEpoch);
     _logoSettleTimer?.cancel();
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
+  }
+
+  void _offerScrollIntoView() {
+    widget.onScrollIntoViewChanged?.call(_scrollToIndex);
   }
 
   @override
@@ -636,6 +733,11 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         if (!mounted) return;
         _landSelected(preferCategoryFocus: widget.preferCategoryFocusOnLand);
       });
+    }
+    if (!identical(
+        oldWidget.onScrollIntoViewChanged, widget.onScrollIntoViewChanged)) {
+      oldWidget.onScrollIntoViewChanged?.call(null);
+      _offerScrollIntoView();
     }
   }
 

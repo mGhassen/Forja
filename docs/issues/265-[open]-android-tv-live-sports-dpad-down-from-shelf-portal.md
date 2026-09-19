@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 2** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I265-T02 | Chip-strip / vertical ↓ and `kitFocusEdge(last: true)` use remembered restore | ✅ |
 | 3 | I265-T03 | Top bar `focusDown` uses `last: true`; Live Sports packs target `schedule` | ✅ |
 | 4 | I265-T04 | `KitListWidget` registers scroll helper; dense ↑ prefers kind bar | ✅ |
+| 5 | I265-T05 | Reattach after KitList→PackPaintTree: `CatalogCardsGrid` scroll registry, chrome/`kind` `last: true` edges, `TvKitRow(chrome)` | ✅ |
 
 ---
 
@@ -39,6 +40,6 @@
 
 **Symptom:** On Android TV Live Sports, ↑ from a match to the sport shelf (or to **Portals**) then ↓ left focus stuck or failed to return to that match.
 
-**Root cause:** Schedule is a lazy `ListView`/`Grid`. Off-screen tiles unregister. ↓ used `focusRowItem` without scrolling; the key was still consumed via `onDownEdge`. Top bar `focusDown: 'kind'` also skipped restoring the schedule index.
+**Root cause:** Schedule is a lazy `ListView`/`Grid`. Off-screen tiles unregister. ↓ used `focusRowItem` without scrolling; the key was still consumed via `onDownEdge`. Top bar `focusDown: 'kind'` also skipped restoring the schedule index. After KitList → PackPaintTree, `setRowScrollIntoView` had zero callers and chrome/kind edges dropped `last: true`.
 
-**Fix:** Scroll the schedule to the remembered index, retry focus across frames, and point chrome ↓ at `schedule` with last-index restore (hub pack layout + host `kitFocusEdge`).
+**Fix:** Scroll the schedule to the remembered index, retry focus across frames, and point chrome ↓ at `schedule` with last-index restore (hub pack layout + host `kitFocusEdge`). Host rewire: `CatalogCardsGrid.onScrollIntoViewChanged`, kind/chrome `resolveFocusEdge(..., last: true)`, `TvKitRow('chrome')`.

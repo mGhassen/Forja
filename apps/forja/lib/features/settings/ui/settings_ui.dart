@@ -13,6 +13,7 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 
 double _tvBody(BuildContext context, {double desktop = 15}) =>
     ShellScope.metricsOf(context).usesTvDensity
@@ -1023,7 +1024,9 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
               controller: _scrollController,
               thumbVisibility: true,
               interactive: true,
-              child: SingleChildScrollView(
+              child: forjaSuppressAutoScrollbar(
+                context: context,
+                child: SingleChildScrollView(
                 controller: _scrollController,
                 padding: EdgeInsets.fromLTRB(
                   SettingsTokens.pagePaddingOf(context),
@@ -1047,6 +1050,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
                     ),
                   ),
                 ),
+              ),
               ),
             )
           : Column(
@@ -1556,13 +1560,16 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
           controller: _scrollController,
           thumbVisibility: true,
           interactive: true,
-          child: ListView.separated(
+          child: forjaSuppressAutoScrollbar(
+            context: context,
+            child: ListView.separated(
             controller: _scrollController,
             shrinkWrap: true,
             padding: const EdgeInsets.symmetric(vertical: 4),
             itemCount: widget.options.length,
             separatorBuilder: (_, _) => const SizedBox(height: 2),
             itemBuilder: (_, i) => optionRow(i),
+          ),
           ),
         ),
       ),
@@ -2094,8 +2101,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   bool _focusHandoff = false;
 
   bool get _tv {
-    final policy = ShellScope.inputPolicyOf(context);
-    return policy.useFocusableMoodChips && !policy.scaleOnHover;
+    return ShellScope.inputPolicyOf(context).browseTextUntilActivate;
   }
 
   bool get _browseOnly => _tv && !_editing;

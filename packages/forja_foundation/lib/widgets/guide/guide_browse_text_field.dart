@@ -257,6 +257,7 @@ class GuideBrowseTextFieldState extends State<GuideBrowseTextField> {
           readOnly: _browseOnly,
           showCursor: !_browseOnly || widget.controller.text.isNotEmpty,
           enableInteractiveSelection: !_browseOnly,
+          onTap: _browseOnly ? _beginEditing : null,
           onChanged: widget.onChanged,
           onSubmitted: _onFieldSubmitted,
           textInputAction: TextInputAction.search,

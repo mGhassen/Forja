@@ -11,6 +11,7 @@ class CrossfadeSwap extends StatelessWidget {
     this.switchInCurve = Curves.easeOut,
     this.switchOutCurve = Curves.easeIn,
     // AnimatedSwitcher defaults to center; labels / section titles need start.
+    // Use [layoutBuilder] — older Flutter SDKs have no AnimatedSwitcher.alignment.
     this.alignment = AlignmentDirectional.centerStart,
   });
 
@@ -26,7 +27,15 @@ class CrossfadeSwap extends StatelessWidget {
       duration: duration,
       switchInCurve: switchInCurve,
       switchOutCurve: switchOutCurve,
-      alignment: alignment,
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: alignment,
+          children: <Widget>[
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
       transitionBuilder: (child, animation) {
         return FadeTransition(opacity: animation, child: child);
       },

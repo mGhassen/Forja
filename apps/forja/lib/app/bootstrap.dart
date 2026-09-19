@@ -67,6 +67,8 @@ import 'package:forja/shell/core/forja_shell_keyboard_focus.dart';
 import 'package:forja/shell/core/shell_paint_host_install.dart';
 import 'package:forja/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
+
 bool _appShutdownStarted = false;
 
 /// Stop all media_kit (MPV) players before native teardown.
@@ -430,6 +432,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           title: widget.title,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.themeData,
+          scrollBehavior: const ForjaScrollBehavior(),
           navigatorObservers: [
             PosthogObserver(nameExtractor: ProductAnalytics.routeScreenName),
           ],

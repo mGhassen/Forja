@@ -208,7 +208,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final tv = policy.useFocusableMoodChips && !policy.scaleOnHover;
+    final tv = policy.browseTextUntilActivate;
     final poster = widget.sourceMeta.poster.trim();
     final release = _yearHint;
 

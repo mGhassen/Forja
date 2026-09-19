@@ -1397,9 +1397,16 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                   controller: _pasteCtrl,
                   focusNode: _pasteFocus,
                   enabled: !_importingShareCode,
-                  readOnly: liveLeanbackOnly(context) && !_pasteEditing,
+                  readOnly: liveUseTvFocus(context) && !_pasteEditing,
                   enableInteractiveSelection:
-                      !liveLeanbackOnly(context) || _pasteEditing,
+                      !liveUseTvFocus(context) || _pasteEditing,
+                  onTap: liveUseTvFocus(context) && !_pasteEditing
+                      ? () {
+                          if (!_pasteEditing) {
+                            setState(() => _pasteEditing = true);
+                          }
+                        }
+                      : null,
                   textAlign: TextAlign.center,
                   textCapitalization: embedded
                       ? TextCapitalization.none
@@ -1782,7 +1789,7 @@ class _PortalDialogFieldState extends State<_PortalDialogField> {
   FocusOnKeyEventCallback? _previousHandler;
   bool _editing = false;
 
-  bool get _tvBrowse => liveLeanbackOnly(context) && !_editing;
+  bool get _tvBrowse => liveUseTvFocus(context) && !_editing;
 
   @override
   void initState() {
@@ -1864,13 +1871,18 @@ class _PortalDialogFieldState extends State<_PortalDialogField> {
 
   @override
   Widget build(BuildContext context) {
-    final leanback = liveLeanbackOnly(context);
+    final browse = liveUseTvFocus(context);
     return TextField(
       controller: widget.controller,
       focusNode: widget.focusNode,
       obscureText: widget.obscureText,
-      readOnly: leanback && !_editing,
-      enableInteractiveSelection: !leanback || _editing,
+      readOnly: browse && !_editing,
+      enableInteractiveSelection: !browse || _editing,
+      onTap: browse && !_editing
+          ? () {
+              if (!_editing) setState(() => _editing = true);
+            }
+          : null,
       textInputAction: TextInputAction.done,
       onSubmitted: (_) => widget.onSubmit?.call(),
       style: widget.style,

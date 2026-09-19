@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Session snapshot for the in-player stream stats panel.
@@ -80,7 +81,9 @@ class _PlayerStatsListState extends State<PlayerStatsList> {
       child: Scrollbar(
         controller: _scroll,
         thumbVisibility: true,
-        child: ListView(
+        child: forjaSuppressAutoScrollbar(
+          context: context,
+          child: ListView(
           controller: _scroll,
           primary: false,
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
@@ -116,6 +119,7 @@ class _PlayerStatsListState extends State<PlayerStatsList> {
                 ),
               ),
           ],
+        ),
         ),
       ),
     );

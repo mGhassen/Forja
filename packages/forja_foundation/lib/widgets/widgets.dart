@@ -67,6 +67,7 @@ export 'package:forja_foundation/widgets/chrome/top_bar_actions.dart';
 export 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
 export 'package:forja_foundation/widgets/chrome/filter_sheet_option.dart';
 export 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
+export 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 export 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 export 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 export 'package:forja_foundation/widgets/chrome/layout_stack.dart';

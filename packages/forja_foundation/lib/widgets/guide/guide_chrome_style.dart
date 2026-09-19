@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Guide / live player chrome tokens — flat cinematic shell (RFC-025).
@@ -96,14 +97,14 @@ class LiveTvScrollbar extends StatelessWidget {
       thumbVisibility: true,
       trackVisibility: true,
       interactive: false,
-      thickness: 3,
-      radius: const Radius.circular(2),
-      mainAxisMargin: 6,
-      crossAxisMargin: 2,
-      thumbColor: ForjaShellColors.brandGreen.withValues(alpha: 0.55),
-      trackColor: Colors.white.withValues(alpha: 0.08),
+      thickness: ForjaScrollbarStyle.thickness,
+      radius: ForjaScrollbarStyle.radius,
+      mainAxisMargin: ForjaScrollbarStyle.mainAxisMargin,
+      crossAxisMargin: ForjaScrollbarStyle.crossAxisMargin,
+      thumbColor: ForjaScrollbarStyle.thumbColor,
+      trackColor: ForjaScrollbarStyle.trackColor,
       trackBorderColor: Colors.transparent,
-      child: child,
+      child: forjaSuppressAutoScrollbar(context: context, child: child),
     );
   }
 }

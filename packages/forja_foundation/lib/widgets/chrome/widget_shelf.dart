@@ -46,6 +46,7 @@ class WidgetShelf extends StatefulWidget {
     this.iconSize = ShellTokens.widgetShelfIconSize,
     this.pad = ShellTokens.widgetShelfGap,
     this.onDownEdge,
+    this.chromeItemIndex,
   });
 
   final List<WidgetShelfItem> items;
@@ -64,6 +65,9 @@ class WidgetShelf extends StatefulWidget {
   final double iconSize;
   final double pad;
   final VoidCallback? onDownEdge;
+
+  /// When set, TV focus uses this chrome-row index (not the item index in [items]).
+  final int? chromeItemIndex;
 
   @override
   State<WidgetShelf> createState() => _WidgetShelfState();
@@ -157,7 +161,8 @@ class _WidgetShelfState extends State<WidgetShelf> {
                 item: visible[i],
                 selected: selectedId == visible[i].id ||
                     (selectedId.isEmpty && i == 0 && visible.length == 1),
-                listIndex: widget.items.indexWhere((e) => e.id == visible[i].id),
+                listIndex: widget.chromeItemIndex ??
+                    widget.items.indexWhere((e) => e.id == visible[i].id),
                 isFirst: i == 0,
                 isLast: i == visible.length - 1,
                 height: resolvedHeight,

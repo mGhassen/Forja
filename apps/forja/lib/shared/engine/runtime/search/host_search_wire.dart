@@ -457,16 +457,14 @@ class _KitSearchPageState extends State<KitSearchPage> {
 
   void _ensureSearchFieldFocused({int attempt = 0}) {
     if (!mounted) return;
-    // Desktop (mouse or D-pad): ready to type — same as Search tab.
-    if (!_leanbackTextInput(context)) {
-      _focusSearchFieldBrowse();
-      return;
-    }
-    if (_query.trim().isNotEmpty) return;
+    // Browse focus only — Enter / OK / click arms typing (desktop + TV).
+    if (_query.trim().isNotEmpty && _leanbackTextInput(context)) return;
 
     _focusSearchFieldBrowse();
 
-    if (_focusNode.hasFocus || attempt >= 12) return;
+    if (!_leanbackTextInput(context) || _focusNode.hasFocus || attempt >= 12) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureSearchFieldFocused(attempt: attempt + 1);
     });
@@ -616,8 +614,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
   bool _leanbackTextInput(BuildContext context) {
-    final policy = ShellScope.inputPolicyOf(context);
-    return policy.useFocusableMoodChips && !policy.scaleOnHover;
+    return ShellScope.inputPolicyOf(context).browseTextUntilActivate;
   }
 
   String _effectiveSearchQuery([String? typed]) {
@@ -1616,7 +1613,9 @@ class _KitSearchPageState extends State<KitSearchPage> {
 
   String _submitSearchHint() {
     if (_filtersOpen) return 'Set filters, then tap Search';
-    if (_leanbackTextInput(context)) return 'Press OK to search';
+    if (ShellScope.inputPolicyOf(context).leanbackOnly) {
+      return 'Press OK to search';
+    }
     return 'Press Enter to search';
   }
 

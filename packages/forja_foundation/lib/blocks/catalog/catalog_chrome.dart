@@ -152,6 +152,8 @@ class CatalogTopChrome extends StatefulWidget {
     this.height,
     this.padding,
     this.gap,
+    this.onDownEdge,
+    this.wrapRow,
   });
 
   final List<Map<String, dynamic>> actions;
@@ -174,6 +176,12 @@ class CatalogTopChrome extends StatefulWidget {
 
   /// Pack `gap` between leading/trailing chips — omit → 8.
   final double? gap;
+
+  /// Pack `focusDown` — ↓ from any chrome chip (TV remembered restore).
+  final VoidCallback? onDownEdge;
+
+  /// Host wraps the strip in a TV row (e.g. [TvKitRow] chrome).
+  final Widget Function(Widget child)? wrapRow;
 
   @override
   State<CatalogTopChrome> createState() => _CatalogTopChromeState();
@@ -283,8 +291,9 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
   Widget? _buildShelf(
     BuildContext context,
     Map<String, dynamic> action,
-    String actionId,
-  ) {
+    String actionId, {
+    required int tvItemIndex,
+  }) {
     final maps = _actionItemMaps(action);
     if (maps.isEmpty) return null;
     final selected = (widget.selections[actionId] ??
@@ -310,6 +319,8 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
       fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.widgetShelfFontSize,
       iconSize: propsOptDouble(action, 'iconSize') ?? ShellTokens.widgetShelfIconSize,
       pad: propsOptDouble(action, 'pad') ?? ShellTokens.widgetShelfGap,
+      onDownEdge: widget.onDownEdge,
+      chromeItemIndex: tvItemIndex,
       items: [
         for (final m in maps)
           WidgetShelfItem(
@@ -322,7 +333,11 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
     );
   }
 
-  Widget? _buildViewGroup(Map<String, dynamic> action, String actionId) {
+  Widget? _buildViewGroup(
+    Map<String, dynamic> action,
+    String actionId, {
+    required int tvItemIndex,
+  }) {
     final maps = _actionItemMaps(action);
     if (maps.isEmpty) return null;
     final selected = (widget.selections[actionId] ??
@@ -336,6 +351,8 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
       height: propsOptDouble(action, 'height'),
       iconSize: propsOptDouble(action, 'iconSize'),
       dividerHeight: propsOptDouble(action, 'dividerHeight'),
+      onDownEdge: widget.onDownEdge,
+      baseTvItemIndex: tvItemIndex,
       items: [
         for (final m in maps)
           ViewButtonItem(
@@ -386,11 +403,13 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
     final leading = <Widget>[];
     final trailing = <Widget>[];
     Widget? expandShelf;
+    var tvIndex = 0;
     for (final action in widget.actions) {
       final actionId = (action['id'] ?? '').toString().trim();
       if (actionId.isEmpty) continue;
       if (!_actionVisible(context, action, widget.selections)) continue;
       final bucket = _isTrailing(action) ? trailing : leading;
+      final chipIndex = tvIndex++;
       final slot = widget.actionSlots[actionId];
       if (slot != null) {
         bucket.add(slot);
@@ -425,7 +444,12 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
               style == 'iconOnly');
 
       if (isShelf && nested.isNotEmpty) {
-        final shelf = _buildShelf(context, action, actionId);
+        final shelf = _buildShelf(
+          context,
+          action,
+          actionId,
+          tvItemIndex: chipIndex,
+        );
         if (shelf != null) {
           if (_expandOnHover(action) && compact) expandShelf = shelf;
           bucket.add(shelf);
@@ -434,7 +458,11 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
       }
 
       if (isViewGroup) {
-        final group = _buildViewGroup(action, actionId);
+        final group = _buildViewGroup(
+          action,
+          actionId,
+          tvItemIndex: chipIndex,
+        );
         if (group != null) {
           bucket.add(group);
           continue;
@@ -459,6 +487,8 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
             fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
             iconSize: propsOptDouble(action, 'iconSize'),
             gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
+            tvItemIndex: chipIndex,
+            onDownEdge: widget.onDownEdge,
             onTap: widget.onSelect == null
                 ? () {}
                 : () => widget.onSelect!(
@@ -486,6 +516,8 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
             fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
             iconSize: propsOptDouble(action, 'iconSize'),
             gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
+            tvItemIndex: chipIndex,
+            onDownEdge: widget.onDownEdge,
             onTap: widget.onSelect == null
                 ? () {}
                 // Host opens the real Catalog / Schedule sheet (not a flat fallback).
@@ -506,6 +538,8 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
           fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
           iconSize: propsOptDouble(action, 'iconSize'),
           gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
+          tvItemIndex: chipIndex,
+          onDownEdge: widget.onDownEdge,
           onTap: widget.onSelect == null
               ? () {}
               : () => widget.onSelect!(actionId, actionId),
@@ -521,6 +555,7 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
       center: hideSiblings ? null : widget.center,
       height: widget.height,
       gap: widget.gap ?? ShellTokens.topBarActionsGap,
+      wrapRow: widget.wrapRow,
       padding: widget.padding ??
           EdgeInsets.fromLTRB(
             ShellTokens.compactChromeLeadingInset(context),

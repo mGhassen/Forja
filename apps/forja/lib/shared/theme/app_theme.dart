@@ -11,6 +11,7 @@ import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 export 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
@@ -142,6 +143,7 @@ class AppTheme {
       ),
       // Canonical Forja toggle - see package [Switch] / [forjaSwitchThemeData].
       switchTheme: forjaSwitchThemeData,
+      scrollbarTheme: ForjaScrollbarStyle.theme,
       extensions: [ForjaThemeExtension.dark()],
     );
   }

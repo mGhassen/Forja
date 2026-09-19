@@ -6,12 +6,10 @@ import 'package:forja_foundation/widgets/tv/tv_search_browse_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 
-/// Leanback TV only — desktop has arrow-key focus too but should type immediately.
+/// Desktop hybrid + leanback TV — focus highlights only until Enter / OK / tap.
 bool shellTvBrowseSearch(BuildContext context) {
   final policy = ShellScope.maybeOf(context)?.inputPolicy;
-  if (policy != null) {
-    return policy.useFocusableMoodChips && !policy.scaleOnHover;
-  }
+  if (policy != null) return policy.browseTextUntilActivate;
   return ShellTokens.isAndroidTvDevice;
 }
 
@@ -265,6 +263,7 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
           readOnly: _browseOnly,
           showCursor: !_browseOnly || widget.controller.text.isNotEmpty,
           enableInteractiveSelection: !_browseOnly,
+          onTap: _browseOnly ? _beginEditing : null,
           onChanged: widget.onChanged,
           onSubmitted: _onFieldSubmitted,
           textInputAction: TextInputAction.search,

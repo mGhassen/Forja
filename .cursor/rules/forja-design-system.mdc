@@ -97,16 +97,17 @@ Prefer `ForjaSwitch(scale: ForjaSwitch.settingsScale)` in dense settings lists. 
 - Platform layout and input: read `ShellScope.metrics` / `ShellScope.inputPolicy` — not `ShellTokens.isTvLayout` in widgets.
 - Platform shell profile switches belong in foundation empty-shell primitives; app only picks profile and wires pack destinations into the body slot.
 
-### Text inputs (TV) — focus only until OK
+### Text inputs (desktop + TV) — focus only until OK / Enter
 
-**D-pad land = focus/highlight only. Never activate.** Opening the keyboard, edit mode, or search chrome requires explicit OK / Select / Enter / tap — never `onFocusChange(true)` or autofocus-into-edit.
+**Keyboard / D-pad land = focus/highlight only. Never activate.** Opening the keyboard, edit mode, or search chrome requires explicit OK / Select / Enter / tap — never `onFocusChange(true)` or autofocus-into-edit. Phone keeps type-on-focus.
 
 | Widget | Role |
 |--------|------|
-| `TvBrowseTextField` | TV search/query fields — browse until activate, then edit + IME |
+| `TvBrowseTextField` | Search/query fields — browse until activate, then edit + IME |
 | `SettingsTextField` | Settings rows — same browse/edit split |
+| `ShellInputPolicy.browseTextUntilActivate` | Gate (desktop + leanback); do not reuse `leanbackOnly` |
 
-Forbidden on TV: raw `TextField` that becomes editable / opens IME when focused; wiring focus listeners to `openSearch` / `beginEditing`. Full rule: `forja-tv-scope.mdc` → **TV text inputs**.
+Forbidden on desktop/TV: raw `TextField` that becomes editable / opens IME when focused; wiring focus listeners to `openSearch` / `beginEditing`. Full rule: `forja-tv-scope.mdc` → **text inputs**.
 
 ## Forbidden without explicit approval
 

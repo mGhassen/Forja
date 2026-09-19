@@ -12,6 +12,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/update_dialog_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 import 'package:forja/shared/services/update/app_update_macos_installer.dart';
@@ -1292,13 +1293,16 @@ class _ReleaseNotesScrollerState extends State<_ReleaseNotesScroller> {
     return Scrollbar(
       controller: _controller,
       thumbVisibility: !widget.layout.isTv,
-      child: SingleChildScrollView(
+      child: forjaSuppressAutoScrollbar(
+        context: context,
+        child: SingleChildScrollView(
         controller: _controller,
         padding: EdgeInsets.only(
           right: widget.layout.isTv ? 0 : 10,
           bottom: widget.layout.isTv ? 8 : 12,
         ),
         child: widget.child,
+      ),
       ),
     );
   }

@@ -512,7 +512,11 @@ class PackPaintTree extends StatelessWidget {
                   scope?.selectedId((a['id'] as Object).toString()) ??
                       (a['default'] ?? '').toString(),
         },
-        actionSlots: _portalsActionSlots(context, actions: actions),
+        actionSlots: _portalsActionSlots(
+          context,
+          actions: actions,
+          onDownEdge: _chromeFocusDown(scope, merged),
+        ),
         wrapBody: _portalsWrapBody(context, actions: actions),
         onActionSelect: (actionId, value) {
           _dispatchTopBarAction(
@@ -555,6 +559,12 @@ class PackPaintTree extends StatelessWidget {
         if (t == LayoutTypes.topBar) {
           merged['actions'] ??= child['actions'];
           merged['title'] ??= child['title'] ?? child['label'];
+          if (child['focusDown'] != null) {
+            merged['focusDown'] ??= child['focusDown'];
+          }
+          if (child['focusUp'] != null) {
+            merged['focusUp'] ??= child['focusUp'];
+          }
         } else if (t == LayoutTypes.categoryBar) {
           categoryChild = child;
           final barId = (child['id'] ?? 'kind').toString();
@@ -623,22 +633,31 @@ class PackPaintTree extends StatelessWidget {
                 .toString(),
             onSelect: (id) => scope?.onSelect(barId, id, toggle: false),
             focusDown: categoryChild['focusDown']?.toString(),
+            focusUp: categoryChild['focusUp']?.toString(),
           )
         : null;
+    final chromeDown = _chromeFocusDown(scope, merged);
     return Consumer(
       builder: (context, ref, _) {
         final status = _topBarFeedStatus(ref);
+        final paintedActions = status.actions(actions);
         return TopBodyBlock.fromProps(
           merged,
           grid: feed,
           kindsBar: kindsBar,
-          actions: status.actions(actions),
+          actions: paintedActions,
           actionSelections: actionSelections,
           actionSelectionLabels:
               _topBarSelectionLabels(actionSelections, actions),
-          actionSlots: _portalsActionSlots(context, actions: actions),
+          actionSlots: _portalsActionSlots(
+            context,
+            actions: paintedActions,
+            onDownEdge: chromeDown,
+          ),
           center: status.center,
           wrapBody: _portalsWrapBody(context, actions: actions),
+          onDownEdge: chromeDown,
+          wrapChrome: _chromeTvWrap(context, actions: paintedActions),
           onActionSelect: (actionId, value) {
             _dispatchTopBarAction(
               context,
@@ -722,10 +741,12 @@ class PackPaintTree extends StatelessWidget {
     required String selectedId,
     required ValueChanged<String> onSelect,
     String? focusDown,
+    String? focusUp,
   }) {
     if (items.isEmpty) return const SizedBox.shrink();
     final scope = LayoutScope.maybeOf(context);
     final down = focusDown?.trim() ?? '';
+    final up = focusUp?.trim() ?? '';
     return Padding(
       key: ValueKey('kind-circles-$barId'),
       padding: EdgeInsets.only(
@@ -765,11 +786,19 @@ class PackPaintTree extends StatelessWidget {
                       listIndex: i,
                       onDownEdge: down.isEmpty
                           ? null
-                          : () => scope?.resolveFocusEdge(down)?.call(),
+                          : () => scope
+                              ?.resolveFocusEdge(down, last: true)
+                              ?.call(),
+                      onUpEdge: up.isEmpty
+                          ? null
+                          : () =>
+                              scope?.resolveFocusEdge(up, last: true)?.call(),
                       onTap: () {
                         onSelect(item.id);
                         if (down.isNotEmpty) {
-                          scope?.resolveFocusEdge(down)?.call();
+                          scope
+                              ?.resolveFocusEdge(down, last: true)
+                              ?.call();
                         }
                       },
                     );
@@ -799,7 +828,7 @@ class PackPaintTree extends StatelessWidget {
             body = TvKitRow(
               tabId: tab,
               rowId: barId,
-              sortOrder: 0,
+              sortOrder: 1,
               itemCount: items.length,
               child: body,
             );
@@ -1053,6 +1082,7 @@ class PackPaintTree extends StatelessWidget {
   Map<String, Widget> _portalsActionSlots(
     BuildContext context, {
     required List<Map<String, dynamic>> actions,
+    VoidCallback? onDownEdge,
   }) {
     final tab = (tabId ?? '').trim();
     if (tab.isEmpty) return const {};
@@ -1060,8 +1090,10 @@ class PackPaintTree extends StatelessWidget {
     Map<String, dynamic>? portalsAction;
     Map<String, dynamic>? searchAction;
     Map<String, dynamic>? sortAction;
+    final visibleIds = <String>[];
     for (final a in actions) {
       final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty) continue;
       final verb = (a['action'] ?? '').toString().trim().toLowerCase();
       if (a['hideWhenCompact'] == true &&
           ShellTokens.usesCompactNavDrawer(context)) {
@@ -1071,6 +1103,7 @@ class PackPaintTree extends StatelessWidget {
           !ShellTokens.usesCompactNavDrawer(context)) {
         continue;
       }
+      visibleIds.add(id);
       if (portalsAction == null &&
           (id == 'portals' || verb == 'portals')) {
         portalsAction = a;
@@ -1085,6 +1118,11 @@ class PackPaintTree extends StatelessWidget {
         sortAction = a;
       }
     }
+    int chromeIndex(String actionId) {
+      final i = visibleIds.indexOf(actionId);
+      return i < 0 ? 0 : i;
+    }
+
     if (searchAction != null) {
       final tooltip =
           (searchAction['label'] ?? 'Search').toString().trim();
@@ -1094,24 +1132,30 @@ class PackPaintTree extends StatelessWidget {
           .toString()
           .trim();
       final slotId = (searchAction['id'] ?? 'search').toString().trim();
-      out[slotId.isEmpty ? 'search' : slotId] = ShellPaintTvTabScope(
+      final searchId = slotId.isEmpty ? 'search' : slotId;
+      out[searchId] = ShellPaintTvTabScope(
         tabId: tab,
         child: KitEventListSearch(
-        tooltip: tooltip.isEmpty ? 'Search' : tooltip,
-        placeholder: hint.isEmpty ? 'Search…' : hint,
-        tvItemIndex: 0,
-        collapsedSize: PackPaintArtifact.packDouble(searchAction['collapsedSize']),
-        expandedWidth: PackPaintArtifact.packDouble(searchAction['expandedWidth']),
-        fontSize: PackPaintArtifact.packDouble(searchAction['fontSize']),
-        iconSize: PackPaintArtifact.packDouble(searchAction['iconSize']),
-        fieldIconSize: PackPaintArtifact.packDouble(searchAction['fieldIconSize']),
+          tooltip: tooltip.isEmpty ? 'Search' : tooltip,
+          placeholder: hint.isEmpty ? 'Search…' : hint,
+          tvItemIndex: chromeIndex(searchId),
+          onDownEdge: onDownEdge,
+          collapsedSize:
+              PackPaintArtifact.packDouble(searchAction['collapsedSize']),
+          expandedWidth:
+              PackPaintArtifact.packDouble(searchAction['expandedWidth']),
+          fontSize: PackPaintArtifact.packDouble(searchAction['fontSize']),
+          iconSize: PackPaintArtifact.packDouble(searchAction['iconSize']),
+          fieldIconSize:
+              PackPaintArtifact.packDouble(searchAction['fieldIconSize']),
         ),
       );
     }
     if (sortAction != null) {
       final slotId = (sortAction['id'] ?? 'sort').toString().trim();
       final label = (sortAction['label'] ?? 'Sort').toString().trim();
-      out[slotId.isEmpty ? 'sort' : slotId] = Consumer(
+      final sortId = slotId.isEmpty ? 'sort' : slotId;
+      out[sortId] = Consumer(
         builder: (ctx, ref, _) => IptvSortActionHost.buildSortChip(
           ctx,
           ref,
@@ -1119,7 +1163,7 @@ class PackPaintTree extends StatelessWidget {
           label: label.isEmpty ? 'Sort' : label,
           icon: Icons.filter_list_rounded,
           tvRowId: 'chrome',
-          tvItemIndex: 1,
+          tvItemIndex: chromeIndex(sortId),
         ),
       );
     }
@@ -1143,8 +1187,9 @@ class PackPaintTree extends StatelessWidget {
           ctx,
           ref,
           tabId: tab,
-          rowId: 'portals',
-          itemIndex: 0,
+          rowId: 'chrome',
+          itemIndex: chromeIndex('portals'),
+          onDownEdge: onDownEdge,
           action: {
             if (hoist.isNotEmpty) 'hoistSource': hoist,
             for (final k in sizeKeys)
@@ -1154,6 +1199,49 @@ class PackPaintTree extends StatelessWidget {
       );
     }
     return out;
+  }
+
+  /// Pack top-bar `focusDown` → remembered restore (issue 265).
+  VoidCallback? _chromeFocusDown(
+    LayoutScope? scope,
+    Map<String, dynamic> props, {
+    Map<String, dynamic>? topBarChild,
+  }) {
+    final raw = (props['focusDown'] ?? topBarChild?['focusDown'] ?? '')
+        .toString()
+        .trim();
+    if (raw.isEmpty) return null;
+    return scope?.resolveFocusEdge(raw, last: true);
+  }
+
+  Widget Function(Widget child)? _chromeTvWrap(
+    BuildContext context, {
+    required List<Map<String, dynamic>> actions,
+  }) {
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty || !ShellPaintScope.useTvFocusOf(context)) return null;
+    var count = 0;
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty) continue;
+      if (a['hideWhenCompact'] == true &&
+          ShellTokens.usesCompactNavDrawer(context)) {
+        continue;
+      }
+      if (a['compactOnly'] == true &&
+          !ShellTokens.usesCompactNavDrawer(context)) {
+        continue;
+      }
+      count++;
+    }
+    if (count <= 0) count = 1;
+    return (child) => TvKitRow(
+          tabId: tab,
+          rowId: 'chrome',
+          sortOrder: -1,
+          itemCount: count,
+          child: child,
+        );
   }
 
   /// Always-open list search painted above a vertical category rail.
@@ -1812,6 +1900,15 @@ class PackPaintTree extends StatelessWidget {
               onArmFocusMemory: liveArmBrowserStreamFocusMemory,
               onLeftEdge: leftEdge,
               onRightEdge: rightEdge,
+              onScrollIntoViewChanged: tab.isEmpty
+                  ? null
+                  : (scroll) {
+                      ShellTvFocusCoordinator.setRowScrollIntoView(
+                        tab,
+                        rowId,
+                        scroll,
+                      );
+                    },
             );
             if (tab.isEmpty || !ShellPaintScope.useTvFocusOf(context)) {
               return grid;
@@ -1899,6 +1996,15 @@ class PackPaintTree extends StatelessWidget {
                           onArmFocusMemory: liveArmBrowserStreamFocusMemory,
                           onLeftEdge: leftEdge,
                           onRightEdge: rightEdge,
+                          onScrollIntoViewChanged: tab.isEmpty
+                              ? null
+                              : (scroll) {
+                                  ShellTvFocusCoordinator.setRowScrollIntoView(
+                                    tab,
+                                    rowId,
+                                    scroll,
+                                  );
+                                },
                         );
                         if (tab.isEmpty ||
                             !ShellPaintScope.useTvFocusOf(context)) {
@@ -2383,6 +2489,7 @@ class PackPaintTree extends StatelessWidget {
         selectedId: selected,
         onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
         focusDown: spec['focusDown']?.toString(),
+        focusUp: spec['focusUp']?.toString(),
       );
     }
     if (vertical) {
@@ -2500,19 +2607,27 @@ class PackPaintTree extends StatelessWidget {
               4,
             ),
           );
+    final chromeDown = _chromeFocusDown(scope, spec);
     return Consumer(
       builder: (context, ref, _) {
         final status = _topBarFeedStatus(ref);
+        final paintedActions = status.actions(actions);
         return CatalogTopChrome(
-          actions: status.actions(actions),
+          actions: paintedActions,
           title: (spec['title'] ?? spec['label'] ?? '').toString(),
-          actionSlots: _portalsActionSlots(context, actions: actions),
+          actionSlots: _portalsActionSlots(
+            context,
+            actions: paintedActions,
+            onDownEdge: chromeDown,
+          ),
           selections: selections,
           selectionLabels: _topBarSelectionLabels(selections, actions),
           center: status.center,
           height: height,
           gap: gap,
           padding: padding,
+          onDownEdge: chromeDown,
+          wrapRow: _chromeTvWrap(context, actions: paintedActions),
           onSelect: (actionId, value) {
             _dispatchTopBarAction(
               context,
