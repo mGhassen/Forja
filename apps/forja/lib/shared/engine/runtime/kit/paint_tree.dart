@@ -44,6 +44,7 @@ import 'package:forja/shared/playback/open/history_playback_resume.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/sources/resolve/resolve_panel_host.dart';
+import 'package:forja/shared/player/sources/kit/kit_sources_panel.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -1084,6 +1085,67 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
+  /// Chrome focus slots for one top-bar action (View List|Cards = 2).
+  int _chromeActionSlotSpan(Map<String, dynamic> action) {
+    final id = (action['id'] ?? '').toString().trim().toLowerCase();
+    final verb =
+        (action['action'] ?? action['id'] ?? '').toString().trim().toLowerCase();
+    final style =
+        (action['style'] ?? action['paint'] ?? '').toString().trim().toLowerCase();
+    final nested = propsIdLabelList(action, 'items');
+    final isView = id == 'view' || verb == 'view';
+    final isViewGroup = isView &&
+        nested.isNotEmpty &&
+        (style == 'group' ||
+            style == 'toggle' ||
+            style == 'buttons' ||
+            style.isEmpty);
+    return isViewGroup ? nested.length : 1;
+  }
+
+  bool _chromeActionVisible(
+    BuildContext context,
+    Map<String, dynamic> action,
+  ) {
+    if (action['hideWhenCompact'] == true &&
+        ShellTokens.usesCompactNavDrawer(context)) {
+      return false;
+    }
+    if (action['compactOnly'] == true &&
+        !ShellTokens.usesCompactNavDrawer(context)) {
+      return false;
+    }
+    return true;
+  }
+
+  int _chromeIndexOfAction(
+    BuildContext context,
+    List<Map<String, dynamic>> actions,
+    String actionId,
+  ) {
+    var index = 0;
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty || !_chromeActionVisible(context, a)) continue;
+      if (id == actionId) return index;
+      index += _chromeActionSlotSpan(a);
+    }
+    return 0;
+  }
+
+  int _chromeTotalSlots(
+    BuildContext context,
+    List<Map<String, dynamic>> actions,
+  ) {
+    var count = 0;
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty || !_chromeActionVisible(context, a)) continue;
+      count += _chromeActionSlotSpan(a);
+    }
+    return count;
+  }
+
   Map<String, Widget> _portalsActionSlots(
     BuildContext context, {
     required List<Map<String, dynamic>> actions,
@@ -1095,20 +1157,10 @@ class PackPaintTree extends StatelessWidget {
     Map<String, dynamic>? portalsAction;
     Map<String, dynamic>? searchAction;
     Map<String, dynamic>? sortAction;
-    final visibleIds = <String>[];
     for (final a in actions) {
       final id = (a['id'] ?? '').toString().trim();
-      if (id.isEmpty) continue;
+      if (id.isEmpty || !_chromeActionVisible(context, a)) continue;
       final verb = (a['action'] ?? '').toString().trim().toLowerCase();
-      if (a['hideWhenCompact'] == true &&
-          ShellTokens.usesCompactNavDrawer(context)) {
-        continue;
-      }
-      if (a['compactOnly'] == true &&
-          !ShellTokens.usesCompactNavDrawer(context)) {
-        continue;
-      }
-      visibleIds.add(id);
       if (portalsAction == null &&
           (id == 'portals' || verb == 'portals')) {
         portalsAction = a;
@@ -1122,10 +1174,6 @@ class PackPaintTree extends StatelessWidget {
           tab == 'iptv') {
         sortAction = a;
       }
-    }
-    int chromeIndex(String actionId) {
-      final i = visibleIds.indexOf(actionId);
-      return i < 0 ? 0 : i;
     }
 
     if (searchAction != null) {
@@ -1143,7 +1191,7 @@ class PackPaintTree extends StatelessWidget {
         child: KitEventListSearch(
           tooltip: tooltip.isEmpty ? 'Search' : tooltip,
           placeholder: hint.isEmpty ? 'Search…' : hint,
-          tvItemIndex: chromeIndex(searchId),
+          tvItemIndex: _chromeIndexOfAction(context, actions, searchId),
           onDownEdge: onDownEdge,
           collapsedSize:
               PackPaintArtifact.packDouble(searchAction['collapsedSize']),
@@ -1168,7 +1216,7 @@ class PackPaintTree extends StatelessWidget {
           label: label.isEmpty ? 'Sort' : label,
           icon: Icons.filter_list_rounded,
           tvRowId: 'chrome',
-          tvItemIndex: chromeIndex(sortId),
+          tvItemIndex: _chromeIndexOfAction(context, actions, sortId),
         ),
       );
     }
@@ -1193,7 +1241,7 @@ class PackPaintTree extends StatelessWidget {
           ref,
           tabId: tab,
           rowId: 'chrome',
-          itemIndex: chromeIndex('portals'),
+          itemIndex: _chromeIndexOfAction(context, actions, 'portals'),
           onDownEdge: onDownEdge,
           action: {
             if (hoist.isNotEmpty) 'hoistSource': hoist,
@@ -1225,26 +1273,12 @@ class PackPaintTree extends StatelessWidget {
   }) {
     final tab = (tabId ?? '').trim();
     if (tab.isEmpty || !ShellPaintScope.useTvFocusOf(context)) return null;
-    var count = 0;
-    for (final a in actions) {
-      final id = (a['id'] ?? '').toString().trim();
-      if (id.isEmpty) continue;
-      if (a['hideWhenCompact'] == true &&
-          ShellTokens.usesCompactNavDrawer(context)) {
-        continue;
-      }
-      if (a['compactOnly'] == true &&
-          !ShellTokens.usesCompactNavDrawer(context)) {
-        continue;
-      }
-      count++;
-    }
-    if (count <= 0) count = 1;
+    final count = _chromeTotalSlots(context, actions);
     return (child) => TvKitRow(
           tabId: tab,
           rowId: 'chrome',
           sortOrder: -1,
-          itemCount: count,
+          itemCount: count <= 0 ? 1 : count,
           child: child,
         );
   }
@@ -1792,6 +1826,11 @@ class PackPaintTree extends StatelessWidget {
           void onListItemTap(Map<String, dynamic> item) {
             if (openMode == 'panel') {
               chrome?.onSelectListItem(item);
+              final hubTab = (tabId ?? '').trim();
+              if (hubTab.isNotEmpty &&
+                  ShellPaintScope.useTvFocusOf(context)) {
+                KitSourcesPanel.claimProvidersFocus(forTabId: hubTab);
+              }
               return;
             }
             // Detail page — same entry + panelTabs as the side panel.
@@ -1875,6 +1914,10 @@ class PackPaintTree extends StatelessWidget {
               (spec['focusRight'] ?? '').toString(),
               last: true,
             );
+            final upEdge = scope?.resolveFocusEdge(
+              (spec['focusUp'] ?? '').toString(),
+              last: true,
+            );
             final rowId =
                 listId.isEmpty ? IptvCatalogLand.itemsRowId : listId;
             final tab = (tabId ?? '').trim();
@@ -1905,6 +1948,7 @@ class PackPaintTree extends StatelessWidget {
               onArmFocusMemory: liveArmBrowserStreamFocusMemory,
               onLeftEdge: leftEdge,
               onRightEdge: rightEdge,
+              onUpEdge: upEdge,
               onScrollIntoViewChanged: tab.isEmpty
                   ? null
                   : (scroll) {

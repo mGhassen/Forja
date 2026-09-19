@@ -94,8 +94,11 @@ class KitSourcesPanel extends StatelessWidget {
   final ValueChanged<bool>? onLoadingChanged;
   final int reloadNonce;
 
-  static void claimProvidersFocus({int maxTries = 24}) {
-    SourcesPanelTv.focusKindItem(maxTries: maxTries);
+  static void claimProvidersFocus({
+    int maxTries = 24,
+    String? forTabId,
+  }) {
+    SourcesPanelTv.focusKindItem(maxTries: maxTries, forTabId: forTabId);
   }
 
   String? _effectiveTvTabId(BuildContext context) {

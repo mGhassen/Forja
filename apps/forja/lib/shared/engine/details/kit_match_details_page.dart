@@ -13,6 +13,7 @@ import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play_row.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/details/details_hero.dart';
@@ -111,6 +112,15 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
         if (mounted) setState(() {});
       },
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Land D-pad on Providers (first hero tab) when match details opens.
+      ShellTvFocusCoordinator.focusRowItem(
+        MediaDetailsTv.tabId,
+        MediaDetailsTv.heroRowId,
+        0,
+      );
+    });
   }
 
   @override

@@ -409,12 +409,6 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
       if (actionId.isEmpty) continue;
       if (!_actionVisible(context, action, widget.selections)) continue;
       final bucket = _isTrailing(action) ? trailing : leading;
-      final chipIndex = tvIndex++;
-      final slot = widget.actionSlots[actionId];
-      if (slot != null) {
-        bucket.add(slot);
-        continue;
-      }
       final verb = _verb(action);
       final style = _style(action);
       final icon = catalogChromeActionIcon(action);
@@ -430,6 +424,15 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
               style == 'toggle' ||
               style == 'buttons' ||
               style.isEmpty);
+      // View List|Cards are two chrome focus slots — not one shared index.
+      final slotSpan = isViewGroup ? nested.length : 1;
+      final chipIndex = tvIndex;
+      tvIndex += slotSpan;
+      final slot = widget.actionSlots[actionId];
+      if (slot != null) {
+        bucket.add(slot);
+        continue;
+      }
       final isIconOnly = nested.isEmpty &&
           (actionId == 'search' ||
               actionId == 'refresh' ||

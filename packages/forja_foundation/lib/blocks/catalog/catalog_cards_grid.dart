@@ -136,6 +136,7 @@ class CatalogCardsGrid extends StatelessWidget {
     this.onArmFocusMemory,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onUpEdge,
     this.onScrollIntoViewChanged,
   });
 
@@ -197,6 +198,9 @@ class CatalogCardsGrid extends StatelessWidget {
   /// Pack `focusLeft` / `focusRight` (e.g. IPTV → cats, Live Sports → Providers).
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+
+  /// Pack `focusUp` — first list row / first grid row (Live Sports → kind).
+  final VoidCallback? onUpEdge;
 
   /// Host focuses TV item after scroll (lazy grid).
   final ValueChanged<int>? onRequestFocusAt;
@@ -393,6 +397,7 @@ class CatalogCardsGrid extends StatelessWidget {
             listIndex: i,
             onLeftEdge: onLeftEdge,
             onRightEdge: onRightEdge,
+            onUpEdge: i == 0 ? onUpEdge : null,
             onTap: onItemTap == null ? null : () => onItemTap!(item),
           );
         },
@@ -450,6 +455,7 @@ class CatalogCardsGrid extends StatelessWidget {
                 gridColumns: layout.columns,
                 onLeftEdge: _gridOnLeftEdge(i, layout.columns),
                 onRightEdge: _gridOnRightEdge(i, layout.columns),
+                onUpEdge: i < layout.columns ? onUpEdge : null,
                 onTap: onItemTap == null ? null : () => onItemTap!(item),
               );
             },
@@ -1032,6 +1038,7 @@ class InteractiveEventCard extends StatefulWidget {
     this.gridColumns,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onUpEdge,
   });
 
   final Map<String, dynamic> props;
@@ -1043,6 +1050,7 @@ class InteractiveEventCard extends StatefulWidget {
   final int? gridColumns;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
 
   static double cardWidth(BuildContext context) {
     final base = catalogContinueCardWidth(context, wide: true);
@@ -1141,6 +1149,7 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       tvItemIndex: widget.gridIndex,
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
+      onUpEdge: widget.onUpEdge,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: _setHovered,
       child: ListenableBuilder(
@@ -1161,6 +1170,7 @@ class _HoverDenseTile extends StatefulWidget {
     this.listIndex,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onUpEdge,
     this.onTap,
   });
 
@@ -1172,6 +1182,7 @@ class _HoverDenseTile extends StatefulWidget {
   final int? listIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
   final VoidCallback? onTap;
 
   @override
@@ -1236,6 +1247,7 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
       tvZone: ShellPaintTvZone.row,
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
+      onUpEdge: widget.onUpEdge,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: _setHovered,
       child: painted,

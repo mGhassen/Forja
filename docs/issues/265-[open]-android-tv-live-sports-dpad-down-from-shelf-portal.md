@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,7 @@
 | 3 | I265-T03 | Top bar `focusDown` uses `last: true`; Live Sports packs target `schedule` | ✅ |
 | 4 | I265-T04 | `KitListWidget` registers scroll helper; dense ↑ prefers kind bar | ✅ |
 | 5 | I265-T05 | Reattach after KitList→PackPaintTree: `CatalogCardsGrid` scroll registry, chrome/`kind` `last: true` edges, `TvKitRow(chrome)` | ✅ |
+| 6 | I265-T06 | Chrome ↓ → kind; View List+Cards dual chrome indices; schedule `focusUp`; claim Providers on open | ✅ |
 
 ---
 
@@ -32,7 +33,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I265-A01 | Manual ATV: match mid-list → ↑ sport shelf → ↓ lands on same match (list scrolls) | ⬜ |
-| 2 | I265-A02 | Manual ATV: match → ↑ Portals → ↓ lands on same match | ⬜ |
+| 2 | I265-A02 | Manual ATV: top bar ↓ → kind; kind ↓ → last match; View ←→ List/Cards; OK match → Providers; ←→ schedule↔panel | ⬜ |
 
 ---
 
