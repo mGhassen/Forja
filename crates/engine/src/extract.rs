@@ -12,7 +12,6 @@ use rquickjs::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 
 /// Same key as `crates/archive/anime/src/extractors/miruro.rs` PIPE_OBF_KEY.
 const PIPE_OBF_KEY: [u8; 16] = [
@@ -561,25 +560,6 @@ async fn native_fetch(
     .to_string())
 }
 
-fn solve_pow(challenge: String, difficulty: i32, max: i32) -> String {
-    if challenge.is_empty() || !(0..=8).contains(&difficulty) {
-        return String::new();
-    }
-    let cap = max.clamp(1, 5_000_000) as u32;
-    let prefix = "0".repeat(difficulty as usize);
-    for n in 0..cap {
-        if cancelled() {
-            return String::new();
-        }
-        let h = format!("{:x}", Sha256::digest(format!("{challenge}{n}").as_bytes()));
-        if h.starts_with(&prefix) {
-            return serde_json::json!({ "challenge": challenge, "nonce": n.to_string() })
-                .to_string();
-        }
-    }
-    String::new()
-}
-
 pub async fn extract(req: ExtractRequest) -> ExtractResult {
     let timeout = Duration::from_millis(req.timeout_ms.max(1_000));
     let token = utils::engine_cancel::cancellation_token();
@@ -744,14 +724,6 @@ async fn run_in_ctx<'js>(
         .set("__native_tmdb_match", tmdb_match_fn)
         .map_err(|e| e.to_string())?;
 
-    let pow_fn = Function::new(ctx.clone(), solve_pow)
-        .map_err(|e| e.to_string())?
-        .with_name("__native_solve_pow")
-        .map_err(|e| e.to_string())?;
-    ctx.globals()
-        .set("__native_solve_pow", pow_fn)
-        .map_err(|e| e.to_string())?;
-
     let encode_pipe_fn = Function::new(ctx.clone(), encode_pipe)
         .map_err(|e| e.to_string())?
         .with_name("__native_encode_pipe")
@@ -833,9 +805,9 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
     ctx.globals()
         .set(
-            "__native_solve_scrypt_pow",
+            "__native_crypto_scrypt",
             Function::new(ctx.clone(), |payload: String| {
-                crate::scrypt_pow::solve_scrypt_pow_json(&payload)
+                crate::scrypt_kdf::scrypt_bridge_json(&payload)
             })
             .map_err(|e| e.to_string())?,
         )
@@ -1041,15 +1013,6 @@ async fn run_in_ctx<'js>(
         var raw = __native_decode_pipe(String(body == null ? '' : body), String(xObf == null ? '' : xObf)) || '';
         if (!raw) return null;
         try {{ return JSON.parse(raw); }} catch (e) {{ return null; }}
-      }},
-      solvePow: function(challenge, difficulty, max) {{
-        var raw = __native_solve_pow(String(challenge||''), difficulty|0, (max==null?5000000:max)|0);
-        if (!raw) return null;
-        try {{ return JSON.parse(raw); }} catch (e) {{ return null; }}
-      }},
-      solveScryptPow: function(challenge) {{
-        var raw = __native_solve_scrypt_pow(JSON.stringify(challenge == null ? {{}} : challenge));
-        return raw || null;
       }}
     }})
   }};

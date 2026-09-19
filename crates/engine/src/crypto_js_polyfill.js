@@ -275,6 +275,27 @@
     HmacSHA512: function (m, k) {
       return _hmacWa('SHA512', m, k);
     },
+    /** Generic scrypt KDF — returns hex. Packs own PoW loops. */
+    scrypt: function (password, salt, opts) {
+      opts = opts || {};
+      var payload = {
+        password: _normInput(password),
+        n: opts.n | 0,
+        r: opts.r | 0,
+        p: opts.p | 0,
+        dkLen: opts.dkLen == null ? 32 : opts.dkLen | 0,
+      };
+      if (opts.saltHex === true || opts.saltIsHex === true) {
+        payload.saltHex = _waToHex(
+          typeof salt === 'string' ? _waFromHex(String(salt)) : salt,
+        );
+      } else if (salt && typeof salt.__hex === 'string') {
+        payload.saltHex = salt.__hex;
+      } else {
+        payload.salt = _normInput(salt);
+      }
+      return __native_crypto_scrypt(JSON.stringify(payload)) || '';
+    },
     AES: {
       encrypt: function (message, key, options) {
         options = options || {};

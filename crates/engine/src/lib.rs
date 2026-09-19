@@ -5,7 +5,7 @@ mod chrome_fetch;
 mod crypto_host;
 mod extract;
 mod provider_health;
-mod scrypt_pow;
+mod scrypt_kdf;
 
 pub use extract::{extract, ExtractRequest, ExtractResult, HopScript};
 pub use provider_health::{handle_health_json, provider_from_memory_key, ProviderHealthStore};

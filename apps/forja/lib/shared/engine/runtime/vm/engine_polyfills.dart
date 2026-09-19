@@ -369,6 +369,24 @@ const String kEnginePolyfillsJs = r'''
     HmacSHA1:   function(m, k){ return _hmacWa('SHA1',   m, k); },
     HmacSHA256: function(m, k){ return _hmacWa('SHA256', m, k); },
     HmacSHA512: function(m, k){ return _hmacWa('SHA512', m, k); },
+    scrypt: function(password, salt, opts){
+      opts = opts || {};
+      var payload = {
+        password: _normInput(password),
+        n: opts.n|0,
+        r: opts.r|0,
+        p: opts.p|0,
+        dkLen: opts.dkLen == null ? 32 : (opts.dkLen|0)
+      };
+      if (opts.saltHex === true || opts.saltIsHex === true) {
+        payload.saltHex = typeof salt === 'string' ? String(salt) : _waToHex(salt);
+      } else if (salt && typeof salt.__hex === 'string') {
+        payload.saltHex = salt.__hex;
+      } else {
+        payload.salt = _normInput(salt);
+      }
+      return sendMessage('CryptoScrypt', JSON.stringify(payload)) || '';
+    },
     AES: {
       encrypt: function(message, key, options){
         options = options || {};

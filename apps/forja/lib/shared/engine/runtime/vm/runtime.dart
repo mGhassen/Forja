@@ -215,16 +215,9 @@ class EngineRuntime {
         return '';
       }
     });
-    br('SolvePow', (args) {
+    br('CryptoScrypt', (args) {
       try {
-        return _solvePow(_bridgeMap(args));
-      } catch (_) {
-        return '';
-      }
-    });
-    br('SolveScryptPow', (args) {
-      try {
-        return _solveScryptPow(_bridgeMap(args));
+        return _scryptHex(_bridgeMap(args));
       } catch (_) {
         return '';
       }
@@ -1645,18 +1638,6 @@ class EngineRuntime {
         })) || '';
         if (!raw) return null;
         try { return JSON.parse(raw); } catch (e) { return null; }
-      },
-      solvePow: function(challenge, difficulty, max) {
-        var raw = sendMessage('SolvePow', JSON.stringify({
-          challenge: String(challenge == null ? '' : challenge),
-          difficulty: difficulty,
-          max: max
-        })) || '';
-        if (!raw) return null;
-        try { return JSON.parse(raw); } catch (e) { return null; }
-      },
-      solveScryptPow: function(challenge) {
-        return sendMessage('SolveScryptPow', JSON.stringify(challenge || {})) || null;
       }
     })
   };
@@ -2685,71 +2666,37 @@ class EngineRuntime {
     return data;
   }
 
-  /// SHA-256 leading-hex-zero PoW (Goated `/api/challenge`). Loop stays in Dart
-  /// so QuickJS does not round-trip millions of `CryptoDigest` calls.
-  String _solvePow(Map<String, dynamic> m) {
-    final challenge = (m['challenge'] ?? '').toString();
-    if (challenge.isEmpty) return '';
-    final difficulty = int.tryParse('${m['difficulty']}') ?? 0;
-    if (difficulty < 0 || difficulty > 8) return '';
-    final max = int.tryParse('${m['max']}') ?? 5000000;
-    final cap = max.clamp(1, 5000000);
-    final prefix = '0' * difficulty;
-    final hash = dart_crypto.sha256;
-    for (var n = 0; n < cap; n++) {
-      final h = hash.convert(utf8.encode('$challenge$n')).toString();
-      if (h.startsWith(prefix)) {
-        return jsonEncode({'challenge': challenge, 'nonce': '$n'});
-      }
-    }
-    return '';
-  }
-
-  /// scrypt leading-zero-bit PoW (CineJoy / api.shegu.st). Loop stays in Dart.
-  String _solveScryptPow(Map<String, dynamic> m) {
-    final s = (m['s'] ?? '').toString();
-    final b = (m['b'] ?? '').toString();
+  /// Generic scrypt KDF — packs own PoW loops (`ctx.crypto.scrypt`).
+  String _scryptHex(Map<String, dynamic> m) {
+    final password = (m['password'] ?? '').toString();
     final n = int.tryParse('${m['n']}') ?? 0;
     final r = int.tryParse('${m['r']}') ?? 0;
     final p = int.tryParse('${m['p']}') ?? 0;
-    final d = int.tryParse('${m['d']}') ?? 0;
-    if (s.isEmpty || b.isEmpty || n <= 0 || r <= 0 || p <= 0 || d <= 0) {
+    final dkLen = (int.tryParse('${m['dkLen'] ?? m['dklen']}') ?? 32).clamp(1, 64);
+    if (password.isEmpty || n <= 0 || r <= 0 || p <= 0 || (n & (n - 1)) != 0) {
       return '';
     }
-    final max = int.tryParse('${m['max']}') ?? 500000;
-    final cap = max.clamp(1, 500000);
-    final salt = Uint8List.fromList(
-      dart_crypto.sha256.convert(utf8.encode('pow2-salt|$s|$b')).bytes,
-    );
-    final scrypt = Scrypt();
-    for (var counter = 0; counter < cap; counter++) {
-      scrypt.init(ScryptParameters(n, r, p, 32, salt));
-      final result = scrypt.process(utf8.encode('pow2|$b|$s|$counter'));
-      if (_leadingZeroBits(result) >= d) {
-        final payload = Map<String, dynamic>.from(m)..['c'] = counter;
-        return base64Encode(utf8.encode(jsonEncode(payload)));
+    late final Uint8List salt;
+    final saltHex = (m['saltHex'] ?? '').toString().trim();
+    if (saltHex.isNotEmpty) {
+      try {
+        salt = Uint8List.fromList(bytesFromHex(saltHex));
+      } catch (_) {
+        return '';
       }
+      if (salt.isEmpty) return '';
+    } else {
+      salt = Uint8List.fromList(utf8.encode((m['salt'] ?? '').toString()));
+      if (salt.isEmpty) return '';
     }
-    return '';
-  }
-
-  int _leadingZeroBits(List<int> data) {
-    var count = 0;
-    for (final value in data) {
-      if (value == 0) {
-        count += 8;
-        continue;
-      }
-      var bits = 0;
-      var v = value;
-      while (v > 0) {
-        bits++;
-        v >>= 1;
-      }
-      count += 8 - bits;
-      break;
+    try {
+      final scrypt = Scrypt();
+      scrypt.init(ScryptParameters(n, r, p, dkLen, salt));
+      final out = scrypt.process(utf8.encode(password));
+      return hexFromBytes(out);
+    } catch (_) {
+      return '';
     }
-    return count;
   }
 
   String _hmacHex(String algo, String key, String data) {

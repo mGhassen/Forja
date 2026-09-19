@@ -2046,7 +2046,11 @@ void main() {
       expect(cinejoy.contains('api.shegu.st'), isTrue);
       expect(cinejoy.contains('enc-cinejoy'), isTrue);
       expect(cinejoy.contains('dec-cinejoy'), isTrue);
-      expect(cinejoy.contains('solveScryptPow'), isTrue);
+      expect(cinejoy.contains('cinejoySolveScryptPow'), isTrue);
+      expect(
+        await loadForjaHqFile('providers/_cinejoy_pow.js'),
+        contains('cinejoySolveScryptPow'),
+      );
 
       final meowtv = await loadForjaHqFile('providers/meowtv.js');
       expect(meowtv.contains('/streams/'), isTrue);
