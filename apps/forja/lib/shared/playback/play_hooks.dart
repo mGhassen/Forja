@@ -1,3 +1,4 @@
+import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja/shared/playback/play_session.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
@@ -5,6 +6,14 @@ import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:rust/rust.dart';
+
+/// Player / kit progress save — optional [sourceId]/[streamUrl] for resume pin.
+typedef PlaySaveProgress = Future<void> Function(
+  Duration position,
+  Duration duration, {
+  String? sourceId,
+  String? streamUrl,
+});
 
 /// Hub tab media types — episodic catalog rows, not Home TMDB watch history.
 bool isKitTabMediaType(String? mediaType) {
@@ -22,18 +31,20 @@ bool hubMediaIsEpisodic(Movie movie) {
 bool usesHomeWatchHistory({
   required Movie? movie,
   List<PlayerKitEpisode>? episodes,
-  Future<void> Function(Duration position, Duration duration)? onSaveProgress,
+  PlaySaveProgress? onSaveProgress,
   PlaySession? playSession,
 }) {
   if (movie == null) return false;
-  if (episodes != null) return false;
-  if (onSaveProgress != null) return false;
-  if (playSession != null &&
-      playNeedsWatchHistory(playSession)) {
-    return false;
-  }
   if (isKitTabMediaType(movie.mediaType)) return false;
   if (movie.id < 0) return false;
+  // Pack details always installs a kit save hook + episode list; TMDB Home
+  // still needs WatchHistoryService with the real `engine:<plugin>` sourceId.
+  if (playSession?.useHomeEpisodeWatched == true) return true;
+  if (episodes != null) return false;
+  if (onSaveProgress != null) return false;
+  if (playSession != null && playNeedsWatchHistory(playSession)) {
+    return false;
+  }
   return true;
 }
 
@@ -51,8 +62,7 @@ class KitPlayHooks {
 
   final PlaySession? session;
   final num? episodeNumber;
-  final Future<void> Function(Duration position, Duration duration)?
-      onSaveProgress;
+  final PlaySaveProgress? onSaveProgress;
 
   Future<void> seedInitial({required Movie movie}) async {
     await seedPlayWatchHistory(
@@ -87,6 +97,8 @@ KitPlayHooks buildPlayHooks({
         metaOpen: resolvedOpen,
         malId: malId,
         audioCategory: audioCategory,
+        useHomeEpisodeWatched:
+            meta != null && hubMetaUsesHomeWatchHistory(meta),
       );
   if (!playNeedsWatchHistory(session)) {
     return const KitPlayHooks.none();
@@ -99,6 +111,7 @@ KitPlayHooks buildPlayHooks({
       session: session,
       movie: movie,
       episodeNumber: ep,
+      season: season,
     ),
   );
 }
@@ -111,8 +124,11 @@ bool playNeedsWatchHistory(PlaySession? session) {
 Future<void> _recordWatchHistory({
   required PlaySession session,
   required int ep,
+  int? season,
   Duration? position,
   Duration? duration,
+  String? sourceId,
+  String? streamUrl,
 }) async {
   final pluginId = session.pluginId;
   final meta = session.metaItem;
@@ -121,12 +137,15 @@ Future<void> _recordWatchHistory({
     pluginId: pluginId,
     meta: meta,
     episodeNumber: ep,
+    season: season,
     episodeVideoId: session.episodeVideoIdFor(ep),
     extras: {
       if (session.audioCategory != null) 'category': session.audioCategory,
     },
     position: position,
     duration: duration,
+    sourceId: sourceId,
+    streamUrl: streamUrl,
   );
 }
 
@@ -159,100 +178,148 @@ Future<void> seedPlayWatchHistory({
   required PlaySession? session,
   required Movie movie,
   required num? episodeNumber,
+  int? season,
   List<PlayerKitEpisode>? episodes,
 }) async {
   if (session == null || !playNeedsWatchHistory(session)) return;
   final ep = _catalogWatchEpisode(episodeNumber, movie);
   if (ep == null) return;
-  await _recordWatchHistory(session: session, ep: ep);
+  await _recordWatchHistory(session: session, ep: ep, season: season);
 }
 
 Future<void> seedEngineWatchHistory({
   required PlaySession? session,
   required Movie movie,
   required num? episodeNumber,
+  int? season,
   List<PlayerKitEpisode>? episodes,
 }) =>
     seedPlayWatchHistory(
       session: session,
       movie: movie,
       episodeNumber: episodeNumber,
+      season: season,
       episodes: episodes,
     );
 
-Future<void> Function(Duration position, Duration duration)?
-catalogPlaySaveProgressCallback({
+PlaySaveProgress? catalogPlaySaveProgressCallback({
   required PlaySession? session,
   required Movie movie,
   required num? episodeNumber,
+  int? season,
   List<PlayerKitEpisode>? episodes,
 }) {
   if (session == null || !playNeedsWatchHistory(session)) return null;
   final ep = _catalogWatchEpisode(episodeNumber, movie);
   if (ep == null) return null;
+  final seasonNum = season ?? 1;
 
-  return (pos, dur) async {
+  return (pos, dur, {sourceId, streamUrl}) async {
     await _recordWatchHistory(
       session: session,
       ep: ep,
+      season: seasonNum,
       position: pos,
       duration: dur,
+      sourceId: sourceId,
+      streamUrl: streamUrl,
     );
-    await _syncEpisodeWatched(session: session, ep: ep, pos: pos, dur: dur);
+    // Home TMDB provider+URL is owned by the player WatchHistoryService path
+    // (usesHomeWatchHistory when useHomeEpisodeWatched) — do not wipe sourceId.
+    if (session.useHomeEpisodeWatched) {
+      if (movie.mediaType == 'movie') {
+        await ListFollowFromWatched.markMovieCompletedIfFinished(
+          movie,
+          positionMs: pos.inMilliseconds,
+          durationMs: dur.inMilliseconds,
+        );
+      }
+      await _syncEpisodeWatched(
+        session: session,
+        movie: movie,
+        ep: ep,
+        season: seasonNum,
+        pos: pos,
+        dur: dur,
+      );
+      return;
+    }
+    await _syncEpisodeWatched(
+      session: session,
+      movie: movie,
+      ep: ep,
+      season: seasonNum,
+      pos: pos,
+      dur: dur,
+    );
   };
 }
 
-Future<void> Function(Duration position, Duration duration)?
-hubEngineSaveProgressCallback({
+PlaySaveProgress? hubEngineSaveProgressCallback({
   required PlaySession? session,
   required Movie movie,
   required num? episodeNumber,
+  int? season,
   List<PlayerKitEpisode>? episodes,
 }) =>
     catalogPlaySaveProgressCallback(
       session: session,
       movie: movie,
       episodeNumber: episodeNumber,
+      season: season,
       episodes: episodes,
     );
 
 Future<void> _syncEpisodeWatched({
   required PlaySession session,
+  required Movie movie,
   required int ep,
+  required int season,
   required Duration pos,
   required Duration dur,
 }) async {
   final pluginId = session.pluginId;
   final meta = session.metaItem;
   final open = session.effectiveOpen;
-  final mediaId = open?.idInt;
-  if (pluginId == null || meta == null || open == null || mediaId == null) {
+  if (pluginId == null || meta == null || open == null) return;
+
+  if (session.useHomeEpisodeWatched) {
+    final tmdbId = meta.numericId('tmdb') ?? open.idInt;
+    if (tmdbId == null) return;
+    final marked = await EpisodeWatchedService().markWatchedIfFinished(
+      mediaId: tmdbId,
+      season: season,
+      episode: ep,
+      positionMs: pos.inMilliseconds,
+      durationMs: dur.inMilliseconds,
+    );
+    if (!marked) return;
+    await ListFollowFromWatched.applyTmdbAfterAutoMark(movie: movie);
     return;
   }
 
+  final mediaId = open.idInt;
+  if (mediaId == null) return;
   final catalog = pluginId;
-  await EpisodeWatchedService()
-      .markWatchedIfFinished(
-        mediaId: mediaId,
-        season: 1,
-        episode: ep,
-        positionMs: pos.inMilliseconds,
-        durationMs: dur.inMilliseconds,
-        catalog: catalog,
-      )
-      .then((marked) async {
-        if (!marked) return;
-        final target = ListFollowTarget.fromMeta(
-          pluginId: pluginId,
-          meta: meta,
-        );
-        if (target == null) return;
-        ListFollow.syncEpisodeWatched(target, episode: ep);
-        await ListFollowFromWatched.applyHubAfterAutoMark(
-          target: target,
-          mediaId: mediaId,
-          catalog: catalog,
-          totalEpisodes: meta.episodes ?? ep,
-        );
-      });
+  final marked = await EpisodeWatchedService().markWatchedIfFinished(
+    mediaId: mediaId,
+    season: 1,
+    episode: ep,
+    positionMs: pos.inMilliseconds,
+    durationMs: dur.inMilliseconds,
+    catalog: catalog,
+  );
+  if (!marked) return;
+  final target = ListFollowTarget.fromMeta(
+    pluginId: pluginId,
+    meta: meta,
+  );
+  if (target == null) return;
+  ListFollow.syncEpisodeWatched(target, episode: ep);
+  await ListFollowFromWatched.applyHubAfterAutoMark(
+    target: target,
+    mediaId: mediaId,
+    catalog: catalog,
+    totalEpisodes: meta.episodes ?? ep,
+  );
 }

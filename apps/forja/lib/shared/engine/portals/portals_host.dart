@@ -491,13 +491,79 @@ abstract final class PortalsHost {
       action: 'removePortal',
       params: {'key': key},
     );
-    if (env.ok &&
-        before.isNotEmpty &&
-        samePortalKey(before, key)) {
+    if (!env.ok) return env;
+
+    if (before.isNotEmpty && samePortalKey(before, key)) {
       // Pack clears vault active; keep store last-key in sync (no fallback).
       await PortalStore.clearLastPortalKey();
     }
+
+    // Pre-pack contract (iptv_controller deleteSelected): vault already updated;
+    // mirror → PortalStore then async intentional-delete push. Do not use
+    // scheduleIptvSyncPush — that path refuses shrink (issue 118).
+    try {
+      final keep = await _vaultPortalsExact();
+      await PortalStore.save(keep, scheduleSync: false);
+      final favs = await PortalStore.loadFavorites();
+      final nextFavs = {
+        for (final f in favs)
+          if (!samePortalKey(f, key)) f,
+      };
+      if (nextFavs.length != favs.length) {
+        await PortalStore.saveFavorites(nextFavs, scheduleSync: false);
+      }
+      PortalStore.notifyListChanged();
+      if (keep.isEmpty) {
+        unawaited(SyncDomainBridge.instance.pushEmptyIptvInventory());
+      } else {
+        unawaited(SyncDomainBridge.instance.pushIptvInventoryAfterDelete());
+      }
+    } catch (e) {
+      debugPrint('[PortalsHost] remove cloud sync failed: $e');
+    }
     return env;
+  }
+
+  /// Vault inventory with no PortalStore fallback — empty vault means empty.
+  static Future<List<VerifiedPortal>> _vaultPortalsExact() async {
+    try {
+      final raw = await EngineVault.get(PortalVaultKeys.portals);
+      if (raw == null || raw.trim().isEmpty || raw.trim() == '[]') {
+        return const [];
+      }
+      final parsed = jsonDecode(raw);
+      if (parsed is! List) return const [];
+      final out = <VerifiedPortal>[];
+      final seen = <String>{};
+      for (final e in parsed) {
+        if (e is! Map) continue;
+        final m = Map<String, dynamic>.from(e);
+        final portal = Portal.fromJson(m);
+        if (portal.url.trim().isEmpty) continue;
+        final k = vaultPortalKey(m);
+        if (k.isEmpty || !seen.add(k)) continue;
+        final storedLabel = _nonEmpty(m['label']);
+        final label = storedLabel != null &&
+                storedLabel.toLowerCase() != k.toLowerCase()
+            ? storedLabel
+            : '';
+        out.add(
+          VerifiedPortal(
+            portal: portal,
+            label: label,
+            name: (m['name'] ?? portal.username).toString(),
+            expiry: (m['expiry'] ?? '').toString(),
+            maxConnections: (m['maxConnections'] ?? m['max'] ?? '1').toString(),
+            activeConnections:
+                (m['activeConnections'] ?? m['active'] ?? '0').toString(),
+          ),
+        );
+      }
+      return out;
+    } catch (e) {
+      debugPrint('[PortalsHost] _vaultPortalsExact failed: $e');
+      return const [];
+    }
   }
 
   static Future<Set<String>> loadFavoriteKeys() async {

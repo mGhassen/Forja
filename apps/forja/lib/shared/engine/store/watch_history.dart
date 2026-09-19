@@ -43,23 +43,35 @@ class WatchHistory {
     required String pluginId,
     required MetaItem meta,
     required int episodeNumber,
+    int? season,
     String? episodeVideoId,
     Map<String, dynamic> extras = const {},
     Duration? position,
     Duration? duration,
+    String? sourceId,
+    String? streamUrl,
   }) async {
     final p = await SharedPreferences.getInstance();
     final list = <String>[
       ...(p.getStringList(_storageKey(pluginId)) ?? const []),
     ];
+    String? prevSourceId;
+    String? prevStreamUrl;
     list.removeWhere((line) {
       try {
         final m = jsonDecode(line) as Map<String, dynamic>;
-        return m['metaId'] == meta.id;
+        if (m['metaId'] == meta.id) {
+          prevSourceId = m['sourceId']?.toString();
+          prevStreamUrl = m['streamUrl']?.toString();
+          return true;
+        }
+        return false;
       } catch (_) {
         return true;
       }
     });
+    final sid = (sourceId ?? prevSourceId)?.trim();
+    final url = (streamUrl ?? prevStreamUrl)?.trim();
     list.insert(
       0,
       jsonEncode({
@@ -69,9 +81,12 @@ class WatchHistory {
         'cover': meta.background.isNotEmpty ? meta.background : meta.poster,
         'poster': meta.poster,
         'episodeNumber': episodeNumber,
+        'season': ?season,
         if (episodeVideoId != null && episodeVideoId.isNotEmpty)
           'episodeVideoId': episodeVideoId,
         if (extras.isNotEmpty) 'extras': extras,
+        if (sid != null && sid.isNotEmpty) 'sourceId': sid,
+        if (url != null && url.isNotEmpty) 'streamUrl': url,
         'positionMs': position?.inMilliseconds ?? 0,
         'durationMs': duration?.inMilliseconds ?? 0,
         'updatedAt': DateTime.now().millisecondsSinceEpoch,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
@@ -184,17 +185,28 @@ class EventCard extends StatelessWidget {
                 ),
               ),
             if (categoryLabel.isNotEmpty)
-              _CornerBadge(
-                label: categoryLabel.toUpperCase(),
-                live: false,
-                right: null,
-                left: 8,
+              Positioned(
                 top: 8,
+                left: 8,
+                child: _CornerBadgePaint(
+                  label: categoryLabel.toUpperCase(),
+                  live: false,
+                ),
               ),
-            if (live)
-              const _CornerBadge(label: '● LIVE', live: true, top: 8)
-            else if (timeLabel.isNotEmpty)
-              _CornerBadge(label: timeLabel, live: false, top: 8),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: CrossfadeSwap(
+                child: KeyedSubtree(
+                  key: ValueKey(live ? 'live' : timeLabel),
+                  child: live
+                      ? const _CornerBadgePaint(label: '● LIVE', live: true)
+                      : timeLabel.isNotEmpty
+                          ? _CornerBadgePaint(label: timeLabel, live: false)
+                          : const SizedBox.shrink(),
+                ),
+              ),
+            ),
             if (viewers > 0) _ViewerBadge(viewers: viewers),
           ],
         ),
@@ -269,50 +281,39 @@ class _TeamBadge extends StatelessWidget {
   }
 }
 
-class _CornerBadge extends StatelessWidget {
-  const _CornerBadge({
+class _CornerBadgePaint extends StatelessWidget {
+  const _CornerBadgePaint({
     required this.label,
     required this.live,
-    this.top = 8,
-    this.left,
-    this.right = 8,
   });
 
   final String label;
   final bool live;
-  final double top;
-  final double? left;
-  final double? right;
 
   @override
   Widget build(BuildContext context) {
     final bg = live ? Colors.red.shade700 : Colors.black54;
-    return Positioned(
-      top: top,
-      left: left,
-      right: right,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.4,
-            ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.4,
           ),
         ),
       ),
@@ -342,12 +343,15 @@ class _ViewerBadge extends StatelessWidget {
             children: [
               Icon(Icons.circle, size: 7, color: Colors.red.shade400),
               const SizedBox(width: 4),
-              Text(
-                '$viewers',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
+              CrossfadeSwap(
+                child: Text(
+                  '$viewers',
+                  key: ValueKey(viewers),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -382,26 +386,32 @@ class _TitleStack extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (schedule != null && schedule!.isNotEmpty) ...[
-            Text(
-              schedule!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: metaFontSize,
-                fontWeight: FontWeight.w500,
+            CrossfadeSwap(
+              child: Text(
+                schedule!,
+                key: ValueKey(schedule),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: metaFontSize,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             const SizedBox(height: 3),
           ],
-          Text(
-            title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.w600,
+          CrossfadeSwap(
+            child: Text(
+              title,
+              key: ValueKey(title),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: titleFontSize,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

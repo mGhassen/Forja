@@ -4,6 +4,10 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
 
+/// Same namespace/keys as pack `hubs/live_sports/_feed.js` (`LIVE_FEED_CACHE_NS`).
+const _kLiveFeedCacheNs = 'live_sports.feed';
+const _kLiveFeedCacheTtl = Duration(minutes: 15);
+
 /// Top-bar scrape chip for live schedule progressive loads.
 final liveScheduleFeedBusyProvider =
     StateProvider.family<({bool busy, String? label}), String>(
@@ -18,6 +22,40 @@ bool _catalogIdMatches(String pluginId, String want) {
   if (w.startsWith('catalog-')) w = w.substring(8);
   final wantNorm = w.startsWith('live-') ? w.substring(5) : w;
   return id == w || id == wantNorm || id == 'live-$wantNorm';
+}
+
+/// Pack `liveFeedCacheKey` — catalog filter only (schedule/sport filter in reduce).
+String _liveFeedCacheKey(String catalogFilter) {
+  var f = catalogFilter.trim();
+  if (f.isEmpty || f == 'all') return 'raw:all';
+  if (f.startsWith('stremio:')) return 'raw:$f';
+  if (f.startsWith('live-')) f = f.substring(5);
+  if (f.startsWith('catalog-')) f = f.substring(8);
+  return 'raw:$f';
+}
+
+List<Map<String, dynamic>>? _cachedFeedRows(String cacheKey) {
+  final hit = EngineCache.instance.get(_kLiveFeedCacheNs, cacheKey);
+  if (hit is! Map) return null;
+  final rows = hit['rows'];
+  if (rows is! List || rows.isEmpty) return null;
+  final out = <Map<String, dynamic>>[];
+  for (final row in rows) {
+    if (row is Map) out.add(Map<String, dynamic>.from(row));
+  }
+  return out.isEmpty ? null : out;
+}
+
+void _storeFeedRows(String cacheKey, List<Map<String, dynamic>> rows) {
+  EngineCache.instance.set(
+    _kLiveFeedCacheNs,
+    cacheKey,
+    {
+      'rows': rows,
+      'at': DateTime.now().millisecondsSinceEpoch,
+    },
+    ttl: _kLiveFeedCacheTtl,
+  );
 }
 
 Map<String, dynamic> _feedParamsForReduce(Map<String, dynamic> params) {
@@ -65,6 +103,9 @@ Future<MetaEnvelope> _hubFeedFull({
 ///
 /// Yields a [MetaEnvelope] after each catalog so [PackLoadedPaint] can paint
 /// before the last scrape finishes (issue 278).
+///
+/// Raw rows share pack `live_sports.feed` (catalog-filter keys only). Schedule /
+/// sport / horizon changes re-reduce from cache — same as pre-progressive release.
 Stream<MetaEnvelope> loadLiveScheduleProgressive({
   required String hubPluginId,
   String? packSourceUrl,
@@ -75,6 +116,10 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   final filter = (feedParams['catalogFilter'] ?? feedParams['section'] ?? 'all')
       .toString()
       .trim();
+
+  if (forceRefresh) {
+    EngineCache.instance.invalidate(_kLiveFeedCacheNs);
+  }
 
   if (isLiveStremioCatalogFilter(filter)) {
     setBusy(busy: true, label: 'Loading…');
@@ -93,6 +138,21 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
       setBusy(busy: false, label: null);
     }
     return;
+  }
+
+  final aggregateKey = _liveFeedCacheKey(filter);
+  if (!forceRefresh) {
+    final warm = _cachedFeedRows(aggregateKey);
+    if (warm != null) {
+      setBusy(busy: false, label: null);
+      yield await _hubReduceFeed(
+        hubPluginId: hubPluginId,
+        packSourceUrl: packSourceUrl,
+        rows: warm,
+        params: feedParams,
+      );
+      return;
+    }
   }
 
   List<EnginePlugin> wanted;
@@ -130,13 +190,15 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   for (var i = 0; i < wanted.length; i++) {
     final plugin = wanted[i];
     final name = plugin.name.trim().isEmpty ? plugin.id : plugin.name.trim();
-    final label = 'Loading $name… ${i + 1}/$total';
-    setBusy(busy: true, label: label);
+    final pluginKey = _liveFeedCacheKey(plugin.id);
 
-    try {
-      final batch = await EngineService.instance.runLiveFeed(
-        catalogPlugin: plugin,
-      );
+    List<Map<String, dynamic>>? batch;
+    if (!forceRefresh) {
+      batch = _cachedFeedRows(pluginKey);
+    }
+
+    if (batch != null) {
+      setBusy(busy: false, label: null);
       for (final row in batch) {
         final map = Map<String, dynamic>.from(row);
         map['pluginId'] ??= plugin.id;
@@ -145,8 +207,28 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
         if (id.isEmpty || !seen.add(id)) continue;
         raw.add(map);
       }
-    } catch (e, st) {
-      debugPrint('[live-schedule] ${plugin.id} catalog: $e\n$st');
+    } else {
+      setBusy(busy: true, label: 'Loading $name… ${i + 1}/$total');
+      try {
+        final scraped = await EngineService.instance.runLiveFeed(
+          catalogPlugin: plugin,
+        );
+        final collected = <Map<String, dynamic>>[];
+        for (final row in scraped) {
+          final map = Map<String, dynamic>.from(row);
+          map['pluginId'] ??= plugin.id;
+          map['livePluginId'] ??= plugin.id;
+          collected.add(map);
+          final id = map['id']?.toString().trim() ?? '';
+          if (id.isEmpty || !seen.add(id)) continue;
+          raw.add(map);
+        }
+        if (collected.isNotEmpty) {
+          _storeFeedRows(pluginKey, collected);
+        }
+      } catch (e, st) {
+        debugPrint('[live-schedule] ${plugin.id} catalog: $e\n$st');
+      }
     }
 
     last = await _hubReduceFeed(
@@ -156,6 +238,10 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
       params: feedParams,
     );
     yield last;
+  }
+
+  if (raw.isNotEmpty) {
+    _storeFeedRows(aggregateKey, raw);
   }
 
   setBusy(busy: false, label: null);

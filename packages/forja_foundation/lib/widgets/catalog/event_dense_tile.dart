@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Dense schedule/event row paint — props only (RFC-106 Zone A).
@@ -88,26 +89,32 @@ class EventDenseTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: titleColor,
-                      fontSize: fontSize,
-                      fontWeight: titleWeight,
+                  CrossfadeSwap(
+                    child: Text(
+                      title,
+                      key: ValueKey(title),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: titleColor,
+                        fontSize: fontSize,
+                        fontWeight: titleWeight,
+                      ),
                     ),
                   ),
                   if (meta.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        meta,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: ForjaShellColors.textSecondary,
-                          fontSize: metaFontSize,
+                      child: CrossfadeSwap(
+                        child: Text(
+                          meta,
+                          key: ValueKey(meta),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ForjaShellColors.textSecondary,
+                            fontSize: metaFontSize,
+                          ),
                         ),
                       ),
                     ),
@@ -117,14 +124,17 @@ class EventDenseTile extends StatelessWidget {
             if (viewers > 0)
               Padding(
                 padding: const EdgeInsets.only(left: 8),
-                child: Text(
-                  '$viewers',
-                  style: TextStyle(
-                    color: selected
-                        ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
-                        : ForjaShellColors.textSecondary
-                            .withValues(alpha: 0.85),
-                    fontSize: metaFontSize,
+                child: CrossfadeSwap(
+                  child: Text(
+                    '$viewers',
+                    key: ValueKey(viewers),
+                    style: TextStyle(
+                      color: selected
+                          ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
+                          : ForjaShellColors.textSecondary
+                              .withValues(alpha: 0.85),
+                      fontSize: metaFontSize,
+                    ),
                   ),
                 ),
               ),

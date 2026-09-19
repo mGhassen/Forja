@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/playback/play_hooks.dart';
+import 'package:forja/shared/playback/play_session.dart';
 import 'package:rust/rust.dart';
 
 Movie _movie({required int id, String mediaType = 'movie'}) => Movie(
@@ -46,9 +47,22 @@ void main() {
       expect(
         usesHomeWatchHistory(
           movie: movie,
-          onSaveProgress: (_, _) async {},
+          onSaveProgress: (_, _, {sourceId, streamUrl}) async {},
         ),
         isFalse,
+      );
+    });
+
+    test('TMDB home via pack still writes home history with kit callback', () {
+      final movie = _movie(id: 99, mediaType: 'tv');
+      expect(
+        usesHomeWatchHistory(
+          movie: movie,
+          episodes: const [],
+          onSaveProgress: (_, _, {sourceId, streamUrl}) async {},
+          playSession: const PlaySession(useHomeEpisodeWatched: true),
+        ),
+        isTrue,
       );
     });
   });

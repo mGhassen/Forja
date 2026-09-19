@@ -116,7 +116,7 @@ class DesktopPlayerScreen extends ConsumerStatefulWidget {
   final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final EnginePlaySession? enginePlaySession;
-  final Future<void> Function(Duration position, Duration duration)?
+  final Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})?
   onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)?
   onSourcePinned;

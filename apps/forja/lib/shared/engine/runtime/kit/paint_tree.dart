@@ -42,6 +42,7 @@ import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/playback/open/history_playback_resume.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
+import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -3622,6 +3623,10 @@ class _ContinueMountState extends State<_ContinueMount> {
             Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
       }
       final extras = entry['extras'];
+      final preferredPluginId = preferredEnginePluginForResume(
+        progress: entry,
+        startPosition: startPosition,
+      );
       final ctx = catalogPlayContextFromMeta(
         meta: meta,
         pluginId: widget.pluginId,
@@ -3631,6 +3636,8 @@ class _ContinueMountState extends State<_ContinueMount> {
             ? Map<String, dynamic>.from(extras)
             : const {},
         startPosition: startPosition,
+        preferredPluginId: preferredPluginId,
+        savedStreamUrl: entry['streamUrl']?.toString(),
       );
       if (!mounted) return;
       await runPlayFromContext(context: context, ctx: ctx);

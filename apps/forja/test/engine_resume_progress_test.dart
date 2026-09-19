@@ -21,6 +21,32 @@ void main() {
     });
   });
 
+  group('preferredEnginePluginForResume', () {
+    test('pins engine plugin only when resume position is set', () {
+      expect(
+        preferredEnginePluginForResume(
+          progress: {'sourceId': 'engine:videasy'},
+          startPosition: const Duration(minutes: 5),
+        ),
+        'videasy',
+      );
+      expect(
+        preferredEnginePluginForResume(
+          progress: {'sourceId': 'engine:videasy'},
+          startPosition: Duration.zero,
+        ),
+        isNull,
+      );
+      expect(
+        preferredEnginePluginForResume(
+          progress: {'sourceId': 'engine:videasy'},
+          startPosition: null,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('isEngineSavedProgress', () {
     test('detects engine rows', () {
       expect(

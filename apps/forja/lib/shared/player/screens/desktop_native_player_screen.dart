@@ -69,7 +69,7 @@ class DesktopNativePlayerScreen extends StatefulWidget {
   final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final EnginePlaySession? enginePlaySession;
-  final Future<void> Function(Duration position, Duration duration)?
+  final Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})?
       onSaveProgress;
   final VoidCallback? onPlaybackStarted;
   final PlayerSwitchHandler? onSwitchPlayer;
@@ -336,7 +336,12 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
   Future<void> _saveProgress() async {
     if (_duration.inMilliseconds <= 0) return;
     if (widget.onSaveProgress != null) {
-      await widget.onSaveProgress!(_position, _duration);
+      await widget.onSaveProgress!(
+        _position,
+        _duration,
+        sourceId: widget.activeProvider,
+        streamUrl: _url.isNotEmpty ? _url : widget.mediaPath,
+      );
       return;
     }
     final movie = widget.movie;

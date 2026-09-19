@@ -46,6 +46,15 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     );
     _s._liveGraceTimer = Timer(grace, () {
       if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+      final hwDecode = reason.contains('hw decode') ||
+          reason.contains('hardware decode');
+      // VT can die while audio/demux still advance — do not treat playhead
+      // growth as recovered. Manual reload = goLive; do the same.
+      if (hwDecode) {
+        debugPrint('[IPTV] live hw decode — goLive');
+        unawaited(_tryIptvLiveGoLive(reason: reason));
+        return;
+      }
       final sPlaying = _s._playing;
       final pos = _s._position;
       final recovered = sPlaying && pos > _s._liveGraceStartPos;
@@ -570,11 +579,8 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
 
   Future<void> _forceSoftwareDecode() async {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
-    if (_streamWorking) {
-      _logHealthyHold('hw→sw');
-      return;
-    }
     // MediaKit live never falls back to TextureSW.
+    // Prefer grace→goLive — `_triggerRecovery` healthy-holds when demux feeds.
     if (_livePlaybackProfile &&
         _s._mediaKitBackend &&
         !_s.widget.vodPlayback) {
@@ -582,7 +588,13 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
         '[IPTV Player] MediaKit live: ignore hw→sw — grace/goLive only',
       );
       if (_recoveryInFlight) return;
-      await _triggerRecovery(reason: 'hardware decode failed (live keep HW)');
+      _scheduleIptvLiveGraceRecovery(
+        reason: 'hardware decode failed (live keep HW)',
+      );
+      return;
+    }
+    if (_streamWorking) {
+      _logHealthyHold('hw→sw');
       return;
     }
     // ATV MediaKit must stay on MediaCodec. Software decode of FHD/UHD on

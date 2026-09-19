@@ -1018,16 +1018,13 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
           );
           return;
         }
-        // MediaKit live: never TextureSW. Hold or grace/goLive only.
+        // MediaKit live: never TextureSW. Demux can look "healthy" while VT
+        // paints black — do not hold. Same as manual reload: grace → goLive.
         if (_livePlaybackProfile &&
             _s._mediaKitBackend &&
             !_s.widget.vodPlayback) {
           _armTransientHwDecodeIgnore();
-          if (_streamWorking) {
-            _logHealthyHold('hw decode fail (live hold)');
-          } else {
-            _logHold('hw decode fail (live hold)', healthy: false);
-          }
+          _scheduleIptvLiveGraceRecovery(reason: 'hw decode fail');
           return;
         }
         if (_streamWorking) {

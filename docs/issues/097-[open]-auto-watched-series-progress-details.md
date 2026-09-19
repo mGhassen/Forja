@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 6** |
+| **Progress** | **6 / 7** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I97-T04 | Details hero: movie finished shows Watched + check (via progress bar) | ✅ |
 | 5 | I97-T05 | Keep manual right-click episode toggle | ✅ |
 | 6 | I97-T06 | Manual QA — movie / TV / anime / Asian Drama details after finish | ⬜ |
+| 7 | I97-T07 | Regression: engine Play auto-mark used catalog-scoped keys for TMDB Home; details always opened E1 instead of last progress | ✅ |
 
 ---
 

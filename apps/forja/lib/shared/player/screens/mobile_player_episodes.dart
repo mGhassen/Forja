@@ -661,6 +661,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
           stremioId: widget.stremioId,
           session: widget.enginePlaySession,
           episodes: widget.episodes,
+          preferredPluginId: EngineIds.pluginIdFromChip(enginePid ?? ''),
         );
       } finally {
         if (mounted) {
@@ -779,6 +780,14 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         episodes: widget.episodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: (ep) async {
+          final enginePid = _s._currentProvider ?? widget.activeProvider;
+          if (isEnginePlayerSession(enginePid)) {
+            await _switchToEpisode(
+              widget.selectedSeason ?? 1,
+              ep.number.round(),
+            );
+            return;
+          }
           if (useHubCallback) {
             _beginEpisodeLoading(
               label: 'Episode ${ep.displayNumber}',

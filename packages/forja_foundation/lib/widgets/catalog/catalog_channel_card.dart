@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/channel_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
@@ -654,38 +655,44 @@ class _EpgNowFooterState extends State<_EpgNowFooter> {
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: now.isNow
-                              ? const Color(0xFFEF4444)
-                              : ForjaShellColors.chipSelectedBorder
-                                  .withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: Text(
-                          now.isNow ? 'NOW' : 'NEXT',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white,
-                            fontSize: widget.badgeFontSize,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
+                      CrossfadeSwap(
+                        child: Container(
+                          key: ValueKey(now.isNow ? 'now' : 'next'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: now.isNow
+                                ? const Color(0xFFEF4444)
+                                : ForjaShellColors.chipSelectedBorder
+                                    .withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            now.isNow ? 'NOW' : 'NEXT',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white,
+                              fontSize: widget.badgeFontSize,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: Text(
-                          now.title.isEmpty ? '-' : now.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white70,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w500,
+                        child: CrossfadeSwap(
+                          child: Text(
+                            now.title.isEmpty ? '-' : now.title,
+                            key: ValueKey(now.title),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white70,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),

@@ -753,6 +753,8 @@ mixin _MobilePlayerLifecycle
       widget.onSaveProgress!(
         Duration(milliseconds: pos),
         Duration(milliseconds: dur),
+        sourceId: _s._currentProvider ?? widget.activeProvider,
+        streamUrl: _s._currentUrl ?? widget.mediaPath,
       );
     }
 

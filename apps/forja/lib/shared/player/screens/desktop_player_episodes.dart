@@ -503,6 +503,7 @@ mixin _DesktopPlayerEpisodes
           stremioId: widget.stremioId,
           session: widget.enginePlaySession,
           episodes: widget.episodes,
+          preferredPluginId: EngineIds.pluginIdFromChip(enginePid ?? ''),
         );
       } finally {
         // Still mounted ⇒ Auto cancelled/failed without replacing this route.
@@ -654,6 +655,14 @@ mixin _DesktopPlayerEpisodes
         episodes: widget.episodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: (ep) async {
+          final enginePid = _s._currentProvider ?? widget.activeProvider;
+          if (isEnginePlayerSession(enginePid)) {
+            await _switchToEpisode(
+              widget.selectedSeason ?? 1,
+              ep.number.round(),
+            );
+            return;
+          }
           if (useHubCallback) {
             _beginEpisodeLoading(
               label: 'Episode ${ep.displayNumber}',
@@ -1145,7 +1154,12 @@ mixin _DesktopPlayerEpisodes
     final pos = _s._positionNotifier.value;
     final dur = _s._durationNotifier.value;
     if (pos.inMilliseconds <= 0 || dur.inMilliseconds <= 0) return;
-    await widget.onSaveProgress!(pos, dur);
+    await widget.onSaveProgress!(
+      pos,
+      dur,
+      sourceId: _s._currentProvider ?? widget.activeProvider,
+      streamUrl: _s._currentUrl ?? widget.mediaPath,
+    );
   }
 
   ({String url, Map<String, String>? headers}) _externalHandoffTarget() {

@@ -45,6 +45,15 @@ String? enginePluginIdFromProgress(Map<String, dynamic>? progress) {
 bool isEngineSavedProgress(Map<String, dynamic>? progress) =>
     enginePluginIdFromProgress(progress) != null;
 
+/// Resume pin — same gate as pre-pack-details media details.
+String? preferredEnginePluginForResume({
+  Map<String, dynamic>? progress,
+  Duration? startPosition,
+}) {
+  if (startPosition == null || startPosition <= Duration.zero) return null;
+  return enginePluginIdFromProgress(progress);
+}
+
 /// Prefer explicit [stremioId], else bag `imdb` from Sources middleware.
 String? stremioIdFromSourcesBag({
   required Movie movie,
@@ -81,6 +90,9 @@ Future<void> switchEpisodeViaEngineAutoPlay({
   String? stremioId,
   EnginePlaySession? session,
   List<PlayerKitEpisode>? episodes,
+
+  /// Keep the current Forja plugin first (same as resume pin).
+  String? preferredPluginId,
 }) {
   final s = session;
   final extract = engineExtractContext(
@@ -111,6 +123,7 @@ Future<void> switchEpisodeViaEngineAutoPlay({
     playSession: s,
     episodes: episodes,
     hubEpisodeNumber: episode,
+    preferredPluginId: preferredPluginId,
   );
 }
 
@@ -130,6 +143,7 @@ Future<void> Function(PlayerKitEpisode episode)? _hubEngineEpisodePicker({
   required EnginePlaySession? session,
   required List<PlayerKitEpisode>? episodes,
   int? season,
+  String? preferredPluginId,
 }) {
   if (session == null || episodes == null || episodes.isEmpty) {
     return null;
@@ -143,6 +157,7 @@ Future<void> Function(PlayerKitEpisode episode)? _hubEngineEpisodePicker({
       episode: ep.number.round(),
       session: session,
       episodes: episodes,
+      preferredPluginId: preferredPluginId,
     );
   };
 }
@@ -335,11 +350,9 @@ Future<void> runEngineAutoPlay({
 
     var pinPlugin = preferredPluginId?.trim();
     final resumeAt = startPosition;
-    var pinActive =
-        pinPlugin != null &&
-        pinPlugin.isNotEmpty &&
-        resumeAt != null &&
-        resumeAt > Duration.zero;
+    // Callers only pass preferredPluginId when they mean to pin (resume or
+    // next/prev episode). Do not require resume position — next ep is at 0.
+    var pinActive = pinPlugin != null && pinPlugin.isNotEmpty;
     if (pinActive && !pluginIds.contains(pinPlugin)) {
       pinActive = false;
     }
@@ -955,20 +968,24 @@ Future<void> _playFromProbedSources({
     session: enginePlaySession,
     movie: playMovie,
     episodeNumber: epNum,
+    season: season,
     episodes: playHubEpisodes,
   );
+  final activeChip = primary.providerId ?? catalogHttpPlayProviderId(stream);
   final onHubEpisodeSelected = _hubEngineEpisodePicker(
     context: context,
     movie: playMovie,
     session: enginePlaySession,
     episodes: playHubEpisodes,
     season: season,
+    preferredPluginId: EngineIds.pluginIdFromChip(activeChip),
   );
   Future<void> openPlayer() async {
     await seedEngineWatchHistory(
       session: enginePlaySession,
       movie: playMovie,
       episodeNumber: epNum,
+      season: season,
       episodes: playHubEpisodes,
     );
     if (isAborted() || !context.mounted) return;
@@ -1066,20 +1083,24 @@ Future<void> _playResolveRow({
     session: enginePlaySession,
     movie: playMovie,
     episodeNumber: epNum,
+    season: season,
     episodes: playHubEpisodes,
   );
+  final torrentChip = catalogHttpPlayProviderId(stream);
   final onHubEpisodeSelected = _hubEngineEpisodePicker(
     context: context,
     movie: playMovie,
     session: enginePlaySession,
     episodes: playHubEpisodes,
     season: season,
+    preferredPluginId: EngineIds.pluginIdFromChip(torrentChip),
   );
   Future<void> openPlayer() async {
     await seedEngineWatchHistory(
       session: enginePlaySession,
       movie: playMovie,
       episodeNumber: epNum,
+      season: season,
       episodes: playHubEpisodes,
     );
     if (isAborted() || !context.mounted) return;

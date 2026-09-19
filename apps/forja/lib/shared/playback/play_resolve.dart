@@ -17,6 +17,8 @@ PlayContext catalogPlayContextFromMeta({
   Map<String, dynamic> extras = const {},
   String? audioCategory,
   Duration? startPosition,
+  String? preferredPluginId,
+  String? savedStreamUrl,
   Set<String>? selectedPluginIds,
 }) {
   final vids = videos ?? meta.videos;
@@ -59,6 +61,8 @@ PlayContext catalogPlayContextFromMeta({
         : null,
     selectedPluginIds: selectedPluginIds,
     startPosition: startPosition,
+    preferredPluginId: preferredPluginId,
+    savedStreamUrl: savedStreamUrl,
     loadingSubtitle: isMovie ? null : 'EP $epNum',
   );
 }

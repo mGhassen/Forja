@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/player/sources/stream_play_hooks.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
@@ -6,13 +7,16 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/sources/kit_sources.dart';
 
 PlaySession _sessionFromContext(PlayContext ctx) {
+  final meta = ctx.metaItem;
   return PlaySession(
     pluginId: ctx.pluginId,
-    metaItem: ctx.metaItem,
+    metaItem: meta,
     metaOpen: ctx.effectiveOpen,
     malId: ctx.malId,
     episodeVideoIdByNumber: ctx.episodeVideoIdByNumber,
     audioCategory: ctx.audioCategory,
+    useHomeEpisodeWatched:
+        meta != null && hubMetaUsesHomeWatchHistory(meta),
   );
 }
 

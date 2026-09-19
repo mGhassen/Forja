@@ -85,4 +85,42 @@ void main() {
       expect(isWatchFinished(0, 0), isFalse);
     });
   });
+
+  group('latestHistoryForShow', () {
+    test('picks newest row for tmdbId including finished', () {
+      final history = [
+        {
+          'tmdbId': 1,
+          'position': 90_000,
+          'duration': 100_000,
+          'updatedAt': 100,
+          'season': 1,
+          'episode': 2,
+        },
+        {
+          'tmdbId': 1,
+          'position': 20_000,
+          'duration': 100_000,
+          'updatedAt': 200,
+          'season': 1,
+          'episode': 3,
+        },
+        {
+          'tmdbId': 2,
+          'position': 20_000,
+          'duration': 100_000,
+          'updatedAt': 300,
+          'season': 1,
+          'episode': 1,
+        },
+      ];
+      final hit = latestHistoryForShow(1, history);
+      expect(hit?['episode'], 3);
+      expect(latestInProgressForShow(1, history)?['episode'], 3);
+      expect(
+        latestInProgressForShow(1, [history[0], history[2]]),
+        isNull,
+      );
+    });
+  });
 }

@@ -20,6 +20,9 @@ CleanedMediaTitle cleanMediaTitle(String raw) {
   var s = raw.trim();
   if (s.isEmpty) return const CleanedMediaTitle(title: '');
 
+  // Fullwidth / broken-bar / box-drawing pipes → ASCII `|`.
+  s = s.replaceAll(RegExp(r'[\uFF5C\u00A6\u2502\u2503\u01C0\u2223]'), '|');
+
   s = s.replaceAll(RegExp(r'[_\.]+'), ' ');
   s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
 
@@ -39,6 +42,30 @@ CleanedMediaTitle cleanMediaTitle(String raw) {
   if (yearMatch != null) {
     year = int.tryParse(yearMatch.group(1)!);
     s = s.replaceRange(yearMatch.start, yearMatch.end, ' ');
+  }
+
+  // Leading `|EN|` / `|FR|` pipe tags (common portal prefixes).
+  for (var i = 0; i < 4; i++) {
+    final next = s.replaceFirst(
+      RegExp(
+        r'^\|?\s*(?:'
+        r'EN|FR|AR|ES|DE|IT|PT|NL|TR|PL|RU|MULTI|VO|VF|VOSTFR|VOST|'
+        r'NETFLIX|NF|AMAZON|AMZN|PRIME|DISNEY(?:\+)?|HULU|HBO|MAX|APPLE|ATVP|'
+        r'DC|DV|WEB|WEB[- ]?DL|WEBRip'
+        r')\s*\|+\s*',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    if (next == s) break;
+    s = next;
+  }
+
+  // Empty pipe slots: `| | Title`, `|| Title`, leading `| Title`.
+  for (var i = 0; i < 6; i++) {
+    final emptied = s.replaceFirst(RegExp(r'^(?:\s*\|)+\s*'), '');
+    if (emptied == s) break;
+    s = emptied;
   }
 
   // Leading platform / lang tags: EN-, FR-, NETFLIX-, Disney+-, etc.
@@ -64,23 +91,6 @@ CleanedMediaTitle cleanMediaTitle(String raw) {
     ),
     '',
   );
-
-  // Leading `|EN|` / `|FR|` pipe tags (common portal prefixes).
-  for (var i = 0; i < 4; i++) {
-    final next = s.replaceFirst(
-      RegExp(
-        r'^\|?\s*(?:'
-        r'EN|FR|AR|ES|DE|IT|PT|NL|TR|PL|RU|MULTI|VO|VF|VOSTFR|VOST|'
-        r'NETFLIX|NF|AMAZON|AMZN|PRIME|DISNEY(?:\+)?|HULU|HBO|MAX|APPLE|ATVP|'
-        r'DC|DV|WEB|WEB[- ]?DL|WEBRip'
-        r')\s*\|+\s*',
-        caseSensitive: false,
-      ),
-      '',
-    );
-    if (next == s) break;
-    s = next;
-  }
 
   // Bracket / paren junk: [1080p], (MULTI), {Web-DL}
   s = s.replaceAll(RegExp(r'[\[\(\{][^\]\)\}]{0,40}[\]\)\}]'), ' ');

@@ -6,10 +6,9 @@ import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 /// Named [ForjaNetworkImage] to avoid clashing with Flutter's [NetworkImage]
 /// image provider.
 ///
-/// Does **not** swap in a skeleton/placeholder while decoding — that reads as
-/// rail "reload" when ImageCache misses after another hub filled the cache.
 /// Dark fill sits under the image; [gaplessPlayback] keeps the prior frame on
-/// URL updates when [useOldImageOnUrlChange] is true.
+/// URL updates when [useOldImageOnUrlChange] is true. First frame fades in
+/// ([fadeDuration]) — no skeleton swap that reads as a rail reload.
 class ForjaNetworkImage extends StatelessWidget {
   const ForjaNetworkImage({
     super.key,
@@ -19,7 +18,7 @@ class ForjaNetworkImage extends StatelessWidget {
     this.width,
     this.height,
     this.borderRadius,
-    this.fadeDuration = Duration.zero,
+    this.fadeDuration = const Duration(milliseconds: 250),
     this.placeholder,
     this.error,
     this.useOldImageOnUrlChange = true,
@@ -80,14 +79,13 @@ class ForjaNetworkImage extends StatelessWidget {
               filterQuality: filterQuality,
               gaplessPlayback: true,
               frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                if (wasSynchronouslyLoaded ||
-                    frame != null ||
-                    fadeDuration == Duration.zero) {
+                if (wasSynchronouslyLoaded || fadeDuration == Duration.zero) {
                   return child;
                 }
                 return AnimatedOpacity(
                   opacity: frame == null ? 0 : 1,
                   duration: fadeDuration,
+                  curve: Curves.easeOut,
                   child: child,
                 );
               },

@@ -122,7 +122,7 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? providers;
   final String? stremioId;
   final String? stremioAddonBaseUrl;
-  final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
+  final Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})? onSaveProgress;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
   final bool pinSource;
@@ -777,7 +777,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Future<void> _saveProgress() async {
     if (_duration.inMilliseconds <= 0) return;
     if (widget.onSaveProgress != null) {
-      await widget.onSaveProgress!(_position, _duration);
+      final url = _currentUrl;
+      await widget.onSaveProgress!(
+        _position,
+        _duration,
+        sourceId: widget.activeProvider,
+        streamUrl: (url != null && url.isNotEmpty) ? url : widget.mediaPath,
+      );
     }
     final movie = widget.movie;
     if (movie != null && movie.mediaType == 'movie') {
@@ -1203,6 +1209,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           stremioId: widget.stremioId,
           session: widget.enginePlaySession,
           episodes: widget.episodes,
+          preferredPluginId: EngineIds.pluginIdFromChip(
+            _currentProvider ?? widget.activeProvider ?? '',
+          ),
         );
       } finally {
         if (mounted) {

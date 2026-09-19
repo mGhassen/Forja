@@ -451,7 +451,12 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     final pos = _s._positionNotifier.value;
     final dur = _s._durationNotifier.value;
     if (pos.inMilliseconds <= 0 || dur.inMilliseconds <= 0) return;
-    await widget.onSaveProgress!(pos, dur);
+    await widget.onSaveProgress!(
+      pos,
+      dur,
+      sourceId: _s._currentProvider ?? widget.activeProvider,
+      streamUrl: _s._currentUrl ?? widget.mediaPath,
+    );
   }
 
   ({String url, Map<String, String>? headers}) _externalHandoffTarget() {

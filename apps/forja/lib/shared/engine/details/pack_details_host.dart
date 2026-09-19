@@ -8,6 +8,7 @@ import 'package:forja/shared/engine/details/details_stremio.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
+import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
@@ -49,6 +50,8 @@ import 'package:rust/rust.dart'
         WatchHistoryService,
         canResumeFromSavedProgress,
         isContinueWatchingRowEntry,
+        latestHistoryForShow,
+        latestInProgressForShow,
         watchHistoryInt;
 
 Future<T?> openKitDetails<T>(
@@ -394,27 +397,46 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       if (!mounted) return;
       setState(() {
         _watchProgress = hit;
-        if (hit != null) _restorePlayFiltersFromProgress(hit);
+        if (hit != null) {
+          _restorePlayFiltersFromProgress(hit);
+          _applyProgressEpisodeSelection(hit);
+        }
       });
     } catch (_) {}
+  }
+
+  /// Open on the last played episode when caller did not deep-link S/E.
+  void _applyProgressEpisodeSelection(Map<String, dynamic> hit) {
+    if (widget.initialSeason != null || widget.initialEpisode != null) return;
+    if (_isMovie) return;
+    final ep = (hit['episodeNumber'] as num?)?.toInt();
+    if (ep == null || ep <= 0) return;
+    final season = (hit['season'] as num?)?.toInt() ?? _selectedSeason;
+    final videos = hubVideosForSeason(_videos, season);
+    if (videos.isNotEmpty && !videos.any((v) => (v.episode ?? 1) == ep)) {
+      return;
+    }
+    _selectedSeason = season;
+    _selectedEpisode = ep;
   }
 
   Future<Map<String, dynamic>?> _homeWatchHistoryProgress() async {
     final tmdbId = _show.numericId('tmdb');
     if (tmdbId == null) return null;
-    final item = await WatchHistoryService().getProgress(
-      tmdbId,
-      season: _isMovie ? null : _selectedSeason,
-      episode: _isMovie ? null : _selectedEpisode,
-    );
+    final history = await WatchHistoryService().getHistory();
+    final item = latestInProgressForShow(tmdbId, history) ??
+        latestHistoryForShow(tmdbId, history);
     if (item == null) return null;
     return {
       'metaId': _show.id,
+      'season': item['season'] ?? _selectedSeason,
       'episodeNumber': item['episode'] ?? _selectedEpisode,
       'positionMs': watchHistoryInt(item['position']),
       'durationMs': watchHistoryInt(item['duration']),
       'episodeVideoId': item['episodeVideoId'],
       'extras': item['extras'],
+      'sourceId': item['sourceId'],
+      'streamUrl': item['streamUrl'],
     };
   }
 
@@ -716,6 +738,11 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         : const <String, dynamic>{};
     final mergedExtras = {...progressExtras, ..._playFilterExtras};
     final progressVideoId = progress?['episodeVideoId']?.toString();
+    final startPosition = _startPositionForEpisode(epNum);
+    final preferredPluginId = preferredEnginePluginForResume(
+      progress: progress,
+      startPosition: startPosition,
+    );
     final ctx = catalogPlayContextFromMeta(
       meta: _show,
       pluginId: widget.pluginId,
@@ -726,11 +753,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       episodeVideoId: progressVideoId,
       extras: mergedExtras,
       audioCategory: catalogPlayAudioCategory(_playFilterSelections),
-      startPosition: _startPositionForEpisode(epNum),
+      startPosition: startPosition,
+      preferredPluginId: preferredPluginId,
+      savedStreamUrl: progress?['streamUrl'] as String?,
     );
     await runPlayFromContext(context: context, ctx: ctx);
     if (!mounted) return;
     await _loadWatchProgress();
+    await _loadWatchedEpisodes();
     await _afterPlayClosed();
   }
 

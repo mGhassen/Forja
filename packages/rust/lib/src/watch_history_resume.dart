@@ -91,6 +91,21 @@ Map<String, dynamic>? latestInProgressForShow(
   return best;
 }
 
+/// Latest history row for a show (any progress, including finished) by [updatedAt].
+Map<String, dynamic>? latestHistoryForShow(
+  int tmdbId,
+  List<Map<String, dynamic>> history,
+) {
+  Map<String, dynamic>? best;
+  for (final item in history) {
+    if (watchHistoryInt(item['tmdbId'], -1) != tmdbId) continue;
+    final ts = watchHistoryInt(item['updatedAt']);
+    final bestTs = best == null ? -1 : watchHistoryInt(best['updatedAt'], -1);
+    if (ts > bestTs) best = item;
+  }
+  return best;
+}
+
 /// One latest in-progress item per tmdbId (Continue Watching pool).
 List<Map<String, dynamic>> inProgressPoolByShow(
   List<Map<String, dynamic>> history,

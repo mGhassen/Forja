@@ -287,7 +287,7 @@ class AppRouter {
     num? hubEpisodeNumber,
     Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected,
     String? episodeOverview,
-    Future<void> Function(Duration position, Duration duration)? onSaveProgress,
+    Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})? onSaveProgress,
     Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned,
     bool pinSource = false,
     bool streamsPrevalidated = false,
@@ -300,8 +300,17 @@ class AppRouter {
     EnginePlaySession? enginePlaySession,
     bool fadeTransition = false,
   }) async {
-    await InAppMiniPlayerController.instance.stopForNewPlay();
-    if (!context.mounted) return null;
+    // In-player next/episode / source switch calls openPlayer from a player
+    // route. stopForNewPlay → _exitPlayer would pop that route first, then
+    // !context.mounted aborts the push — user lands on details with no next ep.
+    // pushAndRemoveUntil already replaces the living player; only tear down a
+    // demoted mini (or a stale session) when opening from outside the player.
+    final replacingPlayer =
+        ModalRoute.of(context)?.settings.name == playerRouteName;
+    if (!replacingPlayer) {
+      await InAppMiniPlayerController.instance.stopForNewPlay();
+      if (!context.mounted) return null;
+    }
     const settings = RouteSettings(name: playerRouteName);
     // Capture shell tokens now - loading dialogs / hosts may unmount while the
     // player route still rebuilds its pageBuilder.
@@ -313,8 +322,6 @@ class AppRouter {
     // Forja Auto loading *dialog* sits on top. pushAndRemoveUntil must not stop
     // on that dialog (or the hub loading host) — otherwise Back returns to the
     // previous episode instead of details.
-    final replacingPlayer =
-        ModalRoute.of(context)?.settings.name == playerRouteName;
     final RouteTransitionsBuilder transitions = fadeTransition
         ? (context, animation, secondaryAnimation, child) {
             return FadeTransition(

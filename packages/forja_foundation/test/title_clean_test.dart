@@ -5,6 +5,13 @@ void main() {
   group('cleanMediaTitle', () {
     test('strips empty pipe prefixes', () {
       expect(cleanMediaTitle('| | The Runner').title, 'The Runner');
+      expect(cleanMediaTitle('|| The Runner').title, 'The Runner');
+      expect(cleanMediaTitle('| The Runner').title, 'The Runner');
+    });
+
+    test('strips fullwidth pipe lookalikes', () {
+      expect(cleanMediaTitle('｜｜ The Runner').title, 'The Runner');
+      expect(cleanMediaTitle('｜｜ Kill Tony').title, 'Kill Tony');
     });
 
     test('strips pipe-wrapped lang tags', () {

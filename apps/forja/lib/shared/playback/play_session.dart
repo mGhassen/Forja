@@ -9,6 +9,7 @@ class PlaySession {
     this.malId,
     this.episodeVideoIdByNumber = const {},
     this.audioCategory,
+    this.useHomeEpisodeWatched = false,
   });
 
   final String? pluginId;
@@ -17,6 +18,10 @@ class PlaySession {
   final int? malId;
   final Map<int, String> episodeVideoIdByNumber;
   final String? audioCategory;
+
+  /// TMDB Home details — [EpisodeWatchedService] keys are unscoped `{tmdb}_S{s}_E{e}`.
+  /// Hub packs keep catalog-scoped keys via [pluginId].
+  final bool useHomeEpisodeWatched;
 
   MetaOpen? get effectiveOpen => metaOpen ?? metaItem?.open;
 
