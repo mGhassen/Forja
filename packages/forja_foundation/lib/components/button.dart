@@ -250,7 +250,7 @@ class Button extends StatelessWidget {
               border: theme.brandGreen.withValues(alpha: 0.55),
             )
           : _ButtonColors(
-              foreground: theme.textSecondary,
+              foreground: theme.textPrimary,
               background: Colors.white.withValues(alpha: 0.03),
               border: ForjaShellColors.ghostBorder,
             ),
