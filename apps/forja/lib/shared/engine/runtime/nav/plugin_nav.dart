@@ -28,10 +28,16 @@ abstract final class PluginNavRegistry {
     String? packSourceUrl,
   }) {
     if (pluginId != null && pluginId.isNotEmpty) {
-    return PackLayoutPainter(
+      final action = _tabPageActions[tabId]?.trim() ?? '';
+      final params = _tabPageParams[tabId];
+      return PackLayoutPainter(
         pluginId: pluginId,
         tabId: tabId,
         packSourceUrl: packSourceUrl,
+        pageAction: action.isEmpty ? null : action,
+        pageParams: params == null || params.isEmpty
+            ? null
+            : Map<String, dynamic>.from(params),
       );
     }
     return PackLayoutPainterLoader(tabId: tabId);
@@ -254,9 +260,11 @@ abstract final class PluginNavRegistry {
       await p.setString(
         _navCacheKey,
         jsonEncode({
-          'version': 1,
+          'version': 2,
           'tabPluginIds': _tabPluginIds,
           'tabPackUrls': _tabPackUrls,
+          'tabPageActions': _tabPageActions,
+          'tabPageParams': _tabPageParams,
           'destinations': destinationRows,
           'accents': {
             for (final e in _accents.entries)
@@ -287,6 +295,28 @@ abstract final class PluginNavRegistry {
         final v = e.value?.toString() ?? '';
         if (k.isEmpty || v.isEmpty) continue;
         tabPackUrls.putIfAbsent(k, () => v);
+      }
+    }
+    final tabPageActions = <String, String>{};
+    final rawActions = json['tabPageActions'];
+    if (rawActions is Map) {
+      for (final e in rawActions.entries) {
+        final k = e.key.toString();
+        final v = e.value?.toString().trim() ?? '';
+        if (k.isEmpty || v.isEmpty) continue;
+        tabPageActions.putIfAbsent(k, () => v);
+      }
+    }
+    final tabPageParams = <String, Map<String, dynamic>>{};
+    final rawParams = json['tabPageParams'];
+    if (rawParams is Map) {
+      for (final e in rawParams.entries) {
+        final k = e.key.toString();
+        if (k.isEmpty || e.value is! Map) continue;
+        tabPageParams.putIfAbsent(
+          k,
+          () => Map<String, dynamic>.from(e.value as Map),
+        );
       }
     }
     final dests = <String, NavDestination>{};
@@ -336,6 +366,8 @@ abstract final class PluginNavRegistry {
       accents: accents,
       tabPluginIds: tabPluginIds,
       tabPackUrls: tabPackUrls,
+      tabPageActions: tabPageActions,
+      tabPageParams: tabPageParams,
     );
   }
 
@@ -344,6 +376,11 @@ abstract final class PluginNavRegistry {
     _accents = snap.accents;
     _tabPluginIds = Map<String, String>.from(snap.tabPluginIds);
     _tabPackUrls = Map<String, String>.from(snap.tabPackUrls);
+    _tabPageActions = Map<String, String>.from(snap.tabPageActions);
+    _tabPageParams = {
+      for (final e in snap.tabPageParams.entries)
+        e.key: Map<String, dynamic>.from(e.value),
+    };
     _builders = {
       for (final tabId in _destinations.keys)
         tabId: () => _builderForHubTab(
@@ -595,7 +632,9 @@ abstract final class PluginNavRegistry {
         !_colorMapEq(_accents, accents) ||
         !_builderKeysEq(_builders, builders) ||
         !_tabPluginIdsEq(_tabPluginIds, tabPluginIds) ||
-        !_tabPluginIdsEq(_tabPackUrls, tabPackUrls);
+        !_tabPluginIdsEq(_tabPackUrls, tabPackUrls) ||
+        !_tabPluginIdsEq(_tabPageActions, tabPageActions) ||
+        !_pageParamsEq(_tabPageParams, tabPageParams);
 
     _destinations = dests;
     _accents = accents;
@@ -970,6 +1009,21 @@ abstract final class PluginNavRegistry {
     }
     return true;
   }
+
+  static bool _pageParamsEq(
+    Map<String, Map<String, dynamic>> a,
+    Map<String, Map<String, dynamic>> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (final e in a.entries) {
+      final o = b[e.key];
+      if (o == null || o.length != e.value.length) return false;
+      for (final pe in e.value.entries) {
+        if (o[pe.key] != pe.value) return false;
+      }
+    }
+    return true;
+  }
 }
 
 class _NavSnapshot {
@@ -978,10 +1032,14 @@ class _NavSnapshot {
     required this.accents,
     required this.tabPluginIds,
     this.tabPackUrls = const {},
+    this.tabPageActions = const {},
+    this.tabPageParams = const {},
   });
 
   final Map<String, NavDestination> destinations;
   final Map<String, Color> accents;
   final Map<String, String> tabPluginIds;
   final Map<String, String> tabPackUrls;
+  final Map<String, String> tabPageActions;
+  final Map<String, Map<String, dynamic>> tabPageParams;
 }

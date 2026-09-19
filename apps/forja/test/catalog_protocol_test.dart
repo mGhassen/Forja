@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/packs/forja_host_assets.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
@@ -367,6 +368,31 @@ void main() {
         legacyWhenFeedOnly: {'spotlight', 'featured'},
       );
       expect(ids, {'spotlight', 'featured'});
+    });
+  });
+
+  group('packRailParamsAreFeedShared', () {
+    test('allows chrome hubPage and host maxPages', () {
+      expect(
+        packRailParamsAreFeedShared({
+          'rail': 'popular',
+          'hubPage': 'home',
+          'maxPages': 2,
+          'filter': null,
+        }),
+        isTrue,
+      );
+    });
+
+    test('rejects per-row extras like genreRow', () {
+      expect(
+        packRailParamsAreFeedShared({
+          'rail': 'genre',
+          'hubPage': 'home',
+          'genreRow': 'action',
+        }),
+        isFalse,
+      );
     });
   });
 

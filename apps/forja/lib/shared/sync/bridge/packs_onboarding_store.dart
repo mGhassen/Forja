@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
@@ -16,10 +17,15 @@ class PacksOnboardingStore {
   static Future<String?> _prefsKeyForActiveProfile() async {
     final userId = SyncService.instance.session?.user.id.trim();
     if (userId == null || userId.isEmpty) return null;
-    final profile = await SyncService.instance.activeProfile();
-    final profileId = profile?.id.trim();
-    if (profileId == null || profileId.isEmpty) return null;
-    return '$_prefsPrefix$userId:$profileId';
+    try {
+      final profile = await SyncService.instance.activeProfile();
+      final profileId = profile?.id.trim();
+      if (profileId == null || profileId.isEmpty) return null;
+      return '$_prefsPrefix$userId:$profileId';
+    } on SyncProfileFetchException catch (e) {
+      debugPrint('[PacksOnboarding] activeProfile: $e');
+      return null;
+    }
   }
 
   static Future<String> _prefsKey() async {
@@ -56,7 +62,14 @@ class PacksOnboardingStore {
   }
 
   /// True when the packs wizard should appear (signed-in or guest + !onboarded).
+  /// Signed-in + profile fetch failure → false (don't interrupt cold start).
   static Future<bool> shouldShow() async {
+    if (SyncService.instance.isSignedIn) {
+      final signed = await _prefsKeyForActiveProfile();
+      if (signed == null) return false;
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(signed) != true;
+    }
     if (await isOnboardedLocal()) return false;
     return true;
   }

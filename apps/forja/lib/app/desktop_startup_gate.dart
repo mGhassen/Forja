@@ -210,16 +210,22 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     );
 
     // Upgrade / empty-onboarded cohort: interrupt splash → packs once.
-    if (_stage == _StartupStage.splash &&
-        SyncService.instance.isSignedIn &&
-        await PacksOnboardingStore.shouldShow()) {
-      final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
-      if (!mounted) return;
-      if (!auto) {
-        debugPrint('[DesktopStartupGate] restored session → packs onboarding');
-        _packsSkipProfileSplash = true;
-        setState(() => _stage = _StartupStage.packs);
+    try {
+      if (_stage == _StartupStage.splash &&
+          SyncService.instance.isSignedIn &&
+          await PacksOnboardingStore.shouldShow()) {
+        final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
+        if (!mounted) return;
+        if (!auto) {
+          debugPrint('[DesktopStartupGate] restored session → packs onboarding');
+          _packsSkipProfileSplash = true;
+          setState(() => _stage = _StartupStage.packs);
+        }
       }
+    } on SyncProfileFetchException catch (e) {
+      debugPrint('[DesktopStartupGate] packs onboarding check: $e');
+    } catch (e) {
+      debugPrint('[DesktopStartupGate] packs onboarding check: $e');
     }
   }
 

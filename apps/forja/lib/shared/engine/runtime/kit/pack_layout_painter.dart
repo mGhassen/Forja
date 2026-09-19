@@ -1077,10 +1077,15 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
     if (id.isEmpty) {
       return const Center(child: Text('No hub pack for this tab.'));
     }
+    final action =
+        PluginNavRegistry.pageActionForTab(widget.tabId)?.trim() ?? '';
+    final params = PluginNavRegistry.pageParamsForTab(widget.tabId);
     return PackLayoutPainter(
       pluginId: id,
       tabId: widget.tabId,
       packSourceUrl: _packSourceUrl,
+      pageAction: action.isEmpty ? null : action,
+      pageParams: params,
     );
   }
 }

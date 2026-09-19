@@ -34,11 +34,17 @@ bool packChromeVodPagedFeed(
 
 /// Params safe to satisfy from page `feed.rails[rail]` (no per-row extras
 /// like `genreRow` — those must hit action:`rail` with full params).
+///
+/// [hubPage] is chrome tab id (not a TMDB page index). [maxPages] is host
+/// pagination metadata. Both must stay allowed — Sep 16 `page`→`hubPage`
+/// rename forgot `hubPage` and broke Home feed sharing (N parallel rails).
 bool packRailParamsAreFeedShared(Map<String, dynamic> params) {
   const allowed = {
     'rail',
     'limit',
     'page',
+    'hubPage',
+    'maxPages',
     'filter',
     'force',
     'refresh',
@@ -149,9 +155,10 @@ Map<String, dynamic> packChromeFeedParams(
   final q = (chrome?.eventQuery ?? '').trim();
   if (q.isNotEmpty && (kindReloadsFeed || vodPaged)) params['q'] = q;
 
-  // Live category lists from host store cache (Favorites / pins / order).
+  // Live category lists (Favorites / pins / order) — IPTV / Live Sports only.
+  // Never stamp onto Home/Anime rails or feed-share always fails after IPTV.
   final liveLists = CategoryBarActionHost.cachedLiveListParams;
-  if (liveLists.isNotEmpty) {
+  if ((kindReloadsFeed || vodPaged) && liveLists.isNotEmpty) {
     params.addAll(liveLists);
   }
 
