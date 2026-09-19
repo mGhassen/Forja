@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 6** fix · **0 / 4** acceptance |
+| **Progress** | **6 / 7** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I210-T04 | Keep existing Trakt/Simkl **history** sync for episode marks | ✅ |
 | 5 | I210-T05 | Double-click / right-click season poster toggles all aired episodes in that season | ✅ |
 | 6 | I210-T06 | Manual QA — mark / unmark / finish series on Lists + Simkl | ⬜ |
+| 7 | I210-T07 | Completed only with declared series total — never invent from current ep / partial `videos[]` (false Completed after E1) | ✅ |
 
 ---
 
@@ -36,9 +37,12 @@
 | 2 | I210-A02 | Marking the last episode → Completed on My List and Simkl list bucket when logged in | ⬜ |
 | 3 | I210-A03 | Unmarking while Completed → Watching; episode history still syncs to Simkl/Trakt | ⬜ |
 | 4 | I210-A04 | Double-click season poster marks every aired episode in that season (toggle off when all marked) | ⬜ |
+| 5 | I210-A05 | Finishing episode 1 of a multi-ep series → Watching (or stays Watching), never Simkl/My List Completed | ⬜ |
 
 ---
 
 ## Summary
 
 Episode toggle only wrote local checkmarks + tracker **history**. Lists tabs and Simkl **library status** (Watching / Completed) never moved. Wire list follow from the same marks (manual + auto ≥85%, season bulk toggle).
+
+**Regression (I210-T07):** auto-mark used `meta.episodes ?? ep` and `videos.length` as the series total, so finishing E1 (or any play with a one-row video list) set Simkl/My List to **Completed**. Completed now requires a declared total (`MetaItem.episodes` / `facts.episodeCount` / TMDB `number_of_episodes`); unknown total → Watching only.

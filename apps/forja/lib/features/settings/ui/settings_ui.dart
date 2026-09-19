@@ -421,6 +421,7 @@ class _SettingsTvExpandableSideRowState
       FocusNode(debugLabel: 'settings-pack-header');
   late final FocusNode _detailsFocus =
       FocusNode(debugLabel: 'settings-pack-details');
+  final GlobalKey _trailingKey = GlobalKey();
 
   @override
   void dispose() {
@@ -433,6 +434,35 @@ class _SettingsTvExpandableSideRowState
 
   void _focusHeader() {
     if (_headerFocus.canRequestFocus) _headerFocus.requestFocus();
+  }
+
+  void _focusDetailsOrHeader() {
+    if (widget.onHeaderActivate != null && _detailsFocus.canRequestFocus) {
+      _detailsFocus.requestFocus();
+      return;
+    }
+    _focusHeader();
+  }
+
+  void _focusFirstTrailing() {
+    final ctx = _trailingKey.currentContext;
+    if (ctx == null) return;
+    var focused = false;
+    void visit(Element element) {
+      if (focused) return;
+      final widget = element.widget;
+      if (widget is Focus) {
+        final node = widget.focusNode;
+        if (node != null && node.canRequestFocus && !node.skipTraversal) {
+          node.requestFocus();
+          focused = true;
+          return;
+        }
+      }
+      element.visitChildren(visit);
+    }
+
+    ctx.visitChildElements(visit);
   }
 
   @override
@@ -490,10 +520,12 @@ class _SettingsTvExpandableSideRowState
     if (trailing != null) {
       trailing = SettingsExpandHeaderFocus(
         focusHeader: _focusHeader,
-        child: trailing,
+        focusBeforeActions: _focusDetailsOrHeader,
+        child: KeyedSubtree(key: _trailingKey, child: trailing),
       );
     }
 
+    final hasTrailing = trailing != null;
     final detailsBtn = activate == null
         ? null
         : shellFocusableTap(
@@ -511,6 +543,7 @@ class _SettingsTvExpandableSideRowState
             onLeftEdge: () {
               _headerFocus.requestFocus();
             },
+            onRightEdge: hasTrailing ? _focusFirstTrailing : null,
             child: SizedBox(
               width: 40,
               height: 40,
@@ -548,7 +581,9 @@ class _SettingsTvExpandableSideRowState
                     ? () {
                         _detailsFocus.requestFocus();
                       }
-                    : null,
+                    : hasTrailing
+                        ? _focusFirstTrailing
+                        : null,
                 child: header,
               ),
             ),
@@ -583,17 +618,28 @@ class SettingsExpandHeaderFocus extends InheritedWidget {
     super.key,
     required this.focusHeader,
     required super.child,
+    this.focusBeforeActions,
   });
 
   final VoidCallback focusHeader;
+
+  /// ← from the first pack action: details chevron when present, else header.
+  final VoidCallback? focusBeforeActions;
 
   static VoidCallback? maybeFocusHeaderOf(BuildContext context) => context
       .getInheritedWidgetOfExactType<SettingsExpandHeaderFocus>()
       ?.focusHeader;
 
+  static VoidCallback? maybeFocusBeforeActionsOf(BuildContext context) {
+    final w =
+        context.getInheritedWidgetOfExactType<SettingsExpandHeaderFocus>();
+    return w?.focusBeforeActions ?? w?.focusHeader;
+  }
+
   @override
   bool updateShouldNotify(covariant SettingsExpandHeaderFocus oldWidget) =>
-      focusHeader != oldWidget.focusHeader;
+      focusHeader != oldWidget.focusHeader ||
+      focusBeforeActions != oldWidget.focusBeforeActions;
 }
 
 List<Widget> settingsExpansionChildren(
@@ -730,8 +776,11 @@ class SettingsPageScaffold extends StatefulWidget {
 class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
     with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
+  late final FocusNode _backFocus =
+      FocusNode(debugLabel: 'settings-page-back');
   int _handledEnterToken = 0;
   int _focusAttempts = 0;
+  bool _showBack = false;
 
   /// Extra bottom scroll padding so a focused text field can sit above the IME.
   /// Leanback keyboards often overlay without shrinking the Flutter view /
@@ -743,16 +792,37 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
   @override
   void initState() {
     super.initState();
+    _showBack = widget.showBack;
     WidgetsBinding.instance.addObserver(this);
     // Catch raw Material buttons (LAN Discover, etc.) that never call
     // shellTvEnsureVisibleItem themselves.
     FocusManager.instance.addListener(_onFocusChange);
+    if (widget.showBack) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusBackIfTv());
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsPageScaffold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.showBack && !_showBack) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusBackIfTv());
+    }
+    _showBack = widget.showBack;
+  }
+
+  void _focusBackIfTv() {
+    if (!mounted || !widget.showBack) return;
+    if (!ShellScope.metricsOf(context).usesTvDensity) return;
+    if (!_backFocus.canRequestFocus) return;
+    _backFocus.requestFocus();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     FocusManager.instance.removeListener(_onFocusChange);
+    _backFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -900,6 +970,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
         if (includeBack)
           shellFocusableTap(
             context: context,
+            focusNode: _backFocus,
             onTap: widget.onBack ?? () => Navigator.of(context).maybePop(),
             borderRadius: 20,
             scaleOnFocus: 1.0,
@@ -1880,6 +1951,9 @@ class SettingsTextAction extends StatelessWidget {
 /// width-filling button (e.g. inside a `Row`/`Expanded`).
 ///
 /// `secondary: true` uses the neutral tone; otherwise the brand-green primary.
+///
+/// TV: [shellFocusableTap] so D-pad owns the node (Material [Button] traps
+/// ←/→ under DirectionalFocus and can block ↓ out of the control).
 class SettingsFilledButton extends StatelessWidget {
   const SettingsFilledButton({
     super.key,
@@ -1890,6 +1964,10 @@ class SettingsFilledButton extends StatelessWidget {
     this.secondary = false,
     this.expand = false,
     this.focusNode,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final String label;
@@ -1899,9 +1977,49 @@ class SettingsFilledButton extends StatelessWidget {
   final bool secondary;
   final bool expand;
   final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv && onPressed != null && !busy) {
+      final child = IgnorePointer(
+        child: Button(
+          label: label,
+          onPressed: () {},
+          icon: icon,
+          loading: busy,
+          expand: expand,
+          height: 36,
+          variant: secondary
+              ? ButtonVariant.secondary
+              : ButtonVariant.primary,
+        ),
+      );
+      final tap = shellFocusableTap(
+        context: context,
+        focusNode: focusNode,
+        onTap: onPressed,
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusRail: false,
+        showFocusFill: true,
+        showFocusBorder: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.settings,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        onUpEdge: onUpEdge,
+        onDownEdge: onDownEdge,
+        child: child,
+      );
+      if (expand) return tap;
+      return Align(alignment: Alignment.centerRight, child: tap);
+    }
     final button = Button(
       label: label,
       onPressed: onPressed,

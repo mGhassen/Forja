@@ -57,12 +57,16 @@ class WatchHistory {
     ];
     String? prevSourceId;
     String? prevStreamUrl;
+    int? prevPositionMs;
+    int? prevDurationMs;
     list.removeWhere((line) {
       try {
         final m = jsonDecode(line) as Map<String, dynamic>;
         if (m['metaId'] == meta.id) {
           prevSourceId = m['sourceId']?.toString();
           prevStreamUrl = m['streamUrl']?.toString();
+          prevPositionMs = (m['positionMs'] as num?)?.toInt();
+          prevDurationMs = (m['durationMs'] as num?)?.toInt();
           return true;
         }
         return false;
@@ -72,6 +76,9 @@ class WatchHistory {
     });
     final sid = (sourceId ?? prevSourceId)?.trim();
     final url = (streamUrl ?? prevStreamUrl)?.trim();
+    // Null position/duration = seed / metadata-only write — keep prior resume.
+    final posMs = position?.inMilliseconds ?? prevPositionMs ?? 0;
+    final durMs = duration?.inMilliseconds ?? prevDurationMs ?? 0;
     list.insert(
       0,
       jsonEncode({
@@ -87,8 +94,8 @@ class WatchHistory {
         if (extras.isNotEmpty) 'extras': extras,
         if (sid != null && sid.isNotEmpty) 'sourceId': sid,
         if (url != null && url.isNotEmpty) 'streamUrl': url,
-        'positionMs': position?.inMilliseconds ?? 0,
-        'durationMs': duration?.inMilliseconds ?? 0,
+        'positionMs': posMs,
+        'durationMs': durMs,
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
         'meta': meta.toJson(),
       }),

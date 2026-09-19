@@ -142,7 +142,6 @@ class EngineRuntime {
       _registerBridges(rt);
       _installHost(rt);
       _installPolyfills(rt);
-      await _loadStreamCrypto(rt);
       await _loadCheerio(rt);
       _ready = true;
       _initCompleter!.complete();
@@ -856,20 +855,6 @@ class EngineRuntime {
     }
   }
 
-  Future<void> _loadStreamCrypto(JavascriptRuntime rt) async {
-    try {
-      final code = await rootBundle.loadString(
-        'assets/engine/_streamcrypto.js',
-      );
-      final res = rt.evaluate(code, sourceUrl: 'engine://streamcrypto');
-      if (res.isError) {
-        _forjaRuntimeLog('streamcrypto load error: ${res.stringResult}');
-      }
-    } catch (e) {
-      _forjaRuntimeLog('streamcrypto load failed: $e');
-    }
-  }
-
   Future<void> _loadCheerio(JavascriptRuntime rt) async {
     try {
       final code = await rootBundle.loadString(
@@ -1290,17 +1275,6 @@ class EngineRuntime {
   }
   var meta = $ctx;
   var pluginLabel = ${jsonEncode(pluginLabel)};
-  var streamDecrypt = function(body, seed, tmdbId) {
-    var fn = globalThis.__engineStreamDecrypt;
-    if (typeof fn !== 'function') {
-      throw new Error('STREAMCRYPTO: not loaded');
-    }
-    return fn(
-      String(body == null ? '' : body),
-      String(seed == null ? '' : seed),
-      String(tmdbId == null ? '' : tmdbId),
-    );
-  };
   var ctx = {
     tmdbId: meta.tmdbId,
     imdbId: meta.imdbId,
@@ -1668,7 +1642,6 @@ class EngineRuntime {
     })(),
     hop: globalThis.__engineHop,
     crypto: Object.assign({}, globalThis.CryptoJS || {}, {
-      streamDecrypt: streamDecrypt,
       kisskhKkey: function(episodeId, kind) {
         return sendMessage('KissKhKkey', JSON.stringify({
           episodeId: episodeId, kind: kind || 'video'
@@ -1698,8 +1671,7 @@ class EngineRuntime {
       solveScryptPow: function(challenge) {
         return sendMessage('SolveScryptPow', JSON.stringify(challenge || {})) || null;
       }
-    }),
-    streamcrypto: { decrypt: streamDecrypt }
+    })
   };
   if (typeof globalThis.__forjaEnsureLiveUnlock === 'function') {
     try { globalThis.__forjaEnsureLiveUnlock(ctx); } catch (e) {}

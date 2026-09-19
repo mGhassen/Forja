@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/epg_guide_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
@@ -714,18 +715,21 @@ class _ChannelCellState extends State<_ChannelCell> {
             ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              channel.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
-                color: active || selected
-                    ? Colors.white
-                    : ForjaShellColors.textSecondary,
-                fontSize: 13,
-                fontWeight:
-                    active || selected ? FontWeight.w700 : FontWeight.w500,
-                height: 1.2,
+            child: CrossfadeSwap(
+              child: Text(
+                channel.title,
+                key: ValueKey(channel.title),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  color: active || selected
+                      ? Colors.white
+                      : ForjaShellColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight:
+                      active || selected ? FontWeight.w700 : FontWeight.w500,
+                  height: 1.2,
+                ),
               ),
             ),
           ),
@@ -850,16 +854,19 @@ class _ProgrammeBlock extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Text(
-                        entry.title.isEmpty ? '-' : entry.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: past && !live
-                              ? Colors.white54
-                              : ForjaShellColors.textPrimary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                      child: CrossfadeSwap(
+                        child: Text(
+                          entry.title.isEmpty ? '-' : entry.title,
+                          key: ValueKey(entry.title),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: past && !live
+                                ? Colors.white54
+                                : ForjaShellColors.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),

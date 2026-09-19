@@ -1,4 +1,5 @@
 import 'package:forja/shared/engine/details/details_meta.dart';
+import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/play_session.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
@@ -320,6 +321,6 @@ Future<void> _syncEpisodeWatched({
     target: target,
     mediaId: mediaId,
     catalog: catalog,
-    totalEpisodes: meta.episodes ?? ep,
+    totalEpisodes: metaDeclaredEpisodeCount(meta),
   );
 }

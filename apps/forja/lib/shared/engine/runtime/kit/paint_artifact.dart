@@ -392,6 +392,19 @@ class _PackPosterRailState extends State<_PackPosterRail> {
   bool _loadingMore = false;
   String _reloadToken = '';
 
+  /// First-seen rail order per tab (stable across rebuilds) so ↓ follows
+  /// paint order instead of every rail sharing sortOrder 100.
+  static final Map<String, int> _sortByRailKey = {};
+  static int _sortSeq = 100;
+
+  static int _stableSortOrder(String tabId, String rowId) {
+    final key = '$tabId\u0000$rowId';
+    return _sortByRailKey.putIfAbsent(key, () {
+      _sortSeq += 1;
+      return _sortSeq;
+    });
+  }
+
   Map<String, dynamic> get node => widget.node;
 
   @override
@@ -621,6 +634,12 @@ class _PackPosterRailState extends State<_PackPosterRail> {
         ?.resolveFocusEdge((node['focusUp'] ?? '').toString());
     final focusDown = LayoutScope.maybeOf(context)
         ?.resolveFocusEdge((node['focusDown'] ?? '').toString());
+    // Unique vertical order — shared sortOrder 100 made ↓ trap on the first
+    // poster rail (_nextRow needs strictly greater sortOrder). Prefer pack
+    // sortOrder; else first-seen paint order for this tab+rowId.
+    final explicitSort = PackPaintArtifact.packInt(node['sortOrder']);
+    final sortOrder =
+        explicitSort ?? _stableSortOrder(tabId, rowId);
     final defaultPad = catalogSectionHorizontalPadding(context);
     final pad = PackPaintArtifact.packDouble(node['pad']) ?? defaultPad;
     final useCompact = widget.compactTop || node['compactTop'] == true;
@@ -679,7 +698,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     return TvKitRow(
       tabId: tabId,
       rowId: rowId,
-      sortOrder: 100,
+      sortOrder: sortOrder,
       itemCount: cards.length,
       onFocusUp: focusUp,
       onFocusDown: focusDown,

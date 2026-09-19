@@ -1041,7 +1041,13 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
 
   void _enterPageFromNav() {
     widget.onTap();
-    ShellTvFocusCoordinator.enterTabFromNav(widget.destination.id);
+    final id = widget.destination.id;
+    // Same-tab OK that opened the provider strip: stay on the nav so →
+    // can move into the strip (enter would yank focus to the hero).
+    if (VerticalFiltersRegistry.menuVisibleFor(id).value) {
+      return;
+    }
+    ShellTvFocusCoordinator.enterTabFromNav(id);
   }
 
   void _returnToActivePage() {

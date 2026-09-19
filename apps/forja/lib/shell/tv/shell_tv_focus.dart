@@ -521,18 +521,9 @@ KeyEventResult shellTvTrapRowGeometry({
   if ((rowBound || grid) &&
       (key == LogicalKeyboardKey.arrowUp ||
           key == LogicalKeyboardKey.arrowDown)) {
-    // Vertical rails (Settings categories, episode lists): coordinator may
-    // return ignored when the next tile is not registered yet — spatial
-    // focusInDirection must still run. Horizontal catalog rows keep the trap.
-    if (rowBound && tvMeta?.rowId != null) {
-      final handle = ShellTvFocusCoordinator.rowHandle(
-        tvMeta!.tabId,
-        tvMeta.rowId!,
-      );
-      if (handle?.orientation == ShellTvRowOrientation.vertical) {
-        return KeyEventResult.ignored;
-      }
-    }
+    // Trap ↑/↓ for all row-bound / grid items after coordinator edges.
+    // Vertical rails used to fall through to spatial and leak into a sibling
+    // panel (IPTV cats → channels). Jump-then-focus owns lazy mounts.
     return KeyEventResult.handled;
   }
   return KeyEventResult.ignored;

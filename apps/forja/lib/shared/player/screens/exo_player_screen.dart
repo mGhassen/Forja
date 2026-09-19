@@ -748,6 +748,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       mediaType: movie.mediaType,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
+      progress: SimklService.progressPercent(
+        _position.inMilliseconds,
+        _duration.inMilliseconds,
+      ),
     );
     unawaited(ListFollowFromWatched.markMovieWatchingOnPlay(movie));
   }
@@ -760,6 +764,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       mediaType: movie.mediaType,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
+      progress: SimklService.progressPercent(
+        _position.inMilliseconds,
+        _duration.inMilliseconds,
+      ),
     );
   }
 
@@ -771,6 +779,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       mediaType: movie.mediaType,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
+      progress: SimklService.progressPercent(
+        _position.inMilliseconds,
+        _duration.inMilliseconds,
+      ),
     );
   }
 

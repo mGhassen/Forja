@@ -138,17 +138,7 @@ flutter:
     # asset graphs (IPTV rail PNG was on disk but absent from AssetManifest).
     - assets/images/nav/iptv.png
     - assets/fonts/
-    - assets/videasy/
     - assets/nuvio/
-    - assets/engine/_streamcrypto.js
-    - assets/plugins/live/goat/
-    - assets/plugins/live/goat/vendor/
-    - assets/plugins/live/goat/webview/
-    - assets/plugins/live/gasm/
-    - assets/plugins/live/gasm/vendor/
-    - assets/plugins/live/gasm/webview/
-    - assets/plugins/live/sportsembed/
-    - assets/plugins/live/sportsembed/vendor/
     - assets/textures/
     - assets/watch_providers/
 

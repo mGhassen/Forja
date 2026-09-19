@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
@@ -93,29 +94,35 @@ class PortalProbeDetailCard extends StatelessWidget {
                     ),
                     const SizedBox(width: PortalListTokens.probeGap),
                     Expanded(
-                      child: Text(
-                        status,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: statusColor,
-                          fontSize: statusFontSize,
-                          fontWeight: FontWeight.w700,
+                      child: CrossfadeSwap(
+                        child: Text(
+                          status,
+                          key: ValueKey(status),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: statusColor,
+                            fontSize: statusFontSize,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: PortalListTokens.probeMetaGap),
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: titleFontSize,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
+                CrossfadeSwap(
+                  child: Text(
+                    item.label,
+                    key: ValueKey(item.label),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.w600,
+                      height: 1.25,
+                    ),
                   ),
                 ),
                 if (lines.isNotEmpty) ...[
@@ -156,13 +163,16 @@ class PortalProbeDetailCard extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Text(
-            value,
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.white,
-              fontSize: metaFontSize,
-              fontWeight: FontWeight.w500,
-              height: 1.3,
+          child: CrossfadeSwap(
+            child: Text(
+              value,
+              key: ValueKey('$label:$value'),
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: metaFontSize,
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+              ),
             ),
           ),
         ),

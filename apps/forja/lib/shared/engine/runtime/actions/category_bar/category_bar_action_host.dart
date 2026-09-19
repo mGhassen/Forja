@@ -10,6 +10,7 @@ import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_live_sort_providers.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_category_rail.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/chrome/live_favorite_star.dart';
@@ -651,6 +652,14 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       void Function(int oldIndex, int newIndex)? onReorder,
       required bool canReorder,
     }) {
+      final scope = LayoutScope.maybeOf(context);
+      final focusUp = scope?.resolveFocusEdge(
+        (widget.spec['focusUp'] ?? '').toString(),
+      );
+      final enterChannels = scope?.resolveFocusEdge(
+        (widget.spec['focusRight'] ?? '').toString(),
+        last: true,
+      );
       final child = CatalogCategoryRail(
         items: items,
         selectedId: widget.selectedId,
@@ -666,6 +675,16 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         onReorder: onReorder,
         canReorder: canReorder,
         header: widget.header,
+        onTvEnterRight: enterChannels,
+        onScrollJumpReady: tvTab.isEmpty
+            ? null
+            : (jump) {
+                ShellTvFocusCoordinator.setRowScrollIntoView(
+                  tvTab,
+                  IptvCatalogLand.catsRowId,
+                  jump,
+                );
+              },
       );
       if (!ShellPaintScope.useTvFocusOf(context)) {
         return ShellPaintTvTabScope(tabId: tvTab, child: child);
@@ -679,6 +698,9 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
           sortOrder: 1,
           itemCount: items.length,
           axis: ShellPaintTvRowAxis.vertical,
+          onFocusUp: focusUp,
+          // Vertical panel — never walk sortOrder down into channels.
+          onFocusDown: () {},
           child: child,
         ),
       );

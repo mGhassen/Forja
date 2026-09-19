@@ -58,6 +58,36 @@ void main() {
       );
     });
 
+    test('unknown total (0) never completes', () {
+      expect(
+        ListFollowFromWatched.nextStatus(
+          current: 'plantowatch',
+          watchedCount: 1,
+          totalEpisodes: 0,
+          episodeNowWatched: true,
+        ),
+        'watching',
+      );
+      expect(
+        ListFollowFromWatched.nextStatus(
+          current: 'watching',
+          watchedCount: 1,
+          totalEpisodes: 0,
+          episodeNowWatched: true,
+        ),
+        isNull,
+      );
+      expect(
+        ListFollowFromWatched.nextStatus(
+          current: 'watching',
+          watchedCount: 99,
+          totalEpisodes: 0,
+          episodeNowWatched: true,
+        ),
+        isNull,
+      );
+    });
+
     test('unmark from completed → watching', () {
       expect(
         ListFollowFromWatched.nextStatus(

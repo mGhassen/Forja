@@ -175,13 +175,16 @@ void main() {
   });
 
   group('Hub spines (IPTV / Live / Lists)', () {
-    testWidgets('IPTV cats↓items and items↑cats', (tester) async {
+    testWidgets('IPTV cats↑↓ stay in panel; →/← hop cats↔items',
+        (tester) async {
       const tab = 'iptv';
       ShellTvFocus.currentNavTabId = tab;
-      final cat = FocusNode();
+      final cat0 = FocusNode();
+      final cat1 = FocusNode();
       final item = FocusNode();
       addTearDown(() {
-        cat.dispose();
+        cat0.dispose();
+        cat1.dispose();
         item.dispose();
       });
 
@@ -194,19 +197,25 @@ void main() {
                 tabId: tab,
                 rowId: 'cats',
                 sortOrder: 1,
-                itemCount: 1,
-                onFocusDown: () {
-                  ShellTvFocusCoordinator.focusRowItem(tab, 'items', 0);
-                },
-                child: _rowItem(
-                  tabId: tab,
-                  rowId: 'cats',
-                  index: 0,
-                  node: cat,
-                  autoFocus: true,
-                  onDown: () {
-                    ShellTvFocusCoordinator.focusRowItem(tab, 'items', 0);
-                  },
+                itemCount: 2,
+                orientation: ShellTvRowOrientation.vertical,
+                onFocusDown: () {},
+                child: Column(
+                  children: [
+                    _rowItem(
+                      tabId: tab,
+                      rowId: 'cats',
+                      index: 0,
+                      node: cat0,
+                      autoFocus: true,
+                    ),
+                    _rowItem(
+                      tabId: tab,
+                      rowId: 'cats',
+                      index: 1,
+                      node: cat1,
+                    ),
+                  ],
                 ),
               ),
               TvKitRow(
@@ -214,16 +223,16 @@ void main() {
                 rowId: 'items',
                 sortOrder: 2,
                 itemCount: 1,
-                onFocusUp: () {
-                  ShellTvFocusCoordinator.focusRowItem(tab, 'cats', 0);
-                },
                 child: _rowItem(
                   tabId: tab,
                   rowId: 'items',
                   index: 0,
                   node: item,
-                  onUp: () {
+                  onLeft: () {
                     ShellTvFocusCoordinator.focusRowItem(tab, 'cats', 0);
+                  },
+                  onRight: () {
+                    ShellTvFocusCoordinator.focusRowItem(tab, 'items', 0);
                   },
                 ),
               ),
@@ -232,15 +241,24 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(cat.hasFocus, isTrue);
+      expect(cat0.hasFocus, isTrue);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
+      expect(cat1.hasFocus, isTrue, reason: '↓ scrolls cats, not items');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(cat1.hasFocus, isTrue, reason: 'last cat ↓ traps');
+
+      // → into items via explicit edge (pack focusRight).
+      ShellTvFocusCoordinator.focusRowItem(tab, 'items', 0);
+      await tester.pump();
       expect(item.hasFocus, isTrue);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pump();
-      expect(cat.hasFocus, isTrue);
+      expect(cat0.hasFocus, isTrue, reason: '← from items → cats');
     });
 
     testWidgets('Live kind↓schedule; schedule→ miss does not swallow',

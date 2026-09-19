@@ -9,14 +9,20 @@ import 'package:rust/rust.dart';
 /// History sync stays in [syncEpisodeWatchedToTrackers] /
 /// [ListFollow.syncEpisodeWatched]. This only moves list status:
 /// - first mark (or Plan to Watch) → Watching
-/// - all episodes marked → Completed
+/// - all episodes marked (trusted series total only) → Completed
 /// - unmark while Completed → Watching
 /// - movie play (new / Plan to Watch) → Watching
 /// - movie ≥ [watchFinishedThreshold] → Completed
+///
+/// [totalEpisodes] must be a declared series total (`MetaItem.episodes` /
+/// `facts.episodeCount` / TMDB `number_of_episodes`). Pass `0` when unknown —
+/// never invent from the current episode number or a partial `videos[]` load.
 class ListFollowFromWatched {
   ListFollowFromWatched._();
 
   /// Next list status, or null when nothing should change.
+  ///
+  /// Completed requires [totalEpisodes] > 0 and [watchedCount] ≥ that total.
   static String? nextStatus({
     required String? current,
     required int watchedCount,

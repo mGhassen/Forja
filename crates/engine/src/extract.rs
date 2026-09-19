@@ -379,7 +379,6 @@ const HOST_JS: &str = r#"
 "#;
 
 const CRYPTO_JS: &str = include_str!("crypto_js_polyfill.js");
-const STREAMCRYPTO_JS: &str = include_str!("_streamcrypto.js");
 const CHEERIO_BUNDLE: &str =
     include_str!("../../../apps/forja/assets/nuvio/cheerio.bundle.js");
 
@@ -973,9 +972,6 @@ async fn run_in_ctx<'js>(
     ctx.eval::<(), _>(CRYPTO_JS)
         .catch(&ctx)
         .map_err(|e| e.to_string())?;
-    ctx.eval::<(), _>(STREAMCRYPTO_JS)
-        .catch(&ctx)
-        .map_err(|e| e.to_string())?;
 
     let load = format!(
         r#"(function(){{
@@ -1006,15 +1002,6 @@ async fn run_in_ctx<'js>(
   if (typeof fn !== 'function') return JSON.stringify([]);
   var meta = {meta};
   var pluginLabel = {label};
-  var streamDecrypt = function(body, seed, tmdbId) {{
-    var fn = globalThis.__engineStreamDecrypt;
-    if (typeof fn !== 'function') throw new Error('STREAMCRYPTO: not loaded');
-    return fn(
-      String(body == null ? '' : body),
-      String(seed == null ? '' : seed),
-      String(tmdbId == null ? '' : tmdbId),
-    );
-  }};
   var ctx = {{
     tmdbId: meta.tmdbId,
     imdbId: meta.imdbId || '',
@@ -1067,7 +1054,6 @@ async fn run_in_ctx<'js>(
     }})(),
     hop: globalThis.__engineHop,
     crypto: Object.assign({{}}, globalThis.CryptoJS || {{}}, {{
-      streamDecrypt: streamDecrypt,
       kisskhKkey: function(episodeId, kind) {{
         return __native_kisskh_kkey((episodeId|0), String(kind == null ? 'video' : kind)) || '';
       }},
@@ -1089,8 +1075,7 @@ async fn run_in_ctx<'js>(
         var raw = __native_solve_scrypt_pow(JSON.stringify(challenge == null ? {{}} : challenge));
         return raw || null;
       }}
-    }}),
-    streamcrypto: {{ decrypt: streamDecrypt }}
+    }})
   }};
   var r = await fn(ctx);
   return JSON.stringify(r == null ? [] : r);

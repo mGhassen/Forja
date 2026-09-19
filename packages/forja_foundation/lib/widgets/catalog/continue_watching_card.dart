@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/button.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -168,31 +169,40 @@ class ContinueWatchingCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: titleFontSize,
+                          CrossfadeSwap(
+                            child: Text(
+                              title,
+                              key: ValueKey(title),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: titleFontSize,
+                              ),
                             ),
                           ),
                           if (subtitle.isNotEmpty)
-                            Text(
-                              subtitle,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                fontSize: subtitleFontSize,
+                            CrossfadeSwap(
+                              child: Text(
+                                subtitle,
+                                key: ValueKey(subtitle),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: subtitleFontSize,
+                                ),
                               ),
                             ),
                           if (remainingText.isNotEmpty)
-                            Text(
-                              remainingText,
-                              style: TextStyle(
-                                color: ForjaShellColors.badgeLabel,
-                                fontSize: remainingFontSize,
-                                fontWeight: FontWeight.w600,
+                            CrossfadeSwap(
+                              child: Text(
+                                remainingText,
+                                key: ValueKey(remainingText),
+                                style: TextStyle(
+                                  color: ForjaShellColors.badgeLabel,
+                                  fontSize: remainingFontSize,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                         ],

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **12 / 13** acceptance · **0 / 1** pack-product pointer |
-| **Current slice** | Opaque `runUnlock` + pack sugar ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md)) · A09 smoke ⬜ |
+| **Progress** | **5 / 5** components · **13 / 14** acceptance · **0 / 1** pack-product pointer |
+| **Current slice** | A09 smoke ⬜ · A14 pack-product pointer ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,6 +23,7 @@
 | 2 | R99-C02 | `plugins/live/{goat,gasm,sportsembed}/` + manifest `bundle` | ✅ |
 | 3 | R99-C03 | Host unlock runner loads modules from pack (Flutter assets fallback) | ✅ |
 | 4 | R99-C04 | SDK + feature + changelog | ✅ |
+| 5 | R99-C05 | Remove Flutter `assets/plugins/live/**` unlock trees — pack `bundle` only | ✅ |
 
 ---
 
@@ -50,6 +51,7 @@
 | 11 | R99-A11 | Pack prelude installs goatUnlock/gasmUnlock/sportsEmbedUnlock sugar + recipe `files[]` | ✅ |
 | 12 | R99-A12 | Unlock files resolve via calling `packSourceUrl` + relative paths (no goat bundle discovery) | ✅ |
 | 13 | R99-A13 | Host playback path does not hardcode sportsembed/wfty Referer — pack resolve owns headers | ✅ |
+| 14 | R99-A15 | No Flutter asset fallback — missing pack unlock file fails; `assets/plugins/live/**` deleted | ✅ |
 
 ---
 
@@ -63,7 +65,7 @@
 
 ## Summary
 
-GOAT / GASM / sportsembed **crack algorithms and WASM** live in the pack. Pack JS owns `/fetch` + resolve + unlock sugar (`ensureLiveUnlockApi` → `goatUnlock` / … via `files[]`). The Flutter host keeps only the opaque unlock **runtime** (`ctx.live.runUnlock` → Node / WebView) and stages pack-relative files from the **calling** pack.
+GOAT / GASM / sportsembed **crack algorithms and WASM** live in the pack. Pack JS owns `/fetch` + resolve + unlock sugar (`ensureLiveUnlockApi` → `goatUnlock` / … via `files[]`). The Flutter host keeps only the opaque unlock **runtime** (`ctx.live.runUnlock` → Node / WebView) and stages pack-relative files from the **calling** pack. There is **no** bundled Flutter unlock asset fallback — install / Reload the live pack.
 
 Do **not** put streamed/ppv/watchfooty resolve switches back in Dart ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md) I260-T01).
 

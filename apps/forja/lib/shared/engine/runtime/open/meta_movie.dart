@@ -37,6 +37,19 @@ int catalogMovieIdForPlay(MetaItem item) {
   return catalogSyntheticMovieId(item);
 }
 
+/// Declared series episode total for My List / Simkl Completed.
+///
+/// Prefer [MetaItem.episodes], then pack `facts.episodeCount`. Never invent
+/// from `videos.length` or the episode just watched — that falsely Completed
+/// after E1 when only one video row (or `meta.episodes ?? ep`) was available.
+int metaDeclaredEpisodeCount(MetaItem item) {
+  final declared = item.episodes;
+  if (declared != null && declared > 0) return declared;
+  final fromFacts = (item.facts?['episodeCount'] as num?)?.toInt() ?? 0;
+  if (fromFacts > 0) return fromFacts;
+  return 0;
+}
+
 /// Map catalog meta → [Movie] for hero bleed / TMDB-shaped playback ids.
 Movie? metaItemToMovie(MetaItem item) {
   final open = item.open;
@@ -63,7 +76,7 @@ Movie? metaItemToMovie(MetaItem item) {
       overview: item.description,
       genres: item.genres,
       mediaType: isMovie ? 'movie' : 'tv',
-      numberOfEpisodes: item.videos.length,
+      numberOfEpisodes: metaDeclaredEpisodeCount(item),
     );
   }
 

@@ -93,7 +93,7 @@ Movie _playMovieFor(MetaItem item, {List<MetaVideo>? videos}) {
     releaseDate: item.releaseInfo,
     overview: item.description,
     mediaType: isMovie ? 'movie' : 'tv',
-    numberOfEpisodes: eps.isNotEmpty ? eps.length : (item.episodes ?? 0),
+    numberOfEpisodes: metaDeclaredEpisodeCount(item),
   );
 }
 

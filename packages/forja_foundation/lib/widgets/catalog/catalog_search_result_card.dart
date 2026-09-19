@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -151,12 +152,15 @@ class CatalogSearchResultCard extends StatelessWidget {
                           color: Colors.amber,
                         ),
                         const SizedBox(width: 3),
-                        Text(
-                          rating!.toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                        CrossfadeSwap(
+                          child: Text(
+                            rating!.toStringAsFixed(1),
+                            key: ValueKey(rating!.toStringAsFixed(1)),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -171,24 +175,30 @@ class CatalogSearchResultCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: size,
-                        height: 1.2,
+                    CrossfadeSwap(
+                      child: Text(
+                        title,
+                        key: ValueKey(title),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: size,
+                          height: 1.2,
+                        ),
                       ),
                     ),
                     if (subtitle != null && subtitle!.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(
-                        subtitle!,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: 11,
+                      CrossfadeSwap(
+                        child: Text(
+                          subtitle!,
+                          key: ValueKey(subtitle),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
@@ -254,12 +264,15 @@ class CatalogSearchResultCard extends StatelessWidget {
                   color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(
-                  rating!.toStringAsFixed(1),
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.amber,
+                child: CrossfadeSwap(
+                  child: Text(
+                    rating!.toStringAsFixed(1),
+                    key: ValueKey(rating!.toStringAsFixed(1)),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber,
+                    ),
                   ),
                 ),
               ),
@@ -277,11 +290,14 @@ class CatalogSearchResultCard extends StatelessWidget {
                   colors: [Colors.black87, Colors.transparent],
                 ),
               ),
-              child: Text(
-                title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: Colors.white),
+              child: CrossfadeSwap(
+                child: Text(
+                  title,
+                  key: ValueKey(title),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: Colors.white),
+                ),
               ),
             ),
           ),

@@ -591,32 +591,64 @@ class SimklService {
   //  S C R O B B L E
   // ═══════════════════════════════════════════════════════════════════════
 
+  /// Simkl scrobble `progress` (0–100, max 2 decimals).
+  static double progressPercent(int positionMs, int durationMs) {
+    if (durationMs <= 0 || positionMs < 0) return 0;
+    final p = (positionMs / durationMs) * 100.0;
+    if (p.isNaN || p.isInfinite) return 0;
+    return (p.clamp(0.0, 100.0) * 100).round() / 100.0;
+  }
+
   /// Start scrobbling (user starts watching).
   Future<bool> scrobbleStart({
     required int tmdbId,
     required String mediaType,
     int? season,
     int? episode,
+    double progress = 0,
   }) =>
-      _scrobble('start', tmdbId: tmdbId, mediaType: mediaType, season: season, episode: episode);
+      _scrobble(
+        'start',
+        tmdbId: tmdbId,
+        mediaType: mediaType,
+        season: season,
+        episode: episode,
+        progress: progress,
+      );
 
-  /// Pause scrobbling.
+  /// Pause scrobbling — saves mid-episode progress on Simkl.
   Future<bool> scrobblePause({
     required int tmdbId,
     required String mediaType,
     int? season,
     int? episode,
+    double progress = 0,
   }) =>
-      _scrobble('pause', tmdbId: tmdbId, mediaType: mediaType, season: season, episode: episode);
+      _scrobble(
+        'pause',
+        tmdbId: tmdbId,
+        mediaType: mediaType,
+        season: season,
+        episode: episode,
+        progress: progress,
+      );
 
-  /// Stop scrobbling (user finished watching).
+  /// Stop scrobbling (user finished watching). Progress ≥80 marks watched.
   Future<bool> scrobbleStop({
     required int tmdbId,
     required String mediaType,
     int? season,
     int? episode,
+    double progress = 0,
   }) =>
-      _scrobble('stop', tmdbId: tmdbId, mediaType: mediaType, season: season, episode: episode);
+      _scrobble(
+        'stop',
+        tmdbId: tmdbId,
+        mediaType: mediaType,
+        season: season,
+        episode: episode,
+        progress: progress,
+      );
 
   // ═══════════════════════════════════════════════════════════════════════
   //  I M P O R T   -   W A T C H L I S T   >   B O O K M A R K S
@@ -1352,6 +1384,7 @@ class SimklService {
     required String mediaType,
     int? season,
     int? episode,
+    double progress = 0,
   }) async {
     if (tmdbId <= 0) return false;
     if (mediaType != 'movie' &&
@@ -1362,8 +1395,14 @@ class SimklService {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 
-    final body = <String, dynamic>{};
-    if (mediaType == 'tv' && season != null && episode != null) {
+    final pct = progress.clamp(0.0, 100.0);
+    final body = <String, dynamic>{
+      'progress': (pct * 100).round() / 100.0,
+    };
+    final isShow = (mediaType == 'tv' || mediaType == 'series') &&
+        season != null &&
+        episode != null;
+    if (isShow) {
       body['show'] = {
         'ids': {'tmdb': tmdbId}
       };
@@ -1380,7 +1419,9 @@ class SimklService {
     try {
       final resp = await engineHttp('POST', '$_baseUrl/scrobble/$action', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
       _handleUnauthorized(resp.status);
-      debugPrint('[Simkl] Scrobble $action (tmdb:$tmdbId): ${resp.status}');
+      debugPrint(
+        '[Simkl] Scrobble $action (tmdb:$tmdbId progress:${body['progress']}): ${resp.status}',
+      );
       return resp.status == 200 || resp.status == 201;
     } catch (e) {
       debugPrint('[Simkl] Scrobble $action error: $e');

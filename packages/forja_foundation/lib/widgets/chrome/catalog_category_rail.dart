@@ -55,6 +55,8 @@ class CatalogCategoryRail extends StatefulWidget {
     this.listPadV = ShellTokens.categoryRailListPadV,
     this.pinSlotWidth = ShellTokens.categoryRailPinSlotWidth,
     this.header,
+    this.onTvEnterRight,
+    this.onScrollJumpReady,
   });
 
   final List<CatalogCategoryItem> items;
@@ -83,6 +85,12 @@ class CatalogCategoryRail extends StatefulWidget {
   /// Optional first row above categories (e.g. always-open search field).
   final Widget? header;
 
+  /// TV: → from a category row (after select) — e.g. enter channel catalog.
+  final VoidCallback? onTvEnterRight;
+
+  /// Host registers scroll-into-view for lazy TV focus (jump then focus).
+  final ValueChanged<void Function(int index)>? onScrollJumpReady;
+
   static const double rowExtentDesktop = ShellTokens.categoryRailRowExtent;
   static const double rowExtentCompact = ShellTokens.categoryRailRowExtentCompact;
 
@@ -96,6 +104,7 @@ class CatalogCategoryRail extends StatefulWidget {
 class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   String? _floatingId;
   final ScrollController _scroll = ScrollController();
+  bool _scrollJumpRegistered = false;
 
   double _listPadV(BuildContext context) => catalogUsesTvDensity(context)
       ? catalogCategoryRailListPadV(context)
@@ -120,6 +129,28 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
 
   bool get _letterJumpEnabled =>
       !_leanbackOnly && _floatingId == null && _jumpItems.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    _offerScrollJump();
+  }
+
+  @override
+  void didUpdateWidget(covariant CatalogCategoryRail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.onScrollJumpReady != widget.onScrollJumpReady) {
+      _scrollJumpRegistered = false;
+      _offerScrollJump();
+    }
+  }
+
+  void _offerScrollJump() {
+    final ready = widget.onScrollJumpReady;
+    if (ready == null || _scrollJumpRegistered) return;
+    _scrollJumpRegistered = true;
+    ready((index) => _scrollToIndex(index));
+  }
 
   @override
   void dispose() {
@@ -248,6 +279,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
         onTvReorderDown: canReorder && reorderIndex != null
             ? () => _moveFloating(1)
             : null,
+        onTvEnterRight: widget.onTvEnterRight,
       );
     }
 
@@ -404,6 +436,7 @@ class _CatalogCategoryRow extends StatefulWidget {
     this.onExitFloating,
     this.onTvReorderUp,
     this.onTvReorderDown,
+    this.onTvEnterRight,
   });
 
   final CatalogCategoryItem item;
@@ -424,6 +457,7 @@ class _CatalogCategoryRow extends StatefulWidget {
   final VoidCallback? onExitFloating;
   final VoidCallback? onTvReorderUp;
   final VoidCallback? onTvReorderDown;
+  final VoidCallback? onTvEnterRight;
 
   @override
   State<_CatalogCategoryRow> createState() => _CatalogCategoryRowState();
@@ -841,6 +875,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
           return;
         }
         widget.onSelect?.call();
+        widget.onTvEnterRight?.call();
       },
       child: hoveredBody,
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -116,24 +117,27 @@ class PosterCard extends StatelessWidget {
               Positioned(
                 top: inset,
                 left: !compact && listPin != null ? inset + 26 : inset,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: badge!.toUpperCase() == 'NOW'
-                        ? const Color(0xFFEF4444)
-                        : ForjaShellColors.iconMuted,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    badge!,
-                    style: TextStyle(
+                child: CrossfadeSwap(
+                  child: Container(
+                    key: ValueKey(badge),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
                       color: badge!.toUpperCase() == 'NOW'
-                          ? Colors.white
-                          : Colors.black,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
+                          ? const Color(0xFFEF4444)
+                          : ForjaShellColors.iconMuted,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      badge!,
+                      style: TextStyle(
+                        color: badge!.toUpperCase() == 'NOW'
+                            ? Colors.white
+                            : Colors.black,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
+                      ),
                     ),
                   ),
                 ),
@@ -146,28 +150,34 @@ class PosterCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    title,
-                    maxLines: compact ? 1 : 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: titleFontSize,
-                      height: 1.15,
+                  CrossfadeSwap(
+                    child: Text(
+                      title,
+                      key: ValueKey(title),
+                      maxLines: compact ? 1 : 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: titleFontSize,
+                        height: 1.15,
+                      ),
                     ),
                   ),
                   if (!compact &&
                       subtitle != null &&
                       subtitle!.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: metaFontSize,
+                    CrossfadeSwap(
+                      child: Text(
+                        subtitle!,
+                        key: ValueKey(subtitle),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontSize: metaFontSize,
+                        ),
                       ),
                     ),
                   ],
@@ -241,12 +251,15 @@ class RatingBadge extends StatelessWidget {
         children: [
           const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
           const SizedBox(width: 3),
-          Text(
-            voteAverage.toStringAsFixed(1),
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          CrossfadeSwap(
+            child: Text(
+              voteAverage.toStringAsFixed(1),
+              key: ValueKey(voteAverage.toStringAsFixed(1)),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -275,12 +288,15 @@ class RatingBadgeText extends StatelessWidget {
         children: [
           const Icon(Icons.star_rounded, color: Colors.amber, size: 11),
           const SizedBox(width: 2),
-          Text(
-            rating,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
+          CrossfadeSwap(
+            child: Text(
+              rating,
+              key: ValueKey(rating),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],

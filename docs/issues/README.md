@@ -231,7 +231,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [207-[open]-…](207-[open]-macos-iptv-live-recovery-process-crash.md) | macOS IPTV live recovery → process crash | P1 | High | open | 7/7 · A 0/5 | — |
 | [208-[fixed]-…](fixed/208-[fixed]-iptv-stalker-misclassified-as-xtream-proxy.md) | Stalker live mis-tagged as Xtream proxy | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [209-[fixed]-…](fixed/209-[fixed]-forja-sports-stalker-create-link-all-channels.md) | Forja Sports Stalker mints all channel links before open | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
-| [210-[open]-…](210-[open]-episode-watched-list-simkl-follow.md) | Episode watched → My List / Simkl list buckets | P2 | Medium | open | 5/6 · A 0/4 | — |
+| [210-[open]-…](210-[open]-episode-watched-list-simkl-follow.md) | Episode watched → My List / Simkl list buckets | P2 | Medium | open | 6/7 · A 0/5 | — |
 | [211-[open]-…](211-[open]-movie-play-list-simkl-follow.md) | Movie play → My List / Simkl Watching / Completed | P2 | Medium | open | 4/5 · A 0/3 | — |
 | [212-[open]-…](212-[open]-android-tv-sources-filters-dpad-wrap.md) | ATV Sources Filters D-pad stuck per Wrap line | P1 | High | open | 3/3 · A 0/2 | — |
 | [213-[open]-…](213-[open]-engine-nuvio-plugin-disk-cache.md) | Engine/Nuvio plugin JS on disk + init download banner | P2 | Medium | open | 7/7 · A 1/9 | — |
@@ -289,6 +289,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [292-[open]-…](292-[open]-pack-visual-props-all-components.md) | Pack visual props — all components | P0 | High | open | 6/6 · A 31/33 · 2⏭️ | [RFC-112](../rfc/112-[open]-blocks-json-props.md) · [291](fixed/291-[fixed]-cinematic-hero-pack-visual-props.md) |
 | [294-[fixed]-…](fixed/294-[fixed]-iptv-first-portal-select-choose-a-portal.md) | First IPTV portal select stays on “Choose a portal” | P0 | Critical | fixed | Complete · 3/3 · A 0/2 | — |
 | [295-[fixed]-…](fixed/295-[fixed]-mediakit-live-vt-hold-no-golive.md) | MediaKit live holds on VT fail (no goLive) | P0 | Critical | fixed | Complete · 3/3 · A 0/2 | — |
+| [296-[fixed]-…](fixed/296-[fixed]-simkl-scrobble-mid-episode-progress.md) | Simkl scrobble missing mid-episode progress % | P2 | Medium | fixed | Complete · 3/3 · A 0/2 | — |
 | [289-[fixed]-…](fixed/289-[fixed]-profile-pack-membership-bleed.md) | New profile inherits other profile packs | P0 | Critical | fixed | Complete · 5/5 · A 0/4 | [217](fixed/217-[fixed]-iptv-portals-bleed-across-profiles.md) · [259](259-[open]-cloud-pack-auto-install-before-profile-splash.md) |
 | [286-[fixed]-…](fixed/286-[fixed]-iptv-channels-hub-pack-restore.md) | Restore IPTV Channels hub (pack curated + portal scan) | P1 | High | fixed | Complete · 4/4 · A 0/3 | [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) |
 | [284-[fixed]-…](fixed/284-[fixed]-macos-27-window-zoom-snap-back.md) | macOS 27 title-bar zoom snaps back / boxed relaunch | P1 | High | fixed | Complete · 5/5 · A 0/2 | — |

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Plain text title for horizontal catalog rows (no icon, no underline).
@@ -88,15 +89,30 @@ class ShellSectionTitle extends StatelessWidget {
             : padding;
     final resolvedTitleStyle = titleStyleFor(context).copyWith(fontSize: titleSize);
     final titleBlock = subtitle == null
-        ? Text(title, style: resolvedTitleStyle)
+        ? CrossfadeSwap(
+            child: Text(
+              title,
+              key: ValueKey(title),
+              style: resolvedTitleStyle,
+            ),
+          )
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: resolvedTitleStyle),
+              CrossfadeSwap(
+                child: Text(
+                  title,
+                  key: ValueKey(title),
+                  style: resolvedTitleStyle,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(
-                subtitle!,
-                style: subtitleStyle(context, fontSize: subSize),
+              CrossfadeSwap(
+                child: Text(
+                  subtitle!,
+                  key: ValueKey(subtitle),
+                  style: subtitleStyle(context, fontSize: subSize),
+                ),
               ),
             ],
           );

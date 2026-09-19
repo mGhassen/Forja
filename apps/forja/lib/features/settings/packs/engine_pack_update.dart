@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/nav/pack_update_alert_icon.dart';
-import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
@@ -131,12 +130,10 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
             ),
           ] else if (hasUpdates) ...[
             if (actions.isNotEmpty) const SizedBox(width: 12),
-            Button(
+            SettingsFilledButton(
               label: updating ? 'Updating…' : 'Update all',
               icon: Icons.download_rounded,
-              variant: ButtonVariant.primary,
-              height: 36,
-              loading: updating,
+              busy: updating,
               onPressed: updating ? null : onUpdateAll,
             ),
           ] else if (showStatus) ...[

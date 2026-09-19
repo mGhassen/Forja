@@ -259,11 +259,15 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   int? get _watchedSeasonForKeys =>
       hubMetaUsesHomeWatchHistory(_show) ? null : 1;
 
+  /// Hero progress denominator — declared total, else loaded videos.
   int get _watchedTotalEpisodes {
-    final declared = _show.episodes;
-    if (declared != null && declared > 0) return declared;
+    final declared = metaDeclaredEpisodeCount(_show);
+    if (declared > 0) return declared;
     return _videos.length;
   }
+
+  /// My List / Simkl Completed — declared total only (never invent from videos).
+  int get _listSeriesTotal => metaDeclaredEpisodeCount(_show);
 
   Future<void> _loadWatchedEpisodes() async {
     final mediaId = _watchedMediaId;
@@ -345,7 +349,6 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     if (mediaId == null) return;
     final catalog = _watchedCatalog;
     final watchedCount = _watchedEpisodes.length;
-    final total = _watchedTotalEpisodes;
     ProviderContainer? container;
     try {
       container = ProviderScope.containerOf(context, listen: false);
@@ -354,12 +357,13 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     if (catalog == null) {
       final movie = metaItemToMovie(_show);
       if (movie == null || movie.mediaType != 'tv') return;
+      final total = _listSeriesTotal > 0
+          ? _listSeriesTotal
+          : (movie.numberOfEpisodes > 0 ? movie.numberOfEpisodes : 0);
       await ListFollowFromWatched.applyTmdb(
         movie: movie,
         watchedCount: watchedCount,
-        totalEpisodes: movie.numberOfEpisodes > 0
-            ? movie.numberOfEpisodes
-            : total,
+        totalEpisodes: total,
         episodeNowWatched: episodeNowWatched,
         container: container,
       );
@@ -374,7 +378,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     await ListFollowFromWatched.applyHub(
       target: listTarget,
       watchedCount: watchedCount,
-      totalEpisodes: total,
+      totalEpisodes: _listSeriesTotal,
       episodeNowWatched: episodeNowWatched,
       container: container,
     );
@@ -391,8 +395,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           break;
         }
       }
-      if (hit == null && hubMetaUsesHomeWatchHistory(_show)) {
-        hit = await _homeWatchHistoryProgress();
+      if (hubMetaUsesHomeWatchHistory(_show)) {
+        final hubPos = (hit?['positionMs'] as num?)?.toInt() ?? 0;
+        final hubDur = (hit?['durationMs'] as num?)?.toInt() ?? 0;
+        // Seed-only hub rows (pos 0) must not hide real Home resume progress.
+        if (hit == null || !isContinueWatchingRowEntry(hubPos, hubDur)) {
+          final home = await _homeWatchHistoryProgress();
+          if (home != null) hit = home;
+        }
       }
       if (!mounted) return;
       setState(() {

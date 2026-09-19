@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
@@ -509,6 +510,24 @@ abstract final class ShellTvFocusCoordinator {
     return false;
   }
 
+  /// Back while vertical filters have focus: close panel, return to nav.
+  static bool _tryDismissVerticalFilters() {
+    final tabId = ShellTvFocus.verticalFilterRailTabId;
+    if (tabId == null || tabId.isEmpty) return false;
+    if (!VerticalFiltersRegistry.menuVisibleFor(tabId).value) return false;
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null) return false;
+    final inRail = identical(primary, ShellTvFocus.verticalFilterRailFirst) ||
+        ShellTvFocus.verticalFilterRailById.values.any(
+          (n) => identical(n, primary),
+        );
+    if (!inRail) return false;
+    VerticalFiltersRegistry.hideMenu(tabId);
+    ShellTvFocus.focusNavTab(tabId);
+    _stampOverlayBackConsumed();
+    return true;
+  }
+
   static bool _consumeDuplicateBack() {
     final now = DateTime.now();
     final last = _lastBackHandledAt;
@@ -527,6 +546,7 @@ abstract final class ShellTvFocusCoordinator {
     // didPopRoute / PopScope twins would otherwise close the dialog then
     // pop the player on the same press.
     if (consumeOverlayBack()) return true;
+    if (_tryDismissVerticalFilters()) return true;
 
     // Confirming exit / pop must not be swallowed by debounce.
     // Same-press twins (HardwareKeyboard + didPopRoute) often land a few ms
@@ -1362,20 +1382,10 @@ abstract final class ShellTvFocusCoordinator {
     if (handle.itemCount <= 0) return false;
     final delta = dir * stride;
     final target = (currentIndex + delta).clamp(0, handle.itemCount - 1);
-    if (target == currentIndex) return false;
-    // Prefer the accelerated target; walk back toward current if unmounted.
-    for (var i = target; i != currentIndex; i -= dir) {
-      if (focusRowItemExact(tabId, rowId, i)) return true;
-    }
-    // Step-1 fallback: keep walking past the neighbor (sparse registration).
-    if (stride <= 1) {
-      var next = target + dir;
-      while (next >= 0 && next < handle.itemCount) {
-        if (focusRowItemExact(tabId, rowId, next)) return true;
-        next += dir;
-      }
-    }
-    return false;
+    // End of list / accel clamp — stay put (handled), do not leak spatial.
+    if (target == currentIndex) return true;
+    // Lazy rails (IPTV cats): jump then focus — same as Portals / classic.
+    return focusRowItemRemembered(tabId, rowId, index: target);
   }
 
   static bool moveInGrid({
@@ -1396,13 +1406,19 @@ abstract final class ShellTvFocusCoordinator {
     final nextCol = col + colDelta;
     if (nextCol < 0 || nextCol >= columns) return false;
     final maxRow = (handle.itemCount - 1) ~/ columns;
-    // Accel overshoot: clamp inside the grid (first-row exit uses onUpEdge).
+    // Accel overshoot: clamp inside the grid (first-row exit uses onFocusUp).
     if (rowDelta.abs() > 1) {
       if (nextRow < 0) nextRow = 0;
       if (nextRow > maxRow) nextRow = maxRow;
     } else {
-      if (nextRow < 0) return false;
-      // Last-row down: trap so Flutter closedLoop cannot wrap to another pane.
+      // First-row up / last-row down: trap — panels hop via ←/→ only.
+      if (nextRow < 0) {
+        if (handle.onFocusUp != null) {
+          handle.onFocusUp!();
+          return true;
+        }
+        return true;
+      }
       if (nextRow > maxRow) return true;
     }
     var nextIndex = nextRow * columns + nextCol;
@@ -1702,13 +1718,13 @@ class ShellTvFocusMeta {
     if (handle?.orientation == ShellTvRowOrientation.vertical) {
       return () {
         final step = ShellTvHoldAccel.lastStep;
+        // Vertical panel: last ↓ stays in-panel unless pack set onFocusDown.
         if (idx >= handle!.itemCount - 1) {
-          return ShellTvFocusCoordinator.moveVerticalInTab(
-            tabId: tid,
-            rowId: rid,
-            currentIndex: idx,
-            down: true,
-          );
+          if (handle.onFocusDown != null) {
+            handle.onFocusDown!();
+            return true;
+          }
+          return true;
         }
         return ShellTvFocusCoordinator.focusAdjacentInRow(
           tabId: tid,
@@ -1751,13 +1767,13 @@ class ShellTvFocusMeta {
     if (handle?.orientation == ShellTvRowOrientation.vertical) {
       return () {
         final step = ShellTvHoldAccel.lastStep;
+        // Vertical panel: first ↑ stays in-panel unless pack set onFocusUp.
         if (idx <= 0) {
-          return ShellTvFocusCoordinator.moveVerticalInTab(
-            tabId: tid,
-            rowId: rid,
-            currentIndex: idx,
-            down: false,
-          );
+          if (handle!.onFocusUp != null) {
+            handle.onFocusUp!();
+            return true;
+          }
+          return true;
         }
         return ShellTvFocusCoordinator.focusAdjacentInRow(
           tabId: tid,

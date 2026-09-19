@@ -64,6 +64,7 @@ import 'package:forja_foundation/blocks/search/catalog_search_page.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/blocks/shell/shell_block.dart';
 import 'package:forja_foundation/components/button.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
@@ -2658,15 +2659,18 @@ class _KitTopBarCatalogProgressChip extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: ForjaShellColors.textSecondary,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
+                child: CrossfadeSwap(
+                  child: Text(
+                    label,
+                    key: ValueKey(label),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

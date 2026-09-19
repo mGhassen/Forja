@@ -462,16 +462,19 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        widget.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: titleColor,
-                          fontSize: 13,
-                          height: 1.25,
-                          fontWeight:
-                              selected ? FontWeight.w600 : FontWeight.w500,
+                      child: CrossfadeSwap(
+                        child: Text(
+                          widget.title,
+                          key: ValueKey(widget.title),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: titleColor,
+                            fontSize: 13,
+                            height: 1.25,
+                            fontWeight:
+                                selected ? FontWeight.w600 : FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
@@ -534,18 +537,21 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
             alignment: Alignment.centerLeft,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 220),
-              child: Text(
-                widget.title,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                softWrap: true,
-                style: GoogleFonts.plusJakartaSans(
-                  color: health == false
-                      ? Colors.white54
-                      : Colors.white,
-                  fontSize: 12,
-                  height: 1.15,
-                  fontWeight: FontWeight.w500,
+              child: CrossfadeSwap(
+                child: Text(
+                  widget.title,
+                  key: ValueKey(widget.title),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: true,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: health == false
+                        ? Colors.white54
+                        : Colors.white,
+                    fontSize: 12,
+                    height: 1.15,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),

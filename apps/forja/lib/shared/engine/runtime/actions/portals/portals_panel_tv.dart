@@ -291,10 +291,7 @@ class PortalsPanelTvFocus {
   }
 
   void exitDownToCatalog() {
-    if (ShellTvFocusCoordinator.focusRowItemRemembered(tabId, 'items')) {
-      return;
-    }
-    ShellTvFocusCoordinator.focusRowItemRemembered(tabId, 'cats');
+    // Vertical panels: last portal ↓ stays in Portals (← / close hop out).
   }
 
   void exitUpToChip() {

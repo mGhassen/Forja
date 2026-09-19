@@ -10,6 +10,7 @@ import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/widgets/chrome/logo_menu_rail.dart';
 
 /// Pack-owned logo on a contrasting tile.
@@ -616,7 +617,14 @@ class _VerticalFilterTile extends StatelessWidget {
       onDownEdge: index < focusNodes.length - 1
           ? () => onFocusNeighbor(index + 1)
           : null,
-      onLeftEdge: () => ShellTvFocus.focusNavTab(tabId),
+      onLeftEdge: () {
+        VerticalFiltersRegistry.hideMenu(tabId);
+        ShellTvFocus.focusNavTab(tabId);
+      },
+      onRightEdge: () {
+        VerticalFiltersRegistry.hideMenu(tabId);
+        ShellTvFocusCoordinator.focusHero(tabId: tabId);
+      },
       child: Stack(
         clipBehavior: Clip.none,
         children: [

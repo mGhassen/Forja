@@ -294,6 +294,10 @@ mixin _MobilePlayerLifecycle
           mediaType: widget.movie!.mediaType,
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
+          progress: SimklService.progressPercent(
+            widget.startPosition?.inMilliseconds ?? 0,
+            _s._durationNotifier.value.inMilliseconds,
+          ),
         );
         unawaited(ListFollowFromWatched.markMovieWatchingOnPlay(widget.movie!));
       }
@@ -680,6 +684,10 @@ mixin _MobilePlayerLifecycle
           mediaType: widget.movie!.mediaType,
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
+          progress: SimklService.progressPercent(
+            _s._positionNotifier.value.inMilliseconds,
+            _s._durationNotifier.value.inMilliseconds,
+          ),
         );
       }
     }
@@ -858,6 +866,7 @@ mixin _MobilePlayerLifecycle
           mediaType: widget.movie!.mediaType,
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
+          progress: SimklService.progressPercent(pos, dur),
         );
       }
     }

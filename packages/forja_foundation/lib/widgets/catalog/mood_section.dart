@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
@@ -68,7 +69,13 @@ class MoodSection extends StatelessWidget {
           Padding(
             padding: titlePadding ?? EdgeInsets.zero,
             child: titleStyle != null
-                ? Text(title!, style: titleStyle)
+                ? CrossfadeSwap(
+                    child: Text(
+                      title!,
+                      key: ValueKey(title),
+                      style: titleStyle,
+                    ),
+                  )
                 : ShellSectionTitle(
                     title: title!,
                     // Outer [titlePadding] owns insets — don't double ShellSectionTitle defaults.

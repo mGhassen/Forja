@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
@@ -176,15 +177,18 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
-                nowEntry.title.isEmpty ? '-' : nowEntry.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  height: 1.25,
+              CrossfadeSwap(
+                child: Text(
+                  nowEntry.title.isEmpty ? '-' : nowEntry.title,
+                  key: ValueKey(nowEntry.title),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
+                  ),
                 ),
               ),
               if (nowEntry.isNow) ...[
@@ -294,15 +298,18 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            nowEntry.title.isEmpty ? '-' : nowEntry.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              height: 1.25,
+          CrossfadeSwap(
+            child: Text(
+              nowEntry.title.isEmpty ? '-' : nowEntry.title,
+              key: ValueKey('float-${nowEntry.title}'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+              ),
             ),
           ),
           if (nowEntry.isNow) ...[
@@ -366,15 +373,18 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
-                entry.title.isEmpty ? '-' : entry.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white70,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  height: 1.25,
+              CrossfadeSwap(
+                child: Text(
+                  entry.title.isEmpty ? '-' : entry.title,
+                  key: ValueKey('next-${entry.title}'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    height: 1.25,
+                  ),
                 ),
               ),
             ],
@@ -404,14 +414,17 @@ class _CompactEpgRow extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(
-              entry.title.isEmpty ? '-' : entry.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white54,
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
+            child: CrossfadeSwap(
+              child: Text(
+                entry.title.isEmpty ? '-' : entry.title,
+                key: ValueKey(entry.title),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white54,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),

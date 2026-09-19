@@ -25,7 +25,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
-import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -43,6 +42,12 @@ class SettingsForjaPacksSection extends ConsumerStatefulWidget {
 class _SettingsForjaPacksSectionState
     extends ConsumerState<SettingsForjaPacksSection> {
   final TextEditingController _engineController = TextEditingController();
+  late final FocusNode _toolbarDownloadFocus =
+      FocusNode(debugLabel: 'packs-toolbar-download');
+  late final FocusNode _toolbarReloadFocus =
+      FocusNode(debugLabel: 'packs-toolbar-reload');
+  late final FocusNode _toolbarInstallFocus =
+      FocusNode(debugLabel: 'packs-toolbar-install');
   bool _engineInstalling = false;
   bool _engineReloading = false;
   bool _engineUpdatingAll = false;
@@ -66,6 +71,16 @@ class _SettingsForjaPacksSectionState
       unawaited(ref.read(enginePacksProvider.notifier).reload());
       unawaited(ref.read(enginePackUpdatesProvider.notifier).refresh());
     });
+  }
+
+  @override
+  void dispose() {
+    SettingsPackPromptDrill.current.removeListener(_onPackPromptDrill);
+    _toolbarDownloadFocus.dispose();
+    _toolbarReloadFocus.dispose();
+    _toolbarInstallFocus.dispose();
+    _engineController.dispose();
+    super.dispose();
   }
 
   void _onPackPromptDrill() {
@@ -102,13 +117,6 @@ class _SettingsForjaPacksSectionState
     );
     _deviceStateFutures[key] = future;
     return future;
-  }
-
-  @override
-  void dispose() {
-    SettingsPackPromptDrill.current.removeListener(_onPackPromptDrill);
-    _engineController.dispose();
-    super.dispose();
   }
 
   @override
@@ -263,25 +271,43 @@ class _SettingsForjaPacksSectionState
                   ref.read(enginePackUpdatesProvider.notifier).refresh(),
               actions: [
                 if (downloadable.isNotEmpty)
-                  Button(
+                  SettingsFilledButton(
                     label: 'Download all',
                     icon: Icons.download_rounded,
-                    variant: ButtonVariant.secondary,
-                    height: 36,
-                    loading: _engineInstalling,
+                    secondary: true,
+                    busy: _engineInstalling,
+                    focusNode: _toolbarDownloadFocus,
+                    onRightEdge: () {
+                      if (reloadable.isNotEmpty &&
+                          _toolbarReloadFocus.canRequestFocus) {
+                        _toolbarReloadFocus.requestFocus();
+                      } else if (_toolbarInstallFocus.canRequestFocus) {
+                        _toolbarInstallFocus.requestFocus();
+                      }
+                    },
                     onPressed: _engineReloading || _engineUpdatingAll
                         ? null
                         : () =>
                               unawaited(_downloadAllPendingPacks(downloadable)),
                   ),
                 if (reloadable.isNotEmpty)
-                  Button(
-                    icon: Icons.refresh_rounded,
+                  _settingsTvIconButton(
+                    context,
                     tooltip: 'Reload',
-                    variant: ButtonVariant.secondary,
-                    size: ButtonSize.icon,
-                    height: 36,
-                    loading: _engineReloading,
+                    icon: Icons.refresh_rounded,
+                    focusNode: _toolbarReloadFocus,
+                    onLeftEdge: downloadable.isNotEmpty
+                        ? () {
+                            if (_toolbarDownloadFocus.canRequestFocus) {
+                              _toolbarDownloadFocus.requestFocus();
+                            }
+                          }
+                        : null,
+                    onRightEdge: () {
+                      if (_toolbarInstallFocus.canRequestFocus) {
+                        _toolbarInstallFocus.requestFocus();
+                      }
+                    },
                     onPressed:
                         _engineInstalling ||
                             _engineReloading ||
@@ -289,12 +315,20 @@ class _SettingsForjaPacksSectionState
                         ? null
                         : () => unawaited(_reloadAllEnginePacks(reloadable)),
                   ),
-                Button(
+                SettingsFilledButton(
                   label: 'Install',
                   icon: Icons.add_rounded,
-                  variant: ButtonVariant.primary,
-                  height: 36,
-                  loading: _engineInstalling,
+                  busy: _engineInstalling,
+                  focusNode: _toolbarInstallFocus,
+                  onLeftEdge: () {
+                    if (reloadable.isNotEmpty &&
+                        _toolbarReloadFocus.canRequestFocus) {
+                      _toolbarReloadFocus.requestFocus();
+                    } else if (downloadable.isNotEmpty &&
+                        _toolbarDownloadFocus.canRequestFocus) {
+                      _toolbarDownloadFocus.requestFocus();
+                    }
+                  },
                   onPressed: _engineReloading ? null : _installEnginePack,
                 ),
               ],
@@ -873,54 +907,89 @@ class _EnginePackActions extends StatefulWidget {
 
 class _EnginePackActionsState extends State<_EnginePackActions> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  late final FocusNode _switchFocus =
+      FocusNode(debugLabel: 'pack-action-switch');
+  late final FocusNode _refreshFocus =
+      FocusNode(debugLabel: 'pack-action-refresh');
+  late final FocusNode _removeFocus =
+      FocusNode(debugLabel: 'pack-action-remove');
 
   @override
   void dispose() {
     _hoveredN.dispose();
+    _switchFocus.dispose();
+    _refreshFocus.dispose();
+    _removeFocus.dispose();
     super.dispose();
+  }
+
+  void _focusBefore() {
+    SettingsExpandHeaderFocus.maybeFocusBeforeActionsOf(context)?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final hasUpdate = widget.update != null;
     final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+    Widget switchControl;
+    if (leanback || tv) {
+      switchControl = shellFocusableTap(
+        context: context,
+        focusNode: _switchFocus,
+        onTap: () => widget.onTogglePack(!widget.packEnabled),
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusRail: false,
+        showFocusFill: true,
+        showFocusBorder: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.settings,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
+        onLeftEdge: _focusBefore,
+        onRightEdge: () {
+          if (_refreshFocus.canRequestFocus) _refreshFocus.requestFocus();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: IgnorePointer(
+            child: Switch(
+              value: widget.packEnabled,
+              scale: Switch.settingsScale,
+              onChanged: null,
+              emphasized: false,
+            ),
+          ),
+        ),
+      );
+    } else {
+      switchControl = MouseRegion(
+        onEnter: (_) {
+          if (_hoveredN.value) return;
+          _hoveredN.value = true;
+        },
+        onExit: (_) {
+          if (!_hoveredN.value) return;
+          _hoveredN.value = false;
+        },
+        cursor: SystemMouseCursors.click,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => Switch(
+            value: widget.packEnabled,
+            scale: Switch.settingsScale,
+            onChanged: (v) => widget.onTogglePack(v),
+            emphasized: _hoveredN.value,
+          ),
+        ),
+      );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (leanback)
-          // Header OK toggles enable — switch is chrome only.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: IgnorePointer(
-              child: Switch(
-                value: widget.packEnabled,
-                scale: Switch.settingsScale,
-                onChanged: null,
-                emphasized: false,
-              ),
-            ),
-          )
-        else
-          MouseRegion(
-            onEnter: (_) {
-              if (_hoveredN.value) return;
-              _hoveredN.value = true;
-            },
-            onExit: (_) {
-              if (!_hoveredN.value) return;
-              _hoveredN.value = false;
-            },
-            cursor: SystemMouseCursors.click,
-            child: ListenableBuilder(
-              listenable: _hoveredN,
-              builder: (context, _) => Switch(
-                value: widget.packEnabled,
-                scale: Switch.settingsScale,
-                onChanged: (v) => widget.onTogglePack(v),
-                emphasized: _hoveredN.value,
-              ),
-            ),
-          ),
+        switchControl,
         if (widget.showOfficialBadge)
           Padding(
             padding: const EdgeInsets.only(right: 4),
@@ -943,8 +1012,25 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
           color: hasUpdate
               ? ForjaShellColors.brandGreen
               : ForjaShellColors.textPrimary,
+          focusNode: _refreshFocus,
+          onLeftEdge: () {
+            if (_switchFocus.canRequestFocus) {
+              _switchFocus.requestFocus();
+            } else {
+              _focusBefore();
+            }
+          },
+          onRightEdge: () {
+            if (_removeFocus.canRequestFocus) _removeFocus.requestFocus();
+          },
         ),
-        _AddonRemoveActions(onRemove: widget.onRemove),
+        _AddonRemoveActions(
+          onRemove: widget.onRemove,
+          focusNode: _removeFocus,
+          onLeftEdge: () {
+            if (_refreshFocus.canRequestFocus) _refreshFocus.requestFocus();
+          },
+        ),
       ],
     );
   }
@@ -956,12 +1042,16 @@ Widget _settingsTvIconButton(
   required IconData icon,
   required VoidCallback? onPressed,
   Color color = ForjaShellColors.textPrimary,
+  FocusNode? focusNode,
+  VoidCallback? onLeftEdge,
+  VoidCallback? onRightEdge,
 }) {
   final child = Icon(icon, color: color, size: 20);
   final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
   if (tv) {
     return shellFocusableTap(
       context: context,
+      focusNode: focusNode,
       onTap: onPressed,
       borderRadius: 8,
       scaleOnFocus: 1.0,
@@ -971,6 +1061,8 @@ Widget _settingsTvIconButton(
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellPaintEnsureVisible.item,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
       child: SizedBox(width: 40, height: 40, child: Center(child: child)),
     );
   }
@@ -978,9 +1070,15 @@ Widget _settingsTvIconButton(
 }
 
 class _AddonRemoveActions extends StatefulWidget {
-  const _AddonRemoveActions({required this.onRemove});
+  const _AddonRemoveActions({
+    required this.onRemove,
+    this.focusNode,
+    this.onLeftEdge,
+  });
 
   final Future<void> Function() onRemove;
+  final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
 
   @override
   State<_AddonRemoveActions> createState() => _AddonRemoveActionsState();
@@ -1006,6 +1104,7 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
             icon: Icons.check_rounded,
             color: const Color(0xFFEF4444),
             onPressed: () => unawaited(_confirm()),
+            onLeftEdge: widget.onLeftEdge,
           ),
           _settingsTvIconButton(
             context,
@@ -1023,6 +1122,8 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
       icon: Icons.delete_outline,
       color: const Color(0xFFF87171),
       onPressed: () => setState(() => _confirming = true),
+      focusNode: widget.focusNode,
+      onLeftEdge: widget.onLeftEdge,
     );
   }
 }

@@ -1446,6 +1446,10 @@ mixin _DesktopPlayerPlayback
             mediaType: widget.movie!.mediaType,
             season: widget.selectedSeason,
             episode: widget.selectedEpisode,
+            progress: SimklService.progressPercent(
+              _s._positionNotifier.value.inMilliseconds,
+              _s._durationNotifier.value.inMilliseconds,
+            ),
           );
         }
       } else {
@@ -1458,6 +1462,10 @@ mixin _DesktopPlayerPlayback
             mediaType: widget.movie!.mediaType,
             season: widget.selectedSeason,
             episode: widget.selectedEpisode,
+            progress: SimklService.progressPercent(
+              _s._positionNotifier.value.inMilliseconds,
+              _s._durationNotifier.value.inMilliseconds,
+            ),
           );
         }
       }

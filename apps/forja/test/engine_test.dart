@@ -2332,7 +2332,7 @@ void main() {
       expect(src, contains('preferHlsMaster'));
       expect(src, contains('quality:'));
       expect(src, contains('language:'));
-      expect(src, contains('ctx.crypto.streamDecrypt'));
+      expect(src, contains('__engineStreamDecrypt'));
       expect(src, contains('var SPECS ='));
       expect(src, contains('"endpoint": "cdn"'));
       expect(src, contains('"name": "Yoru"'));
@@ -2908,56 +2908,6 @@ void main() {
   });
 
   group('EngineRuntime host', () {
-    test('extract(ctx) decrypts via ctx.streamcrypto', () async {
-      const seed = 'test-seed';
-      const mediaId = '550';
-      const json = '{"ok":true}';
-      final rt = EngineRuntime.instance;
-      await rt.loadPlugin(
-        pluginId: 'crypto-test',
-        code:
-            '''
-function extract(ctx) {
-  var payload = globalThis.__engineStreamEncryptForTest(${jsonEncode(json)}, ${jsonEncode(seed)}, ctx.tmdbId);
-  var body = ctx.streamcrypto.decrypt(payload, ${jsonEncode(seed)}, ctx.tmdbId);
-  return Promise.resolve([{ url: 'https://cdn.example/a.m3u8', title: body }]);
-}
-''',
-      );
-      final streams = await rt.extract(
-        pluginId: 'crypto-test',
-        tmdbId: mediaId,
-        type: 'movie',
-      );
-      expect(streams, hasLength(1));
-      expect(streams.single['url'], 'https://cdn.example/a.m3u8');
-      expect(streams.single['title'], json);
-    });
-
-    test('extract(ctx) decrypts via ctx.crypto.streamDecrypt alias', () async {
-      const seed = 'alias-seed';
-      const mediaId = '42';
-      const json = '{"alias":true}';
-      final rt = EngineRuntime.instance;
-      await rt.loadPlugin(
-        pluginId: 'crypto-alias',
-        code:
-            '''
-function extract(ctx) {
-  var payload = globalThis.__engineStreamEncryptForTest(${jsonEncode(json)}, ${jsonEncode(seed)}, ctx.tmdbId);
-  var body = ctx.crypto.streamDecrypt(payload, ${jsonEncode(seed)}, ctx.tmdbId);
-  return Promise.resolve([{ url: 'https://cdn.example/b.m3u8', title: body }]);
-}
-''',
-      );
-      final streams = await rt.extract(
-        pluginId: 'crypto-alias',
-        tmdbId: mediaId,
-        type: 'movie',
-      );
-      expect(streams.single['title'], json);
-    });
-
     test('extract(ctx) receives imdbId and config', () async {
       final rt = EngineRuntime.instance;
       await rt.loadPlugin(

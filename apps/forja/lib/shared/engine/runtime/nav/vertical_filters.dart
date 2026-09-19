@@ -272,22 +272,35 @@ abstract final class VerticalFiltersRegistry {
     if (visible || selected != null) {
       selectedIdFor(tabId).value = null;
       hideMenu(tabId);
+      _repressArmed[tabId] = false;
       return;
     }
+    // First same-tab OK: enter/refresh only (do not open). Second OK: open.
+    if (_repressArmed[tabId] != true) {
+      _repressArmed[tabId] = true;
+      return;
+    }
+    _repressArmed[tabId] = false;
     showMenu(tabId);
   }
+
+  static final Map<String, bool> _repressArmed = {};
 
   static void onTopLogoTap(String tabId) {
     if (!hasFilters(tabId)) return;
     if (!menuVisibleFor(tabId).value) {
       showMenu(tabId);
       cancelMenuHide(tabId);
+      _repressArmed[tabId] = false;
       return;
     }
     selectedIdFor(tabId).value = null;
   }
 
-  static void onLeaveTab(String tabId) => hideMenu(tabId);
+  static void onLeaveTab(String tabId) {
+    hideMenu(tabId);
+    _repressArmed[tabId] = false;
+  }
 
   static void toggleOption(String tabId, String optionId) {
     final current = selectedIdFor(tabId).value;

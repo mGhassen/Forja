@@ -1,19 +1,16 @@
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:forja/shared/engine/packs/pack_assets.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
-import 'package:forja/shared/engine/packs/pack_assets.dart';
 
 /// Pack-relative file loader for the opaque unlock runtime.
 ///
 /// Host never names unlock recipes (goat/gasm/…). Callers pass paths relative
 /// to the **calling** pack ([LiveUnlockScope.packSourceUrl]).
+/// Unlock modules ship in the pack `bundle` only — no Flutter asset fallback.
 abstract final class PackUnlockFiles {
-  /// Optional Flutter asset root for last-resort fallback (`relative` as-is).
-  static const assetRoot = 'assets/plugins/live';
-
   static Future<File?> resolve({
     required String packSourceUrl,
     required String relative,
@@ -34,7 +31,7 @@ abstract final class PackUnlockFiles {
     );
   }
 
-  /// Copy pack-relative [relative] → [dest]. Pack first, then asset fallback.
+  /// Copy pack-relative [relative] → [dest]. Missing pack file → [StateError].
   static Future<void> writeTo({
     required String packSourceUrl,
     required String relative,
@@ -44,23 +41,14 @@ abstract final class PackUnlockFiles {
       packSourceUrl: packSourceUrl,
       relative: relative,
     );
-    if (packFile != null) {
-      final parent = dest.parent;
-      if (!await parent.exists()) await parent.create(recursive: true);
-      await packFile.copy(dest.path);
-      return;
+    if (packFile == null) {
+      throw StateError(
+        'live unlock: pack file missing ($relative) for $packSourceUrl',
+      );
     }
-
-    final rel = relative.replaceAll('\\', '/').replaceFirst(RegExp(r'^/+'), '');
-    final assetPath = '$assetRoot/$rel';
-    final data = await rootBundle.load(assetPath);
     final parent = dest.parent;
     if (!await parent.exists()) await parent.create(recursive: true);
-    await dest.writeAsBytes(
-      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-      flush: true,
-    );
-    debugPrint('[PackUnlockFiles] asset fallback $assetPath → ${dest.path}');
+    await packFile.copy(dest.path);
   }
 
   static Future<Uint8List> loadBytes({
@@ -71,12 +59,12 @@ abstract final class PackUnlockFiles {
       packSourceUrl: packSourceUrl,
       relative: relative,
     );
-    if (packFile != null) {
-      return Uint8List.fromList(await packFile.readAsBytes());
+    if (packFile == null) {
+      throw StateError(
+        'live unlock: pack file missing ($relative) for $packSourceUrl',
+      );
     }
-    final rel = relative.replaceAll('\\', '/').replaceFirst(RegExp(r'^/+'), '');
-    final data = await rootBundle.load('$assetRoot/$rel');
-    return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    return Uint8List.fromList(await packFile.readAsBytes());
   }
 }
 

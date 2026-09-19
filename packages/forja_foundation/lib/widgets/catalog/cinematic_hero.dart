@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/hero_desktop_layout.dart';
@@ -135,19 +136,23 @@ class CinematicHeroLayout {
 
   double scaled(double value) => value * scale;
 
-  /// Scale without fighting TV density with desktop floor clamps.
-  /// On TV, type snaps to [ShellTokens.tvBodyFontSize] / title / meta — never
-  /// poster [scale] (that made hero meta ~5–9 while details stayed at 14).
+  /// Layout chrome (padding, gaps, column width). Never snap to type sizes —
+  /// that crushed [resolvedTextColumnWidth] to ~17 on TV and overflowed CTAs.
   double scaledChrome(double value, {double? floor, double? ceil}) {
-    if (tvDensity) {
-      if (value >= 16) return ShellTokens.tvTitleFontSize;
-      if (value >= 12) return ShellTokens.tvBodyFontSize;
-      return ShellTokens.tvMetaFontSize;
-    }
     final s = scaled(value);
+    if (tvDensity) {
+      if (ceil != null) return math.min(s, ceil);
+      return s;
+    }
     final lo = floor ?? s;
     final hi = ceil ?? s;
     return s.clamp(lo, hi);
+  }
+
+  /// Desktop font → TV type token ([ShellTokens.tvTypeSize]); else [scaled].
+  double scaledType(double desktopFontSize) {
+    if (tvDensity) return ShellTokens.tvTypeSize(desktopFontSize);
+    return scaled(desktopFontSize);
   }
 
   double get resolvedBleedDownOffset {
@@ -803,7 +808,7 @@ class CinematicHeroState extends State<CinematicHero> {
     required bool compact,
     required double desktopTextWidth,
   }) {
-    return compact
+    final body = compact
         ? LayoutBuilder(
             builder: (context, constraints) {
               return Align(
@@ -835,6 +840,12 @@ class CinematicHeroState extends State<CinematicHero> {
               );
             },
           );
+    return CrossfadeSwap(
+      child: KeyedSubtree(
+        key: ValueKey(slide.id),
+        child: body,
+      ),
+    );
   }
 
   Widget _buildDesktopColumn(
@@ -844,7 +855,7 @@ class CinematicHeroState extends State<CinematicHero> {
   }) {
     final layout = widget.layout;
     final overviewStyle = TextStyle(
-      fontSize: layout.scaledChrome(layout.resolvedOverviewFontSize),
+      fontSize: layout.scaledType(layout.resolvedOverviewFontSize),
       height: layout.resolvedOverviewLineHeight,
       letterSpacing: 0.1,
       color: const Color(0x99FFFFFF),
@@ -1022,8 +1033,8 @@ class CinematicHeroState extends State<CinematicHero> {
 
   Widget _buildMetaRow(CinematicHeroSlide slide, {bool singleLine = false}) {
     final layout = widget.layout;
-    final metaFont = layout.scaledChrome(13, floor: 9.0, ceil: 13.0);
-    final genreFont = layout.scaledChrome(12, floor: 8.0, ceil: 12.0);
+    final metaFont = layout.scaledType(13);
+    final genreFont = layout.scaledType(12);
     final gap = layout.scaledChrome(10, floor: 7.0, ceil: 10.0);
     final vote = slide.rating ?? 0;
     final rating = vote > 0
@@ -1180,7 +1191,7 @@ class CinematicHeroState extends State<CinematicHero> {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: layout.scaledChrome(10, floor: 7.0, ceil: 10.0),
+          fontSize: layout.scaledType(10),
           fontWeight: FontWeight.bold,
           color: Colors.white60,
           letterSpacing: 0.8,

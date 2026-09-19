@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/components/poster_frame.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -99,14 +100,17 @@ class _PosterCell extends StatelessWidget {
           ),
           if (item.title != null && item.title!.trim().isNotEmpty) ...[
             SizedBox(height: theme.spaceSm),
-            Text(
-              item.title!,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: theme.textPrimary,
-                fontSize: ShellTokens.posterTitleFontSizeTv,
-                fontWeight: FontWeight.w600,
+            CrossfadeSwap(
+              child: Text(
+                item.title!,
+                key: ValueKey(item.title),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: theme.textPrimary,
+                  fontSize: ShellTokens.posterTitleFontSizeTv,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
