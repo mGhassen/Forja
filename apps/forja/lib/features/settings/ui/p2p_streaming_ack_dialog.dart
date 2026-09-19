@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 const _kP2pBullets = [
@@ -34,7 +36,13 @@ Future<bool> showP2pStreamingAckDialog(
     barrierDismissible: reviewOnly,
     builder: (ctx) => ShellScope.rehost(
       context,
-      _P2pStreamingAckDialog(reviewOnly: reviewOnly),
+      TvOverlayScope(
+        debugLabel: 'p2p-streaming-ack',
+        // Body owns Cancel / Confirm focus with retries (settings reclaim).
+        autofocusFirst: false,
+        onDismiss: () => Navigator.of(ctx).pop(false),
+        child: _P2pStreamingAckDialog(reviewOnly: reviewOnly),
+      ),
     ),
   );
   return result == true;
@@ -56,12 +64,27 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
   @override
   void initState() {
     super.initState();
+    // Settings under showDialog can reclaim focus after open — claim like I173/I256.
+    _claimPrimaryFocus();
+  }
+
+  void _claimPrimaryFocus({int attempt = 0}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.metricsOf(context).usesTvDensity) return;
+      if (!_tvFocusActive(context)) return;
       final node = widget.reviewOnly ? _confirmFocus : _cancelFocus;
-      if (node.canRequestFocus) node.requestFocus();
+      if (node.canRequestFocus) {
+        node.requestFocus();
+        if (node.hasPrimaryFocus) return;
+      }
+      if (attempt < 4) _claimPrimaryFocus(attempt: attempt + 1);
     });
+  }
+
+  static bool _tvFocusActive(BuildContext context) {
+    final policy = ShellScope.maybeOf(context)?.inputPolicy;
+    return policy?.useFocusableMoodChips ??
+        resolveShellProfile(context) == ShellProfile.tv;
   }
 
   @override
@@ -73,6 +96,7 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tv = _tvFocusActive(context);
     return AlertDialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
       shape: RoundedRectangleBorder(
@@ -145,12 +169,14 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
         if (!widget.reviewOnly)
           Button(
             label: 'Cancel',
+            autofocus: tv,
             focusNode: _cancelFocus,
             onPressed: () => Navigator.pop(context, false),
           ),
         Button(
-              variant: ButtonVariant.primary,
+          variant: ButtonVariant.primary,
           label: widget.reviewOnly ? 'Close' : 'I am aware',
+          autofocus: tv && widget.reviewOnly,
           focusNode: _confirmFocus,
           onPressed: () => Navigator.pop(context, true),
         ),

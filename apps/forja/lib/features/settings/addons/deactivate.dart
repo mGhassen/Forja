@@ -1,6 +1,5 @@
 import 'package:forja/features/settings/addons/catalog.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
@@ -8,6 +7,7 @@ import 'package:rust/rust.dart';
 /// Turn off nested switches / packs when a built-in addon is deactivated.
 ///
 /// Does not re-enable children when the addon is turned back on.
+/// LAN server stop is owned by [setAddonMasterEnabled] (not here).
 Future<void> deactivateAddonChildren(String addonId) async {
   switch (addonId) {
     case SettingsAddonId.stremio:
@@ -17,8 +17,6 @@ Future<void> deactivateAddonChildren(String addonId) async {
     case SettingsAddonId.torrent:
       await _disablePacksOfKind(PluginRegistry.packKindTorrent);
       await TorrentStreamService().stop();
-    case SettingsAddonId.lan:
-      await LanServerService.instance.stop();
     case SettingsAddonId.debrid:
       await SettingsService().setMagnetResolvePluginId('');
   }

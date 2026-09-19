@@ -330,8 +330,10 @@ Widget settingsExpansionSideActions({
   );
 }
 
-/// Desktop: [ExpansionTile] with optional [trailing] in the header.
-/// Leanback: focusable header + side actions — → lands on switch / icons.
+/// Phone / pointer-only: [ExpansionTile] with optional [trailing] in the header.
+/// Desktop hybrid + leanback TV ([useFocusableMoodChips]): focusable header +
+/// side actions — → lands on switch / icons. Material [ExpansionTile] is not
+/// in the shell spatial graph (app-root DirectionalFocus no-ops ←/→).
 ///
 /// When [onHeaderActivate] is set (Forja Packs), OK on the row toggles enable
 /// and a details chevron expands — same pattern as Addons.
@@ -353,7 +355,9 @@ Widget settingsExpandableWithSideActions({
   final storageKey = storageId == null
       ? null
       : PageStorageKey<String>('settings-expand-$storageId');
-  if (!ShellScope.inputPolicyOf(context).leanbackOnly) {
+  // Mood-chip profiles (desktop hybrid + ATV) need shellFocusableTap headers —
+  // not Material ExpansionTile (same class as Forja Packs D-pad).
+  if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
     return Theme(
       data: settingsExpansionTheme(context),
       child: ExpansionTile(
@@ -1992,11 +1996,14 @@ class SettingsFilledButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv && onPressed != null && !busy) {
+    // TV: stay on shellFocusableTap even while busy — swapping to Material
+    // Button remounts the FocusNode and focus jumps (LAN Discover ↔ refresh).
+    if (tv) {
+      final enabled = onPressed != null && !busy;
       final child = IgnorePointer(
         child: Button(
           label: label,
-          onPressed: () {},
+          onPressed: enabled ? () {} : null,
           icon: icon,
           loading: busy,
           expand: expand,
@@ -2009,7 +2016,7 @@ class SettingsFilledButton extends StatelessWidget {
       final tap = shellFocusableTap(
         context: context,
         focusNode: focusNode,
-        onTap: onPressed,
+        onTap: enabled ? onPressed : null,
         borderRadius: 8,
         scaleOnFocus: 1.0,
         showFocusRail: false,
@@ -2025,7 +2032,9 @@ class SettingsFilledButton extends StatelessWidget {
         child: child,
       );
       if (expand) return tap;
-      return Align(alignment: Alignment.centerRight, child: tap);
+      // Hug + left-align (docs). centerRight stacked Discover under the status
+      // refresh on LAN and made spatial ↑/↓ bounce between them.
+      return Align(alignment: Alignment.centerLeft, child: tap);
     }
     final button = Button(
       label: label,
@@ -2040,7 +2049,7 @@ class SettingsFilledButton extends StatelessWidget {
           : ButtonVariant.primary,
     );
     if (expand) return button;
-    return Align(alignment: Alignment.centerRight, child: button);
+    return Align(alignment: Alignment.centerLeft, child: button);
   }
 }
 

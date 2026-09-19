@@ -12,6 +12,7 @@ import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/components/switch.dart';
@@ -328,7 +329,8 @@ class _SettingsForjaAddonsSectionState
   }
 
   Widget _buildNuvioAddonSection(List<NuvioAddon> nuvioAddons) {
-    return Padding(
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final body = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -360,9 +362,9 @@ class _SettingsForjaAddonsSectionState
                 children: [
                   Builder(
                     builder: (context) {
-                      final leanback = ShellScope.inputPolicyOf(
+                      final tvFocus = ShellScope.inputPolicyOf(
                         context,
-                      ).leanbackOnly;
+                      ).useFocusableMoodChips;
                       void toggle(bool val) {
                         if (addon.scrapers.isEmpty) return;
                         unawaited(
@@ -373,7 +375,7 @@ class _SettingsForjaAddonsSectionState
                         );
                       }
 
-                      if (!leanback) {
+                      if (!tvFocus) {
                         return Switch(
                           value: allOn,
                           scale: Switch.settingsScale,
@@ -388,8 +390,8 @@ class _SettingsForjaAddonsSectionState
                         borderRadius: 20,
                         scaleOnFocus: 1.0,
                         showFocusRail: false,
-                        showFocusFill: false,
-                        showFocusBorder: false,
+                        showFocusFill: true,
+                        showFocusBorder: true,
                         tvTabId: 'settings',
                         tvZone: ShellTvZone.settings,
                         ensureVisibleMode: ShellPaintEnsureVisible.item,
@@ -466,6 +468,9 @@ class _SettingsForjaAddonsSectionState
         ],
       ),
     );
+    if (!tv) return body;
+    // ↓ walks addon groups; → reaches group switch (same as Forja Packs).
+    return ShellTvDisableLinearFocus(child: body);
   }
 
   Future<void> _installNuvioAddon() async {

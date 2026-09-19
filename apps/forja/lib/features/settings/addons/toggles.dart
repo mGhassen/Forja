@@ -9,7 +9,7 @@ import 'package:forja/features/settings/shell/visibility_provider.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/ui/p2p_streaming_ack_dialog.dart';
 
-import 'package:forja/shared/lan/lan_prefs.dart';
+import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
@@ -110,10 +110,20 @@ Future<bool> setAddonMasterEnabled(
             );
       }
     case SettingsAddonId.lan:
-      await LanPrefs.instance.setLanServerEnabled(val);
+      if (val) {
+        if (LanServerService.canRunServer) {
+          final ok = await LanServerService.instance.start();
+          if (!ok) return false;
+        } else {
+          // Phone / ATV: client pairing only — no local server bind.
+          await LanPrefs.instance.setLanServerEnabled(true);
+        }
+      } else {
+        await LanServerService.instance.stop();
+      }
   }
 
-  if (!val) {
+  if (!val && addonId != SettingsAddonId.lan) {
     await deactivateAddonChildren(addonId);
   }
 
@@ -134,6 +144,7 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
     this.onLeftEdge,
     this.chromeOnly = false,
     this.optimisticEnabled,
+    this.lanEnabled,
   });
 
   final String addonId;
@@ -150,6 +161,9 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
 
   /// Parent-held optimistic value while a row flip is in flight.
   final bool? optimisticEnabled;
+
+  /// Row-owned LAN pref when [chromeOnly] (child hydrate alone is stale).
+  final bool? lanEnabled;
 
   @override
   ConsumerState<AddonMasterToggle> createState() => _AddonMasterToggleState();
@@ -195,9 +209,16 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
         widget.optimisticEnabled != null) {
       _optimisticEnabled = widget.optimisticEnabled;
     }
+    if (widget.lanEnabled != null && widget.lanEnabled != _lanEnabled) {
+      _lanEnabled = widget.lanEnabled!;
+    }
   }
 
   Future<void> _hydrateLan() async {
+    if (widget.lanEnabled != null) {
+      _lanEnabled = widget.lanEnabled!;
+      return;
+    }
     _lanEnabled = await LanPrefs.instance.isLanServerEnabled();
     if (mounted) setState(() {});
   }
@@ -221,17 +242,14 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       if (widget.addonId == SettingsAddonId.lan) {
         setState(() => _lanEnabled = val);
       }
+      // Keep optimistic until [computed] matches — clearing early snaps the
+      // switch back when playback soft-pull / provider reload lags the write.
     } catch (e, st) {
       debugPrint('[AddonToggle] ${widget.addonId} failed: $e\n$st');
       if (mounted) setState(() => _optimisticEnabled = null);
       rethrow;
     } finally {
       _busy = false;
-      // Always drop optimistic after the write attempt so UI follows KV /
-      // providers (avoids switch stuck ON while Sources sees play-source off).
-      if (mounted && _optimisticEnabled != null) {
-        setState(() => _optimisticEnabled = null);
-      }
     }
   }
 
@@ -246,18 +264,24 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     final debridEnabled = debridAsync.hasValue
         ? (debridAsync.requireValue.useDebrid)
         : false;
+    final lanEnabled = widget.lanEnabled ?? _lanEnabled;
     final computed = addonMasterEnabled(
       addonId: widget.addonId,
       snap: snap,
       visibility: visibility,
       debridEnabled: debridEnabled,
-      lanEnabled: _lanEnabled,
+      lanEnabled: lanEnabled,
     );
-    final optimistic = widget.optimisticEnabled ?? _optimisticEnabled;
+    // chromeOnly: parent null means "use computed" — do not keep a stale
+    // local optimistic from didUpdateWidget after the row clears.
+    final optimistic = widget.chromeOnly
+        ? widget.optimisticEnabled
+        : (widget.optimisticEnabled ?? _optimisticEnabled);
     if (optimistic != null && optimistic == computed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted &&
-            (widget.optimisticEnabled ?? _optimisticEnabled) == computed) {
+        if (!mounted) return;
+        if (widget.chromeOnly) return;
+        if (_optimisticEnabled == computed) {
           setState(() => _optimisticEnabled = null);
         }
       });

@@ -82,6 +82,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Set<String> _eagerLoadKeys = const {};
   Set<String> _pageFeedRailIds = const {};
   Future<Map<String, List<dynamic>>>? _pageFeedFuture;
+  /// Sync rails for [PackChromeScope.pageFeedRails] — avoids microtask skeleton.
+  Map<String, List<dynamic>>? _pageFeedRails;
+  MetaError? _pageFeedError;
   Listenable? _filterListenable;
   final KitRowPrefetchLane _rowPrefetch = KitRowPrefetchLane();
   HubPageFocus _pageFocus = HubPageFocus.empty;
@@ -171,7 +174,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   void _onChromeFiltersChanged() {
     if (!mounted || _pageFeedRailIds.isEmpty) return;
     setState(() {
-      _pageFeedFuture = _fetchPageFeed(forceRefresh: false);
+      _pageFeedError = null;
+      _pageFeedRails = _peekPageFeedRails();
+      _pageFeedFuture = _pageFeedRails != null
+          ? Future<Map<String, List<dynamic>>>.value(_pageFeedRails!)
+          : _bindPageFeed(forceRefresh: false);
     });
   }
 
@@ -191,7 +198,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _refreshForceNetwork = true;
       _refreshKeepPainted = true;
       if (_pageFeedRailIds.isNotEmpty) {
-        _pageFeedFuture = _fetchPageFeed(forceRefresh: true);
+        _pageFeedRails = null;
+        _pageFeedError = null;
+        _pageFeedFuture = _bindPageFeed(forceRefresh: true);
       }
     });
   }
@@ -284,6 +293,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final eager = _firstPaintEagerKeys(widgets);
     final feedIds = _feedRailIdsForPage(pageMap, widgets);
     Future<Map<String, List<dynamic>>>? feedFuture;
+    Map<String, List<dynamic>>? feedRails;
+    MetaError? feedError;
     if (feedIds.isNotEmpty) {
       // Reuse in-flight / completed page feed when layout soft-reloads so
       // PackLoadedPaint does not remount every rail (skeleton flash).
@@ -292,8 +303,20 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
           _pageFeedFuture != null &&
           setEquals(feedIds, _pageFeedRailIds)) {
         feedFuture = _pageFeedFuture;
+        feedRails = _pageFeedRails;
+        feedError = _pageFeedError;
+      } else if (!forceFeed) {
+        // Sync EngineCache hit — rails must paint this frame (Future.value
+        // alone still schedules .then as a microtask → shimmer flash).
+        feedRails = _peekPageFeedRails();
+        feedError = null;
+        feedFuture = feedRails != null
+            ? Future<Map<String, List<dynamic>>>.value(feedRails)
+            : _bindPageFeed(forceRefresh: false);
       } else {
-        feedFuture = _fetchPageFeed(forceRefresh: forceFeed);
+        feedRails = null;
+        feedError = null;
+        feedFuture = _bindPageFeed(forceRefresh: true);
       }
     }
 
@@ -305,6 +328,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _eagerLoadKeys = eager;
       _pageFeedRailIds = feedIds;
       _pageFeedFuture = feedFuture;
+      _pageFeedRails = feedRails;
+      _pageFeedError = feedError;
       _rowPrefetch.reset();
       initLayoutTabSelections(_layoutSelections, widgets);
       // Page map first; root layout `focus` as fallback.
@@ -403,9 +428,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       if (_widgets.isNotEmpty) return;
       setState(() {
         _loading = false;
-        _error = envelope.error?.message.isNotEmpty == true
-            ? envelope.error!.message
-            : 'Pack page load failed.';
+        _error = userFacingCatalogError(
+          envelope.error,
+          fallback: 'Couldn’t load this hub. Try again.',
+        );
       });
       return;
     }
@@ -476,31 +502,88 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     return out;
   }
 
-  Future<Map<String, List<dynamic>>> _fetchPageFeed({
-    required bool forceRefresh,
-  }) async {
-    final envelope = await packOpaqueRun(
-      pluginId: widget.pluginId,
-      packSourceUrl: widget.packSourceUrl,
-      action: 'feed',
-      params: catalogParamsWithFilters(
+  Map<String, dynamic> _pageFeedParams() => catalogParamsWithFilters(
         const {},
         filters: catalogChromeFilters(
           tabId: widget.tabId,
           pluginId: widget.pluginId,
         ),
-      ),
-      forceRefresh: forceRefresh,
-    );
-    if (!envelope.ok) return const {};
+      );
+
+  Map<String, List<dynamic>>? _railsMapFromEnvelope(MetaEnvelope? envelope) {
+    if (envelope == null || !envelope.ok) return null;
     final rails = envelope.data?['rails'];
-    if (rails is! Map) return const {};
+    if (rails is! Map) return null;
     final out = <String, List<dynamic>>{};
     for (final e in rails.entries) {
       final key = e.key.toString();
       final items = e.value;
       if (items is! List) continue;
       out[key] = List<dynamic>.from(items);
+    }
+    return out;
+  }
+
+  /// Sync page-feed rails from EngineCache (warm hub reopen / filter flip).
+  Map<String, List<dynamic>>? _peekPageFeedRails() {
+    return _railsMapFromEnvelope(
+      MetaRuntime.instance.peekCached(
+        pluginId: widget.pluginId,
+        action: 'feed',
+        params: _pageFeedParams(),
+        packSourceUrl: widget.packSourceUrl,
+      ),
+    );
+  }
+
+  /// Page feed future — failures stay failed for PackLoadedPaint; sink avoids
+  /// zone “unhandled” when no rail has subscribed yet.
+  Future<Map<String, List<dynamic>>> _bindPageFeed({
+    required bool forceRefresh,
+  }) {
+    final f = _fetchPageFeed(forceRefresh: forceRefresh);
+    f.catchError((Object _) => const <String, List<dynamic>>{});
+    return f;
+  }
+
+  Future<Map<String, List<dynamic>>> _fetchPageFeed({
+    required bool forceRefresh,
+  }) async {
+    if (!forceRefresh) {
+      final peeked = _peekPageFeedRails();
+      if (peeked != null) {
+        if (mounted) {
+          _pageFeedRails = peeked;
+          _pageFeedError = null;
+        }
+        return peeked;
+      }
+    }
+    final envelope = await packOpaqueRun(
+      pluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+      action: 'feed',
+      params: _pageFeedParams(),
+      forceRefresh: forceRefresh,
+    );
+    if (!envelope.ok) {
+      debugPrint(
+        '[catalog] ${widget.pluginId} feed fail '
+        '${envelope.error?.code.wire} ${envelope.error?.message}',
+      );
+      _pageFeedRails = null;
+      _pageFeedError = envelope.error;
+      if (mounted) setState(() {});
+      // Failed future — PackLoadedPaint must not treat empty rails as ok.
+      throw envelope;
+    }
+    final out =
+        _railsMapFromEnvelope(envelope) ?? const <String, List<dynamic>>{};
+    if (mounted) {
+      setState(() {
+        _pageFeedRails = out;
+        _pageFeedError = null;
+      });
     }
     return out;
   }
@@ -562,6 +645,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       eagerLoadKeys: _eagerLoadKeys,
       pageFeedRailIds: _pageFeedRailIds,
       pageFeedFuture: _pageFeedFuture,
+      pageFeedRails: _pageFeedRails,
+      pageFeedError: _pageFeedError,
       rowPrefetch: _rowPrefetch,
       onEventQuery: (q) {
         if (_eventQuery == q) return;
@@ -607,7 +692,17 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             _dynamicBarItems.clear();
           }
           if (_pageFeedRailIds.isNotEmpty) {
-            _pageFeedFuture = _fetchPageFeed(forceRefresh: forceNetwork);
+            if (forceNetwork) {
+              _pageFeedRails = null;
+              _pageFeedError = null;
+              _pageFeedFuture = _bindPageFeed(forceRefresh: true);
+            } else {
+              _pageFeedError = null;
+              _pageFeedRails = _peekPageFeedRails();
+              _pageFeedFuture = _pageFeedRails != null
+                  ? Future<Map<String, List<dynamic>>>.value(_pageFeedRails!)
+                  : _bindPageFeed(forceRefresh: false);
+            }
           }
         });
         // Soft portal switch keeps page layout; rails rebind via refreshEpoch.

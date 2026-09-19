@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 
 /// Host chrome state for one pack layout tab (search query, refresh, view, dynamic bars).
 ///
@@ -21,6 +22,8 @@ class PackChromeScope extends InheritedWidget {
     required this.eagerLoadKeys,
     required this.pageFeedRailIds,
     required this.pageFeedFuture,
+    this.pageFeedRails,
+    this.pageFeedError,
     required this.rowPrefetch,
     required this.searchHitKindIds,
     required this.onEventQuery,
@@ -66,6 +69,15 @@ class PackChromeScope extends InheritedWidget {
 
   /// One page-level `feed` future → `rails` map. Null when page is not feed-batched.
   final Future<Map<String, List<dynamic>>>? pageFeedFuture;
+
+  /// Sync snapshot of the last completed page `feed` rails (EngineCache peek or
+  /// settled future). PackLoadedPaint paints from this without waiting on a
+  /// microtask — `Future.value` alone still flashes section skeletons.
+  final Map<String, List<dynamic>>? pageFeedRails;
+
+  /// Last page `feed` failure. When set, feed-claimed rails paint this error
+  /// instead of treating an empty rails map as success.
+  final MetaError? pageFeedError;
 
   /// Vertical row warm lane — visible row activates [ahead] rows below.
   final KitRowPrefetchLane rowPrefetch;
@@ -127,6 +139,8 @@ class PackChromeScope extends InheritedWidget {
         !setEquals(eagerLoadKeys, oldWidget.eagerLoadKeys) ||
         !setEquals(pageFeedRailIds, oldWidget.pageFeedRailIds) ||
         !identical(pageFeedFuture, oldWidget.pageFeedFuture) ||
+        !identical(pageFeedRails, oldWidget.pageFeedRails) ||
+        pageFeedError != oldWidget.pageFeedError ||
         !identical(rowPrefetch, oldWidget.rowPrefetch) ||
         !mapEquals(dynamicBarItems, oldWidget.dynamicBarItems);
   }

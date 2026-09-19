@@ -298,6 +298,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   }
 
   Future<void> _discover() async {
+    if (_discovering) return;
     setState(() => _discovering = true);
     final found = await LanDiscoveryService.instance.discover();
     if (mounted) {
@@ -314,6 +315,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   }
 
   Future<void> _pairWith({String? host, int? port}) async {
+    if (_pairing) return;
     final h = host ?? _manualHostController.text.trim();
     final p = port ?? int.tryParse(_manualPortController.text.trim()) ?? 0;
     final code = _pairCodeController.text.trim();
@@ -1046,15 +1048,14 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         const SizedBox(height: 8),
         _sectionLabel('FIND DESKTOP'),
         const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: SettingsFilledButton(
-            label: _discovering ? 'Searching…' : 'Discover on Wi‑Fi',
-            icon: Icons.wifi_find_rounded,
-            busy: _discovering,
-            secondary: true,
-            onPressed: _discovering ? null : _discover,
-          ),
+        SettingsFilledButton(
+          label: _discovering ? 'Searching…' : 'Discover on Wi‑Fi',
+          icon: Icons.wifi_find_rounded,
+          busy: _discovering,
+          secondary: true,
+          // Keep onPressed non-null while busy so TV focus stays on this node
+          // (SettingsFilledButton disables activate via busy).
+          onPressed: _discover,
         ),
         if (_discovered.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -1109,13 +1110,10 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: SettingsFilledButton(
-            label: 'Pair with desktop',
-            busy: _pairing,
-            onPressed: _pairing ? null : () => _pairWith(),
-          ),
+        SettingsFilledButton(
+          label: 'Pair with desktop',
+          busy: _pairing,
+          onPressed: () => _pairWith(),
         ),
       ],
       if (defaultTargetPlatform == TargetPlatform.android &&

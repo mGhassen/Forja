@@ -411,14 +411,13 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
       if (widget.meta.id == SettingsAddonId.lan) {
         setState(() => _lanEnabled = next);
       }
+      // Keep optimistic until computed matches (see build) — early clear
+      // snaps Stremio/Nuvio/torrent back ON when playback reload lags.
     } catch (e, st) {
       debugPrint('[AddonToggle] row ${widget.meta.id} failed: $e\n$st');
       if (mounted) setState(() => _optimisticEnabled = null);
     } finally {
       _busy = false;
-      if (mounted && _optimisticEnabled != null) {
-        setState(() => _optimisticEnabled = null);
-      }
     }
   }
 
@@ -553,6 +552,9 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
                       visibility: visibility,
                       chromeOnly: true,
                       optimisticEnabled: _optimisticEnabled,
+                      lanEnabled: meta.id == SettingsAddonId.lan
+                          ? _lanEnabled
+                          : null,
                     ),
                   ],
                 ),

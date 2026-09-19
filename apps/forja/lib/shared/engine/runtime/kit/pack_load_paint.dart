@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/runtime/actions/schedule/live_schedule_progr
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
+import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
@@ -36,7 +37,12 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
       pageBottomBleed: pageBottomBleed,
     );
     return (
-      placeholder: homeCinematicHeroShimmer(height: heroH),
+      placeholder: shimmer
+          ? homeCinematicHeroShimmer(height: heroH)
+          : ColoredBox(
+              color: ForjaShellColors.surfaceElevated,
+              child: SizedBox(height: heroH, width: double.infinity),
+            ),
       height: heroH,
     );
   }
@@ -51,27 +57,28 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
     }
     const cardW = 160.0;
     const cardH = 100.0;
-    final grid = homeLoadingShimmer(
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: Column(
-          children: [
-            for (var r = 0; r < 3; r++) ...[
-              if (r > 0) const SizedBox(height: 12),
-              Row(
-                children: [
-                  for (var c = 0; c < 4; c++) ...[
-                    if (c > 0) const SizedBox(width: 12),
-                    homeCardSkeleton(width: cardW, height: cardH),
-                  ],
+    final grid = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      child: Column(
+        children: [
+          for (var r = 0; r < 3; r++) ...[
+            if (r > 0) const SizedBox(height: 12),
+            Row(
+              children: [
+                for (var c = 0; c < 4; c++) ...[
+                  if (c > 0) const SizedBox(width: 12),
+                  homeCardSkeleton(width: cardW, height: cardH),
                 ],
-              ),
-            ],
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
-    return (placeholder: grid, height: 8 + 3 * cardH + 2 * 12 + 24);
+    return (
+      placeholder: shimmer ? homeLoadingShimmer(grid) : grid,
+      height: 8 + 3 * cardH + 2 * 12 + 24,
+    );
   }
 
   final cardW = InteractivePosterCard.cardWidth(context);
@@ -512,10 +519,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final rail =
         (runParams['rail'] ?? widget.params['rail'] ?? '').toString().trim();
     final feedFuture = chrome?.pageFeedFuture;
+    final syncRails = chrome?.pageFeedRails;
     if (!force &&
-        feedFuture != null &&
         widget.action == 'rail' &&
-        chrome!.isPageFeedRail(rail) &&
+        chrome != null &&
+        chrome.isPageFeedRail(rail) &&
         packRailParamsAreFeedShared(runParams)) {
       final key = [
         widget.pluginId,
@@ -527,25 +535,66 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       _lastRunKey = key;
       final resolved = PackLoadedPaint._resolved[key];
       if (resolved != null) return Future.value(resolved);
-      final hit = PackLoadedPaint._memo[key];
-      if (hit != null) {
-        return hit.then((env) {
-          PackLoadedPaint._resolved[key] = env;
-          return env;
-        });
+      final feedErr = chrome.pageFeedError;
+      if (feedErr != null) {
+        final env = MetaEnvelope(
+          ok: false,
+          action: 'rail',
+          error: feedErr,
+        );
+        PackLoadedPaint._resolved[key] = env;
+        return Future.value(env);
       }
-      final future = feedFuture.then((rails) {
-        final items = rails[rail] ?? const <dynamic>[];
+      // Sync snapshot from layout (EngineCache peek) — do not wait on
+      // feedFuture.then (microtask → shimmer for one+ frames).
+      if (syncRails != null) {
+        final items = syncRails[rail] ?? const <dynamic>[];
         final env = MetaEnvelope(
           ok: true,
           action: 'rail',
           data: {'items': items},
         );
         PackLoadedPaint._resolved[key] = env;
-        return env;
-      });
-      PackLoadedPaint._memo[key] = future;
-      return future;
+        return Future.value(env);
+      }
+      if (feedFuture != null) {
+        final hit = PackLoadedPaint._memo[key];
+        if (hit != null) {
+          return hit.then((env) {
+            PackLoadedPaint._resolved[key] = env;
+            return env;
+          });
+        }
+        final future = feedFuture.then<MetaEnvelope>(
+          (rails) {
+            final items = rails[rail] ?? const <dynamic>[];
+            final env = MetaEnvelope(
+              ok: true,
+              action: 'rail',
+              data: {'items': items},
+            );
+            PackLoadedPaint._resolved[key] = env;
+            return env;
+          },
+          onError: (Object e, StackTrace _) {
+            final env = e is MetaEnvelope && !e.ok
+                ? MetaEnvelope(
+                    ok: false,
+                    action: 'rail',
+                    error: e.error,
+                  )
+                : MetaEnvelope.failure(
+                    MetaErrorCode.upstream,
+                    message: e.toString(),
+                    action: 'rail',
+                  );
+            PackLoadedPaint._resolved[key] = env;
+            return env;
+          },
+        );
+        PackLoadedPaint._memo[key] = future;
+        return future;
+      }
     }
     final key = [
       widget.pluginId,
@@ -576,6 +625,17 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           return env;
         });
       }
+      // Sync EngineCache — same frame as remount (no shimmer while awaiting).
+      final peeked = MetaRuntime.instance.peekCached(
+        pluginId: widget.pluginId,
+        action: widget.action,
+        params: runParams,
+        packSourceUrl: widget.packSourceUrl,
+      );
+      if (peeked != null && peeked.ok) {
+        PackLoadedPaint._resolved[key] = peeked;
+        return Future.value(peeked);
+      }
     } else {
       PackLoadedPaint._resolved.remove(key);
       PackLoadedPaint._memo.remove(key);
@@ -591,12 +651,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       return env;
     });
     PackLoadedPaint._memo[key] = future;
-    if (PackLoadedPaint._memo.length > 48) {
+    if (PackLoadedPaint._memo.length > 96) {
       final drop = PackLoadedPaint._memo.keys.first;
       PackLoadedPaint._memo.remove(drop);
       PackLoadedPaint._resolved.remove(drop);
     }
-    if (PackLoadedPaint._resolved.length > 48) {
+    if (PackLoadedPaint._resolved.length > 96) {
       PackLoadedPaint._resolved.remove(PackLoadedPaint._resolved.keys.first);
     }
     return future;
@@ -623,11 +683,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   Widget build(BuildContext context) {
     final env = _envelope;
     if (env == null) {
-      // Soft-keep only for non-portal soft reloads. Portal clear/hold always
-      // shows the loading ticker (last paint already dropped).
-      if (_inFlight != null &&
-          _lastPaintedWidget != null &&
-          _holdAtRefreshEpoch == null) {
+      // Soft-keep last paint while rebinding / microtask catch-up. Portal hold
+      // already dropped last paint so CatalogLoadingTicker can show.
+      if (_lastPaintedWidget != null && _holdAtRefreshEpoch == null) {
         _syncCompositionCover(false);
         return _lastPaintedWidget!;
       }
@@ -640,13 +698,13 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         return _lastPaintedWidget!;
       }
       _syncCompositionCover(true);
-      final msg = env.error?.message.trim();
       return Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
-          (msg != null && msg.isNotEmpty)
-              ? msg
-              : 'Could not load this section.',
+          userFacingCatalogError(
+            env.error,
+            fallback: 'Could not load this section.',
+          ),
           textAlign: TextAlign.center,
           style: const TextStyle(color: ForjaShellColors.textSecondary),
         ),
@@ -855,7 +913,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       widget.fallbackSpec,
       compact: compact,
       pageBottomBleed: bleed.isNotEmpty,
-      shimmer: true,
+      // Static structure — pulsing shimmer on cold miss only reads as a reload
+      // when TickerMode resumes on tab show with a cached hub.
+      shimmer: false,
     );
     return slot.placeholder;
   }

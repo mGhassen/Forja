@@ -1499,11 +1499,55 @@ class EngineService {
         if (s.isNotEmpty) debugPrint('[engine] $s');
       }
     }
-    debugPrint(
-      '[engine] ${plugin.id} done (enginejs live) raw=${rawList.length} '
-      '${sw.elapsedMilliseconds}ms',
+    _logEngineJsLiveOutcome(
+      pluginId: plugin.id,
+      rawList: rawList,
+      elapsedMs: sw.elapsedMilliseconds,
     );
     return rawList;
+  }
+
+  /// Catalog hubs return a protocol envelope in `streams[0]`. Saying "done"
+  /// for `ok: false` lied — log ok / fail from the envelope when present.
+  static void _logEngineJsLiveOutcome({
+    required String pluginId,
+    required List<Map<String, dynamic>> rawList,
+    required int elapsedMs,
+  }) {
+    Map<String, dynamic>? envelope;
+    for (final row in rawList) {
+      if (row.containsKey('ok')) {
+        envelope = row;
+        break;
+      }
+    }
+    if (envelope == null) {
+      debugPrint(
+        '[engine] $pluginId done (enginejs live) raw=${rawList.length} '
+        '${elapsedMs}ms',
+      );
+      return;
+    }
+    final action = (envelope['action'] ?? '').toString();
+    if (envelope['ok'] == true) {
+      debugPrint(
+        '[engine] $pluginId ok (enginejs live) action=$action ${elapsedMs}ms',
+      );
+      return;
+    }
+    final err = envelope['error'];
+    String code = '';
+    String msg = '';
+    if (err is Map) {
+      code = (err['code'] ?? '').toString();
+      msg = (err['message'] ?? '').toString();
+    } else if (err != null) {
+      msg = err.toString();
+    }
+    debugPrint(
+      '[engine] $pluginId fail (enginejs live) action=$action '
+      'code=$code msg=$msg ${elapsedMs}ms',
+    );
   }
 
   Future<List<Map<String, dynamic>>> _postProcessLivePluginRows(
