@@ -34,8 +34,6 @@ final kitListStyleOverrideProvider =
 
 const _kListStylePrefPrefix = 'kit.listStyle.';
 
-final Set<String> _listStyleHydrated = {};
-
 String? _normalizeListStyle(String? raw) {
   final v = (raw ?? '').trim().toLowerCase();
   if (v == 'list' || v == 'cards') return v;
@@ -61,26 +59,34 @@ Future<void> saveKitListStyle(String chromeKey, String style) async {
   await prefs.setString(key, v);
 }
 
-/// One-shot disk hydrate into [kitListStyleOverrideProvider] (survives restart).
-void ensureKitListStyleHydrated(WidgetRef ref, String chromeKey) {
-  if (chromeKey.isEmpty || !_listStyleHydrated.add(chromeKey)) return;
-  // Capture notifier while [ref] is valid.
-  final notifier = ref.read(kitListStyleOverrideProvider(chromeKey).notifier);
-  final current = ref.read(kitListStyleOverrideProvider(chromeKey));
-  if (_normalizeListStyle(current) != null) return;
-  Future<void>(() async {
-    final v = await loadKitListStyle(chromeKey);
-    if (v.isEmpty) return;
-    if (_normalizeListStyle(notifier.state) != null) return;
-    notifier.state = v;
-  });
-}
-
 /// Write memory + disk for List/Cards chrome.
-void setKitListStyle(WidgetRef ref, String chromeKey, String style) {
+void setKitListStyle(
+  ProviderContainer container,
+  String chromeKey,
+  String style,
+) {
   if (chromeKey.isEmpty) return;
   final v = _normalizeListStyle(style) ?? '';
-  ref.read(kitListStyleOverrideProvider(chromeKey).notifier).state = v;
-  _listStyleHydrated.add(chromeKey);
+  container.read(kitListStyleOverrideProvider(chromeKey).notifier).state = v;
   Future<void>(() => saveKitListStyle(chromeKey, v));
+}
+
+/// Apply remembered List/Cards into paint state (memory first, then disk).
+Future<void> applyPersistedKitListStyle({
+  required ProviderContainer container,
+  required String chromeKey,
+  required void Function(String style) apply,
+}) async {
+  if (chromeKey.isEmpty) return;
+  final mem = _normalizeListStyle(
+    container.read(kitListStyleOverrideProvider(chromeKey)),
+  );
+  if (mem != null) {
+    apply(mem);
+    return;
+  }
+  final v = await loadKitListStyle(chromeKey);
+  if (v.isEmpty) return;
+  container.read(kitListStyleOverrideProvider(chromeKey).notifier).state = v;
+  apply(v);
 }

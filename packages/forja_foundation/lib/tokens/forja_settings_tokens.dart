@@ -32,6 +32,14 @@ abstract final class SettingsTokens {
   static const double pageTitleSize = 22;
   static const double pageTitleSizeTv = ShellTokens.tvTitleFontSize;
 
+  /// Flat on/off switch — desktop; TV = × [ShellTokens.tvLayoutScale].
+  static const double switchTrackWidth = 36;
+  static const double switchTrackWidthTv = switchTrackWidth * _s;
+  static const double switchTrackHeight = 18;
+  static const double switchTrackHeightTv = switchTrackHeight * _s;
+  static const double switchThumbSize = 12;
+  static const double switchThumbSizeTv = switchThumbSize * _s;
+
   /// True when Settings should show the split sidebar layout.
   /// Desktop / wide and Android TV (1080p+) use the same hub chrome.
   static bool useSplitLayout(BuildContext context) {
@@ -64,4 +72,13 @@ abstract final class SettingsTokens {
 
   static double pageTitleSizeOf(BuildContext context) =>
       _tv(context) ? pageTitleSizeTv : pageTitleSize;
+
+  static double switchTrackWidthOf(BuildContext context) =>
+      _tv(context) ? switchTrackWidthTv : switchTrackWidth;
+
+  static double switchTrackHeightOf(BuildContext context) =>
+      _tv(context) ? switchTrackHeightTv : switchTrackHeight;
+
+  static double switchThumbSizeOf(BuildContext context) =>
+      _tv(context) ? switchThumbSizeTv : switchThumbSize;
 }

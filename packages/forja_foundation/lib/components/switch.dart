@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart' hide Switch;
-import 'package:flutter/material.dart' as material show Switch;
+import 'package:flutter/services.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
-/// Forja on/off switch — brand-green track, elevated thumb.
-class Switch extends StatelessWidget {
+/// Forja on/off switch — flat track, compact thumb (desktop + TV settings density).
+class Switch extends StatefulWidget {
   const Switch({
     super.key,
     required this.value,
@@ -12,8 +13,8 @@ class Switch extends StatelessWidget {
     this.emphasized = false,
   });
 
-  /// Compact scale for dense settings rows.
-  static const double settingsScale = 0.82;
+  /// Extra scale on top of [SettingsTokens] switch geometry.
+  static const double settingsScale = 1.0;
 
   final bool value;
   final ValueChanged<bool>? onChanged;
@@ -23,24 +24,85 @@ class Switch extends StatelessWidget {
   final bool emphasized;
 
   @override
+  State<Switch> createState() => _SwitchState();
+}
+
+class _SwitchState extends State<Switch> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final child = material.Switch(
-      value: value,
-      onChanged: onChanged,
-      thumbColor: emphasized
-          ? const WidgetStatePropertyAll(Colors.white)
-          : forjaSwitchThumbColor,
-      trackColor: forjaSwitchTrackColor,
-      trackOutlineColor: forjaSwitchTrackOutlineColor,
-      overlayColor: forjaSwitchOverlayColor,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    final scale = widget.scale;
+    final w = SettingsTokens.switchTrackWidthOf(context) * scale;
+    final h = SettingsTokens.switchTrackHeightOf(context) * scale;
+    final thumb = SettingsTokens.switchThumbSizeOf(context) * scale;
+    final inset = (h - thumb) / 2;
+    final on = widget.value;
+    final enabled = widget.onChanged != null;
+    final thumbWhite = widget.emphasized || _hovered;
+
+    return Semantics(
+      toggled: on,
+      enabled: enabled,
+      button: true,
+      child: MouseRegion(
+        onEnter: enabled ? (_) => setState(() => _hovered = true) : null,
+        onExit: enabled ? (_) => setState(() => _hovered = false) : null,
+        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: enabled
+              ? () {
+                  HapticFeedback.selectionClick();
+                  widget.onChanged!(!on);
+                }
+              : null,
+          child: Opacity(
+            opacity: enabled ? 1 : 0.45,
+            child: SizedBox(
+              width: w,
+              height: h,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                decoration: BoxDecoration(
+                  color: on
+                      ? ForjaShellColors.brandGreen
+                      : const Color(0xFF3A3A3A),
+                  borderRadius: BorderRadius.circular(h / 2),
+                  border: on
+                      ? null
+                      : Border.all(color: ForjaShellColors.borderSubtle),
+                ),
+                child: AnimatedAlign(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  alignment:
+                      on ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.all(inset),
+                    child: Container(
+                      width: thumb,
+                      height: thumb,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: thumbWhite
+                            ? Colors.white
+                            : ForjaShellColors.surfaceElevated,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
-    if ((scale - 1.0).abs() < 0.001) return child;
-    return Transform.scale(scale: scale, child: child);
   }
 }
 
-/// Theme data matching [Switch] — set on [ThemeData.switchTheme].
+/// Theme data matching [Switch] colors — for any Material [SwitchListTile] leftovers.
 SwitchThemeData get forjaSwitchThemeData => SwitchThemeData(
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       thumbColor: forjaSwitchThumbColor,

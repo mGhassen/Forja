@@ -935,6 +935,8 @@ class PackPaintTree extends StatelessWidget {
         );
       } else if (action?['dynamicSchedule'] == true) {
         container.read(kitFeedHorizonPrefProvider(key).notifier).state = value;
+      } else if (actionId == 'view') {
+        setKitListStyle(container, key, value);
       }
     } catch (_) {}
   }

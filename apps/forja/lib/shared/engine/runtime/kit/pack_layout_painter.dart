@@ -13,7 +13,9 @@ import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
 import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
@@ -90,6 +92,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   final KitRowPrefetchLane _rowPrefetch = KitRowPrefetchLane();
   HubPageFocus _pageFocus = HubPageFocus.empty;
   String? _tvBoundKey;
+  bool _listStyleHydrateStarted = false;
 
   String get _pageKey => widget.tabId?.trim() ?? '';
 
@@ -116,13 +119,54 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_listStyleHydrateStarted) return;
+    _listStyleHydrateStarted = true;
+    unawaited(_hydrateListStyle());
+  }
+
+  String get _chromeKey =>
+      kitChromeKey(pluginId: widget.pluginId, tabId: _pageKey);
+
+  void _applyListStyle(String style) {
+    final v = style.trim().toLowerCase();
+    if (v != 'list' && v != 'cards') return;
+    if (_viewStyle == v && _layoutSelections['view'] == v) return;
+    void apply() {
+      _viewStyle = v;
+      _layoutSelections['view'] = v;
+    }
+    if (mounted) {
+      setState(apply);
+    } else {
+      apply();
+    }
+  }
+
+  Future<void> _hydrateListStyle() async {
+    final key = _chromeKey;
+    if (key.isEmpty || !mounted) return;
+    try {
+      final container = ProviderScope.containerOf(context, listen: false);
+      await applyPersistedKitListStyle(
+        container: container,
+        chromeKey: key,
+        apply: _applyListStyle,
+      );
+    } catch (_) {}
+  }
+
+  @override
   void didUpdateWidget(covariant PackLayoutPainter oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.pluginId != widget.pluginId ||
         oldWidget.tabId != widget.tabId ||
         oldWidget.packSourceUrl != widget.packSourceUrl ||
         oldWidget.pageAction != widget.pageAction) {
+      _viewStyle = '';
       unawaited(_loadPage(force: true));
+      unawaited(_hydrateListStyle());
     }
   }
 
@@ -333,6 +377,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _pageFeedError = feedError;
       _rowPrefetch.reset();
       initLayoutTabSelections(_layoutSelections, widgets);
+      // Remembered List/Cards wins over pack default (seeded above).
+      final remembered = _viewStyle.trim();
+      if (remembered == 'list' || remembered == 'cards') {
+        _layoutSelections['view'] = remembered;
+      }
       // Page map first; root layout `focus` as fallback.
       _pageFocus = HubPageFocus.parse(pageMap);
       if (_pageFocus.isEmpty) {
@@ -598,7 +647,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         _layoutSelections[widgetId] = value;
       }
       if (widgetId == 'view') {
-        _viewStyle = value;
+        final v = value.trim().toLowerCase();
+        if (v == 'list' || v == 'cards') {
+          _viewStyle = v;
+        }
       }
       // Live/Movies/Series shelf — Favorites / live cat ids must not stick onto
       // VOD and empty the grid (looks like the shelf click did nothing).
@@ -712,11 +764,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         }
       },
       onViewStyle: (style) {
-        if (_viewStyle == style) return;
-        setState(() {
-          _viewStyle = style;
-          _layoutSelections['view'] = style;
-        });
+        _applyListStyle(style);
       },
       onDynamicBarItems: (barId, items) {
         final prev = _dynamicBarItems[barId];
