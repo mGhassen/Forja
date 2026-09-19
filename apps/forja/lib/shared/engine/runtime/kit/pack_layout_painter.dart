@@ -85,6 +85,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   /// Sync rails for [PackChromeScope.pageFeedRails] — avoids microtask skeleton.
   Map<String, List<dynamic>>? _pageFeedRails;
   MetaError? _pageFeedError;
+  String _sectionStructureSig = '';
   Listenable? _filterListenable;
   final KitRowPrefetchLane _rowPrefetch = KitRowPrefetchLane();
   HubPageFocus _pageFocus = HubPageFocus.empty;
@@ -847,8 +848,15 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   /// Hero bleed rail (VF registered via [VerticalFiltersRegistry.syncFromLayout]).
   List<Widget> _composeSections() {
-    // Fresh claim order for LazyViewportGate slots this frame.
-    _rowPrefetch.reset();
+    // Only reshuffle prefetch claim order when the section tree actually changes.
+    final structureSig = [
+      for (final w in _widgets)
+        '${w['id']}|${w['rail']}|${w['type']}|${w['hideWhenTypeFilter']}',
+    ].join('>');
+    if (structureSig != _sectionStructureSig) {
+      _sectionStructureSig = structureSig;
+      _rowPrefetch.reset();
+    }
     Map<String, dynamic>? heroSpec;
     String? bleedKey;
     for (final w in _widgets) {
@@ -912,27 +920,33 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         // Featured (etc.) rides inside the hero as pageBottomChild — tall
         // backdrop + soft fade, not a sibling section below a short hero.
         out.add(
-          PackPaintTree(
-            spec: w,
-            pluginId: widget.pluginId,
-            packSourceUrl: widget.packSourceUrl,
-            tabId: _pageKey,
-            pageBottomChild: PackPaintTree(
-              spec: Map<String, dynamic>.from(bleedSpec),
+          KeyedSubtree(
+            key: ValueKey('hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}'),
+            child: PackPaintTree(
+              spec: w,
               pluginId: widget.pluginId,
               packSourceUrl: widget.packSourceUrl,
               tabId: _pageKey,
+              pageBottomChild: PackPaintTree(
+                spec: Map<String, dynamic>.from(bleedSpec),
+                pluginId: widget.pluginId,
+                packSourceUrl: widget.packSourceUrl,
+                tabId: _pageKey,
+              ),
             ),
           ),
         );
         continue;
       }
       out.add(
-        PackPaintTree(
-          spec: w,
-          pluginId: widget.pluginId,
-          packSourceUrl: widget.packSourceUrl,
-          tabId: _pageKey,
+        KeyedSubtree(
+          key: ValueKey('hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}'),
+          child: PackPaintTree(
+            spec: w,
+            pluginId: widget.pluginId,
+            packSourceUrl: widget.packSourceUrl,
+            tabId: _pageKey,
+          ),
         ),
       );
     }

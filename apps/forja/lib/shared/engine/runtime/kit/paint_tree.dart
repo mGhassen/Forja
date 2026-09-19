@@ -142,6 +142,7 @@ class PackPaintTree extends StatelessWidget {
       // hero / bleed. Off-screen feed rails stay behind LazyViewportGate.
       final heroBleed = pageBottomChild != null;
       final loadPaint = PackLoadedPaint(
+        key: ValueKey('paint-$pluginId-$id-${load.action}'),
         pluginId: pluginId,
         packSourceUrl: packSourceUrl,
         tabId: tabId,
@@ -173,6 +174,7 @@ class PackPaintTree extends StatelessWidget {
         context,
         spec,
         LazyViewportGate(
+          key: ValueKey('lazy-gate-$pluginId-$id'),
           detectorKey: Key('lazy-$pluginId-$id'),
           placeholderHeight: slot.height,
           placeholder: slot.placeholder,
@@ -189,6 +191,7 @@ class PackPaintTree extends StatelessWidget {
         context,
         spec,
         PackLoadedPaint(
+          key: ValueKey('paint-$pluginId-list-${listLoad.action}'),
           pluginId: pluginId,
           packSourceUrl: packSourceUrl,
           tabId: tabId,

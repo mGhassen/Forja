@@ -199,6 +199,11 @@ String packChromeSelectionEpoch(
       ? ''
       : '${listFeedEpochListenable.value}';
 
+  // portalStoreKey only for IPTV live shelf — hashing it on every Home/Anime
+  // rail rebind when live-list prefs warm caused tab-return skeleton flashes.
+  final portalEpoch =
+      (vodPaged || kindReloadsFeed) ? portalStoreKey : '';
+
   return [
     status,
     // Sport chips + IPTV catalog cats reload feed (catalog_page).
@@ -210,9 +215,7 @@ String packChromeSelectionEpoch(
     kindBustsFeed ? (chrome?.eventQuery ?? '') : '',
     '${chrome?.refreshEpoch ?? 0}',
     listEpoch,
-    portalStoreKey,
+    portalEpoch,
     catalogChromeFilterEpoch(tabId),
-    // Fav/pin lists: paint filters Favorites/Watched; pin order is rail-only.
-    // Do not bust catalog feed when lists warm or a star toggles.
   ].join('|');
 }

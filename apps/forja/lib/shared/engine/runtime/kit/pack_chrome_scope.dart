@@ -135,7 +135,9 @@ class PackChromeScope extends InheritedWidget {
         viewStyle != oldWidget.viewStyle ||
         !identical(selectedListItem, oldWidget.selectedListItem) ||
         !identical(searchHitKindIds, oldWidget.searchHitKindIds) ||
-        shellTabVisible != oldWidget.shellTabVisible ||
+        // shellTabVisible: MainScreen already rebuilds the tab tree on switch.
+        // Notifying here forced every PackLoadedPaint didChangeDependencies and
+        // rebind on hide/show (skeleton flash on already-loaded hubs).
         !setEquals(eagerLoadKeys, oldWidget.eagerLoadKeys) ||
         !setEquals(pageFeedRailIds, oldWidget.pageFeedRailIds) ||
         !identical(pageFeedFuture, oldWidget.pageFeedFuture) ||

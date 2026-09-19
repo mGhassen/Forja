@@ -22,7 +22,7 @@ enum ButtonSize {
 }
 
 /// Forja action button — one family; close/back/icon are usages via variant/size.
-class Button extends StatelessWidget {
+class Button extends StatefulWidget {
   const Button({
     super.key,
     this.onPressed,
@@ -65,59 +65,91 @@ class Button extends StatelessWidget {
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
+  State<Button> createState() => _ButtonState();
+}
+
+class _ButtonState extends State<Button> {
+  final WidgetStatesController _states = WidgetStatesController();
+
+  @override
+  void initState() {
+    super.initState();
+    _states.addListener(_onStates);
+  }
+
+  @override
+  void dispose() {
+    _states.removeListener(_onStates);
+    _states.dispose();
+    super.dispose();
+  }
+
+  void _onStates() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
-    final enabled = onPressed != null && !loading;
+    final enabled = widget.onPressed != null && !widget.loading;
     final dims = _dims(
-      compact ? ButtonSize.sm : size,
-      height: height,
-      fontSize: fontSize,
-      padding: padding,
+      widget.compact ? ButtonSize.sm : widget.size,
+      height: widget.height,
+      fontSize: widget.fontSize,
+      padding: widget.padding,
     );
-    // Idle palette for the spinner; label/icon inherit ButtonStyle fg so
-    // primary can go gray→green on hover/focus without a StatefulWidget.
-    final idle = _resolveColors(
+    final colors = _resolveColors(
       theme,
-      variant,
+      widget.variant,
       enabled,
-      color,
-      const <WidgetState>{},
+      widget.color,
+      _states.value,
     );
 
     Widget content;
-    if (loading) {
+    if (widget.loading) {
       content = SizedBox(
         width: dims.iconSize,
         height: dims.iconSize,
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          color: idle.foreground,
+          color: colors.foreground,
         ),
       );
-    } else if (child != null) {
-      content = child!;
-    } else if (size == ButtonSize.icon || variant == ButtonVariant.plainIcon) {
-      content = Icon(icon, size: iconSize ?? dims.iconSize);
+    } else if (widget.child != null) {
+      content = widget.child!;
+    } else if (widget.size == ButtonSize.icon ||
+        widget.variant == ButtonVariant.plainIcon) {
+      content = Icon(
+        widget.icon,
+        size: widget.iconSize ?? dims.iconSize,
+        color: colors.foreground,
+      );
     } else {
       content = Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (icon != null) ...[
-            Icon(icon, size: iconSize ?? dims.iconSize),
+          if (widget.icon != null) ...[
+            Icon(
+              widget.icon,
+              size: widget.iconSize ?? dims.iconSize,
+              color: colors.foreground,
+            ),
             SizedBox(width: theme.spaceSm),
           ],
-          if (label != null)
+          if (widget.label != null)
             Flexible(
               child: Text(
-                label!,
+                widget.label!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
+                  color: colors.foreground,
                   fontSize: dims.fontSize,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
-                  decoration: variant == ButtonVariant.link
+                  decoration: widget.variant == ButtonVariant.link
                       ? TextDecoration.underline
                       : TextDecoration.none,
                 ),
@@ -128,47 +160,39 @@ class Button extends StatelessWidget {
     }
 
     final style = ButtonStyle(
-      foregroundColor: WidgetStateProperty.resolveWith((states) {
-        return _resolveColors(theme, variant, enabled, color, states)
-            .foreground;
-      }),
-      backgroundColor: WidgetStateProperty.resolveWith((states) {
-        return _resolveColors(theme, variant, enabled, color, states)
-            .background;
-      }),
-      overlayColor: WidgetStateProperty.resolveWith((states) {
-        final fg = _resolveColors(theme, variant, enabled, color, states)
-            .foreground;
-        return fg.withValues(alpha: 0.08);
-      }),
-      side: WidgetStateProperty.resolveWith((states) {
-        final border =
-            _resolveColors(theme, variant, enabled, color, states).border;
-        if (border == null) return BorderSide.none;
-        return BorderSide(color: border, width: 1.5);
-      }),
+      foregroundColor: WidgetStatePropertyAll(colors.foreground),
+      backgroundColor: WidgetStatePropertyAll(colors.background),
+      overlayColor: WidgetStatePropertyAll(
+        colors.foreground.withValues(alpha: 0.08),
+      ),
+      side: colors.border != null
+          ? WidgetStatePropertyAll(
+              BorderSide(color: colors.border!, width: 1.5),
+            )
+          : const WidgetStatePropertyAll(BorderSide.none),
       elevation: const WidgetStatePropertyAll(0),
       shadowColor: const WidgetStatePropertyAll(Colors.transparent),
     );
 
     Widget button = _ButtonBase(
-      onPressed: enabled ? onPressed : null,
-      focusNode: focusNode,
-      autofocus: autofocus,
+      onPressed: enabled ? widget.onPressed : null,
+      focusNode: widget.focusNode,
+      autofocus: widget.autofocus,
       enabled: enabled,
+      statesController: _states,
       style: style,
       padding: dims.padding,
       constraints: BoxConstraints(
         minHeight: dims.height,
-        minWidth: size == ButtonSize.icon ? dims.height : 0,
+        minWidth: widget.size == ButtonSize.icon ? dims.height : 0,
       ),
       borderRadius: BorderRadius.circular(theme.radiusMd),
-      tooltip: tooltip,
-      onKeyEvent: onKeyEvent,
+      tooltip: widget.tooltip,
+      onKeyEvent: widget.onKeyEvent,
       child: content,
     );
 
-    if (expand) {
+    if (widget.expand) {
       button = SizedBox(width: double.infinity, child: button);
     }
     return button;
@@ -242,7 +266,7 @@ class Button extends StatelessWidget {
       );
     }
     return switch (variant) {
-      // Gray at rest; brand green on hover / focus / press.
+      // White at rest; brand green on hover / focus / press.
       ButtonVariant.primary => _engaged(states)
           ? _ButtonColors(
               foreground: theme.brandGreen,
@@ -296,6 +320,7 @@ class _ButtonBase extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.enabled = true,
+    this.statesController,
     this.style,
     this.padding,
     this.constraints,
@@ -309,6 +334,7 @@ class _ButtonBase extends StatelessWidget {
   final FocusNode? focusNode;
   final bool autofocus;
   final bool enabled;
+  final WidgetStatesController? statesController;
   final ButtonStyle? style;
   final EdgeInsetsGeometry? padding;
   final BoxConstraints? constraints;
@@ -323,6 +349,7 @@ class _ButtonBase extends StatelessWidget {
       onPressed: effectiveEnabled ? onPressed : null,
       focusNode: focusNode,
       autofocus: autofocus,
+      statesController: statesController,
       style: (style ?? const ButtonStyle()).copyWith(
         padding: padding != null
             ? WidgetStatePropertyAll(padding)
