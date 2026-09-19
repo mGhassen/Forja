@@ -39,6 +39,11 @@ abstract final class SettingsTokens {
   static const double switchTrackHeightTv = switchTrackHeight * _s;
   static const double switchThumbSize = 12;
   static const double switchThumbSizeTv = switchThumbSize * _s;
+  /// Pointer / hover hit box (Material-ish; larger than the flat track).
+  static const double switchHitWidth = 44;
+  static const double switchHitWidthTv = switchHitWidth * _s;
+  static const double switchHitHeight = 28;
+  static const double switchHitHeightTv = switchHitHeight * _s;
 
   /// True when Settings should show the split sidebar layout.
   /// Desktop / wide and Android TV (1080p+) use the same hub chrome.
@@ -81,4 +86,10 @@ abstract final class SettingsTokens {
 
   static double switchThumbSizeOf(BuildContext context) =>
       _tv(context) ? switchThumbSizeTv : switchThumbSize;
+
+  static double switchHitWidthOf(BuildContext context) =>
+      _tv(context) ? switchHitWidthTv : switchHitWidth;
+
+  static double switchHitHeightOf(BuildContext context) =>
+      _tv(context) ? switchHitHeightTv : switchHitHeight;
 }

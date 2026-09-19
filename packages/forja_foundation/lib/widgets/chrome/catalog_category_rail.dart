@@ -105,6 +105,8 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   String? _floatingId;
   final ScrollController _scroll = ScrollController();
   bool _scrollJumpRegistered = false;
+  /// Type-to-jump highlight only — never commits [selectedId] / onSelect.
+  String? _jumpHighlightId;
 
   double _listPadV(BuildContext context) => catalogUsesTvDensity(context)
       ? catalogCategoryRailListPadV(context)
@@ -161,6 +163,11 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   int _letterJumpAnchor() {
     final jump = _jumpItems;
     if (jump.isEmpty) return -1;
+    final highlight = (_jumpHighlightId ?? '').trim();
+    if (highlight.isNotEmpty) {
+      final hi = jump.indexWhere((e) => e.id == highlight);
+      if (hi >= 0) return hi;
+    }
     final selected = (widget.selectedId ?? '').trim();
     if (selected.isEmpty) return -1;
     return jump.indexWhere((e) => e.id == selected);
@@ -172,7 +179,9 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
     final id = jump[jumpIndex].id;
     final fullIdx = widget.items.indexWhere((e) => e.id == id);
     if (fullIdx < 0) return;
-    widget.onSelect?.call(id);
+    // Highlight + scroll only — same contract as channel cards. Do not
+    // onSelect (that reloads the catalog page).
+    setState(() => _jumpHighlightId = id);
     void go() {
       if (!mounted) return;
       _scrollToIndex(fullIdx);
@@ -245,6 +254,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
         key: ValueKey(item.id),
         item: item,
         selected: item.id == widget.selectedId,
+        jumpHighlighted: item.id == _jumpHighlightId,
         compact: widget.compact,
         listIndex: listIndex,
         reorderIndex: canReorder ? reorderIndex : null,
@@ -263,7 +273,12 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
             : widget.pinSlotWidth,
         onSelect: widget.onSelect == null
             ? null
-            : () => widget.onSelect!(item.id),
+            : () {
+                if (_jumpHighlightId != null) {
+                  setState(() => _jumpHighlightId = null);
+                }
+                widget.onSelect!(item.id);
+              },
         onTogglePin: item.pinnable && widget.onTogglePin != null
             ? () => widget.onTogglePin!(item.id)
             : null,
@@ -420,6 +435,7 @@ class _CatalogCategoryRow extends StatefulWidget {
     super.key,
     required this.item,
     required this.selected,
+    this.jumpHighlighted = false,
     required this.compact,
     required this.listIndex,
     required this.rowExtent,
@@ -441,6 +457,8 @@ class _CatalogCategoryRow extends StatefulWidget {
 
   final CatalogCategoryItem item;
   final bool selected;
+  /// Type-to-jump chrome — hover look without committing selection.
+  final bool jumpHighlighted;
   final bool compact;
   final int listIndex;
   final double rowExtent;
@@ -695,7 +713,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
         widget.floating || _CategoryDragProxyScope.isProxy(context);
 
     Widget paintRow({required bool hovered}) {
-      final active = _activeFor(hovered);
+      final active = _activeFor(hovered || widget.jumpHighlighted);
       // Focus / hover / lift own the “lit” look. Selected alone = faint open
       // tick (not brand-green icon) — leanback skim mutes selected via policy.
       final lit = _tvFocused || lifted || active;

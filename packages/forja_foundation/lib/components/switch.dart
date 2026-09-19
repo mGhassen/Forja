@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Forja on/off switch — flat track, compact thumb (desktop + TV settings density).
 class Switch extends StatefulWidget {
@@ -29,6 +30,7 @@ class Switch extends StatefulWidget {
 
 class _SwitchState extends State<Switch> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
@@ -36,59 +38,89 @@ class _SwitchState extends State<Switch> {
     final w = SettingsTokens.switchTrackWidthOf(context) * scale;
     final h = SettingsTokens.switchTrackHeightOf(context) * scale;
     final thumb = SettingsTokens.switchThumbSizeOf(context) * scale;
+    final hitW = SettingsTokens.switchHitWidthOf(context) * scale;
+    final hitH = SettingsTokens.switchHitHeightOf(context) * scale;
     final inset = (h - thumb) / 2;
     final on = widget.value;
     final enabled = widget.onChanged != null;
-    final thumbWhite = widget.emphasized || _hovered;
+    final active = ShellPaintScope.interactiveActive(
+      context,
+      hovered: _hovered,
+      focused: _focused,
+    );
+    // Match Material: white thumb on hover/focus, or when parent sets [emphasized].
+    final thumbWhite = widget.emphasized || (enabled && active);
 
     return Semantics(
       toggled: on,
       enabled: enabled,
       button: true,
-      child: MouseRegion(
-        onEnter: enabled ? (_) => setState(() => _hovered = true) : null,
-        onExit: enabled ? (_) => setState(() => _hovered = false) : null,
-        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: enabled
-              ? () {
-                  HapticFeedback.selectionClick();
-                  widget.onChanged!(!on);
-                }
-              : null,
-          child: Opacity(
-            opacity: enabled ? 1 : 0.45,
-            child: SizedBox(
-              width: w,
-              height: h,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                decoration: BoxDecoration(
-                  color: on
-                      ? ForjaShellColors.brandGreen
-                      : const Color(0xFF3A3A3A),
-                  borderRadius: BorderRadius.circular(h / 2),
-                  border: on
-                      ? null
-                      : Border.all(color: ForjaShellColors.borderSubtle),
-                ),
-                child: AnimatedAlign(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOut,
-                  alignment:
-                      on ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Padding(
-                    padding: EdgeInsets.all(inset),
-                    child: Container(
-                      width: thumb,
-                      height: thumb,
+      child: Focus(
+        canRequestFocus: enabled,
+        onFocusChange: (f) {
+          if (_focused == f) return;
+          setState(() => _focused = f);
+        },
+        child: MouseRegion(
+          onEnter: (_) {
+            if (_hovered) return;
+            setState(() => _hovered = true);
+          },
+          onExit: (_) {
+            if (!_hovered) return;
+            setState(() => _hovered = false);
+          },
+          cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: enabled
+                ? () {
+                    HapticFeedback.selectionClick();
+                    widget.onChanged!(!on);
+                  }
+                : null,
+            child: Opacity(
+              opacity: enabled ? 1 : 0.45,
+              child: SizedBox(
+                width: hitW,
+                height: hitH,
+                child: Center(
+                  child: SizedBox(
+                    width: w,
+                    height: h,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: thumbWhite
-                            ? Colors.white
-                            : ForjaShellColors.surfaceElevated,
+                        color: on
+                            ? ForjaShellColors.brandGreen
+                            : const Color(0xFF3A3A3A),
+                        borderRadius: BorderRadius.circular(h / 2),
+                        border: on
+                            ? null
+                            : Border.all(color: ForjaShellColors.borderSubtle),
+                      ),
+                      child: AnimatedAlign(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
+                        alignment: on
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.all(inset),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 120),
+                            curve: Curves.easeOut,
+                            width: thumb,
+                            height: thumb,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: thumbWhite
+                                  ? Colors.white
+                                  : ForjaShellColors.surfaceElevated,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
