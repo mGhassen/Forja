@@ -254,10 +254,13 @@ class _AccentMoodCircle extends StatelessWidget {
           : iconWidget,
     );
 
+    // Fixed height + top-aligned circle so 1/2/3-line labels don't shift
+    // neighbors vertically in a Row (default CrossAxisAlignment.center).
     final body = SizedBox(
       width: layout.itemWidth,
+      height: layout.rowHeight,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           circle,
           SizedBox(height: layout.labelMaxLines == 1 ? 6 : 8),

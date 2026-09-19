@@ -129,9 +129,16 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   String get _chromeKey =>
       kitChromeKey(pluginId: widget.pluginId, tabId: _pageKey);
 
-  void _applyListStyle(String style) {
+  /// Paint-only view (`list` / `cards` / `guide` / `epg`). List/Cards also
+  /// hydrate from disk; guide/epg stay session-only.
+  void _applyViewStyle(String style) {
     final v = style.trim().toLowerCase();
-    if (v != 'list' && v != 'cards') return;
+    if (v != 'list' &&
+        v != 'cards' &&
+        v != 'guide' &&
+        v != 'epg') {
+      return;
+    }
     if (_viewStyle == v && _layoutSelections['view'] == v) return;
     void apply() {
       _viewStyle = v;
@@ -142,6 +149,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     } else {
       apply();
     }
+  }
+
+  void _applyListStyle(String style) {
+    final v = style.trim().toLowerCase();
+    if (v != 'list' && v != 'cards') return;
+    _applyViewStyle(v);
   }
 
   Future<void> _hydrateListStyle() async {
@@ -377,9 +390,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _pageFeedError = feedError;
       _rowPrefetch.reset();
       initLayoutTabSelections(_layoutSelections, widgets);
-      // Remembered List/Cards wins over pack default (seeded above).
+      // Remembered view (List/Cards/EPG) wins over pack default (seeded above).
       final remembered = _viewStyle.trim();
-      if (remembered == 'list' || remembered == 'cards') {
+      if (remembered == 'list' ||
+          remembered == 'cards' ||
+          remembered == 'guide' ||
+          remembered == 'epg') {
         _layoutSelections['view'] = remembered;
       }
       // Page map first; root layout `focus` as fallback.
@@ -648,7 +664,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
       if (widgetId == 'view') {
         final v = value.trim().toLowerCase();
-        if (v == 'list' || v == 'cards') {
+        if (v == 'list' ||
+            v == 'cards' ||
+            v == 'guide' ||
+            v == 'epg') {
           _viewStyle = v;
         }
       }
@@ -763,9 +782,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
           unawaited(onShellTabRefresh(force: true));
         }
       },
-      onViewStyle: (style) {
-        _applyListStyle(style);
-      },
+      onViewStyle: _applyViewStyle,
       onDynamicBarItems: (barId, items) {
         final prev = _dynamicBarItems[barId];
         if (prev != null &&

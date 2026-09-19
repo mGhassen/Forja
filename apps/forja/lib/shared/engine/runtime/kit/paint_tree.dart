@@ -769,6 +769,7 @@ class PackPaintTree extends StatelessWidget {
           final row = Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (var i = 0; i < items.length; i++) ...[
                 if (i > 0) SizedBox(width: layout.horizontalGap),
@@ -937,7 +938,11 @@ class PackPaintTree extends StatelessWidget {
       } else if (action?['dynamicSchedule'] == true) {
         container.read(kitFeedHorizonPrefProvider(key).notifier).state = value;
       } else if (actionId == 'view') {
-        setKitListStyle(container, key, value);
+        // Persist List/Cards only — guide/epg are session paint-only.
+        final v = value.trim().toLowerCase();
+        if (v == 'list' || v == 'cards') {
+          setKitListStyle(container, key, value);
+        }
       }
     } catch (_) {}
   }
@@ -1703,12 +1708,16 @@ class PackPaintTree extends StatelessWidget {
             filtered = _sortCatalogItems(filtered, sortId);
           }
           var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
-          final viewOverride = (chrome?.viewStyle ??
-                  LayoutScope.maybeOf(context)?.selectedId('view') ??
-                  '')
-              .toString()
-              .trim()
-              .toLowerCase();
+          // Empty chrome.viewStyle must not block LayoutScope ('' is not null).
+          final chromeView =
+              (chrome?.viewStyle ?? '').toString().trim().toLowerCase();
+          final scopeView =
+              (LayoutScope.maybeOf(context)?.selectedId('view') ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+          final viewOverride =
+              chromeView.isNotEmpty ? chromeView : scopeView;
           if (viewOverride.isNotEmpty) {
             if (viewOverride == 'cards' ||
                 viewOverride == 'list' ||
@@ -3453,6 +3462,7 @@ class _MoodMountState extends State<_MoodMount> {
             final row = Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (var i = 0; i < parsed.length; i++) ...[
                   if (i > 0) SizedBox(width: chipGap),
