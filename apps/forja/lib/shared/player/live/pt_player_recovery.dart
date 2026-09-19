@@ -21,6 +21,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   void _resetDemuxerProbe();
   bool get _streamWorking;
   bool get _livePlaybackProfile;
+  bool get _liveSportsSurface;
   bool get _bufferedRecovery;
   bool get _atvHardReseatStreams;
   bool get _playheadRecentlyMoved;
@@ -48,10 +49,10 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
       if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
       final hwDecode = reason.contains('hw decode') ||
           reason.contains('hardware decode');
-      // VT can die while audio/demux still advance — do not treat playhead
-      // growth as recovered. Manual reload = goLive; do the same.
-      if (hwDecode) {
-        debugPrint('[IPTV] live hw decode — goLive');
+      // Live Sports only: VT can die while audio/demux still advance — do not
+      // treat playhead growth as recovered. IPTV uses recovered/unrecovered.
+      if (hwDecode && _liveSportsSurface) {
+        debugPrint('[IPTV] live sports hw decode — goLive');
         unawaited(_tryIptvLiveGoLive(reason: reason));
         return;
       }
@@ -580,16 +581,30 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   Future<void> _forceSoftwareDecode() async {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
     // MediaKit live never falls back to TextureSW.
-    // Prefer grace→goLive — `_triggerRecovery` healthy-holds when demux feeds.
+    // Live Sports: grace→goLive. IPTV: hold when demux feeds (no reopen).
     if (_livePlaybackProfile &&
         _s._mediaKitBackend &&
         !_s.widget.vodPlayback) {
+      if (_liveSportsSurface) {
+        debugPrint(
+          '[IPTV Player] Live Sports: ignore hw→sw — grace/goLive only',
+        );
+        if (_recoveryInFlight) return;
+        _scheduleIptvLiveGraceRecovery(
+          reason: 'hardware decode failed (live keep HW)',
+        );
+        return;
+      }
+      if (_streamWorking) {
+        _logHealthyHold('hw→sw (iptv hold)');
+        return;
+      }
       debugPrint(
-        '[IPTV Player] MediaKit live: ignore hw→sw — grace/goLive only',
+        '[IPTV Player] IPTV MediaKit: ignore hw→sw — soft reopen keep HW',
       );
       if (_recoveryInFlight) return;
-      _scheduleIptvLiveGraceRecovery(
-        reason: 'hardware decode failed (live keep HW)',
+      await _triggerRecovery(
+        reason: 'hardware decode failed (iptv keep HW)',
       );
       return;
     }

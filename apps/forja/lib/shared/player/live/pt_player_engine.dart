@@ -815,6 +815,11 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     return _currentSourceIsLive;
   }
 
+  /// Live Sports native player — VT black-frame → grace/goLive is OK here.
+  /// IPTV Live (`BuiltInPlayerContext.iptv`) holds on hw spam when demux feeds.
+  bool get _liveSportsSurface =>
+      _s.widget.engineContext == BuiltInPlayerContext.live;
+
   Future<void> _initOrientationAndChrome() async {
     // Don't auto-enter fullscreen or force landscape - the player opens in a
     // normal window/portrait, and the user enters fullscreen explicitly via
@@ -1018,13 +1023,22 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
           );
           return;
         }
-        // MediaKit live: never TextureSW. Demux can look "healthy" while VT
-        // paints black — do not hold. Same as manual reload: grace → goLive.
+        // MediaKit live: never TextureSW.
+        // Live Sports: VT can paint black while demux advances → grace/goLive.
+        // IPTV: hold when working — lavf + cache; do not reopen on VT spam.
         if (_livePlaybackProfile &&
             _s._mediaKitBackend &&
             !_s.widget.vodPlayback) {
           _armTransientHwDecodeIgnore();
-          _scheduleIptvLiveGraceRecovery(reason: 'hw decode fail');
+          if (_liveSportsSurface) {
+            _scheduleIptvLiveGraceRecovery(reason: 'hw decode fail');
+            return;
+          }
+          if (_streamWorking) {
+            _logHealthyHold('hw decode fail (iptv hold)');
+          } else {
+            _logHold('hw decode fail (iptv hold)', healthy: false);
+          }
           return;
         }
         if (_streamWorking) {
