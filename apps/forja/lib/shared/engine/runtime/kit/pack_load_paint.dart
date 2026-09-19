@@ -252,8 +252,13 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   int _bindGen = 0;
   StreamSubscription<MetaEnvelope>? _progressiveSub;
 
-  /// Stable across selection-epoch noise (portal prefs warm, etc.).
-  String get _stablePaintKey {
+  /// Last successful paint for this rail — remount / tab-return warm only.
+  ///
+  /// Must **not** be used as a cache hit for a new selection epoch: base
+  /// [widget.params] omit chrome `categoryId` / kind, so falling back here
+  /// after an IPTV Live cat click reused the first page forever (issue 290
+  /// paint no longer filters Live in-tree).
+  String get _warmPaintKey {
     final rail =
         (widget.params['rail'] ?? widget.fallbackSpec['rail'] ?? '').toString();
     final id = (widget.fallbackSpec['id'] ?? '').toString();
@@ -269,9 +274,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   @override
   void initState() {
     super.initState();
-    // Remount / tab-return: paint cached envelope before first build so we
+    // Remount / tab-return: paint last envelope before first build so we
     // never flash section skeletons when the hub was already loaded.
-    final hit = PackLoadedPaint._resolved[_stablePaintKey];
+    final hit = PackLoadedPaint._resolved[_warmPaintKey];
     if (hit != null) _envelope = hit;
   }
 
@@ -390,25 +395,25 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (future == null) return;
     final key = _lastRunKey;
     if (key != null) {
-      final cached = PackLoadedPaint._resolved[key] ??
-          PackLoadedPaint._resolved[_stablePaintKey];
+      // Exact epoch+params key only — never warmPaintKey (wrong cat/section).
+      final cached = PackLoadedPaint._resolved[key];
       if (cached != null) {
         // Sync hit — paint this frame. FutureBuilder would flash waiting.
         _envelope = cached;
-        PackLoadedPaint._resolved[_stablePaintKey] = cached;
+        PackLoadedPaint._resolved[_warmPaintKey] = cached;
         _inFlight = null;
         return;
       }
     }
     // Keep last / initState paint visible while the future settles.
     if (_envelope == null) {
-      final warm = PackLoadedPaint._resolved[_stablePaintKey];
+      final warm = PackLoadedPaint._resolved[_warmPaintKey];
       if (warm != null) _envelope = warm;
     }
     _inFlight = future;
     future.then((env) {
       if (!mounted || gen != _bindGen) return;
-      PackLoadedPaint._resolved[_stablePaintKey] = env;
+      PackLoadedPaint._resolved[_warmPaintKey] = env;
       setState(() {
         _envelope = env;
         _inFlight = null;
@@ -564,11 +569,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         _scopeEpoch,
       ].join('|');
       _lastRunKey = key;
-      final resolved = PackLoadedPaint._resolved[key] ??
-          PackLoadedPaint._resolved[_stablePaintKey];
+      final resolved = PackLoadedPaint._resolved[key];
       if (resolved != null) {
-        PackLoadedPaint._resolved[key] = resolved;
-        PackLoadedPaint._resolved[_stablePaintKey] = resolved;
+        PackLoadedPaint._resolved[_warmPaintKey] = resolved;
         return Future.value(resolved);
       }
       final feedErr = chrome.pageFeedError;
@@ -579,7 +582,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           error: feedErr,
         );
         PackLoadedPaint._resolved[key] = env;
-        PackLoadedPaint._resolved[_stablePaintKey] = env;
+        PackLoadedPaint._resolved[_warmPaintKey] = env;
         return Future.value(env);
       }
       // Sync snapshot from layout (EngineCache peek) — do not wait on
@@ -592,7 +595,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           data: {'items': items},
         );
         PackLoadedPaint._resolved[key] = env;
-        PackLoadedPaint._resolved[_stablePaintKey] = env;
+        PackLoadedPaint._resolved[_warmPaintKey] = env;
         return Future.value(env);
       }
       if (feedFuture != null) {
@@ -600,6 +603,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         if (hit != null) {
           return hit.then((env) {
             PackLoadedPaint._resolved[key] = env;
+            PackLoadedPaint._resolved[_warmPaintKey] = env;
             return env;
           });
         }
@@ -612,7 +616,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
               data: {'items': items},
             );
             PackLoadedPaint._resolved[key] = env;
-            PackLoadedPaint._resolved[_stablePaintKey] = env;
+            PackLoadedPaint._resolved[_warmPaintKey] = env;
             return env;
           },
           onError: (Object e, StackTrace _) {
@@ -628,7 +632,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
                     action: 'rail',
                   );
             PackLoadedPaint._resolved[key] = env;
-            PackLoadedPaint._resolved[_stablePaintKey] = env;
+            PackLoadedPaint._resolved[_warmPaintKey] = env;
             return env;
           },
         );
@@ -656,18 +660,16 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     }
 
     if (!force) {
-      final resolved = PackLoadedPaint._resolved[key] ??
-          PackLoadedPaint._resolved[_stablePaintKey];
+      final resolved = PackLoadedPaint._resolved[key];
       if (resolved != null) {
-        PackLoadedPaint._resolved[key] = resolved;
-        PackLoadedPaint._resolved[_stablePaintKey] = resolved;
+        PackLoadedPaint._resolved[_warmPaintKey] = resolved;
         return Future.value(resolved);
       }
       final hit = PackLoadedPaint._memo[key];
       if (hit != null) {
         return hit.then((env) {
           PackLoadedPaint._resolved[key] = env;
-          PackLoadedPaint._resolved[_stablePaintKey] = env;
+          PackLoadedPaint._resolved[_warmPaintKey] = env;
           return env;
         });
       }
@@ -680,12 +682,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       );
       if (peeked != null && peeked.ok) {
         PackLoadedPaint._resolved[key] = peeked;
-        PackLoadedPaint._resolved[_stablePaintKey] = peeked;
+        PackLoadedPaint._resolved[_warmPaintKey] = peeked;
         return Future.value(peeked);
       }
     } else {
       PackLoadedPaint._resolved.remove(key);
-      PackLoadedPaint._resolved.remove(_stablePaintKey);
+      PackLoadedPaint._resolved.remove(_warmPaintKey);
       PackLoadedPaint._memo.remove(key);
     }
     final future = packOpaqueRun(
@@ -696,7 +698,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       forceRefresh: force,
     ).then((env) {
       PackLoadedPaint._resolved[key] = env;
-      PackLoadedPaint._resolved[_stablePaintKey] = env;
+      PackLoadedPaint._resolved[_warmPaintKey] = env;
       return env;
     });
     PackLoadedPaint._memo[key] = future;

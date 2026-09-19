@@ -128,7 +128,7 @@ class PortalListView extends StatefulWidget {
   /// L/R between header icons — host focuses registered item index.
   final void Function(int index)? onHeaderFocusAt;
 
-  /// ← from any portal row → header (stays in panel).
+  /// ← from any portal row → header Search (stays in panel).
   final VoidCallback? onPortalLeft;
 
   /// ↑/↓ within the list — host applies hold-accel stride + jump-then-focus.

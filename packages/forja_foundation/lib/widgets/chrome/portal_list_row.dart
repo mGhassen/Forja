@@ -77,6 +77,8 @@ class PortalListRow extends StatefulWidget {
 class _PortalListRowState extends State<PortalListRow> {
   static const _probeBarWidth = 4.0;
   static const _detailHoverDelay = Duration(seconds: 1);
+  /// D-pad / keyboard dwell — longer than hover so ↑/↓ skimming stays clean.
+  static const _detailFocusDelay = Duration(seconds: 2);
 
   bool _lineHover = false;
   bool _focused = false;
@@ -235,7 +237,7 @@ class _PortalListRowState extends State<PortalListRow> {
     if (owner != null) owner.value = item.id;
     setState(() => _lineHover = true);
     widget.onHoverEnter?.call();
-    _scheduleDetailCard();
+    _scheduleDetailCard(delay: _detailHoverDelay);
   }
 
   void _releaseHover() {
@@ -253,15 +255,16 @@ class _PortalListRowState extends State<PortalListRow> {
     _hideDetailCard();
   }
 
-  void _scheduleDetailCard() {
-    if (widget.leanback) return;
+  void _scheduleDetailCard({required Duration delay}) {
     if (MediaQuery.sizeOf(context).width <
         PortalListTokens.probeDetailMinWindowWidth) {
       return;
     }
     _detailTimer?.cancel();
-    _detailTimer = Timer(_detailHoverDelay, () {
-      if (!mounted || !_lineHover) return;
+    _detailTimer = Timer(delay, () {
+      if (!mounted) return;
+      // Hover or dwell-focus (TV / keyboard) — not leanback skimming past.
+      if (!_lineHover && !_focused) return;
       if (widget.hoverOwnerId != null &&
           widget.hoverOwnerId!.value != item.id) {
         return;
@@ -271,7 +274,6 @@ class _PortalListRowState extends State<PortalListRow> {
   }
 
   void _showDetailCard() {
-    if (widget.leanback) return;
     if (MediaQuery.sizeOf(context).width <
         PortalListTokens.probeDetailMinWindowWidth) {
       _hideDetailCard();
@@ -348,10 +350,13 @@ class _PortalListRowState extends State<PortalListRow> {
       widget.onTvFocus?.call();
       // Health probe on focus (leanback D-pad + desktop hybrid keyboard).
       widget.onHoverEnter?.call();
-      if (!widget.leanback) _scheduleDetailCard();
+      final owner = widget.hoverOwnerId;
+      if (owner != null) owner.value = item.id;
       if (!_focused || widget.leanback) {
         setState(() => _focused = true);
       }
+      // 2s dwell → same probe info card as mouse hover (1s).
+      _scheduleDetailCard(delay: _detailFocusDelay);
       return;
     }
     void clear() {
@@ -552,8 +557,9 @@ class _PortalListRowState extends State<PortalListRow> {
         onExit: deleting ? null : (_) => _releaseHover(),
         child: tile,
       );
-      tile = CompositedTransformTarget(link: _detailLink, child: tile);
     }
+    // Always link — TV focus dwell uses the same overlay as desktop hover.
+    tile = CompositedTransformTarget(link: _detailLink, child: tile);
 
     return tile;
   }

@@ -37,6 +37,7 @@ class Button extends StatefulWidget {
     this.autofocus = false,
     this.tooltip,
     this.color,
+    this.hoverColor,
     this.iconSize,
     this.compact = false,
     this.height,
@@ -56,7 +57,10 @@ class Button extends StatefulWidget {
   final FocusNode? focusNode;
   final bool autofocus;
   final String? tooltip;
+  /// Rest foreground (outline border too). Pack kit: `color`.
   final Color? color;
+  /// Hover / focus / press foreground. Pack kit: `hoverColor`.
+  final Color? hoverColor;
   final double? iconSize;
   final bool compact;
   final double? height;
@@ -103,6 +107,7 @@ class _ButtonState extends State<Button> {
       widget.variant,
       enabled,
       widget.color,
+      widget.hoverColor,
       _states.value,
     );
 
@@ -249,6 +254,7 @@ class _ButtonState extends State<Button> {
     ButtonVariant variant,
     bool enabled,
     Color? color,
+    Color? hoverColor,
     Set<WidgetState> states,
   ) {
     if (!enabled) {
@@ -258,20 +264,29 @@ class _ButtonState extends State<Button> {
         border: theme.borderSubtle,
       );
     }
+    final engaged = _engaged(states);
     if (color != null) {
+      if (engaged && hoverColor != null) {
+        return _ButtonColors(
+          foreground: hoverColor,
+          background: hoverColor.withValues(alpha: 0.12),
+          border: hoverColor.withValues(alpha: 0.55),
+        );
+      }
       return _ButtonColors(
         foreground: color,
         background: Colors.transparent,
         border: variant == ButtonVariant.outline ? color : null,
       );
     }
+    final engagedFg = hoverColor ?? theme.brandGreen;
     return switch (variant) {
-      // White at rest; brand green on hover / focus / press.
-      ButtonVariant.primary => _engaged(states)
+      // White at rest; brand green (or pack hoverColor) on hover / focus / press.
+      ButtonVariant.primary => engaged
           ? _ButtonColors(
-              foreground: theme.brandGreen,
-              background: theme.brandGreen.withValues(alpha: 0.12),
-              border: theme.brandGreen.withValues(alpha: 0.55),
+              foreground: engagedFg,
+              background: engagedFg.withValues(alpha: 0.12),
+              border: engagedFg.withValues(alpha: 0.55),
             )
           : _ButtonColors(
               foreground: theme.textPrimary,

@@ -143,6 +143,7 @@ Widget? paintFoundationType(
         height: propsNum(props, 'height'),
         fontSize: propsNum(props, 'fontSize'),
         color: propsColor(props, 'color'),
+        hoverColor: propsColor(props, 'hoverColor'),
         variant: _buttonVariant(propsString(props, 'variant')),
         size: _buttonSize(propsString(props, 'size')),
         onPressed: null,

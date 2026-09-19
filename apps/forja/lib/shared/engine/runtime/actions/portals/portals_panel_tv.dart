@@ -210,7 +210,8 @@ class PortalsPanelTvFocus {
   }
 
   void onPortalLeft() {
-    focusRow(PortalListView.headerRowId);
+    // Search is always header index 0 (Search · Scrape · Deal · Add…).
+    focusHeaderAt(0);
   }
 
   void onPortalMove({

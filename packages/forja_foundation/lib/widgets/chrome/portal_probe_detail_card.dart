@@ -9,7 +9,7 @@ import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Desktop hover peek — status, seats, ports, timezone (RFC-075).
+/// Desktop hover / TV focus-dwell peek — status, seats, ports, timezone (RFC-075).
 ///
 /// Liquid glass via [ForjaFrostedPanel] (blur + light tint), same family as
 /// Sources — not solid black and not bare translucent text.
