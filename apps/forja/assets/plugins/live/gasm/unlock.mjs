@@ -1,6 +1,6 @@
 /**
- * POST /fetch is done in Dart; this only runs set_stream_jw(island, body)
- * then scrapes WASM linear memory for the CDN m3u8.
+ * POST /fetch is done in Dart; this runs set_stream / set_stream_jw then
+ * scrapes WASM linear memory (and JW setup) for the CDN m3u8.
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -76,6 +76,11 @@ function extractUrl(memory, slug) {
   return matches[matches.length - 1]
 }
 
+function lookLikeStream(url) {
+  if (typeof url !== 'string' || !url) return false
+  return /\.m3u8/i.test(url) || url.includes('/secure/') || url.includes('/stream/')
+}
+
 /** Same linear-memory flags as decrypt.js (tuned for ref gasm.wasm). */
 function applyRefFlags(memory) {
   const u8 = new Uint8Array(memory.buffer)
@@ -97,6 +102,7 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
     fetch: globalThis.fetch,
     Request: globalThis.Request,
     Response: globalThis.Response,
+    URL: globalThis.URL,
     require: globalThis.require,
     window: globalThis.window,
     Window: globalThis.Window,
@@ -106,25 +112,59 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
     jwplayer: globalThis.jwplayer,
   }
 
+  let m3u8 = null
+  const capture = (url) => {
+    if (lookLikeStream(url)) m3u8 = url
+  }
+
+  const jwCfg = { file: null }
+  const takeFile = (cfg) => {
+    const file =
+      typeof cfg === 'string'
+        ? cfg
+        : cfg?.file || cfg?.sources?.[0]?.file || (Array.isArray(cfg) ? cfg[0]?.file : null)
+    if (typeof file !== 'string' || !file) return
+    jwCfg.file = file
+    capture(file)
+  }
+
   const jwEngine = { destroy() { } }
-  const jwPlayer = {
+  const jwBase = {
+    id: 'player',
+    uniqueId: 'player',
+    plugins: {},
+    version: '8.38.10',
+    Events: {},
+    utils: {},
+    _: {},
     remove() {
       return jwEngine
     },
-    setup() { },
+    setup: takeFile,
+    load: takeFile,
+    setConfig: takeFile,
+    getConfig: () => jwCfg,
     on() { },
-    load() { },
     play() { },
-    getPlaylistItem: () => ({}),
+    getPlaylistItem: () => jwCfg,
+    getPlaylist: () => (jwCfg.file ? [{ file: jwCfg.file }] : []),
     getState: () => 'idle',
+    getContainer: () => null,
+    getAudioTracks: () => [],
+    getBuffer: () => 0,
+    getCaptions: () => null,
+    getCaptionsList: () => [],
+    getControls: () => true,
+    getCues: () => [],
+    qoe: () => ({}),
+    addCues() { },
   }
-  Object.defineProperty(jwPlayer, '__wasm_jw_player', {
-    value: jwPlayer,
-    enumerable: false,
-  })
-  Object.defineProperty(jwEngine, '__wasm_jw_engine', {
-    value: jwEngine,
-    enumerable: false,
+  const jwPlayer = new Proxy(jwBase, {
+    get(target, prop, receiver) {
+      if (Reflect.has(target, prop)) return Reflect.get(target, prop, receiver)
+      if (prop === Symbol.toStringTag) return 'Object'
+      return () => null
+    },
   })
 
   const window = new Window({
@@ -139,24 +179,52 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
   window.jwplayer = () => jwPlayer
   window.__wasm_jw_player = jwPlayer
   window.__wasm_jw_engine = jwEngine
+  // Live embedindia reads __wasm_jw_p2p_config (not the older __wasm_p2p_config alone).
+  window.__wasm_jw_p2p_config = {
+    live: true,
+    token: '',
+    channelId: '',
+    announce: '',
+    showSlogan: false,
+    sharePlaylist: false,
+    startFromSegmentOffset: 0,
+    trickleICE: false,
+  }
+  window.__wasm_p2p_config = window.__wasm_jw_p2p_config
   window.__wasm_player = { core: { mediaControl: { volume: 0 } } }
-  window.__wasm_p2p_config = {}
-  window.P2PEngineHls = class { }
+  window.P2PEngineHls = class {
+    static isSupported() {
+      return false
+    }
+    static isMSESupported() {
+      return false
+    }
+  }
+  window.P2pEngineHls = window.P2PEngineHls
+  try {
+    window.document.body.innerHTML = '<div id="player"></div>'
+  } catch (_) { }
 
-  const resolveEmbedUrl = (url) =>
-    typeof url === 'string' && url.startsWith('/')
-      ? `${embedOrigin}${url}`
-      : url
+  const resolveEmbedUrl = (url) => {
+    if (typeof url !== 'string') return url
+    if (url.startsWith('/')) return `${embedOrigin}${url}`
+    return url
+  }
 
-  // WASM always re-hits /fetch; feed captured island+body (never network).
-  const embedFetch = async () =>
-    new window.Response(body, {
-      status: 200,
-      headers: { 'content-type': 'application/octet-stream', island },
-    })
+  const NativeRequest = saved.Request
+  const NativeResponse = saved.Response
+  const NativeURL = saved.URL
 
-  const BaseRequest = saved.Request
-  globalThis.Request = class extends BaseRequest {
+  globalThis.URL = class extends NativeURL {
+    constructor(input, base) {
+      if (typeof input === 'string' && input.startsWith('/')) {
+        input = `${embedOrigin}${input}`
+      }
+      super(input, base ?? `${embedOrigin}/`)
+    }
+  }
+
+  globalThis.Request = class extends NativeRequest {
     constructor(input, init) {
       if (typeof input === 'string') {
         super(resolveEmbedUrl(input), init)
@@ -166,10 +234,30 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
     }
   }
 
+  const embedFetch = async (input) => {
+    let href =
+      typeof input === 'string'
+        ? input
+        : input?.url || (input instanceof URL ? String(input) : String(input))
+    href = resolveEmbedUrl(href)
+    if (lookLikeStream(href)) {
+      capture(href)
+      return new NativeResponse('#EXTM3U\n#EXT-X-VERSION:3\n', {
+        status: 200,
+        headers: { 'content-type': 'application/vnd.apple.mpegurl' },
+      })
+    }
+    // WASM re-hits /fetch; feed captured island+body (never network).
+    return new NativeResponse(body, {
+      status: 200,
+      headers: { 'content-type': 'application/octet-stream', island },
+    })
+  }
+
   globalThis.fetch = embedFetch
   window.fetch = embedFetch
   window.Request = globalThis.Request
-  globalThis.Response = window.Response
+  globalThis.Response = NativeResponse
   globalThis.require = (name) => {
     try {
       return nodeRequire(name)
@@ -189,7 +277,13 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
 
   try {
     const mod = await import(`${pathToFileURL(pair.js).href}?t=${Date.now()}`)
-    const wasm = await mod.default({ module_or_path: wasmBytes })
+    const wasm = await mod.default({ module_or_path: wasmBytes, fetch: embedFetch })
+
+    if (typeof wasm.init_wasm === 'function') {
+      try {
+        await Promise.resolve(wasm.init_wasm())
+      } catch (_) { }
+    }
 
     if (pair.applyFlags) {
       try {
@@ -197,25 +291,49 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
       } catch (_) { }
     }
 
-    const result = wasm.set_stream_jw(island, new Uint8Array(body))
-    await Promise.race([
-      Promise.resolve(result),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 15000),
-      ),
-    ]).catch(() => { })
-
-    const streamUrl = extractUrl(wasm.memory, slug)
-    if (!streamUrl) {
-      throw new Error(
-        `${pair.name}: no m3u8 (slug=${slug || '-'} mem=${wasm.memory.buffer.byteLength})`,
-      )
+    // Current embedindia gasm writes the playlist via set_stream (set_stream_jw
+    // rejects empty and leaves memory blank). Keep jw as a fallback.
+    const setters = []
+    if (typeof wasm.set_stream === 'function') setters.push(['set_stream', wasm.set_stream])
+    if (typeof wasm.set_stream_jw === 'function') {
+      setters.push(['set_stream_jw', wasm.set_stream_jw])
     }
-    return streamUrl
+    if (!setters.length) {
+      throw new Error(`${pair.name}: no set_stream / set_stream_jw`)
+    }
+
+    for (const [name, fn] of setters) {
+      try {
+        const result = fn.call(wasm, island, new Uint8Array(body))
+        await Promise.race([
+          Promise.resolve(result),
+          new Promise((resolve) => {
+            const iv = setInterval(() => {
+              if (m3u8 || extractUrl(wasm.memory, slug)) {
+                clearInterval(iv)
+                resolve(null)
+              }
+            }, 10)
+            setTimeout(() => {
+              clearInterval(iv)
+              resolve(null)
+            }, 8000)
+          }),
+        ]).catch(() => { })
+      } catch (_) { }
+
+      const streamUrl = m3u8 || jwCfg.file || extractUrl(wasm.memory, slug)
+      if (streamUrl) return streamUrl
+    }
+
+    throw new Error(
+      `${pair.name}: no m3u8 (slug=${slug || '-'} mem=${wasm.memory.buffer.byteLength})`,
+    )
   } finally {
     globalThis.fetch = saved.fetch
     globalThis.Request = saved.Request
     globalThis.Response = saved.Response
+    globalThis.URL = saved.URL
     globalThis.require = saved.require
     globalThis.window = saved.window
     globalThis.Window = saved.Window

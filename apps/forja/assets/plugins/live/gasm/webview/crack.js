@@ -1,7 +1,7 @@
 /**
  * Browser port of gasm/unlock.mjs crack() — Android/iOS WebView.
  * Page baseUrl must be https://embedindia.st/ (see LiveGasmWebviewUnlock).
- * Dart POST /fetch; this only runs set_stream_jw(island, body) + memory scrape.
+ * Dart POST /fetch; this runs set_stream / set_stream_jw + memory scrape.
  *
  * Result: console.log('GASM_RESULT:' + JSON.stringify({ok,url,error}))
  */
@@ -14,12 +14,6 @@ function assetUrl(path) {
 
 const PAIRS = [
   {
-    name: 'ref',
-    js: '/vendor/gasm.js',
-    wasm: '/vendor/gasm.wasm',
-    applyFlags: true,
-  },
-  {
     name: 'live',
     js: '/vendor/gasm-browser.mjs',
     wasm: '/vendor/gasm-live.wasm',
@@ -30,6 +24,12 @@ const PAIRS = [
     js: '/vendor/gasm-browser.mjs',
     wasm: '/vendor/gasm-live.wasm',
     applyFlags: false,
+  },
+  {
+    name: 'ref',
+    js: '/vendor/gasm.js',
+    wasm: '/vendor/gasm.wasm',
+    applyFlags: true,
   },
 ];
 
@@ -94,6 +94,11 @@ function extractUrl(memory, slug) {
   return matches[matches.length - 1];
 }
 
+function lookLikeStream(url) {
+  if (typeof url !== 'string' || !url) return false;
+  return /\.m3u8/i.test(url) || url.includes('/secure/') || url.includes('/stream/');
+}
+
 /** Same linear-memory flags as decrypt.js (tuned for ref gasm.wasm). */
 function applyRefFlags(memory) {
   const u8 = new Uint8Array(memory.buffer);
@@ -109,25 +114,80 @@ function applyRefFlags(memory) {
   dv.setInt32(1070492, 0, true);
 }
 
-function mountJw() {
+function mountJw(onFile) {
+  const jwCfg = { file: null };
+  const takeFile = (cfg) => {
+    const file =
+      typeof cfg === 'string'
+        ? cfg
+        : cfg && (cfg.file || (cfg.sources && cfg.sources[0] && cfg.sources[0].file));
+    if (typeof file !== 'string' || !file) return;
+    jwCfg.file = file;
+    if (onFile) onFile(file);
+  };
   const jwEngine = { destroy() {} };
-  const jwPlayer = {
+  const jwBase = {
+    id: 'player',
+    uniqueId: 'player',
+    plugins: {},
+    version: '8.38.10',
+    Events: {},
+    utils: {},
+    _: {},
     remove() {
       return jwEngine;
     },
-    setup() {},
+    setup: takeFile,
+    load: takeFile,
+    setConfig: takeFile,
+    getConfig: () => jwCfg,
     on() {},
-    load() {},
     play() {},
-    getPlaylistItem: () => ({}),
+    getPlaylistItem: () => jwCfg,
+    getPlaylist: () => (jwCfg.file ? [{ file: jwCfg.file }] : []),
     getState: () => 'idle',
+    getContainer: () => null,
+    getAudioTracks: () => [],
+    getBuffer: () => 0,
+    getCaptions: () => null,
+    getCaptionsList: () => [],
+    getControls: () => true,
+    getCues: () => [],
+    qoe: () => ({}),
+    addCues() {},
   };
+  const jwPlayer = new Proxy(jwBase, {
+    get(target, prop, receiver) {
+      if (Reflect.has(target, prop)) return Reflect.get(target, prop, receiver);
+      if (prop === Symbol.toStringTag) return 'Object';
+      return () => null;
+    },
+  });
   window.__wasm_jw_player = jwPlayer;
   window.__wasm_jw_engine = jwEngine;
+  window.__wasm_jw_p2p_config = {
+    live: true,
+    token: '',
+    channelId: '',
+    announce: '',
+    showSlogan: false,
+    sharePlaylist: false,
+    startFromSegmentOffset: 0,
+    trickleICE: false,
+  };
+  window.__wasm_p2p_config = window.__wasm_jw_p2p_config;
   window.__wasm_player = { core: { mediaControl: { volume: 0 } } };
-  window.__wasm_p2p_config = {};
-  window.P2PEngineHls = class {};
+  window.P2PEngineHls = class {
+    static isSupported() {
+      return false;
+    }
+    static isMSESupported() {
+      return false;
+    }
+  };
+  window.P2pEngineHls = window.P2PEngineHls;
   window.jwplayer = () => jwPlayer;
+  return jwCfg;
 }
 
 function errText(e) {
@@ -157,19 +217,40 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
   if (!wasmResp.ok) throw new Error(pair.name + ': wasm HTTP ' + wasmResp.status);
   const wasmBytes = await wasmResp.arrayBuffer();
 
-  mountJw();
+  let captured = null;
+  const jwCfg = mountJw((file) => {
+    if (lookLikeStream(file)) captured = file;
+  });
 
-  const embedFetch = async () =>
-    new Response(body, {
+  const origin = String(embedOrigin || '').replace(/\/+$/, '');
+  const resolveEmbedUrl = (url) => {
+    if (typeof url !== 'string') return url;
+    if (url.startsWith('/')) return origin + url;
+    return url;
+  };
+
+  const prevFetch = window.fetch;
+  window.fetch = async (input) => {
+    let href =
+      typeof input === 'string'
+        ? input
+        : (input && input.url) || String(input);
+    href = resolveEmbedUrl(href);
+    if (lookLikeStream(href)) {
+      captured = href;
+      return new Response('#EXTM3U\n#EXT-X-VERSION:3\n', {
+        status: 200,
+        headers: { 'content-type': 'application/vnd.apple.mpegurl' },
+      });
+    }
+    return new Response(body, {
       status: 200,
       headers: {
         'content-type': 'application/octet-stream',
         island: String(island),
       },
     });
-
-  const prevFetch = window.fetch;
-  window.fetch = embedFetch;
+  };
 
   try {
     const mod = await import(jsUrl);
@@ -177,13 +258,15 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
     if (typeof init !== 'function') {
       throw new Error(pair.name + ': no default init export');
     }
-    const wasm = await init({ module_or_path: wasmBytes, fetch: embedFetch });
-    if (!wasm || typeof wasm.set_stream_jw !== 'function') {
-      throw new Error(
-        pair.name +
-          ': set_stream_jw missing keys=' +
-          Object.keys(wasm || {}).join(','),
-      );
+    const wasm = await init({ module_or_path: wasmBytes, fetch: window.fetch });
+    if (!wasm) {
+      throw new Error(pair.name + ': init returned empty');
+    }
+
+    if (typeof wasm.init_wasm === 'function') {
+      try {
+        await Promise.resolve(wasm.init_wasm());
+      } catch (_) {}
     }
 
     if (pair.applyFlags) {
@@ -192,30 +275,59 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
       } catch (_) {}
     }
 
-    console.log('[ForjaGasm] set_stream_jw…');
-    const result = wasm.set_stream_jw(island, body);
-    await Promise.race([
-      Promise.resolve(result),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 15000),
-      ),
-    ]).catch((e) => {
-      console.log('[ForjaGasm] set_stream_jw settle ' + errText(e));
-    });
-
-    const streamUrl = extractUrl(wasm.memory, slug);
-    if (!streamUrl) {
+    const setters = [];
+    if (typeof wasm.set_stream === 'function') setters.push(['set_stream', wasm.set_stream]);
+    if (typeof wasm.set_stream_jw === 'function') {
+      setters.push(['set_stream_jw', wasm.set_stream_jw]);
+    }
+    if (!setters.length) {
       throw new Error(
         pair.name +
-          ': no m3u8 (slug=' +
-          (slug || '-') +
-          ' mem=' +
-          wasm.memory.buffer.byteLength +
-          ')',
+          ': no set_stream / set_stream_jw keys=' +
+          Object.keys(wasm).join(','),
       );
     }
-    console.log('[ForjaGasm] m3u8(' + pair.name + ') ' + streamUrl);
-    return streamUrl;
+
+    for (const [name, fn] of setters) {
+      console.log('[ForjaGasm] ' + name + '…');
+      try {
+        const result = fn.call(wasm, island, body);
+        await Promise.race([
+          Promise.resolve(result),
+          new Promise((resolve) => {
+            const iv = setInterval(() => {
+              if (captured || extractUrl(wasm.memory, slug)) {
+                clearInterval(iv);
+                resolve(null);
+              }
+            }, 10);
+            setTimeout(() => {
+              clearInterval(iv);
+              resolve(null);
+            }, 8000);
+          }),
+        ]).catch((e) => {
+          console.log('[ForjaGasm] ' + name + ' settle ' + errText(e));
+        });
+      } catch (e) {
+        console.log('[ForjaGasm] ' + name + ' throw ' + errText(e));
+      }
+
+      const streamUrl = captured || jwCfg.file || extractUrl(wasm.memory, slug);
+      if (streamUrl) {
+        console.log('[ForjaGasm] m3u8(' + pair.name + '/' + name + ') ' + streamUrl);
+        return streamUrl;
+      }
+    }
+
+    throw new Error(
+      pair.name +
+        ': no m3u8 (slug=' +
+        (slug || '-') +
+        ' mem=' +
+        wasm.memory.buffer.byteLength +
+        ')',
+    );
   } finally {
     window.fetch = prevFetch;
   }
@@ -251,14 +363,7 @@ async function crack(slot, island, bodyHex, embedOrigin) {
   const errors = [];
   for (const pair of PAIRS) {
     try {
-      return await decryptWithPair(
-        pair,
-        island,
-        body,
-        origin,
-        path,
-        slug,
-      );
+      return await decryptWithPair(pair, island, body, origin, path, slug);
     } catch (e) {
       const msg = errText(e);
       console.log('[ForjaGasm] pair fail ' + pair.name + ': ' + msg);

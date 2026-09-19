@@ -41,4 +41,4 @@ On **Android TV**, **Settings → Features** kept the detail scrollbar at the to
 
 **Root fix:** Prefer a vertical scroller that can actually move (`maxScrollExtent > min`); fall back to the nearest vertical only when nothing overflows yet.
 
-**Related:** [262](262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) · [127](../127-[open]-android-tv-settings-detail-dpad.md)
+**Related:** [262](262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) · [127](127-[fixed]-android-tv-settings-detail-dpad.md)

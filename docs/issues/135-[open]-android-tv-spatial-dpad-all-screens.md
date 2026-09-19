@@ -56,6 +56,6 @@ Recent TV focus work made many surfaces feel like a **1D line** (`↑/←` = pre
 ## Related
 
 - [RFC-048](../rfc/fixed/048-[fixed]-tv-focus-graph.md) — spatial-default slice (`R48-C07`, `R48-A19+`)
-- [127](127-[open]-android-tv-settings-detail-dpad.md) — detail pane Back ladder (keep; drop linear arrows)
+- [127](fixed/127-[fixed]-android-tv-settings-detail-dpad.md) — detail pane Back ladder (keep; drop linear arrows)
 - [130](130-[open]-android-tv-player-dpad-stuck-on-play.md) — focused-node `focusInDirection`
 - [025](025-[open]-android-tv-leanback-smoke-unverified.md) — leanback smoke gate

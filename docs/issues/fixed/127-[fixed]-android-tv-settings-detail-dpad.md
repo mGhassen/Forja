@@ -1,6 +1,6 @@
 # 127 — Android TV Settings detail D-pad escapes to category rail
 
-**Status:** open  
+**Status:** fixed  
 **Priority:** P1  
 **Severity:** High  
 **Area:** Android TV · Settings · D-pad focus
@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 2** acceptance (legacy ladder) · **1 / 1** acceptance (corrected Back) · **0 / 2** acceptance (Addons ↑ + ← exit) · **2 / 2** acceptance (spatial pages) |
+| **Progress** | **Complete** · **8 / 8** fix · **7 / 7** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -34,13 +34,15 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I127-A01 | Android TV Settings: OK/→ from a category enters the right pane; ↑/↓/←/→ move only among detail controls | ⬜ |
-| 2 | I127-A02 | Back from detail returns to the selected category; further Back steps to first category then nav rail | ⬜ |
+| 1 | I127-A01 | Android TV Settings: OK/→ from a category enters the right pane; ↑/↓/←/→ move only among detail controls | ✅ |
+| 2 | I127-A02 | Back from detail returns to the selected category; further Back steps to nav rail (no hop to first category) | ✅ |
 | 3 | I127-A03 | Back: nested drill → detail list → selected category → nav (no hop to first category); Addons→Stremio restores list focus | ✅ |
-| 4 | I127-A04 | Addons: ↑ from IPTV lands on Playback with green focus chrome (not category rail / invisible) | ⬜ |
+| 4 | I127-A04 | Addons: ↑ from IPTV lands on Playback with green focus chrome (not category rail / invisible) | ✅ |
 | 5 | I127-A05 | Detail: ↑/↓/→ stay in the right page; ← or Back returns to the selected category (or closes nested drill first) | ✅ |
 | 6 | I127-A06 | Settings pages are spatial (→ ≠ next-in-list); ↑ on first control stays in-page (Packs install + Playback) | ✅ |
-| 7 | I127-A07 | Forja Packs chip strip / install checklist ↑ never lands on the category rail | ⬜ |
+| 7 | I127-A07 | Forja Packs chip strip / install checklist ↑ never lands on the category rail | ✅ |
+
+**Evidence:** widget suite `dpad_matrix_coverage_test.dart` (A01/A02/A04/A07) + `tv_focus_graph_test.dart` (A05/A06); Android TV emulator smoke — nav → `settings-hub-selected`, detail ↑/↓ stay, ← returns to category, Back page → `nav-settings`.
 
 ---
 
