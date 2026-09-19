@@ -10,12 +10,15 @@ class CrossfadeSwap extends StatelessWidget {
     this.duration = const Duration(milliseconds: 250),
     this.switchInCurve = Curves.easeOut,
     this.switchOutCurve = Curves.easeIn,
+    // AnimatedSwitcher defaults to center; labels / section titles need start.
+    this.alignment = AlignmentDirectional.centerStart,
   });
 
   final Widget child;
   final Duration duration;
   final Curve switchInCurve;
   final Curve switchOutCurve;
+  final AlignmentGeometry alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +26,7 @@ class CrossfadeSwap extends StatelessWidget {
       duration: duration,
       switchInCurve: switchInCurve,
       switchOutCurve: switchOutCurve,
+      alignment: alignment,
       transitionBuilder: (child, animation) {
         return FadeTransition(opacity: animation, child: child);
       },
