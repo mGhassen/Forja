@@ -171,12 +171,13 @@ Hub `icons/nav.png` and Home `logos/*.svg` must survive offline — no sticky CD
 
 ## Acceptance (host IPTV nav asset)
 
-Exception to R70-A60 / R70-A62: IPTV stays a host core tab with a bundled rail PNG. Hub packs still own their icons.
+Superseded by R70-A81: nav / watch-provider bitmaps are pack-owned. Host keeps Material fallback only.
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R70-A75 | Host ships `assets/images/nav/iptv.png`; `NavDestinationIcon` loads Flutter `assets/` for core IPTV | ✅ |
 | 2 | R70-A76 | My List pack ships bookmark `icons/nav.png` (not a copy of Home); manifest `nav.icon` stays pack-relative | ✅ |
+| 3 | R70-A81 | Drop host `assets/images/` + `assets/watch_providers/`; IPTV/Home logos from hub packs only; `ForjaHostAssets` = Material default | ✅ |
 
 ---
 

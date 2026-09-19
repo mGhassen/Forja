@@ -1,15 +1,11 @@
-/// Host-owned nav assets + Material fallback.
+/// Host Material fallback when a pack nav icon is missing or fails to load.
 ///
-/// Packs ship their own glyphs (`icons/nav.png`). Host core tabs that keep a
-/// bitmap (IPTV) use [flutterNavIptv] on [NavDestination.iconAsset].
+/// Hub glyphs live in packs (`icons/nav.png`). Host does not ship nav bitmaps.
 library;
 
 import 'package:flutter/material.dart';
 
 abstract final class ForjaHostAssets {
-  /// Host IPTV rail icon (Flutter asset — not a pack file).
-  static const flutterNavIptv = 'assets/images/nav/iptv.png';
-
   /// Material glyph when pack icon is missing or fails to load.
   static const IconData defaultNavIcon = Icons.grid_view_rounded;
 }

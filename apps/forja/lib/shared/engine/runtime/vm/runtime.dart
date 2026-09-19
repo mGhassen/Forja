@@ -671,14 +671,6 @@ class EngineRuntime {
       return null;
     });
 
-    br('KissKhKkey', (args) {
-      try {
-        _bridgeMap(args);
-        return '';
-      } catch (_) {
-        return '';
-      }
-    });
     br('EncodePipe', (args) {
       try {
         final m = _bridgeMap(args);
@@ -1642,11 +1634,6 @@ class EngineRuntime {
     })(),
     hop: globalThis.__engineHop,
     crypto: Object.assign({}, globalThis.CryptoJS || {}, {
-      kisskhKkey: function(episodeId, kind) {
-        return sendMessage('KissKhKkey', JSON.stringify({
-          episodeId: episodeId, kind: kind || 'video'
-        })) || '';
-      },
       encodePipe: function(payload) {
         var raw = typeof payload === 'string' ? payload : JSON.stringify(payload == null ? {} : payload);
         return sendMessage('EncodePipe', JSON.stringify({ json: raw })) || '';

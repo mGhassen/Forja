@@ -17,7 +17,7 @@ class NavDestination {
   final IconData activeIcon;
   final String label;
 
-  /// Display source: Flutter `assets/…`, absolute pack file path, or http(s).
+  /// Display source: pack file path, http(s), or rare Flutter `assets/…`.
   final String? iconAsset;
 }
 

@@ -4,7 +4,6 @@
 mod chrome_fetch;
 mod crypto_host;
 mod extract;
-mod kisskh_kkey;
 mod provider_health;
 mod scrypt_pow;
 

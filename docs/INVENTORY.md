@@ -38,7 +38,7 @@ flowchart BT
 - **Playback + catalog glue** in `packages/rust/lib/src/` (`playback/`, `catalog/`, `engine.dart`, jobs).
 - **Nuvio** in `apps/forja/lib/shared/nuvio/` (permanent C4 host).
 - **Long FFI** routes through `EngineWorkerPool` / `isolate_runner.dart` / `engine_jobs`.
-- **C3 WebView** extractors remain in `apps/forja` (KissKh stream fallback, embed sniff, …).
+- **C3 WebView** extractors remain in `apps/forja` (embed sniff, …).
 
 ---
 
@@ -147,7 +147,7 @@ Detail: [services-map.md](architecture/services-map.md).
 | Torrent search | `scrapers` | Jackett/Prowlarr via `indexer` + host config |
 | KV | `crates/storage` | `kv.dart` + migration leftovers |
 | Local proxy | Rust axum | Token registration from Dart |
-| KissKh streams | Rust kkey + HTTP | WebView fallback extractor |
+| KissKh streams | Pack provider JS (`kkey` in prelude) + HTTP | |
 
 ---
 

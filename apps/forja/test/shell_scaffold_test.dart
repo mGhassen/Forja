@@ -86,7 +86,7 @@ void main() {
           VerticalFilterOption(
             id: 'netflix',
             label: 'Netflix',
-            logo: 'assets/watch_providers/netflix.svg',
+            logo: 'logos/netflix.svg',
             tileColor: const Color(0xFF000000),
             filter: MetaFilterAst.eq('watch_provider', 8),
           ),

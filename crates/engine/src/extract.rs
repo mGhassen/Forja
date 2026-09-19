@@ -580,19 +580,6 @@ fn solve_pow(challenge: String, difficulty: i32, max: i32) -> String {
     String::new()
 }
 
-/// Consumet-compatible KissKh Episode/Sub `kkey` (same as Dart/flutter_js host).
-fn kisskh_kkey(episode_id: i32, kind: String) -> String {
-    if episode_id <= 0 {
-        return String::new();
-    }
-    let k = if kind == "sub" || kind == "subtitle" {
-        crate::kisskh_kkey::KkeyKind::Subtitle
-    } else {
-        crate::kisskh_kkey::KkeyKind::Video
-    };
-    crate::kisskh_kkey::generate_kkey(episode_id, k)
-}
-
 pub async fn extract(req: ExtractRequest) -> ExtractResult {
     let timeout = Duration::from_millis(req.timeout_ms.max(1_000));
     let token = utils::engine_cancel::cancellation_token();
@@ -779,14 +766,6 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
     ctx.globals()
         .set("__native_decode_pipe", decode_pipe_fn)
-        .map_err(|e| e.to_string())?;
-
-    let kisskh_kkey_fn = Function::new(ctx.clone(), kisskh_kkey)
-        .map_err(|e| e.to_string())?
-        .with_name("__native_kisskh_kkey")
-        .map_err(|e| e.to_string())?;
-    ctx.globals()
-        .set("__native_kisskh_kkey", kisskh_kkey_fn)
         .map_err(|e| e.to_string())?;
 
     let plugin_logs: std::sync::Arc<std::sync::Mutex<Vec<String>>> =
@@ -1054,9 +1033,6 @@ async fn run_in_ctx<'js>(
     }})(),
     hop: globalThis.__engineHop,
     crypto: Object.assign({{}}, globalThis.CryptoJS || {{}}, {{
-      kisskhKkey: function(episodeId, kind) {{
-        return __native_kisskh_kkey((episodeId|0), String(kind == null ? 'video' : kind)) || '';
-      }},
       encodePipe: function(payload) {{
         var raw = typeof payload === 'string' ? payload : JSON.stringify(payload == null ? {{}} : payload);
         return __native_encode_pipe(String(raw)) || '';
