@@ -74,7 +74,15 @@ class Button extends StatelessWidget {
       fontSize: fontSize,
       padding: padding,
     );
-    final colors = _resolveColors(theme, variant, enabled, color);
+    // Idle palette for the spinner; label/icon inherit ButtonStyle fg so
+    // primary can go gray→green on hover/focus without a StatefulWidget.
+    final idle = _resolveColors(
+      theme,
+      variant,
+      enabled,
+      color,
+      const <WidgetState>{},
+    );
 
     Widget content;
     if (loading) {
@@ -83,28 +91,20 @@ class Button extends StatelessWidget {
         height: dims.iconSize,
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          color: colors.foreground,
+          color: idle.foreground,
         ),
       );
     } else if (child != null) {
       content = child!;
     } else if (size == ButtonSize.icon || variant == ButtonVariant.plainIcon) {
-      content = Icon(
-        icon,
-        size: iconSize ?? dims.iconSize,
-        color: colors.foreground,
-      );
+      content = Icon(icon, size: iconSize ?? dims.iconSize);
     } else {
       content = Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (icon != null) ...[
-            Icon(
-              icon,
-              size: iconSize ?? dims.iconSize,
-              color: colors.foreground,
-            ),
+            Icon(icon, size: iconSize ?? dims.iconSize),
             SizedBox(width: theme.spaceSm),
           ],
           if (label != null)
@@ -114,7 +114,6 @@ class Button extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: colors.foreground,
                   fontSize: dims.fontSize,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
@@ -129,16 +128,25 @@ class Button extends StatelessWidget {
     }
 
     final style = ButtonStyle(
-      foregroundColor: WidgetStatePropertyAll(colors.foreground),
-      backgroundColor: WidgetStatePropertyAll(colors.background),
-      overlayColor: WidgetStatePropertyAll(
-        colors.foreground.withValues(alpha: 0.08),
-      ),
-      side: colors.border != null
-          ? WidgetStatePropertyAll(
-              BorderSide(color: colors.border!, width: 1.5),
-            )
-          : const WidgetStatePropertyAll(BorderSide.none),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        return _resolveColors(theme, variant, enabled, color, states)
+            .foreground;
+      }),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        return _resolveColors(theme, variant, enabled, color, states)
+            .background;
+      }),
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        final fg = _resolveColors(theme, variant, enabled, color, states)
+            .foreground;
+        return fg.withValues(alpha: 0.08);
+      }),
+      side: WidgetStateProperty.resolveWith((states) {
+        final border =
+            _resolveColors(theme, variant, enabled, color, states).border;
+        if (border == null) return BorderSide.none;
+        return BorderSide(color: border, width: 1.5);
+      }),
       elevation: const WidgetStatePropertyAll(0),
       shadowColor: const WidgetStatePropertyAll(Colors.transparent),
     );
@@ -207,11 +215,17 @@ class Button extends StatelessWidget {
     );
   }
 
+  static bool _engaged(Set<WidgetState> states) =>
+      states.contains(WidgetState.hovered) ||
+      states.contains(WidgetState.focused) ||
+      states.contains(WidgetState.pressed);
+
   static _ButtonColors _resolveColors(
     ForjaThemeExtension theme,
     ButtonVariant variant,
     bool enabled,
     Color? color,
+    Set<WidgetState> states,
   ) {
     if (!enabled) {
       return _ButtonColors(
@@ -228,11 +242,18 @@ class Button extends StatelessWidget {
       );
     }
     return switch (variant) {
-      ButtonVariant.primary => _ButtonColors(
-          foreground: theme.brandGreen,
-          background: theme.brandGreen.withValues(alpha: 0.12),
-          border: theme.brandGreen.withValues(alpha: 0.55),
-        ),
+      // Gray at rest; brand green on hover / focus / press.
+      ButtonVariant.primary => _engaged(states)
+          ? _ButtonColors(
+              foreground: theme.brandGreen,
+              background: theme.brandGreen.withValues(alpha: 0.12),
+              border: theme.brandGreen.withValues(alpha: 0.55),
+            )
+          : _ButtonColors(
+              foreground: theme.textSecondary,
+              background: Colors.white.withValues(alpha: 0.03),
+              border: ForjaShellColors.ghostBorder,
+            ),
       ButtonVariant.secondary => _ButtonColors(
           foreground: theme.textPrimary,
           background: Colors.white.withValues(alpha: 0.03),
