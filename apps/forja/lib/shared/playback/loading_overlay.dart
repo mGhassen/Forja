@@ -17,7 +17,7 @@ import 'package:forja/shared/playback/direct_stream_loading_panel.dart';
 import 'package:forja/shared/playback/resolve_failure_view.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/entry/player_metadata.dart';
-import 'package:forja/shared/player/sources/torrent_loading_status_panel.dart';
+import 'package:forja/shared/player/sources/torrent/torrent_loading_status_panel.dart';
 
 const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
 

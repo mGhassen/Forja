@@ -3,9 +3,9 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/unlock/live_resolve_streams.dart';
 import 'package:forja/shared/player/live/hooks/live_play.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
-import 'package:forja/shared/player/sources/kit_sources_panel.dart';
+import 'package:forja/shared/player/sources/kit/kit_sources_panel.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
-import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
+import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
 
 /// Live resolve panel data — registered on [KitResolveStreamsHooks].
 ///

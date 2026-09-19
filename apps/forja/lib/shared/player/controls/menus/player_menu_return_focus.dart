@@ -3,12 +3,12 @@ import 'package:forja/features/settings/ui/lan_p2p_required_dialog.dart';
 
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
-import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
-import 'package:forja/shared/player/controls/sources/player_server_stream_dialog.dart';
-import 'package:forja/shared/player/controls/sources/player_stream_menu.dart';
+import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.dart';
+import 'package:forja/shared/player/controls/sources/stream/player_server_stream_dialog.dart';
+import 'package:forja/shared/player/controls/sources/stream/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
-import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
+import 'package:forja/shared/player/controls/sources/torrent/player_torrent_file_panel.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 
 FocusNode? _playerMenuReturnFocus;

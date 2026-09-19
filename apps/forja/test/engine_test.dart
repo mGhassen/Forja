@@ -9,7 +9,7 @@ import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/screens/utils.dart';
-import 'package:forja/shared/player/sources/torrent_source_filters.dart';
+import 'package:forja/shared/player/sources/torrent/torrent_source_filters.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:rust/rust.dart';

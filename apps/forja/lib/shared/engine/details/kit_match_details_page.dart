@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/player/sources/resolve_panel_host.dart';
+import 'package:forja/shared/player/sources/resolve/resolve_panel_host.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_entry.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart';
-import 'package:forja/shared/player/sources/kit_sources_panel.dart';
+import 'package:forja/shared/player/sources/kit/kit_sources_panel.dart';
 
-import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
+import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/desktop/desktop_selectable_title.dart';

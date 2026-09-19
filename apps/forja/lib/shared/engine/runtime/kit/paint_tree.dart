@@ -43,7 +43,7 @@ import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/playback/open/history_playback_resume.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/player/sources/resolve_panel_host.dart';
+import 'package:forja/shared/player/sources/resolve/resolve_panel_host.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';

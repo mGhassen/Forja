@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
+import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';

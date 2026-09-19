@@ -5,7 +5,7 @@ import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/player/live/hooks/live_play.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
-import 'package:forja/shared/player/sources/stream_play_hooks.dart';
+import 'package:forja/shared/player/sources/resolve/stream_play_hooks.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext;

@@ -34,12 +34,12 @@ import 'package:forja/shared/player/live/lazy_url_health.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide_panel.dart';
 import 'package:forja_foundation/widgets/guide/channel_search_overlay.dart';
-import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
+import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
 import 'package:forja/shared/player/live/player_chrome_profile.dart';
 import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 
-import 'package:forja/shared/player/sources/torrent_source_tiles.dart';
+import 'package:forja/shared/player/sources/torrent/torrent_source_tiles.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';

@@ -10,15 +10,15 @@ import 'package:forja/shared/engine/runtime/meta/catalog_extract_context.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
-import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
+import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/playback/resolve_failure_view.dart';
 import 'package:forja/shell/routing/app_router.dart';
-import 'package:forja/shared/player/sources/panel_source_flags.dart';
+import 'package:forja/shared/player/sources/kit/panel_source_flags.dart';
 import 'package:rust/rust.dart';
 
-export 'package:forja/shared/player/sources/panel_source_flags.dart'
+export 'package:forja/shared/player/sources/kit/panel_source_flags.dart'
     show KitPanelSourceFlags;
 
 /// Whether hub details should show the white link Play (catalog Sources).

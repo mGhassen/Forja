@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
-import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
+import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
 
 /// Debounced live URL probe — mirrors IPTV catalog lazy checks (350ms dwell).
 /// Fresh results skip re-probe for [ttl] (stale-while-revalidate paint stays).

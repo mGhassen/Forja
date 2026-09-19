@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
-import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
+import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.dart';
+import 'package:forja/shared/player/controls/sources/torrent/player_torrent_file_panel.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';

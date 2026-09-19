@@ -8,12 +8,12 @@ import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart'
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_provider_menu.dart';
-import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
-import 'package:forja/shared/player/controls/sources/player_stream_menu.dart';
+import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.dart';
+import 'package:forja/shared/player/controls/sources/stream/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_dialog.dart';
-import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
+import 'package:forja/shared/player/controls/sources/torrent/player_torrent_file_panel.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
+import 'package:forja/shared/player/sources/torrent/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';

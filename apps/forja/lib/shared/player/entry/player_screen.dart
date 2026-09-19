@@ -8,11 +8,11 @@ import 'package:forja/shared/player/platform/external_player_service.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/entry/external_player_handoff_screen.dart';
 import 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
-import 'package:forja/shared/player/screens/exo_player_screen.dart';
-import 'package:forja/shared/player/screens/mobile_player_screen.dart';
-import 'package:forja/shared/player/screens/tv_player_screen.dart';
-import 'package:forja/shared/player/screens/desktop_player_screen.dart';
-import 'package:forja/shared/player/screens/desktop_native_player_screen.dart';
+import 'package:forja/shared/player/screens/exo/exo_player_screen.dart';
+import 'package:forja/shared/player/screens/mobile/mobile_player_screen.dart';
+import 'package:forja/shared/player/screens/tv/tv_player_screen.dart';
+import 'package:forja/shared/player/screens/desktop/desktop_player_screen.dart';
+import 'package:forja/shared/player/screens/desktop/desktop_native_player_screen.dart';
 import 'package:forja/shared/player/avplayer/av_player_bridge.dart';
 import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
 

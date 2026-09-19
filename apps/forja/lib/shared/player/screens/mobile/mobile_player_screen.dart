@@ -2,97 +2,102 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
-import 'package:window_manager/window_manager.dart';
-
-import 'utils.dart';
-import 'player_peakstorm_resume_diag.dart';
-import 'package:forja/shared/player/controls/menus/player_menus.dart';
-import 'playback_recovery.dart';
-import 'network_playback_recovery.dart';
-import 'post_seek_stall_watchdog.dart';
-import 'playable_source_bridge.dart';
-
 import 'package:rust/rust.dart';
-
+import 'package:media_kit_video/media_kit_video.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:screen_brightness/screen_brightness.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
+import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/playback/open/player_source_resolve.dart';
+import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/probe/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
-import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
-import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
+import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/lan/lan_client_service.dart';
+import 'package:forja/shared/lan/lan_p2p_playback.dart';
+import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
+import 'package:forja/shared/player/controls/menus/player_menus.dart';
+import 'package:forja/shared/player/screens/playback_recovery.dart';
+import 'package:forja/shared/player/screens/network_playback_recovery.dart';
+import 'package:forja/shared/player/screens/post_seek_stall_watchdog.dart';
+import 'package:forja/shared/player/screens/playable_source_bridge.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
-import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
-import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
-import 'package:forja/shared/player/controls/chrome/desktop_pip_overlay.dart';
-import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
+import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
+import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
+import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
+import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
+import 'package:forja/features/settings/ui/lan_p2p_required_dialog.dart';
 import 'package:forja/shared/player/entry/player_metadata.dart';
-import 'package:forja/shared/player/controls/seek/seek_bar_with_preview.dart';
+import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
-import 'package:forja/shared/player/controls/sources/player_stream_menu.dart';
+import 'package:forja/shared/player/controls/sources/stream/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
-import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
-import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
-import 'package:forja/shared/player/controls/sources/player_torrent_stats_card.dart';
+import 'package:forja/shared/player/controls/sources/torrent/player_torrent_file_panel.dart';
+import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
-import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
-import 'package:forja/features/settings/ui/lan_p2p_required_dialog.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
-import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
-import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
-import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
-import 'package:forja/shared/lan/lan_p2p_playback.dart';
+
 import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';
-import 'package:forja/shell/desktop/desktop_window_chrome.dart';
-import 'package:forja/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
-part 'desktop_player_glass.dart';
-part 'desktop_player_lifecycle.dart';
-part 'desktop_player_playback.dart';
-part 'desktop_player_tracks.dart';
-part 'desktop_player_sources.dart';
-part 'desktop_player_episodes.dart';
-part 'desktop_player_ui.dart';
-part 'desktop_player_build.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
+part 'mobile_player_glass.dart';
+part 'mobile_player_lifecycle.dart';
+part 'mobile_player_playback.dart';
+part 'mobile_player_ui.dart';
+part 'mobile_player_tracks.dart';
+part 'mobile_player_sources.dart';
+part 'mobile_player_sources_alt.dart';
+part 'mobile_player_sources_settings.dart';
+part 'mobile_player_sources_provider.dart';
+part 'mobile_player_episodes.dart';
+part 'mobile_player_build.dart';
+part 'mobile_player_seekbar.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  DESKTOP PLAYER SCREEN
+//  MOBILE PLAYER SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 
-class DesktopPlayerScreen extends ConsumerStatefulWidget {
+class MobilePlayerScreen extends ConsumerStatefulWidget {
   final String mediaPath;
   final String title;
   final String? audioUrl;
@@ -128,10 +133,11 @@ class DesktopPlayerScreen extends ConsumerStatefulWidget {
   final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
   final ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache;
   final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
+  final bool tvRemoteEnabled;
   final BuiltInPlayerEngine builtInEngine;
   final PlayerSwitchHandler? onSwitchPlayer;
 
-  const DesktopPlayerScreen({
+  const MobilePlayerScreen({
     super.key,
     required this.mediaPath,
     required this.title,
@@ -166,67 +172,34 @@ class DesktopPlayerScreen extends ConsumerStatefulWidget {
     this.sourcesListNotifier,
     this.providerSourcesCache,
     this.providerProbesNotifier,
+    this.tvRemoteEnabled = false,
     this.builtInEngine = BuiltInPlayerEngine.mediaKit,
     this.onSwitchPlayer,
   });
 
   @override
-  ConsumerState<DesktopPlayerScreen> createState() =>
-      _DesktopPlayerScreenState();
+  ConsumerState<MobilePlayerScreen> createState() => _MobilePlayerScreenState();
 }
 
-class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
+class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     with
-        WindowListener,
+        TickerProviderStateMixin,
         WidgetsBindingObserver,
-        _DesktopPlayerLifecycle,
-        _DesktopPlayerTracks,
-        _DesktopPlayerPlayback,
-        _DesktopPlayerSources,
-        _DesktopPlayerEpisodes,
-        _DesktopPlayerUi,
-        _DesktopPlayerBuild
-    implements InAppMiniPlayerSession {
+        _MobilePlayerLifecycle,
+        _MobilePlayerTracks,
+        _MobilePlayerPlayback,
+        _MobilePlayerUi,
+        _MobilePlayerSources,
+        _MobilePlayerSourcesAlt,
+        _MobilePlayerSourcesSettings,
+        _MobilePlayerSourcesProvider,
+        _MobilePlayerEpisodes,
+        _MobilePlayerBuild {
   // ── Player ──────────────────────────────────────────────────────────────
-  late Player _player;
-  late VideoController _controller;
-  bool _playerReady = false;
+  late final Player _player;
+  late final VideoController _controller;
   bool _disposed = false;
   bool _playbackStopped = false;
-
-  /// Guards re-entrant Escape / Back while [_exitPlayer] awaits stop.
-  bool _exitInProgress = false;
-
-  /// First Escape hid chrome (or armed while hidden) — next Escape exits.
-  bool _escapeExitArmed = false;
-
-  /// When [_handleEscapeKey] last ran — ignore twin HW/DismissIntent/Shortcuts.
-  DateTime? _escapeHandledAt;
-
-  /// When true, [PopScope] skips the Escape arm ladder (Back icon / mouse Back).
-  bool _bypassEscapeArm = false;
-
-  /// Completes when this player finishes [stopForNewPlay] teardown.
-  Completer<void>? _stopForNewPlayCompleter;
-
-  late final FocusNode _miniRootFocus =
-      FocusNode(debugLabel: 'in-app-mini-root');
-  late final FocusNode _miniPlayPauseFocus =
-      FocusNode(debugLabel: 'in-app-mini-play');
-  late final FocusNode _miniExpandFocus =
-      FocusNode(debugLabel: 'in-app-mini-expand');
-  late final FocusNode _miniCloseFocus =
-      FocusNode(debugLabel: 'in-app-mini-close');
-
-  /// Keep MediaKit [Video] State across full ↔ in-app mini (texture stays alive).
-  final GlobalKey _videoViewKey = GlobalKey(debugLabel: 'desktop-player-video');
-
-  @override
-  FocusNode get miniRootFocus => _miniRootFocus;
-
-  @override
-  bool get isPlaying => _isPlayingNotifier.value;
-
   int _fallbackGen = 0;
   final Map<String, int> _providerLoadGens = {};
   final ValueNotifier<Set<String>> _providerLoadFailures =
@@ -239,31 +212,67 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
-  Timer? _hideTimer;
 
-  /// After Escape / auto-hide, ignore synthetic MouseRegion hover that fires
-  /// when the cursor flips to [SystemMouseCursors.none] (chrome would snap back).
-  DateTime? _suppressChromeRevealUntil;
-  Offset? _lastHoverPos;
+  /// Guards re-entrant Back while [_exitPlayer] awaits stop/orientation.
+  bool _exitInProgress = false;
 
-  bool _showTorrentStatsOverlay = false;
-  StreamSubscription<TorrentStats>? _torrentStatsSub;
-  TorrentStats? _torrentStats;
-  final TorrentSeekPrefetchScheduler _torrentSeekPrefetch =
-      TorrentSeekPrefetchScheduler();
+  /// MediaKit [Video] mounted — cleared before pop on Android so MediaCodec
+  /// surface teardown is not interleaved with route dispose (issue 128 ANR).
+  bool _showVideoSurface = true;
+  final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
+  final FocusNode _rewindFocus = FocusNode(debugLabel: 'player-rewind');
+  final FocusNode _forwardFocus = FocusNode(debugLabel: 'player-forward');
+  final FocusNode _seekbarFocus = FocusNode(debugLabel: 'player-seekbar');
+  final FocusNode _transportSourcesFocus = FocusNode(
+    debugLabel: 'player-transport-sources',
+  );
+  final FocusNode _transportStreamFocus = FocusNode(
+    debugLabel: 'player-transport-stream',
+  );
+  final FocusNode _transportPrevEpFocus = FocusNode(
+    debugLabel: 'player-transport-prev-ep',
+  );
+  final FocusNode _transportNextEpFocus = FocusNode(
+    debugLabel: 'player-transport-next-ep',
+  );
+  final FocusNode _transportEpisodesFocus = FocusNode(
+    debugLabel: 'player-transport-episodes',
+  );
+  final FocusNode _transportAudioFocus = FocusNode(
+    debugLabel: 'player-transport-audio',
+  );
+  final FocusNode _transportSubsFocus = FocusNode(
+    debugLabel: 'player-transport-subs',
+  );
+  final FocusNode _transportQualityFocus = FocusNode(
+    debugLabel: 'player-transport-quality',
+  );
+  final FocusNode _transportSettingsFocus = FocusNode(
+    debugLabel: 'player-transport-settings',
+  );
+  final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
+
+  /// TV Back / Exit: hide chrome → arm (+ hint) → leave (desktop Escape parity).
+  bool _tvBackExitArmed = false;
+
+  final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'player-menu');
+  final FocusNode _retryFocus = FocusNode(debugLabel: 'player-retry');
+  final FocusNode _streamActionFocus = FocusNode(
+    debugLabel: 'player-stream-action',
+  );
+  final FocusNode _skipChipFocus = FocusNode(debugLabel: 'player-skip-chip');
+  final FocusNode _nextEpChipFocus = FocusNode(
+    debugLabel: 'player-next-ep-chip',
+  );
+  final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   Movie? _heroMovie;
   String? _episodeOverview;
-  bool _isFullscreen = false;
+  bool _isLocked = false;
+  Timer? _hideTimer;
   BoxFit _videoFit = BoxFit.contain;
-  bool _isPipMode = false;
-  bool _pipHover = false;
-  StreamSubscription<bool>? _pipSub;
 
-  /// True when we paused because the window left the foreground (not user pause).
-  bool _pausedByLifecycle = false;
-
-  // ── Resume State ─────────────────────────────────────────────────────────
-  // ── Stream Subscriptions ─────────────────────────────────────────────────
+  // ── Resume ────────────────────────────────────────────────────────────────
+  // ── Stream Subscriptions ──────────────────────────────────────────────────
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<Duration>? _bufferSub;
@@ -271,7 +280,6 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   bool _cacheAheadProbeInFlight = false;
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<bool>? _bufferingSub;
-  StreamSubscription<double>? _volumeSub;
   StreamSubscription<String>? _errorSub;
   StreamSubscription<bool>? _completedSub;
   StreamSubscription<Tracks>? _tracksSub;
@@ -283,12 +291,26 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   Timer? _embeddedSubtitleAutoTimer;
   PlaybackRecovery? _playbackRecovery;
   PostSeekStallWatchdog? _postSeekStall;
+  StreamSubscription<bool>? _pipSub;
   bool _autoTracksAppliedForSource = false;
   bool _userPickedAudioThisSource = false;
   bool _embeddedSubtitleAutoApplied = false;
   int _embeddedSubtitleTrackCount = 0;
   bool _userPickedExternalSubtitle = false;
-  // ── Value Notifiers (rebuild only what's needed, no full setState) ────────
+  bool _androidMediaKitSafeMode = false;
+  bool _isAndroidTv = false;
+
+  // ── PiP State ─────────────────────────────────────────────────────────────
+  bool _isPipMode = false;
+
+  /// True when we paused because the app left the foreground (not user pause).
+  /// Resume only if this is set — keeps manual pause across app switch.
+  bool _pausedByLifecycle = false;
+
+  /// ATV: hide dead mediacodec_embed texture after veille while still paused (issue 182).
+  bool _coverDeadSurface = false;
+
+  // ── Value Notifiers ───────────────────────────────────────────────────────
   final ValueNotifier<Duration> _positionNotifier = ValueNotifier(
     Duration.zero,
   );
@@ -300,21 +322,40 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   );
   final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
-  final ValueNotifier<double> _volumeNotifier = ValueNotifier(100.0);
 
-  // ── Subtitles ────────────────────────────────────────────────────────────
+  /// MediaKit on leanback — `vo=mediacodec_embed`, `ao=audiotrack`, softvol
+  /// gain. `tvRemoteEnabled` covers [TvPlayerScreen] before the async
+  /// `isTelevision` probe lands.
+  bool get _tvMediaKit =>
+      Platform.isAndroid &&
+      (widget.tvRemoteEnabled || PlatformInfo.isAndroidTv);
+
+  // ── Gesture State ─────────────────────────────────────────────────────────
+  double _volume = 100.0; // 0–150 (mpv supports >100%; 100 = full)
+  double _brightness = 0.5; // 0.0..1.0 (screen brightness)
+  bool _showVolumeIndicator = false;
+  bool _showBrightnessIndicator = false;
+  Timer? _indicatorHideTimer;
+
+  /// mpv softvol for [_volume] — boosted on TV so MediaKit matches Exo
+  /// loudness (issue 152).
+  double get _mpvVolume => mpvVolumeForUi(_volume, atvMediaKit: _tvMediaKit);
+
+  // ── Double-tap ripple ─────────────────────────────────────────────────────
+  late final AnimationController _rippleController;
+  late final Animation<double> _rippleScale;
+  late final Animation<double> _rippleOpacity;
+  bool _showRipple = false;
+  bool _isForward = true;
+  Offset _ripplePosition = Offset.zero;
+
+  // ── Subtitles ─────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _externalSubtitles = [];
   Set<String> _providerExternalSubUrls = {};
-  bool _isFetchingSubs = false;
 
   /// When true, the current subtitle is ASS/SSA or an image-based format (PGS/VobSub).
   /// mpv renders it directly on the video frame, so the custom Flutter overlay is hidden.
   bool _isNativeSubtitle = false;
-  String? _selectedExternalSubUrl;
-
-  /// Downloaded external subtitle file URIs keyed by source URL - reused when
-  /// mpv wipes the track on media open (auto-pick race).
-  final Map<String, String> _externalSubFileCache = {};
 
   // ── Provider switching ────────────────────────────────────────────────────
   String? _currentProvider;
@@ -322,6 +363,11 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   List<PlayableSource>? _playableSources;
   String? _currentUrl;
   String? _activeMagnet;
+
+  StreamSubscription<TorrentStats>? _torrentStatsSub;
+  TorrentStats? _torrentStats;
+  final TorrentSeekPrefetchScheduler _torrentSeekPrefetch =
+      TorrentSeekPrefetchScheduler();
 
   /// Catalog Sources kind for the playing session: `torrents` | `stremio` | `nuvio`.
   String? _catalogSourceKind;
@@ -346,8 +392,6 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   /// (the menu compares against this rather than the localhost proxy URL).
   String? _current111477FileUrl;
   int _currentFallbackSourceIndex = 0;
-
-  /// Catalog stream URL selected when playback last confirmed.
   String? _currentPlayingCatalogUrl;
   String? _catalogStreamRowKey;
   bool _providerPinned = false;
@@ -540,7 +584,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     final url = _currentQualityUrl ?? _currentUrl;
     final w = _postSeekStall;
     if (w == null) return;
-    w.enabled = url != null &&
+    w.enabled =
+        url != null &&
         !isLocalTorrentStreamUrl(url) &&
         !isLocalLoopbackPlayUrl(url);
     if (shouldSkipPostSeekStallArm(
@@ -553,11 +598,18 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     w.noteSeek(target);
   }
 
-  // ── Feature State ────────────────────────────────────────────────────────
+  bool _isFetchingSubs = false;
+  String? _selectedExternalSubUrl;
+
+  /// Downloaded external subtitle file URIs keyed by source URL - reused when
+  /// mpv wipes the track on media open (auto-pick race).
+  final Map<String, String> _externalSubFileCache = {};
+
+  // ── Feature State ─────────────────────────────────────────────────────────
   _HwDecMode _hwDecMode = _HwDecMode.autoSafe;
   bool _loopEnabled = false;
   double _subtitleDelay = 0.0;
-  double _subtitleSize = 44.0;
+  double _subtitleSize = 24.0;
   double _subtitleBottomPadding = 24.0;
   Color _subtitleColor = Colors.white;
   double _subtitleBgOpacity = 0.67;
@@ -572,13 +624,12 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   // ── Skip Segments (IntroDB) ───────────────────────────────────────────────
   IntroDbResponse? _introDbData;
-  String? _activeSkipLabel; // e.g. 'Skip Intro', 'Skip Recap', etc.
-  Duration? _activeSkipTarget; // where to seek when the user taps
-  bool _skipDismissed = false; // user dismissed the current segment button
+  String? _activeSkipLabel;
+  Duration? _activeSkipTarget;
+  bool _skipDismissed = false;
   /// Auto-skip fires once per intro/recap end (avoids remount spam).
   Duration? _autoSkipLatchedTarget;
 
-  // ─────────────────────────────────────────────────────────────────────────
   @override
   void dispose() {
     widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
@@ -588,15 +639,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     // `_initPlayback` / mark-failed paths bail out instead of writing
     // to a disposed ValueNotifier.
     _disposed = true;
-    InAppMiniPlayerController.instance.detach(this);
-    _miniRootFocus.dispose();
-    _miniPlayPauseFocus.dispose();
-    _miniExpandFocus.dispose();
-    _miniCloseFocus.dispose();
-    final stopWait = _stopForNewPlayCompleter;
-    if (stopWait != null && !stopWait.isCompleted) {
-      stopWait.complete();
-    }
+    PlayerBackExitGate.setTryFocusBack(null);
     _cancelPendingStreamWork();
     _postSeekStall?.dispose();
     _postSeekStall = null;
@@ -606,35 +649,56 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     }
     _saveWatchHistory();
 
-    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
-    PlayerBackExitGate.setTryFocusBack(null);
-    PlayerBackExitGate.setForceExitPlayer(null);
-    windowManager.removeListener(this);
-    WidgetsBinding.instance.removeObserver(this);
+    // Restore screen brightness to system default (mobile only)
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        ScreenBrightness().resetApplicationScreenBrightness();
+      } catch (_) {}
+    }
+
+    // Don't set orientation here - _exitPlayer() already locks portrait
+    // BEFORE popping.  Changing orientation during dispose while
+    // media_kit's surface is being torn down causes BLASTBufferQueue
+    // errors and hundreds of dropped frames.
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    _playFocus.dispose();
+    _rewindFocus.dispose();
+    _forwardFocus.dispose();
+    _seekbarFocus.dispose();
+    _transportSourcesFocus.dispose();
+    _transportStreamFocus.dispose();
+    _transportPrevEpFocus.dispose();
+    _transportNextEpFocus.dispose();
+    _transportEpisodesFocus.dispose();
+    _transportAudioFocus.dispose();
+    _transportSubsFocus.dispose();
+    _transportQualityFocus.dispose();
+    _transportSettingsFocus.dispose();
+    _backFocus.dispose();
+    _playerMenuFocus.dispose();
+    _retryFocus.dispose();
+    _streamActionFocus.dispose();
+    _skipChipFocus.dispose();
+    _nextEpChipFocus.dispose();
+    _tvKeyFocus.dispose();
     playerChromeOnOverlayDismissed = null;
     _statusController.removeListener(_onPlayerStatusForChromeHide);
+    WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _progressSaveTimer?.cancel();
+    _indicatorHideTimer?.cancel();
     _trackAutoSelectTimer?.cancel();
     _trackAutoSelectTimer = null;
     _embeddedSubtitleAutoTimer?.cancel();
     _embeddedSubtitleAutoTimer = null;
-    _pipSub?.cancel();
-    PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
-    _torrentStatsSub?.cancel();
-    _torrentSeekPrefetch.cancel();
     PlayerSubtitleSettingsDialog.dismissIfShowing();
     LanP2pRequiredDialog.dismissIfShowing();
     PlayerTorrentFilePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     playerMenuClearReturnFocus();
-    // If we tear down while in PiP, restore window chrome so the next
-    // screen doesn't inherit a tiny frameless 480x270 window.
-    if (PipService.instance.isDesktopActive) {
-      PipService.instance.leave();
-    }
+    _rippleController.dispose();
 
-    // Cancel all subscriptions
     _positionSub?.cancel();
     _durationSub?.cancel();
     _bufferSub?.cancel();
@@ -642,59 +706,74 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _cacheAheadPoll = null;
     _playingSub?.cancel();
     _bufferingSub?.cancel();
-    _volumeSub?.cancel();
     _errorSub?.cancel();
     _completedSub?.cancel();
     _tracksSub?.cancel();
     _logSub?.cancel();
+    _pipSub?.cancel();
+    _torrentStatsSub?.cancel();
+    _torrentSeekPrefetch.cancel();
 
-    // Dispose value notifiers
     _positionNotifier.dispose();
     _durationNotifier.dispose();
     _bufferedNotifier.dispose();
     _isPlayingNotifier.dispose();
     _isBufferingNotifier.dispose();
     _hlsQualitiesNotifier.dispose();
-    _volumeNotifier.dispose();
     _statusController.dispose();
     _sourceMenuRevision.dispose();
 
-    if (_playerReady) {
-      _playerReady = false;
-      MpvExclusiveSession.instance.untrackPlayer(_player);
-      final disposeFuture = _teardownMediaKitPlayer(_player);
-      MpvExclusiveSession.instance.trackVideoDispose(
-        disposeFuture,
-        markExoFitRemount: true,
-      );
-      unawaited(disposeFuture);
-    }
+    unawaited(_teardownMediaKitPlayer());
 
     // Remove torrent from engine on player exit (use magnetLink for hash,
     // fall back to mediaPath which may be a stream URL).
     if (!TorrentStreamService().retainForExternalHandoff) {
       final torrentId = widget.magnetLink ?? widget.mediaPath;
       TorrentStreamService().removeTorrent(torrentId);
+      // [_exitPlayer] already scheduled LAN close; this covers forced pops.
+      if (!_exitInProgress) {
+        LanClientService.instance.releaseLanTorrentIfNeeded(
+          playUrl: _currentUrl ?? widget.mediaPath,
+          magnet: _activeMagnet ?? widget.magnetLink,
+        );
+      }
     }
 
     // Tear down the 111477 proxy and delete its on-disk cache.
     if (site111477_proxy.is111477ProxyRunning) {
+      // Fire-and-forget - dispose() can't be async.
       site111477_proxy.stop111477Proxy();
     }
+
+    WakelockPlus.disable();
 
     super.dispose();
   }
 
-  /// Instant silence before route pop (native mpv props; no hung init waits).
+  /// Instant silence before orientation / route pop.
   Future<void> _stopPlaybackForExit() async {
-    if (_playbackStopped || !_playerReady) return;
+    if (_playbackStopped) return;
     _playbackStopped = true;
     await silenceMediaKitPlayer(_player);
   }
 
-  /// Full stop+dispose with timeouts after the route is gone.
-  Future<void> _teardownMediaKitPlayer(Player player) async {
+  /// Full stop+dispose with timeouts after the route / engine widget is gone.
+  Future<void> _teardownMediaKitPlayer() async {
     _playbackStopped = true;
-    await teardownMediaKitPlayer(player);
+    MpvExclusiveSession.instance.untrackPlayer(_player);
+    final player = _player;
+    final android = Platform.isAndroid;
+    // Android widget dispose runs mid-frame on Player-menu MediaKit→Exo
+    // (`_switchingBuiltInEngine`). Starting FFI here blocks `endOfFrame` past
+    // the ANR window (issue 128). Fast + deferred; switch already waits 1.2s.
+    Future<void> run() => teardownMediaKitPlayer(player, fast: android);
+    final disposeFuture = android
+        ? Future<void>.delayed(const Duration(milliseconds: 50), run)
+        : run();
+    MpvExclusiveSession.instance.trackVideoDispose(
+      disposeFuture,
+      markExoFitRemount: true,
+    );
+    if (!android) await disposeFuture;
   }
 }

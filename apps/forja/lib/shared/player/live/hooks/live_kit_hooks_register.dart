@@ -3,9 +3,9 @@ import 'package:forja/shared/player/live/hooks/live_play.dart';
 import 'package:forja/shared/player/live/hooks/resolve_streams_adapter.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
-import 'package:forja/shared/player/sources/pack_stream_play_hooks.dart';
-import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
-import 'package:forja/shared/player/sources/stream_play_hooks.dart';
+import 'package:forja/shared/player/sources/resolve/pack_stream_play_hooks.dart';
+import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
+import 'package:forja/shared/player/sources/resolve/stream_play_hooks.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext;
 
 /// Boots generic stream / live play + resolve hooks (no IPTV product screens).
