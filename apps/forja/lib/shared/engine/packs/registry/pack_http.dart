@@ -15,6 +15,10 @@ import 'package:http/io_client.dart';
 abstract final class PackHttp {
   static const Duration defaultTimeout = Duration(seconds: 45);
 
+  /// Cap system DNS — Android TV/emulator can hang forever on lookup.
+  /// On timeout / failure we fall through to DoH.
+  static const Duration systemDnsTimeout = Duration(seconds: 5);
+
   /// Cloudflare DNS-over-HTTPS (JSON) — IP so we do not need recursive DNS.
   static const String dohUrl = 'https://1.1.1.1/dns-query';
 
@@ -93,8 +97,12 @@ abstract final class PackHttp {
     if (debug != null) return debug(host);
 
     try {
-      final addrs = await InternetAddress.lookup(host);
+      final addrs = await InternetAddress.lookup(host).timeout(
+        systemDnsTimeout,
+      );
       if (addrs.isNotEmpty) return addrs;
+    } on TimeoutException catch (e) {
+      debugPrint('[PackHttp] system DNS timed out ($host): $e — trying DoH');
     } on SocketException catch (e) {
       debugPrint('[PackHttp] system DNS failed ($host): $e — trying DoH');
     } catch (e) {

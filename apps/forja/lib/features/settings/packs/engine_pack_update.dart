@@ -80,6 +80,14 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
     final showStatus = hasUpdates || checking;
     if (!showStatus && actions.isEmpty) return const SizedBox.shrink();
 
+    // Prefer known updates over "Checking…" — a hung re-check used to hide
+    // Update all forever while rows already showed newer versions.
+    final statusLabel = hasUpdates
+        ? EnginePackUpdateCopy.available(updateCount)
+        : checking
+        ? EnginePackUpdateCopy.checking
+        : EnginePackUpdateCopy.upToDate;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -99,11 +107,7 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
             const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
             Expanded(
               child: Text(
-                checking
-                    ? EnginePackUpdateCopy.checking
-                    : hasUpdates
-                    ? EnginePackUpdateCopy.available(updateCount)
-                    : EnginePackUpdateCopy.upToDate,
+                statusLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -121,20 +125,20 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
             if (i > 0) const SizedBox(width: 12),
             actions[i],
           ],
-          if (checking) ...[
-            if (actions.isNotEmpty) const SizedBox(width: 12),
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ] else if (hasUpdates) ...[
+          if (hasUpdates) ...[
             if (actions.isNotEmpty) const SizedBox(width: 12),
             SettingsFilledButton(
               label: updating ? 'Updating…' : 'Update all',
               icon: Icons.download_rounded,
               busy: updating,
               onPressed: updating ? null : onUpdateAll,
+            ),
+          ] else if (checking) ...[
+            if (actions.isNotEmpty) const SizedBox(width: 12),
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
             ),
           ] else if (showStatus) ...[
             if (actions.isNotEmpty) const SizedBox(width: 12),

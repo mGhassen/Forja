@@ -671,7 +671,10 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
       lastChecked: current.lastChecked,
     );
     try {
-      final result = await EngineService.instance.checkPackUpdates(packs);
+      // Hard cap — hung DNS used to leave checking:true forever (no Update all).
+      final result = await EngineService.instance
+          .checkPackUpdates(packs)
+          .timeout(const Duration(seconds: 90));
       if (!identical(_checkToken, token)) return;
       state = EnginePackUpdatesState(
         updates: result.updates,

@@ -71,4 +71,14 @@ void main() {
       expect(msg, contains('/tmp/forja-packs/live/manifest.json'));
     });
   });
+
+  group('systemDnsTimeout', () {
+    test('is short enough that DoH can still run under defaultTimeout', () {
+      expect(PackHttp.systemDnsTimeout.inSeconds, lessThanOrEqualTo(8));
+      expect(
+        PackHttp.systemDnsTimeout.inMilliseconds,
+        lessThan(PackHttp.defaultTimeout.inMilliseconds),
+      );
+    });
+  });
 }

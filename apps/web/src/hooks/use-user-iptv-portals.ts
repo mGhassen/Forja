@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/use-auth'
 import { useProfiles } from '@/hooks/use-profiles'
@@ -9,13 +10,22 @@ export type AssignedIptvPortal = UserIptvPortal & {
   portal: IptvPortal
 }
 
+function userIptvPortalsKey(
+  userId: string | undefined,
+  profileId: string | undefined,
+) {
+  return ['user_iptv_portals', userId, profileId] as const
+}
+
 export function useUserIptvPortals() {
   const { user } = useAuth()
   const { activeProfile } = useProfiles()
   const queryClient = useQueryClient()
 
+  const queryKey = userIptvPortalsKey(user?.id, activeProfile?.id)
+
   const query = useQuery({
-    queryKey: ['user_iptv_portals', user?.id, activeProfile?.id],
+    queryKey,
     enabled: Boolean(user?.id && activeProfile?.id && supabaseConfigured),
     queryFn: async (): Promise<AssignedIptvPortal[]> => {
       const { data: rows, error } = await supabase
@@ -37,6 +47,35 @@ export function useUserIptvPortals() {
         .filter((a): a is AssignedIptvPortal => a != null)
     },
   })
+
+  // App ↔ web: invalidate when this profile's assignments change.
+  useEffect(() => {
+    const userId = user?.id
+    const profileId = activeProfile?.id
+    if (!userId || !profileId || !supabaseConfigured) return
+
+    const channel = supabase
+      .channel(`user_iptv_portals:${profileId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_iptv_portals',
+          filter: `profile_id=eq.${profileId}`,
+        },
+        () => {
+          void queryClient.invalidateQueries({
+            queryKey: userIptvPortalsKey(userId, profileId),
+          })
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [user?.id, activeProfile?.id, queryClient])
 
   const replaceAll = useMutation({
     mutationFn: async (
@@ -105,9 +144,7 @@ export function useUserIptvPortals() {
       return portalIds
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['user_iptv_portals', user?.id, activeProfile?.id],
-      })
+      void queryClient.invalidateQueries({ queryKey })
     },
   })
 
