@@ -33,7 +33,7 @@
 | 1 | I297-A01 | Android TV IPTV: ↑/↓ in category rail scrolls categories only | ⬜ |
 | 2 | I297-A02 | → from category enters channel grid; ← from first channel column returns to cats | ⬜ |
 | 3 | I297-A03 | Channel grid ↑/↓ stays in channels (no hop to cats); Portals last ↓ stays in Portals | ⬜ |
-| 4 | I297-A04 | Widget: cats↓ stays on cats; last cat ↓ traps | ⬜ |
+| 4 | I297-A04 | Widget: cats↓ stays on cats; last cat ↓ traps (`dpad_matrix_coverage_test`) | ⬜ |
 
 ---
 
