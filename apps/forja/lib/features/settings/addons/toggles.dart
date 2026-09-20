@@ -296,22 +296,19 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
           value: enabled,
           onChanged: null,
           scale: Switch.settingsScale,
-          emphasized: widget.chromeOnly
-              ? (widget.chromeEmphasized || _chromeActiveFor(hovered))
-              : _chromeActiveFor(hovered),
+          emphasized: _chromeActiveFor(hovered),
         );
 
     if (widget.chromeOnly) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: MouseRegion(
-          onEnter: (_) => _setHovered(true),
-          onExit: (_) => _setHovered(false),
-          child: ListenableBuilder(
-            listenable: _hoveredN,
-            builder: (context, _) => IgnorePointer(
-              child: switchChrome(_hoveredN.value),
-            ),
+        child: IgnorePointer(
+          child: Switch(
+            value: enabled,
+            // Parent owns tap — keep full brand colors (no disabled wash).
+            onChanged: (_) {},
+            scale: Switch.settingsScale,
+            emphasized: widget.chromeEmphasized,
           ),
         ),
       );

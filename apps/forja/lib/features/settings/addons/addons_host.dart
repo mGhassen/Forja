@@ -353,8 +353,8 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
   bool? _optimisticEnabled;
   bool _lanEnabled = false;
   bool _busy = false;
-  bool _rowHovered = false;
   bool _rowFocused = false;
+  final ValueNotifier<bool> _rowHoveredN = ValueNotifier(false);
 
   @override
   void initState() {
@@ -371,6 +371,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
 
   @override
   void dispose() {
+    _rowHoveredN.dispose();
     _rowFocus.dispose();
     _detailsFocus.dispose();
     super.dispose();
@@ -543,8 +544,8 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
                     }
                   : null,
               onHoverChange: (h) {
-                if (_rowHovered == h) return;
-                setState(() => _rowHovered = h);
+                if (_rowHoveredN.value == h) return;
+                _rowHoveredN.value = h;
               },
               onFocusChange: (f) {
                 if (_rowFocused == f) return;
@@ -558,20 +559,23 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
                     leading,
                     const SizedBox(width: 12),
                     Expanded(child: titles),
-                    AddonMasterToggle(
-                      addonId: meta.id,
-                      visibility: visibility,
-                      chromeOnly: true,
-                      chromeEmphasized: ShellInputPolicy.interactiveActive(
-                        ShellScope.inputPolicyOf(context),
-                        hovered: _rowHovered,
-                        focused: _rowFocused,
-                        context: context,
+                    ListenableBuilder(
+                      listenable: _rowHoveredN,
+                      builder: (context, _) => AddonMasterToggle(
+                        addonId: meta.id,
+                        visibility: visibility,
+                        chromeOnly: true,
+                        chromeEmphasized: ShellInputPolicy.interactiveActive(
+                          ShellScope.inputPolicyOf(context),
+                          hovered: _rowHoveredN.value,
+                          focused: _rowFocused,
+                          context: context,
+                        ),
+                        optimisticEnabled: _optimisticEnabled,
+                        lanEnabled: meta.id == SettingsAddonId.lan
+                            ? _lanEnabled
+                            : null,
                       ),
-                      optimisticEnabled: _optimisticEnabled,
-                      lanEnabled: meta.id == SettingsAddonId.lan
-                          ? _lanEnabled
-                          : null,
                     ),
                   ],
                 ),

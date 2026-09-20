@@ -422,6 +422,8 @@ class _SettingsTvExpandableSideRow extends StatefulWidget {
 class _SettingsTvExpandableSideRowState
     extends State<_SettingsTvExpandableSideRow> {
   bool _expanded = false;
+  bool _headerFocused = false;
+  final ValueNotifier<bool> _headerHoveredN = ValueNotifier(false);
   late final FocusNode _headerFocus =
       FocusNode(debugLabel: 'settings-pack-header');
   late final FocusNode _detailsFocus =
@@ -430,6 +432,7 @@ class _SettingsTvExpandableSideRowState
 
   @override
   void dispose() {
+    _headerHoveredN.dispose();
     _headerFocus.dispose();
     _detailsFocus.dispose();
     super.dispose();
@@ -564,55 +567,81 @@ class _SettingsTvExpandableSideRowState
             ),
           );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return ListenableBuilder(
+      listenable: _headerHoveredN,
+      builder: (context, _) {
+        final headerActive = ShellInputPolicy.interactiveActive(
+          ShellScope.inputPolicyOf(context),
+          hovered: _headerHoveredN.value,
+          focused: _headerFocused,
+          context: context,
+        );
+        Widget? chromeTrailing = trailing;
+        if (chromeTrailing != null) {
+          chromeTrailing = SettingsExpandHeaderChrome(
+            active: headerActive,
+            child: chromeTrailing,
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: shellFocusableTap(
-                context: context,
-                focusNode: _headerFocus,
-                onTap: activate ?? _toggleExpand,
-                borderRadius: SettingsTokens.categoryTileRadius,
-                scaleOnFocus: 1.0,
-                // Same settings list chrome as Addons rows (green rail + ink).
-                showFocusRail: true,
-                tvTabId: 'settings',
-                tvZone: ShellTvZone.settings,
-                ensureVisibleMode: ShellPaintEnsureVisible.item,
-                onRightEdge: detailsBtn != null
-                    ? () {
-                        _detailsFocus.requestFocus();
-                      }
-                    : hasTrailing
-                        ? _focusFirstTrailing
-                        : null,
-                child: header,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: shellFocusableTap(
+                    context: context,
+                    focusNode: _headerFocus,
+                    onTap: activate ?? _toggleExpand,
+                    borderRadius: SettingsTokens.categoryTileRadius,
+                    scaleOnFocus: 1.0,
+                    // Same settings list chrome as Addons rows (green rail + ink).
+                    showFocusRail: true,
+                    tvTabId: 'settings',
+                    tvZone: ShellTvZone.settings,
+                    ensureVisibleMode: ShellPaintEnsureVisible.item,
+                    onHoverChange: (h) {
+                      if (_headerHoveredN.value == h) return;
+                      _headerHoveredN.value = h;
+                    },
+                    onFocusChange: (f) {
+                      if (_headerFocused == f) return;
+                      setState(() => _headerFocused = f);
+                    },
+                    onRightEdge: detailsBtn != null
+                        ? () {
+                            _detailsFocus.requestFocus();
+                          }
+                        : hasTrailing
+                            ? _focusFirstTrailing
+                            : null,
+                    child: header,
+                  ),
+                ),
+                if (detailsBtn != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: detailsBtn,
+                  ),
+                if (chromeTrailing != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: chromeTrailing,
+                  ),
+              ],
             ),
-            if (detailsBtn != null)
+            if (_expanded)
               Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: detailsBtn,
-              ),
-            if (trailing != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: trailing,
+                padding: widget.childrenPadding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: widget.children,
+                ),
               ),
           ],
-        ),
-        if (_expanded)
-          Padding(
-            padding: widget.childrenPadding,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: widget.children,
-            ),
-          ),
-      ],
+        );
+      },
     );
   }
 }
@@ -645,6 +674,30 @@ class SettingsExpandHeaderFocus extends InheritedWidget {
   bool updateShouldNotify(covariant SettingsExpandHeaderFocus oldWidget) =>
       focusHeader != oldWidget.focusHeader ||
       focusBeforeActions != oldWidget.focusBeforeActions;
+}
+
+/// Header hover/focus chrome for trailing switches (Nuvio / packs).
+///
+/// Trailing sits beside the header tap — without this, row hover never
+/// reaches [Switch.emphasized] (unlike [SettingsToggleRow]).
+class SettingsExpandHeaderChrome extends InheritedWidget {
+  const SettingsExpandHeaderChrome({
+    super.key,
+    required this.active,
+    required super.child,
+  });
+
+  final bool active;
+
+  static bool activeOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<SettingsExpandHeaderChrome>()
+          ?.active ??
+      false;
+
+  @override
+  bool updateShouldNotify(covariant SettingsExpandHeaderChrome oldWidget) =>
+      active != oldWidget.active;
 }
 
 List<Widget> settingsExpansionChildren(

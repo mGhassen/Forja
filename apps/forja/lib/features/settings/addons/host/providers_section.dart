@@ -13,6 +13,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/components/switch.dart';
@@ -380,6 +381,9 @@ class _SettingsForjaAddonsSectionState
                           value: allOn,
                           scale: Switch.settingsScale,
                           onChanged: addon.scrapers.isEmpty ? null : toggle,
+                          emphasized: SettingsExpandHeaderChrome.activeOf(
+                            context,
+                          ),
                         );
                       }
                       return _FocusWhiteSwitch(
@@ -812,10 +816,19 @@ class _AddonRemoveRow extends StatefulWidget {
 
 class _AddonRemoveRowState extends State<_AddonRemoveRow> {
   bool _confirming = false;
+  bool _focused = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     final titleBlock = _confirming
         ? const Text(
@@ -851,60 +864,73 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
             ],
           );
 
-    final rowBody = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
-      child: Row(
-        children: [
-          widget.leading,
-          const SizedBox(width: 12),
-          Expanded(child: titleBlock),
-          if (!_confirming && !leanback)
-            Switch(
-              value: widget.enabled,
-              scale: Switch.settingsScale,
-              onChanged: widget.onEnabledChanged,
-            ),
-        ],
-      ),
+    final actions = _AddonRemoveActions(
+      confirming: _confirming,
+      onConfirmingChanged: (v) => setState(() => _confirming = v),
+      onRemove: widget.onRemove,
     );
 
-    if (!leanback) {
-      return Row(
-        children: [
-          Expanded(child: rowBody),
-          _AddonRemoveActions(
-            confirming: _confirming,
-            onConfirmingChanged: (v) => setState(() => _confirming = v),
-            onRemove: widget.onRemove,
+    // Same row-hover → white thumb as [SettingsToggleRow] (crash reporting).
+    return ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) {
+        final thumbActive = ShellInputPolicy.interactiveActive(
+          ShellScope.inputPolicyOf(context),
+          hovered: _hoveredN.value,
+          focused: _focused,
+          context: context,
+        );
+        final rowBody = Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+          child: Row(
+            children: [
+              widget.leading,
+              const SizedBox(width: 12),
+              Expanded(child: titleBlock),
+              if (!_confirming)
+                ExcludeFocus(
+                  excluding: tv,
+                  child: Switch(
+                    value: widget.enabled,
+                    scale: Switch.settingsScale,
+                    onChanged: leanback ? null : widget.onEnabledChanged,
+                    emphasized: thumbActive,
+                  ),
+                ),
+            ],
           ),
-        ],
-      );
-    }
+        );
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: shellFocusableTap(
-            context: context,
-            onTap: _confirming
-                ? null
-                : () => widget.onEnabledChanged(!widget.enabled),
-            borderRadius: SettingsTokens.categoryTileRadius,
-            scaleOnFocus: 1.0,
-            showFocusRail: true,
-            tvTabId: 'settings',
-            tvZone: ShellTvZone.settings,
-            ensureVisibleMode: ShellPaintEnsureVisible.item,
-            child: rowBody,
-          ),
-        ),
-        _AddonRemoveActions(
-          confirming: _confirming,
-          onConfirmingChanged: (v) => setState(() => _confirming = v),
-          onRemove: widget.onRemove,
-        ),
-      ],
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: shellFocusableTap(
+                context: context,
+                onTap: _confirming
+                    ? null
+                    : () => widget.onEnabledChanged(!widget.enabled),
+                borderRadius: SettingsTokens.categoryTileRadius,
+                scaleOnFocus: 1.0,
+                showFocusRail: true,
+                tvTabId: 'settings',
+                tvZone: ShellTvZone.settings,
+                ensureVisibleMode: ShellPaintEnsureVisible.item,
+                onHoverChange: (h) {
+                  if (_hoveredN.value == h) return;
+                  _hoveredN.value = h;
+                },
+                onFocusChange: (f) {
+                  if (_focused == f) return;
+                  setState(() => _focused = f);
+                },
+                child: rowBody,
+              ),
+            ),
+            actions,
+          ],
+        );
+      },
     );
   }
 }
@@ -1158,7 +1184,9 @@ class _FocusWhiteSwitchState extends State<_FocusWhiteSwitch> {
           value: widget.value,
           scale: Switch.settingsScale,
           onChanged: null,
-          emphasized: _focused || _hovered,
+          emphasized: _focused ||
+              _hovered ||
+              SettingsExpandHeaderChrome.activeOf(context),
         ),
       ),
     );

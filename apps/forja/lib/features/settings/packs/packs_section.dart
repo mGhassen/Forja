@@ -971,7 +971,9 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
                 value: widget.packEnabled,
                 scale: Switch.settingsScale,
                 onChanged: null,
-                emphasized: _switchFocused || _hoveredN.value,
+                emphasized: _switchFocused ||
+                    _hoveredN.value ||
+                    SettingsExpandHeaderChrome.activeOf(context),
               ),
             ),
           ),
@@ -994,7 +996,8 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
             value: widget.packEnabled,
             scale: Switch.settingsScale,
             onChanged: (v) => widget.onTogglePack(v),
-            emphasized: _hoveredN.value,
+            emphasized: _hoveredN.value ||
+                SettingsExpandHeaderChrome.activeOf(context),
           ),
         ),
       );

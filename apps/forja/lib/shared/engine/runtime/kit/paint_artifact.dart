@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_button.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
@@ -26,6 +27,26 @@ import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 /// Shared pack-item → foundation card paint. Rails + kit.list tiles.
 abstract final class PackPaintArtifact {
   PackPaintArtifact._();
+
+  /// First-seen rail order per tab (stable across rebuilds) so ↓ follows
+  /// paint order instead of every rail sharing the same sortOrder.
+  static final Map<String, int> _sortByRailKey = {};
+  static int _sortSeq = 100;
+
+  /// Monotonic sortOrder for a tab+rowId — continue / mood / because / rails.
+  static int stableSortOrder(String tabId, String rowId) {
+    final key = '$tabId\u0000$rowId';
+    return _sortByRailKey.putIfAbsent(key, () {
+      _sortSeq += 1;
+      return _sortSeq;
+    });
+  }
+
+  @visibleForTesting
+  static void clearStableSortOrdersForTest() {
+    _sortByRailKey.clear();
+    _sortSeq = 100;
+  }
 
   static Map<String, dynamic> propsOf(Map<String, dynamic> item) {
     final paint = item['paint'];
@@ -392,19 +413,6 @@ class _PackPosterRailState extends State<_PackPosterRail> {
   bool _loadingMore = false;
   String _reloadToken = '';
 
-  /// First-seen rail order per tab (stable across rebuilds) so ↓ follows
-  /// paint order instead of every rail sharing sortOrder 100.
-  static final Map<String, int> _sortByRailKey = {};
-  static int _sortSeq = 100;
-
-  static int _stableSortOrder(String tabId, String rowId) {
-    final key = '$tabId\u0000$rowId';
-    return _sortByRailKey.putIfAbsent(key, () {
-      _sortSeq += 1;
-      return _sortSeq;
-    });
-  }
-
   Map<String, dynamic> get node => widget.node;
 
   @override
@@ -639,7 +647,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     // sortOrder; else first-seen paint order for this tab+rowId.
     final explicitSort = PackPaintArtifact.packInt(node['sortOrder']);
     final sortOrder =
-        explicitSort ?? _stableSortOrder(tabId, rowId);
+        explicitSort ?? PackPaintArtifact.stableSortOrder(tabId, rowId);
     final defaultPad = catalogSectionHorizontalPadding(context);
     final pad = PackPaintArtifact.packDouble(node['pad']) ?? defaultPad;
     final useCompact = widget.compactTop || node['compactTop'] == true;

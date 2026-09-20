@@ -3353,6 +3353,12 @@ class _MoodMountState extends State<_MoodMount> {
     final options = widget.spec['options'];
     if (options is! List || options.isEmpty) return const SizedBox.shrink();
     final title = (widget.spec['title'] ?? '').toString();
+    final tabEarly = (widget.tabId ?? '').trim();
+    if (tabEarly.isNotEmpty) {
+      // Reserve before poster rails under mood load paint.
+      PackPaintArtifact.stableSortOrder(tabEarly, 'mood-chips');
+      PackPaintArtifact.stableSortOrder(tabEarly, 'mood-results');
+    }
     final parsed = <({
       String id,
       String label,
@@ -3487,7 +3493,10 @@ class _MoodMountState extends State<_MoodMount> {
             return TvChipStrip(
               tabId: tab.isEmpty ? null : tab,
               rowId: chipRowId,
-              sortOrder: 40,
+              sortOrder: PackPaintArtifact.stableSortOrder(
+                tab.isEmpty ? TvFocusGraph.tabIdOf(context) : tab,
+                chipRowId,
+              ),
               itemCount: parsed.length,
               resultsRowId: resultsRowId,
               builder: (context, edgesFor) {
@@ -3544,6 +3553,12 @@ class _BecauseMountState extends State<_BecauseMount> {
 
   @override
   Widget build(BuildContext context) {
+    final tabReserve = (widget.tabId ?? '').trim();
+    if (tabReserve.isNotEmpty) {
+      // Reserve even when seeds/items empty so late load keeps visual order.
+      PackPaintArtifact.stableSortOrder(tabReserve, 'because-shuffle');
+      PackPaintArtifact.stableSortOrder(tabReserve, 'because');
+    }
     return ValueListenableBuilder<int>(
       valueListenable: WatchHistory.revision,
       builder: (context, _, _) {
@@ -3652,6 +3667,16 @@ class _BecauseMountState extends State<_BecauseMount> {
                   separatorBuilder: (_, _) => SizedBox(width: gap),
                   itemBuilder: (_, i) => sizedCards[i],
                 );
+                final tabKey = tab.trim();
+                final shuffleSort = canShuffle && tabKey.isNotEmpty
+                    ? PackPaintArtifact.stableSortOrder(
+                        tabKey,
+                        'because-shuffle',
+                      )
+                    : null;
+                final becauseSort = tabKey.isEmpty
+                    ? 0
+                    : PackPaintArtifact.stableSortOrder(tabKey, 'because');
                 final section = BecauseSection(
                   title: (node['heading'] ?? '').toString().isEmpty
                       ? null
@@ -3669,11 +3694,47 @@ class _BecauseMountState extends State<_BecauseMount> {
                     widget.spec['seeAllFontSize'] ?? node['seeAllFontSize'],
                   ),
                   trailing: canShuffle
-                      ? IconButton(
-                          onPressed: () => setState(() => _shuffleKey++),
-                          icon: const Icon(Icons.shuffle_rounded),
-                          color: ForjaShellColors.iconMuted,
-                        )
+                      ? (tabKey.isEmpty || shuffleSort == null
+                          ? IconButton(
+                              onPressed: () => setState(() => _shuffleKey++),
+                              icon: const Icon(Icons.shuffle_rounded),
+                              color: ForjaShellColors.iconMuted,
+                            )
+                          : TvKitRow(
+                              tabId: tabKey,
+                              rowId: 'because-shuffle',
+                              sortOrder: shuffleSort,
+                              itemCount: 1,
+                              onFocusDown: () {
+                                ShellTvFocusCoordinator.focusRowItem(
+                                  tabKey,
+                                  'because',
+                                  0,
+                                );
+                              },
+                              child: shellFocusableTap(
+                                context: ctx,
+                                tvTabId: tabKey,
+                                tvRowId: 'because-shuffle',
+                                tvItemIndex: 0,
+                                tvZone: ShellTvZone.row,
+                                onTap: () => setState(() => _shuffleKey++),
+                                onDownEdge: () {
+                                  ShellTvFocusCoordinator.focusRowItem(
+                                    tabKey,
+                                    'because',
+                                    0,
+                                  );
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Icon(
+                                    Icons.shuffle_rounded,
+                                    color: ForjaShellColors.iconMuted,
+                                  ),
+                                ),
+                              ),
+                            ))
                       : null,
                   titlePadding: EdgeInsets.fromLTRB(
                     pad,
@@ -3681,13 +3742,22 @@ class _BecauseMountState extends State<_BecauseMount> {
                     pad,
                     titlePad.bottom,
                   ),
-                  rail: tab.trim().isEmpty
+                  rail: tabKey.isEmpty
                       ? rail
                       : TvKitRow(
-                          tabId: tab,
+                          tabId: tabKey,
                           rowId: 'because',
-                          sortOrder: 40,
+                          sortOrder: becauseSort,
                           itemCount: sizedCards.length,
+                          onFocusUp: canShuffle
+                              ? () {
+                                  ShellTvFocusCoordinator.focusRowItem(
+                                    tabKey,
+                                    'because-shuffle',
+                                    0,
+                                  );
+                                }
+                              : null,
                           child: rail,
                         ),
                 );
@@ -3865,6 +3935,13 @@ class _ContinueMountState extends State<_ContinueMount> {
 
   @override
   Widget build(BuildContext context) {
+    final tab = (widget.tabId ?? TvFocusGraph.tabIdOf(context)).trim();
+    final rowId = (widget.spec['id'] ?? 'continue_watching').toString().trim();
+    final resolvedRowId = rowId.isEmpty ? 'continue_watching' : rowId;
+    // Reserve paint-order slot while empty so late history does not sort after mood.
+    if (tab.isNotEmpty) {
+      PackPaintArtifact.stableSortOrder(tab, resolvedRowId);
+    }
     if (_entries.isEmpty) return const SizedBox.shrink();
     final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
     final tv = ShellScope.metricsOf(context).usesTvDensity;
@@ -3886,14 +3963,11 @@ class _ContinueMountState extends State<_ContinueMount> {
     );
     final gap = PackPaintArtifact.packDouble(widget.spec['gap']) ??
         shellPosterCardRowGap(context);
-    final tab = (widget.tabId ?? TvFocusGraph.tabIdOf(context)).trim();
-    final rowId = (widget.spec['id'] ?? 'continue_watching').toString().trim();
     return TvKitRow(
       tabId: tab,
-      rowId: rowId.isEmpty ? 'continue_watching' : rowId,
-      sortOrder: 20,
+      rowId: resolvedRowId,
+      sortOrder: PackPaintArtifact.stableSortOrder(tab, resolvedRowId),
       itemCount: _entries.length,
-      onFocusUp: LayoutScope.maybeOf(context)?.resolveFocusEdge('spotlight'),
       child: ContinueSection(
         title: 'Continue Watching',
         scrollController: _scroll,
