@@ -512,9 +512,13 @@ class EngineService {
     // ctx.host.* — EngineJS has no bridge. layout / filters stay EngineJS-first.
     // Portal inventory + mutations need vault/http; EngineJS returns a valid
     // empty envelope if these stay off the allowlist (no flutter_js fallback).
+    // Actions that call ctx.host.* must skip EngineJS — a valid empty
+    // envelope (e.g. liveTv with no plugin bridge) would otherwise stick and
+    // never fall through to flutter_js.
     final hostBridgeActions = {
       'feed',
       'rail',
+      'liveTv',
       'searchChannels',
       'listPortals',
       'addPortal',

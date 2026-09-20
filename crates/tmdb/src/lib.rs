@@ -4,7 +4,12 @@ use std::time::{Duration, Instant};
 
 use stremio::fetch_get_catalog;
 
-pub const BASE_URL: &str = "https://api.themoviedb.org/3";
+/// TMDB v3 root. Override with `TMDB_BASE_URL` (e.g. `http://localhost:3000/3`
+/// for a local/regional proxy). Trailing slashes are stripped at build URL time.
+pub const BASE_URL: &str = match option_env!("TMDB_BASE_URL") {
+    Some(u) if !u.is_empty() => u,
+    _ => "https://api.themoviedb.org/3",
+};
 
 /// TMDB v3 API key from `TMDB_API_KEY` (repo `.env` or CI env) at compile time.
 /// Empty when unset — catalog calls will fail until you configure `.env`.
@@ -22,11 +27,12 @@ pub const READ_ACCESS_TOKEN: &str = match option_env!("TMDB_READ_ACCESS_TOKEN") 
 /// `resource_path` is relative to v3 root, e.g. `movie/popular` or
 /// `tv/123?append_to_response=images,external_ids`.
 pub fn build_url(resource_path: &str) -> String {
+    let base = BASE_URL.trim_end_matches('/');
     let path = resource_path.trim_start_matches('/');
     if path.contains('?') {
-        format!("{BASE_URL}/{path}&api_key={API_KEY}")
+        format!("{base}/{path}&api_key={API_KEY}")
     } else {
-        format!("{BASE_URL}/{path}?api_key={API_KEY}")
+        format!("{base}/{path}?api_key={API_KEY}")
     }
 }
 
@@ -299,18 +305,17 @@ mod tests {
     #[test]
     fn build_url_without_query() {
         let url = build_url("movie/popular");
-        assert_eq!(
-            url,
-            format!("https://api.themoviedb.org/3/movie/popular?api_key={API_KEY}")
-        );
+        let base = BASE_URL.trim_end_matches('/');
+        assert_eq!(url, format!("{base}/movie/popular?api_key={API_KEY}"));
     }
 
     #[test]
     fn build_url_with_query() {
         let url = build_url("tv/42?append_to_response=images");
-        assert!(url.starts_with(
-            "https://api.themoviedb.org/3/tv/42?append_to_response=images&api_key="
-        ));
+        let base = BASE_URL.trim_end_matches('/');
+        assert!(url.starts_with(&format!(
+            "{base}/tv/42?append_to_response=images&api_key="
+        )));
     }
 
     #[test]

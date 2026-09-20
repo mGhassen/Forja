@@ -35,28 +35,31 @@ Map<String, dynamic> catalogItemProps(Map<String, dynamic> item) {
   } else {
     raw = Map<String, dynamic>.from(item);
   }
-  final title = (raw['title'] ?? raw['name'] ?? item['name'] ?? item['title'] ?? '')
-      .toString()
-      .trim();
-  final imageUrl = (raw['imageUrl'] ??
-          raw['posterUrl'] ??
-          raw['poster'] ??
-          raw['logo'] ??
-          item['poster'] ??
-          item['logo'] ??
-          '')
-      .toString()
-      .trim();
+  final title =
+      (raw['title'] ?? raw['name'] ?? item['name'] ?? item['title'] ?? '')
+          .toString()
+          .trim();
+  final imageUrl =
+      (raw['imageUrl'] ??
+              raw['posterUrl'] ??
+              raw['poster'] ??
+              raw['logo'] ??
+              item['poster'] ??
+              item['logo'] ??
+              '')
+          .toString()
+          .trim();
   if (title.isNotEmpty) raw['title'] = title;
   if (imageUrl.isNotEmpty) raw['imageUrl'] = imageUrl;
   final id = (raw['id'] ?? item['id'] ?? '').toString().trim();
   if (id.isNotEmpty) raw['id'] = id;
-  final streamId = (raw['streamId'] ??
-          item['streamId'] ??
-          (item['open'] is Map ? item['open']['streamId'] : null) ??
-          '')
-      .toString()
-      .trim();
+  final streamId =
+      (raw['streamId'] ??
+              item['streamId'] ??
+              (item['open'] is Map ? item['open']['streamId'] : null) ??
+              '')
+          .toString()
+          .trim();
   if (streamId.isNotEmpty) raw['streamId'] = streamId;
 
   // Home / My List flat rows — same card chrome as painted posters.
@@ -66,28 +69,30 @@ Map<String, dynamic> catalogItemProps(Map<String, dynamic> item) {
   }
   final subtitle = (raw['subtitle'] ?? '').toString().trim();
   if (subtitle.isEmpty) {
-    final release = (raw['releaseInfo'] ??
-            item['releaseInfo'] ??
-            raw['releaseDate'] ??
-            item['releaseDate'] ??
-            raw['year'] ??
-            item['year'] ??
-            '')
-        .toString()
-        .trim();
+    final release =
+        (raw['releaseInfo'] ??
+                item['releaseInfo'] ??
+                raw['releaseDate'] ??
+                item['releaseDate'] ??
+                raw['year'] ??
+                item['year'] ??
+                '')
+            .toString()
+            .trim();
     final year = release.contains('-')
         ? release.split('-').first
         : (release.length >= 4 ? release.substring(0, 4) : release);
-    final kind = (raw['mediaType'] ??
-            raw['type'] ??
-            raw['kind'] ??
-            item['mediaType'] ??
-            item['type'] ??
-            item['kind'] ??
-            '')
-        .toString()
-        .trim()
-        .toLowerCase();
+    final kind =
+        (raw['mediaType'] ??
+                raw['type'] ??
+                raw['kind'] ??
+                item['mediaType'] ??
+                item['type'] ??
+                item['kind'] ??
+                '')
+            .toString()
+            .trim()
+            .toLowerCase();
     final typeLabel = switch (kind) {
       'tv' || 'series' || 'shows' => 'TV',
       'movie' || 'movies' => 'FILM',
@@ -137,6 +142,10 @@ class CatalogCardsGrid extends StatelessWidget {
     this.onLeftEdge,
     this.onRightEdge,
     this.onUpEdge,
+
+    /// IPTV Live: ↑ from top row left half → shelf; right half → portals chip.
+    this.onUpEdgeLeftHalf,
+    this.onUpEdgeRightHalf,
     this.onScrollIntoViewChanged,
   });
 
@@ -167,24 +176,23 @@ class CatalogCardsGrid extends StatelessWidget {
     BuildContext context,
     Map<String, dynamic> item, {
     required bool active,
-  })? itemAccessory;
+  })?
+  itemAccessory;
 
   /// Live channel stream health (`null` unknown).
   final bool? Function(Map<String, dynamic> item)? itemHealth;
 
   /// Per-channel health listenable (preferred over [itemHealth] for grids).
   final ValueListenable<bool?>? Function(Map<String, dynamic> item)?
-      itemHealthListenable;
+  itemHealthListenable;
 
   /// Hover/focus dwell for host URL probe (live channels).
-  final void Function(
-    Map<String, dynamic> item, {
-    required bool active,
-  })? onItemInteractiveActive;
+  final void Function(Map<String, dynamic> item, {required bool active})?
+  onItemInteractiveActive;
 
   /// Lazy EPG table fetch for [cardKind] `guide` / `epg`.
   final Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
-      loadEpgProgrammes;
+  loadEpgProgrammes;
 
   /// Bumped by host to scroll/focus [selectedItemId] (after player / hydrate).
   final ValueListenable<int>? landEpoch;
@@ -201,6 +209,12 @@ class CatalogCardsGrid extends StatelessWidget {
 
   /// Pack `focusUp` — first list row / first grid row (Live Sports → kind).
   final VoidCallback? onUpEdge;
+
+  /// IPTV Live: ↑ from top-row left half → shelf (catalog).
+  final VoidCallback? onUpEdgeLeftHalf;
+
+  /// IPTV Live: ↑ from top-row right half → portals chip.
+  final VoidCallback? onUpEdgeRightHalf;
 
   /// Host focuses TV item after scroll (lazy grid).
   final ValueChanged<int>? onRequestFocusAt;
@@ -225,9 +239,7 @@ class CatalogCardsGrid extends StatelessWidget {
       cardKind == 'dense' || cardKind == 'list' || cardKind == 'timeline';
 
   bool get _event =>
-      cardKind == 'event' ||
-      cardKind == 'eventCard' ||
-      cardKind == 'cards';
+      cardKind == 'event' || cardKind == 'eventCard' || cardKind == 'cards';
 
   bool get _channel =>
       cardKind == 'channel' ||
@@ -270,6 +282,18 @@ class CatalogCardsGrid extends StatelessWidget {
     final lastItem = index >= items.length - 1;
     if (!lastCol && !lastItem) return null;
     return onRightEdge;
+  }
+
+  /// ↑ from top row: left half → shelf, right half → portals (when split set).
+  VoidCallback? _gridOnUpEdge(int index, int columns) {
+    final left = onUpEdgeLeftHalf;
+    final right = onUpEdgeRightHalf;
+    if (left == null && right == null) return onUpEdge;
+    if (columns <= 0) return onUpEdge ?? left ?? right;
+    final col = index % columns;
+    final half = (columns / 2).ceil();
+    if (col < half) return left ?? onUpEdge ?? right;
+    return right ?? onUpEdge ?? left;
   }
 
   Widget _epgGuide(BuildContext context) {
@@ -347,6 +371,9 @@ class CatalogCardsGrid extends StatelessWidget {
       onArmFocusMemory: onArmFocusMemory,
       onLeftEdge: onLeftEdge,
       onRightEdge: onRightEdge,
+      onUpEdge: onUpEdge,
+      onUpEdgeLeftHalf: onUpEdgeLeftHalf,
+      onUpEdgeRightHalf: onUpEdgeRightHalf,
       onScrollIntoViewChanged: onScrollIntoViewChanged,
     );
   }
@@ -380,18 +407,20 @@ class CatalogCardsGrid extends StatelessWidget {
           final title = (props['title'] ?? '').toString();
           final meta = eventDenseMetaLine(
             airing: live,
-            startsAt:
-                (props['startsAt'] ?? props['timeLabel'] ?? '').toString(),
+            startsAt: (props['startsAt'] ?? props['timeLabel'] ?? '')
+                .toString(),
             badge: (props['categoryLabel'] ?? props['badge'] ?? '').toString(),
           );
-          final viewers =
-              props['viewers'] is num ? (props['viewers'] as num).toInt() : 0;
+          final viewers = props['viewers'] is num
+              ? (props['viewers'] as num).toInt()
+              : 0;
           return _HoverDenseTile(
             title: title,
             meta: meta,
             airing: live,
             viewers: viewers,
-            selected: selectedItemId != null &&
+            selected:
+                selectedItemId != null &&
                 selectedItemId!.isNotEmpty &&
                 selectedItemId == id,
             listIndex: i,
@@ -448,14 +477,17 @@ class CatalogCardsGrid extends StatelessWidget {
                 props: props,
                 width: layout.cardW,
                 height: layout.cardH,
-                selected: selectedItemId != null &&
+                selected:
+                    selectedItemId != null &&
                     selectedItemId!.isNotEmpty &&
                     selectedItemId == id,
                 gridIndex: i,
                 gridColumns: layout.columns,
                 onLeftEdge: _gridOnLeftEdge(i, layout.columns),
                 onRightEdge: _gridOnRightEdge(i, layout.columns),
-                onUpEdge: i < layout.columns ? onUpEdge : null,
+                onUpEdge: i < layout.columns
+                    ? _gridOnUpEdge(i, layout.columns)
+                    : null,
                 onTap: onItemTap == null ? null : () => onItemTap!(item),
               );
             },
@@ -467,8 +499,7 @@ class CatalogCardsGrid extends StatelessWidget {
 
   Widget _posterGrid(BuildContext context) {
     final landscape = _catalogGridIsLandscape(items);
-    final aspect =
-        landscape ? PosterAspect.landscape : PosterAspect.portrait;
+    final aspect = landscape ? PosterAspect.landscape : PosterAspect.portrait;
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final overrideW = cardWidth;
     final double cardW;
@@ -482,7 +513,8 @@ class CatalogCardsGrid extends StatelessWidget {
       cardW = InteractivePosterCard.cardWidth(context, aspect: aspect);
       cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
     }
-    final gap = this.gap ??
+    final gap =
+        this.gap ??
         (tv ? ShellTokens.tvPosterCardRowGap : ShellTokens.posterCardRowGap);
     // Beside category rail — same pads as Live channels (not ☰ chrome inset).
     final leading = pad ?? ShellTokens.catalogSplitGridLeadingPad;
@@ -505,16 +537,16 @@ class CatalogCardsGrid extends StatelessWidget {
             final item = items[i];
             final props = catalogItemProps(item);
             final aspectRaw = (props['aspect'] ?? '').toString().toLowerCase();
-            final itemLandscape =
-                aspectRaw == 'landscape' || landscape;
+            final itemLandscape = aspectRaw == 'landscape' || landscape;
             final badge = (props['badge'] ?? '').toString();
             final subtitle = (props['subtitle'] ?? '').toString();
             return InteractivePosterCard(
-              imageUrl: (props['imageUrl'] ??
-                      props['posterUrl'] ??
-                      props['logoUrl'] ??
-                      '')
-                  .toString(),
+              imageUrl:
+                  (props['imageUrl'] ??
+                          props['posterUrl'] ??
+                          props['logoUrl'] ??
+                          '')
+                      .toString(),
               title: (props['title'] ?? '').toString(),
               subtitle: subtitle.isEmpty ? null : subtitle,
               rating: props['rating'] is num
@@ -524,7 +556,7 @@ class CatalogCardsGrid extends StatelessWidget {
               listPinBuilder: itemAccessory == null
                   ? null
                   : ({required bool active}) =>
-                      itemAccessory!(context, item, active: active),
+                        itemAccessory!(context, item, active: active),
               onTap: () => onItemTap?.call(item),
               aspect: itemLandscape
                   ? PosterAspect.landscape
@@ -535,6 +567,9 @@ class CatalogCardsGrid extends StatelessWidget {
               gridColumns: layout.columns,
               onLeftEdge: _gridOnLeftEdge(i, layout.columns),
               onRightEdge: _gridOnRightEdge(i, layout.columns),
+              onUpEdge: i < layout.columns
+                  ? _gridOnUpEdge(i, layout.columns)
+                  : null,
             );
           },
         );
@@ -562,7 +597,7 @@ class _OwnedScrollHost extends StatefulWidget {
   });
 
   final Widget Function(BuildContext context, ScrollController controller)
-      builder;
+  builder;
   final void Function(ScrollController scroll, int index) scrollToIndex;
   final ValueChanged<void Function(int)?>? onScrollIntoViewChanged;
 
@@ -587,7 +622,9 @@ class _OwnedScrollHostState extends State<_OwnedScrollHost> {
   void didUpdateWidget(covariant _OwnedScrollHost oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(
-        oldWidget.onScrollIntoViewChanged, widget.onScrollIntoViewChanged)) {
+      oldWidget.onScrollIntoViewChanged,
+      widget.onScrollIntoViewChanged,
+    )) {
       oldWidget.onScrollIntoViewChanged?.call(null);
       _offer();
     }
@@ -626,6 +663,9 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
     this.onArmFocusMemory,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onUpEdge,
+    this.onUpEdgeLeftHalf,
+    this.onUpEdgeRightHalf,
     this.onScrollIntoViewChanged,
   });
 
@@ -633,22 +673,22 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
   final String? selectedItemId;
   final double? gap;
   final double? pad;
+
   /// IPTV View → List (and Sources-style rows) — always list, never cards grid.
   final bool forceList;
   final Widget? Function(
     BuildContext context,
     Map<String, dynamic> item, {
     required bool active,
-  })? itemAccessory;
+  })?
+  itemAccessory;
   final bool? Function(Map<String, dynamic> item)? itemHealth;
   final ValueListenable<bool?>? Function(Map<String, dynamic> item)?
-      itemHealthListenable;
-  final void Function(
-    Map<String, dynamic> item, {
-    required bool active,
-  })? onItemInteractiveActive;
+  itemHealthListenable;
+  final void Function(Map<String, dynamic> item, {required bool active})?
+  onItemInteractiveActive;
   final Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
-      loadEpgProgrammes;
+  loadEpgProgrammes;
   final void Function(Map<String, dynamic> item)? onItemTap;
   final ValueListenable<int>? landEpoch;
   final void Function(Map<String, dynamic> item)? onHoldJumpToCategory;
@@ -657,6 +697,9 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
   final ValueChanged<int>? onArmFocusMemory;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onUpEdgeLeftHalf;
+  final VoidCallback? onUpEdgeRightHalf;
   final ValueChanged<void Function(int)?>? onScrollIntoViewChanged;
 
   @override
@@ -667,6 +710,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   final ScrollController _scroll = ScrollController();
   final Map<int, GlobalKey> _itemKeys = {};
   CatalogPosterGridLayout? _layout;
+
   /// Same role as category [selectedId] — letter-jump selection chrome + anchor.
   int _selectedIndex = -1;
 
@@ -741,7 +785,9 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       });
     }
     if (!identical(
-        oldWidget.onScrollIntoViewChanged, widget.onScrollIntoViewChanged)) {
+      oldWidget.onScrollIntoViewChanged,
+      widget.onScrollIntoViewChanged,
+    )) {
       oldWidget.onScrollIntoViewChanged?.call(null);
       _offerScrollIntoView();
     }
@@ -842,13 +888,9 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       }
       final ctx = _itemKeys[index]?.currentContext;
       if (ctx != null) {
-        Scrollable.ensureVisible(
-          ctx,
-          alignment: 0.15,
-          duration: Duration.zero,
-        );
+        Scrollable.ensureVisible(ctx, alignment: 0.15, duration: Duration.zero);
       }
-      if (!focus || !_leanbackOnly) return;
+      if (!focus || !ShellPaintScope.useTvFocusOf(context)) return;
       final focused = widget.onRequestFocusAt != null;
       if (focused) {
         widget.onRequestFocusAt!(index);
@@ -889,6 +931,18 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     _scroll.jumpTo(target);
   }
 
+  /// ↑ from top row: left half → shelf, right half → portals (when split set).
+  VoidCallback? _channelGridOnUpEdge(int index, int columns) {
+    final left = widget.onUpEdgeLeftHalf;
+    final right = widget.onUpEdgeRightHalf;
+    if (left == null && right == null) return widget.onUpEdge;
+    if (columns <= 0) return widget.onUpEdge ?? left ?? right;
+    final col = index % columns;
+    final half = (columns / 2).ceil();
+    if (col < half) return left ?? widget.onUpEdge ?? right;
+    return right ?? widget.onUpEdge ?? left;
+  }
+
   Widget _buildChannelTile(BuildContext context, int i, {required bool list}) {
     final item = widget.items[i];
     final props = catalogItemProps(item);
@@ -899,16 +953,24 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     );
     final id = CatalogCardsGrid._itemId(item);
     final key = _itemKeys.putIfAbsent(i, GlobalKey.new);
-    final panelSelected = widget.selectedItemId != null &&
+    final panelSelected =
+        widget.selectedItemId != null &&
         widget.selectedItemId!.isNotEmpty &&
         widget.selectedItemId == id;
     final layout = _layout;
     final cols = list ? 1 : (layout?.columns ?? 1);
     VoidCallback? leftEdge;
     VoidCallback? rightEdge;
+    VoidCallback? upEdge;
     if (list) {
       leftEdge = widget.onLeftEdge;
       rightEdge = widget.onRightEdge;
+      // One column — no left/right half. Prefer shelf, then pack up, then portals.
+      if (i == 0) {
+        upEdge = widget.onUpEdgeLeftHalf ??
+            widget.onUpEdge ??
+            widget.onUpEdgeRightHalf;
+      }
     } else if (cols > 0) {
       if (widget.onLeftEdge != null && i % cols == 0) {
         leftEdge = widget.onLeftEdge;
@@ -917,6 +979,9 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       final lastItem = i >= widget.items.length - 1;
       if (widget.onRightEdge != null && (lastCol || lastItem)) {
         rightEdge = widget.onRightEdge;
+      }
+      if (i < cols) {
+        upEdge = _channelGridOnUpEdge(i, cols);
       }
     }
     return KeyedSubtree(
@@ -939,6 +1004,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         gridColumns: cols,
         onLeftEdge: leftEdge,
         onRightEdge: rightEdge,
+        onUpEdge: upEdge,
         onHoldJumpToCategory: widget.onHoldJumpToCategory == null
             ? null
             : () => widget.onHoldJumpToCategory!(item),
@@ -950,10 +1016,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
               },
         onInteractiveActive: widget.onItemInteractiveActive == null
             ? null
-            : (active) => widget.onItemInteractiveActive!(
-                  item,
-                  active: active,
-                ),
+            : (active) => widget.onItemInteractiveActive!(item, active: active),
         onTvFocusGained: _leanbackOnly
             ? () {
                 _revealChannelLogo(id);
@@ -963,7 +1026,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         favoriteBuilder: widget.itemAccessory == null
             ? null
             : ({required bool active}) =>
-                widget.itemAccessory!(context, item, active: active),
+                  widget.itemAccessory!(context, item, active: active),
       ),
     );
   }
@@ -985,8 +1048,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         padding: EdgeInsets.fromLTRB(leading, 4, trailing, 12),
         itemCount: widget.items.length,
         separatorBuilder: (_, _) => const SizedBox(height: 6),
-        itemBuilder: (context, i) =>
-            _buildChannelTile(context, i, list: true),
+        itemBuilder: (context, i) => _buildChannelTile(context, i, list: true),
       );
     } else {
       body = LayoutBuilder(
@@ -1089,7 +1151,8 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
     final props = widget.props;
     final live = props['live'] == true;
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final active = ShellPaintScope.interactiveActive(
+    final active =
+        ShellPaintScope.interactiveActive(
           context,
           hovered: hovered,
           focused: _focused,
@@ -1205,15 +1268,15 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
   }
 
   Widget _buildTile(bool hovered) => EventDenseTile(
-        title: widget.title,
-        meta: widget.meta,
-        airing: widget.airing,
-        viewers: widget.viewers,
-        selected: widget.selected,
-        hovered: hovered,
-        focused: _focused,
-        onTap: null,
-      );
+    title: widget.title,
+    meta: widget.meta,
+    airing: widget.airing,
+    viewers: widget.viewers,
+    selected: widget.selected,
+    hovered: hovered,
+    focused: _focused,
+    onTap: null,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1284,7 +1347,9 @@ class CatalogSideRail extends StatelessWidget {
       child: SizedBox(
         width: railW,
         child: ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: ShellTokens.categoryRailListPadV),
+          padding: const EdgeInsets.symmetric(
+            vertical: ShellTokens.categoryRailListPadV,
+          ),
           itemCount: items.length,
           itemBuilder: (context, i) {
             final item = items[i];

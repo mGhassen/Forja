@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -85,6 +86,7 @@ class PortalListView extends StatefulWidget {
     this.onPortalExitDown,
     this.onPortalTvFocus,
     this.onListPointerBrowse,
+    this.searchFieldBuilder,
   });
 
   final double width;
@@ -146,6 +148,21 @@ class PortalListView extends StatefulWidget {
   /// Mouse/trackpad scroll while panel open.
   final VoidCallback? onListPointerBrowse;
 
+  /// Desktop/TV search field — host supplies the browse/edit split field
+  /// (`TvBrowseTextField`) so D-pad land highlights without opening the IME.
+  /// Null (phone) falls back to a plain type-on-focus field.
+  /// Paint (decoration / style) stays here — the host only swaps the widget.
+  final Widget Function(
+    BuildContext context, {
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required ValueChanged<String> onChanged,
+    required VoidCallback onEscape,
+    required InputDecoration decoration,
+    required TextStyle style,
+    required String placeholder,
+  })? searchFieldBuilder;
+
   static const headerRowId = 'portal-header';
   static const portalsRowId = 'portals';
 
@@ -155,15 +172,56 @@ class PortalListView extends StatefulWidget {
 
 class _PortalListViewState extends State<PortalListView> {
   final _searchCtrl = TextEditingController();
+  final _searchFocus = FocusNode(debugLabel: 'portal-panel-search');
   final ValueNotifier<String?> _hoverRowId = ValueNotifier<String?>(null);
   String _query = '';
   bool _searchOpen = false;
+
+  /// Header icon index the search toggle (magnifier ⇄ close ×) paints at.
+  static const _searchHeaderIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFocus.onKeyEvent = _onSearchKey;
+  }
 
   @override
   void dispose() {
     _hoverRowId.dispose();
     _searchCtrl.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  /// → at the end of the query hops to the × that closes the search; a caret
+  /// still inside the text keeps moving as usual (desktop typing).
+  KeyEventResult _onSearchKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.goBack) {
+      _closeSearch();
+      return KeyEventResult.handled;
+    }
+    if (key != LogicalKeyboardKey.arrowRight) return KeyEventResult.ignored;
+    final sel = _searchCtrl.selection;
+    final atEnd = !sel.isValid ||
+        (sel.isCollapsed && sel.baseOffset >= _searchCtrl.text.length);
+    if (!atEnd) return KeyEventResult.ignored;
+    widget.onHeaderFocusAt?.call(_searchHeaderIndex);
+    return KeyEventResult.handled;
+  }
+
+  void _closeSearch() {
+    if (!_searchOpen) return;
+    setState(() {
+      _searchOpen = false;
+      _searchCtrl.clear();
+      _query = '';
+    });
+    widget.onHeaderFocusAt?.call(_searchHeaderIndex);
   }
 
   List<PortalListItem> get _filtered {
@@ -281,43 +339,64 @@ class _PortalListViewState extends State<PortalListView> {
           PortalListTokens.panelPad,
           4,
         ),
-        child: TextField(
-          controller: _searchCtrl,
-          style: GoogleFonts.plusJakartaSans(
-            color: Colors.white,
-            fontSize: searchFontSize,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.plusJakartaSans(
-              color: Colors.white38,
-              fontSize: searchFontSize,
-            ),
-            prefixIcon: const Icon(
-              Icons.search_rounded,
-              color: Colors.white54,
-              size: 20,
-            ),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.05),
-            isDense: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          onChanged: (v) => setState(() => _query = v),
-        ),
+        child: _searchField(searchFontSize: searchFontSize, hint: hint),
       ),
       body: body,
+    );
+  }
+
+  /// Desktop/TV get the host's browse/edit field (D-pad land = highlight only,
+  /// OK opens the IME). Phone keeps the plain type-on-focus field.
+  Widget _searchField({
+    required double searchFontSize,
+    required String hint,
+  }) {
+    final decoration = InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.plusJakartaSans(
+        color: Colors.white38,
+        fontSize: searchFontSize,
+      ),
+      prefixIcon: Icon(
+        Icons.search_rounded,
+        color: ForjaShellColors.iconMuted,
+        size: 20,
+      ),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.05),
+      isDense: true,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+    );
+    final style = GoogleFonts.plusJakartaSans(
+      color: Colors.white,
+      fontSize: searchFontSize,
+    );
+    final build = widget.searchFieldBuilder;
+    if (build != null) {
+      return build(
+        context,
+        controller: _searchCtrl,
+        focusNode: _searchFocus,
+        onChanged: (v) => setState(() => _query = v),
+        onEscape: _closeSearch,
+        decoration: decoration,
+        style: style,
+        placeholder: hint,
+      );
+    }
+    return TextField(
+      controller: _searchCtrl,
+      focusNode: _searchFocus,
+      style: style,
+      decoration: decoration,
+      onChanged: (v) => setState(() => _query = v),
     );
   }
 
@@ -400,12 +479,15 @@ class _PortalListViewState extends State<PortalListView> {
             icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
             color: _searchOpen ? ForjaShellColors.brandGreen : null,
             onPressed: () {
-              setState(() {
-                _searchOpen = !_searchOpen;
-                if (!_searchOpen) {
-                  _searchCtrl.clear();
-                  _query = '';
-                }
+              if (_searchOpen) {
+                _closeSearch();
+                return;
+              }
+              // Tool-button activate may move focus onto the field; the browse
+              // field highlights only — OK opens the keyboard.
+              setState(() => _searchOpen = true);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _searchOpen) _searchFocus.requestFocus();
               });
             },
           ),

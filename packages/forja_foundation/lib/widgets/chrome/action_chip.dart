@@ -118,24 +118,24 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
           builder: (context, _) {
             final active =
                 _activeFor(_hoveredN.value) || widget.selected;
-            final fg = active || tvFocused ? Colors.white : Colors.white70;
+            final lit = active || tvFocused;
+            // Hover / focus / selected — brand green chrome (same as pill chips).
+            final fg = lit ? ForjaShellColors.brandGreen : Colors.white70;
             final idleAlpha = widget.selected ? 0.12 : 0.08;
             final circle = Container(
               width: size,
               height: size,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(
-                  alpha: active || tvFocused ? 0.16 : idleAlpha,
-                ),
+                color: lit
+                    ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+                    : Colors.white.withValues(alpha: idleAlpha),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Colors.white.withValues(
-                    alpha: tvFocused
-                        ? 0.45
-                        : active || widget.selected
-                            ? 0.28
-                            : 0.12,
-                  ),
+                  color: tvFocused
+                      ? ForjaShellColors.brandGreen
+                      : active || widget.selected
+                          ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+                          : Colors.white.withValues(alpha: 0.12),
                   width: tvFocused ? 1.5 : 1,
                 ),
               ),

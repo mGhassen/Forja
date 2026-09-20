@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
@@ -48,6 +49,11 @@ class SyncService {
   String? get userEmail => session?.user.email;
   Session? get session => ForjaSupabase.clientOrNull?.auth.currentSession;
   static const _activeProfileKeyPrefix = 'forja_sync_active_profile_';
+
+  /// Name/avatar/color of the last resolved active profile, per user. Lets
+  /// chrome paint the real profile on cold start before `listProfiles` lands
+  /// (or when it never does — TV boots offline more often than desktop).
+  static const _activeProfileCardKeyPrefix = 'forja_sync_active_profile_card_';
   static const _refreshDebounce = Duration(seconds: 30);
   static const _featuresPullMinInterval = Duration(seconds: 2);
 
@@ -77,6 +83,11 @@ class SyncService {
   void _notifyIdentityChanged() {
     identityRevision.value++;
   }
+
+  /// Announce an identity that became real without passing through sign-in or
+  /// [selectProfile] — a restored session resolving its profile after boot.
+  /// Profile chrome mounted before that point has no other reload trigger.
+  void notifyIdentityResolved() => _notifyIdentityChanged();
 
   /// Single in-flight refresh (Guepard desktop-boot pattern) so boot/resume/
   /// focus never rotate the same RT twice in parallel.
@@ -614,8 +625,46 @@ class SyncService {
     if (saved != active.id) {
       await prefs.setString('$_activeProfileKeyPrefix$userId', active.id);
     }
+    await prefs.setString(
+      '$_activeProfileCardKeyPrefix$userId',
+      jsonEncode({
+        'id': active.id,
+        'name': active.name,
+        'color': active.color,
+        'avatar_key': active.avatarKey,
+      }),
+    );
     await _syncPluginDiskScope(accountId: userId, profileId: active.id);
     return active;
+  }
+
+  /// Last active profile this device resolved, from local prefs only — no
+  /// network, no throw. Returns null when signed out or never resolved here.
+  /// Name/avatar can be stale until the next [activeProfile] lands.
+  Future<SyncProfile?> lastKnownActiveProfile() async {
+    final userId = session?.user.id;
+    if (userId == null) return null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_activeProfileCardKeyPrefix$userId');
+      if (raw == null || raw.isEmpty) return null;
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      final id = map['id'] as String?;
+      if (id == null || id.isEmpty) return null;
+      // A profile switch that never reached the cloud must not resurrect the
+      // previous card — the id prefs key is the source of truth for "active".
+      final saved = prefs.getString('$_activeProfileKeyPrefix$userId');
+      if (saved != null && saved != id) return null;
+      return SyncProfile(
+        id: id,
+        name: map['name'] as String? ?? 'Profile',
+        color: map['color'] as String? ?? '#1ce783',
+        avatarKey: map['avatar_key'] as String? ?? 'forge',
+      );
+    } catch (e) {
+      debugPrint('[Sync] lastKnownActiveProfile: $e');
+      return null;
+    }
   }
 
   Future<bool> selectProfile(

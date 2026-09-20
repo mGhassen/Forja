@@ -92,6 +92,7 @@ class EventListSearchState extends State<EventListSearch>
   final ValueNotifier<bool> _toolHoveredN = ValueNotifier(false);
   bool _closeFocused = false;
   final ValueNotifier<bool> _closeHoveredN = ValueNotifier(false);
+  late final FocusNode _closeFocus;
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
 
@@ -110,11 +111,23 @@ class EventListSearchState extends State<EventListSearch>
       curve: Curves.easeOutCubic,
       reverseCurve: Curves.easeInCubic,
     );
+    _closeFocus = FocusNode(debugLabel: '${widget.debugLabel}-close');
     _focus.onKeyEvent = (node, event) {
-      if (event is! KeyDownEvent) return KeyEventResult.ignored;
+      if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+        return KeyEventResult.ignored;
+      }
       if (event.logicalKey == LogicalKeyboardKey.escape ||
           event.logicalKey == LogicalKeyboardKey.goBack) {
         _close(clearQuery: true);
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+        // Mid-query: let the caret move. At the end → focus the ×.
+        final sel = _ctrl.selection;
+        final atEnd = !sel.isValid ||
+            (sel.isCollapsed && sel.baseOffset >= _ctrl.text.length);
+        if (!atEnd) return KeyEventResult.ignored;
+        _closeFocus.requestFocus();
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
@@ -149,6 +162,7 @@ class EventListSearchState extends State<EventListSearch>
     _ctrl.dispose();
     _toolHoveredN.dispose();
     _closeHoveredN.dispose();
+    _closeFocus.dispose();
     if (_ownsFocus) _focus.dispose();
     super.dispose();
   }
@@ -255,13 +269,13 @@ class EventListSearchState extends State<EventListSearch>
   }
 
   Widget _collapsedIconPaint({required bool hasQuery, required bool hovered}) {
-    final active = ShellPaintScope.interactiveActive(
-          context,
-          hovered: hovered,
-          focused: _toolFocused,
-        ) ||
-        hasQuery;
+    final chromeActive = ShellPaintScope.interactiveActive(
+      context,
+      hovered: hovered,
+      focused: _toolFocused,
+    );
     final tvFocused = _tv && _toolFocused;
+    final lit = chromeActive || tvFocused;
     final idleAlpha = hasQuery ? 0.12 : 0.08;
     final size = widget.collapsedSize;
     return Tooltip(
@@ -270,27 +284,25 @@ class EventListSearchState extends State<EventListSearch>
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(
-            alpha: active || tvFocused ? 0.16 : idleAlpha,
-          ),
+          color: lit
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : Colors.white.withValues(alpha: idleAlpha),
           shape: BoxShape.circle,
           border: Border.all(
-            color: Colors.white.withValues(
-              alpha: tvFocused
-                  ? 0.45
-                  : active
-                      ? 0.28
-                      : hasQuery
-                          ? 0.22
-                          : 0.12,
-            ),
+            color: tvFocused
+                ? ForjaShellColors.brandGreen
+                : chromeActive
+                    ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+                    : hasQuery
+                        ? ForjaShellColors.brandGreen.withValues(alpha: 0.35)
+                        : Colors.white.withValues(alpha: 0.12),
             width: tvFocused ? 1.5 : 1,
           ),
         ),
         child: Icon(
           Icons.search_rounded,
-          color: active || tvFocused || hasQuery
-              ? Colors.white
+          color: lit || hasQuery
+              ? ForjaShellColors.brandGreen
               : Colors.white60,
           size: widget.iconSize,
         ),
@@ -383,6 +395,7 @@ class EventListSearchState extends State<EventListSearch>
             motion: ForjaMotionPreset.fillOnly,
             suppressInkHover: true,
             showFocusFill: false,
+            focusNode: _closeFocus,
             onRightEdge: widget.onRightEdge,
             onDownEdge: widget.onDownEdge,
             onFocusChange: (f) => setState(() => _closeFocused = f),
@@ -402,7 +415,7 @@ class EventListSearchState extends State<EventListSearch>
                     Icons.close_rounded,
                     size: widget.fieldIconSize,
                     color: closeActive || closeTv
-                        ? Colors.white
+                        ? ForjaShellColors.brandGreen
                         : Colors.white54,
                   ),
                 );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
+import 'package:forja/shell/focus/shell_hover_focus.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -156,6 +157,9 @@ class AppTheme {
 }
 
 class FocusableControl extends StatefulWidget {
+  /// Desktop: after hover, first keyboard/D-pad key lands on the hovered control.
+  static void focusHoverOwner() => ShellHoverFocus.focusOwner();
+
   final Widget child;
   final VoidCallback? onTap;
   final bool autoFocus;
@@ -595,13 +599,12 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         onExit: (_) => _onHover(false),
         cursor: SystemMouseCursors.click,
         // Leanback: DPAD_CENTER synthesizes a click after Select. Key path
-        // already ran onTap — a second pointer activate flips switches off
-        // (Addons IPTV looked dead on Android TV).
+        // already ran onTap — [_invokeOnTap] coalesces the duplicate so
+        // switches do not flip twice. Pointer must still work (mouse on ATV /
+        // emulator); skipping onTap entirely made catalog rows look dead.
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap == null || policy.leanbackOnly
-              ? null
-              : () => _invokeOnTap(),
+          onTap: widget.onTap == null ? null : () => _invokeOnTap(),
           child: ListenableBuilder(
             listenable: _hoveredN,
             builder: (context, _) => _buildFocusedChild(context),

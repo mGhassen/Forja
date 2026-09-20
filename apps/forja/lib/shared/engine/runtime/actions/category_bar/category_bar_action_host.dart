@@ -660,6 +660,26 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         (widget.spec['focusRight'] ?? '').toString(),
         last: true,
       );
+      void enterItems() {
+        // Focus only — never select/reload. Pack edge + hard focus remembered
+        // (else first) channel on the already-loaded items row.
+        if (tvTab.isEmpty) {
+          enterChannels?.call();
+          return;
+        }
+        final remembered = ShellTvFocusCoordinator.focusRowItemRemembered(
+          tvTab,
+          IptvCatalogLand.itemsRowId,
+        );
+        if (remembered) return;
+        enterChannels?.call();
+        ShellTvFocusCoordinator.focusRowItem(
+          tvTab,
+          IptvCatalogLand.itemsRowId,
+          0,
+        );
+      }
+
       final child = CatalogCategoryRail(
         items: items,
         selectedId: widget.selectedId,
@@ -675,7 +695,8 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         onReorder: onReorder,
         canReorder: canReorder,
         header: widget.header,
-        onTvEnterRight: enterChannels,
+        onTvEnterRight: enterItems,
+        onTvFocusUp: focusUp,
         onScrollJumpReady: tvTab.isEmpty
             ? null
             : (jump) {

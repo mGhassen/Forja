@@ -186,6 +186,11 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
 
     try {
       await SyncService.instance.activeProfile();
+      // Restored sessions skip sign-in and selectProfile, so nothing else
+      // bumps identityRevision. Profile chrome already mounted (nav rail
+      // avatar + label) would otherwise keep whatever it resolved before the
+      // session was refreshed.
+      SyncService.instance.notifyIdentityResolved();
       // Restored sessions skip ProfileSwitchSplash, so MainScreen may have
       // already locked onto Settings (empty/guest rail). Force the starred
       // default once profile scope + cloud nav land (issue 253).

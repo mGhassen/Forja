@@ -91,13 +91,14 @@ abstract final class IptvCatalogLand {
     return PortalLiveChannelListsStore.loadLastChannel(key);
   }
 
-  /// After feed / portal ready: highlight last channel (category selected by rail).
+  /// After feed / portal ready: highlight last channel and focus it.
   static Future<void> hydrateHighlightFromStore() async {
     final ch = await loadLastChannel();
     if (ch == null || ch.isEmpty) return;
-    preferCategoryFocusOnLand = true;
+    preferCategoryFocusOnLand = false;
     highlightedStreamId.value = ch;
-    // Do not bump landEpoch — grid lands via selectedItemId with category focus.
+    landEpoch.value++;
+    _armResetPreferCategoryFocus();
   }
 
   /// Arm restore before/while player is up; consume on catalog land.
@@ -188,13 +189,21 @@ abstract final class IptvCatalogLand {
     WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
+  static int? _preferCategoryResetEpoch;
+
   static void _armResetPreferCategoryFocus() {
+    // Tie reset to this land epoch so a slow focus attempt cannot lose to an
+    // early flip back to preferCategoryFocusOnLand=true.
+    final epoch = landEpoch.value;
+    _preferCategoryResetEpoch = epoch;
     var frames = 0;
     void tick() {
-      if (frames++ < 8) {
+      if (_preferCategoryResetEpoch != epoch) return;
+      if (frames++ < 24) {
         WidgetsBinding.instance.addPostFrameCallback((_) => tick());
         return;
       }
+      if (_preferCategoryResetEpoch != epoch) return;
       preferCategoryFocusOnLand = true;
     }
 

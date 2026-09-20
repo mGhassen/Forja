@@ -119,7 +119,6 @@ class PortalsPanelTvFocus {
     required bool mounted,
   }) {
     var tries = 0;
-    var scrolledFor = -1;
     void attempt() {
       if (!mounted) return;
       if (filteredLength <= 0) {
@@ -132,18 +131,18 @@ class PortalsPanelTvFocus {
         filteredLength: filteredLength,
         activeIndex: activeIndex,
       );
+      // Scroll before focusing: an already-mounted row takes focus fine while
+      // staying off-screen, which is how the chip used to land on an unseen
+      // active portal. No-op once the row sits inside the viewport.
+      jumpToIndex(index);
       if (focusRowExact(PortalListView.portalsRowId, index)) {
         lastFocusedPortalIndex = index;
+        // The list often attaches its scroll position only on this frame.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) jumpToIndex(index);
+        });
         return;
       }
-      if (scrolledFor != index) {
-        jumpToIndex(index);
-        scrolledFor = index;
-        tries++;
-        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
-        return;
-      }
-      scrolledFor = -1;
       if (tries++ < 16) {
         WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
         return;

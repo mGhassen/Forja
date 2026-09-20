@@ -1384,6 +1384,11 @@ abstract final class ShellTvFocusCoordinator {
     final target = (currentIndex + delta).clamp(0, handle.itemCount - 1);
     // End of list / accel clamp — stay put (handled), do not leak spatial.
     if (target == currentIndex) return true;
+    // Vertical rails: scroll every step so a mounted-but-clipped row still
+    // tracks focus one-by-one (exact focus alone skips scroll).
+    if (handle.orientation == ShellTvRowOrientation.vertical) {
+      _invokeRowScroll(tabId, rowId, target);
+    }
     // Lazy rails (IPTV cats): jump then focus — same as Portals / classic.
     return focusRowItemRemembered(tabId, rowId, index: target);
   }

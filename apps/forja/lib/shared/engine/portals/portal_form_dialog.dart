@@ -227,7 +227,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
 
   KeyEventResult _handlePasteKey(FocusNode node, KeyEvent event) {
     if (mounted &&
-        liveUseTvFocus(context) &&
+        liveLeanbackOnly(context) &&
         !_editing &&
         !_namingImported) {
       if (!_pasteEditing) {
@@ -443,6 +443,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
   }
 
   void _focusShareCodeCell(int index) {
+    if (!_pasteEditing) _pasteEditing = true;
     _pasteFocus.requestFocus();
     final offset = index.clamp(0, _pasteCtrl.text.length);
     _pasteCtrl.selection = TextSelection.collapsed(offset: offset);
@@ -1415,10 +1416,12 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                   controller: _pasteCtrl,
                   focusNode: _pasteFocus,
                   enabled: !_importingShareCode,
-                  readOnly: liveUseTvFocus(context) && !_pasteEditing,
+                  // Leanback only: browse until OK. Desktop hybrid types immediately
+                  // (readOnly+autofocus ate keystrokes — cells never painted letters).
+                  readOnly: liveLeanbackOnly(context) && !_pasteEditing,
                   enableInteractiveSelection:
-                      !liveUseTvFocus(context) || _pasteEditing,
-                  onTap: liveUseTvFocus(context) && !_pasteEditing
+                      !liveLeanbackOnly(context) || _pasteEditing,
+                  onTap: liveLeanbackOnly(context) && !_pasteEditing
                       ? () {
                           if (!_pasteEditing) {
                             setState(() => _pasteEditing = true);

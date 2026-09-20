@@ -26,3 +26,33 @@ Future<String> resolveListOpenMode({
 /// Listenable that bumps when pack settings change (open mode, etc.).
 ValueListenable<int> get packSettingsRevisionListenable =>
     PackSettingsStore.revision;
+
+/// How a schedule/list tap should open after resolving [openMode].
+///
+/// Live Sports declares `openSetting` / `panelTabs`. Those must never fall
+/// through to `open.surface:live` (hub tab re-request is a no-op). Panel needs
+/// chrome + wide layout; otherwise open the detail page.
+enum KitListTapOpen { panel, details, openTap }
+
+KitListTapOpen resolveKitListTapOpen({
+  required String openMode,
+  required bool hasMatchOpenSurface,
+  required bool canShowSidePanel,
+}) {
+  var mode = openMode.trim().toLowerCase();
+  if (mode.isEmpty && hasMatchOpenSurface) mode = 'panel';
+  // Settings select can store the option label if id lookup misses.
+  if (mode == 'side panel' || mode == 'sidepanel' || mode == 'side-panel') {
+    mode = 'panel';
+  }
+  if (mode == 'detail' || mode == 'detail page' || mode == 'detailpage') {
+    mode = 'details';
+  }
+  if (mode == 'panel') {
+    return canShowSidePanel ? KitListTapOpen.panel : KitListTapOpen.details;
+  }
+  if (mode == 'details' || hasMatchOpenSurface) {
+    return KitListTapOpen.details;
+  }
+  return KitListTapOpen.openTap;
+}

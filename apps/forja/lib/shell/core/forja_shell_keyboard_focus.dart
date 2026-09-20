@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/core/forja_shell_keyboard_focus_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 
@@ -36,6 +37,7 @@ class _ShellKeyboardFocusHostState extends State<ShellKeyboardFocusHost> {
     if (!_isKeyboardNavigationKey(event.logicalKey)) return false;
     if (!_chromeVisible.value) {
       _chromeVisible.value = true;
+      FocusableControl.focusHoverOwner();
     }
     return false;
   }

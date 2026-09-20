@@ -47,6 +47,7 @@ class CatalogChannelCard extends StatefulWidget {
     this.favoriteBuilder,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onUpEdge,
   });
 
   final String title;
@@ -86,6 +87,7 @@ class CatalogChannelCard extends StatefulWidget {
   final Widget? Function({required bool active})? favoriteBuilder;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
 
   /// Desktop/TV live channel tile — ~165 target, near-square fill-width grid.
   /// Do not use portrait poster cells on leanback (iso desktop structure).
@@ -391,6 +393,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
       tvItemIndex: widget.gridIndex,
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
+      onUpEdge: widget.onUpEdge,
       onFocusChange: _setFocused,
       onKeyEvent: holdJump ? _onKeyEvent : null,
       child: MouseRegion(

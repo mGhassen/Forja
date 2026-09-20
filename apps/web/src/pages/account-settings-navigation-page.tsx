@@ -176,13 +176,7 @@ export function AccountSettingsNavigationPage() {
     return ordered
   }, [draft.order, availableIds])
 
-  const startupOptions = useMemo(() => {
-    const opts = featureOrder.filter((id) => draft.visible.has(id))
-    if (!opts.includes('settings')) opts.push('settings')
-    return opts
-  }, [featureOrder, draft.visible])
-
-  const move = (index: number, dir: -1 | 1) => {
+  const move =(index: number, dir: -1 | 1) => {
     const id = featureOrder[index]
     if (!id) return
     void commit((prev) => {
@@ -352,32 +346,6 @@ export function AccountSettingsNavigationPage() {
             </span>
           </li>
         </ul>
-      </SettingsSection>
-
-      <SettingsSection label="Default tab">
-        <div className="flex min-h-14.5 items-center justify-between gap-5 px-0.5 py-3">
-          <span className="text-sm font-medium">
-            Opens after sync / profile switch
-          </span>
-          <select
-            className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"
-            value={
-              startupOptions.includes(draft.defaultTab)
-                ? draft.defaultTab
-                : (startupOptions[0] ?? DEFAULT_NAV_TAB)
-            }
-            disabled={locked}
-            onChange={(e) =>
-              void commit((prev) => ({ ...prev, defaultTab: e.target.value }))
-            }
-          >
-            {startupOptions.map((id) => (
-              <option key={id} value={id}>
-                {labelFor(id)}
-              </option>
-            ))}
-          </select>
-        </div>
       </SettingsSection>
     </AccountSettingsShell>
   )

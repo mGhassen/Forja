@@ -11,6 +11,7 @@ import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/store/engine_store.dart';
 import 'package:forja/shared/engine/runtime/vm/hub_host_bridge_nest.dart';
 import 'package:forja/shared/engine/runtime/vm/service.dart';
+import 'package:forja/shared/engine/portals/store/portal_live_tv_search.dart';
 import 'package:forja/shared/engine/unlock/goat_unlock.dart';
 import 'package:forja/shared/engine/unlock/pack_unlock_files.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
@@ -2008,8 +2009,13 @@ class EngineRuntime {
           );
         }
         // Kit hub actions (searchChannels, feed extras, …) via runCatalog.
+        // Nested searchChannels cannot fork a second flutter_js heap (deadlock /
+        // JSC crash) — match on the host portal shelf instead.
         final plugin = await EngineService.instance.pluginById(pid);
         if (plugin != null && plugin.isKitPlugin) {
+          if (act == 'searchchannels') {
+            return PortalLiveTvSearch.search(params);
+          }
           final env = await EngineService.instance.runCatalog(
             pluginId: pid,
             action: actRaw,

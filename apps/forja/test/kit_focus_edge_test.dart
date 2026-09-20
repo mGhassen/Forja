@@ -18,12 +18,19 @@ void main() {
     test('returns a jump for a named row', () {
       expect(kitFocusEdge('tab', 'grid'), isNotNull);
       expect(kitFocusEdge('tab', 'status', last: true), isNotNull);
+      expect(kitFocusEdge('tab', 'chrome', lastItem: true), isNotNull);
       expect(kitFocusSide('tab', 'sources-kind'), isNotNull);
     });
 
     test('marks miss when target row is unregistered', () {
       ShellTvFocusCoordinator.beginKitEdgeAttempt();
       kitFocusEdge('orphan-tab', 'sources-kind', last: true)!.call();
+      expect(ShellTvFocusCoordinator.takeKitEdgeMiss(), isTrue);
+    });
+
+    test('lastItem marks miss when target row is unregistered', () {
+      ShellTvFocusCoordinator.beginKitEdgeAttempt();
+      kitFocusEdge('orphan-tab', 'chrome', lastItem: true)!.call();
       expect(ShellTvFocusCoordinator.takeKitEdgeMiss(), isTrue);
     });
 

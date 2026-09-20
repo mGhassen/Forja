@@ -31,7 +31,13 @@ class LayoutScope extends InheritedWidget {
   final String? tabId;
 
   /// Host resolves pack `focusUp` / `focusDown` / side edges to callbacks.
-  final VoidCallback? Function(String? rowId, {bool last})? focusEdge;
+  ///
+  /// [last] → remembered index; [lastItem] → final index on the row.
+  final VoidCallback? Function(
+    String? rowId, {
+    bool last,
+    bool lastItem,
+  })? focusEdge;
 
   static LayoutScope? maybeOf(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<LayoutScope>();
@@ -51,10 +57,14 @@ class LayoutScope extends InheritedWidget {
 
   Map<String, dynamic>? widgetSpecFor(String widgetId) => widgetSpecs[widgetId];
 
-  VoidCallback? resolveFocusEdge(String? rowId, {bool last = false}) {
+  VoidCallback? resolveFocusEdge(
+    String? rowId, {
+    bool last = false,
+    bool lastItem = false,
+  }) {
     final edge = focusEdge;
     if (edge == null || rowId == null || rowId.isEmpty) return null;
-    return edge(rowId, last: last);
+    return edge(rowId, last: last, lastItem: lastItem);
   }
 
   @override

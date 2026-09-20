@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix · **0 / 2** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I265-T04 | `KitListWidget` registers scroll helper; dense ↑ prefers kind bar | ✅ |
 | 5 | I265-T05 | Reattach after KitList→PackPaintTree: `CatalogCardsGrid` scroll registry, chrome/`kind` `last: true` edges, `TvKitRow(chrome)` | ✅ |
 | 6 | I265-T06 | Chrome ↓ → kind; View List+Cards dual chrome indices; schedule `focusUp`; claim Providers on open | ✅ |
+| 7 | I265-T07 | Dense/list schedule `TvKitRow` orientation **vertical** so ↑/↓ walks matches (was horizontal D-line ←/→) | ✅ |
 
 ---
 
@@ -33,14 +34,14 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I265-A01 | Manual ATV: match mid-list → ↑ sport shelf → ↓ lands on same match (list scrolls) | ⬜ |
-| 2 | I265-A02 | Manual ATV: top bar ↓ → kind; kind ↓ → last match; View ←→ List/Cards; OK match → Providers; ←→ schedule↔panel | ⬜ |
+| 2 | I265-A02 | Manual ATV: top bar ↓ → kind; kind ↓ → last match; View ←→ List/Cards; list ↑/↓ (not ←/→); OK match → Providers; ←→ schedule↔panel | ⬜ |
 
 ---
 
 ## Summary
 
-**Symptom:** On Android TV Live Sports, ↑ from a match to the sport shelf (or to **Portals**) then ↓ left focus stuck or failed to return to that match.
+**Symptom:** On Android TV Live Sports, ↑ from a match to the sport shelf (or to **Portals**) then ↓ left focus stuck or failed to return to that match. Dense **List** view also walked matches with ←/→ like a horizontal row.
 
-**Root cause:** Schedule is a lazy `ListView`/`Grid`. Off-screen tiles unregister. ↓ used `focusRowItem` without scrolling; the key was still consumed via `onDownEdge`. Top bar `focusDown: 'kind'` also skipped restoring the schedule index. After KitList → PackPaintTree, `setRowScrollIntoView` had zero callers and chrome/kind edges dropped `last: true`.
+**Root cause:** Schedule is a lazy `ListView`/`Grid`. Off-screen tiles unregister. ↓ used `focusRowItem` without scrolling; the key was still consumed via `onDownEdge`. Top bar `focusDown: 'kind'` also skipped restoring the schedule index. After KitList → PackPaintTree, `setRowScrollIntoView` had zero callers and chrome/kind edges dropped `last: true`. Dense list still wrapped `TvKitRow` with default **horizontal** orientation, so the coordinator mapped ←/→ to in-row steps.
 
-**Fix:** Scroll the schedule to the remembered index, retry focus across frames, and point chrome ↓ at `schedule` with last-index restore (hub pack layout + host `kitFocusEdge`). Host rewire: `CatalogCardsGrid.onScrollIntoViewChanged`, kind/chrome `resolveFocusEdge(..., last: true)`, `TvKitRow('chrome')`.
+**Fix:** Scroll the schedule to the remembered index, retry focus across frames, and point chrome ↓ at `schedule` with last-index restore (hub pack layout + host `kitFocusEdge`). Host rewire: `CatalogCardsGrid.onScrollIntoViewChanged`, kind/chrome `resolveFocusEdge(..., last: true)`, `TvKitRow('chrome')`. Dense/list/timeline/`channelList` rows register `ShellTvRowOrientation.vertical` so ↑/↓ walk items and ←/→ leave via pack edges.

@@ -64,9 +64,10 @@ export function useProfileSettings() {
   const query = useQuery({
     queryKey,
     enabled: Boolean(user?.id && activeProfile?.id && supabaseConfigured),
-    // Soft-pull parity with the app: refetch when the tab is focused / remounted
-    // so app → web Features land without a hard reload.
+    // Always hit DB when Settings/Features remounts — cached row alone left
+    // Features stale vs app until a visibility flip.
     staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     queryFn: async (): Promise<ProfileSettingsRow> => {
@@ -84,7 +85,7 @@ export function useProfileSettings() {
     },
   })
 
-  // Soft-pull when the tab becomes visible again (app → web Features / Addons).
+  // Soft-pull on mount + when the tab becomes visible (app → web Features).
   useEffect(() => {
     const userId = user?.id
     const profileId = activeProfile?.id
@@ -94,6 +95,8 @@ export function useProfileSettings() {
     const softPull = () => {
       void queryClient.invalidateQueries({ queryKey: key })
     }
+
+    softPull()
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') softPull()

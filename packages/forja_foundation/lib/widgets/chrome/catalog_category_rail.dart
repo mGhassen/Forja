@@ -36,7 +36,8 @@ class CatalogCategoryItem {
 
 /// Vertical category rail with hover, pin, and delayed drag-reorder.
 ///
-/// TV: hold OK ~1s reveals pin or enters floating reorder when [canReorder].
+/// TV: hold OK ~2s reveals pin or enters floating reorder when [canReorder].
+/// Hold works on desktop hybrid keyboard too ([ShellPaintScope.useTvFocusOf]).
 class CatalogCategoryRail extends StatefulWidget {
   const CatalogCategoryRail({
     super.key,
@@ -56,6 +57,7 @@ class CatalogCategoryRail extends StatefulWidget {
     this.pinSlotWidth = ShellTokens.categoryRailPinSlotWidth,
     this.header,
     this.onTvEnterRight,
+    this.onTvFocusUp,
     this.onScrollJumpReady,
   });
 
@@ -68,6 +70,7 @@ class CatalogCategoryRail extends StatefulWidget {
   /// [newIndex] already accounts for the removed item ([onReorderItem]).
   final void Function(int oldIndex, int newIndex)? onReorder;
   final bool canReorder;
+
   /// Null → [catalogSideRailWidth] (TV denser).
   final double? width;
   final bool compact;
@@ -88,11 +91,15 @@ class CatalogCategoryRail extends StatefulWidget {
   /// TV: → from a category row (after select) — e.g. enter channel catalog.
   final VoidCallback? onTvEnterRight;
 
+  /// TV: ↑ from the first category — e.g. Live/Movies/Series shelf.
+  final VoidCallback? onTvFocusUp;
+
   /// Host registers scroll-into-view for lazy TV focus (jump then focus).
   final ValueChanged<void Function(int index)>? onScrollJumpReady;
 
   static const double rowExtentDesktop = ShellTokens.categoryRailRowExtent;
-  static const double rowExtentCompact = ShellTokens.categoryRailRowExtentCompact;
+  static const double rowExtentCompact =
+      ShellTokens.categoryRailRowExtentCompact;
 
   /// Host Back handlers may call this to dismiss pin / floating chrome.
   static bool tryConsumeBack() => _CatalogCategoryRowState.tryConsumeBack();
@@ -105,6 +112,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   String? _floatingId;
   final ScrollController _scroll = ScrollController();
   bool _scrollJumpRegistered = false;
+
   /// Type-to-jump highlight only — never commits [selectedId] / onSelect.
   String? _jumpHighlightId;
 
@@ -116,11 +124,15 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
       widget.rowHeight ??
       catalogCategoryRailRowExtent(context, compact: widget.compact);
 
-  List<CatalogCategoryItem> get _fixed =>
-      [for (final e in widget.items) if (e.fixed) e];
+  List<CatalogCategoryItem> get _fixed => [
+    for (final e in widget.items)
+      if (e.fixed) e,
+  ];
 
-  List<CatalogCategoryItem> get _movable =>
-      [for (final e in widget.items) if (!e.fixed) e];
+  List<CatalogCategoryItem> get _movable => [
+    for (final e in widget.items)
+      if (!e.fixed) e,
+  ];
 
   /// Favorites / Already watched stay out of type-to-jump (old IPTV).
   List<CatalogCategoryItem> get _jumpItems => _movable;
@@ -191,18 +203,34 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
     WidgetsBinding.instance.addPostFrameCallback((_) => go());
   }
 
-  void _scrollToIndex(int index, {int keepAbove = 2}) {
+  void _scrollToIndex(int index, {int keepAbove = 1}) {
     if (!_scroll.hasClients || index < 0 || !mounted) return;
     final position = _scroll.position;
     final viewport = position.viewportDimension;
     if (viewport <= 0) return;
     final rowExtent = _rowExtent(context);
-    final itemTop = _listPadV(context) + index * rowExtent;
-    final target = (itemTop - keepAbove * rowExtent).clamp(
-      0.0,
-      position.maxScrollExtent,
-    );
-    if ((_scroll.offset - target).abs() < 0.5) return;
+    final pad = _listPadV(context);
+    final itemTop = pad + index * rowExtent;
+    final itemBottom = itemTop + rowExtent;
+    final viewTop = position.pixels;
+    final viewBottom = viewTop + viewport;
+    // Keep-visible only — nudge by the clipped edge so ↑/↓ tracks one row at
+    // a time. Always-pin-to-keepAbove jumped the list away from focus.
+    double? target;
+    if (itemTop < viewTop + keepAbove * rowExtent) {
+      target = (itemTop - keepAbove * rowExtent).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
+    } else if (itemBottom > viewBottom - rowExtent * 0.5) {
+      target = (itemBottom - viewport + rowExtent * 0.5).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
+    } else {
+      return;
+    }
+    if ((position.pixels - target).abs() < 0.5) return;
     _scroll.jumpTo(target);
   }
 
@@ -245,11 +273,14 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
     final fixed = _fixed;
     final movable = _movable;
     final jump = _jumpItems;
-    final canReorder = widget.canReorder &&
-        widget.onReorder != null &&
-        movable.length > 1;
+    final canReorder =
+        widget.canReorder && widget.onReorder != null && movable.length > 1;
 
-    Widget rowFor(CatalogCategoryItem item, int listIndex, {int? reorderIndex}) {
+    Widget rowFor(
+      CatalogCategoryItem item,
+      int listIndex, {
+      int? reorderIndex,
+    }) {
       return _CatalogCategoryRow(
         key: ValueKey(item.id),
         item: item,
@@ -260,15 +291,18 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
         reorderIndex: canReorder ? reorderIndex : null,
         floating: _floatingId == item.id,
         rowExtent: _rowExtent(context),
-        fontSize: widget.fontSize ??
+        fontSize:
+            widget.fontSize ??
             catalogCategoryRailFontSize(context, compact: widget.compact),
-        iconSize: widget.iconSize ??
+        iconSize:
+            widget.iconSize ??
             catalogCategoryRailIconSize(context, compact: widget.compact),
         rowPadH: widget.rowPadH,
         rowPadV: widget.rowPadH == null
             ? catalogCategoryRailRowPadV(context, compact: widget.compact)
             : null,
-        pinSlotWidth: widget.pinSlotWidth == ShellTokens.categoryRailPinSlotWidth
+        pinSlotWidth:
+            widget.pinSlotWidth == ShellTokens.categoryRailPinSlotWidth
             ? catalogCategoryRailPinSlotWidth(context)
             : widget.pinSlotWidth,
         onSelect: widget.onSelect == null
@@ -295,6 +329,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
             ? () => _moveFloating(1)
             : null,
         onTvEnterRight: widget.onTvEnterRight,
+        onTvFocusUp: listIndex == 0 ? widget.onTvFocusUp : null,
       );
     }
 
@@ -453,10 +488,12 @@ class _CatalogCategoryRow extends StatefulWidget {
     this.onTvReorderUp,
     this.onTvReorderDown,
     this.onTvEnterRight,
+    this.onTvFocusUp,
   });
 
   final CatalogCategoryItem item;
   final bool selected;
+
   /// Type-to-jump chrome — hover look without committing selection.
   final bool jumpHighlighted;
   final bool compact;
@@ -476,6 +513,7 @@ class _CatalogCategoryRow extends StatefulWidget {
   final VoidCallback? onTvReorderUp;
   final VoidCallback? onTvReorderDown;
   final VoidCallback? onTvEnterRight;
+  final VoidCallback? onTvFocusUp;
 
   @override
   State<_CatalogCategoryRow> createState() => _CatalogCategoryRowState();
@@ -484,6 +522,7 @@ class _CatalogCategoryRow extends StatefulWidget {
 class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     with SingleTickerProviderStateMixin {
   static _CatalogCategoryRowState? _chromeOwner;
+
   /// Only one row paints hover — MouseRegion onExit is often skipped when a
   /// sibling enters, a Tooltip overlays, or the list scrolls under the cursor.
   static _CatalogCategoryRowState? _hoverOwner;
@@ -522,12 +561,13 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
   late final FocusNode _pinFocus;
   late final AnimationController _holdSunrise;
   final ValueNotifier<Offset?> _holdOriginN = ValueNotifier<Offset?>(null);
+
   /// Never setState on hover — rebuilding MouseRegion/FocusableControl mid
   /// hit-test sticks hover and stops following the pointer (pack choice cards).
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   Offset? _pointerDownGlobal;
 
-  static const _okHoldDelay = Duration(seconds: 1);
+  static const _okHoldDelay = Duration(seconds: 2);
   static const _dragHoldDelay = Duration(milliseconds: 1500);
 
   bool get _leanbackOnly =>
@@ -545,10 +585,10 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       ShellPaintScope.focusStyledOf(context, focused: _chromeLit);
 
   bool _activeFor(bool hovered) => ShellPaintScope.interactiveActive(
-        context,
-        hovered: hovered,
-        focused: _chromeLit,
-      );
+    context,
+    hovered: hovered,
+    focused: _chromeLit,
+  );
 
   bool get _canTvReorder =>
       widget.reorderIndex != null &&
@@ -618,8 +658,11 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
   }
 
   KeyEventResult _onRowKey(FocusNode node, KeyEvent event) {
-    final activate = ShellPaintScope.isActivateKeyOf(context, event);
-    final leanback = ShellPaintScope.usesTvDensityOf(context);
+    // Desktop hybrid + leanback both use the TV focus graph. Gate on that —
+    // usesTvDensity alone left hold-OK / pin / reorder dead on macOS.
+    final tvFocus = ShellPaintScope.useTvFocusOf(context);
+    final activateDown = event is KeyDownEvent && _isActivateLogical(event);
+    final activateUp = event is KeyUpEvent && _isActivateLogical(event);
 
     if (widget.floating) {
       if (event is KeyDownEvent || event is KeyRepeatEvent) {
@@ -640,7 +683,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
           if (_canTvPin) _pinFocus.requestFocus();
           return KeyEventResult.handled;
         }
-        if (activate && event is KeyDownEvent && !_okHoldFired) {
+        if (activateDown && !_okHoldFired) {
           widget.onExitFloating?.call();
           return KeyEventResult.handled;
         }
@@ -663,8 +706,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       }
     }
 
-    if (leanback && (_canTvReorder || _canTvPin)) {
-      if (event is KeyDownEvent && activate) {
+    if (tvFocus && (_canTvReorder || _canTvPin)) {
+      if (activateDown) {
         _okHoldFired = false;
         _okHoldTimer?.cancel();
         _holdOriginN.value = Offset(
@@ -678,6 +721,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
           if (!mounted) return;
           _okHoldFired = true;
           _cancelHold();
+          // Last-release contract: reorderable → float (↑/↓ move); pin-only
+          // → reveal pin. Floating still allows → to the pin.
           if (_canTvReorder) {
             _claimChrome();
             widget.onEnterFloating?.call();
@@ -688,7 +733,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
         });
         return KeyEventResult.handled;
       }
-      if (event is KeyUpEvent && activate) {
+      if (activateUp) {
         _okHoldTimer?.cancel();
         _okHoldTimer = null;
         if (_okHoldFired) {
@@ -704,13 +749,20 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     return KeyEventResult.ignored;
   }
 
+  static bool _isActivateLogical(KeyEvent event) {
+    final key = event.logicalKey;
+    return key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.space ||
+        key == LogicalKeyboardKey.numpadEnter;
+  }
+
   @override
   Widget build(BuildContext context) {
     final leanback = _leanbackOnly;
     final selected = widget.selected;
     // Desktop drag proxy wraps the row — same brighter green as TV floating.
-    final lifted =
-        widget.floating || _CategoryDragProxyScope.isProxy(context);
+    final lifted = widget.floating || _CategoryDragProxyScope.isProxy(context);
 
     Widget paintRow({required bool hovered}) {
       final active = _activeFor(hovered || widget.jumpHighlighted);
@@ -720,35 +772,34 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       final iconColor = _tvFocused || lifted
           ? ForjaShellColors.brandGreen
           : active
-              ? Colors.white
-              : selected
-                  ? (leanback
-                      ? ForjaShellColors.textSecondary
-                      : ForjaShellColors.brandGreen.withValues(alpha: 0.7))
-                  : ForjaShellColors.textSecondary;
+          ? Colors.white
+          : selected
+          ? (leanback
+                ? ForjaShellColors.textSecondary
+                : ForjaShellColors.brandGreen.withValues(alpha: 0.7))
+          : ForjaShellColors.textSecondary;
       final titleColor = _tvFocused || lifted
           ? ForjaShellColors.brandGreen
           : active
-              ? Colors.white
-              : selected
-                  ? Colors.white.withValues(alpha: leanback ? 0.7 : 0.88)
-                  : ForjaShellColors.textSecondary;
+          ? ForjaShellColors.brandGreen
+          : selected
+          ? ForjaShellColors.brandGreen
+          : ForjaShellColors.textSecondary;
       final leftBar = lifted || _tvFocused
           ? ForjaShellColors.brandGreen
           : active
-              ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
-              : selected
-                  ? ForjaShellColors.brandGreen
-                      .withValues(alpha: leanback ? 0.22 : 0.4)
-                  : Colors.transparent;
+          ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
+          : selected
+          ? ForjaShellColors.brandGreen.withValues(alpha: leanback ? 0.22 : 0.4)
+          : Colors.transparent;
       // Fill only for focus / hover / floating. Snap colors — no fade trail.
       final fillColor = lifted
           ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
           : _tvFocused
-              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-              : (!leanback && active)
-                  ? ForjaShellColors.inkHover
-                  : Colors.transparent;
+          ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+          : (!leanback && active)
+          ? ForjaShellColors.inkHover
+          : Colors.transparent;
 
       return Container(
         width: double.infinity,
@@ -768,12 +819,14 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
           children: [
             Padding(
               padding: EdgeInsets.only(
-                left: widget.rowPadH ??
+                left:
+                    widget.rowPadH ??
                     catalogCategoryRailRowPadH(
                       context,
                       compact: widget.compact,
                     ),
-                right: widget.rowPadV ??
+                right:
+                    widget.rowPadV ??
                     catalogCategoryRailRowPadV(
                       context,
                       compact: widget.compact,
@@ -784,7 +837,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
                   if (widget.item.icon != null) ...[
                     Icon(
                       widget.item.icon,
-                      size: widget.iconSize ??
+                      size:
+                          widget.iconSize ??
                           catalogCategoryRailIconSize(
                             context,
                             compact: widget.compact,
@@ -795,8 +849,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
                       width: catalogUsesTvDensity(context)
                           ? ShellTokens.categoryRailItemGapTv
                           : widget.compact
-                              ? ShellTokens.categoryRailItemGapCompact
-                              : ShellTokens.categoryRailItemGap,
+                          ? ShellTokens.categoryRailItemGapCompact
+                          : ShellTokens.categoryRailItemGap,
                     ),
                   ],
                   Expanded(
@@ -806,7 +860,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
                         color: titleColor,
-                        fontSize: widget.fontSize ??
+                        fontSize:
+                            widget.fontSize ??
                             catalogCategoryRailFontSize(
                               context,
                               compact: widget.compact,
@@ -887,12 +942,14 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       focusNode: _rowFocus,
       ensureVisibleMode: ShellPaintEnsureVisible.off,
       onKeyEvent: ShellPaintScope.useTvFocusOf(context) ? _onRowKey : null,
+      onUpEdge: widget.onTvFocusUp,
       onRightEdge: () {
         if (widget.floating || _tvPinRevealed) {
           if (_canTvPin) _pinFocus.requestFocus();
           return;
         }
-        widget.onSelect?.call();
+        // → only moves focus into the channel grid. Never onSelect — that
+        // reloads the catalog. OK / click selects; → focuses last/first channel.
         widget.onTvEnterRight?.call();
       },
       child: hoveredBody,
@@ -916,19 +973,17 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       },
       onPointerUp: (_) => _cancelHold(),
       onPointerCancel: (_) => _cancelHold(),
-      child: _DelayedReorderDragStartListener(
-        index: reorderIndex,
-        child: row,
-      ),
+      child: _DelayedReorderDragStartListener(index: reorderIndex, child: row),
     );
   }
 
   Widget _buildPin(bool leanback) {
     final pinFocused = leanback && _pinFocus.hasFocus;
+    final pinHovered = !leanback && _hoveredN.value;
     final icon = Icon(
       widget.item.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
       size: widget.compact ? 16 : 17,
-      color: pinFocused
+      color: pinFocused || pinHovered
           ? ForjaShellColors.brandGreen
           : ForjaShellColors.iconMuted,
     );
@@ -938,8 +993,13 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
         type: MaterialType.transparency,
         child: InkWell(
           onTap: widget.onTogglePin,
-          borderRadius: BorderRadius.circular(ShellTokens.categoryRailPinRadius),
-          child: Padding(padding: const EdgeInsets.all(ShellTokens.categoryRailPinPad), child: icon),
+          borderRadius: BorderRadius.circular(
+            ShellTokens.categoryRailPinRadius,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(ShellTokens.categoryRailPinPad),
+            child: icon,
+          ),
         ),
       );
     }
@@ -956,7 +1016,10 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       onUpEdge: () => _rowFocus.requestFocus(),
       onDownEdge: () => _rowFocus.requestFocus(),
       onRightEdge: () {},
-      child: Padding(padding: const EdgeInsets.all(ShellTokens.categoryRailPinPad), child: icon),
+      child: Padding(
+        padding: const EdgeInsets.all(ShellTokens.categoryRailPinPad),
+        child: icon,
+      ),
     );
   }
 }

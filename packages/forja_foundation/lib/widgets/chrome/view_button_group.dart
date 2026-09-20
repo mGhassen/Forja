@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -136,33 +137,32 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
     _hoveredN.value = h;
   }
 
-  bool _activeFor(bool hovered) =>
-      widget.selected ||
-      ShellPaintScope.interactiveActive(
-        context,
-        hovered: hovered,
-        focused: _focused,
-      );
-
   Widget _buildSlot(bool hovered) {
-    final active = _activeFor(hovered);
+    final chromeActive = ShellPaintScope.interactiveActive(
+      context,
+      hovered: hovered,
+      focused: _focused,
+    );
+    // Selected stays white; hover / focus → brand green.
+    final Color fg;
+    final Color fill;
+    if (chromeActive) {
+      fg = ForjaShellColors.brandGreen;
+      fill = ForjaShellColors.brandGreen.withValues(alpha: 0.18);
+    } else if (widget.selected) {
+      fg = Colors.white.withValues(alpha: 0.92);
+      fill = Colors.white.withValues(alpha: 0.10);
+    } else {
+      fg = Colors.white60;
+      fill = Colors.transparent;
+    }
     return AnimatedContainer(
       duration: ForjaMotionTheme.of(context).fillOnly.duration,
       width: widget.height,
       height: widget.height,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: active
-            ? Colors.white.withValues(
-                alpha: ShellPaintScope.interactiveActive(
-                  context,
-                  hovered: hovered,
-                  focused: _focused,
-                )
-                    ? 0.16
-                    : 0.10,
-              )
-            : Colors.transparent,
+        color: fill,
         borderRadius: BorderRadius.horizontal(
           left: widget.isFirst ? widget.radius : Radius.zero,
           right: widget.isLast ? widget.radius : Radius.zero,
@@ -171,7 +171,7 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
       child: Icon(
         widget.item.icon,
         size: widget.iconSize,
-        color: widget.selected ? Colors.white : Colors.white60,
+        color: fg,
       ),
     );
   }

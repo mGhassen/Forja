@@ -125,19 +125,19 @@ class _PortalsChipState extends State<PortalsChip> {
     final showHighlight = widget.selected || active;
 
     final chipRadius = BorderRadius.circular(widget.radius);
+    // Hover / focus / open-panel all read as "on" — brand green, not white.
+    final lit = tvFocused || showHighlight;
     final borderColor = tvFocused
         ? ForjaShellColors.brandGreen
         : !widget.hasPortal
             ? _accent.withValues(alpha: 0.65)
-            : Colors.white.withValues(alpha: showHighlight ? 0.28 : 0.10);
+            : showHighlight
+                ? ForjaShellColors.brandGreen.withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.10);
     final borderW = tvFocused ? 1.5 : 1.0;
     final side = BorderSide(color: borderColor, width: borderW);
-    final fg = Colors.white;
-    final fgMuted = tvFocused
-        ? ForjaShellColors.brandGreen
-        : active
-            ? Colors.white
-            : Colors.white60;
+    final fg = lit ? ForjaShellColors.brandGreen : Colors.white;
+    final fgMuted = lit ? ForjaShellColors.brandGreen : Colors.white60;
     final hPad = widget.pad ??
         (tvDensity
             ? ShellTokens.portalsChipPadTv
@@ -182,11 +182,7 @@ class _PortalsChipState extends State<PortalsChip> {
             : Icon(
                 Icons.add_link_rounded,
                 size: iconSize,
-                color: tvFocused
-                    ? ForjaShellColors.brandGreen
-                    : active
-                        ? Colors.white
-                        : _accent,
+                color: lit ? ForjaShellColors.brandGreen : _accent,
               ),
       ),
     );

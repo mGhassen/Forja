@@ -417,9 +417,13 @@ class _PortalListRowState extends State<PortalListRow> {
 
   /// Desktop hybrid: focus chrome only when keyboard paint is on — raw
   /// `_focused` stays true after mouse delete + inventory re-focus restore.
+  /// Action focus (copy/edit/trash) keeps the same row chrome.
   bool get _focusChrome => widget.leanback
-      ? _focused
-      : ShellPaintScope.focusStyledOf(context, focused: _focused);
+      ? (_focused || _actionChromeFocused)
+      : ShellPaintScope.focusStyledOf(
+            context,
+            focused: _focused || _actionChromeFocused,
+          );
 
   bool get _hoverChrome =>
       _lineHover || _focusChrome || _showShareCode;
@@ -583,13 +587,16 @@ class _PortalListRowState extends State<PortalListRow> {
     final isFav = item.favorite;
     final title = item.label;
     final deleting = item.deleting;
+    // Selected stays white; hover / focus / action-focus → brand green.
     final titleColor = isFav
         ? const Color(0xFFFBBF24)
-        : isActive
+        : _hoverChrome
             ? ForjaShellColors.brandGreen
-            : _showNewChrome
-                ? ForjaShellColors.navUnderline
-                : Colors.white.withValues(alpha: 0.88);
+            : isActive
+                ? Colors.white.withValues(alpha: 0.92)
+                : _showNewChrome
+                    ? ForjaShellColors.navUnderline
+                    : Colors.white.withValues(alpha: 0.88);
 
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -628,7 +635,7 @@ class _PortalListRowState extends State<PortalListRow> {
                                     color: titleColor,
                                     fontSize: _titleFontSize,
                                     fontWeight: isFav ||
-                                            isActive ||
+                                            _hoverChrome ||
                                             _showNewChrome
                                         ? FontWeight.w600
                                         : FontWeight.w500,
@@ -656,12 +663,14 @@ class _PortalListRowState extends State<PortalListRow> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.plusJakartaSans(
-                                    color: isActive
+                                    color: _hoverChrome
                                         ? ForjaShellColors.brandGreen
                                             .withValues(alpha: 0.75)
-                                        : _showNewChrome
+                                        : isActive
                                             ? Colors.white54
-                                            : Colors.white38,
+                                            : _showNewChrome
+                                                ? Colors.white54
+                                                : Colors.white38,
                                     fontSize: _metaFontSize,
                                     height: 1.25,
                                   ),
@@ -1232,11 +1241,25 @@ class _RailAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final body = SizedBox(
-      width: 32,
-      height: 32,
-      child: Icon(icon, size: PortalListTokens.rowIconSize, color: color),
-    );
+    Widget iconPaint({required bool lit}) {
+      return SizedBox(
+        width: 32,
+        height: 32,
+        child: Icon(
+          icon,
+          size: PortalListTokens.rowIconSize,
+          color: lit ? ForjaShellColors.brandGreen : color,
+        ),
+      );
+    }
+
+    final node = focusNode;
+    final body = node == null
+        ? iconPaint(lit: false)
+        : ListenableBuilder(
+            listenable: node,
+            builder: (context, _) => iconPaint(lit: node.hasFocus),
+          );
     final child = Tooltip(message: tooltip, child: body);
     if (!ShellPaintScope.useTvFocusOf(context) ||
         ShellPaintTvTabScope.tabIdOf(context) == null) {
@@ -1245,7 +1268,11 @@ class _RailAction extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(PortalListTokens.chipRadius),
-          child: child,
+          child: _HoverLitIcon(
+            tooltip: tooltip,
+            icon: icon,
+            idle: color,
+          ),
         ),
       );
     }
@@ -1265,6 +1292,46 @@ class _RailAction extends StatelessWidget {
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
       child: child,
+    );
+  }
+}
+
+class _HoverLitIcon extends StatefulWidget {
+  const _HoverLitIcon({
+    required this.tooltip,
+    required this.icon,
+    required this.idle,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final Color idle;
+
+  @override
+  State<_HoverLitIcon> createState() => _HoverLitIconState();
+}
+
+class _HoverLitIconState extends State<_HoverLitIcon> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: Tooltip(
+        message: widget.tooltip,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(
+            widget.icon,
+            size: PortalListTokens.rowIconSize,
+            color: _hovered ? ForjaShellColors.brandGreen : widget.idle,
+          ),
+        ),
+      ),
     );
   }
 }

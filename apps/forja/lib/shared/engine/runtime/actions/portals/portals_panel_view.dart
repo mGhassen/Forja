@@ -17,6 +17,7 @@ import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
@@ -525,6 +526,29 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       onPortalExitDown: useTv ? _tv.exitDownToCatalog : null,
       onPortalTvFocus: useTv ? _tv.markPortalTvFocus : null,
       onListPointerBrowse: useTv ? _tv.onListPointerBrowse : null,
+      // Desktop/TV: D-pad land highlights the field; OK opens the keyboard.
+      searchFieldBuilder: !shellTvBrowseSearch(context)
+          ? null
+          : (ctx, {
+              required controller,
+              required focusNode,
+              required onChanged,
+              required onEscape,
+              required decoration,
+              required style,
+              required placeholder,
+            }) {
+              return TvBrowseTextField(
+                controller: controller,
+                focusNode: focusNode,
+                onChanged: onChanged,
+                onEscape: onEscape,
+                browsePlaceholder: placeholder,
+                browseHintStyle: decoration.hintStyle,
+                style: style,
+                decoration: decoration,
+              );
+            },
       ),
     );
 

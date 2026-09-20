@@ -172,6 +172,8 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
       }
     }
 
+    final prev = _previousKeyHandler?.call(node, event);
+    if (prev == KeyEventResult.handled) return KeyEventResult.handled;
     return chained ?? KeyEventResult.ignored;
   }
 

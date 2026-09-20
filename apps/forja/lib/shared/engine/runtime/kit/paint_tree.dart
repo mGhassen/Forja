@@ -766,66 +766,63 @@ class PackPaintTree extends StatelessWidget {
             itemCount: items.length,
             maxWidth: constraints.maxWidth,
           );
-          final row = Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < items.length; i++) ...[
-                if (i > 0) SizedBox(width: layout.horizontalGap),
-                Builder(
-                  builder: (context) {
-                    final item = items[i];
-                    final meta =
-                        kitMoodCircleMeta(id: item.id, icon: item.icon);
-                    final on = selectedId == item.id;
-                    return ShellMoodCircleItem(
-                      layout: layout,
-                      label: catalogKitCategoryLabel(
-                        item.id,
-                        label: item.label,
-                      ),
-                      icon: meta.icon,
-                      accent: meta.accent,
-                      selected: on,
-                      listIndex: i,
-                      onDownEdge: down.isEmpty
-                          ? null
-                          : () => scope
-                              ?.resolveFocusEdge(down, last: true)
-                              ?.call(),
-                      onUpEdge: up.isEmpty
-                          ? null
-                          : () =>
-                              scope?.resolveFocusEdge(up, last: true)?.call(),
-                      onTap: () {
-                        onSelect(item.id);
-                        if (down.isNotEmpty) {
-                          scope
-                              ?.resolveFocusEdge(down, last: true)
-                              ?.call();
-                        }
-                      },
-                    );
-                  },
-                ),
-              ],
-            ],
-          );
+          Widget chipAt(int i) {
+            final item = items[i];
+            final meta = kitMoodCircleMeta(id: item.id, icon: item.icon);
+            return ShellMoodCircleItem(
+              layout: layout,
+              label: catalogKitCategoryLabel(
+                item.id,
+                label: item.label,
+              ),
+              icon: meta.icon,
+              accent: meta.accent,
+              selected: selectedId == item.id,
+              listIndex: i,
+              onDownEdge: down.isEmpty
+                  ? null
+                  : () =>
+                      scope?.resolveFocusEdge(down, last: true)?.call(),
+              onUpEdge: up.isEmpty
+                  ? null
+                  : () => scope?.resolveFocusEdge(up, last: true)?.call(),
+              onTap: () {
+                onSelect(item.id);
+                if (down.isNotEmpty) {
+                  scope?.resolveFocusEdge(down, last: true)?.call();
+                }
+              },
+            );
+          }
+
           final fits =
               layout.contentWidth(items.length) <= constraints.maxWidth;
-          // Overflow: scaleDown (pre-cutover Live Sports) — keep centered.
-          Widget body = SizedBox(
-            height: layout.rowHeight,
-            width: double.infinity,
-            child: fits
-                ? Center(child: row)
-                : FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.center,
-                    child: row,
+          // Fixed size always — center when they fit, scroll when they don't.
+          Widget body = fits
+              ? SizedBox(
+                  height: layout.rowHeight,
+                  width: double.infinity,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < items.length; i++) ...[
+                          if (i > 0) SizedBox(width: layout.horizontalGap),
+                          chipAt(i),
+                        ],
+                      ],
+                    ),
                   ),
-          );
+                )
+              : HorizontalScroller(
+                  height: layout.rowHeight,
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) =>
+                      SizedBox(width: layout.horizontalGap),
+                  itemBuilder: (_, i) => chipAt(i),
+                );
           final tab = (tabId ?? '').trim();
           if (tab.isNotEmpty &&
               items.isNotEmpty &&
@@ -1803,6 +1800,9 @@ class PackPaintTree extends StatelessWidget {
             return 'poster';
           }();
           final openMode = (spec['open'] ?? '').toString().trim().toLowerCase();
+          final matchOpenSurface =
+              (spec['openSetting'] ?? '').toString().trim().isNotEmpty ||
+                  spec['panelTabs'] is List;
           final panelSelectedId = selected == null
               ? null
               : (selected['id'] ??
@@ -1818,7 +1818,15 @@ class PackPaintTree extends StatelessWidget {
               ? panelSelectedId
               : (highlightId.isEmpty ? null : highlightId);
           final wide = constraints.maxWidth >= 900;
-          final showPanel = openMode == 'panel' && selected != null && wide;
+          // Same resolver as onListItemTap — empty open + match surface still
+          // wants the side panel (do not require openMode == 'panel' literally).
+          final showPanel = selected != null &&
+              resolveKitListTapOpen(
+                    openMode: openMode,
+                    hasMatchOpenSurface: matchOpenSurface,
+                    canShowSidePanel: chrome != null && wide,
+                  ) ==
+                  KitListTapOpen.panel;
           final gap = PackPaintArtifact.packDouble(spec['gap']);
           final pad = PackPaintArtifact.packDouble(spec['pad']);
           final cardWidth = PackPaintArtifact.packDouble(spec['cardWidth']);
@@ -1832,37 +1840,48 @@ class PackPaintTree extends StatelessWidget {
             ]);
           }
 
+          void openMatchDetails(Map<String, dynamic> item) {
+            unawaited(
+              KitEntryDetailsPage.open(
+                context,
+                entry: _listEntryFromItem(item),
+                listSourceId: KitResolvePanelHost.instance.listSourceId,
+                layoutWidgets: [
+                  if (spec['panelTabs'] is List)
+                    {
+                      'type': 'kit.list',
+                      'panelTabs': spec['panelTabs'],
+                      'panelTab': spec['panelTab'],
+                    },
+                ],
+                refreshEpoch: chrome?.refreshEpoch ?? 0,
+                shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+              ),
+            );
+          }
+
           void onListItemTap(Map<String, dynamic> item) {
-            if (openMode == 'panel') {
-              chrome?.onSelectListItem(item);
-              final hubTab = (tabId ?? '').trim();
-              if (hubTab.isNotEmpty &&
-                  ShellPaintScope.useTvFocusOf(context)) {
-                KitSourcesPanel.claimProvidersFocus(forTabId: hubTab);
-              }
-              return;
-            }
-            // Detail page — same entry + panelTabs as the side panel.
-            // Do not openTap open.surface:live (tab switch no-op on this hub).
-            if (openMode == 'details') {
-              unawaited(
-                KitEntryDetailsPage.open(
-                  context,
-                  entry: _listEntryFromItem(item),
-                  listSourceId: KitResolvePanelHost.instance.listSourceId,
-                  layoutWidgets: [
-                    if (spec['panelTabs'] is List)
-                      {
-                        'type': 'kit.list',
-                        'panelTabs': spec['panelTabs'],
-                        'panelTab': spec['panelTab'],
-                      },
-                  ],
-                  refreshEpoch: chrome?.refreshEpoch ?? 0,
-                  shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
-                ),
-              );
-              return;
+            // Live Sports (openSetting / panelTabs): never fall through to
+            // open.surface:live — that only re-requests this hub tab (no-op).
+            final tapOpen = resolveKitListTapOpen(
+              openMode: openMode,
+              hasMatchOpenSurface: matchOpenSurface,
+              canShowSidePanel: chrome != null && wide,
+            );
+            switch (tapOpen) {
+              case KitListTapOpen.panel:
+                chrome!.onSelectListItem(item);
+                final hubTab = (tabId ?? '').trim();
+                if (hubTab.isNotEmpty &&
+                    ShellPaintScope.useTvFocusOf(context)) {
+                  KitSourcesPanel.claimProvidersFocus(forTabId: hubTab);
+                }
+                return;
+              case KitListTapOpen.details:
+                openMatchDetails(item);
+                return;
+              case KitListTapOpen.openTap:
+                break;
             }
             final streamId = _itemStreamId(item);
             if (streamId.isNotEmpty) {
@@ -1927,9 +1946,19 @@ class PackPaintTree extends StatelessWidget {
               (spec['focusUp'] ?? '').toString(),
               last: true,
             );
+            // Pack `focusUpLeft` / `focusUpRight` — half-column ↑ from top row.
+            // `focusUpRight` uses lastItem so chrome lands on the trailing chip.
+            final upLeft = scope?.resolveFocusEdge(
+              (spec['focusUpLeft'] ?? '').toString(),
+            );
+            final upRight = scope?.resolveFocusEdge(
+              (spec['focusUpRight'] ?? '').toString(),
+              lastItem: true,
+            );
             final rowId =
                 listId.isEmpty ? IptvCatalogLand.itemsRowId : listId;
             final tab = (tabId ?? '').trim();
+
             final grid = CatalogCardsGrid(
               items: filtered,
               cardKind: cardKind,
@@ -1958,6 +1987,8 @@ class PackPaintTree extends StatelessWidget {
               onLeftEdge: leftEdge,
               onRightEdge: rightEdge,
               onUpEdge: upEdge,
+              onUpEdgeLeftHalf: upLeft,
+              onUpEdgeRightHalf: upRight,
               onScrollIntoViewChanged: tab.isEmpty
                   ? null
                   : (scroll) {
@@ -1974,11 +2005,21 @@ class PackPaintTree extends StatelessWidget {
             final count = filtered.isEmpty
                 ? (_listEmptyAction(context, spec) != null ? 1 : 0)
                 : filtered.length;
+            // Dense / channel list rows are vertical — ↑/↓ walk items; ←/→
+            // leave via pack focusLeft / focusRight (not a horizontal D-line).
+            final verticalList = cardKind == 'dense' ||
+                cardKind == 'list' ||
+                cardKind == 'timeline' ||
+                cardKind == 'channelList';
             return TvKitRow(
               tabId: tab,
               rowId: rowId,
               sortOrder: 2,
               itemCount: count,
+              orientation: verticalList
+                  ? ShellTvRowOrientation.vertical
+                  : ShellTvRowOrientation.horizontal,
+              onFocusUp: upEdge,
               child: grid,
             );
           }
@@ -2022,6 +2063,13 @@ class PackPaintTree extends StatelessWidget {
                           (spec['focusRight'] ?? '').toString(),
                           last: true,
                         );
+                        final upLeft = scope?.resolveFocusEdge(
+                          (spec['focusUpLeft'] ?? '').toString(),
+                        );
+                        final upRight = scope?.resolveFocusEdge(
+                          (spec['focusUpRight'] ?? '').toString(),
+                          lastItem: true,
+                        );
                         final rowId = listId.isEmpty
                             ? IptvCatalogLand.itemsRowId
                             : listId;
@@ -2054,6 +2102,8 @@ class PackPaintTree extends StatelessWidget {
                           onArmFocusMemory: liveArmBrowserStreamFocusMemory,
                           onLeftEdge: leftEdge,
                           onRightEdge: rightEdge,
+                          onUpEdgeLeftHalf: upLeft,
+                          onUpEdgeRightHalf: upRight,
                           onScrollIntoViewChanged: tab.isEmpty
                               ? null
                               : (scroll) {
@@ -2071,11 +2121,18 @@ class PackPaintTree extends StatelessWidget {
                         final count = filtered.isEmpty
                             ? (_listEmptyAction(context, spec) != null ? 1 : 0)
                             : filtered.length;
+                        final verticalList = cardKind == 'dense' ||
+                            cardKind == 'list' ||
+                            cardKind == 'timeline' ||
+                            cardKind == 'channelList';
                         return TvKitRow(
                           tabId: tab,
                           rowId: rowId,
                           sortOrder: 2,
                           itemCount: count,
+                          orientation: verticalList
+                              ? ShellTvRowOrientation.vertical
+                              : ShellTvRowOrientation.horizontal,
                           child: grid,
                         );
                       },
@@ -2184,6 +2241,11 @@ class PackPaintTree extends StatelessWidget {
                     '')
                 .toString(),
           };
+    // Schedule rows carry open on the item (hubPaintEvent) — keep it on meta
+    // so details / resolve see the same handoff as the list row.
+    if (metaMap['open'] == null && item['open'] is Map) {
+      metaMap['open'] = Map<String, dynamic>.from(item['open'] as Map);
+    }
     final meta = MetaItem.fromJson(metaMap);
     return KitListEntry(
       meta: meta,

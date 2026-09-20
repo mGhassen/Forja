@@ -76,6 +76,8 @@ abstract final class PortalCatalogPage {
     var categoryId =
         (body['category_id'] ?? body['categoryId'] ?? '').toString().trim();
 
+    final hasStreamIdsKey =
+        body.containsKey('stream_ids') || body.containsKey('streamIds');
     final streamIdsRaw = body['stream_ids'] ?? body['streamIds'];
     final streamIds = <String>[];
     if (streamIdsRaw is List) {
@@ -100,9 +102,13 @@ abstract final class PortalCatalogPage {
       pageSize = maxPageSize;
     }
 
-    // Search / id lookup: scan whole shelf. Else default to first category when
-    // none selected (rail opens on first group — never ship every stream).
-    if (streamIds.isEmpty && q.isEmpty && categoryId.isEmpty) {
+    // Explicit stream_ids list (even empty Favorites/Watched) must not fall
+    // through to the first category page.
+    if (hasStreamIdsKey) {
+      categoryId = '';
+    } else if (streamIds.isEmpty && q.isEmpty && categoryId.isEmpty) {
+      // Search / id lookup: scan whole shelf. Else default to first category
+      // when none selected (rail opens on first group — never ship every stream).
       categoryId = _firstCategoryId(categories);
     }
 

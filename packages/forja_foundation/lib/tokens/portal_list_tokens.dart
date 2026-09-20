@@ -12,6 +12,9 @@ abstract final class PortalListTokens {
   static const double rowPadH = 12;
   static const double rowPadV = 10;
   static const double rowIconSize = 16;
+
+  /// Hit box around a row action icon (copy / edit / trash).
+  static const double rowActionHitSize = 32;
   static const double metaIconSize = 12;
   static const double badgeFontSize = 9;
   static const double badgeRadius = 4;

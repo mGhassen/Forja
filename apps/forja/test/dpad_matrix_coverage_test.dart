@@ -921,4 +921,77 @@ void main() {
       expect(portal.hasFocus, isTrue);
     });
   });
+
+  group('Live Sports schedule dense list (vertical)', () {
+    testWidgets('↑/↓ walks matches; ←/→ do not step the list', (tester) async {
+      const tab = 'live_sports';
+      ShellTvFocus.currentNavTabId = tab;
+      final m0 = FocusNode(debugLabel: 'match-0');
+      final m1 = FocusNode(debugLabel: 'match-1');
+      final m2 = FocusNode(debugLabel: 'match-2');
+      addTearDown(() {
+        m0.dispose();
+        m1.dispose();
+        m2.dispose();
+      });
+
+      await tester.pumpWidget(
+        _wrapTv(
+          tab,
+          TvKitRow(
+            tabId: tab,
+            rowId: 'schedule',
+            sortOrder: 2,
+            itemCount: 3,
+            orientation: ShellTvRowOrientation.vertical,
+            child: Column(
+              children: [
+                _rowItem(
+                  tabId: tab,
+                  rowId: 'schedule',
+                  index: 0,
+                  node: m0,
+                  autoFocus: true,
+                ),
+                _rowItem(
+                  tabId: tab,
+                  rowId: 'schedule',
+                  index: 1,
+                  node: m1,
+                ),
+                _rowItem(
+                  tabId: tab,
+                  rowId: 'schedule',
+                  index: 2,
+                  node: m2,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(m0.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(m1.hasFocus, isTrue, reason: '↓ next match');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(m2.hasFocus, isTrue, reason: '↓ next match');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(m2.hasFocus, isTrue, reason: '→ must not walk a vertical list');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(m2.hasFocus, isTrue, reason: '← must not walk a vertical list');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(m1.hasFocus, isTrue, reason: '↑ previous match');
+    });
+  });
 }

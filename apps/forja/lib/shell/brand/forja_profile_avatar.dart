@@ -42,6 +42,11 @@ class _ForjaActiveProfileAvatarState extends State<ForjaActiveProfileAvatar> {
 
   Future<void> _reload() async {
     final gen = ++_reloadGen;
+    // Paint the locally cached profile first. Cold start mounts this before
+    // the restored session finishes refreshing, and `activeProfile` is a
+    // network call - without the seed the rail sat on "Profile"/forge while
+    // Settings showed the real one.
+    await _seedFromCache(gen);
     // Keep painting the last known profile while loading - clearing to null
     // left the rail stuck on "Guest" when activeProfile hung or failed.
     try {
@@ -55,6 +60,16 @@ class _ForjaActiveProfileAvatarState extends State<ForjaActiveProfileAvatar> {
       // Preserve prior chrome on failure; only push null when we never had one.
       widget.onProfile?.call(_profile);
     }
+  }
+
+  Future<void> _seedFromCache(int gen) async {
+    if (_profile != null) return;
+    final cached = await SyncService.instance.lastKnownActiveProfile();
+    if (cached == null || !mounted || gen != _reloadGen || _profile != null) {
+      return;
+    }
+    setState(() => _profile = cached);
+    widget.onProfile?.call(cached);
   }
 
   @override
