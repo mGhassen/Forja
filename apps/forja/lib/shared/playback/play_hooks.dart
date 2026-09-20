@@ -158,7 +158,9 @@ Movie movieWithResolvedArt(Movie movie) {
     final u = raw.trim();
     if (u.isEmpty) return u;
     if (u.startsWith('http')) {
-      return u.replaceAll('media.themoviedb.org/t/p', 'image.tmdb.org/t/p');
+      return u
+          .replaceAll('media.themoviedb.org/t/p', 'tmdb.forjahq.xyz/t/p')
+          .replaceAll('image.tmdb.org/t/p', 'tmdb.forjahq.xyz/t/p');
     }
     return u;
   }

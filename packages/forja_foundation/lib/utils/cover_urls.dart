@@ -2,12 +2,16 @@
 library;
 
 /// Hub thumbnail URL normalization (pack-agnostic).
+/// Official TMDB image hosts → Forja gateway (`tmdb.forjahq.xyz`).
 String normalizeCoverUrl(String raw) {
   final value = raw.trim();
   if (value.isEmpty) return value;
   final uri = Uri.tryParse(value);
-  if (uri == null || uri.host != 'media.themoviedb.org') return value;
-  return uri.replace(host: 'image.tmdb.org').toString();
+  if (uri == null) return value;
+  if (uri.host == 'media.themoviedb.org' || uri.host == 'image.tmdb.org') {
+    return uri.replace(host: 'tmdb.forjahq.xyz').toString();
+  }
+  return value;
 }
 
 /// Absolute `http(s)` URLs only. Relative `/path` keys stay unchanged

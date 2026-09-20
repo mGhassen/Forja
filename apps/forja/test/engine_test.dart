@@ -2106,7 +2106,7 @@ void main() {
       final movieblast = await loadForjaHqFile('providers/movieblast.js');
       expect(movieblast.contains('HmacSHA256'), isTrue);
       expect(movieblast.contains('/api/search/'), isTrue);
-      expect(movieblast.contains('themoviedb.org'), isTrue);
+      expect(movieblast.contains('tmdb.forjahq.xyz'), isTrue);
 
       final streamflix = await loadForjaHqFile('providers/streamflix.js');
       expect(streamflix.contains('/data.json'), isTrue);

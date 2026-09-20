@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:rust/rust.dart';
 
 class TmdbApi {
-  static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
+  static const String _imageBaseUrl = 'https://tmdb.forjahq.xyz/t/p/w500';
 
   static Future<dynamic> _fetch(String resourcePath, {int timeoutSecs = 15}) async {
     final raw = await runTmdbGetJson(resourcePath, timeoutSecs: timeoutSecs);
@@ -22,16 +22,16 @@ class TmdbApi {
   }
 
   /// High-res backdrop for hero banners / full-width headers.
-  static String getBackdropUrl(String path) => 'https://image.tmdb.org/t/p/w1280$path';
+  static String getBackdropUrl(String path) => 'https://tmdb.forjahq.xyz/t/p/w1280$path';
 
   /// Small profile photo for cast lists.
-  static String getProfileUrl(String path) => 'https://image.tmdb.org/t/p/w185$path';
+  static String getProfileUrl(String path) => 'https://tmdb.forjahq.xyz/t/p/w185$path';
 
   /// Tiny still/thumbnail for episode lists.
-  static String getStillUrl(String path) => 'https://image.tmdb.org/t/p/w300$path';
+  static String getStillUrl(String path) => 'https://tmdb.forjahq.xyz/t/p/w300$path';
 
   /// Full original quality — only use when absolutely needed.
-  static String getOriginalUrl(String path) => 'https://image.tmdb.org/t/p/original$path';
+  static String getOriginalUrl(String path) => 'https://tmdb.forjahq.xyz/t/p/original$path';
 
   Future<List<Movie>> getTrending({int page = 1}) async {
     final decoded = await _fetchMap('trending/movie/day?page=$page');

@@ -9,6 +9,7 @@ import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
 import 'package:forja/shared/engine/runtime/kit/hub_page_focus.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
 import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
@@ -243,7 +244,20 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   void _onHubFeedEpoch() {
     if (!mounted) return;
     if (!PluginRegistry.hubFeedEpochTouches(widget.pluginId)) return;
-    // Soft reload — keep painted rails while pack settings / scripts refresh.
+    // Soft: keep painted rails while scripts refresh. Must bump refreshEpoch
+    // so PackLoadedPaint rebinds — layout-only soft reload left Home on a
+    // stale/empty page-feed slice (Popular title, no hero) after Reload packs.
+    PackLoadedPaint.clearMemosForPlugin(widget.pluginId);
+    setState(() {
+      _refreshEpoch++;
+      _refreshForceNetwork = true;
+      _refreshKeepPainted = true;
+      if (_pageFeedRailIds.isNotEmpty) {
+        _pageFeedRails = null;
+        _pageFeedError = null;
+        _pageFeedFuture = _bindPageFeed(forceRefresh: true);
+      }
+    });
     unawaited(_loadPage(force: true, keepPainted: true));
   }
 

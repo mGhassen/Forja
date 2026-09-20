@@ -587,18 +587,21 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       }
       // Sync snapshot from layout (EngineCache peek) — do not wait on
       // feedFuture.then (microtask → shimmer for one+ frames).
+      // Empty slice → fall through to action:'rail' (page feed soft-fails
+      // per-rail via .catch → [] and would paint Popular title-only / no hero).
       if (syncRails != null) {
         final items = syncRails[rail] ?? const <dynamic>[];
-        final env = MetaEnvelope(
-          ok: true,
-          action: 'rail',
-          data: {'items': items},
-        );
-        PackLoadedPaint._resolved[key] = env;
-        PackLoadedPaint._resolved[_warmPaintKey] = env;
-        return Future.value(env);
-      }
-      if (feedFuture != null) {
+        if (items.isNotEmpty) {
+          final env = MetaEnvelope(
+            ok: true,
+            action: 'rail',
+            data: {'items': items},
+          );
+          PackLoadedPaint._resolved[key] = env;
+          PackLoadedPaint._resolved[_warmPaintKey] = env;
+          return Future.value(env);
+        }
+      } else if (feedFuture != null) {
         final hit = PackLoadedPaint._memo[key];
         if (hit != null) {
           return hit.then((env) {
@@ -608,16 +611,29 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           });
         }
         final future = feedFuture.then<MetaEnvelope>(
-          (rails) {
+          (rails) async {
             final items = rails[rail] ?? const <dynamic>[];
-            final env = MetaEnvelope(
-              ok: true,
-              action: 'rail',
-              data: {'items': items},
+            if (items.isNotEmpty) {
+              final env = MetaEnvelope(
+                ok: true,
+                action: 'rail',
+                data: {'items': items},
+              );
+              PackLoadedPaint._resolved[key] = env;
+              PackLoadedPaint._resolved[_warmPaintKey] = env;
+              return env;
+            }
+            // Batched feed soft-failed this rail — fetch it directly once.
+            final direct = await packOpaqueRun(
+              pluginId: widget.pluginId,
+              action: widget.action,
+              params: runParams,
+              packSourceUrl: widget.packSourceUrl,
+              forceRefresh: true,
             );
-            PackLoadedPaint._resolved[key] = env;
-            PackLoadedPaint._resolved[_warmPaintKey] = env;
-            return env;
+            PackLoadedPaint._resolved[key] = direct;
+            PackLoadedPaint._resolved[_warmPaintKey] = direct;
+            return direct;
           },
           onError: (Object e, StackTrace _) {
             final env = e is MetaEnvelope && !e.ok

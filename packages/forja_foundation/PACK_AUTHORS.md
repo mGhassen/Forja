@@ -10,7 +10,7 @@ must be **absolute `https://` URLs**. Never emit relative TMDB paths like
 `/abc.jpg` or `/t/p/w500/…` — host will not resolve them via `TmdbApi`.
 
 Title logos: prefer English (or lang-null) from TMDB `images.logos`, as
-`https://image.tmdb.org/t/p/w500` + `file_path`.
+`https://tmdb.forjahq.xyz/t/p/w500` + `file_path`.
 
 ## Keep emitting
 

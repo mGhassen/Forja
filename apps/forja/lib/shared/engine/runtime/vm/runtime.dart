@@ -1319,7 +1319,8 @@ class EngineRuntime {
         match: function(query) {
           query = query || {};
           var title = String(query.title || '').trim();
-          if (!title || !tmdbKey) return Promise.resolve(null);
+          // Gateway is keyless; pack apiKey only needed for official themoviedb base.
+          if (!title) return Promise.resolve(null);
           var prefer = String(query.type || '').trim().toLowerCase();
           var primary = prefer === 'movie' ? 'movie' : 'tv';
           var secondary = primary === 'movie' ? 'tv' : 'movie';
@@ -1351,17 +1352,17 @@ class EngineRuntime {
               mediaType: media,
               name: String(media === 'movie' ? (chosen.title || '') : (chosen.name || '')),
               year: yearOf(chosen, media) || null,
-              poster: chosen.poster_path ? 'https://image.tmdb.org/t/p/w500' + chosen.poster_path : null,
-              backdrop: chosen.backdrop_path ? 'https://image.tmdb.org/t/p/w1280' + chosen.backdrop_path : null,
+              poster: chosen.poster_path ? 'https://tmdb.forjahq.xyz/t/p/w500' + chosen.poster_path : null,
+              backdrop: chosen.backdrop_path ? 'https://tmdb.forjahq.xyz/t/p/w1280' + chosen.backdrop_path : null,
               overview: overview || null,
               rating: rating > 0 ? rating : null
             };
           }
           function search(media) {
-            var url = 'https://api.themoviedb.org/3/search/' + media +
-              '?api_key=' + encodeURIComponent(tmdbKey) +
-              '&query=' + encodeURIComponent(title) +
+            var url = 'https://tmdb.forjahq.xyz/3/search/' + media +
+              '?query=' + encodeURIComponent(title) +
               '&include_adult=false';
+            if (tmdbKey) url += '&api_key=' + encodeURIComponent(tmdbKey);
             return globalThis.fetch(url).then(function(res) {
               if (!res.ok) return null;
               return res.json();

@@ -4,15 +4,16 @@ use std::time::{Duration, Instant};
 
 use stremio::fetch_get_catalog;
 
-/// TMDB v3 root. Override with `TMDB_BASE_URL` (e.g. `http://localhost:3000/3`
-/// for a local/regional proxy). Trailing slashes are stripped at build URL time.
+/// TMDB v3 root. Default: Forja gateway (keyless). Override with `TMDB_BASE_URL`
+/// (e.g. `https://api.themoviedb.org/3` or `http://localhost:3000/3`).
+/// Trailing slashes are stripped at build URL time.
 pub const BASE_URL: &str = match option_env!("TMDB_BASE_URL") {
     Some(u) if !u.is_empty() => u,
-    _ => "https://api.themoviedb.org/3",
+    _ => "https://tmdb.forjahq.xyz/3",
 };
 
 /// TMDB v3 API key from `TMDB_API_KEY` (repo `.env` or CI env) at compile time.
-/// Empty when unset — catalog calls will fail until you configure `.env`.
+/// Required only when `BASE_URL` is the official `api.themoviedb.org` host.
 pub const API_KEY: &str = match option_env!("TMDB_API_KEY") {
     Some(k) => k,
     None => "",
@@ -24,22 +25,32 @@ pub const READ_ACCESS_TOKEN: &str = match option_env!("TMDB_READ_ACCESS_TOKEN") 
     None => "",
 };
 
+fn base_needs_client_api_key(base: &str) -> bool {
+    base.contains("api.themoviedb.org")
+}
+
 /// `resource_path` is relative to v3 root, e.g. `movie/popular` or
 /// `tv/123?append_to_response=images,external_ids`.
 pub fn build_url(resource_path: &str) -> String {
     let base = BASE_URL.trim_end_matches('/');
     let path = resource_path.trim_start_matches('/');
+    let joined = format!("{base}/{path}");
+    // Gateway injects credentials; do not append a client key.
+    if !base_needs_client_api_key(base) {
+        return joined;
+    }
     if path.contains('?') {
-        format!("{base}/{path}&api_key={API_KEY}")
+        format!("{joined}&api_key={API_KEY}")
     } else {
-        format!("{base}/{path}?api_key={API_KEY}")
+        format!("{joined}?api_key={API_KEY}")
     }
 }
 
 /// Fetches a TMDB v3 resource. On HTTP 200 returns the response body JSON string.
 /// On failure returns `{"error":"..."}` (optional `"status"` for non-200).
 pub fn get_json(resource_path: &str, timeout_secs: u64) -> String {
-    if API_KEY.is_empty() {
+    let base = BASE_URL.trim_end_matches('/');
+    if base_needs_client_api_key(base) && API_KEY.is_empty() {
         return serde_json::json!({
             "error": "TMDB_API_KEY missing — copy .env.example to .env and rebuild Rust",
         })
@@ -57,7 +68,10 @@ pub fn get_json(resource_path: &str, timeout_secs: u64) -> String {
     }
 }
 
-const IMAGE_BASE: &str = "https://image.tmdb.org/t/p";
+const IMAGE_BASE: &str = match option_env!("TMDB_IMAGE_BASE_URL") {
+    Some(u) if !u.is_empty() => u,
+    _ => "https://tmdb.forjahq.xyz/t/p",
+};
 
 const MATCH_CACHE_TTL: Duration = Duration::from_secs(30 * 60);
 const MATCH_CACHE_MAX: usize = 256;
@@ -306,21 +320,30 @@ mod tests {
     fn build_url_without_query() {
         let url = build_url("movie/popular");
         let base = BASE_URL.trim_end_matches('/');
-        assert_eq!(url, format!("{base}/movie/popular?api_key={API_KEY}"));
+        if base_needs_client_api_key(base) {
+            assert_eq!(url, format!("{base}/movie/popular?api_key={API_KEY}"));
+        } else {
+            assert_eq!(url, format!("{base}/movie/popular"));
+        }
     }
 
     #[test]
     fn build_url_with_query() {
         let url = build_url("tv/42?append_to_response=images");
         let base = BASE_URL.trim_end_matches('/');
-        assert!(url.starts_with(&format!(
-            "{base}/tv/42?append_to_response=images&api_key="
-        )));
+        if base_needs_client_api_key(base) {
+            assert!(url.starts_with(&format!(
+                "{base}/tv/42?append_to_response=images&api_key="
+            )));
+        } else {
+            assert_eq!(url, format!("{base}/tv/42?append_to_response=images"));
+        }
     }
 
     #[test]
     fn get_json_trending() {
-        if API_KEY.is_empty() {
+        let base = BASE_URL.trim_end_matches('/');
+        if base_needs_client_api_key(base) && API_KEY.is_empty() {
             eprintln!("skip get_json_trending: TMDB_API_KEY not set");
             return;
         }
@@ -337,7 +360,8 @@ mod tests {
 
     #[test]
     fn match_json_live() {
-        if API_KEY.is_empty() {
+        let base = BASE_URL.trim_end_matches('/');
+        if base_needs_client_api_key(base) && API_KEY.is_empty() {
             eprintln!("skip match_json_live: TMDB_API_KEY not set");
             return;
         }
@@ -350,7 +374,8 @@ mod tests {
 
     #[test]
     fn match_json_cache_reuses_hit() {
-        if API_KEY.is_empty() {
+        let base = BASE_URL.trim_end_matches('/');
+        if base_needs_client_api_key(base) && API_KEY.is_empty() {
             eprintln!("skip match_json_cache_reuses_hit: TMDB_API_KEY not set");
             return;
         }
