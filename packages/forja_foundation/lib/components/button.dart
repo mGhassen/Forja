@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
@@ -91,7 +92,18 @@ class _ButtonState extends State<Button> {
   }
 
   void _onStates() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // Material ButtonStyleButton.initStatesController notifies sync during
+    // child mount — setState there asserts "called during build".
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      setState(() {});
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
