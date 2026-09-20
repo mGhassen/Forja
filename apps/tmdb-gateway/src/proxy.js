@@ -41,8 +41,37 @@ export function publicOrigin() {
   return "http://localhost:3000";
 }
 
-function apiKey() {
-  return (process.env.TMDB_API_KEY || "").trim();
+/** Comma/whitespace/newline-separated v3 API keys. Prefers `TMDB_API_KEYS`, else `TMDB_API_KEY`. */
+export function apiKeysFromEnv(env = process.env) {
+  const multi = String(env.TMDB_API_KEYS || "").trim();
+  const single = String(env.TMDB_API_KEY || "").trim();
+  const raw = multi || single;
+  if (!raw) return [];
+  const seen = new Set();
+  const out = [];
+  for (const part of raw.split(/[\s,]+/)) {
+    const k = part.trim();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(k);
+  }
+  return out;
+}
+
+let apiKeyCursor = 0;
+
+/** Round-robin next API key (process-local; fine on Vercel isolates). */
+export function nextApiKey() {
+  const keys = apiKeysFromEnv();
+  if (!keys.length) return "";
+  const i = apiKeyCursor % keys.length;
+  apiKeyCursor = (apiKeyCursor + 1) % Number.MAX_SAFE_INTEGER;
+  return keys[i];
+}
+
+/** @internal test helper */
+export function resetApiKeyCursor(n = 0) {
+  apiKeyCursor = n;
 }
 
 function bearer() {
@@ -54,7 +83,7 @@ function bearer() {
 }
 
 function hasCredentials() {
-  return Boolean(apiKey() || bearer());
+  return apiKeysFromEnv().length > 0 || Boolean(bearer());
 }
 
 /** @param {string} pathNoQuery */
@@ -130,9 +159,11 @@ export async function handleRequest(request) {
   const { kind, rest } = classifyPath(url.pathname);
 
   if (kind === "health") {
+    const keys = apiKeysFromEnv();
     return json({
       ok: true,
-      hasApiKey: Boolean(apiKey()),
+      hasApiKey: keys.length > 0,
+      apiKeyCount: keys.length,
       hasBearer: Boolean(bearer()),
       cache: cacheConfigured(),
       publicOrigin: publicOrigin(),
@@ -157,7 +188,7 @@ export async function handleRequest(request) {
       return json(
         {
           error:
-            "TMDB credentials missing — set TMDB_API_KEY and/or TMDB_READ_ACCESS_TOKEN",
+            "TMDB credentials missing — set TMDB_API_KEYS (or TMDB_API_KEY) and/or TMDB_READ_ACCESS_TOKEN",
         },
         500,
       );
@@ -191,27 +222,55 @@ async function proxyApi(rest, searchParams, method) {
     });
   }
 
-  const params = new URLSearchParams(searchParams);
-  params.delete("api_key");
-  const keyVal = apiKey();
-  if (keyVal) params.set("api_key", keyVal);
-  const qs = params.toString();
-  const upstream = `${TMDB_API}/3/${rest}${qs ? `?${qs}` : ""}`;
-
-  const headers = { Accept: "application/json" };
+  const keys = apiKeysFromEnv();
   const token = bearer();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const attempts = Math.max(keys.length, token ? 1 : 0);
+  let upstreamRes = null;
+  let bodyText = "";
+  let contentType = "application/json; charset=utf-8";
+  let usedKeyIndex = -1;
 
-  let upstreamRes;
-  try {
-    upstreamRes = await fetch(upstream, { headers });
-  } catch (err) {
-    return json({ error: "Failed to reach TMDB", detail: String(err) }, 502);
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const params = new URLSearchParams(searchParams);
+    params.delete("api_key");
+    const keyVal = keys.length ? nextApiKey() : "";
+    if (keyVal) {
+      params.set("api_key", keyVal);
+      usedKeyIndex = keys.indexOf(keyVal);
+    }
+    const qs = params.toString();
+    const upstream = `${TMDB_API}/3/${rest}${qs ? `?${qs}` : ""}`;
+
+    const headers = { Accept: "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    try {
+      upstreamRes = await fetch(upstream, { headers });
+    } catch (err) {
+      if (attempt === attempts - 1) {
+        return json({ error: "Failed to reach TMDB", detail: String(err) }, 502);
+      }
+      continue;
+    }
+
+    bodyText = await upstreamRes.text();
+    contentType =
+      upstreamRes.headers.get("content-type") || "application/json; charset=utf-8";
+
+    // Rotate through keys on rate-limit / unauthorized.
+    if (
+      (upstreamRes.status === 429 || upstreamRes.status === 401) &&
+      attempt < attempts - 1 &&
+      keys.length > 1
+    ) {
+      continue;
+    }
+    break;
   }
 
-  let bodyText = await upstreamRes.text();
-  const contentType =
-    upstreamRes.headers.get("content-type") || "application/json; charset=utf-8";
+  if (!upstreamRes) {
+    return json({ error: "Failed to reach TMDB" }, 502);
+  }
 
   if (
     upstreamRes.ok &&
@@ -225,15 +284,18 @@ async function proxyApi(rest, searchParams, method) {
     void cachePutJson(key, bodyText, contentType, ttl);
   }
 
+  const outHeaders = {
+    "Content-Type": contentType,
+    "Cache-Control": upstreamRes.ok ? cacheControlFor(ttl) : "no-store",
+    "X-TMDB-Cache": "MISS",
+  };
+  if (usedKeyIndex >= 0 && keys.length > 1) {
+    outHeaders["X-TMDB-Key-Slot"] = String(usedKeyIndex);
+  }
+
   return new Response(method === "HEAD" ? null : bodyText, {
     status: upstreamRes.status,
-    headers: {
-      "Content-Type": contentType,
-      "Cache-Control": upstreamRes.ok
-        ? cacheControlFor(ttl)
-        : "no-store",
-      "X-TMDB-Cache": "MISS",
-    },
+    headers: outHeaders,
   });
 }
 

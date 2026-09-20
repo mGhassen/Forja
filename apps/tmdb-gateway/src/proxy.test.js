@@ -6,6 +6,9 @@ import {
   cacheKeyFor,
   ttlSecondsFor,
   rewriteConfigurationImages,
+  apiKeysFromEnv,
+  nextApiKey,
+  resetApiKeyCursor,
 } from "./proxy.js";
 
 test("classifyPath strips api prefix and detects kinds", () => {
@@ -54,4 +57,29 @@ test("rewriteConfigurationImages points at gateway /t/p", () => {
 test("imageStoragePath mirrors TMDB", async () => {
   const { imageStoragePath } = await import("./cache.js");
   assert.equal(imageStoragePath("w500/abc.jpg"), "t/p/w500/abc.jpg");
+});
+
+test("apiKeysFromEnv parses TMDB_API_KEYS round-robin pool", () => {
+  const keys = apiKeysFromEnv({
+    TMDB_API_KEYS: "aaa, bbb\nccc,aaa",
+    TMDB_API_KEY: "ignored-when-multi-set",
+  });
+  assert.deepEqual(keys, ["aaa", "bbb", "ccc"]);
+});
+
+test("apiKeysFromEnv falls back to TMDB_API_KEY", () => {
+  assert.deepEqual(apiKeysFromEnv({ TMDB_API_KEY: "only" }), ["only"]);
+});
+
+test("nextApiKey round-robins", () => {
+  const prev = process.env.TMDB_API_KEYS;
+  process.env.TMDB_API_KEYS = "k1,k2,k3";
+  delete process.env.TMDB_API_KEY;
+  resetApiKeyCursor(0);
+  assert.equal(nextApiKey(), "k1");
+  assert.equal(nextApiKey(), "k2");
+  assert.equal(nextApiKey(), "k3");
+  assert.equal(nextApiKey(), "k1");
+  if (prev == null) delete process.env.TMDB_API_KEYS;
+  else process.env.TMDB_API_KEYS = prev;
 });

@@ -46,8 +46,9 @@ Home local pack config:
 
 | Variable | Required | Notes |
 |----------|----------|--------|
-| `TMDB_API_KEY` | one of key/token | From Forja root `.env` |
-| `TMDB_READ_ACCESS_TOKEN` | one of key/token | Bearer (alias `TMDB_BEARER_TOKEN`) |
+| `TMDB_API_KEYS` | preferred | Comma-separated v3 keys — gateway round-robins across them |
+| `TMDB_API_KEY` | fallback | Single key if `TMDB_API_KEYS` unset |
+| `TMDB_READ_ACCESS_TOKEN` | optional | Bearer (alias `TMDB_BEARER_TOKEN`) |
 | `SUPABASE_URL` | for cache | Same project as apps/web |
 | `SUPABASE_SERVICE_ROLE_KEY` | for cache | **Service role** — never ship to clients |
 | `TMDB_GATEWAY_PUBLIC_URL` | for config rewrite | e.g. `https://tmdb.forjahq.xyz` |
