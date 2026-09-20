@@ -131,12 +131,12 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
   /// TV: first OK tunes; second OK on the channel list closes the guide.
   bool _closeArmedOnEnter = false;
 
-  static const Color _groupsTint = Color(0xE00C0C12);
-  static const Color _channelsTint = Color(0xE016161F);
   /// Brand green — matches catalog sidebar / TV focus chrome (not gray navUnderline).
   static Color get _accent => ForjaShellColors.brandGreen;
-  static Color get _panelSurface =>
-      ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.94);
+  /// Subtle column split only — keep the shell translucent like floating EPG.
+  static Color get _groupsTint => Colors.black.withValues(alpha: 0.18);
+  static Color get _channelsTint => Colors.transparent;
+  static Color get _panelSurface => GuideChromeStyle.surfaceGlass;
 
   @override
   void initState() {
@@ -973,12 +973,12 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
   Widget _buildEpgPeekCard() {
     final ch = _epgPeekChannel!;
     final future = _epgPeekFuture!;
-    // Card chrome lives on GuideEpgCard(floating) — no second border here.
+    // Same shell as player floating EPG (border + translucent fill + shadow).
     return IgnorePointer(
-      child: GuideEpgCard(
+      child: GuideFloatingEpg(
         key: ValueKey(ch.id),
         future: future,
-        floating: true,
+        maxWidth: ChannelGuidePanel.epgPeekWidth,
       ),
     );
   }

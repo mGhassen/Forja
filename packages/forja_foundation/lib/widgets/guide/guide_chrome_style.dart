@@ -14,6 +14,10 @@ abstract final class GuideChromeStyle {
   static Color get textSecondary => cinematic.textSecondary;
   static Color get border => cinematic.borderSubtle;
   static Color get surface => cinematic.menuSurface;
+  /// Translucent dark glass over live video (floating EPG, channel guide shell).
+  /// Matches [ForjaFrostedPanel] without blur — no BackdropFilter on the player.
+  static Color get surfaceGlass =>
+      cinematic.menuSurface.withValues(alpha: 0.82);
   static Color get surfaceMuted => Colors.white.withValues(alpha: 0.04);
   static Color get chipSelectedBg => ForjaShellColors.chipSelectedBg;
   static Color get chipSelectedBorder => ForjaShellColors.chipSelectedBorder;

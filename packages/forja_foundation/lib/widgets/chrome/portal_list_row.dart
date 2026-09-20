@@ -453,9 +453,8 @@ class _PortalListRowState extends State<PortalListRow> {
     return 1;
   }
 
-  /// Inner left strip — selected owns green; else probe / new chrome.
+  /// Inner left strip — probe / new chrome only. Selection uses border.
   Color _leftBarColor() {
-    if (item.selected) return ForjaShellColors.brandGreen;
     if (item.checking) return Colors.white.withValues(alpha: 0.35);
     return switch (item.healthy) {
       true => const Color(0xFF22C55E),

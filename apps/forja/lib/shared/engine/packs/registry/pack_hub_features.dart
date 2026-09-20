@@ -39,8 +39,12 @@ abstract final class PackHubFeatures {
   }
 
   /// Pack ON / fresh install → hub Features + rail on by default (RFC-086 A08).
+  ///
+  /// Forces `enabled: true` on the in-memory pack — callers often pass the
+  /// pre-toggle snapshot after [PluginRegistry.setPackEnabled], and
+  /// [refreshAndActivateInstalled] skips `!pack.enabled` (reactivate no-op).
   static Future<void> activate(EnginePack pack) =>
-      refreshAndActivateInstalled([pack]);
+      refreshAndActivateInstalled([pack.copyWith(enabled: true)]);
 
   /// Pack OFF / uninstall → drop that pack's hub tabs from Features / rail.
   ///

@@ -747,11 +747,13 @@ class _SettingsForjaPacksSectionState
     );
     // changeNotifier already reloads enginePacksProvider + MainScreen nav.
     // activate refreshes hub destinations; deactivate only drops Features ids.
+    // Pass enabled flag — [working] is still the pre-toggle snapshot.
+    final toggled = working.copyWith(enabled: enabled);
     if (enabled) {
-      await PackHubFeatures.activate(working);
+      await PackHubFeatures.activate(toggled);
     } else {
       await PluginNavRegistry.refresh();
-      await PackHubFeatures.deactivate(working);
+      await PackHubFeatures.deactivate(toggled);
     }
     if (!mounted) return;
     scheduleForjaSyncPush();
@@ -907,6 +909,7 @@ class _EnginePackActions extends StatefulWidget {
 
 class _EnginePackActionsState extends State<_EnginePackActions> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  bool _switchFocused = false;
   late final FocusNode _switchFocus =
       FocusNode(debugLabel: 'pack-action-switch');
   late final FocusNode _refreshFocus =
@@ -942,8 +945,8 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
         borderRadius: 8,
         scaleOnFocus: 1.0,
         showFocusRail: false,
-        showFocusFill: true,
-        showFocusBorder: true,
+        showFocusFill: false,
+        showFocusBorder: false,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         ensureVisibleMode: ShellPaintEnsureVisible.item,
@@ -951,14 +954,25 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
         onRightEdge: () {
           if (_refreshFocus.canRequestFocus) _refreshFocus.requestFocus();
         },
+        onFocusChange: (f) {
+          if (_switchFocused == f) return;
+          setState(() => _switchFocused = f);
+        },
+        onHoverChange: (h) {
+          if (_hoveredN.value == h) return;
+          _hoveredN.value = h;
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: IgnorePointer(
-            child: Switch(
-              value: widget.packEnabled,
-              scale: Switch.settingsScale,
-              onChanged: null,
-              emphasized: false,
+          child: ListenableBuilder(
+            listenable: _hoveredN,
+            builder: (context, _) => IgnorePointer(
+              child: Switch(
+                value: widget.packEnabled,
+                scale: Switch.settingsScale,
+                onChanged: null,
+                emphasized: _switchFocused || _hoveredN.value,
+              ),
             ),
           ),
         ),

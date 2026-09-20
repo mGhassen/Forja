@@ -1101,7 +1101,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
 }
 
 /// Toggle row used inside [SettingsGroup].
-class SettingsToggleRow extends StatelessWidget {
+class SettingsToggleRow extends StatefulWidget {
   const SettingsToggleRow({
     super.key,
     required this.title,
@@ -1128,125 +1128,166 @@ class SettingsToggleRow extends StatelessWidget {
   final String leadingCheckLabel;
 
   @override
+  State<SettingsToggleRow> createState() => _SettingsToggleRowState();
+}
+
+class _SettingsToggleRowState extends State<SettingsToggleRow> {
+  bool _focused = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final enabled = widget.enabled;
+    final value = widget.value;
+    final onChanged = widget.onChanged;
     final titleColor = enabled
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
-    final checkEnabled = enabled && value && onLeadingCheckChanged != null;
+    final checkEnabled =
+        enabled && value && widget.onLeadingCheckChanged != null;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final content = Opacity(
-      opacity: enabled ? 1 : 0.55,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  settingsTitleText(
-                    title,
-                    TextStyle(
-                      color: titleColor,
-                      fontSize: _tvBody(context),
-                      fontWeight: FontWeight.w600,
-                    ),
-                    adminOnly: adminOnly,
-                    sparkSize: 13,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: ForjaShellColors.textSecondary,
-                      fontSize: _tvMeta(context),
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            ExcludeFocus(
-              excluding: tv,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (leadingCheckValue != null) ...[
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: checkEnabled
-                          ? () => onLeadingCheckChanged!(!leadingCheckValue!)
-                          : null,
-                      child: Opacity(
-                        opacity: checkEnabled ? 1 : 0.45,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: Checkbox(
-                                value: leadingCheckValue,
-                                onChanged: checkEnabled
-                                    ? (v) {
-                                        if (v != null) {
-                                          onLeadingCheckChanged!(v);
-                                        }
-                                      }
-                                    : null,
-                                materialTapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
-                                visualDensity: VisualDensity.compact,
-                                side: BorderSide(
-                                  color: checkEnabled
-                                      ? ForjaShellColors.textSecondary
-                                      : ForjaShellColors.borderSubtle,
-                                ),
-                                activeColor: ForjaShellColors.brandGreen,
-                                checkColor: Colors.black,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              leadingCheckLabel,
-                              style: TextStyle(
-                                color: checkEnabled
-                                    ? ForjaShellColors.textPrimary
-                                    : ForjaShellColors.textSecondary,
-                                fontSize: _tvMeta(context),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+
+    return ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) {
+        final thumbActive = ShellInputPolicy.interactiveActive(
+          ShellScope.inputPolicyOf(context),
+          hovered: _hoveredN.value,
+          focused: _focused,
+          context: context,
+        );
+        final content = Opacity(
+          opacity: enabled ? 1 : 0.55,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      settingsTitleText(
+                        widget.title,
+                        TextStyle(
+                          color: titleColor,
+                          fontSize: _tvBody(context),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        adminOnly: widget.adminOnly,
+                        sparkSize: 13,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.subtitle,
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary,
+                          fontSize: _tvMeta(context),
+                          height: 1.35,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                  ],
-                  Switch(
-                    value: value,
-                    onChanged: enabled ? onChanged : null,
-                    scale: Switch.settingsScale,
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 12),
+                ExcludeFocus(
+                  excluding: tv,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.leadingCheckValue != null) ...[
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: checkEnabled
+                              ? () => widget.onLeadingCheckChanged!(
+                                    !widget.leadingCheckValue!,
+                                  )
+                              : null,
+                          child: Opacity(
+                            opacity: checkEnabled ? 1 : 0.45,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: widget.leadingCheckValue,
+                                    onChanged: checkEnabled
+                                        ? (v) {
+                                            if (v != null) {
+                                              widget.onLeadingCheckChanged!(v);
+                                            }
+                                          }
+                                        : null,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                    side: BorderSide(
+                                      color: checkEnabled
+                                          ? ForjaShellColors.textSecondary
+                                          : ForjaShellColors.borderSubtle,
+                                    ),
+                                    activeColor: ForjaShellColors.brandGreen,
+                                    checkColor: Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  widget.leadingCheckLabel,
+                                  style: TextStyle(
+                                    color: checkEnabled
+                                        ? ForjaShellColors.textPrimary
+                                        : ForjaShellColors.textSecondary,
+                                    fontSize: _tvMeta(context),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Switch(
+                        value: value,
+                        onChanged: enabled ? onChanged : null,
+                        scale: Switch.settingsScale,
+                        emphasized: thumbActive,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
 
-    return shellFocusableTap(
-      context: context,
-      onTap: enabled ? () => onChanged(!value) : null,
-      borderRadius: SettingsTokens.categoryTileRadius,
-      scaleOnFocus: 1.0,
-      showFocusRail: true,
-      tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellPaintEnsureVisible.item,
-      child: content,
+        return shellFocusableTap(
+          context: context,
+          onTap: enabled ? () => onChanged(!value) : null,
+          borderRadius: SettingsTokens.categoryTileRadius,
+          scaleOnFocus: 1.0,
+          showFocusRail: true,
+          tvTabId: 'settings',
+          tvZone: ShellTvZone.settings,
+          ensureVisibleMode: ShellPaintEnsureVisible.item,
+          onHoverChange: (h) {
+            if (_hoveredN.value == h) return;
+            _hoveredN.value = h;
+          },
+          onFocusChange: (f) {
+            if (_focused == f) return;
+            setState(() => _focused = f);
+          },
+          child: content,
+        );
+      },
     );
   }
 }

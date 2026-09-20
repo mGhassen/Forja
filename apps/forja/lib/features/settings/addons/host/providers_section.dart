@@ -382,31 +382,15 @@ class _SettingsForjaAddonsSectionState
                           onChanged: addon.scrapers.isEmpty ? null : toggle,
                         );
                       }
-                      return shellFocusableTap(
-                        context: context,
-                        onTap: addon.scrapers.isEmpty
-                            ? null
-                            : () => toggle(!allOn),
-                        borderRadius: 20,
-                        scaleOnFocus: 1.0,
-                        showFocusRail: false,
-                        showFocusFill: true,
-                        showFocusBorder: true,
-                        tvTabId: 'settings',
-                        tvZone: ShellTvZone.settings,
-                        ensureVisibleMode: ShellPaintEnsureVisible.item,
+                      return _FocusWhiteSwitch(
+                        value: allOn,
+                        enabled: addon.scrapers.isNotEmpty,
+                        onToggle: () => toggle(!allOn),
                         onLeftEdge: () {
                           SettingsExpandHeaderFocus.maybeFocusHeaderOf(
                             context,
                           )?.call();
                         },
-                        child: IgnorePointer(
-                          child: Switch(
-                            value: allOn,
-                            scale: Switch.settingsScale,
-                            onChanged: (_) {},
-                          ),
-                        ),
                       );
                     },
                   ),
@@ -1120,6 +1104,62 @@ class _TestResult extends StatelessWidget {
             child: Text(message, style: TextStyle(color: color, fontSize: 13)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// TV/focus switch chrome — white thumb on focus/hover, no focus border box.
+class _FocusWhiteSwitch extends StatefulWidget {
+  const _FocusWhiteSwitch({
+    required this.value,
+    required this.enabled,
+    required this.onToggle,
+    this.onLeftEdge,
+  });
+
+  final bool value;
+  final bool enabled;
+  final VoidCallback onToggle;
+  final VoidCallback? onLeftEdge;
+
+  @override
+  State<_FocusWhiteSwitch> createState() => _FocusWhiteSwitchState();
+}
+
+class _FocusWhiteSwitchState extends State<_FocusWhiteSwitch> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.enabled ? widget.onToggle : null,
+      borderRadius: 20,
+      scaleOnFocus: 1.0,
+      showFocusRail: false,
+      showFocusFill: false,
+      showFocusBorder: false,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
+      onLeftEdge: widget.onLeftEdge,
+      onFocusChange: (f) {
+        if (_focused == f) return;
+        setState(() => _focused = f);
+      },
+      onHoverChange: (h) {
+        if (_hovered == h) return;
+        setState(() => _hovered = h);
+      },
+      child: IgnorePointer(
+        child: Switch(
+          value: widget.value,
+          scale: Switch.settingsScale,
+          onChanged: null,
+          emphasized: _focused || _hovered,
+        ),
       ),
     );
   }

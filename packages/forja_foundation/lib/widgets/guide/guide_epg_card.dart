@@ -70,7 +70,7 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
         margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         decoration: BoxDecoration(
-          color: GuideChromeStyle.surfaceMuted,
+          color: GuideChromeStyle.surfaceGlass,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: GuideChromeStyle.border),
         ),
@@ -271,7 +271,8 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
       margin: const EdgeInsets.fromLTRB(0, 8, 0, 10),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: GuideChromeStyle.surfaceMuted,
+        // Same translucent dark glass as player side panels / channel guide shell.
+        color: GuideChromeStyle.surfaceGlass,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: GuideChromeStyle.border),
       ),

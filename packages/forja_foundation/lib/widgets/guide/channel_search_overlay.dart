@@ -65,10 +65,9 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
     return true;
   }
 
-  static const Color _panelTint = Color(0xE016161F);
+  static Color get _panelTint => Colors.transparent;
   static Color get _accent => ForjaShellColors.brandGreen;
-  static Color get _panelSurface =>
-      ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.94);
+  static Color get _panelSurface => GuideChromeStyle.surfaceGlass;
 
   @override
   void initState() {

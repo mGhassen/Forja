@@ -2,9 +2,10 @@ import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
-/// Forja on/off switch — flat track, compact thumb (desktop + TV settings density).
+/// Forja on/off switch — flat pill track, circular thumb, no outline.
+///
+/// Hover / focus / [emphasized] → white thumb.
 class Switch extends StatefulWidget {
   const Switch({
     super.key,
@@ -14,7 +15,7 @@ class Switch extends StatefulWidget {
     this.emphasized = false,
   });
 
-  /// Extra scale on top of [SettingsTokens] switch geometry.
+  /// Extra uniform scale on top of [SettingsTokens] geometry.
   static const double settingsScale = 1.0;
 
   final bool value;
@@ -30,96 +31,68 @@ class Switch extends StatefulWidget {
 
 class _SwitchState extends State<Switch> {
   bool _hovered = false;
-  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
-    final w = SettingsTokens.switchTrackWidthOf(context) * scale;
-    final h = SettingsTokens.switchTrackHeightOf(context) * scale;
+    final trackW = SettingsTokens.switchTrackWidthOf(context) * scale;
+    final trackH = SettingsTokens.switchTrackHeightOf(context) * scale;
     final thumb = SettingsTokens.switchThumbSizeOf(context) * scale;
-    final hitW = SettingsTokens.switchHitWidthOf(context) * scale;
-    final hitH = SettingsTokens.switchHitHeightOf(context) * scale;
-    final inset = (h - thumb) / 2;
+    final inset = (trackH - thumb) / 2;
     final on = widget.value;
     final enabled = widget.onChanged != null;
-    final active = ShellPaintScope.interactiveActive(
-      context,
-      hovered: _hovered,
-      focused: _focused,
-    );
-    // Match Material: white thumb on hover/focus, or when parent sets [emphasized].
-    final thumbWhite = widget.emphasized || (enabled && active);
+    final thumbWhite = widget.emphasized || _hovered;
 
-    return Semantics(
-      toggled: on,
-      enabled: enabled,
-      button: true,
-      child: Focus(
-        canRequestFocus: enabled,
-        onFocusChange: (f) {
-          if (_focused == f) return;
-          setState(() => _focused = f);
-        },
-        child: MouseRegion(
-          onEnter: (_) {
-            if (_hovered) return;
-            setState(() => _hovered = true);
-          },
-          onExit: (_) {
-            if (!_hovered) return;
-            setState(() => _hovered = false);
-          },
-          cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: enabled
-                ? () {
-                    HapticFeedback.selectionClick();
-                    widget.onChanged!(!on);
-                  }
-                : null,
-            child: Opacity(
-              opacity: enabled ? 1 : 0.45,
-              child: SizedBox(
-                width: hitW,
-                height: hitH,
-                child: Center(
-                  child: SizedBox(
-                    width: w,
-                    height: h,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      decoration: BoxDecoration(
-                        color: on
-                            ? ForjaShellColors.brandGreen
-                            : const Color(0xFF3A3A3A),
-                        borderRadius: BorderRadius.circular(h / 2),
-                        border: on
-                            ? null
-                            : Border.all(color: ForjaShellColors.borderSubtle),
-                      ),
-                      child: AnimatedAlign(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOut,
-                        alignment: on
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Padding(
-                          padding: EdgeInsets.all(inset),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 120),
-                            curve: Curves.easeOut,
-                            width: thumb,
-                            height: thumb,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: thumbWhite
-                                  ? Colors.white
-                                  : ForjaShellColors.surfaceElevated,
-                            ),
-                          ),
+    return MouseRegion(
+      onEnter: (_) {
+        if (_hovered) return;
+        setState(() => _hovered = true);
+      },
+      onExit: (_) {
+        if (!_hovered) return;
+        setState(() => _hovered = false);
+      },
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled
+            ? () {
+                HapticFeedback.selectionClick();
+                widget.onChanged!(!on);
+              }
+            : null,
+        child: Semantics(
+          toggled: on,
+          enabled: enabled,
+          button: true,
+          child: Opacity(
+            opacity: enabled ? 1 : 0.45,
+            child: SizedBox(
+              width: trackW,
+              height: trackH,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: on
+                      ? ForjaShellColors.brandGreen
+                      : const Color(0xFF3A3A3A),
+                  borderRadius: BorderRadius.circular(trackH / 2),
+                ),
+                child: AnimatedAlign(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  alignment:
+                      on ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.all(inset),
+                    child: SizedBox(
+                      width: thumb,
+                      height: thumb,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: thumbWhite
+                              ? Colors.white
+                              : ForjaShellColors.surfaceElevated,
                         ),
                       ),
                     ),
@@ -139,7 +112,7 @@ SwitchThemeData get forjaSwitchThemeData => SwitchThemeData(
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       thumbColor: forjaSwitchThumbColor,
       trackColor: forjaSwitchTrackColor,
-      trackOutlineColor: forjaSwitchTrackOutlineColor,
+      trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       overlayColor: forjaSwitchOverlayColor,
     );
 
@@ -159,14 +132,6 @@ final WidgetStateProperty<Color?> forjaSwitchTrackColor =
     return ForjaShellColors.brandGreen;
   }
   return const Color(0xFF3A3A3A);
-});
-
-final WidgetStateProperty<Color?> forjaSwitchTrackOutlineColor =
-    WidgetStateProperty.resolveWith((states) {
-  if (states.contains(WidgetState.selected)) {
-    return Colors.transparent;
-  }
-  return ForjaShellColors.borderSubtle;
 });
 
 const WidgetStateProperty<Color?> forjaSwitchOverlayColor =
