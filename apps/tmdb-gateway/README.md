@@ -6,7 +6,7 @@ Forja-owned TMDB **API + image** reverse proxy. Home pack points `config.base` /
 - `/3/*` JSON → Postgres `tmdb_response_cache`
 - `/t/p/*` images → Storage bucket `tmdb-images` + `tmdb_image_cache` metadata
 
-## Routes
+## Routes 
 
 | Path | Upstream |
 |------|----------|
