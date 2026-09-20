@@ -63,7 +63,8 @@ Apply migrations before relying on cache (ops approval):
 
 1. Import this directory as a Vercel project (root: `apps/tmdb-gateway`)
 2. Set env vars above + custom domain `tmdb.forjahq.xyz`
-3. Deploy
+3. Framework preset: **Other**. Deployment Protection: **off** for Production.
+4. Deploy — routes go through `api/index.js` via `vercel.json` rewrites (`/3/*`, `/t/p/*`, `/health`)
 
 ## Cache TTLs
 

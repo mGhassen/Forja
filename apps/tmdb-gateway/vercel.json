@@ -1,9 +1,11 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/health", "destination": "/api/health" },
-    { "source": "/health/:path*", "destination": "/api/health/:path*" },
-    { "source": "/3/:path*", "destination": "/api/3/:path*" },
-    { "source": "/t/p/:path*", "destination": "/api/t/p/:path*" }
+    { "source": "/health", "destination": "/api?__p=health" },
+    { "source": "/health/:path*", "destination": "/api?__p=health/:path*" },
+    { "source": "/3", "destination": "/api?__p=3" },
+    { "source": "/3/:path*", "destination": "/api?__p=3/:path*" },
+    { "source": "/t/p", "destination": "/api?__p=t/p" },
+    { "source": "/t/p/:path*", "destination": "/api?__p=t/p/:path*" }
   ]
 }
