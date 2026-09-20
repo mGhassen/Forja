@@ -1659,6 +1659,7 @@ ButtonVariant _buttonVariant(String? raw) => switch ((raw ?? '').toLowerCase()) 
       'ghost' => ButtonVariant.ghost,
       'outline' => ButtonVariant.outline,
       'destructive' => ButtonVariant.destructive,
+      'accent' => ButtonVariant.accent,
       'link' => ButtonVariant.link,
       'plainicon' || 'plain_icon' => ButtonVariant.plainIcon,
       _ => ButtonVariant.secondary,

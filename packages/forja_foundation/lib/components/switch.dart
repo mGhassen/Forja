@@ -40,7 +40,7 @@ class _SwitchState extends State<Switch> {
     final thumb = SettingsTokens.switchThumbSizeOf(context) * scale;
     final inset = (trackH - thumb) / 2;
     final on = widget.value;
-    final enabled = widget.onChanged != null;
+    final interactive = widget.onChanged != null;
     final thumbWhite = widget.emphasized || _hovered;
 
     return MouseRegion(
@@ -52,10 +52,11 @@ class _SwitchState extends State<Switch> {
         if (!_hovered) return;
         setState(() => _hovered = false);
       },
-      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      cursor:
+          interactive ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: enabled
+        onTap: interactive
             ? () {
                 HapticFeedback.selectionClick();
                 widget.onChanged!(!on);
@@ -63,37 +64,35 @@ class _SwitchState extends State<Switch> {
             : null,
         child: Semantics(
           toggled: on,
-          enabled: enabled,
+          enabled: interactive,
           button: true,
-          child: Opacity(
-            opacity: enabled ? 1 : 0.45,
-            child: SizedBox(
-              width: trackW,
-              height: trackH,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: on
-                      ? ForjaShellColors.brandGreen
-                      : const Color(0xFF3A3A3A),
-                  borderRadius: BorderRadius.circular(trackH / 2),
-                ),
-                child: AnimatedAlign(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOut,
-                  alignment:
-                      on ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Padding(
-                    padding: EdgeInsets.all(inset),
-                    child: SizedBox(
-                      width: thumb,
-                      height: thumb,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: thumbWhite
-                              ? Colors.white
-                              : ForjaShellColors.surfaceElevated,
-                        ),
+          // Full brand colors even when onChanged is null (IgnorePointer chrome
+          // in packs / TV — parent owns the tap; do not wash out green).
+          child: SizedBox(
+            width: trackW,
+            height: trackH,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: on
+                    ? ForjaShellColors.brandGreen
+                    : const Color(0xFF3A3A3A),
+                borderRadius: BorderRadius.circular(trackH / 2),
+              ),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                alignment: on ? Alignment.centerRight : Alignment.centerLeft,
+                child: Padding(
+                  padding: EdgeInsets.all(inset),
+                  child: SizedBox(
+                    width: thumb,
+                    height: thumb,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: thumbWhite
+                            ? Colors.white
+                            : ForjaShellColors.surfaceElevated,
                       ),
                     ),
                   ),

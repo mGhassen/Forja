@@ -20,6 +20,7 @@ import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -352,6 +353,8 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
   bool? _optimisticEnabled;
   bool _lanEnabled = false;
   bool _busy = false;
+  bool _rowHovered = false;
+  bool _rowFocused = false;
 
   @override
   void initState() {
@@ -539,6 +542,14 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
                       _detailsFocus.requestFocus();
                     }
                   : null,
+              onHoverChange: (h) {
+                if (_rowHovered == h) return;
+                setState(() => _rowHovered = h);
+              },
+              onFocusChange: (f) {
+                if (_rowFocused == f) return;
+                setState(() => _rowFocused = f);
+              },
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
@@ -551,6 +562,12 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
                       addonId: meta.id,
                       visibility: visibility,
                       chromeOnly: true,
+                      chromeEmphasized: ShellInputPolicy.interactiveActive(
+                        ShellScope.inputPolicyOf(context),
+                        hovered: _rowHovered,
+                        focused: _rowFocused,
+                        context: context,
+                      ),
                       optimisticEnabled: _optimisticEnabled,
                       lanEnabled: meta.id == SettingsAddonId.lan
                           ? _lanEnabled

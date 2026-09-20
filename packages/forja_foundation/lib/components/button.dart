@@ -9,6 +9,8 @@ enum ButtonVariant {
   ghost,
   outline,
   destructive,
+  /// Brand-green tinted fill at rest (Settings accent CTAs).
+  accent,
   link,
   plainIcon,
 }
@@ -280,49 +282,75 @@ class _ButtonState extends State<Button> {
       );
     }
     final engagedFg = hoverColor ?? theme.brandGreen;
+    final engagedColors = _ButtonColors(
+      foreground: engagedFg,
+      background: engagedFg.withValues(alpha: 0.12),
+      border: engagedFg.withValues(alpha: 0.55),
+    );
     return switch (variant) {
       // White at rest; brand green (or pack hoverColor) on hover / focus / press.
       ButtonVariant.primary => engaged
-          ? _ButtonColors(
-              foreground: engagedFg,
-              background: engagedFg.withValues(alpha: 0.12),
-              border: engagedFg.withValues(alpha: 0.55),
-            )
+          ? engagedColors
           : _ButtonColors(
               foreground: theme.textPrimary,
               background: Colors.white.withValues(alpha: 0.03),
               border: ForjaShellColors.ghostBorder,
             ),
-      ButtonVariant.secondary => _ButtonColors(
-          foreground: theme.textPrimary,
-          background: Colors.white.withValues(alpha: 0.03),
-          border: ForjaShellColors.ghostBorder,
-        ),
-      ButtonVariant.ghost => _ButtonColors(
-          foreground: theme.textPrimary,
-          background: Colors.transparent,
-          border: null,
-        ),
-      ButtonVariant.outline => _ButtonColors(
-          foreground: theme.textPrimary,
-          background: Colors.transparent,
-          border: theme.borderSubtle,
-        ),
+      ButtonVariant.secondary => engaged
+          ? engagedColors
+          : _ButtonColors(
+              foreground: theme.textPrimary,
+              background: Colors.white.withValues(alpha: 0.03),
+              border: ForjaShellColors.ghostBorder,
+            ),
+      ButtonVariant.ghost => engaged
+          ? engagedColors
+          : _ButtonColors(
+              foreground: theme.textPrimary,
+              background: Colors.transparent,
+              border: null,
+            ),
+      ButtonVariant.outline => engaged
+          ? engagedColors
+          : _ButtonColors(
+              foreground: theme.textPrimary,
+              background: Colors.transparent,
+              border: theme.borderSubtle,
+            ),
       ButtonVariant.destructive => const _ButtonColors(
           foreground: Color(0xFFF87171),
           background: Color(0x1FF87171),
           border: Color(0x8CF87171),
         ),
-      ButtonVariant.link => _ButtonColors(
-          foreground: theme.brandGreen,
-          background: Colors.transparent,
-          border: null,
-        ),
-      ButtonVariant.plainIcon => _ButtonColors(
-          foreground: theme.textSecondary,
-          background: Colors.transparent,
-          border: null,
-        ),
+      ButtonVariant.accent => engaged
+          ? _ButtonColors(
+              foreground: theme.brandGreen,
+              background: theme.brandGreen.withValues(alpha: 0.18),
+              border: theme.brandGreen.withValues(alpha: 0.7),
+            )
+          : _ButtonColors(
+              foreground: theme.brandGreen,
+              background: theme.brandGreen.withValues(alpha: 0.12),
+              border: theme.brandGreen.withValues(alpha: 0.55),
+            ),
+      ButtonVariant.link => engaged
+          ? engagedColors
+          : _ButtonColors(
+              foreground: theme.brandGreen,
+              background: Colors.transparent,
+              border: null,
+            ),
+      ButtonVariant.plainIcon => engaged
+          ? _ButtonColors(
+              foreground: engagedFg,
+              background: Colors.transparent,
+              border: null,
+            )
+          : _ButtonColors(
+              foreground: theme.textSecondary,
+              background: Colors.transparent,
+              border: null,
+            ),
     };
   }
 }

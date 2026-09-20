@@ -131,6 +131,7 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
               label: updating ? 'Updating…' : 'Update all',
               icon: Icons.download_rounded,
               busy: updating,
+              accent: true,
               onPressed: updating ? null : onUpdateAll,
             ),
           ] else if (checking) ...[

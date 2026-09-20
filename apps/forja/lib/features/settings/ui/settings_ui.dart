@@ -2014,6 +2014,7 @@ class SettingsFilledButton extends StatelessWidget {
     this.icon,
     this.busy = false,
     this.secondary = false,
+    this.accent = false,
     this.expand = false,
     this.focusNode,
     this.onLeftEdge,
@@ -2027,12 +2028,20 @@ class SettingsFilledButton extends StatelessWidget {
   final IconData? icon;
   final bool busy;
   final bool secondary;
+  /// Brand-green tinted CTA (e.g. pack Update all).
+  final bool accent;
   final bool expand;
   final FocusNode? focusNode;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+
+  ButtonVariant get _variant => secondary
+      ? ButtonVariant.secondary
+      : accent
+          ? ButtonVariant.accent
+          : ButtonVariant.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -2049,9 +2058,7 @@ class SettingsFilledButton extends StatelessWidget {
           loading: busy,
           expand: expand,
           height: 36,
-          variant: secondary
-              ? ButtonVariant.secondary
-              : ButtonVariant.primary,
+          variant: _variant,
         ),
       );
       final tap = shellFocusableTap(
@@ -2085,9 +2092,7 @@ class SettingsFilledButton extends StatelessWidget {
       expand: expand,
       height: 36,
       focusNode: focusNode,
-      variant: secondary
-          ? ButtonVariant.secondary
-          : ButtonVariant.primary,
+      variant: _variant,
     );
     if (expand) return button;
     return Align(alignment: Alignment.centerLeft, child: button);

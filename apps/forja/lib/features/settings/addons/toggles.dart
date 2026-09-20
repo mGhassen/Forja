@@ -143,6 +143,7 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
     this.focusNode,
     this.onLeftEdge,
     this.chromeOnly = false,
+    this.chromeEmphasized = false,
     this.optimisticEnabled,
     this.lanEnabled,
   });
@@ -158,6 +159,9 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
 
   /// Visual switch only — parent row owns activation.
   final bool chromeOnly;
+
+  /// When [chromeOnly], parent row hover/focus drives white thumb.
+  final bool chromeEmphasized;
 
   /// Parent-held optimistic value while a row flip is in flight.
   final bool? optimisticEnabled;
@@ -292,13 +296,24 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
           value: enabled,
           onChanged: null,
           scale: Switch.settingsScale,
-          emphasized: _chromeActiveFor(hovered),
+          emphasized: widget.chromeOnly
+              ? (widget.chromeEmphasized || _chromeActiveFor(hovered))
+              : _chromeActiveFor(hovered),
         );
 
     if (widget.chromeOnly) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: IgnorePointer(child: switchChrome(false)),
+        child: MouseRegion(
+          onEnter: (_) => _setHovered(true),
+          onExit: (_) => _setHovered(false),
+          child: ListenableBuilder(
+            listenable: _hoveredN,
+            builder: (context, _) => IgnorePointer(
+              child: switchChrome(_hoveredN.value),
+            ),
+          ),
+        ),
       );
     }
 
