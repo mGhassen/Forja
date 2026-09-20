@@ -48,6 +48,8 @@ class _SettingsForjaPacksSectionState
       FocusNode(debugLabel: 'packs-toolbar-reload');
   late final FocusNode _toolbarInstallFocus =
       FocusNode(debugLabel: 'packs-toolbar-install');
+  late final FocusNode _toolbarUpdateAllFocus =
+      FocusNode(debugLabel: 'packs-toolbar-update-all');
   bool _engineInstalling = false;
   bool _engineReloading = false;
   bool _engineUpdatingAll = false;
@@ -79,6 +81,7 @@ class _SettingsForjaPacksSectionState
     _toolbarDownloadFocus.dispose();
     _toolbarReloadFocus.dispose();
     _toolbarInstallFocus.dispose();
+    _toolbarUpdateAllFocus.dispose();
     _engineController.dispose();
     super.dispose();
   }
@@ -269,6 +272,12 @@ class _SettingsForjaPacksSectionState
               onUpdateAll: () => _updateAllEnginePacks(packUpdates.updates),
               onCheckAgain: () =>
                   ref.read(enginePackUpdatesProvider.notifier).refresh(),
+              updateAllFocusNode: _toolbarUpdateAllFocus,
+              onUpdateAllLeftEdge: () {
+                if (_toolbarInstallFocus.canRequestFocus) {
+                  _toolbarInstallFocus.requestFocus();
+                }
+              },
               actions: [
                 if (downloadable.isNotEmpty)
                   SettingsFilledButton(
@@ -327,6 +336,14 @@ class _SettingsForjaPacksSectionState
                     } else if (downloadable.isNotEmpty &&
                         _toolbarDownloadFocus.canRequestFocus) {
                       _toolbarDownloadFocus.requestFocus();
+                    }
+                  },
+                  onRightEdge: () {
+                    final hasUpdates =
+                        packs.isNotEmpty && packUpdates.count > 0;
+                    if (hasUpdates &&
+                        _toolbarUpdateAllFocus.canRequestFocus) {
+                      _toolbarUpdateAllFocus.requestFocus();
                     }
                   },
                   onPressed: _engineReloading ? null : _installEnginePack,

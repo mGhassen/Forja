@@ -65,6 +65,8 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
     required this.onCheckAgain,
     this.updating = false,
     this.actions = const [],
+    this.updateAllFocusNode,
+    this.onUpdateAllLeftEdge,
   });
 
   final int updateCount;
@@ -73,6 +75,9 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
   final VoidCallback onUpdateAll;
   final VoidCallback onCheckAgain;
   final List<Widget> actions;
+  final FocusNode? updateAllFocusNode;
+  /// TV: ← from Update all (Install sits to the left in [actions]).
+  final VoidCallback? onUpdateAllLeftEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -132,6 +137,8 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
               icon: Icons.download_rounded,
               busy: updating,
               accent: true,
+              focusNode: updateAllFocusNode,
+              onLeftEdge: onUpdateAllLeftEdge,
               onPressed: updating ? null : onUpdateAll,
             ),
           ] else if (checking) ...[
