@@ -31,6 +31,7 @@ The **IPTV** tab comes from the **IPTV hub pack** (install under **Settings → 
 - See [IPTV — M3U](iptv-m3u.md) and [IPTV — Stalker](iptv-stalker.md) for type-specific setup
 - Portal passwords use the device vault; share codes and CSV export still contain secrets — keep them private
 - Clear stale catalog cache from **Settings → Data & backup → IPTV portal cache** when the pack is installed
+- On phone hotspots, if portals or catalogs fail while the phone browser still works, Forja retries DNS via Cloudflare (`1.1.1.1`) — including account sync on Android. You can also turn off **Private DNS** (`dns.google`) on the TV.
 - Operators manage the shared portal pool via [Catalog ops](iptv-catalog-ops.md)
 
 ## Related

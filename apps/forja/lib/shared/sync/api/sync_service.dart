@@ -618,11 +618,19 @@ class SyncService {
     return active;
   }
 
-  Future<bool> selectProfile(String profileId) async {
+  Future<bool> selectProfile(
+    String profileId, {
+    /// When true, skip [listProfiles] (Who's watching / splash already have
+    /// the [SyncProfile] from the loaded list). Avoids a network round-trip
+    /// before the avatar splash can paint.
+    bool skipRemoteCheck = false,
+  }) async {
     final userId = session?.user.id;
     if (userId == null) return false;
-    final profiles = await listProfiles();
-    if (!profiles.any((profile) => profile.id == profileId)) return false;
+    if (!skipRemoteCheck) {
+      final profiles = await listProfiles();
+      if (!profiles.any((profile) => profile.id == profileId)) return false;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_activeProfileKeyPrefix$userId', profileId);
     await _syncPluginDiskScope(accountId: userId, profileId: profileId);

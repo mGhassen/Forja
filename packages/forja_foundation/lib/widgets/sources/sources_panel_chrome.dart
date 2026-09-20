@@ -289,15 +289,12 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
     unawaited(_ensureLoaded(id));
   }
 
-  /// Always-visible thumb so long Providers / Live TV lists show scroll position.
   Widget _streamListScrollbar({
     required bool interactive,
     required Widget child,
   }) {
     return RawScrollbar(
       controller: _listScroll,
-      thumbVisibility: true,
-      trackVisibility: true,
       interactive: interactive,
       thickness: ForjaScrollbarStyle.thickness,
       radius: ForjaScrollbarStyle.radius,

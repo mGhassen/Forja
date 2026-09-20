@@ -126,6 +126,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       _setStatus('Loading ${widget.profile.name}…');
       final selected = await SyncService.instance.selectProfile(
         widget.profile.id,
+        skipRemoteCheck: true,
       );
       if (!selected) {
         throw StateError('Profile unavailable');

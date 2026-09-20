@@ -422,9 +422,10 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                 SettingsTokens.pagePaddingOf(context),
                 4,
               ),
-              child: const ShellTabHeader(
+              child: ShellTabHeader(
                 title: 'Settings',
                 padding: EdgeInsets.zero,
+                fontSize: SettingsTokens.hubTitleSizeOf(context),
               ),
             ),
             Expanded(
@@ -513,9 +514,10 @@ class _CategorySidebar extends ConsumerWidget {
                 16,
                 8,
               ),
-              child: const ShellTabHeader(
+              child: ShellTabHeader(
                 title: 'Settings',
                 padding: EdgeInsets.zero,
+                fontSize: SettingsTokens.hubTitleSizeOf(context),
               ),
             ),
             Expanded(

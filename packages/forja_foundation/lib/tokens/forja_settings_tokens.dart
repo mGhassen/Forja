@@ -31,6 +31,9 @@ abstract final class SettingsTokens {
   static const double categoryIconSizeTv = categoryIconSize * _s;
   static const double pageTitleSize = 22;
   static const double pageTitleSizeTv = ShellTokens.tvTitleFontSize;
+  /// Hub list / sidebar "Settings" title ([ShellTabHeader]).
+  static const double hubTitleSize = 24;
+  static const double hubTitleSizeTv = ShellTokens.tvTitleFontSize;
 
   /// Flat switch geometry — thumb is always a circle (never non-uniform scaled).
   static const double switchTrackWidth = 34;
@@ -72,6 +75,9 @@ abstract final class SettingsTokens {
 
   static double pageTitleSizeOf(BuildContext context) =>
       _tv(context) ? pageTitleSizeTv : pageTitleSize;
+
+  static double hubTitleSizeOf(BuildContext context) =>
+      _tv(context) ? hubTitleSizeTv : hubTitleSize;
 
   static double switchTrackWidthOf(BuildContext context) =>
       _tv(context) ? switchTrackWidthTv : switchTrackWidth;

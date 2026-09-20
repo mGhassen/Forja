@@ -41,7 +41,7 @@ Future<bool> presentProfileChooser(
           initialMode: initialMode,
           prepareCurrentOnSwitch: prepareCurrentOnSwitch,
           closeIfAlreadyActive: closeIfAlreadyActive,
-          onProfileSelected: () => Navigator.of(context).pop(true),
+          onProfileSelected: (_) => Navigator.of(context).pop(true),
           onSignOut: allowSignOut
               ? () {
                   Navigator.of(context).pop(false);
@@ -67,7 +67,7 @@ class ProfileChooserScreen extends ConsumerStatefulWidget {
     this.useLogoIntroSplash = false,
   });
 
-  final VoidCallback onProfileSelected;
+  final ValueChanged<SyncProfile> onProfileSelected;
   final VoidCallback? onSignOut;
   final bool showBack;
   final ProfileChooserMode initialMode;
@@ -78,9 +78,9 @@ class ProfileChooserScreen extends ConsumerStatefulWidget {
   /// When re-opening Who's watching, tapping the current profile just closes.
   final bool closeIfAlreadyActive;
 
-  /// When true: select + merge only, then [onProfileSelected] (caller shows
-  /// logo [SplashScreen]). Default false: show [ProfileSwitchSplash] first
-  /// (cold sign-in and mid-session switches).
+  /// When true: hand off [profile] immediately via [onProfileSelected] — no
+  /// select/merge on this screen (caller / [ProfileSwitchSplash] owns that).
+  /// Default false: push [ProfileSwitchSplash] from here (mid-session).
   final bool useLogoIntroSplash;
 
   @override
@@ -126,7 +126,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
   Future<void> _select(SyncProfile profile, {Rect? originRect}) async {
     if (_busy) return;
     if (widget.closeIfAlreadyActive && profile.id == _activeProfileId) {
-      widget.onProfileSelected();
+      widget.onProfileSelected(profile);
       return;
     }
 
@@ -135,18 +135,9 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
       _error = null;
     });
 
+    // Cold gate: leave Who's watching immediately — splash/packs own select.
     if (widget.useLogoIntroSplash) {
-      final ok = await _activateProfileForIntroSplash(profile);
-      if (!mounted) return;
-      if (ok) {
-        widget.onProfileSelected();
-        return;
-      }
-      setState(() {
-        _busy = false;
-        _error =
-            'Could not open this profile. Check your connection and retry.';
-      });
+      widget.onProfileSelected(profile);
       return;
     }
 
@@ -176,7 +167,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     );
     if (!mounted) return;
     if (ok == true) {
-      widget.onProfileSelected();
+      widget.onProfileSelected(profile);
       return;
     }
     setState(() {
@@ -184,21 +175,6 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
       _error =
           'Could not open this profile. Check your connection and retry.';
     });
-  }
-
-  /// Cold sign-in: bind the profile + merge settings only. Engine/catalog
-  /// warm happens on the logo intro splash that follows.
-  Future<bool> _activateProfileForIntroSplash(SyncProfile profile) async {
-    try {
-      final selected = await SyncService.instance.selectProfile(profile.id);
-      if (!selected) return false;
-      await ref
-          .read(profileSettingsSyncProvider.notifier)
-          .pullAndMergeForProfileSwitch();
-      return true;
-    } catch (_) {
-      return false;
-    }
   }
 
   Future<void> _signOut() async {
@@ -555,8 +531,10 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                                   profile: profiles[i],
                                   metrics: metrics,
                                   managing: managing,
-                                  enabled: !_busy,
-                                  autofocus: !_busy && i == autofocusIndex,
+                                  // Keep focus on the pressed tile while busy —
+                                  // ExcludeFocus would jump to autofocusIndex.
+                                  ignorePointer: _busy,
+                                  autofocus: i == autofocusIndex,
                                   onTap: (originRect) {
                                     final profile = profiles[i];
                                     if (managing) {
@@ -569,8 +547,8 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                               if (showAdd)
                                 _AddProfileTile(
                                   metrics: metrics,
-                                  enabled: !_busy,
-                                  autofocus: !_busy && profiles.isEmpty,
+                                  ignorePointer: _busy,
+                                  autofocus: profiles.isEmpty,
                                   onTap: _beginCreate,
                                 ),
                             ],
@@ -731,14 +709,14 @@ class _ChooserActionState extends State<_ChooserAction> {
 class _AddProfileTile extends StatefulWidget {
   const _AddProfileTile({
     required this.metrics,
-    required this.enabled,
     required this.onTap,
+    this.ignorePointer = false,
     this.autofocus = false,
   });
 
   final ProfileChooserMetrics metrics;
-  final bool enabled;
   final VoidCallback onTap;
+  final bool ignorePointer;
   final bool autofocus;
 
   @override
@@ -763,11 +741,11 @@ class _AddProfileTileState extends State<_AddProfileTile> {
   @override
   Widget build(BuildContext context) {
     final m = widget.metrics;
-    return ExcludeFocus(
-      excluding: !widget.enabled,
+    return IgnorePointer(
+      ignoring: widget.ignorePointer,
       child: FocusableControl(
-        autoFocus: widget.autofocus && widget.enabled,
-        onTap: widget.enabled ? widget.onTap : null,
+        autoFocus: widget.autofocus,
+        onTap: widget.ignorePointer ? null : widget.onTap,
         borderRadius: 8,
         scaleOnFocus: 1.06,
         showFocusBorder: false,
@@ -834,15 +812,15 @@ class _ProfileChoice extends StatefulWidget {
     required this.profile,
     required this.metrics,
     required this.managing,
-    required this.enabled,
     required this.onTap,
+    this.ignorePointer = false,
     this.autofocus = false,
   });
 
   final SyncProfile profile;
   final ProfileChooserMetrics metrics;
   final bool managing;
-  final bool enabled;
+  final bool ignorePointer;
   final bool autofocus;
   final void Function(Rect? avatarOrigin) onTap;
 
@@ -874,18 +852,20 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
   }
 
   void _handleTap() {
-    if (!widget.enabled) return;
+    if (widget.ignorePointer) return;
     widget.onTap(_avatarOriginRect());
   }
 
   @override
   Widget build(BuildContext context) {
     final m = widget.metrics;
-    return ExcludeFocus(
-      excluding: !widget.enabled,
+    // IgnorePointer blocks double-OK; do not ExcludeFocus — that steals the
+    // D-pad highlight to the active/autofocus profile while splash is pending.
+    return IgnorePointer(
+      ignoring: widget.ignorePointer,
       child: FocusableControl(
-        autoFocus: widget.autofocus && widget.enabled,
-        onTap: widget.enabled ? _handleTap : null,
+        autoFocus: widget.autofocus,
+        onTap: widget.ignorePointer ? null : _handleTap,
         borderRadius: 8,
         scaleOnFocus: 1.06,
         // Avatar [ForjaProfileAvatar.selected] is the hover/focus cue -

@@ -9,11 +9,13 @@ class ShellTabHeader extends StatelessWidget {
     required this.title,
     this.actions,
     this.padding,
+    this.fontSize,
   });
 
   final String title;
   final List<Widget>? actions;
   final EdgeInsetsGeometry? padding;
+  final double? fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +35,7 @@ class ShellTabHeader extends StatelessWidget {
               title,
               style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w600,
-                fontSize: ShellTokens.tabHeaderFontSize,
+                fontSize: fontSize ?? ShellTokens.tabHeaderFontSize,
               ),
             ),
           ),

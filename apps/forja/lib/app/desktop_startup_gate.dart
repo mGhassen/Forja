@@ -277,22 +277,41 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     setState(() => _stage = _StartupStage.splash);
   }
 
-  Future<void> _afterProfileReady() async {
+  Future<void> _afterProfileReady(SyncProfile profile) async {
     if (!mounted) return;
-    if (await PacksOnboardingStore.shouldShow()) {
-      final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
+    _splashProfile = profile;
+
+    if (await PacksOnboardingStore.shouldShow(profileId: profile.id)) {
+      final auto = await PacksOnboardingStore.autoCompleteIfHasPacks(
+        profileId: profile.id,
+      );
       if (!mounted) return;
       if (!auto) {
+        // Packs install needs disk scope bound before the onboarding UI.
+        final ok = await SyncService.instance.selectProfile(
+          profile.id,
+          skipRemoteCheck: true,
+        );
+        if (!mounted) return;
+        if (!ok) {
+          setState(() => _stage = _StartupStage.profiles);
+          return;
+        }
         _packsSkipProfileSplash = false;
         setState(() => _stage = _StartupStage.packs);
         return;
       }
     }
-    await _goToProfileSplash();
+    // Avatar splash immediately — it owns selectProfile + settings merge.
+    setState(() {
+      _splashProfile = profile;
+      _stage = _StartupStage.profileSplash;
+    });
   }
 
   Future<void> _goToProfileSplash() async {
-    final profile = await SyncService.instance.activeProfile();
+    final profile =
+        _splashProfile ?? await SyncService.instance.activeProfile();
     if (!mounted) return;
     if (profile == null) {
       _enterShellAfterProfileSplash();
@@ -349,9 +368,9 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
               ),
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,
-        // Defer ProfileSwitchSplash until after packs onboarding.
+        // Hand off the picked profile immediately; splash owns select/merge.
         useLogoIntroSplash: true,
-        onProfileSelected: () => unawaited(_afterProfileReady()),
+        onProfileSelected: (profile) => unawaited(_afterProfileReady(profile)),
         onSignOut: () => setState(() => _stage = _StartupStage.account),
       ),
       _StartupStage.packs => PacksOnboardingScreen(

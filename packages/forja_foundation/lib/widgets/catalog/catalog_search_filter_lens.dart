@@ -841,6 +841,14 @@ class CatalogSearchFilterLens extends StatelessWidget {
   static const _countryRowId = 'search_filter_country';
   static const _languageRowId = 'search_filter_language';
 
+  /// Genre / country / language must not share one sortOrder — ↓/↑ would skip.
+  static int _stripSortOrder(String rowId) => switch (rowId) {
+        _genreRowId => 4,
+        _countryRowId => 5,
+        _languageRowId => 6,
+        _ => 4,
+      };
+
   Widget _maybeTvRow(
     BuildContext context, {
     required String rowId,
@@ -853,7 +861,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
       context: context,
       tabId: tab,
       rowId: rowId,
-      sortOrder: 4,
+      sortOrder: _stripSortOrder(rowId),
       itemCount: itemCount,
       child: child,
     );

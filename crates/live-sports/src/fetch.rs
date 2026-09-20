@@ -21,7 +21,7 @@ static RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("live-matches tokio runtime"));
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
-    reqwest::Client::builder()
+    utils::dns::client_builder()
         .redirect(reqwest::redirect::Policy::limited(8))
         .build()
         .expect("live-matches http client")

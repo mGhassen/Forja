@@ -496,7 +496,7 @@ async fn native_fetch(
     }
     let headers: HashMap<String, String> =
         serde_json::from_str(&headers_json).unwrap_or_default();
-    let client = match reqwest::Client::builder()
+    let client = match utils::dns::client_builder()
         .redirect(reqwest::redirect::Policy::limited(8))
         .timeout(Duration::from_secs(25))
         .build()

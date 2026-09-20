@@ -245,7 +245,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       context,
       existing: existing,
       pluginId: pluginId,
-      tabId: widget.tabId,
       currentPortalCount: count,
     );
     if (ok == true && mounted) {

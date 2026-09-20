@@ -45,7 +45,7 @@ static RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("iptv reddit tokio runtime"));
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
-    reqwest::Client::builder()
+    utils::dns::client_builder()
         .redirect(reqwest::redirect::Policy::limited(8))
         .build()
         .expect("iptv reddit http client")

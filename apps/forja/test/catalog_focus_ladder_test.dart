@@ -286,4 +286,101 @@ void main() {
     popular.dispose();
     moodChip.dispose();
   });
+
+  testWidgets(
+    '↓ walks search filter strips with distinct sortOrders (genre→country→language)',
+    (tester) async {
+      final genre = FocusNode(debugLabel: 'genre');
+      final country = FocusNode(debugLabel: 'country');
+      final language = FocusNode(debugLabel: 'language');
+
+      // Same numbers CatalogSearchFilterLens assigns — shared 4 would skip.
+      const genreSort = 4;
+      const countrySort = 5;
+      const languageSort = 6;
+
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [
+              TvKitRow(
+                rowId: 'search_filter_genre',
+                sortOrder: genreSort,
+                itemCount: 1,
+                child: _item(
+                  node: genre,
+                  rowId: 'search_filter_genre',
+                  index: 0,
+                ),
+              ),
+              TvKitRow(
+                rowId: 'search_filter_country',
+                sortOrder: countrySort,
+                itemCount: 1,
+                child: _item(
+                  node: country,
+                  rowId: 'search_filter_country',
+                  index: 0,
+                ),
+              ),
+              TvKitRow(
+                rowId: 'search_filter_language',
+                sortOrder: languageSort,
+                itemCount: 1,
+                child: _item(
+                  node: language,
+                  rowId: 'search_filter_language',
+                  index: 0,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      genre.requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'search_filter_genre',
+          currentIndex: 0,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(country.hasFocus, isTrue);
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'search_filter_country',
+          currentIndex: 0,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(language.hasFocus, isTrue);
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'search_filter_language',
+          currentIndex: 0,
+          down: false,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(country.hasFocus, isTrue);
+
+      genre.dispose();
+      country.dispose();
+      language.dispose();
+    },
+  );
 }

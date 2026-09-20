@@ -72,6 +72,27 @@ void main() {
     });
   });
 
+  group('parseLiteralIp', () {
+    test('accepts IPv4 and IPv6', () {
+      expect(PackHttp.parseLiteralIp('1.1.1.1')?.address, '1.1.1.1');
+      expect(PackHttp.parseLiteralIp('::1'), isNotNull);
+    });
+
+    test('rejects hostnames', () {
+      expect(PackHttp.parseLiteralIp('raw.githubusercontent.com'), isNull);
+      expect(PackHttp.parseLiteralIp('1.1.1.1.dns'), isNull);
+    });
+  });
+
+  group('resolveHost literals', () {
+    test('IP literal returns without DNS', () async {
+      final addrs = await PackHttp.resolveHost('1.1.1.1');
+      expect(addrs, hasLength(1));
+      expect(addrs.single.address, '1.1.1.1');
+      expect(addrs.single.type, InternetAddressType.IPv4);
+    });
+  });
+
   group('systemDnsTimeout', () {
     test('is short enough that DoH can still run under defaultTimeout', () {
       expect(PackHttp.systemDnsTimeout.inSeconds, lessThanOrEqualTo(8));

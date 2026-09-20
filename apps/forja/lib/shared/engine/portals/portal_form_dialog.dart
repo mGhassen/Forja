@@ -12,6 +12,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
@@ -25,7 +26,8 @@ Future<bool?> showPortalFormDialog(
   BuildContext context, {
   VerifiedPortal? existing,
   required String pluginId,
-  String tabId = 'iptv',
+  /// Isolated overlay graph — never the live hub ladder (`iptv` cats/items).
+  String tabId = PortalFormDialog.tvTabId,
   int currentPortalCount = 0,
   VoidCallback? onSuccess,
 }) {
@@ -45,11 +47,14 @@ Future<bool?> showPortalFormDialog(
 enum _PortalImportPhase { shareCode, namePortal }
 
 class PortalFormDialog extends StatefulWidget {
+  /// Dedicated TV focus tab so the dialog never joins hub cats@1 / items@2.
+  static const tvTabId = 'portal-form';
+
   const PortalFormDialog({
     super.key,
     this.existing,
     required this.pluginId,
-    this.tabId = 'iptv',
+    this.tabId = tvTabId,
     this.currentPortalCount = 0,
     this.onSuccess,
   });
@@ -65,7 +70,7 @@ class PortalFormDialog extends StatefulWidget {
 }
 
 class _PortalFormDialogState extends State<PortalFormDialog> {
-  static const _portalDialogRowId = 'iptv-portal-dialog';
+  static const _portalDialogRowId = 'portal-dialog';
 
   bool get _tv => liveUseTvFocus(context);
 
@@ -783,6 +788,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       borderRadius: 8,
       scaleOnFocus: 1,
       focusNode: focusNode,
+      tvTabId: widget.tabId,
       tvRowId: _portalDialogRowId,
       tvItemIndex: tvItemIndex,
       onFocusChange: tv ? (_) => setState(() {}) : null,
@@ -837,11 +843,13 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
         : (_editing ? 'Edit Portal' : 'Add Portal');
     final expandBtnSize = _tv ? 34.0 : 38.0;
     final expandOverlap = expandBtnSize / 2;
-    return liveCatalogRow(
-      rowId: 'iptv-portal-dialog',
-      sortOrder: 50,
+    return TvKitRow(
+      tabId: widget.tabId,
+      rowId: _portalDialogRowId,
+      sortOrder: 0,
       itemCount: tv ? _dialogTvItemCount : 0,
       orientation: ShellTvRowOrientation.vertical,
+      registerWhen: liveUseTvFocus,
       child: Builder(
         builder: (_) {
           final adding = _submitInFlight;
@@ -1006,24 +1014,37 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                               ),
                             ),
                           ] else ...[
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    titleLabel,
-                                    style: GuideChromeStyle.overlayTitle.copyWith(
-                                      fontSize: _tv ? 17 : 19,
+                            if (_editing)
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      titleLabel,
+                                      style: GuideChromeStyle.overlayTitle
+                                          .copyWith(
+                                        fontSize: _tv ? 17 : 19,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                _portalDialogCloseButton(
+                                  _portalDialogCloseButton(
+                                    onTap: _cancel,
+                                  ),
+                                ],
+                              )
+                            else
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: _portalDialogCloseButton(
                                   onTap: _cancel,
                                 ),
-                              ],
-                            ),
-                            SizedBox(height: gapAfterTitle),
-                            _platformTabs(),
+                              ),
+                            if (!_editing) ...[
+                              SizedBox(height: gapAfterTitle),
+                              _shareCodeSection(),
+                            ],
                             SizedBox(height: gapBetweenFields),
+                            _platformTabs(),
+                            SizedBox(height: gapBeforeManual),
                             Flexible(
                               fit: FlexFit.loose,
                               child: SingleChildScrollView(
@@ -1031,10 +1052,6 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    if (!_editing) ...[
-                                      _shareCodeSection(),
-                                      SizedBox(height: gapBeforeManual),
-                                    ],
                                           _portalField(
                                             _labelCtrl,
                                             _platform == PortalPlatform.m3u
@@ -1316,7 +1333,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       onTap: _importingShareCode ? null : _toggleManualForm,
       borderRadius: radius,
       focusNode: tv ? _expandFocus : null,
-      tvRowId: tv ? 'iptv-portal-dialog' : null,
+      tvTabId: widget.tabId,
+      tvRowId: tv ? _portalDialogRowId : null,
       tvItemIndex: tv ? 1 : null,
       onUpEdge: tv ? () => _focusDialogItem(0) : null,
       onDownEdge: tv
@@ -1594,6 +1612,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       scaleOnFocus: 1,
       suppressInkHover: true,
       focusNode: _platformTabFocus[index],
+      tvTabId: widget.tabId,
       tvRowId: _portalDialogRowId,
       tvItemIndex: tabIndex,
       onFocusChange: (_) => setState(() {}),

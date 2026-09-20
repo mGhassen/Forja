@@ -19,6 +19,7 @@ import 'package:forja/shared/engine/runtime/open/host_engine_request.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
+import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 import 'package:http/http.dart' as http;
 import 'package:pointycastle/export.dart';
 import 'package:rust/rust.dart';
@@ -115,7 +116,7 @@ class EngineRuntime {
   int _timerSeq = 0;
   final Map<int, Timer> _activeTimers = {};
 
-  http.Client _http = http.Client();
+  http.Client _http = PackHttp.ioClient();
 
   Movie? _extractMovie;
   String? _extractImdbId;
@@ -1747,7 +1748,7 @@ class EngineRuntime {
     try {
       _http.close();
     } catch (_) {}
-    _http = http.Client();
+    _http = PackHttp.ioClient();
     if (hadWork) {
       if (_activeExtract > 0) {
         _deferredDrop = true;

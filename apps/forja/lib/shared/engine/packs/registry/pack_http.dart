@@ -8,10 +8,13 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
 
-/// Pack install HTTP: system DNS first, Cloudflare DoH (`1.1.1.1`) when lookup fails.
+/// System DNS first, Cloudflare DoH (`1.1.1.1`) when lookup fails.
 ///
 /// Hotspots often break the phone DNS forwarder while browsers still work via
 /// DoH. Hitting DoH by literal IP bootstraps without system DNS.
+///
+/// Used for pack install, flutter_js host HTTP, and (via Android
+/// [HttpOverrides]) every Dart [HttpClient] including Supabase sync.
 abstract final class PackHttp {
   static const Duration defaultTimeout = Duration(seconds: 45);
 
@@ -30,6 +33,94 @@ abstract final class PackHttp {
   @visibleForTesting
   static Future<List<InternetAddress>> Function(String host)? debugResolve;
 
+  /// Wire system→DoH resolve into an existing [HttpClient] (SNI preserved).
+  static void attachDohResolver(HttpClient client) {
+    client.connectionFactory = _connect;
+  }
+
+  /// Shared client: resolve each host via [resolveHost] (system → DoH).
+  static http.Client ioClient() {
+    final client = HttpClient();
+    attachDohResolver(client);
+    return IOClient(client);
+  }
+
+  /// Numeric IPv4/IPv6 only — never call system DNS / DoH (DoH bootstrap).
+  static InternetAddress? parseLiteralIp(String host) {
+    final h = host.trim();
+    if (h.isEmpty) return null;
+    try {
+      return InternetAddress(h);
+    } on ArgumentError {
+      return null;
+    }
+  }
+
+  static Future<ConnectionTask<Socket>> _connect(
+    Uri url,
+    String? proxyHost,
+    int? proxyPort,
+  ) async {
+    if (proxyHost != null) {
+      return Socket.startConnect(proxyHost, proxyPort!);
+    }
+    final host = url.host;
+    if (host.isEmpty) {
+      throw const SocketException('Failed host lookup: empty host');
+    }
+    final addrs = await resolveHost(host);
+    if (addrs.isEmpty) {
+      throw SocketException('Failed host lookup: $host');
+    }
+    final port = url.hasPort
+        ? url.port
+        : (url.scheme == 'https' ? 443 : 80);
+    // Prefer IPv4 on flaky hotspots.
+    final preferred = addrs.firstWhere(
+      (a) => a.type == InternetAddressType.IPv4,
+      orElse: () => addrs.first,
+    );
+    return _startConnect(url, preferred, port, sniHost: host);
+  }
+
+  /// Connect to [addr] without DNS — used for DoH bootstrap to `1.1.1.1`.
+  static Future<ConnectionTask<Socket>> _connectLiteral(
+    Uri url,
+    String? proxyHost,
+    int? proxyPort,
+  ) async {
+    if (proxyHost != null) {
+      return Socket.startConnect(proxyHost, proxyPort!);
+    }
+    final lit = parseLiteralIp(url.host);
+    if (lit == null) {
+      throw SocketException('DoH bootstrap needs IP host, got ${url.host}');
+    }
+    final port = url.hasPort
+        ? url.port
+        : (url.scheme == 'https' ? 443 : 80);
+    return _startConnect(url, lit, port, sniHost: url.host);
+  }
+
+  static Future<ConnectionTask<Socket>> _startConnect(
+    Uri url,
+    InternetAddress preferred,
+    int port, {
+    required String sniHost,
+  }) async {
+    if (url.scheme != 'https') {
+      return Socket.startConnect(preferred, port);
+    }
+    // Connect to resolved IP, then TLS with SNI = hostname (not the IP).
+    // Custom factory must return a SecureSocket for https — plain TCP on :443
+    // makes Dart parse TLS bytes as HTTP → "Invalid request method".
+    final plain = await Socket.startConnect(preferred, port);
+    final secure = plain.socket.then(
+      (s) => SecureSocket.secure(s, host: sniHost),
+    );
+    return ConnectionTask.fromSocket(secure, plain.cancel);
+  }
+
   static Future<http.Response> get(
     Uri uri, {
     Duration timeout = defaultTimeout,
@@ -47,40 +138,7 @@ abstract final class PackHttp {
       throw ArgumentError('pack URL missing host: $uri');
     }
 
-    final addrs = await resolveHost(host);
-    if (addrs.isEmpty) {
-      throw SocketException('Failed host lookup');
-    }
-
-    final port = uri.hasPort
-        ? uri.port
-        : (uri.scheme == 'https' ? 443 : 80);
-    final client = HttpClient();
-    // Custom factory must return a SecureSocket for https — plain TCP on :443
-    // makes Dart parse TLS bytes as HTTP → "Invalid request method".
-    client.connectionFactory = (url, proxyHost, proxyPort) {
-      if (proxyHost != null) {
-        return Socket.startConnect(proxyHost, proxyPort!);
-      }
-      // Prefer IPv4 on flaky hotspots; fall through list on connect fail via
-      // first address only — callers retry is out of scope.
-      final preferred = addrs.firstWhere(
-        (a) => a.type == InternetAddressType.IPv4,
-        orElse: () => addrs.first,
-      );
-      if (url.scheme != 'https') {
-        return Socket.startConnect(preferred, port);
-      }
-      // Connect to resolved IP, then TLS with SNI = hostname (not the IP).
-      return Socket.startConnect(preferred, port).then((plain) {
-        final secure = plain.socket.then(
-          (s) => SecureSocket.secure(s, host: url.host),
-        );
-        return ConnectionTask.fromSocket(secure, plain.cancel);
-      });
-    };
-
-    final io = IOClient(client);
+    final io = ioClient();
     try {
       return await io.get(uri).timeout(
         timeout,
@@ -95,6 +153,11 @@ abstract final class PackHttp {
   static Future<List<InternetAddress>> resolveHost(String host) async {
     final debug = debugResolve;
     if (debug != null) return debug(host);
+
+    // IP literals must not hit system DNS — Android hangs on lookup("1.1.1.1")
+    // when Private DNS is broken, then DoH recurses into itself.
+    final lit = parseLiteralIp(host);
+    if (lit != null) return [lit];
 
     try {
       final addrs = await InternetAddress.lookup(host).timeout(
@@ -122,10 +185,19 @@ abstract final class PackHttp {
   static Future<List<InternetAddress>> lookupDoh(String host) async {
     final name = host.trim().toLowerCase();
     if (name.isEmpty) return const [];
+    if (parseLiteralIp(name) != null) return const [];
 
     final a = await _dohQuery(name, 'A');
     if (a.isNotEmpty) return a;
     return _dohQuery(name, 'AAAA');
+  }
+
+  /// HttpClient that connects to DoH by IP only — never [attachDohResolver].
+  static http.Client _dohBootstrapClient() {
+    final client = HttpClient();
+    // HttpOverrides may have already attached DoH; overwrite to break recursion.
+    client.connectionFactory = _connectLiteral;
+    return IOClient(client);
   }
 
   static Future<List<InternetAddress>> _dohQuery(
@@ -135,7 +207,7 @@ abstract final class PackHttp {
     final uri = Uri.parse(dohUrl).replace(
       queryParameters: {'name': name, 'type': type},
     );
-    final client = debugClient ?? http.Client();
+    final client = debugClient ?? _dohBootstrapClient();
     final owned = debugClient == null;
     try {
       final resp = await client
