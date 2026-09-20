@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/shell/shell_bus.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/event_list_search.dart';
@@ -117,6 +119,7 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
     _dialogOpen = false;
     if (!mounted || result == null) return;
     chrome.onEventQuery(result.trim());
+    _focusAfterSearchCommit(result.trim());
   }
 
   @override
@@ -130,7 +133,10 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
     return EventListSearch(
       key: _searchKey,
       query: query,
-      onQueryChanged: (q) => chrome?.onEventQuery(q),
+      onQueryChanged: (q) {
+        chrome?.onEventQuery(q);
+        _focusAfterSearchCommit(q.trim());
+      },
       tooltip: widget.tooltip,
       placeholder: widget.placeholder,
       compact: compact,
@@ -178,5 +184,31 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
               );
             },
     );
+  }
+
+  /// After OK/Enter search: first channel when hits exist, else keep the field.
+  void _focusAfterSearchCommit(String q) {
+    if (q.isEmpty) return;
+    var frames = 0;
+    void attempt() {
+      if (!mounted) return;
+      if (frames++ < 2) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        return;
+      }
+      final tab = (ShellPaintTvTabScope.tabIdOf(context) ?? '').trim();
+      if (tab.isEmpty) return;
+      final handle = ShellTvFocusCoordinator.rowHandle(
+        tab,
+        IptvCatalogLand.itemsRowId,
+      );
+      if (handle != null && handle.itemCount > 0) {
+        ShellTvFocusCoordinator.focusRowItem(tab, IptvCatalogLand.itemsRowId, 0);
+        return;
+      }
+      _searchKey.currentState?.focusField();
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 }

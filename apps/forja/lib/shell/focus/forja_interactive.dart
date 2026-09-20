@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_hover_focus.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 
@@ -45,8 +46,16 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   final ValueNotifier<bool> _hoverN = ValueNotifier(false);
   final ValueNotifier<bool> _pressedN = ValueNotifier(false);
   static _ForjaInteractiveState? _hoverOwner;
+  late final void Function() _hoverClaim = _requestHoverFocus;
   bool _focused = false;
   FocusNode? _ownedNode;
+
+  void _requestHoverFocus() {
+    if (!mounted || !_wantsFocus) return;
+    final node = _effectiveNode;
+    if (node.hasFocus || !node.canRequestFocus) return;
+    node.requestFocus();
+  }
 
   FocusNode? _nodeFor(ForjaInteractive w) => w.focusNode ?? _ownedNode;
 
@@ -175,6 +184,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   @override
   void dispose() {
     if (_hoverOwner == this) _hoverOwner = null;
+    ShellHoverFocus.release(_hoverClaim);
     _unregisterTvItemNode(widget.tvMeta, node: _nodeFor(widget));
     _disposeOwnedNode();
     _hoverN.dispose();
@@ -191,11 +201,13 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
         prev._pressedN.value = false;
       }
       _hoverOwner = this;
+      ShellHoverFocus.claim(_hoverClaim);
       if (_hoverN.value) return;
       _hoverN.value = true;
       return;
     }
     if (_hoverOwner == this) _hoverOwner = null;
+    ShellHoverFocus.release(_hoverClaim);
     if (!_hoverN.value && !_pressedN.value) return;
     _hoverN.value = false;
     _pressedN.value = false;

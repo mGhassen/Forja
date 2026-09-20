@@ -234,6 +234,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   /// chrome across Settings / catalogs / chips (see pack choice cards).
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   static _FocusableControlState? _hoverOwner;
+  late final void Function() _hoverClaim = _requestHoverFocus;
   late AnimationController _controller;
   late Animation<double> _scale;
   FocusNode? _ownedNode;
@@ -247,6 +248,13 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
 
   bool get _isHovered => _hoveredN.value;
+
+  void _requestHoverFocus() {
+    if (!mounted) return;
+    final node = _effectiveNode;
+    if (node.hasFocus || !node.canRequestFocus) return;
+    node.requestFocus();
+  }
 
   String _tvDebugLabel(ShellTvFocusMeta? meta) {
     if (meta == null || meta.rowId == null) return 'focusable-control';
@@ -350,6 +358,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   @override
   void dispose() {
     if (_hoverOwner == this) _hoverOwner = null;
+    ShellHoverFocus.release(_hoverClaim);
     _unregisterTvItemNode(widget.tvMeta);
     final owned = _ownedNode;
     if (owned != null) {
@@ -410,9 +419,11 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         }
       }
       _hoverOwner = this;
+      ShellHoverFocus.claim(_hoverClaim);
       _applyLocalHover(true);
     } else {
       if (_hoverOwner == this) _hoverOwner = null;
+      ShellHoverFocus.release(_hoverClaim);
       _applyLocalHover(false);
     }
     // Defer parent callback — may setState; must not run inside deviceUpdate.

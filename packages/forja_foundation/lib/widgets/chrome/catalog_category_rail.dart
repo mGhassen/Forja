@@ -625,10 +625,25 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     super.dispose();
   }
 
-  void _claimChrome() => _chromeOwner = this;
+  void _claimChrome() {
+    final prev = _chromeOwner;
+    if (prev != null && prev != this && prev.mounted) {
+      if (prev._tvPinRevealed) {
+        prev.setState(() => prev._tvPinRevealed = false);
+      }
+      prev._releaseChrome();
+    }
+    _chromeOwner = this;
+  }
 
   void _releaseChrome() {
     if (_chromeOwner == this) _chromeOwner = null;
+  }
+
+  void _clearPinReveal() {
+    if (!_tvPinRevealed) return;
+    setState(() => _tvPinRevealed = false);
+    _releaseChrome();
   }
 
   void _setHovered(bool hovered) {
@@ -943,6 +958,15 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       ensureVisibleMode: ShellPaintEnsureVisible.off,
       onKeyEvent: ShellPaintScope.useTvFocusOf(context) ? _onRowKey : null,
       onUpEdge: widget.onTvFocusUp,
+      onFocusChange: (focused) {
+        if (focused) return;
+        // Pin may take focus in the same frame after → from the row.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_rowFocus.hasFocus || _pinFocus.hasFocus) return;
+          _clearPinReveal();
+        });
+      },
       onRightEdge: () {
         if (widget.floating || _tvPinRevealed) {
           if (_canTvPin) _pinFocus.requestFocus();

@@ -50,7 +50,7 @@ Home local pack config:
 | `TMDB_READ_ACCESS_TOKEN` | one of key/token | Bearer (alias `TMDB_BEARER_TOKEN`) |
 | `SUPABASE_URL` | for cache | Same project as apps/web |
 | `SUPABASE_SERVICE_ROLE_KEY` | for cache | **Service role** — never ship to clients |
-| `TMDB_GATEWAY_PUBLIC_URL` | for config rewrite | e.g. `https://tmdb-api.forjahq.xyz` |
+| `TMDB_GATEWAY_PUBLIC_URL` | for config rewrite | e.g. `https://tmdb.forjahq.xyz` |
 | `PORT` | no | Local listen (default `3000`) |
 
 Apply migrations before relying on cache (ops approval):
@@ -61,7 +61,7 @@ Apply migrations before relying on cache (ops approval):
 ## Vercel
 
 1. Import this directory as a Vercel project (root: `apps/tmdb-gateway`)
-2. Set env vars above + custom domain `tmdb-api.forjahq.xyz`
+2. Set env vars above + custom domain `tmdb.forjahq.xyz`
 3. Deploy
 
 ## Cache TTLs

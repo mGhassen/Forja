@@ -181,7 +181,8 @@ abstract final class IptvCatalogLand {
         }
         return;
       }
-      // Grid scrolls via landEpoch; focus is exact once index is known there.
+      // Grid scrolls + focuses via landEpoch; preferCategoryFocusNow reads live.
+      preferCategoryFocusOnLand = false;
       landEpoch.value++;
       _armResetPreferCategoryFocus();
     }

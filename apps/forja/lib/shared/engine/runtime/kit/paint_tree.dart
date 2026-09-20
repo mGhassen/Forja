@@ -1981,6 +1981,8 @@ class PackPaintTree extends StatelessWidget {
               landEpoch: IptvCatalogLand.landEpoch,
               preferCategoryFocusOnLand:
                   IptvCatalogLand.preferCategoryFocusOnLand,
+              preferCategoryFocusNow: () =>
+                  IptvCatalogLand.preferCategoryFocusOnLand,
               onHoldJumpToCategory: allowHoldJump ? onHoldJump : null,
               onRequestFocusAt: liveFocusBrowserStreamAt,
               onArmFocusMemory: liveArmBrowserStreamFocusMemory,
@@ -2095,6 +2097,8 @@ class PackPaintTree extends StatelessWidget {
                           onItemTap: onListItemTap,
                           landEpoch: IptvCatalogLand.landEpoch,
                           preferCategoryFocusOnLand:
+                              IptvCatalogLand.preferCategoryFocusOnLand,
+                          preferCategoryFocusNow: () =>
                               IptvCatalogLand.preferCategoryFocusOnLand,
                           onHoldJumpToCategory:
                               allowHoldJump ? onHoldJump : null,

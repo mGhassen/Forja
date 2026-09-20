@@ -14,6 +14,7 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/shell/focus/shell_hover_focus.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
@@ -925,9 +926,16 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   Timer? _providerHoldTimer;
   bool _providerHoldFired = false;
   late final FocusNode _focusNode;
+  late final void Function() _hoverClaim = _requestHoverFocus;
 
   bool get _hasVerticalFilters =>
       VerticalFiltersRegistry.hasFilters(widget.destination.id);
+
+  void _requestHoverFocus() {
+    if (!mounted) return;
+    if (_focusNode.hasFocus || !_focusNode.canRequestFocus) return;
+    _focusNode.requestFocus();
+  }
 
   @override
   void initState() {
@@ -951,6 +959,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
 
   @override
   void dispose() {
+    ShellHoverFocus.release(_hoverClaim);
     ShellTvFocus.unregisterNav(widget.destination.id, _focusNode);
     _focusNode.dispose();
     _revealTimer?.cancel();
@@ -982,6 +991,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       _hover = true;
       _typing = false;
     });
+    ShellHoverFocus.claim(_hoverClaim);
     _revealTimer?.cancel();
     _revealTimer = Timer(ShellTokens.navRailLabelRevealDelay, () {
       if (!mounted || !_hover) return;
@@ -993,6 +1003,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
 
   void _onHoverExit() {
     if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
+    ShellHoverFocus.release(_hoverClaim);
     _revealTimer?.cancel();
     _providerRevealTimer?.cancel();
     _providerRevealTimer = null;

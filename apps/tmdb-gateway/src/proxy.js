@@ -31,7 +31,7 @@ const ALLOW_API_PREFIXES = [
 
 /**
  * Public origin for rewriting configuration image hosts, e.g.
- * https://tmdb-api.forjahq.xyz or http://localhost:3000
+ * https://tmdb.forjahq.xyz or http://localhost:3000
  */
 export function publicOrigin() {
   const fromEnv = (process.env.TMDB_GATEWAY_PUBLIC_URL || "").trim().replace(/\/$/, "");

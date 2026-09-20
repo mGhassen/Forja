@@ -35,9 +35,10 @@ class _ShellKeyboardFocusHostState extends State<ShellKeyboardFocusHost> {
   bool _onKey(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
     if (!_isKeyboardNavigationKey(event.logicalKey)) return false;
+    // One transfer per new hover claim (nav / top bar / settings / lists).
+    FocusableControl.focusHoverOwner();
     if (!_chromeVisible.value) {
       _chromeVisible.value = true;
-      FocusableControl.focusHoverOwner();
     }
     return false;
   }

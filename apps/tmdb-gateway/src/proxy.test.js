@@ -37,7 +37,7 @@ test("ttlSecondsFor tiers", () => {
 });
 
 test("rewriteConfigurationImages points at gateway /t/p", () => {
-  process.env.TMDB_GATEWAY_PUBLIC_URL = "https://tmdb-api.forjahq.xyz";
+  process.env.TMDB_GATEWAY_PUBLIC_URL = "https://tmdb.forjahq.xyz";
   const out = rewriteConfigurationImages(
     JSON.stringify({
       images: {
@@ -47,8 +47,8 @@ test("rewriteConfigurationImages points at gateway /t/p", () => {
     }),
   );
   const data = JSON.parse(out);
-  assert.equal(data.images.secure_base_url, "https://tmdb-api.forjahq.xyz/t/p/");
-  assert.equal(data.images.base_url, "https://tmdb-api.forjahq.xyz/t/p/");
+  assert.equal(data.images.secure_base_url, "https://tmdb.forjahq.xyz/t/p/");
+  assert.equal(data.images.base_url, "https://tmdb.forjahq.xyz/t/p/");
 });
 
 test("imageStoragePath mirrors TMDB", async () => {

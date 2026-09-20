@@ -121,17 +121,16 @@ class _PortalsChipState extends State<PortalsChip> {
     final tvFocused = widget.tvFocus &&
         ShellPaintScope.focusStyledOf(context, focused: _focused);
     final active = _chromeActiveFor(hovered);
+    // Seats / highlight fill only while hovered or focused — selected / healthy
+    // alone must not paint brand green (idle chip stays neutral).
     final revealSeats = widget.hasPortal && active;
-    final showHighlight = widget.selected || active;
-
     final chipRadius = BorderRadius.circular(widget.radius);
-    // Hover / focus / open-panel all read as "on" — brand green, not white.
-    final lit = tvFocused || showHighlight;
+    final lit = tvFocused || active;
     final borderColor = tvFocused
         ? ForjaShellColors.brandGreen
         : !widget.hasPortal
             ? _accent.withValues(alpha: 0.65)
-            : showHighlight
+            : active
                 ? ForjaShellColors.brandGreen.withValues(alpha: 0.5)
                 : Colors.white.withValues(alpha: 0.10);
     final borderW = tvFocused ? 1.5 : 1.0;
@@ -243,9 +242,8 @@ class _PortalsChipState extends State<PortalsChip> {
         decoration: BoxDecoration(
           color: tvFocused
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-              : showHighlight
-                  ? Colors.white
-                      .withValues(alpha: widget.selected ? 0.14 : 0.10)
+              : active
+                  ? Colors.white.withValues(alpha: 0.10)
                   : Colors.white.withValues(alpha: 0.06),
           borderRadius: chipRadius,
           border: Border.fromBorderSide(side),

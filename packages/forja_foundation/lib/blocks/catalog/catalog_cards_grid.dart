@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/catalog/catalog_channel_grid_focus.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
@@ -137,6 +138,8 @@ class CatalogCardsGrid extends StatelessWidget {
     this.landEpoch,
     this.onHoldJumpToCategory,
     this.preferCategoryFocusOnLand = true,
+    /// Read live at land epoch (static host flag may change without rebuild).
+    this.preferCategoryFocusNow,
     this.onRequestFocusAt,
     this.onArmFocusMemory,
     this.onLeftEdge,
@@ -202,6 +205,9 @@ class CatalogCardsGrid extends StatelessWidget {
 
   /// When landing a restored channel, keep D-pad on category rail (arm memory).
   final bool preferCategoryFocusOnLand;
+
+  /// Live read at land epoch — host static may flip without rebuilding this widget.
+  final bool Function()? preferCategoryFocusNow;
 
   /// Pack `focusLeft` / `focusRight` (e.g. IPTV → cats, Live Sports → Providers).
   final VoidCallback? onLeftEdge;
@@ -367,6 +373,7 @@ class CatalogCardsGrid extends StatelessWidget {
       landEpoch: landEpoch,
       onHoldJumpToCategory: onHoldJumpToCategory,
       preferCategoryFocusOnLand: preferCategoryFocusOnLand,
+      preferCategoryFocusNow: preferCategoryFocusNow,
       onRequestFocusAt: onRequestFocusAt,
       onArmFocusMemory: onArmFocusMemory,
       onLeftEdge: onLeftEdge,
@@ -659,6 +666,7 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
     this.landEpoch,
     this.onHoldJumpToCategory,
     this.preferCategoryFocusOnLand = true,
+    this.preferCategoryFocusNow,
     this.onRequestFocusAt,
     this.onArmFocusMemory,
     this.onLeftEdge,
@@ -693,6 +701,7 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
   final ValueListenable<int>? landEpoch;
   final void Function(Map<String, dynamic> item)? onHoldJumpToCategory;
   final bool preferCategoryFocusOnLand;
+  final bool Function()? preferCategoryFocusNow;
   final ValueChanged<int>? onRequestFocusAt;
   final ValueChanged<int>? onArmFocusMemory;
   final VoidCallback? onLeftEdge;
@@ -736,6 +745,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     super.initState();
     _scroll.addListener(_onScroll);
     widget.landEpoch?.addListener(_onLandEpoch);
+    CatalogChannelGridFocus.register(_focusInFront);
     _offerScrollIntoView();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -744,18 +754,72 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       } else {
         setState(() => _allowNewLogos = true);
       }
-      _landSelected(preferCategoryFocus: widget.preferCategoryFocusOnLand);
+      _landSelected(preferCategoryFocus: _preferCategoryFocusLive);
     });
   }
 
   @override
   void dispose() {
+    CatalogChannelGridFocus.unregister(_focusInFront);
     widget.onScrollIntoViewChanged?.call(null);
     widget.landEpoch?.removeListener(_onLandEpoch);
     _logoSettleTimer?.cancel();
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
+  }
+
+  bool get _preferCategoryFocusLive =>
+      widget.preferCategoryFocusNow?.call() ?? widget.preferCategoryFocusOnLand;
+
+  bool _focusInFront({double? categoryGlobalY}) {
+    if (!mounted || widget.items.isEmpty) return false;
+    final idx = _indexInFront(categoryGlobalY: categoryGlobalY);
+    if (idx < 0) return false;
+    setState(() => _selectedIndex = idx);
+    _scrollAndMaybeFocus(idx, focus: true);
+    return true;
+  }
+
+  /// Channel whose vertical center is closest to [categoryGlobalY], else the
+  /// first tile visible in the viewport (left column of that row).
+  int _indexInFront({double? categoryGlobalY}) {
+    if (widget.items.isEmpty) return -1;
+    if (categoryGlobalY != null) {
+      var best = -1;
+      var bestDist = double.infinity;
+      for (final e in _itemKeys.entries) {
+        final ctx = e.value.currentContext;
+        if (ctx == null) continue;
+        final box = ctx.findRenderObject();
+        if (box is! RenderBox || !box.hasSize) continue;
+        final centerY = box.localToGlobal(Offset(0, box.size.height / 2)).dy;
+        final dist = (centerY - categoryGlobalY).abs();
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = e.key;
+        }
+      }
+      if (best >= 0) return best;
+    }
+    return _firstVisibleIndex();
+  }
+
+  int _firstVisibleIndex() {
+    if (!_scroll.hasClients || widget.items.isEmpty) return 0;
+    if (_compactList) {
+      const rowH = 56.0;
+      const topPad = 4.0;
+      final row = ((_scroll.offset - topPad) / rowH).floor();
+      return row.clamp(0, widget.items.length - 1);
+    }
+    final layout = _layout;
+    if (layout == null) return 0;
+    final cols = layout.columns.clamp(1, 999);
+    final rowExtent = layout.cardH + layout.gap;
+    final row = ((_scroll.offset - layout.topPad) / rowExtent).floor();
+    final index = (row.clamp(0, 999999) * cols).clamp(0, widget.items.length - 1);
+    return index;
   }
 
   void _offerScrollIntoView() {
@@ -781,7 +845,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     if (oldWidget.selectedItemId != widget.selectedItemId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _landSelected(preferCategoryFocus: widget.preferCategoryFocusOnLand);
+        _landSelected(preferCategoryFocus: _preferCategoryFocusLive);
       });
     }
     if (!identical(
@@ -794,7 +858,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   }
 
   void _onLandEpoch() {
-    _landSelected(preferCategoryFocus: widget.preferCategoryFocusOnLand);
+    _landSelected(preferCategoryFocus: _preferCategoryFocusLive);
   }
 
   void _onScroll() {
@@ -931,16 +995,45 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     _scroll.jumpTo(target);
   }
 
-  /// ↑ from top row: left half → shelf, right half → portals (when split set).
+  /// ↑ from top row: left half of the **viewport** → shelf, right → portals.
   VoidCallback? _channelGridOnUpEdge(int index, int columns) {
     final left = widget.onUpEdgeLeftHalf;
     final right = widget.onUpEdgeRightHalf;
     if (left == null && right == null) return widget.onUpEdge;
-    if (columns <= 0) return widget.onUpEdge ?? left ?? right;
-    final col = index % columns;
-    final half = (columns / 2).ceil();
-    if (col < half) return left ?? widget.onUpEdge ?? right;
-    return right ?? widget.onUpEdge ?? left;
+    if (left == null) return right;
+    if (right == null) return left;
+    return () {
+      final key = _itemKeys[index];
+      final tileCtx = key?.currentContext;
+      final gridBox = context.findRenderObject();
+      if (tileCtx != null && gridBox is RenderBox && gridBox.hasSize) {
+        final tileBox = tileCtx.findRenderObject();
+        if (tileBox is RenderBox && tileBox.hasSize) {
+          final tileCenter = tileBox.localToGlobal(
+            Offset(tileBox.size.width / 2, 0),
+          );
+          final gridOrigin = gridBox.localToGlobal(Offset.zero);
+          final localX = tileCenter.dx - gridOrigin.dx;
+          if (localX < gridBox.size.width / 2) {
+            left();
+          } else {
+            right();
+          }
+          return;
+        }
+      }
+      if (columns <= 0) {
+        left();
+        return;
+      }
+      final col = index % columns;
+      final half = (columns / 2).ceil();
+      if (col < half) {
+        left();
+      } else {
+        right();
+      }
+    };
   }
 
   Widget _buildChannelTile(BuildContext context, int i, {required bool list}) {
@@ -965,11 +1058,9 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     if (list) {
       leftEdge = widget.onLeftEdge;
       rightEdge = widget.onRightEdge;
-      // One column — no left/right half. Prefer shelf, then pack up, then portals.
+      // Single-column list: still split by viewport half (shelf vs Portals).
       if (i == 0) {
-        upEdge = widget.onUpEdgeLeftHalf ??
-            widget.onUpEdge ??
-            widget.onUpEdgeRightHalf;
+        upEdge = _channelGridOnUpEdge(i, 1);
       }
     } else if (cols > 0) {
       if (widget.onLeftEdge != null && i % cols == 0) {

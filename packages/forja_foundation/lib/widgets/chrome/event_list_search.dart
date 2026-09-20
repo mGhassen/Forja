@@ -198,6 +198,9 @@ class EventListSearchState extends State<EventListSearch>
     });
   }
 
+  /// Keep focus on the field (empty search results).
+  void focusField() => openSearch();
+
   void _commit(String value) {
     widget.onQueryChanged(value);
   }
@@ -344,7 +347,6 @@ class EventListSearchState extends State<EventListSearch>
           onChanged: (_) {},
           onSubmitted: (v) {
             _commit(v);
-            _focus.unfocus();
           },
           onEscape: () => _close(clearQuery: true),
         ) ??
@@ -354,7 +356,6 @@ class EventListSearchState extends State<EventListSearch>
           textInputAction: TextInputAction.search,
           onSubmitted: (v) {
             _commit(v);
-            _focus.unfocus();
           },
           style: TextStyle(color: Colors.white, fontSize: widget.fontSize),
           cursorColor: ForjaShellColors.brandGreen,

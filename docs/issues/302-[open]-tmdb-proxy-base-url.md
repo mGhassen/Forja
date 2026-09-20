@@ -29,8 +29,8 @@ Direct `api.themoviedb.org` is blocked or flaky in some regions. Home already ow
 | 4 | I302-T04 | Hub enrich kits prefer `cfg.base` + `ctx.fetch` (not Rust `host.tmdb` first) | ✅ |
 | 5 | I302-T05 | `apps/tmdb-gateway` — keyless `/3/*` + `/t/p/*`, config image rewrite, Vercel + local, no Express | ✅ |
 | 6 | I302-T06 | Supabase `tmdb_response_cache` (JSON) + `tmdb_image_cache` / Storage `tmdb-images` | ✅ |
-| 7 | I302-T07 | Home + enrich packs point `base` / `imageBase` at `https://tmdb-api.forjahq.xyz` | ✅ |
-| 8 | I302-T08 | Deploy Vercel + custom domain `tmdb-api.forjahq.xyz`; apply migrations on hosted Supabase | ⬜ |
+| 7 | I302-T07 | Home + enrich packs point `base` / `imageBase` at `https://tmdb.forjahq.xyz` | ✅ |
+| 8 | I302-T08 | Deploy Vercel + custom domain `tmdb.forjahq.xyz`; apply migrations on hosted Supabase | ⬜ |
 | 9 | I302-T09 | Gateway images use Storage (not Postgres bytea) | ✅ |
 
 ---
