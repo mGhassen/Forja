@@ -359,6 +359,9 @@ class _PortalListViewState extends State<PortalListView> {
   }) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final radius = PortalListTokens.searchFieldRadiusOf(tv);
+    final prefixSlot = PortalListTokens.searchPrefixSlotOf(tv);
+    final padH = PortalListTokens.searchFieldPadHOf(tv);
+    final padV = PortalListTokens.searchFieldPadVOf(tv);
     final decoration = InputDecoration(
       hintText: hint,
       hintStyle: GoogleFonts.plusJakartaSans(
@@ -370,12 +373,14 @@ class _PortalListViewState extends State<PortalListView> {
         color: ForjaShellColors.iconMuted,
         size: PortalListTokens.searchPrefixIconSizeOf(tv),
       ),
+      prefixIconConstraints: BoxConstraints.tightFor(
+        width: prefixSlot,
+        height: prefixSlot,
+      ),
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
       isDense: true,
-      contentPadding: tv
-          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
-          : null,
+      contentPadding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),

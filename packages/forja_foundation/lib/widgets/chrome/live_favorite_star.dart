@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Live channel favorite star — hidden until [reveal] (or already favorited).
 class LiveFavoriteStar extends StatefulWidget {
@@ -12,13 +13,14 @@ class LiveFavoriteStar extends StatefulWidget {
     required this.favorited,
     required this.onToggle,
     required this.reveal,
-    this.iconSize = ShellTokens.favStarIconSize,
+    this.iconSize,
   });
 
   final bool favorited;
   final VoidCallback onToggle;
   final bool reveal;
-  final double iconSize;
+  /// Null → [ShellTokens.favStarIconSize] / [ShellTokens.favStarIconSizeTv].
+  final double? iconSize;
 
   @override
   State<LiveFavoriteStar> createState() => _LiveFavoriteStarState();
@@ -69,6 +71,9 @@ class _LiveFavoriteStarState extends State<LiveFavoriteStar>
     final show = widget.reveal || widget.favorited;
     final scale = _scale;
     final fade = ForjaMotionTheme.of(context).fillOnly.duration;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final iconSize = widget.iconSize ??
+        (tv ? ShellTokens.favStarIconSizeTv : ShellTokens.favStarIconSize);
     return AnimatedOpacity(
       opacity: show ? 1 : 0,
       duration: fade,
@@ -82,15 +87,15 @@ class _LiveFavoriteStarState extends State<LiveFavoriteStar>
             behavior: HitTestBehavior.opaque,
             onTap: widget.onToggle,
             child: SizedBox(
-              width: widget.iconSize + 6,
-              height: widget.iconSize + 6,
+              width: iconSize + 6,
+              height: iconSize + 6,
               child: Center(
                 child: scale == null
                     ? Icon(
                         widget.favorited
                             ? Icons.star_rounded
                             : Icons.star_outline_rounded,
-                        size: widget.iconSize,
+                        size: iconSize,
                         color: widget.favorited
                             ? const Color(0xFFFBBF24)
                             : ForjaShellColors.textSecondary
@@ -102,7 +107,7 @@ class _LiveFavoriteStarState extends State<LiveFavoriteStar>
                           widget.favorited
                               ? Icons.star_rounded
                               : Icons.star_outline_rounded,
-                          size: widget.iconSize,
+                          size: iconSize,
                           color: widget.favorited
                               ? const Color(0xFFFBBF24)
                               : ForjaShellColors.textSecondary

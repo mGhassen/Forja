@@ -1481,17 +1481,21 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: tv ? 4 : 6,
+        vertical: tv ? 2 : 3,
+      ),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(tv ? 3 : 4),
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 10,
+          fontSize: tv ? ShellTokens.tvMetaFontSize : 10,
           fontWeight: FontWeight.w600,
         ),
       ),

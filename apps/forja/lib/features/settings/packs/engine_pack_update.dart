@@ -25,15 +25,22 @@ class PackUpdateMenuBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: ShellTokens.packUpdateMenuBadgePadH,
-        vertical: ShellTokens.packUpdateMenuBadgePadV,
+      padding: EdgeInsets.symmetric(
+        horizontal: tv
+            ? ShellTokens.packUpdateMenuBadgePadHTv
+            : ShellTokens.packUpdateMenuBadgePadH,
+        vertical: tv
+            ? ShellTokens.packUpdateMenuBadgePadVTv
+            : ShellTokens.packUpdateMenuBadgePadV,
       ),
       decoration: BoxDecoration(
         color: ForjaShellColors.packUpdateAlert.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(
-          ShellTokens.packUpdateMenuBadgeRadius,
+          tv
+              ? ShellTokens.packUpdateMenuBadgeRadiusTv
+              : ShellTokens.packUpdateMenuBadgeRadius,
         ),
         border: Border.all(
           color: ForjaShellColors.packUpdateAlert.withValues(alpha: 0.55),
@@ -42,9 +49,11 @@ class PackUpdateMenuBadge extends StatelessWidget {
       child: Text(
         EnginePackUpdateCopy.menuBadge,
         style: TextStyle(
-          fontSize: ShellTokens.packUpdateMenuBadgeFontSize,
+          fontSize: tv
+              ? ShellTokens.packUpdateMenuBadgeFontSizeTv
+              : ShellTokens.packUpdateMenuBadgeFontSize,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
+          letterSpacing: tv ? 0.1 : 0.2,
           color: ForjaShellColors.packUpdateAlert,
         ),
       ),
@@ -200,24 +209,32 @@ class SettingsEnginePackTitle extends StatelessWidget {
         ),
         if (deprecated) ...[
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: _deprecatedRed.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: _deprecatedRed.withValues(alpha: 0.45),
-              ),
-            ),
-            child: Text(
-              'deprecated',
-              style: TextStyle(
-                fontSize: SettingsTokens.groupLabelSizeOf(context),
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
-                color: _deprecatedRed,
-              ),
-            ),
+          Builder(
+            builder: (context) {
+              final tv = ShellPaintScope.usesTvDensityOf(context);
+              return Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: tv ? 4 : 6,
+                  vertical: tv ? 1 : 2,
+                ),
+                decoration: BoxDecoration(
+                  color: _deprecatedRed.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(tv ? 3 : 4),
+                  border: Border.all(
+                    color: _deprecatedRed.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Text(
+                  'deprecated',
+                  style: TextStyle(
+                    fontSize: SettingsTokens.groupLabelSizeOf(context),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: tv ? 0.2 : 0.4,
+                    color: _deprecatedRed,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ],

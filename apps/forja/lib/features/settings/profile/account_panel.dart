@@ -18,6 +18,7 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/brand/forja_profile_avatar.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Forja cloud account (Supabase) - Settings → Profile & account.
 class SettingsForjaAccountPanel extends StatefulWidget {
@@ -518,8 +519,12 @@ class _ActiveProfileStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarSize = SettingsTokens.profileStageAvatarSizeOf(context);
+    final glowSize = SettingsTokens.profileStageGlowSizeOf(context);
+    final gap = SettingsTokens.profileStageGapOf(context);
+    final chevronSize = SettingsTokens.profileStageChevronSizeOf(context);
     final content = Padding(
-      padding: const EdgeInsets.fromLTRB(2, 10, 2, 18),
+      padding: SettingsTokens.profileStagePadOf(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -529,8 +534,8 @@ class _ActiveProfileStage extends StatelessWidget {
             children: [
               // Soft brand wash - atmosphere without a card box.
               Container(
-                width: 108,
-                height: 108,
+                width: glowSize,
+                height: glowSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
@@ -546,19 +551,18 @@ class _ActiveProfileStage extends StatelessWidget {
               ForjaProfileAvatar(
                 avatarKey: avatarKey,
                 name: name,
-                size: 88,
+                size: avatarSize,
                 selected: true,
               ),
             ],
           ),
-          const SizedBox(width: 20),
+          SizedBox(width: gap),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: SettingsTokens.profileStageBadgePadOf(context),
                   decoration: BoxDecoration(
                     color: ForjaShellColors.brandGreen.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(4),
@@ -573,11 +577,12 @@ class _ActiveProfileStage extends StatelessWidget {
                       color: ForjaShellColors.brandGreen,
                       fontSize: SettingsTokens.typeSizeOf(context, 10),
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 1.4,
+                      letterSpacing:
+                          ShellPaintScope.usesTvDensityOf(context) ? 0.8 : 1.4,
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: SettingsTokens.profileStageGapOf(context) * 0.5),
                 Text(
                   name,
                   maxLines: 1,
@@ -590,7 +595,7 @@ class _ActiveProfileStage extends StatelessWidget {
                     height: 1.1,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: SettingsTokens.profileStageGapOf(context) * 0.3),
                 Text(
                   onTap == null
                       ? 'Active profile on this device'
@@ -605,10 +610,10 @@ class _ActiveProfileStage extends StatelessWidget {
             ),
           ),
           if (onTap != null)
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
               color: ForjaShellColors.iconMuted,
-              size: 28,
+              size: chevronSize,
             ),
         ],
       ),

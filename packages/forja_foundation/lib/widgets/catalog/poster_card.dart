@@ -119,27 +119,44 @@ class PosterCard extends StatelessWidget {
                 top: inset,
                 left: !compact && listPin != null ? inset + 26 : inset,
                 child: CrossfadeSwap(
-                  child: Container(
-                    key: ValueKey(badge),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: badge!.toUpperCase() == 'NOW'
-                          ? const Color(0xFFEF4444)
-                          : ForjaShellColors.iconMuted,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      badge!,
-                      style: TextStyle(
-                        color: badge!.toUpperCase() == 'NOW'
-                            ? Colors.white
-                            : Colors.black,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
+                  child: Builder(
+                    builder: (context) {
+                      final tv = ShellPaintScope.usesTvDensityOf(context);
+                      return Container(
+                        key: ValueKey(badge),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: tv
+                              ? ShellTokens.posterBadgePadHTv
+                              : ShellTokens.posterBadgePadH,
+                          vertical: tv
+                              ? ShellTokens.posterBadgePadVTv
+                              : ShellTokens.posterBadgePadV,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badge!.toUpperCase() == 'NOW'
+                              ? const Color(0xFFEF4444)
+                              : ForjaShellColors.iconMuted,
+                          borderRadius: BorderRadius.circular(
+                            tv
+                                ? ShellTokens.posterBadgeRadiusTv
+                                : ShellTokens.posterBadgeRadius,
+                          ),
+                        ),
+                        child: Text(
+                          badge!,
+                          style: TextStyle(
+                            color: badge!.toUpperCase() == 'NOW'
+                                ? Colors.white
+                                : Colors.black,
+                            fontSize: tv
+                                ? ShellTokens.posterBadgeFontSizeTv
+                                : ShellTokens.posterBadgeFontSize,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: tv ? 0.2 : 0.4,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),

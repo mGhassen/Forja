@@ -968,14 +968,15 @@ class _PortalListRowState extends State<PortalListRow> {
 
   Widget _expiryLine(String? expiry) {
     final tone = portalExpiryTone(expiry);
+    final tv = _tvDensity;
     return Row(
       children: [
         Icon(
           Icons.event_rounded,
-          size: PortalListTokens.metaIconSize,
+          size: PortalListTokens.metaIconSizeOf(tv),
           color: tone.iconColor,
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: ShellTokens.chromeScale(4, tv: tv)),
         Expanded(
           child: Text(
             tone.label,
@@ -1001,14 +1002,15 @@ class _PortalListRowState extends State<PortalListRow> {
     final full =
         activeN != null && maxN != null && maxN > 0 && activeN >= maxN;
     final color = full ? const Color(0xFF9CA3AF) : const Color(0xFF60A5FA);
+    final tv = _tvDensity;
     return Row(
       children: [
         Icon(
           Icons.people_rounded,
-          size: PortalListTokens.metaIconSize,
+          size: PortalListTokens.metaIconSizeOf(tv),
           color: color,
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: ShellTokens.chromeScale(4, tv: tv)),
         Expanded(
           child: Text(
             '$used/$cap',
@@ -1033,11 +1035,15 @@ class _PortalListRowState extends State<PortalListRow> {
   }
 
   Widget _newBadge() {
+    final tv = _tvDensity;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      padding: EdgeInsets.symmetric(
+        horizontal: ShellTokens.chromeScale(5, tv: tv),
+        vertical: ShellTokens.chromeScale(2, tv: tv),
+      ),
       decoration: BoxDecoration(
         color: ForjaShellColors.navUnderline.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(PortalListTokens.badgeRadius),
+        borderRadius: BorderRadius.circular(PortalListTokens.badgeRadiusOf(tv)),
         border: Border.all(
           color: ForjaShellColors.navUnderline.withValues(alpha: 0.5),
         ),
@@ -1046,7 +1052,7 @@ class _PortalListRowState extends State<PortalListRow> {
         'NEW',
         style: GoogleFonts.plusJakartaSans(
           color: ForjaShellColors.navUnderline,
-          fontSize: PortalListTokens.badgeFontSize,
+          fontSize: PortalListTokens.badgeFontSizeOf(tv),
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
           height: 1,
@@ -1057,18 +1063,22 @@ class _PortalListRowState extends State<PortalListRow> {
 
   Widget _platformBadge(String label, {required bool muted}) {
     final color = muted ? Colors.white54 : Colors.white38;
+    final tv = _tvDensity;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      padding: EdgeInsets.symmetric(
+        horizontal: ShellTokens.chromeScale(5, tv: tv),
+        vertical: ShellTokens.chromeScale(2, tv: tv),
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(PortalListTokens.badgeRadius),
+        borderRadius: BorderRadius.circular(PortalListTokens.badgeRadiusOf(tv)),
         border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
       ),
       child: Text(
         label,
         style: GoogleFonts.plusJakartaSans(
           color: color,
-          fontSize: PortalListTokens.badgeFontSize,
+          fontSize: PortalListTokens.badgeFontSizeOf(tv),
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,
           height: 1,

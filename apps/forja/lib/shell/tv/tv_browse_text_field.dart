@@ -251,8 +251,10 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
     );
     final contentPad =
         decoration.contentPadding?.resolve(Directionality.of(context));
-    final overlayLeft =
-        decoration.prefixIcon != null ? 48.0 : (contentPad?.left ?? 16.0);
+    final prefixSlot = decoration.prefixIconConstraints?.minWidth;
+    final overlayLeft = decoration.prefixIcon != null
+        ? (prefixSlot ?? 48.0)
+        : (contentPad?.left ?? 16.0);
     final overlayRight = contentPad?.right ?? 16.0;
 
     Widget field = Stack(

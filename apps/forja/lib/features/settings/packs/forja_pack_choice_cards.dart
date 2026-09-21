@@ -4,7 +4,8 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
+    show ShellPaintEnsureVisible;
 
 /// Two quick-action cards: official ForjaHQ install + Community Packs browse.
 ///
@@ -63,45 +64,49 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
       context,
       compact: widget.compact,
     );
-    // → links Official → Community. ← exits to the Settings category rail
-    // (ShellTvLinearFocusEdges), same as other settings pages / Back.
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ForjaPackChoiceCard(
-            focusNode: _installNode,
-            autofocus: widget.autofocusInstall,
-            compact: widget.compact,
-            settingsTvFocus: widget.settingsTvFocus,
-            tvItemIndex: 0,
-            onRightEdge: () => _browseNode.requestFocus(),
-            icon: Icons.inventory_2_rounded,
-            title: 'Official packs',
-            subtitle: 'Choose which ForjaHQ packs to install',
-            accent: true,
-            onTap: widget.onInstallOfficial,
+    // Stretch so Official matches Community when the subtitle has more lines
+    // (e.g. TV Community URL). IntrinsicHeight sizes the row from content so TV
+    // is not forced to a desktop min height. ← exits to the Settings category
+    // rail (ShellTvLinearFocusEdges), same as other settings pages / Back.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ForjaPackChoiceCard(
+              focusNode: _installNode,
+              autofocus: widget.autofocusInstall,
+              compact: widget.compact,
+              settingsTvFocus: widget.settingsTvFocus,
+              tvItemIndex: 0,
+              onRightEdge: () => _browseNode.requestFocus(),
+              icon: Icons.inventory_2_rounded,
+              title: 'Official packs',
+              subtitle: 'Choose which ForjaHQ packs to install',
+              accent: true,
+              onTap: widget.onInstallOfficial,
+            ),
           ),
-        ),
-        SizedBox(width: gap),
-        Expanded(
-          child: ForjaPackChoiceCard(
-            focusNode: _browseNode,
-            compact: widget.compact,
-            settingsTvFocus: widget.settingsTvFocus,
-            tvItemIndex: 1,
-            // ← exits to the Settings category rail (same as Official / Back).
-            // → from Official still reaches this card.
-            icon: Icons.public_rounded,
-            title: 'Community Packs',
-            subtitle: widget.communitySubtitle ??
-                (widget.compact
-                    ? 'Browse packs on the web'
-                    : 'Browse and pick packs on the web'),
-            onTap: widget.onBrowseCommunity,
+          SizedBox(width: gap),
+          Expanded(
+            child: ForjaPackChoiceCard(
+              focusNode: _browseNode,
+              compact: widget.compact,
+              settingsTvFocus: widget.settingsTvFocus,
+              tvItemIndex: 1,
+              // ← exits to the Settings category rail (same as Official / Back).
+              // → from Official still reaches this card.
+              icon: Icons.public_rounded,
+              title: 'Community Packs',
+              subtitle: widget.communitySubtitle ??
+                  (widget.compact
+                      ? 'Browse packs on the web'
+                      : 'Browse and pick packs on the web'),
+              onTap: widget.onBrowseCommunity,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -164,7 +169,6 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
         SettingsTokens.packChoiceTitleSubGapOf(context, compact: compact);
     final titleSize = SettingsTokens.rowTitleSizeOf(context);
     final subSize = SettingsTokens.rowSubtitleSizeOf(context);
-    final tv = ShellPaintScope.usesTvDensityOf(context);
 
     Widget card({required bool active}) {
       final borderColor = widget.accent
@@ -174,14 +178,17 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
           : ForjaShellColors.borderSubtle.withValues(
               alpha: active ? 0.95 : 0.7,
             );
-      // TV: hug content — minHeight left a large empty strip under denser type.
+      // Desktop keeps a min height floor. TV hugs content; the parent
+      // IntrinsicHeight + stretch matches the taller sibling.
       return AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOut,
-        constraints: tv
-            ? const BoxConstraints()
-            : BoxConstraints(minHeight: minHeight),
+        width: double.infinity,
+        constraints: minHeight > 0
+            ? BoxConstraints(minHeight: minHeight)
+            : const BoxConstraints(),
         padding: pad,
+        alignment: Alignment.topLeft,
         decoration: BoxDecoration(
           color: active
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
@@ -190,8 +197,8 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
           border: Border.all(color: borderColor, width: active ? 2 : 1),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               widget.icon,

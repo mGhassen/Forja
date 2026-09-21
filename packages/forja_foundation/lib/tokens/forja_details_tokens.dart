@@ -149,6 +149,25 @@ abstract final class DetailsTokens {
   static const double bodyFontSizeTv = ShellTokens.tvBodyFontSize;
   static const double metaFontSize = 12;
   static const double metaFontSizeTv = ShellTokens.tvMetaFontSize;
+
+  /// Details / hero meta chips (PG-13, FILM, SERIES).
+  static const double certBadgeFontSize = 11;
+  static const double certBadgeFontSizeTv = ShellTokens.tvMetaFontSize;
+  static const double certBadgePadH = 6;
+  static const double certBadgePadHTv = certBadgePadH * _s;
+  static const double certBadgePadV = 2;
+  static const double certBadgePadVTv = 1;
+  static const double certBadgeRadius = 4;
+  static const double certBadgeRadiusTv = certBadgeRadius * _s;
+  static const double mediaTypeBadgeFontSize = 10;
+  static const double mediaTypeBadgeFontSizeTv = ShellTokens.tvMetaFontSize;
+  static const double mediaTypeBadgePadH = 8;
+  static const double mediaTypeBadgePadHTv = mediaTypeBadgePadH * _s;
+  static const double mediaTypeBadgePadV = 3;
+  static const double mediaTypeBadgePadVTv = 2;
+  static const double mediaTypeBadgeRadius = 4;
+  static const double mediaTypeBadgeRadiusTv = mediaTypeBadgeRadius * _s;
+
   static const double railsGap = 12;
   static const double railsGapTv = railsGap * _s;
   static const double railsSectionGap = 24;

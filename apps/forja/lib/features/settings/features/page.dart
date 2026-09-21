@@ -250,6 +250,8 @@ class _SettingsNavigationPageBodyState
     required int tvItemIndex,
   }) {
     final isDefault = _defaultNavTab == id;
+    final iconSize = SettingsTokens.iconButtonIconSizeOf(context);
+    final hit = SettingsTokens.iconButtonHitSizeOf(context);
     final icon = Icon(
       isDefault ? Icons.star_rounded : Icons.star_border_rounded,
       color: isDefault
@@ -257,7 +259,7 @@ class _SettingsNavigationPageBodyState
           : enabled
           ? ForjaShellColors.iconMuted
           : ForjaShellColors.borderSubtle,
-      size: 21,
+      size: iconSize,
     );
     if (!tv) {
       return IconButton(
@@ -270,7 +272,7 @@ class _SettingsNavigationPageBodyState
     return shellFocusableTap(
       context: context,
       onTap: enabled ? () => unawaited(_setDefaultNavTab(id)) : null,
-      borderRadius: 8,
+      borderRadius: hit / 2,
       scaleOnFocus: 1.0,
       showFocusRail: false,
       showFocusFill: true,
@@ -280,7 +282,7 @@ class _SettingsNavigationPageBodyState
       tvRowId: tvRowId,
       tvItemIndex: tvItemIndex,
       ensureVisibleMode: ShellPaintEnsureVisible.item,
-      child: SizedBox(width: 40, height: 40, child: Center(child: icon)),
+      child: SizedBox(width: hit, height: hit, child: Center(child: icon)),
     );
   }
 
@@ -292,6 +294,9 @@ class _SettingsNavigationPageBodyState
     required String tvRowId,
     required int tvItemIndex,
   }) {
+    final chevron = SettingsTokens.expandChevronSizeOf(context);
+    final hitW = SettingsTokens.expandChevronHitSizeOf(context) * 0.7;
+    final hitH = SettingsTokens.iconButtonHitSizeOf(context) * 0.9;
     return shellFocusableTap(
       context: context,
       onTap: enabled ? onTap : null,
@@ -306,11 +311,11 @@ class _SettingsNavigationPageBodyState
       tvItemIndex: tvItemIndex,
       ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: SizedBox(
-        width: 28,
-        height: 36,
+        width: hitW,
+        height: hitH,
         child: Icon(
           icon,
-          size: 20,
+          size: chevron,
           color: enabled
               ? ForjaShellColors.textPrimary
               : ForjaShellColors.iconMuted,
@@ -462,12 +467,14 @@ class _SettingsNavigationPageBodyState
                         else
                           ReorderableDragStartListener(
                             index: index,
-                            child: const Padding(
-                              padding: EdgeInsets.only(left: 4),
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 4),
                               child: Icon(
                                 Icons.drag_handle,
                                 color: ForjaShellColors.iconMuted,
-                                size: 20,
+                                size: SettingsTokens.iconButtonIconSizeOf(
+                                  context,
+                                ),
                               ),
                             ),
                           ),
@@ -493,8 +500,12 @@ class _SettingsNavigationPageBodyState
                               ensureVisibleMode:
                                   ShellPaintEnsureVisible.item,
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 10),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: SettingsTokens.rowMinHeightOf(
+                                        context,
+                                      ) *
+                                      0.18,
+                                ),
                                 child: Row(
                                   children: [
                                     NavDestinationIcon(
@@ -503,9 +514,15 @@ class _SettingsNavigationPageBodyState
                                       color: isVisible
                                           ? ForjaShellColors.textPrimary
                                           : ForjaShellColors.iconMuted,
-                                      size: 22,
+                                      size: SettingsTokens
+                                          .categoryIconSizeOf(context),
                                     ),
-                                    const SizedBox(width: 16),
+                                    SizedBox(
+                                      width: SettingsTokens.pagePaddingOf(
+                                            context,
+                                          ) *
+                                          0.8,
+                                    ),
                                     Expanded(
                                       child: Text(
                                         dest.label,
@@ -514,7 +531,10 @@ class _SettingsNavigationPageBodyState
                                               ? ForjaShellColors.textPrimary
                                               : ForjaShellColors
                                                     .textSecondary,
-                                          fontSize: SettingsTokens.typeSizeOf(context, 14),
+                                          fontSize: SettingsTokens.typeSizeOf(
+                                            context,
+                                            14,
+                                          ),
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
@@ -607,12 +627,14 @@ class _SettingsNavigationPageBodyState
                       const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.settings,
                         color: ForjaShellColors.brandGreen,
-                        size: 22,
+                        size: SettingsTokens.categoryIconSizeOf(context),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: SettingsTokens.pagePaddingOf(context) * 0.8,
+                      ),
                       Expanded(
                         child: Text(
                           'Settings',
@@ -634,9 +656,11 @@ class _SettingsNavigationPageBodyState
                       Icon(
                         Icons.lock_outline,
                         color: ForjaShellColors.iconMuted.withValues(alpha: 0.5),
-                        size: 16,
+                        size: SettingsTokens.expandChevronSizeOf(context),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: SettingsTokens.pagePaddingOf(context) * 0.4,
+                      ),
                       Text(
                         'Always visible',
                         style: TextStyle(

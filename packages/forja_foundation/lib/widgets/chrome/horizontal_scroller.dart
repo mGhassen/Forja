@@ -294,7 +294,9 @@ class _ArrowButton extends StatelessWidget {
                     color: hover
                         ? ForjaShellColors.textPrimary
                         : ForjaShellColors.iconActive,
-                    size: ShellTokens.scrollerArrowIconSize,
+                    size: ShellPaintScope.usesTvDensityOf(context)
+                        ? ShellTokens.scrollerArrowIconSizeTv
+                        : ShellTokens.scrollerArrowIconSize,
                   ),
                 );
               },

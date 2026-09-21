@@ -224,7 +224,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
               Icon(
                 Icons.chevron_right_rounded,
                 color: ink,
-                size: 22,
+                size: SettingsTokens.categoryIconSizeOf(context),
               ),
           ],
         ),
@@ -513,12 +513,15 @@ class _SettingsTvExpandableSideRowState
           ),
           if (expandOnHeader)
             Padding(
-              padding: const EdgeInsets.only(top: 10),
+              padding: EdgeInsets.only(
+                top: SettingsTokens.expandChevronSizeOf(context) * 0.4,
+              ),
               child: Icon(
                 _expanded
                     ? Icons.expand_less_rounded
                     : Icons.expand_more_rounded,
                 color: ForjaShellColors.iconMuted,
+                size: SettingsTokens.expandChevronSizeOf(context),
               ),
             ),
         ],
@@ -554,15 +557,15 @@ class _SettingsTvExpandableSideRowState
             },
             onRightEdge: hasTrailing ? _focusFirstTrailing : null,
             child: SizedBox(
-              width: 40,
-              height: 40,
+              width: SettingsTokens.expandChevronHitSizeOf(context),
+              height: SettingsTokens.expandChevronHitSizeOf(context),
               child: Center(
                 child: Icon(
                   _expanded
                       ? Icons.expand_less_rounded
                       : Icons.expand_more_rounded,
                   color: ForjaShellColors.iconMuted,
-                  size: 22,
+                  size: SettingsTokens.expandChevronSizeOf(context),
                 ),
               ),
             ),
@@ -1100,8 +1103,8 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: SettingsTokens.detailMaxWidth,
+                    constraints: BoxConstraints(
+                      maxWidth: SettingsTokens.detailMaxWidthOf(context),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1139,7 +1142,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth
-                            .clamp(0.0, SettingsTokens.detailMaxWidth)
+                            .clamp(0.0, SettingsTokens.detailMaxWidthOf(context))
                             .toDouble();
                         return Align(
                           alignment: Alignment.topLeft,
@@ -1465,10 +1468,10 @@ class SettingsSelectRow extends StatelessWidget {
                           ),
                         ),
                         dropdownColor: ForjaShellColors.cinematic.menuSurface,
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.keyboard_arrow_down_rounded,
                           color: ForjaShellColors.brandGreen,
-                          size: 20,
+                          size: SettingsTokens.iconButtonIconSizeOf(context),
                         ),
                         style: TextStyle(
                           color: ForjaShellColors.textPrimary,
@@ -2627,7 +2630,11 @@ class SettingsStatusRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 14),
       child: Row(
         children: [
-          Icon(icon, color: iconColor, size: 20),
+          Icon(
+            icon,
+            color: iconColor,
+            size: SettingsTokens.iconButtonIconSizeOf(context),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

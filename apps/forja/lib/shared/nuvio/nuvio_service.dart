@@ -315,16 +315,6 @@ class NuvioService {
   static const String _sourcesViewFilterKey =
       'nuvio_sources_view_filter_scrapers_v1';
 
-  /// Manifest URLs that ship with the app. Persisted like any other addon so
-  /// Settings and Sources share one list (scrapers toggleable / not ghosted).
-  static const Set<String> bundledManifestUrls = {
-    'https://raw.githubusercontent.com/D3adlyRocket/All-in-One-Nuvio/'
-        'refs/heads/main/manifest.json',
-  };
-
-  static bool isBundled(String manifestUrl) =>
-      bundledManifestUrls.contains(manifestUrl);
-
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
   int _scraperGeneration = 0;
@@ -363,10 +353,6 @@ class NuvioService {
     }
   }
 
-  /// No-op — never auto-installs the bundled All-in-One. User adds it in
-  /// Settings → Sources / Nuvio install.
-  Future<void> ensureBundledInstalled() async {}
-
   Future<void>? _hydrateLeanInFlight;
 
   /// Sync / cloud lean rows — URL (+ optional name) only. **No network.**
@@ -389,10 +375,6 @@ class NuvioService {
     var changed = false;
 
     for (final addon in all) {
-      if (isBundled(addon.manifestUrl)) {
-        next.add(addon);
-        continue;
-      }
       if (removeMissingUserAddons && !remote.containsKey(addon.manifestUrl)) {
         victims.add(addon);
         changed = true;
@@ -461,13 +443,12 @@ class NuvioService {
     );
   }
 
-  /// Settings + Sources - same store, including the built-in addon.
+  /// Settings + Sources — same installed-addon store.
   Future<List<NuvioAddon>> listUserAddons() async {
     return listAddons();
   }
 
   /// Scraping list for Sources / batch runs — installed addons only.
-  /// Never auto-fetches a bundled virtual manifest.
   Future<List<NuvioAddon>> listScrapingAddons() async {
     return listAddons();
   }
@@ -674,9 +655,6 @@ class NuvioService {
   }
 
   Future<void> remove(String manifestUrl, {bool purgeScripts = true}) async {
-    if (isBundled(manifestUrl)) {
-      throw Exception('Built-in Nuvio addon cannot be removed');
-    }
     final all = await listAddons();
     final removed = all.where((a) => a.manifestUrl == manifestUrl).toList();
     all.removeWhere((a) => a.manifestUrl == manifestUrl);
@@ -697,9 +675,6 @@ class NuvioService {
     required String scraperId,
     required bool enabled,
   }) async {
-    if (isBundled(manifestUrl)) {
-      await ensureBundledInstalled();
-    }
     final all = await listAddons();
     final idx = all.indexWhere((a) => a.manifestUrl == manifestUrl);
     if (idx == -1) return;
@@ -716,14 +691,11 @@ class NuvioService {
     await _saveAddons(all);
   }
 
-  /// Enable or disable every scraper in one addon (built-in included).
+  /// Enable or disable every scraper in one addon.
   Future<void> setAllScrapersEnabled({
     required String manifestUrl,
     required bool enabled,
   }) async {
-    if (isBundled(manifestUrl)) {
-      await ensureBundledInstalled();
-    }
     final all = await listAddons();
     final idx = all.indexWhere((a) => a.manifestUrl == manifestUrl);
     if (idx == -1) return;

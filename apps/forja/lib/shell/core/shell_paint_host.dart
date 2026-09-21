@@ -71,6 +71,9 @@ class _TvDialogTheme extends StatelessWidget {
       color: ForjaShellColors.textSecondary,
       height: 1.35,
     );
+    final iconSize = ShellTokens.iconSizeTv;
+    final control = ShellTokens.controlHeightTv;
+    final iconTheme = (base.iconTheme).copyWith(size: iconSize);
     return Theme(
       data: base.copyWith(
         dialogTheme: DialogThemeData(
@@ -87,8 +90,25 @@ class _TvDialogTheme extends StatelessWidget {
           bodyMedium: bodyStyle,
           bodyLarge: bodyStyle,
         ),
+        // Icons without an explicit size inherit Material 24 — densify with chrome.
+        iconTheme: iconTheme,
+        primaryIconTheme: (base.primaryIconTheme).copyWith(size: iconSize),
+        iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            iconSize: iconSize,
+            minimumSize: Size(control, control),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            foregroundColor: base.iconButtonTheme.style?.foregroundColor
+                    ?.resolve({}) ??
+                const Color(0xFFF5F5F7),
+          ),
+        ),
       ),
-      child: child,
+      // Explicit wrap — Theme.iconTheme alone can stay null under MaterialApp.
+      child: IconTheme(
+        data: iconTheme,
+        child: child,
+      ),
     );
   }
 }

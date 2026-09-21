@@ -65,6 +65,23 @@ double propsLengthOr(
 ) =>
     propsLength(context, props, key) ?? fallback;
 
+/// Icon size from pack, or [desktopFallback] scaled on TV.
+///
+/// Unlike [propsLengthOr], the fallback is a **desktop** baseline — leanback
+/// applies [ShellTokens.tvChromeScale]. Pack-provided values still go through
+/// [propsLength] (already scaled).
+double propsIconSizeOr(
+  BuildContext context,
+  Map<String, dynamic> props,
+  String key,
+  double desktopFallback,
+) =>
+    propsLength(context, props, key) ??
+    ShellTokens.iconSizeFor(
+      desktopFallback,
+      tv: ShellPaintScope.usesTvDensityOf(context),
+    );
+
 int? propsInt(Map<String, dynamic> props, String key) {
   final v = props[key];
   if (v is int) return v;

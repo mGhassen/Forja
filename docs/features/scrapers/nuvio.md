@@ -6,7 +6,7 @@
 
 Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Manage them in Settings, enable individual scrapers, and use them from the **Nuvio** tab in **Sources** on [TMDB details](../movies-tv/tmdb-details.md) (white **Play** / link icon — same panel as Forja torrent search). Provider chips under the **Nuvio** tab remember your selection on this device — tap a scraper to select it and load its sources; tap a fetched scraper again to deselect and clear that scraper’s rows. **All** loads every enabled scraper but only highlights the All chip — tap one scraper to filter to it; without All, multi-select toggles as before. Opening Nuvio with **All** (or several chips) selected keeps up to 10 scrapers in flight (5 on TV) until every selected one has been tried. Tap a scraper chip to add it to the in-flight search (does not stop the others). First open (no saved chips yet) starts with every enabled scraper selected.
 
-Turn on **Nuvio** under **Settings → Addons**, then install at least one Nuvio manifest (for example the community All-in-One catalog). Each addon row has a switch to enable or disable every scraper in that pack; expand the row to toggle scrapers one by one. Addons synced from your account as URL-only stubs download their scrapers when you expand the row (or when you paste the URL and tap **Install**).
+Turn on **Nuvio** under **Settings → Addons**, then paste a Nuvio `manifest.json` URL and install. Forja does not ship any Nuvio addon — every manifest is one you add (or sync from your account). Each addon row has a switch to enable or disable every scraper in that pack; expand the row to toggle scrapers one by one. Addons synced from your account as URL-only stubs download their scrapers when you expand the row (or when you paste the URL and tap **Install**).
 
 Nuvio is **not** part of green **Play** webstreaming. Direct links only there; torrent/magnet scrapers (e.g. Torrentio) stay in **Sources** and play through the torrent engine.
 
@@ -21,7 +21,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 - Paste a Nuvio `manifest.json` URL and install
 - Toggle an addon’s switch to enable or disable all of its scrapers at once
 - Expand an addon and toggle each scraper on/off without removing the addon
-- Remove a user-installed addon (trash → Yes / No confirm)
+- Remove any installed addon (trash → Yes / No confirm)
 - In **Sources → Nuvio**, tap **All** to load every scraper (only All stays highlighted; tap **All** again to clear), or from All tap one scraper to filter to it; without All, tap scraper chips to multi-select (tap a fetched scraper again to remove their sources); the selection is remembered on this device across titles. Opening Nuvio with **All** selected keeps up to 10 scrapers in flight (5 on TV) until every selected one has been tried; a scraper chip shows the same animated **…** as the Nuvio tab while it is still checking; tap a chip to add it to the search (does **not** stop scrapers still running). Play a result (HTTP links play directly; magnets use the local torrent engine, or a paired desktop on Android TV)
 
 ## Setup

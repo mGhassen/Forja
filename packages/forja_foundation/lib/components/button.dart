@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Visual tone for [Button].
 enum ButtonVariant {
@@ -116,6 +118,10 @@ class _ButtonState extends State<Button> {
       fontSize: widget.fontSize,
       padding: widget.padding,
     );
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    // Explicit [iconSize] is caller-owned (already density-aware). Defaults densify.
+    final resolvedIconSize = widget.iconSize ??
+        ShellTokens.iconSizeFor(dims.iconSize, tv: tv);
     final colors = _resolveColors(
       theme,
       widget.variant,
@@ -128,8 +134,8 @@ class _ButtonState extends State<Button> {
     Widget content;
     if (widget.loading) {
       content = SizedBox(
-        width: dims.iconSize,
-        height: dims.iconSize,
+        width: resolvedIconSize,
+        height: resolvedIconSize,
         child: CircularProgressIndicator(
           strokeWidth: 2,
           color: colors.foreground,
@@ -141,7 +147,7 @@ class _ButtonState extends State<Button> {
         widget.variant == ButtonVariant.plainIcon) {
       content = Icon(
         widget.icon,
-        size: widget.iconSize ?? dims.iconSize,
+        size: resolvedIconSize,
         color: colors.foreground,
       );
     } else {
@@ -152,7 +158,7 @@ class _ButtonState extends State<Button> {
           if (widget.icon != null) ...[
             Icon(
               widget.icon,
-              size: widget.iconSize ?? dims.iconSize,
+              size: resolvedIconSize,
               color: colors.foreground,
             ),
             SizedBox(width: theme.spaceSm),

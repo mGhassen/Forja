@@ -567,7 +567,10 @@ Widget? paintFoundationType(
         playable: propsBool(props, 'playable', true),
         fontSize: propsLengthOr(context, props, 'fontSize', 14),
         metaFontSize: propsLengthOr(context, props, 'metaFontSize', 12),
-        iconSize: propsLengthOr(context, props, 'iconSize', ShellTokens.eventSearchIconSize),
+        iconSize: propsLength(context, props, 'iconSize') ??
+            (catalogUsesTvDensity(context)
+                ? ShellTokens.eventDenseIconSizeTv
+                : ShellTokens.eventDenseIconSize),
         onTap: () {},
       );
     case 'catalogSearchResultCard':
@@ -827,7 +830,8 @@ Widget? paintFoundationType(
           tv ? ShellTokens.shellChipFontSizeTv : ShellTokens.shellChipFontSize,
         ),
         radius: propsLengthOr(context, props, 'radius', ShellTokens.shellChipRadiusPill),
-        iconSize: propsLengthOr(context, props, 'iconSize', ShellTokens.shellChipIconSize),
+        iconSize: propsLength(context, props, 'iconSize') ??
+            (tv ? ShellTokens.shellChipIconSizeTv : ShellTokens.shellChipIconSize),
         padding: padN != null
             ? EdgeInsets.symmetric(horizontal: padN, vertical: padN * 0.57)
             : const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -899,9 +903,14 @@ Widget? paintFoundationType(
         radius: propsLengthOr(context, props, 'radius', ShellTokens.portalsChipRadius),
         pad: propsLength(context, props, 'pad'),
         fontSize: propsLengthOr(context, props, 'fontSize', ShellTokens.portalsChipFontSize),
-        iconSize: propsLengthOr(context, props, 'iconSize', ShellTokens.portalsChipIconSize),
-        chevronSize:
-            propsLengthOr(context, props, 'chevronSize', ShellTokens.portalsChipChevronSize),
+        iconSize: propsLength(context, props, 'iconSize') ??
+            (catalogUsesTvDensity(context)
+                ? ShellTokens.portalsChipIconSizeTv
+                : ShellTokens.portalsChipIconSize),
+        chevronSize: propsLength(context, props, 'chevronSize') ??
+            (catalogUsesTvDensity(context)
+                ? ShellTokens.portalsChipChevronSizeTv
+                : ShellTokens.portalsChipChevronSize),
         seatsFontSize: propsNumOr(
           props,
           'seatsFontSize',
@@ -1022,8 +1031,10 @@ Widget? paintFoundationType(
       return ShellCardPlayOverlay(
         active: propsBool(props, 'active'),
         visible: propsBool(props, 'visible', true),
-        diameter: propsLengthOr(context, props, 'diameter', EventCardTokens.playOverlaySize),
-        iconSize: propsLengthOr(context, props, 'iconSize', EventCardTokens.playIconSize),
+        diameter: propsLength(context, props, 'diameter') ??
+            EventCardTokens.playOverlaySizeOf(context),
+        iconSize: propsLength(context, props, 'iconSize') ??
+            EventCardTokens.playIconSizeOf(context),
         onTap: () {},
       );
     case 'fractalGlassGradient':
@@ -1517,7 +1528,10 @@ Widget? paintFoundationType(
             (items.isEmpty ? 'cards' : items.first.id),
         onSelect: (_) {},
         height: propsLengthOr(context, props, 'height', 36),
-        iconSize: propsLengthOr(context, props, 'iconSize', ShellTokens.categoryRailIconSize),
+        iconSize: propsLength(context, props, 'iconSize') ??
+            (catalogUsesTvDensity(context)
+                ? ShellTokens.viewButtonIconSizeTv
+                : ShellTokens.viewButtonIconSize),
         dividerHeight: propsLengthOr(context, props, 'dividerHeight', 16),
       );
     case 'widgetShelf': {
@@ -1540,7 +1554,10 @@ Widget? paintFoundationType(
           'fontSize',
           tv ? ShellTokens.shellChipFontSizeTv : ShellTokens.shellChipFontSize,
         ),
-        iconSize: propsLengthOr(context, props, 'iconSize', ShellTokens.actionChipIconSize),
+        iconSize: propsLength(context, props, 'iconSize') ??
+            (tv
+                ? ShellTokens.widgetShelfIconSizeTv
+                : ShellTokens.widgetShelfIconSize),
         pad: propsLengthOr(context, props, 'pad', 14),
       );
     }

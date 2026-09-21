@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/event_card_tokens.dart';
 
 /// Centered play control for catalog / continue-watching cards.
 /// Fades in when [visible]; brand green + float + heartbeat while [active]
@@ -14,8 +15,8 @@ class ShellCardPlayOverlay extends StatefulWidget {
     this.onTap,
     this.focusNode,
     this.onKeyEvent,
-    this.diameter = 48,
-    this.iconSize = 28,
+    this.diameter,
+    this.iconSize,
   });
 
   /// When true, forces green + float + heartbeat without a button hover
@@ -26,8 +27,10 @@ class ShellCardPlayOverlay extends StatefulWidget {
   final VoidCallback? onTap;
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
-  final double diameter;
-  final double iconSize;
+  /// Null → [EventCardTokens.playOverlaySize] / TV token.
+  final double? diameter;
+  /// Null → [EventCardTokens.playIconSize] / TV token.
+  final double? iconSize;
 
   /// Card lift on hover/focus — prefer [ForjaMotionTheme.cardLift] at call sites.
   @Deprecated('Use ForjaMotionTheme.of(context).cardLift.hoverScale')
@@ -154,6 +157,10 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
     // (episode select). Hover tracking stays enabled for the pulse.
     final interactive = widget.onTap != null && widget.visible;
     final lifted = _accented && widget.visible;
+    final diameter =
+        widget.diameter ?? EventCardTokens.playOverlaySizeOf(context);
+    final iconSize =
+        widget.iconSize ?? EventCardTokens.playIconSizeOf(context);
     final buttonFace = AnimatedSlide(
       offset: lifted ? const Offset(0, -0.1) : Offset.zero,
       duration: lift.duration,
@@ -168,8 +175,8 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
           child: AnimatedContainer(
             duration: motion.fillOnly.duration,
             curve: motion.fillOnly.resolvedCurve,
-            width: widget.diameter,
-            height: widget.diameter,
+            width: diameter,
+            height: diameter,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: lifted
@@ -192,24 +199,10 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
                     ]
                   : null,
             ),
-            child: ScaleTransition(
-              key: const ValueKey('shell-card-play-pulse'),
-              scale: _pulse,
-              child: SizedBox(
-                width: widget.diameter,
-                height: widget.diameter,
-                child: Center(
-                  // Play glyph is left-heavy in the font; nudge so it reads centered.
-                  child: Transform.translate(
-                    offset: Offset(widget.iconSize * 0.1, 0),
-                    child: Icon(
-                      Icons.play_arrow_rounded,
-                      color: lifted ? const Color(0xFF111827) : Colors.white,
-                      size: widget.iconSize,
-                    ),
-                  ),
-                ),
-              ),
+            child: Icon(
+              Icons.play_arrow_rounded,
+              color: lifted ? const Color(0xFF111827) : Colors.white,
+              size: iconSize,
             ),
           ),
         ),
@@ -250,13 +243,17 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
       );
     }
 
-    // Parent stacks often use [StackFit.expand] — without a sized + centered
-    // wrap, tight max constraints stretch the circle to the full card.
+    // Heartbeat scales the whole circle (outside the fixed diameter box so
+    // peak scale is not clipped). Parent stacks often use [StackFit.expand].
     return Center(
-      child: SizedBox(
-        width: widget.diameter,
-        height: widget.diameter,
-        child: button,
+      child: ScaleTransition(
+        key: const ValueKey('shell-card-play-pulse'),
+        scale: _pulse,
+        child: SizedBox(
+          width: diameter,
+          height: diameter,
+          child: button,
+        ),
       ),
     );
   }

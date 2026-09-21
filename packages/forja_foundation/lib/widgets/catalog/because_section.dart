@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
@@ -187,6 +188,106 @@ class _BecauseSeedPoster extends StatelessWidget {
               placeholder: ColoredBox(color: ForjaShellColors.surfaceElevated),
               error: ColoredBox(color: ForjaShellColors.surfaceElevated),
             ),
+    );
+  }
+}
+
+/// Because-row shuffle — brand green on hover / focus.
+class BecauseShuffleButton extends StatefulWidget {
+  const BecauseShuffleButton({
+    super.key,
+    required this.onTap,
+    this.iconSize = 24,
+    this.listIndex,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+  });
+
+  final VoidCallback onTap;
+  final double iconSize;
+  final int? listIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+
+  @override
+  State<BecauseShuffleButton> createState() => _BecauseShuffleButtonState();
+}
+
+class _BecauseShuffleButtonState extends State<BecauseShuffleButton> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  bool _focused = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  bool _lit(BuildContext context, bool hovered) {
+    return hovered ||
+        ShellPaintScope.focusStyledOf(context, focused: _focused);
+  }
+
+  Widget _icon(bool lit) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Icon(
+        Icons.shuffle_rounded,
+        size: widget.iconSize,
+        color: lit ? ForjaShellColors.brandGreen : ForjaShellColors.iconMuted,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final useTv = ShellPaintScope.useTvFocusOf(context);
+    final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
+
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _icon(_lit(context, _hoveredN.value)),
+    );
+
+    if (useTv) {
+      return ShellPaintScope.focusableTap(
+        context: context,
+        onTap: widget.onTap,
+        borderRadius: 20,
+        motion: ForjaMotionPreset.fillOnly,
+        suppressInkHover: true,
+        showFocusFill: false,
+        listIndex: widget.listIndex,
+        tvItemIndex: widget.listIndex,
+        tvZone: ShellPaintTvZone.row,
+        onUpEdge: widget.onUpEdge,
+        onDownEdge: widget.onDownEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: scaleOnHover ? _setHovered : null,
+        child: painted,
+      );
+    }
+
+    return MouseRegion(
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: painted,
+      ),
     );
   }
 }

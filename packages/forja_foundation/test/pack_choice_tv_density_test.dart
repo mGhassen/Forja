@@ -7,6 +7,7 @@ void main() {
       SettingsTokens.packChoiceMinHeightCompactTv,
       lessThan(SettingsTokens.packChoiceMinHeightCompact),
     );
+    expect(SettingsTokens.packChoiceMinHeightCompactTv, 0);
     expect(
       SettingsTokens.packChoiceIconSizeCompactTv,
       lessThan(SettingsTokens.packChoiceIconSizeCompact),

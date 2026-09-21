@@ -4,6 +4,7 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:rust/rust.dart';
 import 'package:forja/features/settings/ui/focus_controls.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Torrent engine and sort order settings.
@@ -62,9 +63,11 @@ class _SettingsSearchTorrentsSectionState
                 child: Text(
                   'Install the ForjaHQ Torrent pack under Settings → Forja Packs '
                   'and enable indexers per plugin.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: ForjaShellColors.textSecondary,
-                      ),
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+                    height: 1.35,
+                  ),
                 ),
               ),
             settingsFocusableDropdown(
@@ -102,9 +105,11 @@ class _SettingsSearchTorrentsSectionState
               child: Text(
                 'UIndex is behind Cloudflare. Point this at a local FlareSolverr or Byparr '
                 'instance (same /v1 API as Prowlarr indexers).',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: ForjaShellColors.textSecondary,
-                    ),
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+                  height: 1.35,
+                ),
               ),
             ),
           ],

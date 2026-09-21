@@ -443,7 +443,8 @@ class _ListStatusPinState extends State<ListStatusPin> {
         !widget.scaleOnHover) {
       return const SizedBox.shrink();
     }
-    final size = widget.iconSize ?? 18.0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final size = widget.iconSize ?? ShellTokens.iconSizeFor(18, tv: tv);
     final status = widget.currentStatus;
 
     return CompositedTransformTarget(

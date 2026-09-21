@@ -3867,10 +3867,8 @@ class _BecauseMountState extends State<_BecauseMount> {
                   ),
                   trailing: canShuffle
                       ? (tabKey.isEmpty || shuffleSort == null
-                          ? IconButton(
-                              onPressed: () => setState(() => _shuffleKey++),
-                              icon: const Icon(Icons.shuffle_rounded),
-                              color: ForjaShellColors.iconMuted,
+                          ? BecauseShuffleButton(
+                              onTap: () => setState(() => _shuffleKey++),
                             )
                           : TvKitRow(
                               tabId: tabKey,
@@ -3885,13 +3883,9 @@ class _BecauseMountState extends State<_BecauseMount> {
                                   0,
                                 );
                               },
-                              child: shellFocusableTap(
-                                context: ctx,
-                                tvTabId: tabKey,
-                                tvRowId: 'because-shuffle',
-                                tvItemIndex: 0,
-                                tvZone: ShellTvZone.row,
+                              child: BecauseShuffleButton(
                                 onTap: () => setState(() => _shuffleKey++),
+                                listIndex: 0,
                                 onUpEdge: packFocusUp,
                                 onDownEdge: () {
                                   ShellTvFocusCoordinator.focusRowItem(
@@ -3900,13 +3894,6 @@ class _BecauseMountState extends State<_BecauseMount> {
                                     0,
                                   );
                                 },
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8),
-                                  child: Icon(
-                                    Icons.shuffle_rounded,
-                                    color: ForjaShellColors.iconMuted,
-                                  ),
-                                ),
                               ),
                             ))
                       : null,

@@ -20,6 +20,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 /// Open pack install/uninstall picker inside Settings → Forja Packs (right pane).
 ///
 /// Same drill pattern as [SettingsAddonDrill] — never a modal dialog.
@@ -609,56 +610,68 @@ class _PackPromptRow extends StatelessWidget {
                     ),
                     if (candidate.official) ...[
                       const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: ForjaShellColors.brandGreen
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: ForjaShellColors.brandGreen
-                                .withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: Text(
-                          'Official',
-                          style: TextStyle(
-                            color: ForjaShellColors.brandGreen,
-                            fontSize: SettingsTokens.groupLabelSizeOf(context),
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                      Builder(
+                        builder: (context) {
+                          final tv = ShellPaintScope.usesTvDensityOf(context);
+                          return Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: tv ? 4 : 6,
+                              vertical: tv ? 1 : 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: ForjaShellColors.brandGreen
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(tv ? 3 : 4),
+                              border: Border.all(
+                                color: ForjaShellColors.brandGreen
+                                    .withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Text(
+                              'Official',
+                              style: TextStyle(
+                                color: ForjaShellColors.brandGreen,
+                                fontSize:
+                                    SettingsTokens.groupLabelSizeOf(context),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: tv ? 0.3 : 0.5,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                     if (candidate.recommended) ...[
                       const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF4D1C)
-                              .withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: const Color(0xFFFF4D1C)
-                                .withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: Text(
-                          'Recommended',
-                          style: TextStyle(
-                            color: const Color(0xFFFF4D1C),
-                            fontSize: SettingsTokens.groupLabelSizeOf(context),
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                      Builder(
+                        builder: (context) {
+                          final tv = ShellPaintScope.usesTvDensityOf(context);
+                          return Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: tv ? 4 : 6,
+                              vertical: tv ? 1 : 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF4D1C)
+                                  .withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(tv ? 3 : 4),
+                              border: Border.all(
+                                color: const Color(0xFFFF4D1C)
+                                    .withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Text(
+                              'Recommended',
+                              style: TextStyle(
+                                color: const Color(0xFFFF4D1C),
+                                fontSize:
+                                    SettingsTokens.groupLabelSizeOf(context),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: tv ? 0.3 : 0.5,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                     if (version != null && version.isNotEmpty) ...[

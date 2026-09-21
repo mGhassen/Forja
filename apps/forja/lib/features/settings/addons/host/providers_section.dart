@@ -390,11 +390,6 @@ class _SettingsForjaAddonsSectionState
   }
 
   Future<void> _removeNuvioAddon(String manifestUrl) async {
-    if (NuvioService.isBundled(manifestUrl)) {
-      if (!mounted) return;
-      ForjaToast.error('Built-in Nuvio addon cannot be removed');
-      return;
-    }
     try {
       await NuvioService.instance.remove(manifestUrl);
       scheduleNuvioSyncPush();
@@ -714,7 +709,6 @@ class _NuvioAddonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final builtIn = NuvioService.isBundled(addon.manifestUrl);
     final lean = addon.scrapers.isEmpty;
     final allOn =
         addon.scrapers.isNotEmpty && addon.scrapers.every((s) => s.enabled);
@@ -753,7 +747,7 @@ class _NuvioAddonTile extends StatelessWidget {
             );
           },
         ),
-        if (!builtIn) _AddonRemoveActions(onRemove: onRemove),
+        _AddonRemoveActions(onRemove: onRemove),
       ],
     );
 
@@ -794,7 +788,7 @@ class _NuvioAddonTile extends StatelessWidget {
         color: ForjaShellColors.iconActive,
       ),
       title: Text(
-        builtIn ? '${addon.name} (Built-in)' : addon.name,
+        addon.name,
         style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: SettingsTokens.typeSizeOf(context, 14),

@@ -97,6 +97,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
   late final TextEditingController _uaCtrl;
   late final TextEditingController _pasteCtrl;
   late final FocusNode _pasteFocus;
+  late final FocusNode _closeFocus;
   late final FocusNode _labelFocus;
   late final FocusNode _urlFocus;
   late final FocusNode _userFocus;
@@ -174,6 +175,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     _uaCtrl = TextEditingController(text: e?.portal.userAgent ?? '');
     _pasteCtrl = TextEditingController();
     _pasteFocus = FocusNode(debugLabel: 'iptv-share-paste');
+    _closeFocus = FocusNode(debugLabel: 'iptv-portal-close');
     _labelFocus = FocusNode(debugLabel: 'iptv-portal-label');
     _urlFocus = FocusNode(debugLabel: 'iptv-portal-url');
     _userFocus = FocusNode(debugLabel: 'iptv-portal-user');
@@ -238,7 +240,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
         final arrow = shellTvHandleRowArrows(
           event: event,
           tvMeta: _pasteTvMeta,
-          onUpEdge: () {}, // top of dialog - keep focus off header close
+          onUpEdge: _focusClose,
           onDownEdge: () => _focusDialogItem(1),
           containDpad: ShellTvContainDpad.activeOf(context),
         );
@@ -255,6 +257,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
         }
         if (shellTvIsNavigationKey(event) &&
             event.logicalKey == LogicalKeyboardKey.arrowUp) {
+          _endPasteEditing(keepFocus: false);
+          _focusClose();
           return KeyEventResult.handled;
         }
         if (event is KeyDownEvent &&
@@ -302,13 +306,13 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     if (_showManualForm) {
       return [
         _pasteFocus,
-        _expandFocus,
         ..._platformTabFocus,
         _labelFocus,
         _urlFocus,
         ..._credentialFocusNodes,
         _submitFocus,
         _cancelFocus,
+        _expandFocus,
       ];
     }
     return [_pasteFocus, _expandFocus];
@@ -334,6 +338,11 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     nodes[index.clamp(0, nodes.length - 1)].requestFocus();
   }
 
+  void _focusClose() {
+    if (!mounted || !liveUseTvFocus(context)) return;
+    if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+  }
+
   void _focusSelectedPlatformTab() {
     _platformTabFocus[_platformTabIndex].requestFocus();
   }
@@ -354,6 +363,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     _uaCtrl.dispose();
     _pasteCtrl.dispose();
     _pasteFocus.dispose();
+    _closeFocus.dispose();
     _labelFocus.dispose();
     _urlFocus.dispose();
     _userFocus.dispose();
@@ -746,8 +756,48 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     );
   }
 
-  Widget _portalDialogCloseButton({required VoidCallback? onTap}) {
-    final icon = Button(
+  Widget _portalDialogCloseButton({
+    required VoidCallback? onTap,
+    VoidCallback? onDownEdge,
+  }) {
+    final tv = liveUseTvFocus(context);
+    if (tv && onTap != null) {
+      final focused = _closeFocus.hasFocus;
+      return liveTap(
+        context: context,
+        onTap: onTap,
+        borderRadius: 8,
+        scaleOnFocus: 1,
+        focusNode: _closeFocus,
+        tvTabId: widget.tabId,
+        onFocusChange: (_) => setState(() {}),
+        onUpEdge: () {},
+        onDownEdge: onDownEdge ?? () {},
+        onLeftEdge: () {},
+        onRightEdge: () {},
+        child: Tooltip(
+          message: 'Close',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.all(6),
+            decoration: guideFocusButtonDecoration(
+              active: false,
+              tvFocused: focused,
+              borderRadius: 8,
+              idleBg: Colors.transparent,
+              idleBorder: Colors.transparent,
+              subtle: true,
+            ),
+            child: Icon(
+              Icons.close_rounded,
+              color: GuideChromeStyle.iconMuted,
+              size: 22,
+            ),
+          ),
+        ),
+      );
+    }
+    return Button(
       variant: ButtonVariant.plainIcon,
       size: ButtonSize.icon,
       icon: Icons.close_rounded,
@@ -756,10 +806,6 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       iconSize: 22,
       onPressed: onTap,
     );
-    if (liveUseTvFocus(context)) {
-      return ExcludeFocus(child: icon);
-    }
-    return icon;
   }
 
   Widget _portalDialogActionIcon({
@@ -799,7 +845,11 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       tvItemIndex: tvItemIndex,
       onFocusChange: tv ? (_) => setState(() {}) : null,
       onUpEdge: () => _focusDialogItem(_lastFieldIndex),
-      onDownEdge: () {},
+      onDownEdge: () {
+        if (_showManualForm && !_editing && !_namingImported) {
+          _expandFocus.requestFocus();
+        }
+      },
       onLeftEdge: tv && tvItemIndex == _dialogCancelIndex
           ? () => _focusDialogItem(_dialogOkIndex)
           : () {},
@@ -926,6 +976,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                 ),
                                 _portalDialogCloseButton(
                                   onTap: _cancel,
+                                  onDownEdge: () => _labelFocus.requestFocus(),
                                 ),
                               ],
                             ),
@@ -1014,6 +1065,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                     right: 0,
                                     child: _portalDialogCloseButton(
                                       onTap: _cancel,
+                                      onDownEdge: () =>
+                                          _pasteFocus.requestFocus(),
                                     ),
                                   ),
                                 ],
@@ -1034,6 +1087,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                   ),
                                   _portalDialogCloseButton(
                                     onTap: _cancel,
+                                    onDownEdge: _focusSelectedPlatformTab,
                                   ),
                                 ],
                               )
@@ -1042,6 +1096,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                 alignment: Alignment.centerRight,
                                 child: _portalDialogCloseButton(
                                   onTap: _cancel,
+                                  onDownEdge: () =>
+                                      _pasteFocus.requestFocus(),
                                 ),
                               ),
                             if (!_editing) ...[
@@ -1341,17 +1397,17 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       focusNode: tv ? _expandFocus : null,
       tvTabId: widget.tabId,
       tvRowId: tv ? _portalDialogRowId : null,
-      tvItemIndex: tv ? 1 : null,
-      onUpEdge: tv ? () => _focusDialogItem(0) : null,
-      onDownEdge: tv
+      tvItemIndex: tv ? _indexOfNode(_expandFocus) : null,
+      onUpEdge: tv
           ? () {
               if (_showManualForm) {
-                _focusSelectedPlatformTab();
+                _focusDialogItem(_dialogOkIndex);
               } else {
-                _focusDialogItem(1);
+                _focusDialogItem(0);
               }
             }
           : null,
+      onDownEdge: tv ? () {} : null,
       onFocusChange: tv
           ? (focused) => setState(() => _expandFocused = focused)
           : null,

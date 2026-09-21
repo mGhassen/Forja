@@ -199,7 +199,6 @@ class SyncDomainBridge {
 
     final nuvioAddons = await NuvioService.instance.listAddons();
     for (final addon in nuvioAddons) {
-      if (NuvioService.isBundled(addon.manifestUrl)) continue;
       try {
         await NuvioService.instance.remove(
           addon.manifestUrl,

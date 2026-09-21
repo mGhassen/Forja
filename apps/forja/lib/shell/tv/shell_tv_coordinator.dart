@@ -2123,9 +2123,11 @@ ScrollableState? _nearestVerticalScrollable(BuildContext context) {
 ///
 /// When the control sits near the **start** of the scroll content, jump to
 /// [ScrollPosition.minScrollExtent] so page titles / group labels above the
-/// first focusable stay visible. Mid/end rows leave a **bottom inset** so the
-/// next item peeks and the last row is not pinned under ATV overscan (flush
-/// [ScrollPositionAlignmentPolicy.keepVisibleAtEnd] caused that).
+/// first focusable stay visible. When the control is already fully visible
+/// (with a small overscan margin), do nothing — soft bottom-inset lift must
+/// not yank short Settings pages so the title scrolls off. Mid/end rows that
+/// are clipped leave a **bottom inset** so the next item peeks and the last
+/// row is not pinned under ATV overscan.
 void shellTvEnsureVisibleItem(
   BuildContext context, {
   double topRevealSlackPx = kShellTvListTopRevealSlackPx,
@@ -2155,11 +2157,22 @@ void shellTvEnsureVisibleItem(
   final viewportH = position.viewportDimension;
   final cardTop = topInViewport;
   final cardBottom = topInViewport + box.size.height;
+
+  // Already fully on-screen (with a small overscan margin): stay put.
+  // Soft bottom-inset lift used to yank Features / short Settings pages so
+  // the page title scrolled off while the focused row was still visible.
+  const overscanFraction = 0.06;
+  final safeBottom = viewportH * (1.0 - overscanFraction);
+  if (cardTop >= 0 && cardBottom <= safeBottom) return;
+
   final maxBottom = viewportH * (1.0 - bottomInsetFraction);
 
   var delta = 0.0;
   if (cardBottom > maxBottom) {
     delta = cardBottom - maxBottom;
+  } else if (cardBottom > safeBottom) {
+    // In the thin overscan band only — lift just enough.
+    delta = cardBottom - safeBottom;
   }
   // Prefer keeping the top on-screen when the control is taller than the band.
   if (cardTop - delta < 0) {

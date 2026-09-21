@@ -576,6 +576,16 @@ abstract final class ShellTokens {
   static const double posterRatingGap = 2;
   static const double posterRatingGapTv = 1;
 
+  /// Text corner badge on posters (NOW / REMAKE / …).
+  static const double posterBadgeFontSize = 9;
+  static const double posterBadgeFontSizeTv = tvMetaFontSize;
+  static const double posterBadgePadH = 6;
+  static const double posterBadgePadHTv = 4;
+  static const double posterBadgePadV = 2;
+  static const double posterBadgePadVTv = 1;
+  static const double posterBadgeRadius = 4;
+  static const double posterBadgeRadiusTv = 3;
+
   /// Outlined rank digit behind Popular / top-N posters (outside focus chrome).
   static const double posterRankFontSize = 120;
   static const double posterRankStrokeWidth = 2;
@@ -935,8 +945,11 @@ abstract final class ShellTokens {
   static const double formInputPadVLgTv = formInputPadVLg * tvChromeScale;
 
   static const double favStarIconSize = 14;
+  static const double favStarIconSizeTv = favStarIconSize * tvChromeScale;
   static const double scrollerArrowOffset = 8;
   static const double scrollerArrowIconSize = 24;
+  static const double scrollerArrowIconSizeTv =
+      scrollerArrowIconSize * tvChromeScale;
   static const double filterSheetRadius = 12;
   static const double filterSheetRadiusTv = 10;
   static const double filterSheetHandleWidth = 40;
@@ -1001,12 +1014,15 @@ abstract final class ShellTokens {
   static const double compactNavEdgeHoverWidth = 12;
 
   static const double packUpdateMenuBadgeFontSize = 10;
-
+  static const double packUpdateMenuBadgeFontSizeTv = tvMetaFontSize;
   static const double packUpdateMenuBadgePadH = 6;
-
+  static const double packUpdateMenuBadgePadHTv =
+      packUpdateMenuBadgePadH * tvChromeScale;
   static const double packUpdateMenuBadgePadV = 2;
-
+  static const double packUpdateMenuBadgePadVTv = 1;
   static const double packUpdateMenuBadgeRadius = 4;
+  static const double packUpdateMenuBadgeRadiusTv =
+      packUpdateMenuBadgeRadius * tvChromeScale;
 
   static const double packUpdateSettingsIconSize = 24;
 
@@ -1026,6 +1042,17 @@ abstract final class ShellTokens {
     final s = value * tvChromeScale;
     return s < min ? min : s;
   }
+
+  /// Material default icon size (Icons without an explicit [Icon.size]).
+  static const double iconSize = 24;
+
+  /// Leanback default for [IconTheme] / [IconButton] when size is unset.
+  static const double iconSizeTv = iconSize * tvChromeScale;
+
+  /// Desktop icon px → leanback chrome. Prefer named `*IconSizeTv` tokens when
+  /// they exist; use this for one-off desktop baselines.
+  static double iconSizeFor(double desktop, {required bool tv}) =>
+      chromeScale(desktop, tv: tv);
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
   static const double homeSectionTitleTop = 36;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -283,19 +284,29 @@ class CertBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: EdgeInsets.symmetric(
+        horizontal:
+            tv ? DetailsTokens.certBadgePadHTv : DetailsTokens.certBadgePadH,
+        vertical:
+            tv ? DetailsTokens.certBadgePadVTv : DetailsTokens.certBadgePadV,
+      ),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(
+          tv ? DetailsTokens.certBadgeRadiusTv : DetailsTokens.certBadgeRadius,
+        ),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          fontSize: 11,
+        style: TextStyle(
+          fontSize: tv
+              ? DetailsTokens.certBadgeFontSizeTv
+              : DetailsTokens.certBadgeFontSize,
           fontWeight: FontWeight.w700,
           color: Colors.white,
-          letterSpacing: 0.3,
+          letterSpacing: tv ? 0.2 : 0.3,
         ),
       ),
     );
@@ -309,19 +320,33 @@ class _MediaTypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: tv
+            ? DetailsTokens.mediaTypeBadgePadHTv
+            : DetailsTokens.mediaTypeBadgePadH,
+        vertical: tv
+            ? DetailsTokens.mediaTypeBadgePadVTv
+            : DetailsTokens.mediaTypeBadgePadV,
+      ),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(
+          tv
+              ? DetailsTokens.mediaTypeBadgeRadiusTv
+              : DetailsTokens.mediaTypeBadgeRadius,
+        ),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          fontSize: 10,
+        style: TextStyle(
+          fontSize: tv
+              ? DetailsTokens.mediaTypeBadgeFontSizeTv
+              : DetailsTokens.mediaTypeBadgeFontSize,
           fontWeight: FontWeight.bold,
           color: Colors.white60,
-          letterSpacing: 0.8,
+          letterSpacing: tv ? 0.4 : 0.8,
         ),
       ),
     );

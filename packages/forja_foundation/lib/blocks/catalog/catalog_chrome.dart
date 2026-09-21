@@ -3,6 +3,7 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/action_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/top_bar_actions.dart';
 import 'package:forja_foundation/widgets/chrome/view_button_group.dart';
 import 'package:forja_foundation/widgets/chrome/widget_shelf.dart';
@@ -13,6 +14,16 @@ export 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 double? propsOptDouble(Map m, String key) {
   final v = m[key];
   return v is num ? v.toDouble() : null;
+}
+
+/// Desktop pack length → leanback chrome when TV density is on.
+double? propsOptLength(BuildContext context, Map m, String key) {
+  final v = propsOptDouble(m, key);
+  if (v == null) return null;
+  return ShellTokens.chromeScale(
+    v,
+    tv: ShellPaintScope.usesTvDensityOf(context),
+  );
 }
 
 /// `{ id, label }` rows from pack JSON lists.
@@ -317,7 +328,10 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
       height: propsOptDouble(action, 'height') ?? ShellTokens.widgetShelfHeight,
       radius: propsOptDouble(action, 'radius') ?? ShellTokens.widgetShelfRadius,
       fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.widgetShelfFontSize,
-      iconSize: propsOptDouble(action, 'iconSize') ?? ShellTokens.widgetShelfIconSize,
+      iconSize: propsOptLength(context, action, 'iconSize') ??
+          (ShellPaintScope.usesTvDensityOf(context)
+              ? ShellTokens.widgetShelfIconSizeTv
+              : ShellTokens.widgetShelfIconSize),
       pad: propsOptDouble(action, 'pad') ?? ShellTokens.widgetShelfGap,
       onDownEdge: widget.onDownEdge,
       chromeItemIndex: tvItemIndex,
@@ -349,7 +363,7 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
           ? (_) {}
           : (id) => widget.onSelect!(actionId, id),
       height: propsOptDouble(action, 'height'),
-      iconSize: propsOptDouble(action, 'iconSize'),
+      iconSize: propsOptLength(context, action, 'iconSize'),
       dividerHeight: propsOptDouble(action, 'dividerHeight'),
       onDownEdge: widget.onDownEdge,
       baseTvItemIndex: tvItemIndex,
@@ -488,7 +502,7 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
             radius: propsOptDouble(action, 'radius') ?? ShellTokens.actionChipRadius,
             maxWidth: propsOptDouble(action, 'maxWidth') ?? ShellTokens.actionChipMaxWidth,
             fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
-            iconSize: propsOptDouble(action, 'iconSize'),
+            iconSize: propsOptLength(context, action, 'iconSize'),
             gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
             tvItemIndex: chipIndex,
             onDownEdge: widget.onDownEdge,
@@ -517,7 +531,7 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
             radius: propsOptDouble(action, 'radius') ?? ShellTokens.actionChipRadius,
             maxWidth: propsOptDouble(action, 'maxWidth') ?? ShellTokens.actionChipMaxWidth,
             fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
-            iconSize: propsOptDouble(action, 'iconSize'),
+            iconSize: propsOptLength(context, action, 'iconSize'),
             gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
             tvItemIndex: chipIndex,
             onDownEdge: widget.onDownEdge,
@@ -539,7 +553,7 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
           radius: propsOptDouble(action, 'radius') ?? ShellTokens.actionChipRadius,
           maxWidth: propsOptDouble(action, 'maxWidth') ?? ShellTokens.actionChipMaxWidth,
           fontSize: propsOptDouble(action, 'fontSize') ?? ShellTokens.actionChipFontSize,
-          iconSize: propsOptDouble(action, 'iconSize'),
+          iconSize: propsOptLength(context, action, 'iconSize'),
           gap: propsOptDouble(action, 'gap') ?? ShellTokens.actionChipGap,
           tvItemIndex: chipIndex,
           onDownEdge: widget.onDownEdge,

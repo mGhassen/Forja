@@ -24,6 +24,8 @@ abstract final class SettingsTokens {
   /// Leanback — hand width so labels stay readable (not × [tvChromeScale]).
   static const double sidebarWidthTv = 240;
   static const double detailMaxWidth = 720;
+  /// Leanback — denser than desktop; keep form rows readable (not × chrome).
+  static const double detailMaxWidthTv = 480;
 
   /// Flat green left-bar + ink fill (category rail and detail rows) — no card radius.
   static const double categoryTileRadius = 0;
@@ -67,7 +69,9 @@ abstract final class SettingsTokens {
 
   /// Filled CTA (Install / Update all / Retry) — chrome family, type = row title.
   static const double filledButtonHeight = 36;
-  static const double filledButtonHeightTv = filledButtonHeight * _s;
+  /// Hand-tuned — chrome ×scale (~22) crushes label + icon; keep denser than
+  /// desktop but roomy enough for the type ladder.
+  static const double filledButtonHeightTv = 28;
   static const double filledButtonIconSize = 18;
   static const double filledButtonIconSizeTv = filledButtonIconSize * _s;
   static const double filledButtonPadH = 18;
@@ -78,6 +82,32 @@ abstract final class SettingsTokens {
   static const double iconButtonIconSizeTv = iconButtonIconSize * _s;
   static const double iconButtonHitSize = 40;
   static const double iconButtonHitSizeTv = iconButtonHitSize * _s;
+
+  /// Expand / collapse chevron on Settings expandable rows.
+  static const double expandChevronSize = 20;
+  /// Hand-tuned — chrome ×scale of 20 still dominates denser row type.
+  static const double expandChevronSizeTv = 12;
+  static const double expandChevronHitSize = 40;
+  static const double expandChevronHitSizeTv = 28;
+
+  /// Profile & account active-profile stage (avatar + Watching now).
+  static const double profileStageAvatarSize = 88;
+  static const double profileStageAvatarSizeTv =
+      profileStageAvatarSize * _s;
+  static const double profileStageGlowSize = 108;
+  static const double profileStageGlowSizeTv = profileStageGlowSize * _s;
+  static const double profileStageGap = 20;
+  static const double profileStageGapTv = profileStageGap * _s;
+  static const double profileStageChevronSize = 28;
+  static const double profileStageChevronSizeTv = expandChevronSizeTv;
+  static const EdgeInsets profileStagePad =
+      EdgeInsets.fromLTRB(2, 10, 2, 18);
+  static const EdgeInsets profileStagePadTv =
+      EdgeInsets.fromLTRB(2, 6, 2, 10);
+  static const EdgeInsets profileStageBadgePad =
+      EdgeInsets.symmetric(horizontal: 8, vertical: 3);
+  static const EdgeInsets profileStageBadgePadTv =
+      EdgeInsets.symmetric(horizontal: 5, vertical: 2);
 
   /// Underline [SettingsTextField] content inset.
   static const double textFieldPadTop = 18;
@@ -103,8 +133,9 @@ abstract final class SettingsTokens {
   static const double packChoiceMinHeight = 168;
   static const double packChoiceMinHeightTv = packChoiceMinHeight * _s;
   static const double packChoiceMinHeightCompact = 112;
-  static const double packChoiceMinHeightCompactTv =
-      packChoiceMinHeightCompact * _s;
+  /// Hand-tuned — chrome ×scale of 112 still leaves a tall empty band under
+  /// denser type; hug content + [IntrinsicHeight] stretch instead.
+  static const double packChoiceMinHeightCompactTv = 0;
   static const double packChoiceRadius = 16;
   static const double packChoiceRadiusTv = 6;
   static const double packChoiceRadiusCompact = 12;
@@ -185,6 +216,9 @@ abstract final class SettingsTokens {
   static double sidebarWidthOf(BuildContext context) =>
       _tv(context) ? sidebarWidthTv : sidebarWidth;
 
+  static double detailMaxWidthOf(BuildContext context) =>
+      _tv(context) ? detailMaxWidthTv : detailMaxWidth;
+
   static double rowMinHeightOf(BuildContext context) =>
       _tv(context) ? rowMinHeightTv : rowMinHeight;
 
@@ -244,6 +278,30 @@ abstract final class SettingsTokens {
 
   static double iconButtonHitSizeOf(BuildContext context) =>
       _tv(context) ? iconButtonHitSizeTv : iconButtonHitSize;
+
+  static double expandChevronSizeOf(BuildContext context) =>
+      _tv(context) ? expandChevronSizeTv : expandChevronSize;
+
+  static double expandChevronHitSizeOf(BuildContext context) =>
+      _tv(context) ? expandChevronHitSizeTv : expandChevronHitSize;
+
+  static double profileStageAvatarSizeOf(BuildContext context) =>
+      _tv(context) ? profileStageAvatarSizeTv : profileStageAvatarSize;
+
+  static double profileStageGlowSizeOf(BuildContext context) =>
+      _tv(context) ? profileStageGlowSizeTv : profileStageGlowSize;
+
+  static double profileStageGapOf(BuildContext context) =>
+      _tv(context) ? profileStageGapTv : profileStageGap;
+
+  static double profileStageChevronSizeOf(BuildContext context) =>
+      _tv(context) ? profileStageChevronSizeTv : profileStageChevronSize;
+
+  static EdgeInsets profileStagePadOf(BuildContext context) =>
+      _tv(context) ? profileStagePadTv : profileStagePad;
+
+  static EdgeInsets profileStageBadgePadOf(BuildContext context) =>
+      _tv(context) ? profileStageBadgePadTv : profileStageBadgePad;
 
   static double textFieldPadTopOf(BuildContext context) =>
       _tv(context) ? textFieldPadTopTv : textFieldPadTop;

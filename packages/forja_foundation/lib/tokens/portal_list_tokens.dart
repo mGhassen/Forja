@@ -55,6 +55,16 @@ abstract final class PortalListTokens {
   static const double searchPrefixIconSize = 20;
   static const double searchPrefixIconSizeTv =
       searchPrefixIconSize * ShellTokens.tvChromeScale;
+  /// Material defaults prefix slot to 48 — shrink with chrome on TV.
+  static const double searchPrefixSlot = 40;
+  static const double searchPrefixSlotTv =
+      searchPrefixSlot * ShellTokens.tvChromeScale;
+  static const double searchFieldPadH = 12;
+  static const double searchFieldPadHTv =
+      searchFieldPadH * ShellTokens.tvChromeScale;
+  static const double searchFieldPadV = 10;
+  static const double searchFieldPadVTv =
+      searchFieldPadV * ShellTokens.tvChromeScale;
   static const double searchFieldRadius = 10;
   static const double searchFieldRadiusTv =
       searchFieldRadius * ShellTokens.tvChromeScale;
@@ -102,6 +112,12 @@ abstract final class PortalListTokens {
       headerIconSizeOf(tv) + (tv ? headerIconHitPadTv : headerIconHitPad);
   static double searchPrefixIconSizeOf(bool tv) =>
       tv ? searchPrefixIconSizeTv : searchPrefixIconSize;
+  static double searchPrefixSlotOf(bool tv) =>
+      tv ? searchPrefixSlotTv : searchPrefixSlot;
+  static double searchFieldPadHOf(bool tv) =>
+      tv ? searchFieldPadHTv : searchFieldPadH;
+  static double searchFieldPadVOf(bool tv) =>
+      tv ? searchFieldPadVTv : searchFieldPadV;
   static double searchFieldRadiusOf(bool tv) =>
       tv ? searchFieldRadiusTv : searchFieldRadius;
   static double panelPadOf(bool tv) => tv ? panelPadTv : panelPad;
@@ -110,6 +126,9 @@ abstract final class PortalListTokens {
   static double rowLineGapOf(bool tv) => tv ? rowLineGapTv : rowLineGap;
   static double rowMetaGapOf(bool tv) => tv ? rowMetaGapTv : rowMetaGap;
   static double rowSeatsGapOf(bool tv) => tv ? rowSeatsGapTv : rowSeatsGap;
+  static double metaIconSizeOf(bool tv) => tv ? metaIconSizeTv : metaIconSize;
+  static double badgeFontSizeOf(bool tv) => tv ? badgeFontSizeTv : badgeFontSize;
+  static double badgeRadiusOf(bool tv) => tv ? badgeRadiusTv : badgeRadius;
 
   /// Resolve list row height — TV ladder when density is on, even if the host
   /// still passes the desktop default (or an older TV constant).

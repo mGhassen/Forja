@@ -1144,14 +1144,17 @@ class _ThumbBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final badgeFontSize = ShellPaintScope.usesTvDensityOf(context)
-        ? DetailsTokens.metaFontSizeTv
-        : 11.0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final badgeFontSize =
+        tv ? DetailsTokens.metaFontSizeTv : 11.0;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: tv ? 4 : 7,
+        vertical: tv ? 2 : 4,
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(tv ? 3 : 5),
       ),
       child: Text(
         label,

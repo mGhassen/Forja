@@ -68,6 +68,14 @@ void main() {
       ),
     );
     expect(
+      PortalListTokens.searchPrefixSlotTv,
+      closeTo(
+        PortalListTokens.searchPrefixSlot * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(PortalListTokens.searchPrefixSlotTv, lessThan(48));
+    expect(
       PortalListTokens.resolvePanelWidth(true, ShellTokens.sidePanelWidth),
       ShellTokens.sidePanelWidthTv,
     );
@@ -85,6 +93,8 @@ void main() {
     expect(ShellTokens.tvMetaFontSize, 8);
     expect(SettingsTokens.sidebarWidth, 340);
     expect(SettingsTokens.sidebarWidthTv, 240);
+    expect(SettingsTokens.detailMaxWidthTv, lessThan(SettingsTokens.detailMaxWidth));
+    expect(SettingsTokens.detailMaxWidthTv, 480);
     // Settings roles → shell ladder (title / body / meta) — no parallel scale.
     expect(SettingsTokens.hubTitleSizeTv, ShellTokens.tvTitleFontSize);
     expect(SettingsTokens.pageTitleSizeTv, ShellTokens.tvTitleFontSize);
@@ -99,9 +109,12 @@ void main() {
     );
     expect(
       SettingsTokens.filledButtonHeightTv,
-      closeTo(
+      lessThan(SettingsTokens.filledButtonHeight),
+    );
+    expect(
+      SettingsTokens.filledButtonHeightTv,
+      greaterThan(
         SettingsTokens.filledButtonHeight * ShellTokens.tvChromeScale,
-        0.001,
       ),
     );
     expect(

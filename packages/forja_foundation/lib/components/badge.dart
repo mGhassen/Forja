@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart' hide Badge;
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Visual tone for [Badge].
 enum BadgeVariant {
@@ -33,7 +35,8 @@ class Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
-    final dims = _dims(size);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final dims = _dims(size, tv: tv);
     final colors = _resolve(theme, variant);
 
     return Container(
@@ -58,16 +61,22 @@ class Badge extends StatelessWidget {
     );
   }
 
-  static _BadgeDims _dims(BadgeSize size) => switch (size) {
-        BadgeSize.sm => const _BadgeDims(
-            height: 18,
-            fontSize: 10,
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+  static _BadgeDims _dims(BadgeSize size, {required bool tv}) => switch (size) {
+        BadgeSize.sm => _BadgeDims(
+            height: tv ? 12 : 18,
+            fontSize: tv ? ShellTokens.tvMetaFontSize : 10,
+            padding: EdgeInsets.symmetric(
+              horizontal: tv ? 4 : 6,
+              vertical: tv ? 1 : 2,
+            ),
           ),
-        BadgeSize.md => const _BadgeDims(
-            height: 22,
-            fontSize: 11,
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        BadgeSize.md => _BadgeDims(
+            height: tv ? 14 : 22,
+            fontSize: tv ? ShellTokens.tvMetaFontSize : 11,
+            padding: EdgeInsets.symmetric(
+              horizontal: tv ? 5 : 8,
+              vertical: tv ? 2 : 3,
+            ),
           ),
       };
 
