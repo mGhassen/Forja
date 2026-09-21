@@ -133,12 +133,14 @@ class CatalogSearchResultCard extends StatelessWidget {
                   right: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 4,
+                      horizontal: ShellTokens.posterRatingPadH,
+                      vertical: ShellTokens.posterRatingPadV,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(
+                        ShellTokens.posterRatingRadius,
+                      ),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.08),
                       ),
@@ -148,18 +150,19 @@ class CatalogSearchResultCard extends StatelessWidget {
                       children: [
                         const Icon(
                           Icons.star_rounded,
-                          size: 12,
+                          size: ShellTokens.posterRatingIconSize,
                           color: Colors.amber,
                         ),
-                        const SizedBox(width: 3),
+                        const SizedBox(width: ShellTokens.posterRatingGap),
                         CrossfadeSwap(
                           child: Text(
                             rating!.toStringAsFixed(1),
                             key: ValueKey(rating!.toStringAsFixed(1)),
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: ShellTokens.posterRatingFontSize,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
+                              height: 1.0,
                             ),
                           ),
                         ),

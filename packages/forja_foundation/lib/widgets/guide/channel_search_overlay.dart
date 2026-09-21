@@ -5,6 +5,7 @@ import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:forja_foundation/widgets/guide/guide_browse_text_field.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
@@ -433,15 +434,36 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
               onEscape: widget.onClose,
               onKeyEvent: _onSearchFieldKey,
               browsePlaceholder: 'Search channels or categories…',
-              browseHintStyle:
-                  GoogleFonts.plusJakartaSans(color: Colors.white30, fontSize: 13),
-              caretHeight: 18,
-              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 13),
+              browseHintStyle: GoogleFonts.plusJakartaSans(
+                color: Colors.white30,
+                fontSize: widget.isTv
+                    ? ShellTokens.formInputHintFontSizeTv
+                    : ShellTokens.formInputFontSizeSm,
+              ),
+              caretHeight: widget.isTv
+                  ? ShellTokens.formInputFontSizeTv * 1.5
+                  : 18,
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: widget.isTv
+                    ? ShellTokens.formInputFontSizeTv
+                    : ShellTokens.formInputFontSizeSm,
+              ),
               decoration: InputDecoration(
-                prefixIcon: Icon(Icons.search_rounded, color: Colors.white60),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: Colors.white60,
+                  size: widget.isTv
+                      ? ShellTokens.formInputIconSizeTv
+                      : ShellTokens.formInputIconSize,
+                ),
                 hintText: 'Search channels or categories…',
-                hintStyle:
-                    GoogleFonts.plusJakartaSans(color: Colors.white30, fontSize: 13),
+                hintStyle: GoogleFonts.plusJakartaSans(
+                  color: Colors.white30,
+                  fontSize: widget.isTv
+                      ? ShellTokens.formInputHintFontSizeTv
+                      : ShellTokens.formInputFontSizeSm,
+                ),
                 suffixIcon: _queryCtrl.text.isEmpty
                     ? null
                     : Builder(
@@ -452,8 +474,12 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
                             icon: Icons.close_rounded,
                             compact: true,
                             color: Colors.white54,
-                            iconSize: 18,
-                            height: 32,
+                            iconSize: widget.isTv
+                                ? ShellTokens.formInputIconSizeSmTv
+                                : 18,
+                            height: widget.isTv
+                                ? ShellTokens.controlHeightTv
+                                : 32,
                             onPressed: () {
                               _queryCtrl.clear();
                               _onQueryChanged('');

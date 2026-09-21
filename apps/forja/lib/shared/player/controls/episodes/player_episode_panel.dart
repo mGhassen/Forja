@@ -21,6 +21,8 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 const _kEpisodeTvTabId = 'player';
 const _kEpisodeTvListRowId = 'episode-list';
 
@@ -1338,7 +1340,9 @@ class _EpisodeRow extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: ForjaShellColors.cinematic.textPrimary,
-                              fontSize: 14,
+                              fontSize: ShellPaintScope.usesTvDensityOf(context)
+                                  ? ShellTokens.tvBodyFontSize
+                                  : 14,
                               fontWeight:
                                   selected ? FontWeight.w700 : FontWeight.w600,
                               height: 1.25,
@@ -1367,7 +1371,9 @@ class _EpisodeRow extends StatelessWidget {
                             notShippedYet: dateNotShippedYet,
                             normal: ForjaShellColors.cinematic.textSecondary,
                           ),
-                          fontSize: 12,
+                          fontSize: ShellPaintScope.usesTvDensityOf(context)
+                              ? ShellTokens.tvMetaFontSize
+                              : 12,
                           fontWeight: dateNotShippedYet
                               ? FontWeight.w600
                               : FontWeight.w500,
@@ -1383,7 +1389,9 @@ class _EpisodeRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: ForjaShellColors.cinematic.textSecondary,
-                          fontSize: 12,
+                          fontSize: ShellPaintScope.usesTvDensityOf(context)
+                              ? ShellTokens.tvMetaFontSize
+                              : 12,
                           height: 1.4,
                         ),
                       ),
@@ -1680,19 +1688,25 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
     const radius = 22.0;
     final secondary = ForjaShellColors.cinematic.textSecondary;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final fontSize = tv
+        ? ShellTokens.torrentPanelSearchFontSizeTv
+        : ShellTokens.torrentPanelSearchFontSize;
+    final padV = tv
+        ? ShellTokens.torrentPanelSearchPadVTv
+        : ShellTokens.torrentPanelSearchPadV;
     final fieldDecoration = InputDecoration(
       hintText: 'Search',
       hintStyle: TextStyle(
         color: secondary.withValues(alpha: 0.75),
-        fontSize: 13,
+        fontSize: fontSize,
       ),
       border: InputBorder.none,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+      contentPadding: EdgeInsets.symmetric(vertical: padV),
     );
     final fieldStyle = TextStyle(
       color: ForjaShellColors.cinematic.textPrimary,
-      fontSize: 13,
+      fontSize: fontSize,
     );
 
     final searchField = tv

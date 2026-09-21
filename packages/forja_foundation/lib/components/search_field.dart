@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/input.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Search-styled text field (leading search icon).
 class SearchField extends StatelessWidget {
@@ -43,7 +45,12 @@ class SearchField extends StatelessWidget {
           ? null
           : IconButton(
               onPressed: onClear,
-              icon: const Icon(Icons.close, size: 18),
+              icon: Icon(
+                Icons.close,
+                size: ShellPaintScope.usesTvDensityOf(context)
+                    ? ShellTokens.formInputIconSizeSmTv
+                    : 18,
+              ),
             ),
     );
   }

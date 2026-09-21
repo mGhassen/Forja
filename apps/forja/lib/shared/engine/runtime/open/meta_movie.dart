@@ -154,11 +154,23 @@ String? hubPosterTypeLabel(MetaItem item) {
 }
 
 /// Overlay badge on [KitPosterCard] — pack-supplied [MetaItem.badge] only.
+///
+/// Omits redundant FILM/TV/MOVIE/SERIES chips (type already lives in the
+/// subtitle via [kitPosterSubtitle] / hub paint). Other labels (unlock,
+/// remake, …) stay.
 String? kitPosterBadge(
   MetaItem item, {
   String? pluginId,
 }) {
   final badge = item.badge?.trim();
   if (badge == null || badge.isEmpty) return null;
+  final upper = badge.toUpperCase();
+  if (upper == 'FILM' ||
+      upper == 'MOVIE' ||
+      upper == 'HOLLYWOOD' ||
+      upper == 'TV' ||
+      upper == 'SERIES') {
+    return null;
+  }
   return badge;
 }

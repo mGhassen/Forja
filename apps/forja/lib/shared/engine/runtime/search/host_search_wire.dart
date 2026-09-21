@@ -617,6 +617,13 @@ class _KitSearchPageState extends State<KitSearchPage> {
     return ShellScope.inputPolicyOf(context).browseTextUntilActivate;
   }
 
+  bool _tvDensity(BuildContext context) =>
+      ShellScope.metricsOf(context).usesTvDensity;
+
+  int _resultsGridColumns(BuildContext context) => _tvDensity(context)
+      ? ShellTokens.searchResultsGridColumnsTv
+      : ShellTokens.searchResultsGridColumns;
+
   String _effectiveSearchQuery([String? typed]) {
     if (!widget.structuredSearch) return (typed ?? _query).trim();
     return composeSearchQuery(typed ?? _query, _filters);
@@ -635,18 +642,6 @@ class _KitSearchPageState extends State<KitSearchPage> {
     final effective = _effectiveSearchQuery(_controller.text);
     if (effective.isEmpty) return;
     _performSearch(effective, recordRecent: _controller.text.trim().isNotEmpty);
-  }
-
-  KeyEventResult _searchFilterTuneKeyEvent(FocusNode node, KeyEvent event) {
-    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
-    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown && _filtersOpen) {
-      if (_filterLensFirstFocusNode.canRequestFocus) {
-        _filterLensFirstFocusNode.requestFocus();
-        return KeyEventResult.handled;
-      }
-    }
-    return KeyEventResult.ignored;
   }
 
   void _onSearchChanged(String query) {
@@ -901,7 +896,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
   }
 
   double? _gridRowScrollStride() {
-    const gridColumns = 4;
+    final gridColumns = _resultsGridColumns(context);
     for (var row = 0; row < 24; row++) {
       final y0 = _tvItemCenterGlobalY(_resultsRowId, row * gridColumns);
       final y1 =
@@ -914,7 +909,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
   }
 
   int _closestGridRowForGlobalY(double helperCenterY, int maxRow) {
-    const gridColumns = 4;
+    final gridColumns = _resultsGridColumns(context);
     var bestRow = 0;
     var bestDelta = double.infinity;
     var sawRenderedRow = false;
@@ -942,7 +937,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
   }
 
   void _ensureGridRowVisible(int row) {
-    const gridColumns = 4;
+    final gridColumns = _resultsGridColumns(context);
     final index = row * gridColumns;
     final node = ShellTvFocusCoordinator.itemNode(
       widget.tvTabId,
@@ -967,7 +962,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
   }
 
   void _focusResultCardAtVisualLevel(int helperIndex) {
-    const gridColumns = 4;
+    final gridColumns = _resultsGridColumns(context);
     final count = _results.length;
     if (count == 0) return;
 
@@ -1040,6 +1035,16 @@ class _KitSearchPageState extends State<KitSearchPage> {
     );
   }
 
+  void _focusSearchFilter() {
+    if (!widget.structuredSearch) return;
+    if (!_filterFocusNode.canRequestFocus) return;
+    _filterFocusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      widget.tvTabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _filterFocusNode),
+    );
+  }
+
   void _focusHelperAtVisualLevelFromGrid(int gridIndex) {
     final count = _helperItemCount();
     if (count <= 0) return;
@@ -1081,6 +1086,36 @@ class _KitSearchPageState extends State<KitSearchPage> {
       _focusSearchFieldBrowse();
       return KeyEventResult.handled;
     }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      if (!widget.structuredSearch) return KeyEventResult.handled;
+      _focusSearchFilter();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _focusFilmCardsFromClose();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _searchFilterTuneKeyEvent(FocusNode node, KeyEvent event) {
+    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      if (_query.trim().isNotEmpty && _closeFocusNode.canRequestFocus) {
+        _focusSearchClose();
+      } else {
+        _focusSearchFieldBrowse();
+      }
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown && _filtersOpen) {
+      if (_filterLensFirstFocusNode.canRequestFocus) {
+        _filterLensFirstFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
     if (key == LogicalKeyboardKey.arrowDown) {
       _focusFilmCardsFromClose();
       return KeyEventResult.handled;
@@ -1102,9 +1137,17 @@ class _KitSearchPageState extends State<KitSearchPage> {
       _focusFirstHelper();
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
-        _query.isNotEmpty) {
-      _focusSearchClose();
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      // Editing: ignore so the caret can move.
+      if (_searchFieldEditing) return KeyEventResult.ignored;
+      if (_query.trim().isNotEmpty && _closeFocusNode.canRequestFocus) {
+        _focusSearchClose();
+        return KeyEventResult.handled;
+      }
+      if (widget.structuredSearch) {
+        _focusSearchFilter();
+        return KeyEventResult.handled;
+      }
       return KeyEventResult.handled;
     }
     if (_leanbackTextInput(context) &&
@@ -1229,18 +1272,21 @@ class _KitSearchPageState extends State<KitSearchPage> {
   Widget _buildWideLayout(BuildContext context) {
     final focused = _focusedResult;
     final backdropUrl = focused?.backdropUrl ?? focused?.posterUrl;
+    final tv = _tvDensity(context);
+    final inset =
+        tv ? ShellTokens.searchPageInsetTv : ShellTokens.searchPageInset;
+    final columnGap =
+        tv ? ShellTokens.searchColumnGapTv : ShellTokens.searchColumnGap;
+    final fieldBelow = tv
+        ? ShellTokens.searchFieldBelowGapTv
+        : ShellTokens.searchFieldBelowGap;
 
     return CatalogSearchPage(
       backdropUrl: backdropUrl,
       backgroundColor: Colors.transparent,
       hintText: widget.hintText,
       field: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          ShellTokens.searchPageInset,
-          ShellTokens.searchPageInset,
-          ShellTokens.searchPageInset,
-          0,
-        ),
+        padding: EdgeInsets.fromLTRB(inset, inset, inset, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1248,17 +1294,12 @@ class _KitSearchPageState extends State<KitSearchPage> {
             // Active filter tokens stay under the field; the lens itself
             // lives in the left column (replaces helpers when open).
             _buildFilterTokens(context),
-            const SizedBox(height: 24),
+            SizedBox(height: fieldBelow),
           ],
         ),
       ),
       results: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          ShellTokens.searchPageInset,
-          0,
-          ShellTokens.searchPageInset,
-          ShellTokens.searchPageInset,
-        ),
+        padding: EdgeInsets.fromLTRB(inset, 0, inset, inset),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1287,7 +1328,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
                       ),
               ),
             ),
-            const SizedBox(width: ShellTokens.searchColumnGap),
+            SizedBox(width: columnGap),
             Expanded(
               flex: 7,
               child: _buildResultsColumn(context),
@@ -1301,9 +1342,16 @@ class _KitSearchPageState extends State<KitSearchPage> {
   Widget _buildSearchField(BuildContext context) {
     final leanbackInput = _leanbackTextInput(context);
     final browseOnly = leanbackInput && !_searchFieldEditing;
+    final tv = _tvDensity(context);
+    final queryFont = tv
+        ? ShellTokens.searchQueryFontSizeTv
+        : ShellTokens.searchQueryFontSize;
+    final cursorHeight = tv
+        ? ShellTokens.searchQueryCursorHeightTv
+        : ShellTokens.searchQueryCursorHeight;
     final hintStyle = TextStyle(
       color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
-      fontSize: 32,
+      fontSize: queryFont,
       fontWeight: FontWeight.w600,
       height: 1.15,
     );
@@ -1341,12 +1389,12 @@ class _KitSearchPageState extends State<KitSearchPage> {
           textInputAction: TextInputAction.search,
           style: TextStyle(
             color: ForjaShellColors.textPrimary,
-            fontSize: 32,
+            fontSize: queryFont,
             fontWeight: FontWeight.w600,
             height: 1.15,
           ),
           cursorColor: ForjaShellColors.textPrimary,
-          cursorHeight: 36,
+          cursorHeight: cursorHeight,
           decoration: InputDecoration(
             hintText: showBrowsePlaceholder ? null : widget.hintText,
             hintStyle: hintStyle,
@@ -1376,7 +1424,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
             active: true,
             placeholder: widget.hintText,
             hintStyle: hintStyle,
-            caretHeight: 36,
+            caretHeight: cursorHeight,
           ),
       ],
     );
@@ -1460,15 +1508,34 @@ class _KitSearchPageState extends State<KitSearchPage> {
   }
 
   Widget _buildHelperTitle(
+    BuildContext context,
     String title, {
     required bool selected,
     bool isRecent = false,
   }) {
+    final tv = _tvDensity(context);
     final color = selected
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
+    final fontSize = selected
+        ? (tv
+            ? ShellTokens.searchHelperFontSizeSelectedTv
+            : ShellTokens.searchHelperFontSizeSelected)
+        : (tv
+            ? ShellTokens.searchHelperFontSizeTv
+            : ShellTokens.searchHelperFontSize);
+    final iconSize = selected
+        ? (tv
+            ? ShellTokens.searchHelperIconSizeSelectedTv
+            : ShellTokens.searchHelperIconSizeSelected)
+        : (tv
+            ? ShellTokens.searchHelperIconSizeTv
+            : ShellTokens.searchHelperIconSize);
+    final pad = tv
+        ? ShellTokens.searchHelperVerticalPaddingTv
+        : ShellTokens.searchHelperVerticalPadding;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: pad),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Row(
@@ -1476,7 +1543,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
             if (isRecent) ...[
               Icon(
                 Icons.history,
-                size: selected ? 15 : 13,
+                size: iconSize,
                 color: color.withValues(alpha: selected ? 0.9 : 0.55),
               ),
               const SizedBox(width: 8),
@@ -1488,7 +1555,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: color,
-                  fontSize: selected ? 17 : 15,
+                  fontSize: fontSize,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                   height: 1.25,
                 ),
@@ -1503,6 +1570,16 @@ class _KitSearchPageState extends State<KitSearchPage> {
   Widget _buildHelpersList(BuildContext context) {
     final hasQuery = _query.trim().isNotEmpty;
     final entries = _helperEntries;
+    final tv = _tvDensity(context);
+    final helperFont = tv
+        ? ShellTokens.searchHelperFontSizeTv
+        : ShellTokens.searchHelperFontSize;
+    final helperFontSelected = tv
+        ? ShellTokens.searchHelperFontSizeSelectedTv
+        : ShellTokens.searchHelperFontSizeSelected;
+    final helperPad = tv
+        ? ShellTokens.searchHelperVerticalPaddingTv
+        : ShellTokens.searchHelperVerticalPadding;
 
     if (entries.isEmpty) {
       if (!hasQuery && _recommendationsLoading) {
@@ -1576,9 +1653,9 @@ class _KitSearchPageState extends State<KitSearchPage> {
                 onDownEdge: _helperDownEdge(index, count),
                 onRightPastRemove: _helperRightEdge(index),
                 onFocusChange: onFocusChange,
-                titleFontSize: 15,
-                titleFontSizeSelected: 17,
-                verticalPadding: 8,
+                titleFontSize: helperFont,
+                titleFontSizeSelected: helperFontSelected,
+                verticalPadding: helperPad,
               );
             }
 
@@ -1600,6 +1677,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
               ensureVisibleMode: ShellPaintEnsureVisible.row,
               onFocusChange: onFocusChange,
               child: _buildHelperTitle(
+                context,
                 entry.title,
                 selected: selected,
                 isRecent: false,
@@ -1645,10 +1723,15 @@ class _KitSearchPageState extends State<KitSearchPage> {
       );
     }
 
-    const gridColumns = 4;
+    final gridColumns = _resultsGridColumns(context);
     final tvFocus = _tvFocus(context);
+    final tv = _tvDensity(context);
     final skeletonCount = _loadingMore ? gridColumns : 0;
     final itemCount = _results.length + skeletonCount;
+    final mainAxisSpacing =
+        tv ? ShellTokens.tvPosterCardRowGap : 16.0;
+    final crossAxisSpacing =
+        tv ? ShellTokens.tvPosterCardRowGap : 14.0;
 
     return TvGrid(
       tabId: widget.tvTabId,
@@ -1662,10 +1745,10 @@ class _KitSearchPageState extends State<KitSearchPage> {
           controller: _resultsScrollController,
           clipBehavior: Clip.none,
           padding: const EdgeInsets.only(bottom: 8),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: gridColumns,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 14,
+            mainAxisSpacing: mainAxisSpacing,
+            crossAxisSpacing: crossAxisSpacing,
             childAspectRatio: 2 / 3,
           ),
           itemCount: itemCount,
@@ -1745,8 +1828,11 @@ class _KitSearchPageState extends State<KitSearchPage> {
     }
 
     final dens = CatalogSearchDensity.maybeOf(context);
-    final cardWidth =
-        dens?.resultCardWidth ?? ShellTokens.searchCardWidthCompact;
+    final tv = _tvDensity(context);
+    final cardWidth = dens?.resultCardWidth ??
+        (tv
+            ? ShellTokens.searchCardWidthTv
+            : ShellTokens.searchCardWidthCompact);
     final aspect = dens?.resultCardAspect ?? 1.5;
     final cardHeight = cardWidth * aspect;
     final padding =

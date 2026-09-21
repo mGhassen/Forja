@@ -20,6 +20,7 @@ import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 part 'player_chrome_overlay_hero.dart';
 
 /// D-pad / hover highlight for player chrome - works even without [ShellScope].
@@ -879,7 +880,20 @@ class PlayerTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final titleInset = constraints.maxWidth >= 600 ? 152.0 : 96.0;
+        final tv = ShellScope.metricsOf(context).usesTvDensity;
+        final titleInset = constraints.maxWidth >= 600
+            ? (tv ? 96.0 : 152.0)
+            : (tv ? 64.0 : 96.0);
+        final topBtn = tv
+            ? ShellTokens.playerChromeTopBtnSizeTv
+            : ShellTokens.playerChromeTopBtnSize;
+        final titleFs = tv
+            ? ShellTokens.playerChromeTitleFontSizeTv
+            : ShellTokens.playerChromeTitleFontSize;
+        final metaFs = tv
+            ? ShellTokens.playerChromeMetaFontSizeTv
+            : ShellTokens.playerChromeMetaFontSize;
+        final padH = tv ? 10.0 : 16.0;
         // opaque:false — default MouseRegion eats the mac title-inset zone and
         // blocks [DragToMoveArea] / overlay drag strip underneath.
         return DesktopWindowChrome.wrapDragMove(
@@ -887,11 +901,11 @@ class PlayerTopBar extends StatelessWidget {
           opaque: false,
           onEnter: (_) => playerChromeCancelSeekScrubs(),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(16, topPadding(context), 16, 6),
+            padding: EdgeInsets.fromLTRB(padH, topPadding(context), padH, 6),
             child: SizedBox(
               width: double.infinity,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
+                constraints: BoxConstraints(minHeight: topBtn),
                 child: Stack(
                   alignment: Alignment.topCenter,
                   children: [
@@ -905,9 +919,9 @@ class PlayerTopBar extends StatelessWidget {
                             textAlign: TextAlign.center,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: titleFs,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -920,7 +934,7 @@ class PlayerTopBar extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: ForjaShellColors.cinematic.textSecondary,
-                                fontSize: 12,
+                                fontSize: metaFs,
                               ),
                             ),
                           ],
@@ -933,7 +947,7 @@ class PlayerTopBar extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.72),
-                                fontSize: 12,
+                                fontSize: metaFs,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -951,7 +965,7 @@ class PlayerTopBar extends StatelessWidget {
                       child: PlayerFlatIconButton(
                         icon: Icons.arrow_back_rounded,
                         onPressed: onBack,
-                        size: 44,
+                        size: topBtn,
                         tvFocusable: tvFocusable,
                         focusNode: backFocusNode,
                         onRightEdge: backOnRightEdge,
@@ -961,7 +975,8 @@ class PlayerTopBar extends StatelessWidget {
                     Positioned(
                       top: 0,
                       right: 0,
-                      child: trailing ?? const SizedBox(width: 44, height: 44),
+                      child: trailing ??
+                          SizedBox(width: topBtn, height: topBtn),
                     ),
                   ],
                 ),

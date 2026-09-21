@@ -81,16 +81,20 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
   Widget build(BuildContext context) {
     final useTv = ShellPaintScope.useTvFocusOf(context);
     final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
+    // Prefer live density over a desktop layout prop (kit mount / stale hosts).
+    final layout = ShellPaintScope.usesTvDensityOf(context)
+        ? MoodCircleLayout.tvScrollable
+        : widget.layout;
 
     Widget paint(bool hovered) => MoodCircle(
           label: widget.label,
           icon: widget.icon,
           accent: widget.accent,
-          layout: widget.layout,
+          layout: layout,
           selected: widget.selected,
           active: _hoveredOrFocused(context, hovered),
           scaleOnActive: scaleOnHover,
-          size: widget.layout.circleSize,
+          size: layout.circleSize,
         );
 
     final painted = ListenableBuilder(
@@ -102,7 +106,7 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
       return ShellPaintScope.focusableTap(
         context: context,
         onTap: widget.onTap,
-        borderRadius: widget.layout.circleSize / 2,
+        borderRadius: layout.circleSize / 2,
         motion: ForjaMotionPreset.fillOnly,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange: scaleOnHover ? _setHovered : null,

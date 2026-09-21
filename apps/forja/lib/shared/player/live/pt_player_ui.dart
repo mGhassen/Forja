@@ -591,13 +591,26 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     );
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => ShellScope.rehost(
+      builder: (ctx) {
+        final tv = ShellPaintScope.usesTvDensityOf(ctx);
+        final fieldSize = tv
+            ? ShellTokens.formInputFontSizeTv
+            : ShellTokens.formInputFontSize;
+        final labelSize = tv
+            ? ShellTokens.formInputLabelFontSizeTv
+            : ShellTokens.formInputLabelFontSize;
+        final titleSize = tv
+            ? ShellTokens.tvTitleFontSize
+            : 16.0;
+        final fieldStyle = TextStyle(color: Colors.white, fontSize: fieldSize);
+        final labelStyle = TextStyle(color: Colors.white54, fontSize: labelSize);
+        return ShellScope.rehost(
         context,
         AlertDialog(
           backgroundColor: const Color(0xFF141414),
-          title: const Text(
+          title: Text(
             'Search subtitles',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+            style: TextStyle(color: Colors.white, fontSize: titleSize),
           ),
           content: SizedBox(
             width: 360,
@@ -607,11 +620,12 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 TextField(
                   controller: titleCtrl,
                   autofocus: true,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: fieldStyle,
+                  decoration: InputDecoration(
                     labelText: 'Film or series name',
-                    labelStyle: TextStyle(color: Colors.white54),
-                    enabledBorder: UnderlineInputBorder(
+                    labelStyle: labelStyle,
+                    floatingLabelStyle: labelStyle,
+                    enabledBorder: const UnderlineInputBorder(
                       borderSide: BorderSide(color: Colors.white24),
                     ),
                   ),
@@ -620,12 +634,13 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: yearCtrl,
-                  style: const TextStyle(color: Colors.white),
+                  style: fieldStyle,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Year (optional)',
-                    labelStyle: TextStyle(color: Colors.white54),
-                    enabledBorder: UnderlineInputBorder(
+                    labelStyle: labelStyle,
+                    floatingLabelStyle: labelStyle,
+                    enabledBorder: const UnderlineInputBorder(
                       borderSide: BorderSide(color: Colors.white24),
                     ),
                   ),
@@ -636,12 +651,13 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                     Expanded(
                       child: TextField(
                         controller: seasonCtrl,
-                        style: const TextStyle(color: Colors.white),
+                        style: fieldStyle,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Season',
-                          labelStyle: TextStyle(color: Colors.white54),
-                          enabledBorder: UnderlineInputBorder(
+                          labelStyle: labelStyle,
+                          floatingLabelStyle: labelStyle,
+                          enabledBorder: const UnderlineInputBorder(
                             borderSide: BorderSide(color: Colors.white24),
                           ),
                         ),
@@ -651,12 +667,13 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                     Expanded(
                       child: TextField(
                         controller: episodeCtrl,
-                        style: const TextStyle(color: Colors.white),
+                        style: fieldStyle,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Episode',
-                          labelStyle: TextStyle(color: Colors.white54),
-                          enabledBorder: UnderlineInputBorder(
+                          labelStyle: labelStyle,
+                          floatingLabelStyle: labelStyle,
+                          enabledBorder: const UnderlineInputBorder(
                             borderSide: BorderSide(color: Colors.white24),
                           ),
                         ),
@@ -684,7 +701,8 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             ),
           ],
         ),
-      ),
+      );
+      },
     );
     final typed = titleCtrl.text.trim();
     final yearRaw = yearCtrl.text.trim();
@@ -1394,14 +1412,16 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     }
     return KeyedSubtree(
       key: _s._videoViewKey,
-      child: Video(
-        key: ValueKey(_s._videoEpoch),
-        controller: _s._controller!,
-        fit: BoxFit.contain,
-        fill: Colors.black,
-        controls: NoVideoControls,
-        subtitleViewConfiguration: const SubtitleViewConfiguration(
-          visible: false,
+      child: SizedBox.expand(
+        child: Video(
+          key: ValueKey(_s._videoEpoch),
+          controller: _s._controller!,
+          fit: BoxFit.contain,
+          fill: Colors.black,
+          controls: NoVideoControls,
+          subtitleViewConfiguration: const SubtitleViewConfiguration(
+            visible: false,
+          ),
         ),
       ),
     );
@@ -1486,7 +1506,9 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 _s._statusBanner ?? 'Buffering…',
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: ShellPaintScope.usesTvDensityOf(context)
+                      ? ShellTokens.playerChromeStatusFontSizeTv
+                      : 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -1797,7 +1819,9 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GuideChromeStyle.overlayTitle.copyWith(
-                      fontSize: compact ? 16 : 18,
+                      fontSize: ShellPaintScope.usesTvDensityOf(context)
+                          ? ShellTokens.playerChromeTitleFontSizeTv
+                          : (compact ? 16 : 18),
                       height: 1.15,
                     ),
                   ),
@@ -1808,7 +1832,9 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
                         color: Colors.white70,
-                        fontSize: 12,
+                        fontSize: ShellPaintScope.usesTvDensityOf(context)
+                            ? ShellTokens.playerChromeMetaFontSizeTv
+                            : 12,
                         height: 1.15,
                       ),
                     ),

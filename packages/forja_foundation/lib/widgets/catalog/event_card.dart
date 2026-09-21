@@ -5,6 +5,7 @@ import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Landscape schedule/event card paint — props only (RFC-106 Zone A).
 class EventCard extends StatelessWidget {
@@ -234,7 +235,7 @@ class _TeamBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const radius = 18.0;
+    final radius = EventCardTokens.teamAvatarRadiusOf(context);
     final avatar = CircleAvatar(
       radius: radius,
       backgroundColor: Colors.white12,
@@ -293,10 +294,11 @@ class _CornerBadgePaint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = live ? Colors.red.shade700 : Colors.black54;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(tv ? 4 : 6),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.45),
@@ -306,12 +308,15 @@ class _CornerBadgePaint extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: EdgeInsets.symmetric(
+          horizontal: tv ? 5 : 8,
+          vertical: tv ? 2 : 3,
+        ),
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 10,
+            fontSize: EventCardTokens.cornerBadgeFontSizeOf(context),
             fontWeight: FontWeight.bold,
             letterSpacing: 0.4,
           ),
@@ -328,28 +333,36 @@ class _ViewerBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Positioned(
-      right: 8,
-      bottom: 8,
+      right: tv ? 5 : 8,
+      bottom: tv ? 5 : 8,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.65),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(tv ? 4 : 6),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          padding: EdgeInsets.symmetric(
+            horizontal: tv ? 4 : 6,
+            vertical: tv ? 2 : 3,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.circle, size: 7, color: Colors.red.shade400),
-              const SizedBox(width: 4),
+              Icon(
+                Icons.circle,
+                size: tv ? 5 : 7,
+                color: Colors.red.shade400,
+              ),
+              SizedBox(width: tv ? 3 : 4),
               CrossfadeSwap(
                 child: Text(
                   '$viewers',
                   key: ValueKey(viewers),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: EventCardTokens.cornerBadgeFontSizeOf(context),
                     fontWeight: FontWeight.w700,
                   ),
                 ),

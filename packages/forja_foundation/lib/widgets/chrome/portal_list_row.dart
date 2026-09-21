@@ -121,14 +121,20 @@ class _PortalListRowState extends State<PortalListRow> {
   bool get _tvDensity => ShellPaintScope.usesTvDensityOf(context);
 
   double get _rowHeight =>
-      _tvDensity && widget.height == PortalListTokens.rowHeight
-          ? PortalListTokens.rowHeightTv
-          : widget.height;
+      PortalListTokens.resolveRowHeight(_tvDensity, widget.height);
 
   double get _actionWidth =>
-      _tvDensity && widget.actionWidth == PortalListTokens.actionWidth
+      _tvDensity &&
+              (widget.actionWidth == PortalListTokens.actionWidth ||
+                  widget.actionWidth == PortalListTokens.actionWidthTv)
           ? PortalListTokens.actionWidthTv
-          : widget.actionWidth;
+          : (_tvDensity
+              ? ShellTokens.chromeScale(
+                  widget.actionWidth,
+                  tv: true,
+                  min: PortalListTokens.actionWidthTv,
+                )
+              : widget.actionWidth);
 
   double get _rowPadH => PortalListTokens.rowPadHOf(_tvDensity);
   double get _rowIconSize => PortalListTokens.rowIconSizeOf(_tvDensity);
@@ -635,12 +641,12 @@ class _PortalListRowState extends State<PortalListRow> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _expiryLine(item.expiry),
-                          const SizedBox(height: 6),
+                          SizedBox(height: PortalListTokens.rowLineGapOf(_tvDensity)),
                           Row(
                             children: [
                               if (_showNewChrome) ...[
                                 _newBadge(),
-                                const SizedBox(width: 6),
+                                SizedBox(width: PortalListTokens.rowLineGapOf(_tvDensity)),
                               ],
                               Expanded(
                                 child: Text(
@@ -661,7 +667,7 @@ class _PortalListRowState extends State<PortalListRow> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 3),
+                          SizedBox(height: PortalListTokens.rowMetaGapOf(_tvDensity)),
                           Row(
                             children: [
                               if ((item.platformLabel ?? '')
@@ -671,7 +677,7 @@ class _PortalListRowState extends State<PortalListRow> {
                                   item.platformLabel!.trim(),
                                   muted: _showNewChrome,
                                 ),
-                                const SizedBox(width: 6),
+                                SizedBox(width: PortalListTokens.rowLineGapOf(_tvDensity)),
                               ],
                               Expanded(
                                 child: Text(
@@ -694,7 +700,7 @@ class _PortalListRowState extends State<PortalListRow> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: PortalListTokens.rowSeatsGapOf(_tvDensity)),
                           _seatsLine(
                             active: item.activeConnections,
                             max: item.maxConnections,

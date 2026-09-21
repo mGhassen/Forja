@@ -5,6 +5,7 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/filter_sheet_option.dart';
 
 /// Live schedule sheet — Status × Horizon (not a flat time list).
@@ -19,14 +20,21 @@ Future<void> showKitScheduleWindowSheet(
     KitScheduleHorizon? horizon,
   }) onChanged,
 }) {
+  final tv = ShellScope.metricsOf(context).usesTvDensity;
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: ForjaShellColors.surfaceElevated,
     isScrollControlled: true,
-    builder: (ctx) => _LiveScheduleSheet(
-      status: status,
-      horizon: horizon,
-      onChanged: onChanged,
+    constraints: tv
+        ? const BoxConstraints(maxWidth: ShellTokens.filterSheetMaxWidthTv)
+        : null,
+    builder: (ctx) => ShellScope.rehost(
+      context,
+      _LiveScheduleSheet(
+        status: status,
+        horizon: horizon,
+        onChanged: onChanged,
+      ),
     ),
   );
 }
@@ -142,8 +150,30 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
+    final tvDensity = ShellScope.metricsOf(context).usesTvDensity;
+    final maxHeight = MediaQuery.sizeOf(context).height *
+        (tvDensity
+            ? ShellTokens.filterSheetMaxHeightFractionTv
+            : ShellTokens.filterSheetMaxHeightFraction);
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final titleSize = tvDensity
+        ? ShellTokens.filterSheetTitleFontSizeTv
+        : ShellTokens.filterSheetTitleFontSize;
+    final subtitleSize = tvDensity
+        ? ShellTokens.filterSheetSubtitleFontSizeTv
+        : ShellTokens.filterSheetSubtitleFontSize;
+    final sectionSize = tvDensity
+        ? ShellTokens.filterSheetOptionFontSizeTv
+        : ShellTokens.filterSheetSubtitleFontSize;
+    final padH = tvDensity
+        ? ShellTokens.filterSheetPadHTv
+        : ShellTokens.filterSheetPadH;
+    final padTop = tvDensity
+        ? ShellTokens.filterSheetPadTopTv
+        : ShellTokens.filterSheetPadTop;
+    final padBottom = tvDensity
+        ? ShellTokens.filterSheetPadBottomTv
+        : ShellTokens.filterSheetPadBottom;
     final statuses = KitScheduleStatus.values;
     final horizons = KitScheduleHorizon.values;
 
@@ -207,9 +237,14 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        padding: EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
+          constraints: BoxConstraints(
+            maxHeight: maxHeight,
+            maxWidth: tvDensity
+                ? ShellTokens.filterSheetMaxWidthTv
+                : double.infinity,
+          ),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -217,50 +252,66 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
               children: [
                 Center(
                   child: Container(
-                    width: 40,
-                    height: 4,
+                    width: tvDensity
+                        ? ShellTokens.filterSheetHandleWidthTv
+                        : ShellTokens.filterSheetHandleWidth,
+                    height: tvDensity
+                        ? ShellTokens.filterSheetHandleHeightTv
+                        : ShellTokens.filterSheetHandleHeight,
                     decoration: BoxDecoration(
                       color: Colors.white24,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                const Text(
+                SizedBox(
+                  height: tvDensity
+                      ? ShellTokens.filterSheetTitleGapTv
+                      : ShellTokens.filterSheetTitleGap,
+                ),
+                Text(
                   'Schedule',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: titleSize,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 6),
-                const Text(
-                  'What to show, and how far ahead to load upcoming:',
-                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                SizedBox(
+                  height: tvDensity
+                      ? ShellTokens.filterSheetSubtitleGapTv
+                      : ShellTokens.filterSheetSubtitleGap,
                 ),
-                const SizedBox(height: 18),
-                const Text(
+                Text(
+                  'What to show, and how far ahead to load upcoming:',
+                  style: TextStyle(color: Colors.white54, fontSize: subtitleSize),
+                ),
+                SizedBox(
+                  height: tvDensity
+                      ? ShellTokens.filterSheetListGapTv
+                      : 18,
+                ),
+                Text(
                   'Status',
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 13,
+                    fontSize: sectionSize,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: tvDensity ? 6 : 8),
                 statusSection,
                 if (horizonSection != null) ...[
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: tvDensity ? 10 : 16),
+                  Text(
                     'Horizon',
                     style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 13,
+                      fontSize: sectionSize,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: tvDensity ? 6 : 8),
                   horizonSection,
                 ],
               ],

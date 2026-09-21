@@ -223,12 +223,20 @@ class _AccentMoodCircle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lit = selected || active;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final bgAlpha = selected ? 0.62 : (active ? 0.42 : 0.22);
     final borderColor = selected
         ? accent
         : active
             ? accent.withValues(alpha: 0.95)
             : accent.withValues(alpha: 0.35);
+    final borderWidth = selected
+        ? (tv
+            ? ShellTokens.moodCircleBorderWidthSelectedTv
+            : ShellTokens.moodCircleBorderWidthSelected)
+        : (tv
+            ? ShellTokens.moodCircleBorderWidthTv
+            : ShellTokens.moodCircleBorderWidth);
     final iconSize = lit ? layout.iconSizeActive : layout.iconSize;
     final iconWidget = Icon(icon, size: iconSize, color: Colors.white);
     final chip = ForjaMotionTheme.of(context).chipLift;
@@ -244,7 +252,7 @@ class _AccentMoodCircle extends StatelessWidget {
         color: accent.withValues(alpha: bgAlpha),
         border: Border.all(
           color: borderColor,
-          width: selected ? 2.5 : 1.5,
+          width: borderWidth,
         ),
         boxShadow: lit && scaleOnActive
             ? [

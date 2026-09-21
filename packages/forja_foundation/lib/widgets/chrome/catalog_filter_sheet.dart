@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/filter_sheet_option.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Generic catalog picker — flat [FilterSheetOption] rows (Zone A).
 Future<String?> showCatalogFilterSheet(
@@ -23,6 +24,9 @@ Future<String?> showCatalogFilterSheet(
     context: context,
     backgroundColor: ForjaShellColors.surfaceElevated,
     isScrollControlled: true,
+    constraints: ShellPaintScope.usesTvDensityOf(context)
+        ? const BoxConstraints(maxWidth: ShellTokens.filterSheetMaxWidthTv)
+        : null,
     builder: (ctx) => CatalogFilterSheet(
       current: current,
       options: options,
@@ -43,9 +47,9 @@ class CatalogFilterSheet extends StatefulWidget {
     this.autofocusFirst = false,
     this.wrapBody,
     this.optionInteractiveBuilder,
-    this.radius = ShellTokens.filterSheetRadius,
-    this.fontSize = 16,
-    this.padding = const EdgeInsets.fromLTRB(24, 20, 24, 32),
+    this.radius,
+    this.fontSize,
+    this.padding,
   });
 
   final String current;
@@ -60,9 +64,9 @@ class CatalogFilterSheet extends StatefulWidget {
     ValueChanged<bool>? onHoverChange,
     FocusNode? focusNode,
   })? optionInteractiveBuilder;
-  final double radius;
-  final double fontSize;
-  final EdgeInsetsGeometry padding;
+  final double? radius;
+  final double? fontSize;
+  final EdgeInsetsGeometry? padding;
 
   @override
   State<CatalogFilterSheet> createState() => _CatalogFilterSheetState();
@@ -93,70 +97,121 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
     final selectedId = widget.current.isEmpty || widget.current == 'all'
         ? 'all'
         : widget.current;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
 
-    final body = SafeArea(
-      child: Padding(
-        padding: widget.padding,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: ShellTokens.filterSheetHandleWidth,
-                    height: ShellTokens.filterSheetHandleHeight,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
+    Widget sheet(BuildContext densityContext) {
+      final tv = ShellPaintScope.usesTvDensityOf(densityContext);
+      final size = MediaQuery.sizeOf(densityContext);
+      final maxHeight = size.height *
+          (tv
+              ? ShellTokens.filterSheetMaxHeightFractionTv
+              : ShellTokens.filterSheetMaxHeightFraction);
+      final titleSize = tv
+          ? ShellTokens.filterSheetTitleFontSizeTv
+          : (widget.fontSize ?? ShellTokens.filterSheetTitleFontSize);
+      final subtitleSize = tv
+          ? ShellTokens.filterSheetSubtitleFontSizeTv
+          : (widget.fontSize != null
+              ? widget.fontSize! - 3
+              : ShellTokens.filterSheetSubtitleFontSize);
+      final optionSize = tv
+          ? ShellTokens.filterSheetOptionFontSizeTv
+          : (widget.fontSize ?? ShellTokens.filterSheetOptionFontSize);
+      final radius = widget.radius ??
+          (tv ? ShellTokens.filterSheetRadiusTv : ShellTokens.filterSheetRadius);
+      final padding = widget.padding ??
+          EdgeInsets.fromLTRB(
+            tv ? ShellTokens.filterSheetPadHTv : ShellTokens.filterSheetPadH,
+            tv ? ShellTokens.filterSheetPadTopTv : ShellTokens.filterSheetPadTop,
+            tv ? ShellTokens.filterSheetPadHTv : ShellTokens.filterSheetPadH,
+            tv
+                ? ShellTokens.filterSheetPadBottomTv
+                : ShellTokens.filterSheetPadBottom,
+          );
+
+      return SafeArea(
+        child: Padding(
+          padding: padding,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: maxHeight,
+              maxWidth: tv ? ShellTokens.filterSheetMaxWidthTv : double.infinity,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: tv
+                          ? ShellTokens.filterSheetHandleWidthTv
+                          : ShellTokens.filterSheetHandleWidth,
+                      height: tv
+                          ? ShellTokens.filterSheetHandleHeightTv
+                          : ShellTokens.filterSheetHandleHeight,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Catalog',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: widget.fontSize,
-                    fontWeight: FontWeight.bold,
+                  SizedBox(
+                    height: tv
+                        ? ShellTokens.filterSheetTitleGapTv
+                        : ShellTokens.filterSheetTitleGap,
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Filter the schedule by catalog:',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: widget.fontSize - 3,
+                  Text(
+                    'Catalog',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: titleSize,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                for (var i = 0; i < widget.options.length; i++)
-                  FilterSheetOption(
-                    label: widget.options[i].label,
-                    subtitle: widget.options[i].subtitle,
-                    selected: widget.options[i].id == selectedId,
-                    icon: widget.options[i].id == 'all'
-                        ? Icons.grid_view_rounded
-                        : Icons.video_library_rounded,
-                    onSelected: () =>
-                        Navigator.pop(context, widget.options[i].id),
-                    tvFocus: widget.tvFocus,
-                    focusNode: i == 0 ? _firstFocus : null,
-                    interactiveBuilder: widget.optionInteractiveBuilder,
-                    radius: widget.radius,
+                  SizedBox(
+                    height: tv
+                        ? ShellTokens.filterSheetSubtitleGapTv
+                        : ShellTokens.filterSheetSubtitleGap,
                   ),
-              ],
+                  Text(
+                    'Filter the schedule by catalog:',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: subtitleSize,
+                    ),
+                  ),
+                  SizedBox(
+                    height: tv
+                        ? ShellTokens.filterSheetListGapTv
+                        : ShellTokens.filterSheetListGap,
+                  ),
+                  for (var i = 0; i < widget.options.length; i++)
+                    FilterSheetOption(
+                      label: widget.options[i].label,
+                      subtitle: widget.options[i].subtitle,
+                      selected: widget.options[i].id == selectedId,
+                      icon: widget.options[i].id == 'all'
+                          ? Icons.grid_view_rounded
+                          : Icons.video_library_rounded,
+                      onSelected: () =>
+                          Navigator.pop(context, widget.options[i].id),
+                      tvFocus: widget.tvFocus,
+                      focusNode: i == 0 ? _firstFocus : null,
+                      interactiveBuilder: widget.optionInteractiveBuilder,
+                      radius: radius,
+                      fontSize: optionSize,
+                    ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
+    }
 
+    final core = Builder(builder: sheet);
     final wrap = widget.wrapBody;
-    if (wrap == null || !widget.tvFocus) return body;
-    return wrap(body);
+    if (wrap == null || !widget.tvFocus) return core;
+    return wrap(core);
   }
 }

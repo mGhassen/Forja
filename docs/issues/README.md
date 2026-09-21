@@ -150,7 +150,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [126-[open]-…](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) | ATV stale local settings push overwrites cloud Features/nav | P0 | Critical | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [127-[fixed]-…](fixed/127-[fixed]-android-tv-settings-detail-dpad.md) | ATV Settings page D-pad escapes category / Addons ↑ / spatial | P1 | High | fixed | Complete · 8/8 · A 7/7 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 13/13 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 10/10 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 12/12 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -306,6 +306,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [310-[fixed]-…](fixed/310-[fixed]-cinematic-hero-slide-drops-cta-focus.md) | Cinematic hero slide drops CTA focus | P1 | High | fixed | Complete · 2/2 · A 0/2 | — |
 | [311-[fixed]-…](fixed/311-[fixed]-pack-reload-eager-hub-refetch.md) | Pack reload eagerly refetches every keep-alive hub | P1 | High | fixed | Complete · 2/2 · A 0/1 | [305](fixed/305-[fixed]-home-reload-pack-empty-hero-rails.md) |
 | [312-[fixed]-…](fixed/312-[fixed]-android-tv-details-cast-crew-dpad.md) | Android TV details D-pad jumps Cast / Characters / Crew | P1 | High | fixed | Complete · 3/3 · A 1/3 | — |
+| [313-[fixed]-…](fixed/313-[fixed]-android-tv-live-sports-side-panel-opens-details.md) | ATV Live Sports Side panel opens detail page | P1 | High | fixed | Complete · 2/2 · A 1/2 | [304](fixed/304-[fixed]-live-sports-match-tap-open.md) |
 | [289-[fixed]-…](fixed/289-[fixed]-profile-pack-membership-bleed.md) | New profile inherits other profile packs | P0 | Critical | fixed | Complete · 5/5 · A 0/4 | [217](fixed/217-[fixed]-iptv-portals-bleed-across-profiles.md) · [259](259-[open]-cloud-pack-auto-install-before-profile-splash.md) |
 | [286-[fixed]-…](fixed/286-[fixed]-iptv-channels-hub-pack-restore.md) | Restore IPTV Channels hub (pack curated + portal scan) | P1 | High | fixed | Complete · 4/4 · A 0/3 | [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) |
 | [284-[fixed]-…](fixed/284-[fixed]-macos-27-window-zoom-snap-back.md) | macOS 27 title-bar zoom snaps back / boxed relaunch | P1 | High | fixed | Complete · 5/5 · A 0/2 | — |

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Labeled field shell — label + child + optional error.
 class Field extends StatelessWidget {
@@ -19,6 +21,9 @@ class Field extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
+    final labelSize = ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.formInputLabelFontSizeTv
+        : ShellTokens.formInputLabelFontSize;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -31,7 +36,7 @@ class Field extends StatelessWidget {
                   label!,
                   style: TextStyle(
                     color: theme.textSecondary,
-                    fontSize: 12,
+                    fontSize: labelSize,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -41,7 +46,7 @@ class Field extends StatelessWidget {
                   ' *',
                   style: TextStyle(
                     color: theme.brandGreen,
-                    fontSize: 12,
+                    fontSize: labelSize,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -54,9 +59,9 @@ class Field extends StatelessWidget {
           SizedBox(height: theme.spaceSm),
           Text(
             error!,
-            style: const TextStyle(
-              color: Color(0xFFF87171),
-              fontSize: 12,
+            style: TextStyle(
+              color: const Color(0xFFF87171),
+              fontSize: labelSize,
               fontWeight: FontWeight.w500,
             ),
           ),

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/kit_schedule_window.dart';
@@ -7,6 +8,11 @@ import 'package:forja/shared/engine/runtime/actions/schedule/top_bar_host_hooks.
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
 
 /// Catalog + Status×Horizon schedule sheets for Live Sports top bar.
@@ -31,12 +37,49 @@ void registerLiveScheduleChromeHooks() {
     context, {
     required current,
     required options,
-  }) =>
-      showCatalogFilterSheet(
-        context,
-        current: current,
-        options: options,
-      );
+  }) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    return showCatalogFilterSheet(
+      context,
+      current: current,
+      options: options,
+      tvFocus: tv,
+      autofocusFirst: tv,
+      wrapBody: tv
+          ? (body) => ShellScope.rehost(
+                context,
+                TvOverlayScope(
+                  debugLabel: 'catalog-filter',
+                  onDismiss: () => Navigator.of(context).maybePop(),
+                  child: body,
+                ),
+              )
+          : null,
+      optionInteractiveBuilder: tv
+          ? ({
+              required child,
+              required onTap,
+              onFocusChange,
+              onHoverChange,
+              focusNode,
+            }) =>
+              shellFocusableTap(
+                context: context,
+                onTap: onTap,
+                borderRadius: ShellTokens.filterSheetRadiusTv,
+                scaleOnFocus: 1.0,
+                showFocusRail: true,
+                tvZone: ShellTvZone.topBar,
+                tvTabId: 'live_sports_catalog_sheet',
+                tvRowId: 'catalog-options',
+                focusNode: focusNode,
+                onFocusChange: onFocusChange,
+                onHoverChange: onHoverChange,
+                child: child,
+              )
+          : null,
+    );
+  };
   KitTopBarHostHooks.readCatalogPref = (ref, {required tabId}) {
     final key = kitChromeKeyForTab(tabId);
     if (key.isEmpty) return 'all';

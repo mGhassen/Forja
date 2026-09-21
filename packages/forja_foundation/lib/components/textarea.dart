@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/input.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Multi-line text field — Input-style outline defaults.
 class Textarea extends StatelessWidget {
@@ -30,18 +32,42 @@ class Textarea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final fontSize = switch (size) {
-      InputSize.sm => 13.0,
-      InputSize.md => 14.0,
-      InputSize.lg => 16.0,
-    };
-    final padding = switch (size) {
-      InputSize.sm =>
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      InputSize.sm => tv
+          ? ShellTokens.formInputFontSizeSmTv
+          : ShellTokens.formInputFontSizeSm,
       InputSize.md =>
-        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      InputSize.lg =>
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        tv ? ShellTokens.formInputFontSizeTv : ShellTokens.formInputFontSize,
+      InputSize.lg => tv
+          ? ShellTokens.formInputFontSizeLgTv
+          : ShellTokens.formInputFontSizeLg,
+    };
+    final hintSize =
+        tv ? ShellTokens.formInputHintFontSizeTv : fontSize;
+    final padding = switch (size) {
+      InputSize.sm => EdgeInsets.symmetric(
+          horizontal: tv
+              ? ShellTokens.formInputPadHSmTv
+              : ShellTokens.formInputPadHSm,
+          vertical: tv
+              ? ShellTokens.formInputPadVSmTv
+              : ShellTokens.formInputPadVSm,
+        ),
+      InputSize.md => EdgeInsets.symmetric(
+          horizontal:
+              tv ? ShellTokens.formInputPadHTv : ShellTokens.formInputPadH,
+          vertical:
+              tv ? ShellTokens.formInputPadVTv : ShellTokens.formInputPadV,
+        ),
+      InputSize.lg => EdgeInsets.symmetric(
+          horizontal: tv
+              ? ShellTokens.formInputPadHLgTv
+              : ShellTokens.formInputPadHLg,
+          vertical: tv
+              ? ShellTokens.formInputPadVLgTv
+              : ShellTokens.formInputPadVLg,
+        ),
     };
     final radius = BorderRadius.circular(theme.radiusMd);
     final outline = OutlineInputBorder(
@@ -63,7 +89,7 @@ class Textarea extends StatelessWidget {
       cursorColor: theme.brandGreen,
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: TextStyle(color: theme.textSecondary, fontSize: fontSize),
+        hintStyle: TextStyle(color: theme.textSecondary, fontSize: hintSize),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.03),
         contentPadding: padding,

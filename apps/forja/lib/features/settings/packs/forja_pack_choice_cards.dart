@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Two quick-action cards: official ForjaHQ install + Community Packs browse.
 ///
@@ -58,7 +59,10 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
 
   @override
   Widget build(BuildContext context) {
-    final gap = widget.compact ? 10.0 : 14.0;
+    final gap = SettingsTokens.packChoiceGapOf(
+      context,
+      compact: widget.compact,
+    );
     // → links Official → Community. ← exits to the Settings category rail
     // (ShellTvLinearFocusEdges), same as other settings pages / Back.
     return Row(
@@ -110,9 +114,9 @@ class ForjaPackChoiceCard extends StatefulWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.compact = false,
     this.accent = false,
     this.autofocus = false,
-    this.compact = false,
     this.settingsTvFocus = false,
     this.tvItemIndex,
     this.onLeftEdge,
@@ -122,12 +126,11 @@ class ForjaPackChoiceCard extends StatefulWidget {
   final FocusNode focusNode;
   final IconData icon;
   final String title;
-  /// May include a trailing URL line (e.g. Community Packs on Android TV).
   final String subtitle;
   final VoidCallback onTap;
+  final bool compact;
   final bool accent;
   final bool autofocus;
-  final bool compact;
   final bool settingsTvFocus;
   final int? tvItemIndex;
   final VoidCallback? onLeftEdge;
@@ -138,8 +141,6 @@ class ForjaPackChoiceCard extends StatefulWidget {
 }
 
 class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
-  // ValueNotifier — never setState on hover. Rebuilding FocusableControl /
-  // MouseRegion during pointer update trips mouse_tracker asserts and kills taps.
   final ValueNotifier<bool> _hovered = ValueNotifier(false);
 
   @override
@@ -150,14 +151,20 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
 
   @override
   Widget build(BuildContext context) {
-    final radius = widget.compact ? 12.0 : 16.0;
-    final minHeight = widget.compact ? 112.0 : 168.0;
-    final pad = widget.compact
-        ? const EdgeInsets.fromLTRB(12, 12, 12, 12)
-        : const EdgeInsets.fromLTRB(18, 20, 18, 18);
-    final iconSize = widget.compact ? 22.0 : 32.0;
-    final titleSize = widget.compact ? 13.0 : 16.0;
-    final subSize = widget.compact ? 11.0 : 13.0;
+    final compact = widget.compact;
+    final radius = SettingsTokens.packChoiceRadiusOf(context, compact: compact);
+    final minHeight =
+        SettingsTokens.packChoiceMinHeightOf(context, compact: compact);
+    final pad = SettingsTokens.packChoicePadOf(context, compact: compact);
+    final iconSize =
+        SettingsTokens.packChoiceIconSizeOf(context, compact: compact);
+    final iconTitleGap =
+        SettingsTokens.packChoiceIconTitleGapOf(context, compact: compact);
+    final titleSubGap =
+        SettingsTokens.packChoiceTitleSubGapOf(context, compact: compact);
+    final titleSize = SettingsTokens.rowTitleSizeOf(context);
+    final subSize = SettingsTokens.rowSubtitleSizeOf(context);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
 
     Widget card({required bool active}) {
       final borderColor = widget.accent
@@ -167,10 +174,13 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
           : ForjaShellColors.borderSubtle.withValues(
               alpha: active ? 0.95 : 0.7,
             );
+      // TV: hug content — minHeight left a large empty strip under denser type.
       return AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOut,
-        constraints: BoxConstraints(minHeight: minHeight),
+        constraints: tv
+            ? const BoxConstraints()
+            : BoxConstraints(minHeight: minHeight),
         padding: pad,
         decoration: BoxDecoration(
           color: active
@@ -180,6 +190,7 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
           border: Border.all(color: borderColor, width: active ? 2 : 1),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
@@ -189,17 +200,17 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
                   ? ForjaShellColors.brandGreen
                   : ForjaShellColors.textPrimary,
             ),
-            SizedBox(height: widget.compact ? 10 : 16),
+            SizedBox(height: iconTitleGap),
             Text(
               widget.title,
-              style: GoogleFonts.outfit(
+              style: TextStyle(
                 color: ForjaShellColors.textPrimary,
                 fontSize: titleSize,
                 fontWeight: FontWeight.w700,
                 height: 1.2,
               ),
             ),
-            SizedBox(height: widget.compact ? 4 : 8),
+            SizedBox(height: titleSubGap),
             _SubtitleBlock(
               text: widget.subtitle,
               fontSize: subSize,
@@ -276,7 +287,7 @@ class _SubtitleBlock extends StatelessWidget {
     if (lines.length < 2) {
       return Text(
         text,
-        style: GoogleFonts.plusJakartaSans(
+        style: TextStyle(
           color: ForjaShellColors.textSecondary,
           fontSize: fontSize,
           height: 1.35,
@@ -291,13 +302,18 @@ class _SubtitleBlock extends StatelessWidget {
       children: [
         Text(
           head,
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(
             color: ForjaShellColors.textSecondary,
             fontSize: fontSize,
             height: 1.35,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(
+          height: SettingsTokens.packChoiceTitleSubGapOf(
+            context,
+            compact: true,
+          ),
+        ),
         Text(
           tail,
           style: urlTail
@@ -308,7 +324,7 @@ class _SubtitleBlock extends StatelessWidget {
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.w600,
                 )
-              : GoogleFonts.plusJakartaSans(
+              : TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: fontSize,
                   height: 1.35,

@@ -8,6 +8,7 @@ import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 /// Right-side sliding panel shell for torrent / addon source picking.
 class TorrentSourcesPanel extends StatelessWidget {
   const TorrentSourcesPanel({
@@ -50,16 +51,28 @@ class TorrentSourcesPanel extends StatelessWidget {
   }
 
   static EdgeInsets defaultContentPadding({required bool playerOverlay}) {
+    // Caller must prefer TV padding via [ShellPaintScope] when painting.
     return playerOverlay
         ? ShellTokens.playerSidePanelPadding
         : DetailsTokens.sourcesPanelPadding;
+  }
+
+  static EdgeInsets contentPaddingOf(
+    BuildContext context, {
+    required bool playerOverlay,
+  }) {
+    if (!playerOverlay) return DetailsTokens.sourcesPanelPadding;
+    return ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.playerSidePanelPaddingTv
+        : ShellTokens.playerSidePanelPadding;
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final panelWidth = panelWidthOf(context);
-    final padding = contentPadding ?? defaultContentPadding(playerOverlay: !enableBlur);
+    final padding = contentPadding ??
+        contentPaddingOf(context, playerOverlay: !enableBlur);
     final playerFrost = !enableBlur;
     final showScrim = isOpen || absorbHitsWhenClosed;
     // Right-side desktop panel never sits under the notch / traffic lights

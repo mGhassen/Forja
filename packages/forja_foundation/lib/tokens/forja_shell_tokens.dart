@@ -458,6 +458,32 @@ abstract final class ShellTokens {
     12,
     8,
   );
+  static const EdgeInsets playerSidePanelPaddingTv = EdgeInsets.fromLTRB(
+    8,
+    10,
+    8,
+    6,
+  );
+
+  /// Player transport / top chrome (Exo + MediaKit TV row).
+  static const double playerChromeBtnSize = 38;
+  static const double playerChromeBtnSizeTv = playerChromeBtnSize * tvChromeScale;
+  static const double playerChromeIconSize = 20;
+  static const double playerChromeIconSizeTv =
+      playerChromeIconSize * tvChromeScale;
+  static const double playerChromeTopBtnSize = 44;
+  static const double playerChromeTopBtnSizeTv =
+      playerChromeTopBtnSize * tvChromeScale;
+  static const double playerChromeTitleFontSize = 16;
+  static const double playerChromeTitleFontSizeTv = tvTitleFontSize;
+  static const double playerChromeHeroTitleFontSize = 18;
+  static const double playerChromeHeroTitleFontSizeTv = tvTitleFontSize;
+  static const double playerChromeMetaFontSize = 12;
+  static const double playerChromeMetaFontSizeTv = tvBodyFontSize;
+  static const double playerChromeTimeFontSize = 11;
+  static const double playerChromeTimeFontSizeTv = tvMetaFontSize;
+  static const double playerChromeStatusFontSize = 13;
+  static const double playerChromeStatusFontSizeTv = tvBodyFontSize;
 
   static const double tabHeaderTopPadding = 16;
   static const double tabHeaderBottomPadding = 12;
@@ -521,6 +547,13 @@ abstract final class ShellTokens {
       heroLogoMaxHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
   static const double heroTitleSlotHeightTv =
       heroTitleSlotHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
+
+  /// Fallback text title (no logo) — hand ladder, not × chrome (10ft readable).
+  static const double heroFallbackTitleMin = 20;
+  static const double heroFallbackTitleMinTv = tvTitleFontSize;
+  static const double heroFallbackTitlePreferredMax = 40;
+  static const double heroFallbackTitlePreferredMaxTv = 16;
+
   static const double posterCardWideBreakpoint = 900;
   static const double posterCardAspectRatio = 1.5;
   static const double posterCardRadius = 14;
@@ -528,6 +561,20 @@ abstract final class ShellTokens {
   static const double posterTitleFontSizeMobile = 13;
   static const double posterTitleFontSizeDesktop = 14;
   static const double posterTitleFontSizeTv = tvBodyFontSize;
+
+  /// Star + score chip on film poster corners (type family on TV — not × chrome).
+  static const double posterRatingFontSize = 9;
+  static const double posterRatingFontSizeTv = tvMetaFontSize;
+  static const double posterRatingIconSize = 9;
+  static const double posterRatingIconSizeTv = 7;
+  static const double posterRatingPadH = 5;
+  static const double posterRatingPadV = 2;
+  static const double posterRatingPadHTv = 3;
+  static const double posterRatingPadVTv = 1;
+  static const double posterRatingRadius = 4;
+  static const double posterRatingRadiusTv = 3;
+  static const double posterRatingGap = 2;
+  static const double posterRatingGapTv = 1;
 
   /// Outlined rank digit behind Popular / top-N posters (outside focus chrome).
   static const double posterRankFontSize = 120;
@@ -549,6 +596,11 @@ abstract final class ShellTokens {
       sideRailWidth * posterCardWidthTv / posterCardWidthDesktop;
   static const double emptyShellSideRailWidth = 72;
   static const double sidePanelWidth = 380;
+  /// Leanback Portals / side rail — chrome family.
+  static const double sidePanelWidthTv = sidePanelWidth * tvChromeScale;
+  /// Docked side panel vs modal sheet — same gate as [SidePanelOverlay].
+  /// Android TV always docks even when the layout strip is under this width.
+  static const double sidePanelWideBreakpoint = 900;
   static const double focusBorderRadius = 12;
   static const double focusIdleScale = 1.04;
 
@@ -584,6 +636,17 @@ abstract final class ShellTokens {
   static const double torrentPanelPaddingTv = 14;
   static const double torrentPanelTitleFontSizeDesktop = 16;
   static const double torrentPanelTitleFontSizeTv = tvTitleFontSize;
+  /// Stream / provider row card title (smaller than panel section title).
+  static const double torrentPanelRowTitleFontSizeDesktop = 13;
+  static const double torrentPanelRowTitleFontSizeTv = tvBodyFontSize;
+  static const double torrentPanelRowPadVDesktop = 10;
+  static const double torrentPanelRowPadVTv = 6;
+  static const double torrentPanelRowBadgePadHDesktop = 7;
+  static const double torrentPanelRowBadgePadHTv = 5;
+  static const double torrentPanelRowBadgePadVDesktop = 3;
+  static const double torrentPanelRowBadgePadVTv = 2;
+  static const double torrentPanelRowBadgeRadiusDesktop = 6;
+  static const double torrentPanelRowBadgeRadiusTv = 4;
   static const double torrentPanelChipPadHDesktop = 12;
   static const double torrentPanelChipPadHTv = 10;
   static const double torrentPanelChipPadVDesktop = 8;
@@ -598,6 +661,29 @@ abstract final class ShellTokens {
   static const double torrentPanelLeadingIconSizeTv = 20;
   static const double torrentPanelSectionFontSizeDesktop = 16;
   static const double torrentPanelSectionFontSizeTv = tvTitleFontSize;
+
+  /// Sources panel search field (details + player) — leanback uses chrome density.
+  static const double torrentPanelSearchFontSize = 13;
+  static const double torrentPanelSearchFontSizeTv = tvBodyFontSize;
+  static const double torrentPanelSearchIconSize = 18;
+  static const double torrentPanelSearchIconSizeTv = actionChipIconSizeTv;
+  static const double torrentPanelSearchPadH = 10;
+  static const double torrentPanelSearchPadHTv =
+      torrentPanelSearchPadH * tvChromeScale;
+  /// Tighter than desktop × chrome — field must fit leanback type without clipping.
+  static const double torrentPanelSearchPadV = 10;
+  static const double torrentPanelSearchPadVTv = 4;
+  static const double torrentPanelSearchRadius = 10;
+  static const double torrentPanelSearchRadiusTv =
+      torrentPanelSearchRadius * tvChromeScale;
+  static const double torrentPanelSearchGap = 8;
+  static const double torrentPanelSearchGapTv =
+      torrentPanelSearchGap * tvChromeScale;
+  static const double torrentPanelFilterIconSize = 18;
+  static const double torrentPanelFilterIconSizeTv = actionChipIconSizeTv;
+  static const double torrentPanelFilterButtonHeight = 32;
+  static const double torrentPanelFilterButtonHeightTv =
+      torrentPanelFilterButtonHeight * tvChromeScale;
 
   // --- Pack chrome defaults (overridable via layout props) ---
   static const double portalsChipHeight = controlHeight;
@@ -736,18 +822,22 @@ abstract final class ShellTokens {
 
   /// Accent mood circles on TV (leanback catalog rows).
   ///
-  /// Hand-tuned — not desktop × [tvLayoutScale]. Type uses the leanback ladder,
-  /// so geometry must leave room for [moodCircleLabelFontSizeTv] × lines.
-  static const double moodCircleSizeTv = 42;
-  static const double moodCircleItemWidthTv = 58;
-  static const double moodCircleGapTv = 6;
+  /// Hand-tuned denser than desktop × chrome so circles match the leanback
+  /// type ladder (body/meta), not leftover mobile chip chrome.
+  static const double moodCircleSizeTv = 34;
+  static const double moodCircleItemWidthTv = 48;
+  static const double moodCircleGapTv = 4;
   static const double moodCircleLabelFontSizeTv = tvMetaFontSize;
-  static const double moodCircleLabelGapTv = 6;
+  static const double moodCircleLabelGapTv = 4;
   static const double moodCircleLabelLineHeightTv = 1.15;
   static const int moodCircleLabelMaxLinesTv = 2;
   static const double moodCircleBottomPadTv = moodCircleLabelGapTv;
-  static const double moodCircleIconSizeTv = 15;
-  static const double moodCircleIconSizeActiveTv = 20;
+  static const double moodCircleIconSizeTv = 13;
+  static const double moodCircleIconSizeActiveTv = 17;
+  static const double moodCircleBorderWidth = 1.5;
+  static const double moodCircleBorderWidthSelected = 2.5;
+  static const double moodCircleBorderWidthTv = 1;
+  static const double moodCircleBorderWidthSelectedTv = 1.5;
 
   /// circle + gap + (lines × size × height) + bottom pad + font-metric slack.
   static const double moodCircleRowHeightTv =
@@ -813,12 +903,73 @@ abstract final class ShellTokens {
   static const double eventSearchClearIconSize = 18;
   static const double eventSearchClearIconSizeTv = actionChipIconSizeTv;
 
+  /// Generic form / dialog / sheet text fields (account, kit [Input], bind sheets).
+  /// Type family on TV — never × [tvChromeScale].
+  static const double formInputFontSize = 14;
+  static const double formInputFontSizeTv = tvBodyFontSize;
+  static const double formInputLabelFontSize = 12;
+  static const double formInputLabelFontSizeTv = tvMetaFontSize;
+  static const double formInputHintFontSize = 14;
+  static const double formInputHintFontSizeTv = tvMetaFontSize;
+  static const double formInputIconSize = 20;
+  static const double formInputIconSizeTv = formInputIconSize * tvChromeScale;
+  static const double formInputPadH = 14;
+  static const double formInputPadHTv = formInputPadH * tvChromeScale;
+  static const double formInputPadV = 12;
+  static const double formInputPadVTv = formInputPadV * tvChromeScale;
+  static const double formInputPadHSm = 12;
+  static const double formInputPadHSmTv = formInputPadHSm * tvChromeScale;
+  static const double formInputPadVSm = 8;
+  static const double formInputPadVSmTv = formInputPadVSm * tvChromeScale;
+  static const double formInputFontSizeSm = 13;
+  static const double formInputFontSizeSmTv = tvBodyFontSize;
+  static const double formInputFontSizeLg = 16;
+  static const double formInputFontSizeLgTv = tvTitleFontSize;
+  static const double formInputIconSizeSm = 18;
+  static const double formInputIconSizeSmTv = formInputIconSizeSm * tvChromeScale;
+  static const double formInputIconSizeLg = 22;
+  static const double formInputIconSizeLgTv = formInputIconSizeLg * tvChromeScale;
+  static const double formInputPadHLg = 16;
+  static const double formInputPadHLgTv = formInputPadHLg * tvChromeScale;
+  static const double formInputPadVLg = 14;
+  static const double formInputPadVLgTv = formInputPadVLg * tvChromeScale;
+
   static const double favStarIconSize = 14;
   static const double scrollerArrowOffset = 8;
   static const double scrollerArrowIconSize = 24;
   static const double filterSheetRadius = 12;
+  static const double filterSheetRadiusTv = 10;
   static const double filterSheetHandleWidth = 40;
+  static const double filterSheetHandleWidthTv = filterSheetHandleWidth * tvChromeScale;
   static const double filterSheetHandleHeight = 4;
+  static const double filterSheetHandleHeightTv = 3;
+  static const double filterSheetTitleFontSize = 16;
+  static const double filterSheetTitleFontSizeTv = tvTitleFontSize;
+  static const double filterSheetSubtitleFontSize = 13;
+  static const double filterSheetSubtitleFontSizeTv = tvMetaFontSize;
+  static const double filterSheetOptionFontSize = 16;
+  static const double filterSheetOptionFontSizeTv = tvBodyFontSize;
+  static const double filterSheetMetaFontSize = 11;
+  static const double filterSheetMetaFontSizeTv = tvMetaFontSize;
+  static const double filterSheetIconSize = 24;
+  static const double filterSheetIconSizeTv = filterSheetIconSize * tvChromeScale;
+  static const double filterSheetCheckSize = 22;
+  static const double filterSheetCheckSizeTv = filterSheetCheckSize * tvChromeScale;
+  static const double filterSheetPadH = 24;
+  static const double filterSheetPadHTv = filterSheetPadH * tvChromeScale;
+  static const double filterSheetPadTop = 20;
+  static const double filterSheetPadTopTv = filterSheetPadTop * tvChromeScale;
+  static const double filterSheetPadBottom = 32;
+  static const double filterSheetPadBottomTv = filterSheetPadBottom * tvChromeScale;
+  static const double filterSheetTitleGap = 20;
+  static const double filterSheetTitleGapTv = filterSheetTitleGap * tvChromeScale;
+  static const double filterSheetSubtitleGap = 6;
+  static const double filterSheetSubtitleGapTv = 4;
+  static const double filterSheetListGap = 16;
+  static const double filterSheetListGapTv = filterSheetListGap * tvChromeScale;
+  static const double filterSheetMaxHeightFraction = 0.7;
+  static const double filterSheetMaxHeightFractionTv = 0.55;
+  static const double filterSheetMaxWidthTv = 360;
   static const double sheetHandleWidth = 36;
   static const double sheetHandleHeight = 4;
 
@@ -883,14 +1034,47 @@ abstract final class ShellTokens {
   static const double searchCardWidthDesktop = 140;
   static const double searchCardWidthCompact = 120;
 
+  /// Leanback — chrome family (same ratio as film posters).
+  static const double searchCardWidthTv =
+      searchCardWidthDesktop * tvChromeScale;
+
+  /// Wide search results grid columns (film cards fill each cell).
+  static const int searchResultsGridColumns = 4;
+  static const int searchResultsGridColumnsTv = 6;
+
   /// Netflix-style search: input column on desktop.
   static const double searchPageInset = 32;
+  static const double searchPageInsetTv = searchPageInset * tvChromeScale;
 
   /// Top inset for desktop search - aligns with Home hero text clearance.
   static double get searchPageTopInset => homeTopBarHeight + 24;
   static const double searchColumnGap = 32;
+  static const double searchColumnGapTv = searchColumnGap * tvChromeScale;
+  static const double searchFieldBelowGap = 24;
+  static const double searchFieldBelowGapTv =
+      searchFieldBelowGap * tvChromeScale;
   static const double searchLeftColumnWidth = 420;
   static const double searchLeftColumnPadding = 16;
+
+  /// Hub search query field — display size on desktop; type ladder on TV.
+  static const double searchQueryFontSize = 32;
+  static const double searchQueryFontSizeTv = tvTitleFontSize;
+  static const double searchQueryCursorHeight = 36;
+  static const double searchQueryCursorHeightTv =
+      searchQueryFontSizeTv * 1.15;
+
+  /// Hub search recent / recommendation rows.
+  static const double searchHelperFontSize = 15;
+  static const double searchHelperFontSizeTv = tvBodyFontSize;
+  static const double searchHelperFontSizeSelected = 17;
+  static const double searchHelperFontSizeSelectedTv = tvTitleFontSize;
+  static const double searchHelperVerticalPadding = 8;
+  static const double searchHelperVerticalPaddingTv =
+      searchHelperVerticalPadding * tvChromeScale;
+  static const double searchHelperIconSize = 13;
+  static const double searchHelperIconSizeSelected = 15;
+  static const double searchHelperIconSizeTv = tvMetaFontSize;
+  static const double searchHelperIconSizeSelectedTv = tvBodyFontSize;
   static const double searchProviderRowHeight = 52;
   static const double searchProviderCardWidth = 88;
   static const double searchProviderCardHeight = 48;

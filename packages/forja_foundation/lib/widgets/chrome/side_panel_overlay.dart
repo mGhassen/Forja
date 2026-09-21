@@ -28,7 +28,8 @@ class SidePanelOverlay extends StatelessWidget {
   final Color? scrimColor;
 
   static bool defaultUseSideRail(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final wide =
+        MediaQuery.sizeOf(context).width >= ShellTokens.sidePanelWideBreakpoint;
     return wide || ShellTokens.isAndroidTvDevice;
   }
 

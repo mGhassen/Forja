@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Flat list row for catalog / schedule filter sheets (Zone A paint).
@@ -70,11 +71,33 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
       );
 
   Widget _buildBody(bool hovered) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final radius = widget.radius;
     final highlight = _highlightFor(hovered);
+    final fontSize = widget.fontSize ??
+        (tv
+            ? ShellTokens.filterSheetOptionFontSizeTv
+            : ShellTokens.filterSheetOptionFontSize);
+    final iconSize = tv
+        ? ShellTokens.filterSheetIconSizeTv
+        : ShellTokens.filterSheetIconSize;
+    final checkSize = tv
+        ? ShellTokens.filterSheetCheckSizeTv
+        : ShellTokens.filterSheetCheckSize;
+    final metaSize = tv
+        ? ShellTokens.filterSheetMetaFontSizeTv
+        : ShellTokens.filterSheetMetaFontSize;
     final tile = ListTile(
+      dense: tv,
+      visualDensity: tv ? VisualDensity.compact : VisualDensity.standard,
+      contentPadding: tv
+          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 0)
+          : null,
+      minLeadingWidth: tv ? iconSize + 4 : null,
+      minVerticalPadding: tv ? 4 : null,
       leading: Icon(
         widget.icon,
+        size: iconSize,
         color: widget.selected
             ? ForjaShellColors.sectionAccent
             : Colors.white54,
@@ -83,7 +106,7 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
         widget.label,
         style: TextStyle(
           color: Colors.white,
-          fontSize: widget.fontSize,
+          fontSize: fontSize,
           fontWeight:
               highlight || widget.selected ? FontWeight.bold : FontWeight.w600,
         ),
@@ -92,10 +115,14 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
           ? null
           : Text(
               widget.subtitle!.trim(),
-              style: const TextStyle(color: Colors.white38, fontSize: 11),
+              style: TextStyle(color: Colors.white38, fontSize: metaSize),
             ),
       trailing: widget.selected
-          ? Icon(Icons.check_rounded, color: ForjaShellColors.sectionAccent)
+          ? Icon(
+              Icons.check_rounded,
+              color: ForjaShellColors.sectionAccent,
+              size: checkSize,
+            )
           : const SizedBox.shrink(),
       onTap: widget.tvFocus ? null : widget.onSelected,
     );

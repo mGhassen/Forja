@@ -10,6 +10,7 @@ import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart' show kitPanelTabIcon;
 import 'package:forja_foundation/widgets/sources/live_tv_browse.dart';
 import 'package:forja_foundation/widgets/sources/sources_panel_chrome.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 export 'package:forja_foundation/widgets/sources/sources_types.dart'
     show SourcesTab, SourcesRow;
@@ -273,14 +274,19 @@ class KitSourcesExpandingSearch extends StatelessWidget {
                 browsePlaceholder: 'Search channels…',
                 browseHintStyle: TextStyle(
                   color: Colors.white.withValues(alpha: 0.38),
-                  fontSize: 13,
+                  fontSize: ShellTokens.eventSearchFontSizeTv,
                 ),
-                caretHeight: 16,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: const InputDecoration(
+                caretHeight: ShellTokens.eventSearchFontSizeTv * 1.5,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: ShellTokens.eventSearchFontSizeTv,
+                ),
+                decoration: InputDecoration(
                   isDense: true,
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: ShellTokens.torrentPanelSearchPadVTv,
+                  ),
                 ),
               );
             }

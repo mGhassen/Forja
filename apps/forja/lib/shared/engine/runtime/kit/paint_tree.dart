@@ -765,8 +765,8 @@ class PackPaintTree extends StatelessWidget {
     return Padding(
       key: ValueKey('kind-circles-$barId'),
       padding: EdgeInsets.only(
-        top: 2,
-        bottom: 10,
+        top: ShellPaintScope.usesTvDensityOf(context) ? 0 : 2,
+        bottom: ShellPaintScope.usesTvDensityOf(context) ? 6 : 10,
         left: ShellTokens.compactChromeLeadingInset(context),
         right: ShellTokens.bodyHorizontalPadding,
       ),
@@ -1828,14 +1828,18 @@ class PackPaintTree extends StatelessWidget {
                   panelSelectedId.isNotEmpty)
               ? panelSelectedId
               : (highlightId.isEmpty ? null : highlightId);
-          final wide = constraints.maxWidth >= 900;
+          final canShowSidePanel = kitListCanShowSidePanel(
+            hasChrome: chrome != null,
+            layoutWidth: constraints.maxWidth,
+            androidTv: ShellTokens.isAndroidTvDevice,
+          );
           // Same resolver as onListItemTap — empty open + match surface still
           // wants the side panel (do not require openMode == 'panel' literally).
           final showPanel = selected != null &&
               resolveKitListTapOpen(
                     openMode: openMode,
                     hasMatchOpenSurface: matchOpenSurface,
-                    canShowSidePanel: chrome != null && wide,
+                    canShowSidePanel: canShowSidePanel,
                   ) ==
                   KitListTapOpen.panel;
           final gap = PackPaintArtifact.packLength(context, spec['gap']);
@@ -1877,7 +1881,7 @@ class PackPaintTree extends StatelessWidget {
             final tapOpen = resolveKitListTapOpen(
               openMode: openMode,
               hasMatchOpenSurface: matchOpenSurface,
-              canShowSidePanel: chrome != null && wide,
+              canShowSidePanel: canShowSidePanel,
             );
             switch (tapOpen) {
               case KitListTapOpen.panel:

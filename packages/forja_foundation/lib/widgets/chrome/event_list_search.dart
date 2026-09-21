@@ -30,7 +30,7 @@ class EventListSearch extends StatefulWidget {
     this.fieldBuilder,
     this.collapsedSize = kEventListSearchCollapsed,
     this.expandedWidth = kEventListSearchExpanded,
-    this.fontSize = ShellTokens.eventSearchFontSize,
+    this.fontSize,
     this.iconSize = ShellTokens.eventSearchIconSize,
     this.fieldIconSize = ShellTokens.eventSearchClearIconSize,
     this.tvItemIndex,
@@ -67,7 +67,8 @@ class EventListSearch extends StatefulWidget {
 
   final double collapsedSize;
   final double expandedWidth;
-  final double fontSize;
+  /// Null → [ShellTokens.eventSearchFontSize] / [ShellTokens.eventSearchFontSizeTv].
+  final double? fontSize;
   final double iconSize;
   final double fieldIconSize;
 
@@ -92,6 +93,7 @@ class EventListSearchState extends State<EventListSearch>
   final ValueNotifier<bool> _toolHoveredN = ValueNotifier(false);
   bool _closeFocused = false;
   final ValueNotifier<bool> _closeHoveredN = ValueNotifier(false);
+  late final FocusNode _toolFocus;
   late final FocusNode _closeFocus;
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
@@ -111,6 +113,7 @@ class EventListSearchState extends State<EventListSearch>
       curve: Curves.easeOutCubic,
       reverseCurve: Curves.easeInCubic,
     );
+    _toolFocus = FocusNode(debugLabel: '${widget.debugLabel}-tool');
     _closeFocus = FocusNode(debugLabel: '${widget.debugLabel}-close');
     _focus.onKeyEvent = (node, event) {
       if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
@@ -162,6 +165,7 @@ class EventListSearchState extends State<EventListSearch>
     _ctrl.dispose();
     _toolHoveredN.dispose();
     _closeHoveredN.dispose();
+    _toolFocus.dispose();
     _closeFocus.dispose();
     if (_ownsFocus) _focus.dispose();
     super.dispose();
@@ -217,6 +221,24 @@ class EventListSearchState extends State<EventListSearch>
     }
     setState(() => _open = false);
     unawaited(_anim.reverse());
+    // Collapsed icon remounts once open is false (even mid-collapse). TV /
+    // keyboard: put focus back on the search tool after Back / Escape / ×.
+    _restoreToolFocus();
+  }
+
+  void _restoreToolFocus() {
+    var frames = 0;
+    void attempt() {
+      if (!mounted || _open || widget.alwaysOpen || widget.compact) return;
+      if (_toolFocus.context != null) {
+        _toolFocus.requestFocus();
+        return;
+      }
+      if (frames++ >= 8) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
   @override
@@ -239,6 +261,9 @@ class EventListSearchState extends State<EventListSearch>
         final collapsed = widget.collapsedSize;
         final expanded = widget.expandedWidth;
         final width = collapsed + (expanded - collapsed) * t;
+        // Keep the tool mounted as soon as we leave open so close can
+        // requestFocus before the collapse anim finishes.
+        final showTool = !_open || t < 0.98;
         return SizedBox(
           width: width,
           height: collapsed,
@@ -257,7 +282,7 @@ class EventListSearchState extends State<EventListSearch>
                     ),
                   ),
                 ),
-              if (t < 0.98)
+              if (showTool)
                 Opacity(
                   opacity: (1 - t).clamp(0.0, 1.0),
                   child: _collapsedIcon(
@@ -322,6 +347,7 @@ class EventListSearchState extends State<EventListSearch>
       motion: ForjaMotionPreset.fillOnly,
       suppressInkHover: true,
       showFocusFill: false,
+      focusNode: _toolFocus,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellPaintTvZone.topBar,
       onLeftEdge: widget.onLeftEdge,
@@ -342,6 +368,10 @@ class EventListSearchState extends State<EventListSearch>
   Widget _fieldChrome() {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final fieldPadV = ShellTokens.chromeScale(10, tv: tv);
+    final fontSize = widget.fontSize ??
+        (tv
+            ? ShellTokens.eventSearchFontSizeTv
+            : ShellTokens.eventSearchFontSize);
     final field = widget.fieldBuilder?.call(
           context,
           controller: _ctrl,
@@ -359,7 +389,7 @@ class EventListSearchState extends State<EventListSearch>
           onSubmitted: (v) {
             _commit(v);
           },
-          style: TextStyle(color: Colors.white, fontSize: widget.fontSize),
+          style: TextStyle(color: Colors.white, fontSize: fontSize),
           cursorColor: ForjaShellColors.brandGreen,
           decoration: InputDecoration(
             isDense: true,
@@ -367,7 +397,7 @@ class EventListSearchState extends State<EventListSearch>
             hintText: widget.placeholder,
             hintStyle: TextStyle(
               color: Colors.white.withValues(alpha: 0.38),
-              fontSize: widget.fontSize,
+              fontSize: fontSize,
             ),
             contentPadding: EdgeInsets.symmetric(vertical: fieldPadV),
           ),

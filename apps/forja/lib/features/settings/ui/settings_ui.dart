@@ -10,10 +10,12 @@ import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 double _tvBody(BuildContext context) => SettingsTokens.rowTitleSizeOf(context);
 
@@ -1022,6 +1024,9 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
   }
 
   Widget _titleRow({required bool includeBack}) {
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final backIconSize = DetailsTokens.backIconSizeOf(tvDensity);
+    final backHitSize = DetailsTokens.backHitSizeOf(tvDensity);
     return Row(
       children: [
         if (includeBack)
@@ -1029,7 +1034,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
             context: context,
             focusNode: _backFocus,
             onTap: widget.onBack ?? () => Navigator.of(context).maybePop(),
-            borderRadius: 20,
+            borderRadius: backHitSize / 2,
             scaleOnFocus: 1.0,
             // Circular control: soft rounded fill + hairline — never green left rail.
             showFocusRail: false,
@@ -1037,11 +1042,15 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
             showFocusBorder: true,
             tvTabId: 'settings',
             tvZone: ShellTvZone.settings,
-            child: const Padding(
-              padding: EdgeInsets.all(8),
-              child: Icon(
-                Icons.arrow_back_rounded,
-                color: ForjaShellColors.textPrimary,
+            child: SizedBox(
+              width: backHitSize,
+              height: backHitSize,
+              child: Center(
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  size: backIconSize,
+                  color: ForjaShellColors.textPrimary,
+                ),
               ),
             ),
           ),
@@ -1055,7 +1064,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
               letterSpacing: -0.3,
             ),
             adminOnly: widget.adminOnly,
-            sparkSize: 18,
+            sparkSize: SettingsTokens.categoryIconSizeOf(context),
           ),
         ),
       ],
@@ -1437,10 +1446,10 @@ class SettingsSelectRow extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(
+                        Icon(
                           Icons.keyboard_arrow_down_rounded,
                           color: ForjaShellColors.brandGreen,
-                          size: 20,
+                          size: SettingsTokens.iconButtonIconSizeOf(context),
                         ),
                       ],
                     )
@@ -1580,8 +1589,12 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final size = MediaQuery.sizeOf(context);
-    final maxH = size.height * 0.65;
-    final maxW = (size.width * 0.45).clamp(320.0, 520.0);
+    final maxH = SettingsTokens.dialogMaxHeightOf(context, size.height);
+    final maxW = SettingsTokens.dialogMaxWidthOf(context, size.width);
+    final optionPadH = SettingsTokens.dialogOptionPadHOf(context);
+    final optionPadV = SettingsTokens.dialogOptionPadVOf(context);
+    final checkSize = SettingsTokens.dialogCheckSizeOf(context);
+    final radius = SettingsTokens.dialogRadiusOf(context);
 
     Widget optionRow(int index) {
       final option = widget.options[index];
@@ -1589,7 +1602,7 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
       final focused = _focusedIndex == index;
       final emphasize = selected || focused;
       final row = Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: optionPadH, vertical: optionPadV),
         child: Row(
           children: [
             Expanded(
@@ -1605,10 +1618,10 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
               ),
             ),
             if (selected)
-              const Icon(
+              Icon(
                 Icons.check_rounded,
                 color: ForjaShellColors.brandGreen,
-                size: 22,
+                size: checkSize,
               ),
           ],
         ),
@@ -1670,15 +1683,19 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
 
     final dialog = AlertDialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
+      insetPadding: SettingsTokens.dialogInsetPaddingOf(context),
+      titlePadding: SettingsTokens.dialogTitlePaddingOf(context),
+      contentPadding: SettingsTokens.dialogContentPaddingOf(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(radius),
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
       title: Text(
         widget.title,
-        style: const TextStyle(
+        style: TextStyle(
           color: ForjaShellColors.textPrimary,
           fontWeight: FontWeight.w700,
+          fontSize: SettingsTokens.pageTitleSizeOf(context),
         ),
       ),
       content: list,
@@ -1846,7 +1863,12 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final sliderBody = Padding(
-      padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
+      padding: EdgeInsets.fromLTRB(
+        2,
+        SettingsTokens.sliderPadTopOf(context),
+        2,
+        SettingsTokens.sliderPadBottomOf(context),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1882,8 +1904,22 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
                 listenable: _hoveredN,
                 builder: (context, _) {
                   final chrome = _chromeActiveFor(_hoveredN.value);
+                  final thumbR = SettingsTokens.sliderThumbRadiusOf(context);
+                  final overlayR = SettingsTokens.sliderOverlayRadiusOf(context);
+                  final tickR = SettingsTokens.sliderTickRadiusOf(context);
                   return SliderTheme(
                     data: SliderTheme.of(context).copyWith(
+                      trackHeight: SettingsTokens.sliderTrackHeightOf(context),
+                      thumbShape: RoundSliderThumbShape(
+                        enabledThumbRadius: thumbR,
+                        disabledThumbRadius: thumbR,
+                      ),
+                      overlayShape: RoundSliderOverlayShape(
+                        overlayRadius: overlayR,
+                      ),
+                      tickMarkShape: RoundSliderTickMarkShape(
+                        tickMarkRadius: tickR,
+                      ),
                       // Focus/hover chrome is the thumb — not a row left-bar fill.
                       thumbColor: chrome
                           ? Colors.white
@@ -1891,6 +1927,10 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
                       overlayColor: Colors.transparent,
                       activeTrackColor: ForjaShellColors.brandGreen,
                       inactiveTrackColor: ForjaShellColors.borderSubtle,
+                      activeTickMarkColor:
+                          ForjaShellColors.textPrimary.withValues(alpha: 0.45),
+                      inactiveTickMarkColor:
+                          ForjaShellColors.textSecondary.withValues(alpha: 0.35),
                     ),
                     child: Slider(
                       value: widget.value.clamp(widget.min, widget.max).toDouble(),
@@ -2054,6 +2094,67 @@ class SettingsTextAction extends StatelessWidget {
 ///
 /// TV: [shellFocusableTap] so D-pad owns the node (Material [Button] traps
 /// ←/→ under DirectionalFocus and can block ↓ out of the control).
+/// Icon-only settings action — [IconButton] on touch/desktop;
+/// [shellFocusableTap] on TV so D-pad owns a single focus node.
+class SettingsIconButton extends StatelessWidget {
+  const SettingsIconButton({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.color = ForjaShellColors.textPrimary,
+    this.focusNode,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final Color color;
+  final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconSize = SettingsTokens.iconButtonIconSizeOf(context);
+    final hit = SettingsTokens.iconButtonHitSizeOf(context);
+    final child = Icon(icon, color: color, size: iconSize);
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      return shellFocusableTap(
+        context: context,
+        focusNode: focusNode,
+        onTap: onPressed,
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusRail: false,
+        showFocusFill: true,
+        showFocusBorder: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.settings,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        onUpEdge: onUpEdge,
+        onDownEdge: onDownEdge,
+        child: SizedBox(width: hit, height: hit, child: Center(child: child)),
+      );
+    }
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: child,
+      iconSize: iconSize,
+    );
+  }
+}
+
 class SettingsFilledButton extends StatelessWidget {
   const SettingsFilledButton({
     super.key,
@@ -2094,6 +2195,10 @@ class SettingsFilledButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final height = SettingsTokens.filledButtonHeightOf(context);
+    final fontSize = SettingsTokens.filledButtonFontSizeOf(context);
+    final iconSize = SettingsTokens.filledButtonIconSizeOf(context);
+    final padH = SettingsTokens.filledButtonPadHOf(context);
     // TV: stay on shellFocusableTap even while busy — swapping to Material
     // Button remounts the FocusNode and focus jumps (LAN Discover ↔ refresh).
     if (tv) {
@@ -2103,9 +2208,12 @@ class SettingsFilledButton extends StatelessWidget {
           label: label,
           onPressed: enabled ? () {} : null,
           icon: icon,
+          iconSize: iconSize,
           loading: busy,
           expand: expand,
-          height: 36,
+          height: height,
+          fontSize: fontSize,
+          padding: EdgeInsets.symmetric(horizontal: padH),
           variant: _variant,
         ),
       );
@@ -2136,9 +2244,12 @@ class SettingsFilledButton extends StatelessWidget {
       label: label,
       onPressed: onPressed,
       icon: icon,
+      iconSize: iconSize,
       loading: busy,
       expand: expand,
-      height: 36,
+      height: height,
+      fontSize: fontSize,
+      padding: EdgeInsets.symmetric(horizontal: padH),
       focusNode: focusNode,
       variant: _variant,
     );
@@ -2404,6 +2515,11 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   Widget build(BuildContext context) {
     final enabled = widget.enabled;
     final browseHighlight = _browseOnly && _browseFocus.hasFocus;
+    final titleSize = SettingsTokens.rowTitleSizeOf(context);
+    final metaSize = SettingsTokens.rowSubtitleSizeOf(context);
+    final labelColor = browseHighlight
+        ? ForjaShellColors.brandGreen
+        : ForjaShellColors.textSecondary;
     final field = TextField(
       controller: widget.controller,
       focusNode: _editFocus,
@@ -2434,7 +2550,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
         color: enabled
             ? ForjaShellColors.textPrimary
             : ForjaShellColors.textSecondary.withValues(alpha: 0.55),
-        fontSize: SettingsTokens.rowTitleSizeOf(context),
+        fontSize: titleSize,
       ),
       cursorColor: ForjaShellColors.brandGreen,
       decoration: InputDecoration(
@@ -2443,15 +2559,21 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
         isDense: true,
         counterText: widget.maxLength != null ? '' : null,
         floatingLabelStyle: TextStyle(
-          color: browseHighlight
-              ? ForjaShellColors.brandGreen
-              : ForjaShellColors.textSecondary,
+          color: labelColor,
+          fontSize: titleSize,
         ),
-        labelStyle: const TextStyle(color: ForjaShellColors.textSecondary),
+        labelStyle: TextStyle(
+          color: ForjaShellColors.textSecondary,
+          fontSize: titleSize,
+        ),
         hintStyle: TextStyle(
           color: ForjaShellColors.textSecondary.withValues(alpha: 0.5),
+          fontSize: metaSize,
         ),
-        contentPadding: const EdgeInsets.only(top: 18, bottom: 10),
+        contentPadding: EdgeInsets.only(
+          top: SettingsTokens.textFieldPadTopOf(context),
+          bottom: SettingsTokens.textFieldPadBottomOf(context),
+        ),
         enabledBorder: UnderlineInputBorder(
           borderSide: BorderSide(
             color: browseHighlight
@@ -2677,6 +2799,10 @@ class _SettingsConfirmDialogState extends State<_SettingsConfirmDialog> {
     final confirmColor = widget.destructive
         ? const Color(0xFFF87171)
         : ForjaShellColors.brandGreen;
+    final titleSize = SettingsTokens.pageTitleSizeOf(context);
+    final bodySize = SettingsTokens.rowSubtitleSizeOf(context);
+    final actionSize = SettingsTokens.rowTitleSizeOf(context);
+    final radius = SettingsTokens.dialogRadiusOf(context);
 
     Widget action({
       required String label,
@@ -2687,13 +2813,15 @@ class _SettingsConfirmDialogState extends State<_SettingsConfirmDialog> {
       VoidCallback? onLeft,
       VoidCallback? onRight,
     }) {
+      final labelStyle = TextStyle(
+        color: color,
+        fontWeight: weight,
+        fontSize: actionSize,
+      );
       if (!tv) {
         return TextButton(
           onPressed: () => Navigator.pop(context, value),
-          child: Text(
-            label,
-            style: TextStyle(color: color, fontWeight: weight),
-          ),
+          child: Text(label, style: labelStyle),
         );
       }
       return shellFocusableTap(
@@ -2706,28 +2834,38 @@ class _SettingsConfirmDialogState extends State<_SettingsConfirmDialog> {
         onLeftEdge: onLeft,
         onRightEdge: onRight,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Text(
-            label,
-            style: TextStyle(color: color, fontWeight: weight),
+          padding: EdgeInsets.symmetric(
+            horizontal: SettingsTokens.dialogOptionPadHOf(context),
+            vertical: SettingsTokens.dialogOptionPadVOf(context),
           ),
+          child: Text(label, style: labelStyle),
         ),
       );
     }
 
     return AlertDialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
+      insetPadding: SettingsTokens.dialogInsetPaddingOf(context),
+      titlePadding: SettingsTokens.dialogTitlePaddingOf(context),
+      contentPadding: SettingsTokens.dialogContentPaddingOf(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(radius),
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
       title: Text(
         widget.title,
-        style: const TextStyle(color: ForjaShellColors.textPrimary),
+        style: TextStyle(
+          color: ForjaShellColors.textPrimary,
+          fontSize: titleSize,
+          fontWeight: FontWeight.w700,
+        ),
       ),
       content: Text(
         widget.body,
-        style: const TextStyle(color: ForjaShellColors.textSecondary),
+        style: TextStyle(
+          color: ForjaShellColors.textSecondary,
+          fontSize: bodySize,
+        ),
       ),
       actions: [
         action(

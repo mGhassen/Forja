@@ -157,11 +157,33 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
 
   int get _kindCount {
     var n = 0;
+    if (widget.showEngine) n++;
     if (widget.showTorrents) n++;
     if (widget.showStremio) n++;
     if (widget.showNuvio) n++;
-    if (widget.showEngine) n++;
     return n;
+  }
+
+  /// Index in [_KindTabs] paint order (Forja → Torrents → Stremio → Nuvio).
+  int get _selectedKindIndex {
+    var i = 0;
+    if (widget.showEngine) {
+      if (widget.kindFilter == 'engine') return i;
+      i++;
+    }
+    if (widget.showTorrents) {
+      if (widget.kindFilter == 'torrents') return i;
+      i++;
+    }
+    if (widget.showStremio) {
+      if (widget.kindFilter == 'stremio') return i;
+      i++;
+    }
+    if (widget.showNuvio) {
+      if (widget.kindFilter == 'nuvio') return i;
+      i++;
+    }
+    return 0;
   }
 
   @override
@@ -203,13 +225,9 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
 
   void _claimPanelFocus() {
     if (!mounted || !_tv || !widget.sourcesPanelOpen) return;
-    // Player passes onFocusList → playing/selected stream (scroll + claim).
-    // Details / hosts without a list callback land on kind tabs.
-    if (widget.onFocusList != null) {
-      widget.onFocusList!();
-      return;
-    }
-    SourcesPanelTv.focusKindItem();
+    // Open lands on the selected kind tab (Forja first when that kind is on).
+    // ↓ from search / providers still uses [onFocusList] via [_focusList].
+    SourcesPanelTv.focusKindItem(index: _selectedKindIndex);
   }
 
   void _focusList() {
@@ -233,7 +251,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
   }
 
   void _focusKindOrClose() {
-    SourcesPanelTv.focusKindItem();
+    SourcesPanelTv.focusKindItem(index: _selectedKindIndex);
   }
 
   void _focusSearchFromProviders() {
@@ -363,7 +381,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
                   if (_showProviders) {
                     SourcesPanelTv.focusProvidersItem();
                   } else {
-                    SourcesPanelTv.focusKindItem();
+                    SourcesPanelTv.focusKindItem(index: _selectedKindIndex);
                   }
                 }
               : null,
@@ -382,7 +400,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
                   } else if (_showProviders) {
                     SourcesPanelTv.focusProvidersItem();
                   } else {
-                    SourcesPanelTv.focusKindItem();
+                    SourcesPanelTv.focusKindItem(index: _selectedKindIndex);
                   }
                 }
               : null,
@@ -564,32 +582,37 @@ class _KindTabState extends State<_KindTab> {
   Widget _buildTabFace(
     bool hovered,
     bool reloadHovered,
-    bool busyHovered,
-  ) {
+    bool busyHovered, {
+    required bool showReload,
+  }) {
+    final metrics = ShellScope.metricsOf(context);
     final cinematic = ForjaShellColors.cinematic;
     final selected = widget.selected;
     final policy = ShellScope.inputPolicyOf(context);
     final tv = SourcesPanelTv.isTv(context);
-    final focusStyled = policy.focusStyled(
-      context,
-      focused: _focused || _reloadFocused,
-    );
-    final emphasize = selected || hovered || focusStyled;
-    final color = (hovered || focusStyled)
-        ? ForjaShellColors.brandGreen
-        : (selected ? cinematic.textPrimary : cinematic.textSecondary);
+    // Tab label greens only when the tab itself is focused — not the reload.
+    final tabFocusStyled = policy.focusStyled(context, focused: _focused);
+    final emphasize = selected || hovered || tabFocusStyled || _reloadFocused;
+    final color = _reloadFocused
+        ? cinematic.textPrimary
+        : (hovered || tabFocusStyled)
+            ? ForjaShellColors.brandGreen
+            : (selected ? cinematic.textPrimary : cinematic.textSecondary);
     final indicatorColor = selected
         ? ForjaShellColors.brandGreen
-        : (hovered || focusStyled
+        : (hovered || tabFocusStyled || _reloadFocused
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
               : Colors.transparent);
-    final topPad = tv ? 8.0 : 0.0;
+    final topPad = tv ? metrics.torrentPanelRowPadV : 0.0;
+    final tabFont = metrics.torrentPanelRowTitleFontSize;
+    final tabIcon = metrics.torrentPanelMetaIconSize;
+    final bottomPad = tv ? 6.0 : 9.0;
 
     final label = AnimatedDefaultTextStyle(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       style: TextStyle(
-        fontSize: 13,
+        fontSize: tabFont,
         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
         letterSpacing: selected ? -0.1 : 0,
         color: color,
@@ -604,13 +627,13 @@ class _KindTabState extends State<_KindTab> {
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
               child: IconTheme(
-                data: IconThemeData(size: 14, color: color),
+                data: IconThemeData(size: tabIcon, color: color),
                 child:
                     widget.icon ??
-                    Icon(widget.iconData, size: 14, color: color),
+                    Icon(widget.iconData, size: tabIcon, color: color),
               ),
             ),
-            const SizedBox(width: 7),
+            SizedBox(width: tv ? 5 : 7),
           ],
           Text(widget.label),
           if (widget.loading) ...[
@@ -630,14 +653,14 @@ class _KindTabState extends State<_KindTab> {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       padding: EdgeInsets.fromLTRB(
-        14,
+        tv ? 10 : 14,
         topPad,
-        widget.onReload != null ? 6 : 14,
+        showReload ? 6 : (tv ? 10 : 14),
         0,
       ),
       transform: Matrix4.translationValues(
         0,
-        (hovered || focusStyled) && !selected ? -0.5 : 0,
+        (hovered || tabFocusStyled || _reloadFocused) && !selected ? -0.5 : 0,
         0,
       ),
       transformAlignment: Alignment.center,
@@ -650,7 +673,7 @@ class _KindTabState extends State<_KindTab> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 9),
+        padding: EdgeInsets.only(bottom: bottomPad),
         child: label,
       ),
     );
@@ -660,33 +683,29 @@ class _KindTabState extends State<_KindTab> {
     bool hovered,
     bool reloadHovered, {
     required bool tv,
+    required bool showReload,
   }) {
-    if (widget.onReload == null) return const SizedBox.shrink();
+    if (!showReload) return const SizedBox.shrink();
     final cinematic = ForjaShellColors.cinematic;
     final selected = widget.selected;
-    final policy = ShellScope.inputPolicyOf(context);
-    final focusStyled = policy.focusStyled(
-      context,
-      focused: _focused || _reloadFocused,
-    );
-    final emphasize = selected || hovered || focusStyled;
-    final color = (hovered || focusStyled)
-        ? ForjaShellColors.brandGreen
-        : (selected ? cinematic.textPrimary : cinematic.textSecondary);
-    final reloadColor = (_reloadFocused || reloadHovered)
-        ? ForjaShellColors.brandGreen
-        : color;
     final indicatorColor = selected
         ? ForjaShellColors.brandGreen
-        : (hovered || focusStyled
+        : (hovered || _focused || _reloadFocused
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
               : Colors.transparent);
-    final topPad = tv ? 8.0 : 0.0;
+    final topPad = tv ? ShellScope.metricsOf(context).torrentPanelRowPadV : 0.0;
+    // Reload greens only when it owns focus/hover — idle next to a focused tab
+    // stays muted so the label alone reads as the focus target.
+    final reloadColor = (_reloadFocused || reloadHovered)
+        ? ForjaShellColors.brandGreen
+        : cinematic.textSecondary;
+    final reloadIconSize = ShellScope.metricsOf(context).torrentPanelMetaIconSize;
+    final bottomPad = tv ? 6.0 : 9.0;
 
     final reloadIcon = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      padding: EdgeInsets.fromLTRB(2, topPad, 12, 0),
+      padding: EdgeInsets.fromLTRB(2, topPad, tv ? 8 : 12, 0),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -696,13 +715,13 @@ class _KindTabState extends State<_KindTab> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 9),
+        padding: EdgeInsets.only(bottom: bottomPad),
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           onEnter: (_) => _setReloadHovered(true),
           onExit: (_) => _setReloadHovered(false),
           child: AnimatedOpacity(
-            opacity: emphasize ? 1 : 0.7,
+            opacity: 1,
             duration: const Duration(milliseconds: 160),
             child: AnimatedRotation(
               turns: reloadHovered || _reloadFocused ? 0.5 : 0,
@@ -710,7 +729,7 @@ class _KindTabState extends State<_KindTab> {
               curve: Curves.easeOutCubic,
               child: Icon(
                 Icons.refresh_rounded,
-                size: 14,
+                size: reloadIconSize,
                 color: reloadColor,
               ),
             ),
@@ -757,6 +776,8 @@ class _KindTabState extends State<_KindTab> {
           final hovered = _hoveredN.value;
           final reloadHovered = _reloadHoveredN.value;
           final busyHovered = _busyHoveredN.value;
+          final showReload = widget.onReload != null &&
+              (hovered || _focused || _reloadFocused || reloadHovered);
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -771,13 +792,23 @@ class _KindTabState extends State<_KindTab> {
                 tvTabId: SourcesPanelTv.tabId,
                 tvRowId: SourcesPanelTv.kindRowId,
                 tvItemIndex: widget.tvItemIndex,
-                onRightEdge: widget.onReload == null || !tv
+                onRightEdge: !tv || !showReload
                     ? null
                     : () => _reloadFocus.requestFocus(),
                 onFocusChange: (focused) => setState(() => _focused = focused),
-                child: _buildTabFace(hovered, reloadHovered, busyHovered),
+                child: _buildTabFace(
+                  hovered,
+                  reloadHovered,
+                  busyHovered,
+                  showReload: showReload,
+                ),
               ),
-              _buildReloadBtn(hovered, reloadHovered, tv: tv),
+              _buildReloadBtn(
+                hovered,
+                reloadHovered,
+                tv: tv,
+                showReload: showReload,
+              ),
             ],
           );
         },

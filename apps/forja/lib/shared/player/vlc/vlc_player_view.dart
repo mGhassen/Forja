@@ -22,19 +22,23 @@ class VlcPlayerView extends StatelessWidget {
       return const ColoredBox(color: Colors.black);
     }
     if (defaultTargetPlatform == TargetPlatform.macOS) {
-      return AppKitView(
-        viewType: _viewType,
-        creationParams: {'viewId': viewId},
-        creationParamsCodec: const StandardMessageCodec(),
+      return SizedBox.expand(
+        child: AppKitView(
+          viewType: _viewType,
+          creationParams: {'viewId': viewId},
+          creationParamsCodec: const StandardMessageCodec(),
+        ),
       );
     }
     final id = textureId;
     if (id == null || id < 0) {
       return const ColoredBox(color: Colors.black);
     }
-    return ColoredBox(
-      color: Colors.black,
-      child: Texture(textureId: id),
+    return SizedBox.expand(
+      child: ColoredBox(
+        color: Colors.black,
+        child: Texture(textureId: id),
+      ),
     );
   }
 }

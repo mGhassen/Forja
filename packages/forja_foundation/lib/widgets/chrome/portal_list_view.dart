@@ -281,6 +281,10 @@ class _PortalListViewState extends State<PortalListView> {
   @override
   Widget build(BuildContext context) {
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final rowExtent = PortalListTokens.resolveRowHeight(
+      tvDensity,
+      widget.rowHeight,
+    );
     final searchFontSize = tvDensity
         ? PortalListTokens.titleFontSizeTv
         : PortalListTokens.titleFontSize;
@@ -306,8 +310,7 @@ class _PortalListViewState extends State<PortalListView> {
     );
     Widget body = filtered.isEmpty
         ? _buildEmpty(context)
-        : _buildList(filtered, tab: tab);
-
+        : _buildList(filtered, tab: tab, rowExtent: rowExtent);
     if (_tv && tab.isNotEmpty) {
       header = ShellPaintScope.tvRow(
         context: context,
@@ -330,6 +333,8 @@ class _PortalListViewState extends State<PortalListView> {
       }
     }
 
+    final padH = PortalListTokens.panelPadOf(tvDensity);
+    final gap = PortalListTokens.sectionGapOf(tvDensity);
     return PortalListPanel(
       width: widget.width,
       surfaceColor:
@@ -339,12 +344,7 @@ class _PortalListViewState extends State<PortalListView> {
       onEscape: widget.onClose,
       header: header,
       search: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          PortalListTokens.panelPad,
-          PortalListTokens.sectionGap,
-          PortalListTokens.panelPad,
-          4,
-        ),
+        padding: EdgeInsets.fromLTRB(padH, gap, padH, tvDensity ? 2 : 4),
         child: _searchField(searchFontSize: searchFontSize, hint: hint),
       ),
       body: body,
@@ -357,6 +357,8 @@ class _PortalListViewState extends State<PortalListView> {
     required double searchFontSize,
     required String hint,
   }) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final radius = PortalListTokens.searchFieldRadiusOf(tv);
     final decoration = InputDecoration(
       hintText: hint,
       hintStyle: GoogleFonts.plusJakartaSans(
@@ -366,17 +368,20 @@ class _PortalListViewState extends State<PortalListView> {
       prefixIcon: Icon(
         Icons.search_rounded,
         color: ForjaShellColors.iconMuted,
-        size: 20,
+        size: PortalListTokens.searchPrefixIconSizeOf(tv),
       ),
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
       isDense: true,
+      contentPadding: tv
+          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
+          : null,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
       ),
     );
@@ -561,7 +566,11 @@ class _PortalListViewState extends State<PortalListView> {
     );
   }
 
-  Widget _buildList(List<PortalListItem> filtered, {required String tab}) {
+  Widget _buildList(
+    List<PortalListItem> filtered, {
+    required String tab,
+    required double rowExtent,
+  }) {
     final last = filtered.length - 1;
     return LiveTvScrollbar(
       controller: _listScroll,
@@ -569,10 +578,17 @@ class _PortalListViewState extends State<PortalListView> {
         onNotification: _onListScrollNotification,
         child: ListView.builder(
           controller: _listScroll,
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-          itemExtent: widget.rowHeight,
+          padding: EdgeInsets.fromLTRB(
+            4,
+            0,
+            4,
+            PortalListTokens.sectionGapOf(
+              ShellPaintScope.usesTvDensityOf(context),
+            ),
+          ),
+          itemExtent: rowExtent,
           scrollCacheExtent: ScrollCacheExtent.pixels(
-            widget.rowHeight * 14,
+            rowExtent * 14,
           ),
           addAutomaticKeepAlives: false,
           itemCount: filtered.length,
@@ -582,7 +598,7 @@ class _PortalListViewState extends State<PortalListView> {
               key: ValueKey<String>(item.id),
               item: item,
               leanback: widget.leanback,
-              height: widget.rowHeight,
+              height: rowExtent,
               listIndex: index,
               hoverOwnerId: widget.leanback ? null : _hoverRowId,
               onSelect: widget.busy || widget.onSelect == null
@@ -674,10 +690,6 @@ class _PortalHeaderIcon extends StatefulWidget {
 }
 
 class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
-  static const _iconSize = PortalListTokens.headerIconSize;
-  // Fixed hit box so swapping icon ↔ credits never shrinks under the cursor
-  // (which would fire onExit and cancel the reveal).
-  static const _hit = _iconSize + 20;
   static const _pressScale = 0.88;
 
   bool _focused = false;
@@ -691,6 +703,9 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
   }
 
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
+  bool get _tvDensity => ShellPaintScope.usesTvDensityOf(context);
+  double get _iconSize => PortalListTokens.headerIconSizeOf(_tvDensity);
+  double get _hit => PortalListTokens.headerIconHitOf(_tvDensity);
 
   bool get _hasHoverLabel => (widget.hoverLabel ?? '').trim().isNotEmpty;
 

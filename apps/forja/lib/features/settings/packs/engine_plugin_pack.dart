@@ -13,6 +13,7 @@ import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Groups [plugins] for Settings tab strips (movie Forja, live Forja, …).
 ({Map<String, List<EnginePlugin>> byGroup, List<String> orderedGroups})
@@ -62,9 +63,9 @@ class SettingsEngineMiniLabel extends StatelessWidget {
       padding: const EdgeInsets.only(left: 2),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           color: ForjaShellColors.textSecondary,
-          fontSize: 11,
+          fontSize: SettingsTokens.groupLabelSizeOf(context),
           fontWeight: FontWeight.w700,
           letterSpacing: 1.4,
         ),
@@ -154,8 +155,8 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                 pack.sourceUrl,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 11,
+                style: TextStyle(
+                  fontSize: SettingsTokens.groupLabelSizeOf(context),
                   color: ForjaShellColors.textSecondary,
                 ),
               ),
@@ -370,8 +371,8 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
             pack.sourceUrl,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 11,
+            style: TextStyle(
+              fontSize: SettingsTokens.groupLabelSizeOf(context),
               color: ForjaShellColors.textSecondary,
             ),
           ),

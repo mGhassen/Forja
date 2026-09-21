@@ -72,12 +72,25 @@ int heroTitleMaxLinesForSlot(double maxHeight) {
   return 3;
 }
 
-double heroTitlePreferredFontSize(double maxHeight) {
+double heroTitlePreferredFontSize(
+  double maxHeight, {
+  bool tvDensity = false,
+}) {
+  if (tvDensity) {
+    if (maxHeight <= 40) return 12;
+    if (maxHeight <= 56) return 14;
+    if (maxHeight <= 72) return 16;
+    return ShellTokens.heroFallbackTitlePreferredMaxTv;
+  }
   if (maxHeight <= 56) return 26;
   if (maxHeight <= 72) return 32;
   if (maxHeight <= 100) return 36;
-  return 40;
+  return ShellTokens.heroFallbackTitlePreferredMax;
 }
+
+double heroTitleMinFontSize({bool tvDensity = false}) => tvDensity
+    ? ShellTokens.heroFallbackTitleMinTv
+    : ShellTokens.heroFallbackTitleMin;
 
 Widget _wrapSelectable(Widget child, {required bool selectable}) {
   if (!selectable) return child;
@@ -305,7 +318,11 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
 
   Widget _fallbackTitle(String title, double maxHeight) {
     final maxLines = heroTitleMaxLinesForSlot(maxHeight);
-    final preferred = heroTitlePreferredFontSize(maxHeight);
+    final preferred = heroTitlePreferredFontSize(
+      maxHeight,
+      tvDensity: widget.tvDensity,
+    );
+    final minSize = heroTitleMinFontSize(tvDensity: widget.tvDensity);
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth.isFinite
@@ -317,6 +334,7 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
           maxHeight: maxHeight,
           maxLines: maxLines,
           preferredSize: preferred,
+          minSize: minSize,
         );
         return ChromaticHeroTitleText(
           title: title,
@@ -446,11 +464,14 @@ class _HomeHeroTitleSlot extends StatelessWidget {
     required double maxHeight,
   }) {
     final maxLines = compact ? 2 : 3;
-    final preferred = compact
-        ? 22.0
-        : desktop
-            ? 32.0
-            : (isLandscape ? 48.0 : 36.0);
+    final preferred = tvDensity
+        ? heroTitlePreferredFontSize(maxHeight, tvDensity: true)
+        : compact
+            ? 22.0
+            : desktop
+                ? 32.0
+                : (isLandscape ? 48.0 : 36.0);
+    final minSize = heroTitleMinFontSize(tvDensity: tvDensity);
     const height = 1.05;
     const letterSpacing = -1.0;
     return LayoutBuilder(
@@ -467,7 +488,7 @@ class _HomeHeroTitleSlot extends StatelessWidget {
           maxHeight: h,
           maxLines: maxLines,
           preferredSize: preferred,
-          minSize: compact ? 16 : 20,
+          minSize: minSize,
           height: height,
           letterSpacing: letterSpacing,
           pad: EdgeInsets.zero,

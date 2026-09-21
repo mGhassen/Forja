@@ -8,6 +8,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portals_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -355,7 +356,11 @@ class _PortalsPanelHostState extends ConsumerState<_PortalsPanelHost> {
     final open = ref.watch(portalsPanelOpenProvider(key));
     final inv =
         open ? ref.watch(portalsInventoryProvider(key)).asData?.value : null;
-    final width = (inv?.width ?? _fallbackWidth);
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final width = PortalListTokens.resolvePanelWidth(
+      tv,
+      inv?.width ?? _fallbackWidth,
+    );
     return SidePanelOverlay(
       open: open,
       panelWidth: width,

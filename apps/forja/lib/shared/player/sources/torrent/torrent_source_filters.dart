@@ -22,6 +22,7 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// How many Nuvio provider chips count as an active Filters badge.
 ///
 /// All selected (or none) is the default / empty state - badge stays clear.
@@ -1399,6 +1400,22 @@ class _TorrentSourceSearchToolbarState
 
   @override
   Widget build(BuildContext context) {
+    final tv = SourcesPanelTv.isTv(context);
+    final filterGap = tv
+        ? ShellTokens.torrentPanelSearchGapTv
+        : ShellTokens.torrentPanelSearchGap;
+    final filterRadius = tv
+        ? ShellTokens.torrentPanelSearchRadiusTv
+        : ShellTokens.torrentPanelSearchRadius;
+    final filterIcon = tv
+        ? ShellTokens.torrentPanelFilterIconSizeTv
+        : ShellTokens.torrentPanelFilterIconSize;
+    final filterHeight = tv
+        ? ShellTokens.torrentPanelFilterButtonHeightTv
+        : ShellTokens.torrentPanelFilterButtonHeight;
+    final filterFont = tv
+        ? ShellTokens.torrentPanelSearchFontSizeTv
+        : ShellTokens.torrentPanelSearchFontSize;
     return Row(
       children: [
         Expanded(
@@ -1418,12 +1435,12 @@ class _TorrentSourceSearchToolbarState
           ),
         ),
         if (_canFilter) ...[
-          const SizedBox(width: 8),
+          SizedBox(width: filterGap),
           shellFocusableTap(
             context: context,
             onTap: _toggleFilters,
             focusNode: widget.filtersFocusNode,
-            borderRadius: 10,
+            borderRadius: filterRadius,
             scaleOnFocus: 1.0,
             suppressInkHover: true,
             showFocusBorder: ShellScope.inputPolicyOf(
@@ -1446,19 +1463,19 @@ class _TorrentSourceSearchToolbarState
                   variant: ButtonVariant.plainIcon,
                   size: ButtonSize.icon,
                   icon: Icons.tune_rounded,
-                  iconSize: 18,
-                  height: 32,
+                  iconSize: filterIcon,
+                  height: filterHeight,
                   color: (_activeCount > 0 || _filtersOpen)
                       ? ForjaShellColors.chipSelectedIcon
                       : ForjaShellColors.cinematic.textPrimary,
                 ),
                 if (_activeCount > 0) ...[
-                  const SizedBox(width: 4),
+                  SizedBox(width: filterGap * 0.5),
                   Text(
                     '$_activeCount',
                     style: TextStyle(
                       color: ForjaShellColors.cinematic.textPrimary,
-                      fontSize: 13,
+                      fontSize: filterFont,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1547,21 +1564,40 @@ class _SearchFieldState extends State<_SearchField> {
 
   @override
   Widget build(BuildContext context) {
+    final tv = SourcesPanelTv.isTv(context);
     final secondary = ForjaShellColors.cinematic.textSecondary;
+    final fontSize = tv
+        ? ShellTokens.torrentPanelSearchFontSizeTv
+        : ShellTokens.torrentPanelSearchFontSize;
+    final iconSize = tv
+        ? ShellTokens.torrentPanelSearchIconSizeTv
+        : ShellTokens.torrentPanelSearchIconSize;
+    final padH = tv
+        ? ShellTokens.torrentPanelSearchPadHTv
+        : ShellTokens.torrentPanelSearchPadH;
+    final padV = tv
+        ? ShellTokens.torrentPanelSearchPadVTv
+        : ShellTokens.torrentPanelSearchPadV;
+    final gap = tv
+        ? ShellTokens.torrentPanelSearchGapTv
+        : ShellTokens.torrentPanelSearchGap;
+    final radius = tv
+        ? ShellTokens.torrentPanelSearchRadiusTv
+        : ShellTokens.torrentPanelSearchRadius;
     final hintStyle = TextStyle(
       color: secondary.withValues(alpha: 0.7),
-      fontSize: 13,
+      fontSize: fontSize,
     );
     final fieldStyle = TextStyle(
       color: ForjaShellColors.cinematic.textPrimary,
-      fontSize: 13,
+      fontSize: fontSize,
     );
     final decoration = InputDecoration(
       hintText: 'Search',
       hintStyle: hintStyle,
       border: InputBorder.none,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+      contentPadding: EdgeInsets.symmetric(vertical: padV),
     );
     // TV passes searchFocusNode — browse focus only until OK (TvBrowseTextField).
     final focus = widget.focusNode;
@@ -1585,18 +1621,19 @@ class _SearchFieldState extends State<_SearchField> {
           );
 
     return Container(
-      decoration: _torrentPanelControlDecoration(active: false, radius: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: _torrentPanelControlDecoration(active: false, radius: radius),
+      padding: EdgeInsets.symmetric(horizontal: padH),
       child: Row(
         children: [
-          Icon(Icons.search_rounded, size: 18, color: secondary),
-          const SizedBox(width: 8),
+          Icon(Icons.search_rounded, size: iconSize, color: secondary),
+          SizedBox(width: gap),
           Expanded(child: field),
           if (widget.query.isNotEmpty)
             Button(
               variant: ButtonVariant.plainIcon,
               size: ButtonSize.icon,
               icon: Icons.close_rounded,
+              iconSize: iconSize,
               compact: true,
               color: secondary,
               onPressed: () => widget.onChanged(''),

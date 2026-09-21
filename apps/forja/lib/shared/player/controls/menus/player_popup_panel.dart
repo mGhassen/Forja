@@ -13,6 +13,8 @@ import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 enum PlayerSourceStatus { unchecked, ready, active, failed, checking }
 
 /// Desktop hybrid keeps mouse hover while D-pad focus is on; leanback does not.
@@ -458,6 +460,8 @@ class PlayerPopupCloseFocus extends InheritedWidget {
 /// Floating-menu surface tokens - translucent dark chrome + brand-green accent.
 /// Select cards: idle [cardBg], selected/hover/focus = green *tint* ([accentFill]),
 /// never solid [accent] fill.
+///
+/// Type on TV maps to the shell ladder; spatial chrome uses [ShellTokens.tvChromeScale].
 abstract final class PlayerPopupTokens {
   /// Same α as player side panels ([ForjaFrostedPanel] without blur).
   static const Color shellBg = Color(0xD1141414); // menuSurface @ ~0.82
@@ -470,13 +474,121 @@ abstract final class PlayerPopupTokens {
   static const Color selectedFill = accentFill;
   static const Color selectedFg = Colors.white;
   static const Color muted = Color(0xFF9CA3AF);
+
+  static const double _s = ShellTokens.tvChromeScale;
+
   static const double shellRadius = 16;
+  static const double shellRadiusTv = 10;
   static const double cardRadius = 12;
+  static const double cardRadiusTv = 8;
   static const double chipRadius = 8;
+  static const double chipRadiusTv = 5;
   static const double badgeRadius = 6;
+  static const double badgeRadiusTv = 4;
+
   static const EdgeInsets selectCardPadding =
       EdgeInsets.symmetric(horizontal: 12, vertical: 11);
+  static const EdgeInsets selectCardPaddingTv =
+      EdgeInsets.symmetric(horizontal: 8, vertical: 7);
   static const EdgeInsets selectCardGap = EdgeInsets.only(bottom: 8);
+  static const EdgeInsets selectCardGapTv = EdgeInsets.only(bottom: 5);
+
+  static const double titleFontSize = 14;
+  static const double titleFontSizeTv = ShellTokens.tvTitleFontSize;
+  static const double optionFontSize = 13;
+  static const double optionFontSizeTv = ShellTokens.tvBodyFontSize;
+  static const double subtitleFontSize = 11;
+  static const double subtitleFontSizeTv = ShellTokens.tvMetaFontSize;
+  static const double chipFontSize = 12;
+  static const double chipFontSizeTv = ShellTokens.tvBodyFontSize;
+  static const double badgeFontSize = 10;
+  static const double badgeFontSizeTv = ShellTokens.tvMetaFontSize;
+
+  static const double headerBlockHeight = 52;
+  static const double headerBlockHeightTv = 36;
+  static const double headerPadH = 10;
+  static const double headerPadHTv = 8;
+  static const double headerPadTop = 10;
+  static const double headerPadTopTv = 6;
+  static const double headerPadBottom = 8;
+  static const double headerPadBottomTv = 5;
+
+  static const double chromeBtnSize = 28;
+  static const double chromeBtnSizeTv = chromeBtnSize * _s;
+  static const double chromeIconSize = 14;
+  static const double chromeIconSizeTv = ShellTokens.tvTitleFontSize;
+  static const double iconBoxSize = 28;
+  static const double iconBoxSizeTv = iconBoxSize * _s;
+  static const double iconBoxGlyphSize = 15;
+  static const double iconBoxGlyphSizeTv = ShellTokens.tvTitleFontSize;
+  static const double checkIconSize = 18;
+  static const double checkIconSizeTv = checkIconSize * _s;
+  static const double headerChipHeight = 28;
+  static const double headerChipHeightTv = headerChipHeight * _s;
+
+  static bool _tv(BuildContext context) =>
+      ShellPaintScope.usesTvDensityOf(context);
+
+  static double shellRadiusOf(BuildContext context) =>
+      _tv(context) ? shellRadiusTv : shellRadius;
+
+  static double cardRadiusOf(BuildContext context) =>
+      _tv(context) ? cardRadiusTv : cardRadius;
+
+  static double chipRadiusOf(BuildContext context) =>
+      _tv(context) ? chipRadiusTv : chipRadius;
+
+  static double badgeRadiusOf(BuildContext context) =>
+      _tv(context) ? badgeRadiusTv : badgeRadius;
+
+  static EdgeInsets selectCardPaddingOf(BuildContext context) =>
+      _tv(context) ? selectCardPaddingTv : selectCardPadding;
+
+  static EdgeInsets selectCardGapOf(BuildContext context) =>
+      _tv(context) ? selectCardGapTv : selectCardGap;
+
+  static double titleFontSizeOf(BuildContext context) =>
+      _tv(context) ? titleFontSizeTv : titleFontSize;
+
+  static double optionFontSizeOf(BuildContext context) =>
+      _tv(context) ? optionFontSizeTv : optionFontSize;
+
+  static double subtitleFontSizeOf(BuildContext context) =>
+      _tv(context) ? subtitleFontSizeTv : subtitleFontSize;
+
+  static double chipFontSizeOf(BuildContext context) =>
+      _tv(context) ? chipFontSizeTv : chipFontSize;
+
+  static double badgeFontSizeOf(BuildContext context) =>
+      _tv(context) ? badgeFontSizeTv : badgeFontSize;
+
+  static double headerBlockHeightOf(BuildContext context) =>
+      _tv(context) ? headerBlockHeightTv : headerBlockHeight;
+
+  static EdgeInsets headerPaddingOf(BuildContext context) => EdgeInsets.fromLTRB(
+        _tv(context) ? headerPadHTv : headerPadH,
+        _tv(context) ? headerPadTopTv : headerPadTop,
+        _tv(context) ? 6 : 6,
+        _tv(context) ? headerPadBottomTv : headerPadBottom,
+      );
+
+  static double chromeBtnSizeOf(BuildContext context) =>
+      _tv(context) ? chromeBtnSizeTv : chromeBtnSize;
+
+  static double chromeIconSizeOf(BuildContext context) =>
+      _tv(context) ? chromeIconSizeTv : chromeIconSize;
+
+  static double iconBoxSizeOf(BuildContext context) =>
+      _tv(context) ? iconBoxSizeTv : iconBoxSize;
+
+  static double iconBoxGlyphSizeOf(BuildContext context) =>
+      _tv(context) ? iconBoxGlyphSizeTv : iconBoxGlyphSize;
+
+  static double checkIconSizeOf(BuildContext context) =>
+      _tv(context) ? checkIconSizeTv : checkIconSize;
+
+  static double headerChipHeightOf(BuildContext context) =>
+      _tv(context) ? headerChipHeightTv : headerChipHeight;
 }
 
 /// Shared idle / selected / hover-focus chrome for player select cards.
@@ -577,7 +689,7 @@ class _PanelShellState extends State<_PanelShell> {
                 widget.autofocusClose &&
                 PlayerPopupListFocusScope.claimAutofocus(context);
             final radius =
-                BorderRadius.circular(PlayerPopupTokens.shellRadius);
+                BorderRadius.circular(PlayerPopupTokens.shellRadiusOf(context));
             return ClipRRect(
               borderRadius: radius,
               child: DecoratedBox(
@@ -588,7 +700,8 @@ class _PanelShellState extends State<_PanelShell> {
                 ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    const headerBlockHeight = 52.0;
+                    final headerBlockHeight =
+                        PlayerPopupTokens.headerBlockHeightOf(context);
                     final headerHeight =
                         widget.showHeader ? headerBlockHeight : 0.0;
                     final scrollMax = constraints.maxHeight.isFinite
@@ -606,13 +719,15 @@ class _PanelShellState extends State<_PanelShell> {
                       children: [
                         if (widget.showHeader) ...[
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
+                            padding: PlayerPopupTokens.headerPaddingOf(context),
                             child: Row(
                               children: [
                                 if (widget.onBack != null)
                                   ShellBackIconButton(
                                     icon: Icons.arrow_back_rounded,
-                                    size: 18,
+                                    size: PlayerPopupTokens.chromeIconSizeOf(
+                                      context,
+                                    ),
                                     tooltip: 'Back',
                                     onTap: widget.onBack,
                                   )
@@ -625,7 +740,9 @@ class _PanelShellState extends State<_PanelShell> {
                                     child: Icon(
                                       widget.leadingIcon,
                                       color: PlayerPopupTokens.muted,
-                                      size: 16,
+                                      size: PlayerPopupTokens.chromeIconSizeOf(
+                                        context,
+                                      ),
                                     ),
                                   )
                                 else
@@ -637,9 +754,12 @@ class _PanelShellState extends State<_PanelShell> {
                                       maxLines: 1,
                                       softWrap: false,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 14,
+                                        fontSize:
+                                            PlayerPopupTokens.titleFontSizeOf(
+                                          context,
+                                        ),
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: -0.15,
                                       ),
@@ -730,16 +850,19 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
     final borderColor = highlight
         ? PlayerPopupTokens.accent
         : PlayerPopupTokens.accentBorder;
+    final btn = PlayerPopupTokens.chromeBtnSizeOf(context);
+    final icon = PlayerPopupTokens.chromeIconSizeOf(context);
+    final radius = PlayerPopupTokens.chipRadiusOf(context);
     return Container(
-      width: 28,
-      height: 28,
+      width: btn,
+      height: btn,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: highlight ? PlayerPopupTokens.accentFill : Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: borderColor, width: highlight ? 1.5 : 1),
       ),
-      child: Icon(widget.icon, size: 14, color: PlayerPopupTokens.accent),
+      child: Icon(widget.icon, size: icon, color: PlayerPopupTokens.accent),
     );
   }
 
@@ -748,6 +871,7 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
     final input = _popupInput(context);
     final tvFocus = input.tvFocus;
     final mouseHover = input.mouseHover;
+    final chipRadius = PlayerPopupTokens.chipRadiusOf(context);
     final painted = ListenableBuilder(
       listenable: _hoveredN,
       builder: (context, _) => _buildFace(_hoveredN.value),
@@ -761,14 +885,14 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
       },
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        borderRadius: BorderRadius.circular(chipRadius),
         clipBehavior: Clip.antiAlias,
         child: tvFocus
             ? FocusableControl(
                 focusNode: widget.focusNode,
                 autoFocus: widget.autoFocus,
                 onTap: widget.onTap,
-                borderRadius: PlayerPopupTokens.chipRadius,
+                borderRadius: chipRadius,
                 scaleOnFocus: 1.0,
                 showFocusBorder: false,
                 showFocusFill: false,
@@ -797,15 +921,18 @@ class PlayerPopupIconBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final box = PlayerPopupTokens.iconBoxSizeOf(context);
+    final glyph = PlayerPopupTokens.iconBoxGlyphSizeOf(context);
+    final radius = PlayerPopupTokens.chipRadiusOf(context);
     return Container(
-      width: 28,
-      height: 28,
+      width: box,
+      height: box,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: accent
             ? PlayerPopupTokens.accentFill
             : Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: accent
               ? PlayerPopupTokens.accentBorder
@@ -814,7 +941,7 @@ class PlayerPopupIconBox extends StatelessWidget {
       ),
       child: Icon(
         icon,
-        size: 15,
+        size: glyph,
         color: accent
             ? PlayerPopupTokens.accent
             : Colors.white.withValues(alpha: 0.9),
@@ -887,18 +1014,20 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
     );
     return Material(
       color: chrome.bg,
-      borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+      borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadiusOf(context)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
         onTap: tvFocus ? null : widget.onTap,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadiusOf(context)),
         hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
         child: Container(
-          padding: PlayerPopupTokens.selectCardPadding,
+          padding: PlayerPopupTokens.selectCardPaddingOf(context),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+            borderRadius: BorderRadius.circular(
+              PlayerPopupTokens.cardRadiusOf(context),
+            ),
             border: Border.all(
               color: chrome.border,
               width: chrome.borderWidth,
@@ -921,7 +1050,7 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
                       widget.title,
                       style: TextStyle(
                         color: chrome.labelFg,
-                        fontSize: 13,
+                        fontSize: PlayerPopupTokens.optionFontSizeOf(context),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -935,7 +1064,8 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
                                 ? PlayerPopupTokens.accent
                                     .withValues(alpha: 0.85)
                                 : PlayerPopupTokens.muted,
-                            fontSize: 11,
+                            fontSize:
+                                PlayerPopupTokens.subtitleFontSizeOf(context),
                             height: 1.2,
                           ),
                         ),
@@ -952,7 +1082,7 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
               ],
               Icon(
                 Icons.chevron_right_rounded,
-                size: 18,
+                size: PlayerPopupTokens.checkIconSizeOf(context),
                 color: highlight || widget.selected
                     ? PlayerPopupTokens.accent
                     : PlayerPopupTokens.muted,
@@ -987,7 +1117,7 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
       autoFocus:
           widget.selected && PlayerPopupListFocusScope.claimAutofocus(context),
       onTap: widget.onTap,
-      borderRadius: PlayerPopupTokens.cardRadius,
+      borderRadius: PlayerPopupTokens.cardRadiusOf(context),
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
@@ -1007,11 +1137,17 @@ class PlayerPopupValueBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: tv ? 5 : 7,
+        vertical: tv ? 2 : 3,
+      ),
       decoration: BoxDecoration(
         color: accent ? PlayerPopupTokens.accentFill : Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.badgeRadius),
+        borderRadius: BorderRadius.circular(
+          PlayerPopupTokens.badgeRadiusOf(context),
+        ),
         border: Border.all(
           color: accent
               ? PlayerPopupTokens.accentBorder
@@ -1022,7 +1158,7 @@ class PlayerPopupValueBadge extends StatelessWidget {
         label.toUpperCase(),
         style: TextStyle(
           color: accent ? PlayerPopupTokens.accent : PlayerPopupTokens.muted,
-          fontSize: 10,
+          fontSize: PlayerPopupTokens.badgeFontSizeOf(context),
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,
         ),
@@ -1094,11 +1230,14 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
       disabled: widget.disabled,
     );
     final radius = widget.grouped
-        ? PlayerPopupTokens.chipRadius
-        : PlayerPopupTokens.cardRadius;
+        ? PlayerPopupTokens.chipRadiusOf(context)
+        : PlayerPopupTokens.cardRadiusOf(context);
     final padding = widget.grouped
-        ? const EdgeInsets.symmetric(horizontal: 11, vertical: 8)
-        : PlayerPopupTokens.selectCardPadding;
+        ? EdgeInsets.symmetric(
+            horizontal: ShellPaintScope.usesTvDensityOf(context) ? 8 : 11,
+            vertical: ShellPaintScope.usesTvDensityOf(context) ? 5 : 8,
+          )
+        : PlayerPopupTokens.selectCardPaddingOf(context);
     final subtitle = widget.subtitle?.trim();
     final hasSubtitle = subtitle != null && subtitle.isNotEmpty;
 
@@ -1109,7 +1248,7 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: chrome.labelFg,
-          fontSize: 13,
+          fontSize: PlayerPopupTokens.optionFontSizeOf(context),
           fontWeight: highlight || selected
               ? FontWeight.w600
               : FontWeight.w500,
@@ -1128,7 +1267,7 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: chrome.labelFg.withValues(alpha: 0.72),
-              fontSize: 11,
+              fontSize: PlayerPopupTokens.subtitleFontSizeOf(context),
               fontWeight: FontWeight.w500,
               height: 1.25,
             ),
@@ -1202,19 +1341,22 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
             );
       return widget.grouped
           ? body
-          : Padding(padding: PlayerPopupTokens.selectCardGap, child: body);
+          : Padding(
+              padding: PlayerPopupTokens.selectCardGapOf(context),
+              child: body,
+            );
     }
     return Padding(
       padding: widget.grouped
           ? EdgeInsets.zero
-          : PlayerPopupTokens.selectCardGap,
+          : PlayerPopupTokens.selectCardGapOf(context),
       child: FocusableControl(
         autoFocus: widget.selected &&
             PlayerPopupListFocusScope.claimAutofocus(context),
         onTap: widget.onTap,
         borderRadius: widget.grouped
-            ? PlayerPopupTokens.chipRadius
-            : PlayerPopupTokens.cardRadius,
+            ? PlayerPopupTokens.chipRadiusOf(context)
+            : PlayerPopupTokens.cardRadiusOf(context),
         scaleOnFocus: 1.0,
         showFocusBorder: false,
         showFocusFill: false,
@@ -1282,26 +1424,34 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
         ? (selected ? PlayerPopupTokens.accent : Colors.white)
         : PlayerPopupTokens.muted;
     return Container(
-      height: 28,
+      height: PlayerPopupTokens.headerChipHeightOf(context),
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: ShellPaintScope.usesTvDensityOf(context) ? 8 : 10,
+      ),
       decoration: BoxDecoration(
         color: chrome.bg,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        borderRadius: BorderRadius.circular(
+          PlayerPopupTokens.chipRadiusOf(context),
+        ),
         border: Border.all(color: chrome.border, width: chrome.borderWidth),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.icon != null) ...[
-            Icon(widget.icon, size: 14, color: fg),
+            Icon(
+              widget.icon,
+              size: PlayerPopupTokens.chromeIconSizeOf(context),
+              color: fg,
+            ),
             const SizedBox(width: 4),
           ],
           Text(
             widget.label,
             style: TextStyle(
               color: fg,
-              fontSize: 12,
+              fontSize: PlayerPopupTokens.chipFontSizeOf(context),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1309,7 +1459,7 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
             const SizedBox(width: 4),
             Icon(
               Icons.check_rounded,
-              size: 14,
+              size: PlayerPopupTokens.chromeIconSizeOf(context),
               color: PlayerPopupTokens.accent,
             ),
           ],
@@ -1328,6 +1478,7 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
       builder: (context, _) => _buildFace(_hoveredN.value),
     );
     if (!tvFocus) {
+      final chipRadius = PlayerPopupTokens.chipRadiusOf(context);
       return MouseRegion(
         onEnter: (_) {
           if (mouseHover) _setHovered(true);
@@ -1337,11 +1488,11 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
         },
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+          borderRadius: BorderRadius.circular(chipRadius),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+            borderRadius: BorderRadius.circular(chipRadius),
             hoverColor: Colors.transparent,
             child: painted,
           ),
@@ -1352,7 +1503,7 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
       autoFocus: widget.autoFocus,
       focusNode: widget.focusNode,
       onTap: widget.onTap,
-      borderRadius: PlayerPopupTokens.chipRadius,
+      borderRadius: PlayerPopupTokens.chipRadiusOf(context),
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
@@ -1551,7 +1702,7 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                 : highlight || selected || active
                 ? PlayerPopupTokens.accent
                 : PlayerPopupTokens.muted,
-            fontSize: 10,
+            fontSize: PlayerPopupTokens.badgeFontSizeOf(context),
             fontWeight: FontWeight.w700,
             letterSpacing: 0.3,
           ),
@@ -1559,27 +1710,28 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
       );
     }
 
+    final cardRadius = PlayerPopupTokens.cardRadiusOf(context);
     return Material(
       color: chrome.bg,
-      borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+      borderRadius: BorderRadius.circular(cardRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
         onTap: tvFocus ? null : widget.onTap,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+        borderRadius: BorderRadius.circular(cardRadius),
         hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
         child: AnimatedContainer(
           duration: chromeDuration,
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+            borderRadius: BorderRadius.circular(cardRadius),
             border: Border.all(
               color: chrome.border,
               width: chrome.borderWidth,
             ),
           ),
-          padding: PlayerPopupTokens.selectCardPadding,
+          padding: PlayerPopupTokens.selectCardPaddingOf(context),
           child: Row(
             children: [
               if (widget.leading != null) ...[
@@ -1600,7 +1752,7 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: fg,
-                        fontSize: 13,
+                        fontSize: PlayerPopupTokens.optionFontSizeOf(context),
                         fontWeight: highlight || selected || active
                             ? FontWeight.w600
                             : FontWeight.w500,
@@ -1613,7 +1765,11 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                         widget.subtitle!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: subFg, fontSize: 11),
+                        style: TextStyle(
+                          color: subFg,
+                          fontSize:
+                              PlayerPopupTokens.subtitleFontSizeOf(context),
+                        ),
                       ),
                     if (widget.status != null &&
                         widget.status != PlayerSourceStatus.ready &&
@@ -1632,7 +1788,8 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                             color: selected || highlight
                                 ? subFg
                                 : playerSourceStatusColor(widget.status!),
-                            fontSize: 10,
+                            fontSize:
+                                PlayerPopupTokens.badgeFontSizeOf(context),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1642,13 +1799,13 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
               ),
               if (selected) ...[
                 const SizedBox(width: 6),
-                const SizedBox(
+                SizedBox(
                   width: _statusSlot,
                   height: _statusSlot,
                   child: Icon(
                     Icons.check_rounded,
                     color: PlayerPopupTokens.accent,
-                    size: 18,
+                    size: PlayerPopupTokens.checkIconSizeOf(context),
                   ),
                 ),
               ] else if (statusGlyph != null) ...[
@@ -1688,11 +1845,14 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
           child: painted,
         );
       }
-      return Padding(padding: PlayerPopupTokens.selectCardGap, child: body);
+      return Padding(
+        padding: PlayerPopupTokens.selectCardGapOf(context),
+        child: body,
+      );
     }
 
     return Padding(
-      padding: PlayerPopupTokens.selectCardGap,
+      padding: PlayerPopupTokens.selectCardGapOf(context),
       child: FocusableControl(
         // Prefer the current value; else first row claims via fallback nextFocus.
         autoFocus: widget.autofocusIfSelected &&
@@ -1700,7 +1860,7 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
             PlayerPopupListFocusScope.claimAutofocus(context),
         focusNode: widget.focusNode,
         onTap: widget.onTap,
-        borderRadius: PlayerPopupTokens.cardRadius,
+        borderRadius: PlayerPopupTokens.cardRadiusOf(context),
         scaleOnFocus: 1.0,
         // Tile paints brand-green focus itself — skip gray/white overlay.
         showFocusBorder: false,

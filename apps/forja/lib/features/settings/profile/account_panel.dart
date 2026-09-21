@@ -281,12 +281,12 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   @override
   Widget build(BuildContext context) {
     if (!ForjaSupabase.isConfigured) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.fromLTRB(2, 8, 2, 8),
         child: Text(
           'Cloud account is not configured in this build. '
           'Pass SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY via --dart-define.',
-          style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: 13),
+          style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: SettingsTokens.typeSizeOf(context, 13)),
         ),
       );
     }
@@ -344,9 +344,9 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                       padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
                       child: Text(
                         _profileLoadError!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Color(0xFFF87171),
-                          fontSize: 12.5,
+                          fontSize: SettingsTokens.typeSizeOf(context, 12.5),
                           height: 1.35,
                         ),
                       ),
@@ -478,9 +478,9 @@ class _SignedInAccountBody extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
                 child: Text(
                   error!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFFF87171),
-                    fontSize: 12.5,
+                    fontSize: SettingsTokens.typeSizeOf(context, 12.5),
                     height: 1.35,
                   ),
                 ),
@@ -567,11 +567,11 @@ class _ActiveProfileStage extends StatelessWidget {
                           ForjaShellColors.brandGreen.withValues(alpha: 0.45),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'WATCHING NOW',
                     style: TextStyle(
                       color: ForjaShellColors.brandGreen,
-                      fontSize: 10,
+                      fontSize: SettingsTokens.typeSizeOf(context, 10),
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.4,
                     ),
@@ -582,9 +582,9 @@ class _ActiveProfileStage extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ForjaShellColors.textPrimary,
-                    fontSize: 28,
+                    fontSize: SettingsTokens.typeSizeOf(context, 28),
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.6,
                     height: 1.1,
@@ -595,9 +595,9 @@ class _ActiveProfileStage extends StatelessWidget {
                   onTap == null
                       ? 'Active profile on this device'
                       : 'Tap to switch who’s watching',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ForjaShellColors.textSecondary,
-                    fontSize: 13,
+                    fontSize: SettingsTokens.typeSizeOf(context, 13),
                     height: 1.35,
                   ),
                 ),
@@ -679,14 +679,14 @@ class _SignedOutAccountBody extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
             child: Text(
               'Link your Forja account with a code or QR on the portal. '
               'You can keep using Forja without an account.',
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: 13,
+                fontSize: SettingsTokens.typeSizeOf(context, 13),
                 height: 1.45,
               ),
             ),
@@ -702,9 +702,9 @@ class _SignedOutAccountBody extends StatelessWidget {
                     if (error != null) ...[
                       Text(
                         error!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Color(0xFFF87171),
-                          fontSize: 12.5,
+                          fontSize: SettingsTokens.typeSizeOf(context, 12.5),
                           height: 1.35,
                         ),
                       ),
@@ -744,14 +744,14 @@ class _SignedOutAccountBody extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
             child: Text(
               'Sign in to sync profiles and settings across devices. '
               'You can keep using Forja without an account.',
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: 13,
+                fontSize: SettingsTokens.typeSizeOf(context, 13),
                 height: 1.45,
               ),
             ),
@@ -771,7 +771,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                           color: ForjaShellColors.textSecondary.withValues(
                             alpha: 0.95,
                           ),
-                          fontSize: 13,
+                          fontSize: SettingsTokens.typeSizeOf(context, 13),
                           height: 1.45,
                         ),
                       ),
@@ -815,14 +815,14 @@ class _SignedOutAccountBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
           child: Text(
             'Sign in to sync profiles and settings across devices. '
             'You can keep using Forja without an account.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
-              fontSize: 13,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
               height: 1.45,
             ),
           ),
@@ -854,9 +854,9 @@ class _SignedOutAccountBody extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       error!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Color(0xFFF87171),
-                        fontSize: 12.5,
+                        fontSize: SettingsTokens.typeSizeOf(context, 12.5),
                         height: 1.35,
                       ),
                     ),

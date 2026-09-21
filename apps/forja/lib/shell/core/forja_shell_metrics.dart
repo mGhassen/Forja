@@ -14,6 +14,8 @@ class ShellMetrics {
     required this.allowCompactNavDrawer,
     required this.torrentPanelPadding,
     required this.torrentPanelTitleFontSize,
+    required this.torrentPanelRowTitleFontSize,
+    required this.torrentPanelRowPadV,
     required this.torrentPanelChipHorizontalPadding,
     required this.torrentPanelChipVerticalPadding,
     required this.torrentPanelChipFontSize,
@@ -39,6 +41,8 @@ class ShellMetrics {
   final bool allowCompactNavDrawer;
   final double torrentPanelPadding;
   final double torrentPanelTitleFontSize;
+  final double torrentPanelRowTitleFontSize;
+  final double torrentPanelRowPadV;
   final double torrentPanelChipHorizontalPadding;
   final double torrentPanelChipVerticalPadding;
   final double torrentPanelChipFontSize;
@@ -66,6 +70,8 @@ class ShellMetrics {
     allowCompactNavDrawer: true,
     torrentPanelPadding: ShellTokens.torrentPanelPaddingDesktop,
     torrentPanelTitleFontSize: ShellTokens.torrentPanelTitleFontSizeDesktop,
+    torrentPanelRowTitleFontSize: ShellTokens.torrentPanelRowTitleFontSizeDesktop,
+    torrentPanelRowPadV: ShellTokens.torrentPanelRowPadVDesktop,
     torrentPanelChipHorizontalPadding: ShellTokens.torrentPanelChipPadHDesktop,
     torrentPanelChipVerticalPadding: ShellTokens.torrentPanelChipPadVDesktop,
     torrentPanelChipFontSize: ShellTokens.torrentPanelChipFontSizeDesktop,
@@ -92,6 +98,8 @@ class ShellMetrics {
     allowCompactNavDrawer: true,
     torrentPanelPadding: ShellTokens.torrentPanelPaddingDesktop,
     torrentPanelTitleFontSize: ShellTokens.torrentPanelTitleFontSizeDesktop,
+    torrentPanelRowTitleFontSize: ShellTokens.torrentPanelRowTitleFontSizeDesktop,
+    torrentPanelRowPadV: ShellTokens.torrentPanelRowPadVDesktop,
     torrentPanelChipHorizontalPadding: ShellTokens.torrentPanelChipPadHDesktop,
     torrentPanelChipVerticalPadding: ShellTokens.torrentPanelChipPadVDesktop,
     torrentPanelChipFontSize: ShellTokens.torrentPanelChipFontSizeDesktop,
@@ -120,6 +128,8 @@ class ShellMetrics {
     allowCompactNavDrawer: false,
     torrentPanelPadding: ShellTokens.torrentPanelPaddingTv,
     torrentPanelTitleFontSize: ShellTokens.torrentPanelTitleFontSizeTv,
+    torrentPanelRowTitleFontSize: ShellTokens.torrentPanelRowTitleFontSizeTv,
+    torrentPanelRowPadV: ShellTokens.torrentPanelRowPadVTv,
     torrentPanelChipHorizontalPadding: ShellTokens.torrentPanelChipPadHTv,
     torrentPanelChipVerticalPadding: ShellTokens.torrentPanelChipPadVTv,
     torrentPanelChipFontSize: ShellTokens.torrentPanelChipFontSizeTv,

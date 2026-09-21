@@ -13,7 +13,6 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Renders pack-declared settings fields (RFC-089 / RFC-093).
@@ -365,7 +364,7 @@ class _MultiSelectChipsField extends StatelessWidget {
             style: TextStyle(
               color: ForjaShellColors.textPrimary.withValues(alpha: 0.9),
               fontWeight: FontWeight.w600,
-              fontSize: 13,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
             ),
           ),
           if (field.subtitle.isNotEmpty) ...[
@@ -374,7 +373,7 @@ class _MultiSelectChipsField extends StatelessWidget {
               field.subtitle,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-                fontSize: 12,
+                fontSize: SettingsTokens.typeSizeOf(context, 12),
                 height: 1.35,
               ),
             ),
@@ -407,7 +406,7 @@ class _MultiSelectChipsField extends StatelessWidget {
                       label: options[i].label,
                       selected: selected.contains(options[i].id),
                       listIndex: i,
-                      fontSize: 12,
+                      fontSize: SettingsTokens.typeSizeOf(context, 12),
                       accentHover: true,
                       ensureVisibleMode: ShellPaintEnsureVisible.item,
                       onTap: () {
@@ -455,10 +454,10 @@ class _MultiSelectChipsField extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: ForjaShellColors.brandGreen,
             fontWeight: FontWeight.w600,
-            fontSize: 13,
+            fontSize: SettingsTokens.typeSizeOf(context, 13),
           ),
         ),
       ),

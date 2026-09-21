@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Shared Android TV bottom transport for VOD (MediaKit + Exo).
 ///
@@ -265,7 +266,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                     builder: (context, dur, _) => PlayerTimeRange(
                       position: pos,
                       duration: dur,
-                      fontSize: 11,
+                      fontSize: ShellTokens.playerChromeTimeFontSizeTv,
                     ),
                   ),
                 ),

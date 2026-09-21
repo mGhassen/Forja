@@ -15,10 +15,12 @@ class AvPlayerView extends StatelessWidget {
     if (defaultTargetPlatform != TargetPlatform.macOS) {
       return const ColoredBox(color: Colors.black);
     }
-    return AppKitView(
-      viewType: _viewType,
-      creationParams: {'viewId': viewId},
-      creationParamsCodec: const StandardMessageCodec(),
+    return SizedBox.expand(
+      child: AppKitView(
+        viewType: _viewType,
+        creationParams: {'viewId': viewId},
+        creationParamsCodec: const StandardMessageCodec(),
+      ),
     );
   }
 }

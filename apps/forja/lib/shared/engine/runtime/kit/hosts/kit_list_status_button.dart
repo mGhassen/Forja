@@ -505,7 +505,9 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
                 CompositedTransformFollower(
                   link: _link,
                   showWhenUnlinked: false,
-                  offset: const Offset(0, 46),
+                  targetAnchor: listStatusMenuTargetAnchor,
+                  followerAnchor: listStatusMenuFollowerAnchor,
+                  offset: listStatusMenuGapOffset(context),
                   child: Material(
                     color: Colors.transparent,
                     child: ValueListenableBuilder<int>(

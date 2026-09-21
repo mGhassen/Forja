@@ -15,6 +15,7 @@ import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:forja_foundation/widgets/guide/guide_focus_paint.dart';
 
@@ -34,12 +35,15 @@ Future<bool?> showPortalFormDialog(
   return showDialog<bool>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => PortalFormDialog(
-      existing: existing,
-      pluginId: pluginId,
-      tabId: tabId,
-      currentPortalCount: currentPortalCount,
-      onSuccess: onSuccess,
+    builder: (_) => ShellScope.rehost(
+      context,
+      PortalFormDialog(
+        existing: existing,
+        pluginId: pluginId,
+        tabId: tabId,
+        currentPortalCount: currentPortalCount,
+        onSuccess: onSuccess,
+      ),
     ),
   );
 }
@@ -84,7 +88,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
 
   double get _codeBoxHeight => _tv ? 42.0 : (_compact ? 52.0 : 76.0);
 
-  double get _codeFontSize => _tv ? 17.0 : (_compact ? 20.0 : 26.0);
+  double get _codeFontSize => _tv ? ShellTokens.tvTitleFontSize : (_compact ? 20.0 : 26.0);
 
   late final TextEditingController _labelCtrl;
   late final TextEditingController _urlCtrl;
@@ -236,6 +240,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
           tvMeta: _pasteTvMeta,
           onUpEdge: () {}, // top of dialog - keep focus off header close
           onDownEdge: () => _focusDialogItem(1),
+          containDpad: ShellTvContainDpad.activeOf(context),
         );
         if (arrow == KeyEventResult.handled) return arrow;
 
@@ -674,7 +679,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
               child: Text(
                 'Portal added',
                 style: GuideChromeStyle.overlayTitle.copyWith(
-                  fontSize: _tv ? 17 : 19,
+                  fontSize: _tv ? ShellTokens.tvTitleFontSize : 19,
                 ),
               ),
             ),
@@ -713,7 +718,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
         Text(
           _editing ? 'Edit Portal' : 'Add Portal',
           style: GuideChromeStyle.overlayTitle.copyWith(
-            fontSize: _tv ? 17 : 19,
+            fontSize: _tv ? ShellTokens.tvTitleFontSize : 19,
           ),
         ),
         SizedBox(height: _tv ? 28 : 36),
@@ -915,7 +920,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                   child: Text(
                                     titleLabel,
                                     style: GuideChromeStyle.overlayTitle.copyWith(
-                                      fontSize: _tv ? 17 : 19,
+                                      fontSize: _tv ? ShellTokens.tvTitleFontSize : 19,
                                     ),
                                   ),
                                 ),
@@ -992,7 +997,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                           'Share code',
                                           style: GuideChromeStyle.overlayTitle
                                               .copyWith(
-                                            fontSize: _tv ? 17 : 19,
+                                            fontSize: _tv ? ShellTokens.tvTitleFontSize : 19,
                                           ),
                                         ),
                                         SizedBox(
@@ -1023,7 +1028,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                       titleLabel,
                                       style: GuideChromeStyle.overlayTitle
                                           .copyWith(
-                                        fontSize: _tv ? 17 : 19,
+                                        fontSize: _tv ? ShellTokens.tvTitleFontSize : 19,
                                       ),
                                     ),
                                   ),
@@ -1379,7 +1384,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                       textAlign: TextAlign.center,
                       style: GoogleFonts.jetBrainsMono(
                         color: GuideChromeStyle.accent,
-                        fontSize: _tv ? 11 : (_compact ? 12 : 13),
+                        fontSize: _tv ? ShellTokens.tvMetaFontSize : (_compact ? 12 : 13),
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.4,
                       ),
@@ -1400,7 +1405,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                         '-',
                         style: GoogleFonts.jetBrainsMono(
                           color: Colors.white.withValues(alpha: 0.35),
-                          fontSize: _tv ? 14 : (_compact ? 16 : 22),
+                          fontSize: _tv ? ShellTokens.tvTitleFontSize : (_compact ? 16 : 22),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1709,7 +1714,11 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     final compact = _dense;
     final hintStyle = GoogleFonts.plusJakartaSans(
       color: Colors.white.withValues(alpha: 0.25),
-      fontSize: _tv ? 12 : (compact ? 13 : 14),
+      fontSize: _tv
+          ? ShellTokens.formInputHintFontSizeTv
+          : (compact
+              ? ShellTokens.formInputFontSizeSm
+              : ShellTokens.formInputFontSize),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1718,7 +1727,9 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
           label.toUpperCase(),
           style: GoogleFonts.plusJakartaSans(
             color: GuideChromeStyle.textSecondary,
-            fontSize: 11,
+            fontSize: _tv
+                ? ShellTokens.formInputLabelFontSizeTv
+                : ShellTokens.formInputLabelFontSize,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
           ),
@@ -1736,7 +1747,9 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                 : (suffixFocus == null ? ExcludeFocus(child: suffix) : suffix),
             style: GoogleFonts.plusJakartaSans(
               color: GuideChromeStyle.textPrimary,
-              fontSize: _tv ? 13 : 14,
+              fontSize: _tv
+                  ? ShellTokens.formInputFontSizeTv
+                  : ShellTokens.formInputFontSize,
             ),
             onArrowUp: () {
               if (identical(focusNode, _labelFocus) &&
@@ -1762,7 +1775,11 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
             onSubmitted: (_) => _trySubmitFromEnter(),
             style: GoogleFonts.plusJakartaSans(
               color: GuideChromeStyle.textPrimary,
-              fontSize: _tv ? 12 : (compact ? 13 : 14),
+              fontSize: _tv
+                  ? ShellTokens.formInputFontSizeTv
+                  : (compact
+                      ? ShellTokens.formInputFontSizeSm
+                      : ShellTokens.formInputFontSize),
             ),
             decoration: guideDialogFieldDecoration(
               focused: focusNode?.hasFocus ?? false,

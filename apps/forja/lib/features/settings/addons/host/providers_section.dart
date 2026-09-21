@@ -353,105 +353,13 @@ class _SettingsForjaAddonsSectionState
             const SizedBox(height: 20),
             const SettingsEngineMiniLabel('Nuvio addons'),
             const SizedBox(height: 4),
-            ...nuvioAddons.map((addon) {
-              final builtIn = NuvioService.isBundled(addon.manifestUrl);
-              final allOn =
-                  addon.scrapers.isNotEmpty &&
-                  addon.scrapers.every((s) => s.enabled);
-              final trailing = Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Builder(
-                    builder: (context) {
-                      final tvFocus = ShellScope.inputPolicyOf(
-                        context,
-                      ).useFocusableMoodChips;
-                      void toggle(bool val) {
-                        if (addon.scrapers.isEmpty) return;
-                        unawaited(
-                          NuvioService.instance.setAllScrapersEnabled(
-                            manifestUrl: addon.manifestUrl,
-                            enabled: val,
-                          ),
-                        );
-                      }
-
-                      if (!tvFocus) {
-                        return Switch(
-                          value: allOn,
-                          scale: Switch.settingsScale,
-                          onChanged: addon.scrapers.isEmpty ? null : toggle,
-                          emphasized: SettingsExpandHeaderChrome.activeOf(
-                            context,
-                          ),
-                        );
-                      }
-                      return _FocusWhiteSwitch(
-                        value: allOn,
-                        enabled: addon.scrapers.isNotEmpty,
-                        onToggle: () => toggle(!allOn),
-                        onLeftEdge: () {
-                          SettingsExpandHeaderFocus.maybeFocusHeaderOf(
-                            context,
-                          )?.call();
-                        },
-                      );
-                    },
-                  ),
-                  if (!builtIn)
-                    _AddonRemoveActions(
-                      onRemove: () => _removeNuvioAddon(addon.manifestUrl),
-                    ),
-                ],
-              );
-              final scraperRows = addon.scrapers.map((s) {
-                final subtitle = [
-                  if (s.description != null && s.description!.isNotEmpty)
-                    s.description!,
-                  if (s.supportedTypes.isNotEmpty) s.supportedTypes.join(', '),
-                ].join(' \u00b7 ');
-                return SettingsToggleRow(
-                  key: ValueKey('${addon.manifestUrl}::${s.id}'),
-                  title: s.name,
-                  subtitle: subtitle.isEmpty ? 'Scraper' : subtitle,
-                  value: s.enabled,
-                  onChanged: (val) async {
-                    await NuvioService.instance.setScraperEnabled(
-                      manifestUrl: addon.manifestUrl,
-                      scraperId: s.id,
-                      enabled: val,
-                    );
-                  },
-                );
-              }).toList();
-              return KeyedSubtree(
+            ...nuvioAddons.map(
+              (addon) => _NuvioAddonTile(
                 key: ValueKey(addon.manifestUrl),
-                child: settingsExpandableWithSideActions(
-                  context: context,
-                  trailing: trailing,
-                  leading: const Icon(
-                    Icons.code_rounded,
-                    color: ForjaShellColors.iconActive,
-                  ),
-                  title: Text(
-                    builtIn ? '${addon.name} (Built-in)' : addon.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: ForjaShellColors.textPrimary,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: ForjaShellColors.textSecondary,
-                    ),
-                  ),
-                  children: scraperRows,
-                ),
-              );
-            }),
+                addon: addon,
+                onRemove: () => _removeNuvioAddon(addon.manifestUrl),
+              ),
+            ),
           ],
         ],
       ),
@@ -577,7 +485,7 @@ class _SettingsForjaAddonsSectionState
             Text(
               'Use the Test Connection button to load available tags.',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: SettingsTokens.typeSizeOf(context, 12),
                 color: Colors.white.withValues(alpha: 0.4),
               ),
             ),
@@ -585,7 +493,7 @@ class _SettingsForjaAddonsSectionState
             Text(
               'No tags found in Prowlarr. Add tags to your indexers to use this filter.',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: SettingsTokens.typeSizeOf(context, 12),
                 color: Colors.white.withValues(alpha: 0.4),
               ),
             ),
@@ -593,7 +501,7 @@ class _SettingsForjaAddonsSectionState
             Text(
               'Limit searches to indexers with the selected tags. Leave all unselected to search all indexers.',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: SettingsTokens.typeSizeOf(context, 12),
                 color: Colors.white.withValues(alpha: 0.6),
               ),
             ),
@@ -645,7 +553,7 @@ class _SettingsForjaAddonsSectionState
                 child: Text(
                   'All indexers will be searched.',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: SettingsTokens.typeSizeOf(context, 11),
                     color: Colors.white.withValues(alpha: 0.4),
                   ),
                 ),
@@ -792,6 +700,220 @@ class _SettingsForjaAddonsSectionState
   }
 }
 
+/// One Nuvio addon row. Lean cloud stubs (0 scrapers) fetch the manifest when
+/// the user expands — that is the confirm step (never auto on boot).
+class _NuvioAddonTile extends StatelessWidget {
+  const _NuvioAddonTile({
+    super.key,
+    required this.addon,
+    required this.onRemove,
+  });
+
+  final NuvioAddon addon;
+  final Future<void> Function() onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final builtIn = NuvioService.isBundled(addon.manifestUrl);
+    final lean = addon.scrapers.isEmpty;
+    final allOn =
+        addon.scrapers.isNotEmpty && addon.scrapers.every((s) => s.enabled);
+    final trailing = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Builder(
+          builder: (context) {
+            final tvFocus =
+                ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+            void toggle(bool val) {
+              if (addon.scrapers.isEmpty) return;
+              unawaited(
+                NuvioService.instance.setAllScrapersEnabled(
+                  manifestUrl: addon.manifestUrl,
+                  enabled: val,
+                ),
+              );
+            }
+
+            if (!tvFocus) {
+              return Switch(
+                value: allOn,
+                scale: Switch.settingsScale,
+                onChanged: lean ? null : toggle,
+                emphasized: SettingsExpandHeaderChrome.activeOf(context),
+              );
+            }
+            return _FocusWhiteSwitch(
+              value: allOn,
+              enabled: !lean,
+              onToggle: () => toggle(!allOn),
+              onLeftEdge: () {
+                SettingsExpandHeaderFocus.maybeFocusHeaderOf(context)?.call();
+              },
+            );
+          },
+        ),
+        if (!builtIn) _AddonRemoveActions(onRemove: onRemove),
+      ],
+    );
+
+    final List<Widget> children;
+    if (lean) {
+      children = [
+        _NuvioLeanHydrateBody(manifestUrl: addon.manifestUrl, name: addon.name),
+      ];
+    } else {
+      children = addon.scrapers.map((s) {
+        final subtitle = [
+          if (s.description != null && s.description!.isNotEmpty)
+            s.description!,
+          if (s.supportedTypes.isNotEmpty) s.supportedTypes.join(', '),
+        ].join(' \u00b7 ');
+        return SettingsToggleRow(
+          key: ValueKey('${addon.manifestUrl}::${s.id}'),
+          title: s.name,
+          subtitle: subtitle.isEmpty ? 'Scraper' : subtitle,
+          value: s.enabled,
+          onChanged: (val) async {
+            await NuvioService.instance.setScraperEnabled(
+              manifestUrl: addon.manifestUrl,
+              scraperId: s.id,
+              enabled: val,
+            );
+          },
+        );
+      }).toList();
+    }
+
+    return settingsExpandableWithSideActions(
+      context: context,
+      storageId: 'nuvio-${addon.manifestUrl}',
+      trailing: trailing,
+      leading: const Icon(
+        Icons.code_rounded,
+        color: ForjaShellColors.iconActive,
+      ),
+      title: Text(
+        builtIn ? '${addon.name} (Built-in)' : addon.name,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: SettingsTokens.typeSizeOf(context, 14),
+          color: ForjaShellColors.textPrimary,
+        ),
+      ),
+      subtitle: Text(
+        lean
+            ? 'Expand to download scrapers \u00b7 v${addon.version}'
+            : '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
+        style: TextStyle(
+          fontSize: SettingsTokens.typeSizeOf(context, 11),
+          color: ForjaShellColors.textSecondary,
+        ),
+      ),
+      children: children,
+    );
+  }
+}
+
+/// Mounted only while the lean addon row is expanded — fetches scrapers then
+/// [NuvioService.changeNotifier] rebuilds the parent with real toggles.
+class _NuvioLeanHydrateBody extends StatefulWidget {
+  const _NuvioLeanHydrateBody({
+    required this.manifestUrl,
+    required this.name,
+  });
+
+  final String manifestUrl;
+  final String name;
+
+  @override
+  State<_NuvioLeanHydrateBody> createState() => _NuvioLeanHydrateBodyState();
+}
+
+class _NuvioLeanHydrateBodyState extends State<_NuvioLeanHydrateBody> {
+  bool _busy = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    if (mounted) {
+      setState(() {
+        _busy = true;
+        _error = null;
+      });
+    }
+    try {
+      // [install] replaces the lean stub and prefetches scraper scripts.
+      final addon = await NuvioService.instance.install(widget.manifestUrl);
+      scheduleNuvioSyncPush();
+      if (!mounted) return;
+      ForjaToast.success(
+        'Loaded ${addon.name} (${addon.scrapers.length} scrapers)',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = '$e';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_busy) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            SizedBox(
+              width: SettingsTokens.filledButtonIconSizeOf(context),
+              height: SettingsTokens.filledButtonIconSizeOf(context),
+              child: const CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Downloading scrapers…',
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            _error ?? 'Could not load scrapers',
+            style: TextStyle(
+              color: const Color(0xFFF87171),
+              fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SettingsFilledButton(
+            label: 'Retry',
+            icon: Icons.refresh_rounded,
+            onPressed: () => unawaited(_load()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Installed addon row — enable switch + trash (Yes/No confirm).
 class _AddonRemoveRow extends StatefulWidget {
   const _AddonRemoveRow({
@@ -831,11 +953,11 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     final titleBlock = _confirming
-        ? const Text(
+        ? Text(
             'Remove this addon?',
             style: TextStyle(
               color: Color(0xFFF87171),
-              fontSize: 15,
+              fontSize: SettingsTokens.typeSizeOf(context, 15),
               fontWeight: FontWeight.w600,
             ),
           )
@@ -848,16 +970,16 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
                   color: widget.enabled
                       ? ForjaShellColors.textPrimary
                       : ForjaShellColors.textSecondary,
-                  fontSize: 15,
+                  fontSize: SettingsTokens.typeSizeOf(context, 15),
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 widget.subtitle,
-                style: const TextStyle(
+                style: TextStyle(
                   color: ForjaShellColors.textSecondary,
-                  fontSize: 12.5,
+                  fontSize: SettingsTokens.typeSizeOf(context, 12.5),
                   height: 1.35,
                 ),
               ),
@@ -943,23 +1065,12 @@ Widget _settingsTvIconButton(
   required VoidCallback? onPressed,
   Color color = ForjaShellColors.textPrimary,
 }) {
-  final child = Icon(icon, color: color, size: 20);
-  final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-  if (tv) {
-    return shellFocusableTap(
-      context: context,
-      onTap: onPressed,
-      borderRadius: 8,
-      scaleOnFocus: 1.0,
-      showFocusRail: false,
-      showFocusFill: true,
-      showFocusBorder: true,
-      tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      child: SizedBox(width: 40, height: 40, child: Center(child: child)),
-    );
-  }
-  return IconButton(tooltip: tooltip, onPressed: onPressed, icon: child);
+  return SettingsIconButton(
+    tooltip: tooltip,
+    icon: icon,
+    onPressed: onPressed,
+    color: color,
+  );
 }
 
 /// Trash → Yes/No in place (same pattern as IPTV portal delete).
@@ -1077,7 +1188,7 @@ class _AddonFeatureChip extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: SettingsTokens.typeSizeOf(context, 12),
               fontWeight: FontWeight.w600,
               color: selected
                   ? ForjaShellColors.textPrimary
@@ -1127,7 +1238,7 @@ class _TestResult extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(message, style: TextStyle(color: color, fontSize: 13)),
+            child: Text(message, style: TextStyle(color: color, fontSize: SettingsTokens.typeSizeOf(context, 13))),
           ),
         ],
       ),

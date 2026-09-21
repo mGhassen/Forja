@@ -4,8 +4,8 @@ import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Centered play control for catalog / continue-watching cards.
-/// Fades in when [visible]; brand green + float + heartbeat only while the
-/// play control itself is hovered/focused (or [active] is forced by the parent).
+/// Fades in when [visible]; brand green + float + heartbeat while [active]
+/// or while the play control itself is hovered/focused.
 class ShellCardPlayOverlay extends StatefulWidget {
   const ShellCardPlayOverlay({
     super.key,
@@ -18,9 +18,9 @@ class ShellCardPlayOverlay extends StatefulWidget {
     this.iconSize = 28,
   });
 
-  /// When true, forces the green accent without a button hover (legacy /
-  /// parent-driven emphasis). Prefer leaving false for continue-watching
-  /// cards so only play-button hover accents.
+  /// When true, forces green + float + heartbeat without a button hover
+  /// (TV card focus, live cards). Continue-watching on desktop leaves this
+  /// false so only play-button hover accents.
   final bool active;
   final bool visible;
   final VoidCallback? onTap;
@@ -48,8 +48,10 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
   bool get _accented =>
       widget.active || _buttonHovered || _buttonFocused;
 
+  /// Heartbeat with the green accent — button hover/focus, or parent [active]
+  /// (TV card focus / live cards that force the play control).
   bool get _pulseEnabled =>
-      (_buttonHovered || _buttonFocused) &&
+      _accented &&
       widget.visible &&
       !(MediaQuery.maybeOf(context)?.disableAnimations ?? false);
 
@@ -193,13 +195,19 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
             child: ScaleTransition(
               key: const ValueKey('shell-card-play-pulse'),
               scale: _pulse,
-              // Play glyph is left-heavy in the font; nudge so it reads centered.
-              child: Transform.translate(
-                offset: Offset(widget.iconSize * 0.06, 0),
-                child: Icon(
-                  Icons.play_arrow_rounded,
-                  color: lifted ? const Color(0xFF111827) : Colors.white,
-                  size: widget.iconSize,
+              child: SizedBox(
+                width: widget.diameter,
+                height: widget.diameter,
+                child: Center(
+                  // Play glyph is left-heavy in the font; nudge so it reads centered.
+                  child: Transform.translate(
+                    offset: Offset(widget.iconSize * 0.1, 0),
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: lifted ? const Color(0xFF111827) : Colors.white,
+                      size: widget.iconSize,
+                    ),
+                  ),
                 ),
               ),
             ),

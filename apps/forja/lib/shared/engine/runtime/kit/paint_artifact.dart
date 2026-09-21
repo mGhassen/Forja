@@ -268,17 +268,17 @@ abstract final class PackPaintArtifact {
           tvDensity: tv,
           borderRadius:
               packLength(context, props['borderRadius'] ?? props['radius']) ??
-                  EventCardTokens.radius * scale,
+                  EventCardTokens.radiusOf(context),
           titleFontSize: packLength(context, props['titleFontSize']) ??
-              EventCardTokens.titleFontSize * scale,
+              EventCardTokens.titleFontSizeOf(context),
           metaFontSize: packLength(context, props['metaFontSize']) ??
-              EventCardTokens.metaFontSize * scale,
+              EventCardTokens.metaFontSizeOf(context),
           badgeFontSize: packLength(context, props['badgeFontSize']) ??
-              EventCardTokens.badgeFontSize * scale,
+              EventCardTokens.badgeFontSizeOf(context),
           playOverlaySize: packLength(context, props['playOverlaySize']) ??
-              EventCardTokens.playOverlaySize * scale,
+              EventCardTokens.playOverlaySizeOf(context),
           padV: packLength(context, props['padV']) ??
-              EventCardTokens.padV * scale,
+              EventCardTokens.padVOf(context),
           onTap: onTap,
         );
       default:

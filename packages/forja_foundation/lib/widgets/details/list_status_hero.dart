@@ -14,7 +14,7 @@ class ListStatusHero extends StatefulWidget {
     this.onMenuOpenChanged,
     this.useFocusableChips = false,
     this.scaleOnHover = true,
-    this.menuOffset = const Offset(0, 46),
+    this.menuOffset,
   });
 
   final String? currentStatus;
@@ -24,7 +24,8 @@ class ListStatusHero extends StatefulWidget {
   final bool useFocusableChips;
   /// Host maps [ShellInputPolicy.scaleOnHover] — false on leanback TV.
   final bool scaleOnHover;
-  final Offset menuOffset;
+  /// Extra follower offset after [listStatusMenuGapOffset]. Null = gap only.
+  final Offset? menuOffset;
 
   /// Builds the hero trigger (host wraps Interactive / TV pills).
   final Widget Function(
@@ -88,7 +89,10 @@ class _ListStatusHeroState extends State<ListStatusHero> {
             CompositedTransformFollower(
               link: _link,
               showWhenUnlinked: false,
-              offset: widget.menuOffset,
+              targetAnchor: listStatusMenuTargetAnchor,
+              followerAnchor: listStatusMenuFollowerAnchor,
+              offset: listStatusMenuGapOffset(context) +
+                  (widget.menuOffset ?? Offset.zero),
               child: Material(
                 color: Colors.transparent,
                 child: ListStatusPopupPanel(

@@ -7,6 +7,7 @@ import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
+import 'package:forja_foundation/tokens/channel_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -1096,7 +1097,11 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         showLogo: _showChannelLogo(id),
         listLayout: list,
         width: list ? null : layout?.cardW,
-        height: list ? 56 : layout?.cardH,
+        height: list
+            ? ChannelCardTokens.listRowHeightOf(
+                ShellPaintScope.usesTvDensityOf(context),
+              )
+            : layout?.cardH,
         gridIndex: i,
         gridColumns: cols,
         onLeftEdge: leftEdge,
@@ -1260,15 +1265,9 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
           focused: _focused,
         ) ||
         widget.selected;
-    final radius = EventCardTokens.radius;
-    final playDia = ShellTokens.chromeScale(
-      EventCardTokens.playOverlaySize,
-      tv: tv,
-    );
-    final playIcon = ShellTokens.chromeScale(
-      EventCardTokens.playIconSize,
-      tv: tv,
-    );
+    final radius = EventCardTokens.radiusOf(context);
+    final playDia = EventCardTokens.playOverlaySizeOf(context);
+    final playIcon = EventCardTokens.playIconSizeOf(context);
 
     final paint = EventCard(
       title: (props['title'] ?? '').toString(),
@@ -1286,8 +1285,13 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       active: active,
       width: widget.width,
       height: widget.height,
+      tvDensity: tv,
       borderRadius: radius,
+      titleFontSize: EventCardTokens.titleFontSizeOf(context),
+      metaFontSize: EventCardTokens.metaFontSizeOf(context),
+      badgeFontSize: EventCardTokens.badgeFontSizeOf(context),
       playOverlaySize: playDia,
+      padV: EventCardTokens.padVOf(context),
       playOverlay: live
           ? ShellCardPlayOverlay(
               active: active,
@@ -1306,7 +1310,7 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: EventCardTokens.radius,
+      borderRadius: EventCardTokens.radiusOf(context),
       motion: ForjaMotionPreset.fillOnly,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,

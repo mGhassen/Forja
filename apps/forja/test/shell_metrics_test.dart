@@ -54,22 +54,37 @@ void main() {
       ShellTokens.heroMinHeightTv,
       greaterThan(ShellTokens.heroMinHeightDesktop * ShellTokens.tvChromeScale),
     );
-    // Portals family — hand row height.
-    expect(PortalListTokens.rowHeightTv, 80);
+    // Portals family — hand row height (denser than desktop, not × chrome).
+    expect(PortalListTokens.rowHeightTv, 72);
     expect(
       PortalListTokens.rowHeightTv,
-      greaterThan(PortalListTokens.rowHeight * ShellTokens.tvChromeScale),
+      lessThan(PortalListTokens.rowHeight),
+    );
+    expect(
+      PortalListTokens.headerIconSizeTv,
+      closeTo(
+        PortalListTokens.headerIconSize * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      PortalListTokens.resolvePanelWidth(true, ShellTokens.sidePanelWidth),
+      ShellTokens.sidePanelWidthTv,
+    );
+    expect(
+      PortalListTokens.resolveRowHeight(true, PortalListTokens.rowHeight),
+      PortalListTokens.rowHeightTv,
     );
     // Hero CTA reserve must not crush below painted pill height.
     expect(
       ShellTokens.controlHeightTv,
       greaterThanOrEqualTo(DetailsTokens.heroPillHeightTv - 0.001),
     );
-    expect(ShellTokens.tvBodyFontSize, 8);
-    expect(ShellTokens.tvTitleFontSize, 10);
-    expect(ShellTokens.tvMetaFontSize, 7);
+    expect(ShellTokens.tvBodyFontSize, 9);
+    expect(ShellTokens.tvTitleFontSize, 11);
+    expect(ShellTokens.tvMetaFontSize, 8);
     expect(SettingsTokens.sidebarWidth, 340);
-    expect(SettingsTokens.sidebarWidthTv, 280);
+    expect(SettingsTokens.sidebarWidthTv, 240);
     // Settings roles → shell ladder (title / body / meta) — no parallel scale.
     expect(SettingsTokens.hubTitleSizeTv, ShellTokens.tvTitleFontSize);
     expect(SettingsTokens.pageTitleSizeTv, ShellTokens.tvTitleFontSize);
@@ -83,8 +98,73 @@ void main() {
       greaterThan(SettingsTokens.categorySubtitleSizeTv),
     );
     expect(
+      SettingsTokens.filledButtonHeightTv,
+      closeTo(
+        SettingsTokens.filledButtonHeight * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      SettingsTokens.iconButtonHitSizeTv,
+      closeTo(
+        SettingsTokens.iconButtonHitSize * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      SettingsTokens.textFieldPadTopTv,
+      closeTo(
+        SettingsTokens.textFieldPadTop * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      ShellTokens.formInputFontSizeTv,
+      ShellTokens.tvBodyFontSize,
+    );
+    expect(
+      ShellTokens.formInputHintFontSizeTv,
+      ShellTokens.tvMetaFontSize,
+    );
+    expect(
+      ShellTokens.formInputIconSizeTv,
+      closeTo(
+        ShellTokens.formInputIconSize * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(SettingsTokens.sliderThumbRadiusTv, 5);
+    expect(
+      SettingsTokens.sliderThumbRadiusTv,
+      lessThan(SettingsTokens.sliderThumbRadius),
+    );
+    expect(SettingsTokens.dialogMaxWidthCapTv, 360);
+    expect(
+      SettingsTokens.dialogMaxWidthCapTv,
+      lessThan(SettingsTokens.dialogMaxWidthCap),
+    );
+    expect(SettingsTokens.dialogCheckSizeTv, lessThan(SettingsTokens.dialogCheckSize));
+    expect(
+      SettingsTokens.dialogOptionPadVTv,
+      closeTo(
+        SettingsTokens.dialogOptionPadV * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
       DetailsTokens.sectionSpacingTv,
       closeTo(DetailsTokens.sectionSpacing * ShellTokens.tvChromeScale, 0.001),
+    );
+    expect(
+      DetailsTokens.backIconSizeTv,
+      closeTo(DetailsTokens.backIconSize * ShellTokens.tvChromeScale, 0.001),
+    );
+    expect(
+      DetailsTokens.backHitSizeOf(true),
+      closeTo(
+        DetailsTokens.backIconSizeTv + DetailsTokens.backHitPadTv,
+        0.001,
+      ),
     );
   });
 
@@ -142,6 +222,11 @@ void main() {
     expect(desktop.usesTvDensity, isFalse);
     expect(tv.usesTvDensity, isTrue);
     expect(tv.allowCompactNavDrawer, isFalse);
+    expect(
+      tv.torrentPanelRowTitleFontSize,
+      lessThan(desktop.torrentPanelRowTitleFontSize),
+    );
+    expect(tv.torrentPanelRowPadV, lessThan(desktop.torrentPanelRowPadV));
   });
 
   test('mobile metrics row exists with compact card width', () {

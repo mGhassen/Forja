@@ -414,6 +414,7 @@ KeyEventResult shellTvHandleRowArrows({
   VoidCallback? onRightEdge,
   VoidCallback? onUpEdge,
   VoidCallback? onDownEdge,
+  bool containDpad = false,
 }) {
   if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
   final key = event.logicalKey;
@@ -434,7 +435,7 @@ KeyEventResult shellTvHandleRowArrows({
       }
       // kitFocusEdge miss — fall through to meta / spatial.
     }
-    final left = tvMeta?.resolveLeftEdge();
+    final left = tvMeta?.resolveLeftEdge(containDpad: containDpad);
     if (left != null) {
       // False (unregistered neighbor) must not swallow — spatial / trap next.
       return left() ? KeyEventResult.handled : KeyEventResult.ignored;

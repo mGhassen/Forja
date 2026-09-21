@@ -185,33 +185,45 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
               : MediaQuery.sizeOf(context).height * 0.8,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.shellRadius),
+          borderRadius: BorderRadius.circular(
+            PlayerPopupTokens.shellRadiusOf(context),
+          ),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: PlayerPopupTokens.shellBg,
-              borderRadius:
-                  BorderRadius.circular(PlayerPopupTokens.shellRadius),
+              borderRadius: BorderRadius.circular(
+                PlayerPopupTokens.shellRadiusOf(context),
+              ),
               border: Border.all(color: PlayerPopupTokens.border),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  padding: EdgeInsets.fromLTRB(
+                    leanback ? 12 : 20,
+                    leanback ? 10 : 16,
+                    leanback ? 8 : 12,
+                    leanback ? 6 : 8,
+                  ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.tune_rounded,
-                        color: Color(0xFF7C3AED),
-                        size: 20,
+                        color: const Color(0xFF7C3AED),
+                        size: leanback
+                            ? PlayerPopupTokens.chromeIconSizeTv
+                            : 20,
                       ),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Subtitle Settings',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: leanback
+                                ? PlayerPopupTokens.titleFontSizeTv
+                                : 16,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

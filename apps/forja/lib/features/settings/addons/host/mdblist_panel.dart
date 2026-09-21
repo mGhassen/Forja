@@ -5,6 +5,7 @@ import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 class SettingsMdblistPanel extends ConsumerStatefulWidget {
   const SettingsMdblistPanel({super.key});
@@ -81,10 +82,10 @@ class _SettingsMdblistPanelState extends ConsumerState<SettingsMdblistPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Aggregated ratings from IMDb, TMDB, Trakt, Letterboxd, RT, and more',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
               color: ForjaShellColors.textSecondary,
             ),
           ),

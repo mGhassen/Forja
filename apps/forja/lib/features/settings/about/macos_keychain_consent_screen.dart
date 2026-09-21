@@ -5,6 +5,7 @@ import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:rust/rust.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 /// Explains macOS Keychain vs local file, then persists the choice.
 ///
@@ -39,18 +40,18 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
-      title: const Text(
+      title: Text(
         'Use macOS Keychain?',
         style: TextStyle(
           color: ForjaShellColors.textPrimary,
-          fontSize: 18,
+          fontSize: SettingsTokens.typeSizeOf(context, 18),
           fontWeight: FontWeight.w600,
           decoration: TextDecoration.none,
         ),
       ),
       content: DefaultTextStyle.merge(
         style: _plain,
-        child: const SizedBox(
+        child: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -61,7 +62,7 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
                 'Keychain instead of a local app file.',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: SettingsTokens.typeSizeOf(context, 14),
                   height: 1.45,
                   decoration: TextDecoration.none,
                 ),
@@ -74,7 +75,7 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
                 'Always Allow if you trust Forja.',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: SettingsTokens.typeSizeOf(context, 14),
                   height: 1.45,
                   decoration: TextDecoration.none,
                 ),
@@ -85,7 +86,7 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
                 'Keychain prompts.',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: SettingsTokens.typeSizeOf(context, 14),
                   height: 1.45,
                   decoration: TextDecoration.none,
                 ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/nav/pack_update_alert_icon.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Shared copy for pack-update chrome (Settings bar, nav flyout, toast).
 abstract final class EnginePackUpdateCopy {
@@ -99,14 +101,20 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
         children: [
           if (showStatus) ...[
             if (hasUpdates)
-              const PackUpdateAlertIcon(
-                size: ShellTokens.packUpdateFlyoutIconSize,
+              PackUpdateAlertIcon(
+                size: ShellTokens.chromeScale(
+                  ShellTokens.packUpdateFlyoutIconSize,
+                  tv: ShellPaintScope.usesTvDensityOf(context),
+                ),
                 heartbeat: false,
               )
             else
-              const Icon(
+              Icon(
                 Icons.sync_rounded,
-                size: ShellTokens.packUpdateFlyoutIconSize,
+                size: ShellTokens.chromeScale(
+                  ShellTokens.packUpdateFlyoutIconSize,
+                  tv: ShellPaintScope.usesTvDensityOf(context),
+                ),
                 color: ForjaShellColors.textSecondary,
               ),
             const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
@@ -116,7 +124,7 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: SettingsTokens.rowTitleSizeOf(context),
                   fontWeight: FontWeight.w600,
                   color: hasUpdates
                       ? ForjaShellColors.packUpdateAlert
@@ -143,10 +151,10 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
             ),
           ] else if (checking) ...[
             if (actions.isNotEmpty) const SizedBox(width: 12),
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
+            SizedBox(
+              width: SettingsTokens.filledButtonIconSizeOf(context),
+              height: SettingsTokens.filledButtonIconSizeOf(context),
+              child: const CircularProgressIndicator(strokeWidth: 2),
             ),
           ] else if (showStatus) ...[
             if (actions.isNotEmpty) const SizedBox(width: 12),
@@ -183,7 +191,7 @@ class SettingsEnginePackTitle extends StatelessWidget {
             name,
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              fontSize: 14,
+              fontSize: SettingsTokens.rowTitleSizeOf(context),
               color: deprecated
                   ? _deprecatedRed
                   : ForjaShellColors.textPrimary,
@@ -201,10 +209,10 @@ class SettingsEnginePackTitle extends StatelessWidget {
                 color: _deprecatedRed.withValues(alpha: 0.45),
               ),
             ),
-            child: const Text(
+            child: Text(
               'deprecated',
               style: TextStyle(
-                fontSize: 10,
+                fontSize: SettingsTokens.groupLabelSizeOf(context),
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.4,
                 color: _deprecatedRed,
@@ -231,7 +239,7 @@ class SettingsEnginePackVersionLine extends StatelessWidget {
     return Text(
       meta,
       style: TextStyle(
-        fontSize: 11,
+        fontSize: SettingsTokens.groupLabelSizeOf(context),
         color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),
       ),
     );

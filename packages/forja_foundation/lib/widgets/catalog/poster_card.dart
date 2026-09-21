@@ -4,6 +4,7 @@ import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Poster tile aspect for [PosterCard].
 enum PosterAspect { portrait, landscape }
@@ -240,6 +241,9 @@ class PosterRankMark extends StatelessWidget {
 }
 
 /// Rank digit + poster; use when composing focus chrome around [child] only.
+///
+/// Wraps the row in [ShellPaintEnsureVisibleExtent] so TV focus scroll keeps
+/// the digit on-screen (focus chrome is the poster alone).
 class PosterRankRow extends StatelessWidget {
   const PosterRankRow({super.key, required this.rank, required this.child});
 
@@ -248,13 +252,15 @@ class PosterRankRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        PosterRankMark(rank: rank),
-        child,
-      ],
+    return ShellPaintEnsureVisibleExtent(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          PosterRankMark(rank: rank),
+          child,
+        ],
+      ),
     );
   }
 }
@@ -267,26 +273,42 @@ class RatingBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final fontSize = tv
+        ? ShellTokens.posterRatingFontSizeTv
+        : ShellTokens.posterRatingFontSize;
+    final iconSize = tv
+        ? ShellTokens.posterRatingIconSizeTv
+        : ShellTokens.posterRatingIconSize;
+    final padH =
+        tv ? ShellTokens.posterRatingPadHTv : ShellTokens.posterRatingPadH;
+    final padV =
+        tv ? ShellTokens.posterRatingPadVTv : ShellTokens.posterRatingPadV;
+    final radius =
+        tv ? ShellTokens.posterRatingRadiusTv : ShellTokens.posterRatingRadius;
+    final gap =
+        tv ? ShellTokens.posterRatingGapTv : ShellTokens.posterRatingGap;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
-          const SizedBox(width: 3),
+          Icon(Icons.star_rounded, size: iconSize, color: Colors.amber),
+          SizedBox(width: gap),
           CrossfadeSwap(
             child: Text(
               voteAverage.toStringAsFixed(1),
               key: ValueKey(voteAverage.toStringAsFixed(1)),
-              style: const TextStyle(
-                fontSize: 11,
+              style: TextStyle(
+                fontSize: fontSize,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
+                height: 1.0,
               ),
             ),
           ),
@@ -304,26 +326,42 @@ class RatingBadgeText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final fontSize = tv
+        ? ShellTokens.posterRatingFontSizeTv
+        : ShellTokens.posterRatingFontSize;
+    final iconSize = tv
+        ? ShellTokens.posterRatingIconSizeTv
+        : ShellTokens.posterRatingIconSize;
+    final padH =
+        tv ? ShellTokens.posterRatingPadHTv : ShellTokens.posterRatingPadH;
+    final padV =
+        tv ? ShellTokens.posterRatingPadVTv : ShellTokens.posterRatingPadV;
+    final radius =
+        tv ? ShellTokens.posterRatingRadiusTv : ShellTokens.posterRatingRadius;
+    final gap =
+        tv ? ShellTokens.posterRatingGapTv : ShellTokens.posterRatingGap;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, color: Colors.amber, size: 11),
-          const SizedBox(width: 2),
+          Icon(Icons.star_rounded, color: Colors.amber, size: iconSize),
+          SizedBox(width: gap),
           CrossfadeSwap(
             child: Text(
               rating,
               key: ValueKey(rating),
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 10,
+                fontSize: fontSize,
                 fontWeight: FontWeight.bold,
+                height: 1.0,
               ),
             ),
           ),

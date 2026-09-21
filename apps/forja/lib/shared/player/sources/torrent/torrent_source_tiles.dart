@@ -12,6 +12,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 class TorrentSourceTile extends StatelessWidget {
   const TorrentSourceTile({
     super.key,
@@ -678,8 +679,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
 
   Widget _buildFace(bool hovered) {
     final metrics = ShellScope.metricsOf(context);
-    const padV = 10.0;
-    const titleSize = 13.0;
+    final padV = metrics.torrentPanelRowPadV;
+    final titleSize = metrics.torrentPanelRowTitleFontSize;
+    final badgeGap = metrics.usesTvDensity ? 4.0 : 6.0;
+    final titleGap = metrics.usesTvDensity ? 5.0 : 8.0;
     final cinematic = ForjaShellColors.cinematic;
     final selected = widget.selected;
     final accentFg = ForjaShellColors.brandGreen;
@@ -737,7 +740,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                       children: [
                         if (widget.leading != null) ...[
                           widget.leading!,
-                          const SizedBox(width: 10),
+                          SizedBox(width: titleGap),
                         ],
                         Expanded(
                           child: Column(
@@ -748,8 +751,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                 children: [
                                   if (titlePrefixBadges.isNotEmpty) ...[
                                     Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
+                                      spacing: badgeGap,
+                                      runSpacing: badgeGap,
                                       crossAxisAlignment:
                                           WrapCrossAlignment.center,
                                       children: [
@@ -757,7 +760,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                           _SourceMetaBadge(badge: badge),
                                       ],
                                     ),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: titleGap),
                                   ],
                                   Expanded(
                                     child: Text(
@@ -777,10 +780,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                 ],
                               ),
                               if (hasLanguageFlags || inlineBadges.isNotEmpty) ...[
-                                const SizedBox(height: 8),
+                                SizedBox(height: titleGap),
                                 Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
+                                  spacing: badgeGap,
+                                  runSpacing: badgeGap,
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     if (hasLanguageFlags)
@@ -800,7 +803,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: metaColor,
-                                    fontSize: 11,
+                                    fontSize: metrics.torrentPanelMetaFontSize,
                                   ),
                                 ),
                               ] else if (widget.footer != null) ...[
@@ -813,7 +816,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                   'Playing',
                                   style: TextStyle(
                                     color: accentFg,
-                                    fontSize: 10,
+                                    fontSize: metrics.torrentPanelMetaFontSize,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -826,17 +829,17 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                             hasViewers ||
                             hasSeeders ||
                             showCopyMagnet) ...[
-                          const SizedBox(width: 8),
+                          SizedBox(width: titleGap),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 120),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 if (selected)
-                                  const Icon(
+                                  Icon(
                                     Icons.check_rounded,
                                     color: ForjaShellColors.brandGreen,
-                                    size: 18,
+                                    size: metrics.torrentPanelLeadingIconSize,
                                   ),
                                 if (hasProvider)
                                   ...providerLines.asMap().entries.map((entry) {
@@ -920,8 +923,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                     size: ButtonSize.icon,
                                     icon: Icons.content_copy_rounded,
                                     tooltip: 'Copy magnet',
-                                    iconSize: 15,
-                                    height: 24,
+                                    iconSize: metrics.torrentPanelMetaIconSize,
+                                    height: metrics.usesTvDensity ? 20 : 24,
                                     color: cinematic.textSecondary,
                                     onPressed: () async {
                                       await Clipboard.setData(
@@ -1055,6 +1058,8 @@ class _SourceMetaBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
+    final metrics = ShellScope.metricsOf(context);
+    final tv = metrics.usesTvDensity;
     late final Color fg;
     late final Color bg;
     late final Color border;
@@ -1079,17 +1084,28 @@ class _SourceMetaBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: tv
+            ? ShellTokens.torrentPanelRowBadgePadHTv
+            : ShellTokens.torrentPanelRowBadgePadHDesktop,
+        vertical: tv
+            ? ShellTokens.torrentPanelRowBadgePadVTv
+            : ShellTokens.torrentPanelRowBadgePadVDesktop,
+      ),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(
+          tv
+              ? ShellTokens.torrentPanelRowBadgeRadiusTv
+              : ShellTokens.torrentPanelRowBadgeRadiusDesktop,
+        ),
         border: Border.all(color: border),
       ),
       child: Text(
         badge.label,
         style: TextStyle(
           color: fg,
-          fontSize: 11,
+          fontSize: metrics.torrentPanelChipFontSize,
           fontWeight: FontWeight.w600,
           height: 1.1,
         ),

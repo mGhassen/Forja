@@ -14,6 +14,7 @@ import 'package:forja/features/settings/about/macos_keychain_consent_screen.dart
 import 'package:forja/shell/update/update_dialog.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 class SettingsAboutPanel extends StatefulWidget {
   const SettingsAboutPanel({super.key});
@@ -33,10 +34,10 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Check for new versions of Forja',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
               color: ForjaShellColors.textSecondary,
               height: 1.4,
             ),

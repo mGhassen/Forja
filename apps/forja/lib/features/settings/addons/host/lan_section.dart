@@ -18,6 +18,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 /// Settings → LAN — one-time desktop↔TV trust (RFC-022).
 class LanSettingsSection extends ConsumerStatefulWidget {
   const LanSettingsSection({super.key});
@@ -448,7 +449,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           : 'Pair once with a desktop Forja on the same Wi‑Fi. After that, torrent sources on this device play through the desktop.',
       style: TextStyle(
         color: ForjaShellColors.textSecondary,
-        fontSize: 13,
+        fontSize: SettingsTokens.typeSizeOf(context, 13),
         height: 1.35,
       ),
     );
@@ -476,7 +477,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           'On the TV: Settings → LAN → enter this IP and port if Discover does not find this PC.',
           style: TextStyle(
             color: ForjaShellColors.textSecondary,
-            fontSize: 12,
+            fontSize: SettingsTokens.typeSizeOf(context, 12),
             height: 1.3,
           ),
         ),
@@ -486,7 +487,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
             'Port $_serverPort. Could not detect a LAN IP. Check Wi‑Fi or Ethernet.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
-              fontSize: 13,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
             ),
           )
         else
@@ -508,7 +509,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           'On the TV: Settings → LAN → enter this code (valid ~5 minutes, one use).',
           style: TextStyle(
             color: ForjaShellColors.textSecondary,
-            fontSize: 12,
+            fontSize: SettingsTokens.typeSizeOf(context, 12),
             height: 1.3,
           ),
         ),
@@ -524,8 +525,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
               Expanded(
                 child: Text(
                   _pairingCode.isEmpty ? '————' : _pairingCode,
-                  style: const TextStyle(
-                    fontSize: 32,
+                  style: TextStyle(
+                    fontSize: SettingsTokens.typeSizeOf(context, 32),
                     fontWeight: FontWeight.w700,
                     letterSpacing: 8,
                     fontFeatures: [FontFeature.tabularFigures()],
@@ -564,7 +565,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           _devices.isEmpty
               ? 'No TVs or phones paired yet.'
               : 'Revoke to force that device to pair again.',
-          style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: 12),
+          style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: SettingsTokens.typeSizeOf(context, 12)),
         ),
         const SizedBox(height: 8),
         if (_devices.isEmpty)
@@ -587,7 +588,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                     color: ForjaShellColors.textSecondary.withValues(
                       alpha: 0.8,
                     ),
-                    fontSize: 13,
+                    fontSize: SettingsTokens.typeSizeOf(context, 13),
                   ),
                 ),
               ],
@@ -633,9 +634,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: ForjaShellColors.textPrimary,
-                            fontSize: 15,
+                            fontSize: SettingsTokens.typeSizeOf(context, 15),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -644,7 +645,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                           talk.shortLabel,
                           style: TextStyle(
                             color: talk.color,
-                            fontSize: 12,
+                            fontSize: SettingsTokens.typeSizeOf(context, 12),
                             height: 1.25,
                           ),
                         ),
@@ -655,7 +656,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                               color: ForjaShellColors.textSecondary.withValues(
                                 alpha: 0.85,
                               ),
-                              fontSize: 11,
+                              fontSize: SettingsTokens.typeSizeOf(context, 11),
                               height: 1.25,
                             ),
                           ),
@@ -666,7 +667,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                               color: ForjaShellColors.textSecondary.withValues(
                                 alpha: 0.7,
                               ),
-                              fontSize: 11,
+                              fontSize: SettingsTokens.typeSizeOf(context, 11),
                               height: 1.25,
                             ),
                             maxLines: 1,
@@ -713,14 +714,14 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       ),
       Text(
         'Torrents opened by paired TVs/phones. Delete removes the cached download.',
-        style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: 12),
+        style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: SettingsTokens.typeSizeOf(context, 12)),
       ),
       const SizedBox(height: 4),
       Text(
         'Cache on disk: $cacheLabel',
         style: TextStyle(
           color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
-          fontSize: 12,
+          fontSize: SettingsTokens.typeSizeOf(context, 12),
         ),
       ),
       const SizedBox(height: 8),
@@ -742,7 +743,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 : 'Serving now (not yet in history).',
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
-              fontSize: 13,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
             ),
           ),
         )
@@ -821,9 +822,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ForjaShellColors.textPrimary,
-                    fontSize: 14,
+                    fontSize: SettingsTokens.typeSizeOf(context, 14),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -845,9 +846,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                       const SizedBox(width: 10),
                       Text(
                         '$pct%',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: ForjaShellColors.brandGreen,
-                          fontSize: 12,
+                          fontSize: SettingsTokens.typeSizeOf(context, 12),
                           fontWeight: FontWeight.w600,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
@@ -859,9 +860,14 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      if (state.isNotEmpty) _torrentChip(state, accent: true),
-                      _torrentMeta(Icons.download_rounded, '$rate/s'),
-                      _torrentMeta(Icons.group_outlined, '$peers peers'),
+                      if (state.isNotEmpty)
+                        _torrentChip(context, state, accent: true),
+                      _torrentMeta(context, Icons.download_rounded, '$rate/s'),
+                      _torrentMeta(
+                        context,
+                        Icons.group_outlined,
+                        '$peers peers',
+                      ),
                     ],
                   ),
                 ],
@@ -872,11 +878,11 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                     runSpacing: 6,
                     children: [
                       if (device != null)
-                        _torrentMeta(Icons.tv_outlined, device),
+                        _torrentMeta(context, Icons.tv_outlined, device),
                       if (when != null)
-                        _torrentMeta(Icons.event_outlined, when),
+                        _torrentMeta(context, Icons.event_outlined, when),
                       if (size != null)
-                        _torrentMeta(Icons.sd_storage_outlined, size),
+                        _torrentMeta(context, Icons.sd_storage_outlined, size),
                     ],
                   ),
                 ],
@@ -894,7 +900,11 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     );
   }
 
-  static Widget _torrentChip(String label, {bool accent = false}) {
+  static Widget _torrentChip(
+    BuildContext context,
+    String label, {
+    bool accent = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -914,14 +924,18 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           color: accent
               ? ForjaShellColors.brandGreen
               : ForjaShellColors.textSecondary,
-          fontSize: 11,
+          fontSize: SettingsTokens.typeSizeOf(context, 11),
           fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 
-  static Widget _torrentMeta(IconData icon, String label) {
+  static Widget _torrentMeta(
+    BuildContext context,
+    IconData icon,
+    String label,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -936,9 +950,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: ForjaShellColors.textSecondary,
-              fontSize: 11,
+              fontSize: SettingsTokens.typeSizeOf(context, 11),
             ),
           ),
         ],
@@ -991,9 +1005,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 children: [
                   Text(
                     _paired ? 'Paired' : 'Not paired',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: ForjaShellColors.textPrimary,
-                      fontSize: 15,
+                      fontSize: SettingsTokens.typeSizeOf(context, 15),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1012,7 +1026,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                         color: presence.server == LanServerMark.up
                             ? ForjaShellColors.brandGreen
                             : presence.serverColor,
-                        fontSize: 12,
+                        fontSize: SettingsTokens.typeSizeOf(context, 12),
                         height: 1.25,
                       ),
                     ),
@@ -1024,7 +1038,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                       color: ForjaShellColors.textSecondary.withValues(
                         alpha: 0.85,
                       ),
-                      fontSize: 11,
+                      fontSize: SettingsTokens.typeSizeOf(context, 11),
                       height: 1.25,
                     ),
                   ),
@@ -1140,7 +1154,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       text,
       style: TextStyle(
         color: AppTheme.current.primaryColor,
-        fontSize: 11,
+        fontSize: SettingsTokens.typeSizeOf(context, 11),
         fontWeight: FontWeight.bold,
         letterSpacing: 1.5,
       ),

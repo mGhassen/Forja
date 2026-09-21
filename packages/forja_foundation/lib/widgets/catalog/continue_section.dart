@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -233,6 +234,11 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
 
   Widget _buildCard(bool active) {
     final entry = widget.entry;
+    // Desktop: neutral play until the control itself is hovered (1.3.114).
+    // TV: card focus is the only pointer — green + heartbeat with the card.
+    final tvFocus = ShellPaintScope.useTvFocusOf(context);
+    final playDia = EventCardTokens.playOverlaySizeOf(context);
+    final playIcon = EventCardTokens.playIconSizeOf(context);
     return ContinueWatchingCard(
       title: entry.title,
       coverUrl: entry.coverUrl,
@@ -251,8 +257,10 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
           widget.onRemove == null ? null : () => widget.onRemove!(entry),
       onInfo: widget.onInfo == null ? null : () => widget.onInfo!(entry),
       playOverlay: ShellCardPlayOverlay(
-        active: false,
+        active: tvFocus && active,
         visible: active && !widget.isLoading,
+        diameter: playDia,
+        iconSize: playIcon,
         onTap:
             widget.onResume == null ? null : () => widget.onResume!(entry),
       ),

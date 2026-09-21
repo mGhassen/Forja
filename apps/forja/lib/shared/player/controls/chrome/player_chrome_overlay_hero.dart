@@ -36,9 +36,11 @@ class PlayerTitleMeta extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 18,
+            fontSize: ShellScope.metricsOf(context).usesTvDensity
+                ? ShellTokens.playerChromeHeroTitleFontSizeTv
+                : ShellTokens.playerChromeHeroTitleFontSize,
             fontWeight: FontWeight.w700,
             height: 1.2,
           ),
@@ -51,7 +53,9 @@ class PlayerTitleMeta extends StatelessWidget {
             meta,
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
-              fontSize: 12,
+              fontSize: ShellScope.metricsOf(context).usesTvDensity
+                  ? ShellTokens.playerChromeMetaFontSizeTv
+                  : ShellTokens.playerChromeMetaFontSize,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -129,7 +133,9 @@ class PlayerPausedHero extends StatelessWidget {
                 episode,
                 style: TextStyle(
                   color: ForjaShellColors.cinematic.textSecondary,
-                  fontSize: 13,
+                  fontSize: ShellScope.metricsOf(context).usesTvDensity
+                      ? ShellTokens.playerChromeMetaFontSizeTv
+                      : ShellTokens.playerChromeStatusFontSize,
                 ),
               ),
             ],
@@ -137,9 +143,11 @@ class PlayerPausedHero extends StatelessWidget {
               const SizedBox(height: 10),
               HeroOverviewText(
                 overview: overview,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 13,
+                  fontSize: ShellScope.metricsOf(context).usesTvDensity
+                      ? ShellTokens.playerChromeMetaFontSizeTv
+                      : ShellTokens.playerChromeStatusFontSize,
                   height: 1.45,
                 ),
                 maxLines: 3,

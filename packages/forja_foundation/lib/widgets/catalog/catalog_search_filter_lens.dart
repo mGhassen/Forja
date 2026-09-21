@@ -118,7 +118,9 @@ class CatalogSearchTypeSegment extends StatelessWidget {
                                 color: value == items[i].$1
                                     ? ForjaShellColors.textPrimary
                                     : ForjaShellColors.textSecondary,
-                                fontSize: ShellTokens.eventSearchFontSize,
+                                fontSize: ShellPaintScope.usesTvDensityOf(context)
+                                    ? ShellTokens.eventSearchFontSizeTv
+                                    : ShellTokens.eventSearchFontSize,
                                 fontWeight: value == items[i].$1
                                     ? FontWeight.w600
                                     : FontWeight.w500,
@@ -1081,11 +1083,13 @@ class CatalogSearchFilterLens extends StatelessWidget {
           color: ForjaShellColors.textPrimary.withValues(alpha: 0.35),
         ),
       ),
-      child: const Text(
+      child: Text(
         'Search',
         style: TextStyle(
           color: ForjaShellColors.textPrimary,
-          fontSize: ShellTokens.eventSearchFontSize,
+          fontSize: ShellPaintScope.usesTvDensityOf(context)
+              ? ShellTokens.eventSearchFontSizeTv
+              : ShellTokens.eventSearchFontSize,
           fontWeight: FontWeight.w600,
         ),
       ),

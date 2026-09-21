@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Desktop email/password/Web login. Kept but hidden from cold start
 /// (`kShowDesktopEmailAuth` in desktop_startup_gate.dart).
@@ -742,6 +744,16 @@ class _HairlineField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final fontSize = tv
+        ? ShellTokens.formInputFontSizeTv
+        : ShellTokens.formInputFontSize;
+    final labelSize = tv
+        ? ShellTokens.formInputLabelFontSizeTv
+        : ShellTokens.formInputLabelFontSize;
+    final iconSize = tv
+        ? ShellTokens.formInputIconSizeTv
+        : ShellTokens.formInputIconSize;
     return TextField(
       controller: controller,
       enabled: enabled,
@@ -752,15 +764,20 @@ class _HairlineField extends StatelessWidget {
       onSubmitted: onSubmitted,
       style: GoogleFonts.plusJakartaSans(
         color: ForjaShellColors.textPrimary,
-        fontSize: 15,
+        fontSize: fontSize,
       ),
       cursorColor: ForjaShellColors.brandGreen,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: GoogleFonts.plusJakartaSans(
           color: ForjaShellColors.textSecondary,
+          fontSize: labelSize,
         ),
-        prefixIcon: Icon(prefix, color: ForjaShellColors.textSecondary),
+        floatingLabelStyle: GoogleFonts.plusJakartaSans(
+          color: ForjaShellColors.textSecondary,
+          fontSize: labelSize,
+        ),
+        prefixIcon: Icon(prefix, color: ForjaShellColors.textSecondary, size: iconSize),
         suffixIcon: suffix,
         filled: false,
         border: const UnderlineInputBorder(

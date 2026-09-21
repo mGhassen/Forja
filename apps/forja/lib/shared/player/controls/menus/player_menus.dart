@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 const _kPlaybackSpeeds = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
@@ -71,12 +72,17 @@ void showTracksMenu(
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+              padding: EdgeInsets.fromLTRB(
+                ShellPaintScope.usesTvDensityOf(context) ? 12 : 18,
+                0,
+                ShellPaintScope.usesTvDensityOf(context) ? 12 : 18,
+                ShellPaintScope.usesTvDensityOf(context) ? 6 : 8,
+              ),
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: PlayerPopupTokens.titleFontSizeOf(context),
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.15,
                 ),
@@ -90,7 +96,12 @@ void showTracksMenu(
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+                padding: EdgeInsets.fromLTRB(
+                  ShellPaintScope.usesTvDensityOf(context) ? 8 : 10,
+                  ShellPaintScope.usesTvDensityOf(context) ? 8 : 10,
+                  ShellPaintScope.usesTvDensityOf(context) ? 8 : 10,
+                  ShellPaintScope.usesTvDensityOf(context) ? 10 : 12,
+                ),
                 itemCount: tracks.length,
                 itemBuilder: (context, index) {
                   final isSelected = index == selectedIndex;

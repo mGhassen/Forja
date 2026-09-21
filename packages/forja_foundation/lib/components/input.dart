@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Visual tone for [Input].
 enum InputVariant {
@@ -55,7 +57,8 @@ class Input extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
-    final dims = _dims(size);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final dims = _dims(size, tv: tv);
     final borderColor = theme.borderSubtle;
     final radius = BorderRadius.circular(theme.radiusMd);
 
@@ -88,7 +91,7 @@ class Input extends StatelessWidget {
         hintText: hintText,
         hintStyle: TextStyle(
           color: theme.textSecondary,
-          fontSize: dims.fontSize,
+          fontSize: dims.hintSize,
         ),
         filled: variant != InputVariant.ghost,
         fillColor: variant == InputVariant.ghost
@@ -115,21 +118,61 @@ class Input extends StatelessWidget {
     );
   }
 
-  static _InputDims _dims(InputSize size) => switch (size) {
-        InputSize.sm => const _InputDims(
-            fontSize: 13,
-            iconSize: 18,
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  static _InputDims _dims(InputSize size, {required bool tv}) => switch (size) {
+        InputSize.sm => _InputDims(
+            fontSize: tv
+                ? ShellTokens.formInputFontSizeSmTv
+                : ShellTokens.formInputFontSizeSm,
+            hintSize: tv
+                ? ShellTokens.formInputHintFontSizeTv
+                : ShellTokens.formInputFontSizeSm,
+            iconSize: tv
+                ? ShellTokens.formInputIconSizeSmTv
+                : ShellTokens.formInputIconSizeSm,
+            padding: EdgeInsets.symmetric(
+              horizontal: tv
+                  ? ShellTokens.formInputPadHSmTv
+                  : ShellTokens.formInputPadHSm,
+              vertical: tv
+                  ? ShellTokens.formInputPadVSmTv
+                  : ShellTokens.formInputPadVSm,
+            ),
           ),
-        InputSize.md => const _InputDims(
-            fontSize: 14,
-            iconSize: 20,
-            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        InputSize.md => _InputDims(
+            fontSize: tv
+                ? ShellTokens.formInputFontSizeTv
+                : ShellTokens.formInputFontSize,
+            hintSize: tv
+                ? ShellTokens.formInputHintFontSizeTv
+                : ShellTokens.formInputHintFontSize,
+            iconSize: tv
+                ? ShellTokens.formInputIconSizeTv
+                : ShellTokens.formInputIconSize,
+            padding: EdgeInsets.symmetric(
+              horizontal:
+                  tv ? ShellTokens.formInputPadHTv : ShellTokens.formInputPadH,
+              vertical:
+                  tv ? ShellTokens.formInputPadVTv : ShellTokens.formInputPadV,
+            ),
           ),
-        InputSize.lg => const _InputDims(
-            fontSize: 16,
-            iconSize: 22,
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        InputSize.lg => _InputDims(
+            fontSize: tv
+                ? ShellTokens.formInputFontSizeLgTv
+                : ShellTokens.formInputFontSizeLg,
+            hintSize: tv
+                ? ShellTokens.formInputHintFontSizeTv
+                : ShellTokens.formInputFontSizeLg,
+            iconSize: tv
+                ? ShellTokens.formInputIconSizeLgTv
+                : ShellTokens.formInputIconSizeLg,
+            padding: EdgeInsets.symmetric(
+              horizontal: tv
+                  ? ShellTokens.formInputPadHLgTv
+                  : ShellTokens.formInputPadHLg,
+              vertical: tv
+                  ? ShellTokens.formInputPadVLgTv
+                  : ShellTokens.formInputPadVLg,
+            ),
           ),
       };
 }
@@ -137,11 +180,13 @@ class Input extends StatelessWidget {
 class _InputDims {
   const _InputDims({
     required this.fontSize,
+    required this.hintSize,
     required this.iconSize,
     required this.padding,
   });
 
   final double fontSize;
+  final double hintSize;
   final double iconSize;
   final EdgeInsetsGeometry padding;
 }

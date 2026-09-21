@@ -7,10 +7,10 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// leanback ladder. See density families on [ShellTokens].
 abstract final class PortalListTokens {
   static const double rowHeight = 98;
-  /// Hand — not × chromeScale (98×0.62 ≈ 61 is too tight for seats/meta).
-  static const double rowHeightTv = 80;
+  /// Hand — denser than desktop but room for seats/meta (not × chromeScale).
+  static const double rowHeightTv = 72;
   static const double actionWidth = 108;
-  static const double actionWidthTv = 84;
+  static const double actionWidthTv = 72;
   static const double titleFontSize = 13;
   static const double titleFontSizeTv = ShellTokens.tvBodyFontSize;
   static const double metaFontSize = 11;
@@ -48,6 +48,22 @@ abstract final class PortalListTokens {
   static const double headerIconSize = 24;
   static const double headerIconSizeTv =
       headerIconSize * ShellTokens.tvChromeScale;
+  /// Extra beyond [headerIconSize] for the tappable hit box.
+  static const double headerIconHitPad = 20;
+  static const double headerIconHitPadTv =
+      headerIconHitPad * ShellTokens.tvChromeScale;
+  static const double searchPrefixIconSize = 20;
+  static const double searchPrefixIconSizeTv =
+      searchPrefixIconSize * ShellTokens.tvChromeScale;
+  static const double searchFieldRadius = 10;
+  static const double searchFieldRadiusTv =
+      searchFieldRadius * ShellTokens.tvChromeScale;
+  static const double rowLineGap = 6;
+  static const double rowLineGapTv = rowLineGap * ShellTokens.tvChromeScale;
+  static const double rowMetaGap = 3;
+  static const double rowMetaGapTv = 2;
+  static const double rowSeatsGap = 4;
+  static const double rowSeatsGapTv = rowSeatsGap * ShellTokens.tvChromeScale;
   static const double probeCardWidth = 280;
   static const double probeCardWidthTv =
       probeCardWidth * ShellTokens.tvChromeScale;
@@ -82,7 +98,38 @@ abstract final class PortalListTokens {
   static double emptyIconSizeOf(bool tv) => tv ? emptyIconSizeTv : emptyIconSize;
   static double headerIconSizeOf(bool tv) =>
       tv ? headerIconSizeTv : headerIconSize;
+  static double headerIconHitOf(bool tv) =>
+      headerIconSizeOf(tv) + (tv ? headerIconHitPadTv : headerIconHitPad);
+  static double searchPrefixIconSizeOf(bool tv) =>
+      tv ? searchPrefixIconSizeTv : searchPrefixIconSize;
+  static double searchFieldRadiusOf(bool tv) =>
+      tv ? searchFieldRadiusTv : searchFieldRadius;
   static double panelPadOf(bool tv) => tv ? panelPadTv : panelPad;
   static double sectionGapOf(bool tv) => tv ? sectionGapTv : sectionGap;
   static double itemSpacingOf(bool tv) => tv ? itemSpacingTv : itemSpacing;
+  static double rowLineGapOf(bool tv) => tv ? rowLineGapTv : rowLineGap;
+  static double rowMetaGapOf(bool tv) => tv ? rowMetaGapTv : rowMetaGap;
+  static double rowSeatsGapOf(bool tv) => tv ? rowSeatsGapTv : rowSeatsGap;
+
+  /// Resolve list row height — TV ladder when density is on, even if the host
+  /// still passes the desktop default (or an older TV constant).
+  static double resolveRowHeight(bool tv, double requested) {
+    if (!tv) return requested;
+    if (requested == rowHeight || requested == rowHeightTv || requested <= 0) {
+      return rowHeightTv;
+    }
+    return ShellTokens.chromeScale(requested, tv: true, min: rowHeightTv);
+  }
+
+  static double resolvePanelWidth(bool tv, double requested) {
+    if (!tv) return requested;
+    if (requested == ShellTokens.sidePanelWidth || requested <= 0) {
+      return ShellTokens.sidePanelWidthTv;
+    }
+    return ShellTokens.chromeScale(
+      requested,
+      tv: true,
+      min: ShellTokens.sidePanelWidthTv,
+    );
+  }
 }

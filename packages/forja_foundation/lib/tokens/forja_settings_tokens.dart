@@ -65,6 +65,114 @@ abstract final class SettingsTokens {
   static const double switchThumbSize = 12;
   static const double switchThumbSizeTv = switchThumbSize * _s;
 
+  /// Filled CTA (Install / Update all / Retry) — chrome family, type = row title.
+  static const double filledButtonHeight = 36;
+  static const double filledButtonHeightTv = filledButtonHeight * _s;
+  static const double filledButtonIconSize = 18;
+  static const double filledButtonIconSizeTv = filledButtonIconSize * _s;
+  static const double filledButtonPadH = 18;
+  static const double filledButtonPadHTv = filledButtonPadH * _s;
+
+  /// Icon-only toolbar (Reload / remove) — chrome family.
+  static const double iconButtonIconSize = 20;
+  static const double iconButtonIconSizeTv = iconButtonIconSize * _s;
+  static const double iconButtonHitSize = 40;
+  static const double iconButtonHitSizeTv = iconButtonHitSize * _s;
+
+  /// Underline [SettingsTextField] content inset.
+  static const double textFieldPadTop = 18;
+  static const double textFieldPadTopTv = textFieldPadTop * _s;
+  static const double textFieldPadBottom = 10;
+  static const double textFieldPadBottomTv = textFieldPadBottom * _s;
+
+  /// Settings [Slider] chrome (disk cache, connections, …).
+  static const double sliderTrackHeight = 3;
+  static const double sliderTrackHeightTv = 2;
+  static const double sliderThumbRadius = 8;
+  static const double sliderThumbRadiusTv = 5;
+  static const double sliderOverlayRadius = 16;
+  static const double sliderOverlayRadiusTv = 10;
+  static const double sliderTickRadius = 2;
+  static const double sliderTickRadiusTv = 1.5;
+  static const double sliderPadTop = 8;
+  static const double sliderPadTopTv = sliderPadTop * _s;
+  static const double sliderPadBottom = 12;
+  static const double sliderPadBottomTv = sliderPadBottom * _s;
+
+  /// Forja Packs choice cards (Official / Community).
+  static const double packChoiceMinHeight = 168;
+  static const double packChoiceMinHeightTv = packChoiceMinHeight * _s;
+  static const double packChoiceMinHeightCompact = 112;
+  static const double packChoiceMinHeightCompactTv =
+      packChoiceMinHeightCompact * _s;
+  static const double packChoiceRadius = 16;
+  static const double packChoiceRadiusTv = 6;
+  static const double packChoiceRadiusCompact = 12;
+  /// Hand-tuned — chrome ×scale of 12 still reads pill-like on denser TV tiles.
+  static const double packChoiceRadiusCompactTv = 4;
+  static const double packChoiceIconSize = 32;
+  static const double packChoiceIconSizeTv = packChoiceIconSize * _s;
+  static const double packChoiceIconSizeCompact = 22;
+  static const double packChoiceIconSizeCompactTv = categoryIconSizeTv;
+  static const double packChoiceGap = 14;
+  static const double packChoiceGapTv = 8;
+  static const double packChoiceGapCompact = 10;
+  /// Hand-tuned — chrome ×scale of 10 still reads wide next to denser TV cards.
+  static const double packChoiceGapCompactTv = 6;
+  static const EdgeInsets packChoicePad =
+      EdgeInsets.fromLTRB(18, 20, 18, 18);
+  static const EdgeInsets packChoicePadTv =
+      EdgeInsets.fromLTRB(10, 10, 10, 10);
+  static const EdgeInsets packChoicePadCompact =
+      EdgeInsets.fromLTRB(12, 12, 12, 12);
+  static const EdgeInsets packChoicePadCompactTv =
+      EdgeInsets.fromLTRB(8, 8, 8, 8);
+  static const double packChoiceIconTitleGap = 16;
+  static const double packChoiceIconTitleGapTv = 8;
+  static const double packChoiceIconTitleGapCompact = 10;
+  static const double packChoiceIconTitleGapCompactTv = 6;
+  static const double packChoiceTitleSubGap = 8;
+  static const double packChoiceTitleSubGapTv = 4;
+  static const double packChoiceTitleSubGapCompact = 4;
+  static const double packChoiceTitleSubGapCompactTv = 3;
+  /// Outer pad around the Official / Community row in Settings → Forja Packs.
+  static const EdgeInsets packChoiceSectionPad =
+      EdgeInsets.fromLTRB(2, 4, 2, 14);
+  static const EdgeInsets packChoiceSectionPadTv =
+      EdgeInsets.fromLTRB(2, 2, 2, 8);
+
+  /// [AlertDialog] / select-sheet chrome (Settings + rehosted overlays).
+  static const double dialogMaxWidthFraction = 0.45;
+  static const double dialogMaxWidthFractionTv = 0.32;
+  static const double dialogMaxWidthMin = 320;
+  static const double dialogMaxWidthMinTv = 240;
+  static const double dialogMaxWidthCap = 520;
+  static const double dialogMaxWidthCapTv = 360;
+  static const double dialogMaxHeightFraction = 0.65;
+  static const double dialogMaxHeightFractionTv = 0.55;
+  static const double dialogOptionPadH = 14;
+  static const double dialogOptionPadHTv = dialogOptionPadH * _s;
+  static const double dialogOptionPadV = 12;
+  static const double dialogOptionPadVTv = dialogOptionPadV * _s;
+  static const double dialogCheckSize = 22;
+  static const double dialogCheckSizeTv = dialogCheckSize * _s;
+  static const double dialogRadius = 14;
+  static const double dialogRadiusTv = 10;
+  static const double dialogInsetH = 40;
+  static const double dialogInsetHTv = 48;
+  static const double dialogInsetV = 24;
+  static const double dialogInsetVTv = 20;
+  static const double dialogTitlePadH = 24;
+  static const double dialogTitlePadHTv = 16;
+  static const double dialogTitlePadTop = 24;
+  static const double dialogTitlePadTopTv = 14;
+  static const double dialogTitlePadBottom = 16;
+  static const double dialogTitlePadBottomTv = 8;
+  static const double dialogContentPadH = 24;
+  static const double dialogContentPadHTv = 16;
+  static const double dialogContentPadBottom = 24;
+  static const double dialogContentPadBottomTv = 12;
+
   /// True when Settings should show the split sidebar layout.
   /// Desktop / wide and Android TV (1080p+) use the same hub chrome.
   static bool useSplitLayout(BuildContext context) {
@@ -118,4 +226,175 @@ abstract final class SettingsTokens {
 
   static double switchThumbSizeOf(BuildContext context) =>
       _tv(context) ? switchThumbSizeTv : switchThumbSize;
+
+  static double filledButtonHeightOf(BuildContext context) =>
+      _tv(context) ? filledButtonHeightTv : filledButtonHeight;
+
+  static double filledButtonFontSizeOf(BuildContext context) =>
+      rowTitleSizeOf(context);
+
+  static double filledButtonIconSizeOf(BuildContext context) =>
+      _tv(context) ? filledButtonIconSizeTv : filledButtonIconSize;
+
+  static double filledButtonPadHOf(BuildContext context) =>
+      _tv(context) ? filledButtonPadHTv : filledButtonPadH;
+
+  static double iconButtonIconSizeOf(BuildContext context) =>
+      _tv(context) ? iconButtonIconSizeTv : iconButtonIconSize;
+
+  static double iconButtonHitSizeOf(BuildContext context) =>
+      _tv(context) ? iconButtonHitSizeTv : iconButtonHitSize;
+
+  static double textFieldPadTopOf(BuildContext context) =>
+      _tv(context) ? textFieldPadTopTv : textFieldPadTop;
+
+  static double textFieldPadBottomOf(BuildContext context) =>
+      _tv(context) ? textFieldPadBottomTv : textFieldPadBottom;
+
+  static double sliderTrackHeightOf(BuildContext context) =>
+      _tv(context) ? sliderTrackHeightTv : sliderTrackHeight;
+
+  static double sliderThumbRadiusOf(BuildContext context) =>
+      _tv(context) ? sliderThumbRadiusTv : sliderThumbRadius;
+
+  static double sliderOverlayRadiusOf(BuildContext context) =>
+      _tv(context) ? sliderOverlayRadiusTv : sliderOverlayRadius;
+
+  static double sliderTickRadiusOf(BuildContext context) =>
+      _tv(context) ? sliderTickRadiusTv : sliderTickRadius;
+
+  static double sliderPadTopOf(BuildContext context) =>
+      _tv(context) ? sliderPadTopTv : sliderPadTop;
+
+  static double sliderPadBottomOf(BuildContext context) =>
+      _tv(context) ? sliderPadBottomTv : sliderPadBottom;
+
+  static double packChoiceMinHeightOf(
+    BuildContext context, {
+    required bool compact,
+  }) {
+    if (compact) {
+      return _tv(context)
+          ? packChoiceMinHeightCompactTv
+          : packChoiceMinHeightCompact;
+    }
+    return _tv(context) ? packChoiceMinHeightTv : packChoiceMinHeight;
+  }
+
+  static double packChoiceRadiusOf(
+    BuildContext context, {
+    required bool compact,
+  }) {
+    if (compact) {
+      return _tv(context)
+          ? packChoiceRadiusCompactTv
+          : packChoiceRadiusCompact;
+    }
+    return _tv(context) ? packChoiceRadiusTv : packChoiceRadius;
+  }
+
+  static double packChoiceIconSizeOf(
+    BuildContext context, {
+    required bool compact,
+  }) {
+    if (compact) {
+      return _tv(context)
+          ? packChoiceIconSizeCompactTv
+          : packChoiceIconSizeCompact;
+    }
+    return _tv(context) ? packChoiceIconSizeTv : packChoiceIconSize;
+  }
+
+  static double packChoiceGapOf(
+    BuildContext context, {
+    required bool compact,
+  }) =>
+      compact
+          ? (_tv(context) ? packChoiceGapCompactTv : packChoiceGapCompact)
+          : (_tv(context) ? packChoiceGapTv : packChoiceGap);
+
+  static EdgeInsets packChoicePadOf(
+    BuildContext context, {
+    required bool compact,
+  }) {
+    if (compact) {
+      return _tv(context) ? packChoicePadCompactTv : packChoicePadCompact;
+    }
+    return _tv(context) ? packChoicePadTv : packChoicePad;
+  }
+
+  static double packChoiceIconTitleGapOf(
+    BuildContext context, {
+    required bool compact,
+  }) =>
+      compact
+          ? (_tv(context)
+              ? packChoiceIconTitleGapCompactTv
+              : packChoiceIconTitleGapCompact)
+          : (_tv(context) ? packChoiceIconTitleGapTv : packChoiceIconTitleGap);
+
+  static double packChoiceTitleSubGapOf(
+    BuildContext context, {
+    required bool compact,
+  }) =>
+      compact
+          ? (_tv(context)
+              ? packChoiceTitleSubGapCompactTv
+              : packChoiceTitleSubGapCompact)
+          : (_tv(context) ? packChoiceTitleSubGapTv : packChoiceTitleSubGap);
+
+  static EdgeInsets packChoiceSectionPadOf(BuildContext context) =>
+      _tv(context) ? packChoiceSectionPadTv : packChoiceSectionPad;
+
+  static double dialogMaxWidthOf(BuildContext context, double screenWidth) {
+    final fraction =
+        _tv(context) ? dialogMaxWidthFractionTv : dialogMaxWidthFraction;
+    final min = _tv(context) ? dialogMaxWidthMinTv : dialogMaxWidthMin;
+    final cap = _tv(context) ? dialogMaxWidthCapTv : dialogMaxWidthCap;
+    return (screenWidth * fraction).clamp(min, cap);
+  }
+
+  static double dialogMaxHeightOf(BuildContext context, double screenHeight) {
+    final fraction =
+        _tv(context) ? dialogMaxHeightFractionTv : dialogMaxHeightFraction;
+    return screenHeight * fraction;
+  }
+
+  static double dialogOptionPadHOf(BuildContext context) =>
+      _tv(context) ? dialogOptionPadHTv : dialogOptionPadH;
+
+  static double dialogOptionPadVOf(BuildContext context) =>
+      _tv(context) ? dialogOptionPadVTv : dialogOptionPadV;
+
+  static double dialogCheckSizeOf(BuildContext context) =>
+      _tv(context) ? dialogCheckSizeTv : dialogCheckSize;
+
+  static double dialogRadiusOf(BuildContext context) =>
+      _tv(context) ? dialogRadiusTv : dialogRadius;
+
+  static EdgeInsets dialogInsetPaddingOf(BuildContext context) => EdgeInsets.symmetric(
+        horizontal: _tv(context) ? dialogInsetHTv : dialogInsetH,
+        vertical: _tv(context) ? dialogInsetVTv : dialogInsetV,
+      );
+
+  static EdgeInsets dialogTitlePaddingOf(BuildContext context) => EdgeInsets.fromLTRB(
+        _tv(context) ? dialogTitlePadHTv : dialogTitlePadH,
+        _tv(context) ? dialogTitlePadTopTv : dialogTitlePadTop,
+        _tv(context) ? dialogTitlePadHTv : dialogTitlePadH,
+        _tv(context) ? dialogTitlePadBottomTv : dialogTitlePadBottom,
+      );
+
+  static EdgeInsets dialogContentPaddingOf(BuildContext context) =>
+      EdgeInsets.fromLTRB(
+        _tv(context) ? dialogContentPadHTv : dialogContentPadH,
+        0,
+        _tv(context) ? dialogContentPadHTv : dialogContentPadH,
+        _tv(context) ? dialogContentPadBottomTv : dialogContentPadBottom,
+      );
+
+  /// Map a one-off desktop [fontSize] onto the Settings ladder (same as
+  /// [ShellTokens.tvTypeSize] on TV). Prefer named roles above when the
+  /// role is clear; use this for legacy literals during migration.
+  static double typeSizeOf(BuildContext context, double desktop) =>
+      _tv(context) ? ShellTokens.tvTypeSize(desktop) : desktop;
 }

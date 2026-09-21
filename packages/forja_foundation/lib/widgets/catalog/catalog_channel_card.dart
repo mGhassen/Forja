@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/channel_card_tokens.dart';
+import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -429,15 +430,23 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     required bool? health,
   }) {
     final fav = widget.favoriteBuilder?.call(active: active);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final titleColor = active
         ? ForjaShellColors.brandGreen
         : health == false
             ? Colors.white54
             : ForjaShellColors.cinematic.textPrimary;
+    final titleSize = widget.titleFontSize ??
+        ChannelCardTokens.listTitleFontSizeOf(tv);
+    final logoSize = ChannelCardTokens.listLogoSizeOf(tv);
+    final padH = ChannelCardTokens.listPadHOf(tv);
+    final padV = ChannelCardTokens.listPadVOf(tv);
+    final rowH =
+        widget.height ?? ChannelCardTokens.listRowHeightOf(tv);
 
     return SizedBox(
       width: widget.width,
-      height: widget.height ?? 56,
+      height: rowH,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: _listBackground(active),
@@ -455,23 +464,22 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
             ),
             Expanded(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
                 child: Row(
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: SizedBox(
-                        width: 36,
-                        height: 36,
+                        width: logoSize,
+                        height: logoSize,
                         child: _logoThumb(
                           contain: true,
                           padding: 2,
-                          cacheWidth: 72,
+                          cacheWidth: (logoSize * 2).round(),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: padH),
                     Expanded(
                       child: CrossfadeSwap(
                         child: Text(
@@ -481,7 +489,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.plusJakartaSans(
                             color: titleColor,
-                            fontSize: 13,
+                            fontSize: titleSize,
                             height: 1.25,
                             fontWeight:
                                 active ? FontWeight.w600 : FontWeight.w500,
@@ -489,7 +497,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                         ),
                       ),
                     ),
-                    if (fav != null) ...[const SizedBox(width: 8), fav],
+                    if (fav != null) ...[SizedBox(width: padH * 0.67), fav],
                   ],
                 ),
               ),
@@ -510,8 +518,14 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     final radius = widget.radius ?? ChannelCardTokens.radiusOf(tv);
     final topRadius = BorderRadius.vertical(top: Radius.circular(radius));
     final titleBarH = ChannelCardTokens.titleBarHeightOf(tv);
-    final titleSize = widget.titleFontSize ??
-        ChannelCardTokens.cardTitleFontSizeOf(tv);
+    final titleSize = () {
+      final override = widget.titleFontSize;
+      if (override == null) {
+        return ChannelCardTokens.cardTitleFontSizeOf(tv);
+      }
+      // Pack / host may pass desktop px — map onto the leanback type ladder.
+      return tv ? ShellTokens.tvTypeSize(override) : override;
+    }();
     final logoPad = ChannelCardTokens.logoPadOf(tv);
     final titlePadH = ChannelCardTokens.titleBarPadHOf(tv);
     return Column(
@@ -542,7 +556,13 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                     ),
                   ),
                 ),
-              ShellCardPlayOverlay(active: false, visible: active),
+              ShellCardPlayOverlay(
+                // Desktop: neutral until play hover. TV: card focus = green + pulse.
+                active: ShellPaintScope.useTvFocusOf(context) && active,
+                visible: active,
+                diameter: EventCardTokens.playOverlaySizeOf(context),
+                iconSize: EventCardTokens.playIconSizeOf(context),
+              ),
               if (fav != null)
                 Positioned(top: 4, left: 4, child: fav),
               if (health != null)
@@ -586,6 +606,8 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
               ChannelCardTokens.epgSlotHeightOf(tv),
           badgeFontSize: widget.badgeFontSize ??
               ChannelCardTokens.badgeFontSizeOf(tv),
+          metaFontSize: widget.metaFontSize ??
+              ChannelCardTokens.metaFontSizeOf(tv),
         ),
       ],
     );
@@ -643,11 +665,13 @@ class _EpgNowFooter extends StatefulWidget {
     required this.future,
     required this.epgSlotHeight,
     required this.badgeFontSize,
+    required this.metaFontSize,
   });
 
   final Future<List<GuideEpgProgramme>>? future;
   final double epgSlotHeight;
   final double badgeFontSize;
+  final double metaFontSize;
 
   @override
   State<_EpgNowFooter> createState() => _EpgNowFooterState();
@@ -721,7 +745,7 @@ class _EpgNowFooterState extends State<_EpgNowFooter> {
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.plusJakartaSans(
                               color: Colors.white70,
-                              fontSize: 9,
+                              fontSize: widget.metaFontSize,
                               fontWeight: FontWeight.w500,
                             ),
                           ),

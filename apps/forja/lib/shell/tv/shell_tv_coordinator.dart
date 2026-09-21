@@ -1908,7 +1908,9 @@ class ShellTvFocusMeta {
     );
   }
 
-  bool Function()? resolveLeftEdge() {
+  /// [containDpad] — overlays / settings panes: ← at the first item traps
+  /// instead of jumping to the shell nav (Back dismisses the pane).
+  bool Function()? resolveLeftEdge({bool containDpad = false}) {
     if (rowId == null || itemIndex == null) return null;
     if (zone == ShellTvZone.grid && gridColumns != null) {
       final tid = tabId;
@@ -1918,6 +1920,7 @@ class ShellTvFocusMeta {
       return () {
         // Column 0: pack pageBack ladder (e.g. IPTV items → cats).
         if (idx % cols <= 0) {
+          if (containDpad) return true;
           if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
             if (ShellTvFocusCoordinator.tryPageBack(tid)) return true;
           }
@@ -1944,6 +1947,7 @@ class ShellTvFocusMeta {
     }
     return () {
       if (idx <= 0) {
+        if (containDpad) return true;
         if (rid == MediaDetailsTv.heroRowId) {
           ShellTvFocusCoordinator.focusActiveNavTab();
           return true;

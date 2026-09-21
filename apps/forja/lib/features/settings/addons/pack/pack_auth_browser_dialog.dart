@@ -7,6 +7,7 @@ import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 /// Pack Connected Services `flow: "browser"` — system browser + deep-link handoff.
 ///
@@ -144,9 +145,21 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
     _ensureControllers();
     final methodChips = widget.methods.length > 1;
     return AlertDialog(
-      title: Text(widget.title),
+      insetPadding: SettingsTokens.dialogInsetPaddingOf(context),
+      titlePadding: SettingsTokens.dialogTitlePaddingOf(context),
+      contentPadding: SettingsTokens.dialogContentPaddingOf(context),
+      title: Text(
+        widget.title,
+        style: TextStyle(
+          fontSize: SettingsTokens.pageTitleSizeOf(context),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
       content: SizedBox(
-        width: 420,
+        width: SettingsTokens.dialogMaxWidthOf(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -155,8 +168,8 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
               widget.hint.isNotEmpty
                   ? widget.hint
                   : 'Sign in on Shahid in your browser (already signed in is fine).',
-              style: const TextStyle(
-                fontSize: 13,
+              style: TextStyle(
+                fontSize: SettingsTokens.typeSizeOf(context, 13),
                 color: ForjaShellColors.textSecondary,
               ),
             ),
@@ -165,19 +178,19 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
               _opened
                   ? '1. Shahid is open in your browser.'
                   : '1. Opening your browser…',
-              style: const TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: SettingsTokens.typeSizeOf(context, 13)),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               '2. On that Shahid tab: open Console (⌘⌥J / Ctrl+Shift+J), paste, Enter.',
-              style: TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: SettingsTokens.typeSizeOf(context, 13)),
             ),
             const SizedBox(height: 6),
             Text(
               _waiting
                   ? '3. Waiting for session… then Forja shows Connected (you can close the Shahid tab).'
                   : '3. Waiting stopped — copy again or use password.',
-              style: const TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: SettingsTokens.typeSizeOf(context, 13)),
             ),
             const SizedBox(height: 12),
             Row(

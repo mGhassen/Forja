@@ -199,5 +199,136 @@ void main() {
       b.dispose();
     },
   );
+
+  testWidgets(
+    'kind chip ← under ContainDpad stays on the chip (not shell nav)',
+    (tester) async {
+      final kind = FocusNode(debugLabel: 'sources-kind-0');
+      final nav = FocusNode(debugLabel: 'nav-tab');
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: nav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Expanded(
+                child: TvOverlayScope(
+                  autofocusFirst: false,
+                  debugLabel: 'sources-panel-tv',
+                  child: TvKitRow(
+                    tabId: SourcesPanelTv.tabId,
+                    rowId: SourcesPanelTv.kindRowId,
+                    sortOrder: SourcesPanelTv.kindSort,
+                    itemCount: 1,
+                    child: FocusableControl(
+                      focusNode: kind,
+                      scaleOnFocus: 1.0,
+                      tvMeta: ShellTvFocusMeta(
+                        tabId: SourcesPanelTv.tabId,
+                        zone: ShellTvZone.row,
+                        rowId: SourcesPanelTv.kindRowId,
+                        itemIndex: 0,
+                      ),
+                      onTap: () {},
+                      child: const SizedBox(width: 80, height: 40),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      kind.requestFocus();
+      await tester.pump();
+      expect(kind.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        kind.hasFocus,
+        isTrue,
+        reason: '← on first Sources kind chip must not jump to navbar',
+      );
+      expect(nav.hasFocus, isFalse);
+
+      kind.dispose();
+      nav.dispose();
+    },
+  );
+
+  testWidgets('focusKindItem(index) focuses that kind chip', (tester) async {
+    final forja = FocusNode(debugLabel: 'sources-kind-forja');
+    final torrents = FocusNode(debugLabel: 'sources-kind-torrents');
+
+    await tester.pumpWidget(
+      _wrapTv(
+        TvOverlayScope(
+          autofocusFirst: false,
+          debugLabel: 'sources-panel-tv',
+          child: TvKitRow(
+            tabId: SourcesPanelTv.tabId,
+            rowId: SourcesPanelTv.kindRowId,
+            sortOrder: SourcesPanelTv.kindSort,
+            itemCount: 2,
+            child: Row(
+              children: [
+                FocusableControl(
+                  focusNode: forja,
+                  scaleOnFocus: 1.0,
+                  tvMeta: ShellTvFocusMeta(
+                    tabId: SourcesPanelTv.tabId,
+                    zone: ShellTvZone.row,
+                    rowId: SourcesPanelTv.kindRowId,
+                    itemIndex: 0,
+                  ),
+                  onTap: () {},
+                  child: const SizedBox(width: 80, height: 40),
+                ),
+                FocusableControl(
+                  focusNode: torrents,
+                  scaleOnFocus: 1.0,
+                  tvMeta: ShellTvFocusMeta(
+                    tabId: SourcesPanelTv.tabId,
+                    zone: ShellTvZone.row,
+                    rowId: SourcesPanelTv.kindRowId,
+                    itemIndex: 1,
+                  ),
+                  onTap: () {},
+                  child: const SizedBox(width: 80, height: 40),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.kindRowId,
+      index: 0,
+      node: forja,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.kindRowId,
+      index: 1,
+      node: torrents,
+    );
+
+    SourcesPanelTv.focusKindItem(index: 0);
+    await tester.pump();
+    expect(forja.hasFocus, isTrue, reason: 'open should land on Forja (index 0)');
+
+    forja.dispose();
+    torrents.dispose();
+  });
 }
 

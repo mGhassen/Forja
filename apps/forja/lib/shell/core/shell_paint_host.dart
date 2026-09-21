@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_metrics.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 ShellPaintFocusableTap? _registeredFocusableTap;
@@ -42,6 +44,51 @@ Widget shellPaintHostScope({
     wrapHorizontalScroller: _registeredHorizontalWrap,
     wrapTvRow: _registeredTvRow,
     focusableTapBuilder: _registeredFocusableTap,
-    child: child,
+    child: metrics.usesTvDensity
+        ? _TvDialogTheme(child: child)
+        : child,
   );
+}
+
+/// Leanback [AlertDialog] inherits Material titleLarge (~20) unless themed.
+/// Apply shell type ladder + denser insets for every rehosted / in-shell dialog.
+class _TvDialogTheme extends StatelessWidget {
+  const _TvDialogTheme({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context);
+    final titleStyle = (base.textTheme.titleLarge ?? const TextStyle()).copyWith(
+      fontSize: ShellTokens.tvTitleFontSize,
+      fontWeight: FontWeight.w700,
+      color: ForjaShellColors.textPrimary,
+      height: 1.25,
+    );
+    final bodyStyle = (base.textTheme.bodyMedium ?? const TextStyle()).copyWith(
+      fontSize: ShellTokens.tvBodyFontSize,
+      color: ForjaShellColors.textSecondary,
+      height: 1.35,
+    );
+    return Theme(
+      data: base.copyWith(
+        dialogTheme: DialogThemeData(
+          backgroundColor: ForjaShellColors.cinematic.menuSurface,
+          titleTextStyle: titleStyle,
+          contentTextStyle: bodyStyle,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 48, vertical: 20),
+          actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          constraints: const BoxConstraints(maxWidth: 360),
+        ),
+        textTheme: base.textTheme.copyWith(
+          titleLarge: titleStyle,
+          titleMedium: titleStyle,
+          bodyMedium: bodyStyle,
+          bodyLarge: bodyStyle,
+        ),
+      ),
+      child: child,
+    );
+  }
 }

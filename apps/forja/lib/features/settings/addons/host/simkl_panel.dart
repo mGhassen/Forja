@@ -10,6 +10,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 class SettingsSimklPanel extends ConsumerStatefulWidget {
   const SettingsSimklPanel({super.key});
@@ -165,10 +166,10 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Sync your watchlist and watch history with Simkl',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
               color: ForjaShellColors.textSecondary,
             ),
           ),
@@ -206,8 +207,8 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
                   const SizedBox(height: 12),
                   Text(
                     _userCode!,
-                    style: const TextStyle(
-                      fontSize: 36,
+                    style: TextStyle(
+                      fontSize: SettingsTokens.typeSizeOf(context, 36),
                       fontWeight: FontWeight.bold,
                       color: ForjaShellColors.brandGreen,
                       letterSpacing: 6,
@@ -216,9 +217,9 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
                   const SizedBox(height: 8),
                   SelectableText(
                     _verifyUrl ?? 'https://simkl.com/pin',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: 13,
+                      fontSize: SettingsTokens.typeSizeOf(context, 13),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -228,11 +229,11 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
                     backgroundColor: ForjaShellColors.borderSubtle,
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Waiting for authorization...',
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: 11,
+                      fontSize: SettingsTokens.typeSizeOf(context, 11),
                     ),
                   ),
                 ],

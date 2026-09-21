@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/components/focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+/// Follower offset under a [CompositedTransformTarget] pin (gap only).
+///
+/// Pair with [listStatusMenuTargetAnchor] / [listStatusMenuFollowerAnchor] so
+/// TV density does not leave a desktop-sized hole under a short pill.
+Offset listStatusMenuGapOffset(BuildContext context) {
+  final tv = ShellPaintScope.usesTvDensityOf(context);
+  return Offset(0, DetailsTokens.listStatusMenuGapOf(tv));
+}
+
+const Alignment listStatusMenuTargetAnchor = Alignment.bottomLeft;
+const Alignment listStatusMenuFollowerAnchor = Alignment.topLeft;
 
 /// One My List status option — presentational only (RFC-095).
 class ListStatusOption {
@@ -192,18 +204,23 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
       );
     }
 
-    return Focus(
-      autofocus: widget.autoFocus,
-      onFocusChange: (f) => setState(() => _focused = f),
-      child: MouseRegion(
-        onEnter: (_) => _setHovered(true),
-        onExit: (_) => _setHovered(false),
-        child: FocusableTap(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.zero,
-          child: content,
-        ),
-      ),
+    // Host FocusableControl (via ShellPaintScope) owns Select → onTap.
+    // A bare Focus + nested InkWell stole autofocus and left OK dead on TV.
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: widget.onTap,
+      autoFocus: widget.autoFocus,
+      borderRadius: 0,
+      motion: ForjaMotionPreset.fillOnly,
+      showFocusFill: false,
+      showFocusBorder: false,
+      suppressInkHover: true,
+      onFocusChange: (f) {
+        if (_focused == f) return;
+        setState(() => _focused = f);
+      },
+      onHoverChange: _setHovered,
+      child: content,
     );
   }
 }
@@ -292,7 +309,7 @@ class ListStatusPin extends StatefulWidget {
     this.iconSize,
     this.iconColor,
     this.excludeFromTvTraversal = false,
-    this.menuOffset = const Offset(0, 28),
+    this.menuOffset,
     this.useFocusableChips = false,
     this.scaleOnHover = true,
   });
@@ -305,7 +322,8 @@ class ListStatusPin extends StatefulWidget {
   final double? iconSize;
   final Color? iconColor;
   final bool excludeFromTvTraversal;
-  final Offset menuOffset;
+  /// Extra follower offset after [listStatusMenuGapOffset]. Null = gap only.
+  final Offset? menuOffset;
   /// Host maps [ShellInputPolicy.useFocusableMoodChips].
   final bool useFocusableChips;
   /// Host maps [ShellInputPolicy.scaleOnHover] (false on leanback TV).
@@ -384,7 +402,10 @@ class _ListStatusPinState extends State<ListStatusPin> {
             CompositedTransformFollower(
               link: _link,
               showWhenUnlinked: false,
-              offset: widget.menuOffset,
+              targetAnchor: listStatusMenuTargetAnchor,
+              followerAnchor: listStatusMenuFollowerAnchor,
+              offset: listStatusMenuGapOffset(context) +
+                  (widget.menuOffset ?? Offset.zero),
               child: Material(
                 color: Colors.transparent,
                 child: ListStatusPopupPanel(
@@ -453,16 +474,18 @@ class _ListStatusPinState extends State<ListStatusPin> {
         child: child,
       );
     }
-    return Transform.scale(
-      scale: ForjaMotionTheme.of(context).chipLift.focusScale,
-      child: FocusableTap(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: SizedBox(
-          width: ShellTokens.controlHeightTv,
-          height: ShellTokens.controlHeightTv,
-          child: Center(child: child),
-        ),
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 20,
+      motion: ForjaMotionPreset.chipLift,
+      showFocusFill: false,
+      showFocusBorder: false,
+      suppressInkHover: true,
+      child: SizedBox(
+        width: ShellTokens.controlHeightTv,
+        height: ShellTokens.controlHeightTv,
+        child: Center(child: child),
       ),
     );
   }

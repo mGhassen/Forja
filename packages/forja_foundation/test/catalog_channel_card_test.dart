@@ -80,4 +80,35 @@ void main() {
     );
     expect(longY, closeTo(shortY, 0.5));
   });
+
+  testWidgets('TV density uses the leanback card title size', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: forjaThemeData(),
+        home: Scaffold(
+          body: ShellPaintScope(
+            useTvFocus: true,
+            scaleOnHover: false,
+            focusStyled: (_, {required focused}) => focused,
+            usesTvDensity: true,
+            child: const Center(
+              child: CatalogChannelCard(
+                title: 'VIP - NO EVENT',
+                imageUrl: '',
+                width: 110,
+                height: 122,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final text = tester.widget<Text>(find.text('VIP - NO EVENT'));
+    expect(
+      text.style?.fontSize,
+      ChannelCardTokens.cardTitleFontSizeTv,
+    );
+  });
 }

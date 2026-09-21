@@ -341,9 +341,10 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                           browseIds.contains(_tabId)
                               ? 'Matching Live TV…'
                               : 'Fetching streams…',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: ForjaShellColors.textSecondary,
-                            fontSize: 12,
+                            fontSize: ShellScope.metricsOf(context)
+                                .torrentPanelMetaFontSize,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -355,7 +356,8 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                         icon: Icons.refresh_rounded,
                         tooltip: 'Reload',
                         color: ForjaShellColors.textSecondary,
-                        iconSize: 20,
+                        iconSize: ShellScope.metricsOf(context)
+                            .torrentPanelLeadingIconSize,
                         onPressed: () =>
                             setState(() => _sourcesReloadNonce++),
                       ),

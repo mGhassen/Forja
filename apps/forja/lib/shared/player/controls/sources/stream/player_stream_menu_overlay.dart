@@ -520,12 +520,14 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       final filterLabel = _audioFilter?.name.toUpperCase() ?? 'matching';
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(
+            ShellPaintScope.usesTvDensityOf(context) ? 16 : 24,
+          ),
           child: Text(
             'No $filterLabel sources',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 13,
+              fontSize: PlayerPopupTokens.optionFontSizeOf(context),
             ),
           ),
         ),
@@ -559,12 +561,17 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
                   if (section != null) ...[
                     if (i > 0) const SizedBox(height: 4),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 2, 14, 8),
+                      padding: EdgeInsets.fromLTRB(
+                        ShellPaintScope.usesTvDensityOf(context) ? 10 : 14,
+                        2,
+                        ShellPaintScope.usesTvDensityOf(context) ? 10 : 14,
+                        ShellPaintScope.usesTvDensityOf(context) ? 5 : 8,
+                      ),
                       child: Text(
                         section.toUpperCase(),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.45),
-                          fontSize: 10,
+                          fontSize: PlayerPopupTokens.badgeFontSizeOf(context),
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.55,
                         ),

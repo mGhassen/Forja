@@ -371,7 +371,7 @@ class _SettingsNavigationPageBodyState
                 : 'Show, hide, and reorder tabs. Drag to reorder. Settings stays visible.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-              fontSize: 13,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
               height: 1.4,
             ),
           ),
@@ -514,7 +514,7 @@ class _SettingsNavigationPageBodyState
                                               ? ForjaShellColors.textPrimary
                                               : ForjaShellColors
                                                     .textSecondary,
-                                          fontSize: 14,
+                                          fontSize: SettingsTokens.typeSizeOf(context, 14),
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
@@ -613,12 +613,12 @@ class _SettingsNavigationPageBodyState
                         size: 22,
                       ),
                       const SizedBox(width: 16),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Settings',
                           style: TextStyle(
                             color: ForjaShellColors.brandGreen,
-                            fontSize: 14,
+                            fontSize: SettingsTokens.typeSizeOf(context, 14),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -643,7 +643,7 @@ class _SettingsNavigationPageBodyState
                           color: ForjaShellColors.textSecondary.withValues(
                             alpha: 0.7,
                           ),
-                          fontSize: 11,
+                          fontSize: SettingsTokens.typeSizeOf(context, 11),
                         ),
                       ),
                     ],

@@ -100,6 +100,28 @@ abstract final class DetailsTokens {
   static const double heroPillLabelPadEndTv = heroPillLabelPadEnd * _s;
   static const double heroPillGap = 10;
   static const double heroPillGapTv = heroPillGap * _s;
+
+  /// Space between pin bottom and floating My List status menu top.
+  /// Follower uses [Alignment.bottomLeft] → [Alignment.topLeft] + this gap —
+  /// do not bake pin height into the offset (TV pills are shorter).
+  static const double listStatusMenuGap = 6;
+  static const double listStatusMenuGapTv = listStatusMenuGap * _s;
+
+  static double listStatusMenuGapOf(bool tv) =>
+      tv ? listStatusMenuGapTv : listStatusMenuGap;
+
+  /// Floating details back chevron (host [MediaDetailsBackButton]).
+  static const double backIconSize = 28;
+  static const double backIconSizeTv = backIconSize * _s;
+  static const double backHitPad = 12;
+  static const double backHitPadTv = backHitPad * _s;
+
+  static double backIconSizeOf(bool tv) =>
+      tv ? backIconSizeTv : backIconSize;
+
+  static double backHitSizeOf(bool tv) =>
+      backIconSizeOf(tv) + (tv ? backHitPadTv : backHitPad);
+
   static const double watchProviderTileSize = 40;
   static const double watchProviderTileSizeTv = watchProviderTileSize * _s;
   static const double watchProviderGap = 8;

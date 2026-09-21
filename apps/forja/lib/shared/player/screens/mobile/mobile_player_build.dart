@@ -34,14 +34,16 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               // surface on Android (Impeller/Skia sibling composite).
               Positioned.fill(
                 child: _s._showVideoSurface
-                    ? Video(
-                        controller: _s._controller,
-                        controls: NoVideoControls,
-                        fit: _s._videoFit,
-                        fill: Colors.black,
-                        subtitleViewConfiguration:
-                            const SubtitleViewConfiguration(
-                          visible: false,
+                    ? SizedBox.expand(
+                        child: Video(
+                          controller: _s._controller,
+                          controls: NoVideoControls,
+                          fit: _s._videoFit,
+                          fill: Colors.black,
+                          subtitleViewConfiguration:
+                              const SubtitleViewConfiguration(
+                            visible: false,
+                          ),
                         ),
                       )
                     : const ColoredBox(color: Colors.black),

@@ -7,6 +7,7 @@ import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Pair / desktop-offline prompt. [OverlayEntry] so it stacks above player
@@ -125,21 +126,29 @@ class _LanP2pRequiredDialogState extends State<_LanP2pRequiredDialog> {
   @override
   Widget build(BuildContext context) {
     final neverPaired = widget.neverPaired;
+    final size = MediaQuery.sizeOf(context);
+    final maxW = SettingsTokens.dialogMaxWidthOf(context, size.width);
     return AlertDialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
+      insetPadding: SettingsTokens.dialogInsetPaddingOf(context),
+      titlePadding: SettingsTokens.dialogTitlePaddingOf(context),
+      contentPadding: SettingsTokens.dialogContentPaddingOf(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(
+          SettingsTokens.dialogRadiusOf(context),
+        ),
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
       title: Text(
         neverPaired ? 'Pair a desktop' : 'Desktop offline',
-        style: const TextStyle(
+        style: TextStyle(
           color: ForjaShellColors.textPrimary,
           fontWeight: FontWeight.w700,
+          fontSize: SettingsTokens.pageTitleSizeOf(context),
         ),
       ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: BoxConstraints(maxWidth: maxW),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -152,8 +161,9 @@ class _LanP2pRequiredDialogState extends State<_LanP2pRequiredDialog> {
                   : 'Torrents and other P2P streams need your paired desktop Forja '
                       'server on the same Wi-Fi. Direct HTTP streams still play '
                       'on this TV.',
-              style: const TextStyle(
+              style: TextStyle(
                 color: ForjaShellColors.textSecondary,
+                fontSize: SettingsTokens.rowSubtitleSizeOf(context),
                 height: 1.4,
               ),
             ),

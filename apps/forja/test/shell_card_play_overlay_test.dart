@@ -43,7 +43,7 @@ Finder get _hoverTarget =>
     find.byKey(const ValueKey('shell-card-play-hover-target'));
 
 void main() {
-  testWidgets('active visible play control pulses only on button hover', (
+  testWidgets('active visible play control greens, floats, and heartbeats', (
     tester,
   ) async {
     await tester.pumpWidget(_overlayHarness(active: false, visible: true));
@@ -55,30 +55,26 @@ void main() {
     );
 
     await tester.pumpWidget(_overlayHarness(active: true, visible: true));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1.1);
     expect(
       tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
       const Offset(0, -0.1),
     );
-    expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
-
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(mouse.removePointer);
-    await mouse.addPointer();
-    await mouse.moveTo(tester.getCenter(_hoverTarget));
-    // Hover setState is deferred past MouseTracker.deviceUpdate.
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
+    expect(
+      tester.widget<AnimatedContainer>(find.byType(AnimatedContainer))
+          .decoration,
+      isA<BoxDecoration>().having(
+        (d) => d.color,
+        'color',
+        ForjaShellColors.brandGreen,
+      ),
+    );
     final pulse = tester.widget<ScaleTransition>(_playPulse);
     expect(pulse.scale.value, greaterThan(1));
     expect(pulse.scale.value, lessThanOrEqualTo(1.12));
-
-    await mouse.moveTo(const Offset(0, 0));
-    await tester.pump();
-    expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
   });
 
   testWidgets(
@@ -144,6 +140,7 @@ void main() {
       tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity,
       0,
     );
+    // Hidden + active still arms the controller, but scale stays at rest (value 0).
     expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
     expect(tester.getSize(find.byType(AnimatedContainer)), const Size(30, 30));
     expect(tester.widget<Icon>(find.byIcon(Icons.play_arrow_rounded)).size, 18);

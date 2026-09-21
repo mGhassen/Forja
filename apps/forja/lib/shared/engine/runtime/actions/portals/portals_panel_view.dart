@@ -19,6 +19,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_view.dart';
@@ -457,7 +458,11 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     _activeIndex = activeIdx;
     _activeKey = activeKey.isEmpty ? null : activeKey;
     _headerActionCount = headerActions.length;
-    _tv.rowHeight = inv?.rowHeight ?? PortalListRow.rowHeight;
+    final rowExtent = PortalListTokens.resolveRowHeight(
+      ShellScope.metricsOf(context).usesTvDensity,
+      inv?.rowHeight ?? PortalListRow.rowHeight,
+    );
+    _tv.rowHeight = rowExtent;
     if (_knownPortalKeys.isEmpty && currentKeys.isNotEmpty) {
       _knownPortalKeys = {...currentKeys};
     }
@@ -485,7 +490,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       leanback: leanback,
       listScrollController: _tv.listScroll,
       titleFontSize: inv?.titleFontSize ?? 18,
-      rowHeight: inv?.rowHeight ?? PortalListRow.rowHeight,
+      rowHeight: rowExtent,
       onClose: widget.onClose,
       onSelect: (item) => unawaited(_selectPortal(item.id)),
       onFavorite: (item) => unawaited(_toggleFavorite(item.id)),

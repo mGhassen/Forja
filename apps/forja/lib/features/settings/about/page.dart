@@ -11,6 +11,7 @@ import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 class SettingsAboutPageBody extends ConsumerWidget {
   const SettingsAboutPageBody({super.key});
@@ -87,7 +88,7 @@ class SettingsAboutPageBody extends ConsumerWidget {
           child: AppVersionLabel(
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
-              fontSize: 13,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
               letterSpacing: 1.5,
               fontWeight: FontWeight.w600,
             ),

@@ -10,6 +10,7 @@ import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 class SettingsDataPageBody extends StatefulWidget {
   const SettingsDataPageBody({super.key, required this.visibility});
@@ -129,7 +130,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
                       color: ForjaShellColors.textSecondary.withValues(
                         alpha: 0.9,
                       ),
-                      fontSize: 13,
+                      fontSize: SettingsTokens.typeSizeOf(context, 13),
                       height: 1.4,
                     ),
                   ),

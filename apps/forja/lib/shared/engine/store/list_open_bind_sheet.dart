@@ -11,6 +11,7 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Result of the single Open-in bind sheet.
@@ -455,8 +456,19 @@ class _SearchField extends StatelessWidget {
 
   InputDecoration get _decoration => InputDecoration(
         hintText: 'Search title',
-        hintStyle: TextStyle(color: ForjaShellColors.textSecondary),
-        prefixIcon: Icon(Icons.search, color: ForjaShellColors.iconMuted, size: 20),
+        hintStyle: TextStyle(
+          color: ForjaShellColors.textSecondary,
+          fontSize: tv
+              ? ShellTokens.formInputHintFontSizeTv
+              : ShellTokens.formInputHintFontSize,
+        ),
+        prefixIcon: Icon(
+          Icons.search,
+          color: ForjaShellColors.iconMuted,
+          size: tv
+              ? ShellTokens.formInputIconSizeTv
+              : ShellTokens.formInputIconSize,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.06),
         border: OutlineInputBorder(
@@ -471,13 +483,23 @@ class _SearchField extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: ForjaShellColors.brandGreen),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: tv
+              ? ShellTokens.formInputPadHSmTv
+              : ShellTokens.formInputPadHSm,
+          vertical: tv
+              ? ShellTokens.formInputPadVSmTv
+              : ShellTokens.formInputPadVSm,
+        ),
         isDense: true,
       );
 
   @override
   Widget build(BuildContext context) {
-    final style = TextStyle(color: ForjaShellColors.textPrimary, fontSize: 14);
+    final fontSize = tv
+        ? ShellTokens.formInputFontSizeTv
+        : ShellTokens.formInputFontSize;
+    final style = TextStyle(color: ForjaShellColors.textPrimary, fontSize: fontSize);
     if (tv) {
       return TvBrowseTextField(
         controller: controller,

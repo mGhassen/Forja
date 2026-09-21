@@ -27,6 +27,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Settings → Forja Packs — JS plugin manifests (providers, hubs, live, …).
 class SettingsForjaPacksSection extends ConsumerStatefulWidget {
@@ -216,7 +217,7 @@ class _SettingsForjaPacksSectionState
                     color: installError == null
                         ? ForjaShellColors.textSecondary.withValues(alpha: 0.9)
                         : const Color(0xFFF87171),
-                    fontSize: 13,
+                    fontSize: SettingsTokens.rowSubtitleSizeOf(context),
                     height: 1.4,
                   ),
                 ),
@@ -238,13 +239,13 @@ class _SettingsForjaPacksSectionState
                 'then every plugin script, before the pack is fully usable.',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
-                  fontSize: 12,
+                  fontSize: SettingsTokens.rowSubtitleSizeOf(context),
                   height: 1.4,
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(2, 4, 2, 14),
+              padding: SettingsTokens.packChoiceSectionPadOf(context),
               child: ForjaPackChoiceCards(
                 compact: true,
                 settingsTvFocus: true,
@@ -364,7 +365,7 @@ class _SettingsForjaPacksSectionState
                       color: ForjaShellColors.textSecondary.withValues(
                         alpha: 0.9,
                       ),
-                      fontSize: 13,
+                      fontSize: SettingsTokens.rowSubtitleSizeOf(context),
                       height: 1.3,
                     ),
                   ),
@@ -1030,7 +1031,7 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
             child: Text(
               'Official',
               style: TextStyle(
-                fontSize: 10,
+                fontSize: SettingsTokens.groupLabelSizeOf(context),
                 fontWeight: FontWeight.w600,
                 color: ForjaShellColors.brandGreen.withValues(alpha: 0.9),
               ),
@@ -1080,27 +1081,15 @@ Widget _settingsTvIconButton(
   VoidCallback? onLeftEdge,
   VoidCallback? onRightEdge,
 }) {
-  final child = Icon(icon, color: color, size: 20);
-  final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-  if (tv) {
-    return shellFocusableTap(
-      context: context,
-      focusNode: focusNode,
-      onTap: onPressed,
-      borderRadius: 8,
-      scaleOnFocus: 1.0,
-      showFocusRail: false,
-      showFocusFill: true,
-      showFocusBorder: true,
-      tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellPaintEnsureVisible.item,
-      onLeftEdge: onLeftEdge,
-      onRightEdge: onRightEdge,
-      child: SizedBox(width: 40, height: 40, child: Center(child: child)),
-    );
-  }
-  return IconButton(tooltip: tooltip, onPressed: onPressed, icon: child);
+  return SettingsIconButton(
+    tooltip: tooltip,
+    icon: icon,
+    onPressed: onPressed,
+    color: color,
+    focusNode: focusNode,
+    onLeftEdge: onLeftEdge,
+    onRightEdge: onRightEdge,
+  );
 }
 
 class _AddonRemoveActions extends StatefulWidget {
@@ -1197,9 +1186,9 @@ class _PackInstallFailuresBanner extends StatelessWidget {
                   failures.length == 1
                       ? 'Pack install failed'
                       : '${failures.length} packs failed to install',
-                  style: const TextStyle(
-                    color: Color(0xFFFECACA),
-                    fontSize: 13,
+                  style: TextStyle(
+                    color: const Color(0xFFFECACA),
+                    fontSize: SettingsTokens.rowTitleSizeOf(context),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1208,9 +1197,9 @@ class _PackInstallFailuresBanner extends StatelessWidget {
                   if (i > 0) const SizedBox(height: 8),
                   Text(
                     failures[i].label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: ForjaShellColors.textPrimary,
-                      fontSize: 13,
+                      fontSize: SettingsTokens.rowTitleSizeOf(context),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1222,7 +1211,7 @@ class _PackInstallFailuresBanner extends StatelessWidget {
                         color: ForjaShellColors.textSecondary.withValues(
                           alpha: 0.9,
                         ),
-                        fontSize: 11,
+                        fontSize: SettingsTokens.groupLabelSizeOf(context),
                         height: 1.3,
                       ),
                     ),
@@ -1230,9 +1219,9 @@ class _PackInstallFailuresBanner extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     failures[i].message,
-                    style: const TextStyle(
-                      color: Color(0xFFFECACA),
-                      fontSize: 12,
+                    style: TextStyle(
+                      color: const Color(0xFFFECACA),
+                      fontSize: SettingsTokens.rowSubtitleSizeOf(context),
                       height: 1.35,
                     ),
                   ),

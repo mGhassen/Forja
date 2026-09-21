@@ -441,12 +441,17 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     if (!policy.ensureVisibleOnFocus) return;
     if (widget.ensureVisibleMode == ShellPaintEnsureVisible.off) return;
 
+    // Prefer an ancestor extent (Popular rank digit left of poster chrome) so
+    // keepVisible does not scroll the digit off the leading edge.
+    final scrollContext =
+        ShellPaintEnsureVisibleExtent.maybeContext(context) ?? context;
+
     // TV: jump instantly (no 200ms tween). Animated scroll leaves the focused
     // control clipped / hidden until the tween ends, and stacks into stutter.
     if (widget.ensureVisibleMode == ShellPaintEnsureVisible.item) {
       // Settings / vertical menus: first control snaps to content top so
       // section labels above it stay visible (keepVisible alone pins flush).
-      shellTvEnsureVisibleItem(context);
+      shellTvEnsureVisibleItem(scrollContext);
       return;
     }
 
@@ -454,13 +459,13 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     // Horizontal row ListViews still need this; vertical hub lift is below.
     const zero = Duration.zero;
     Scrollable.ensureVisible(
-      context,
+      scrollContext,
       alignment: 0.0,
       duration: zero,
       alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
     );
     Scrollable.ensureVisible(
-      context,
+      scrollContext,
       alignment: 1.0,
       duration: zero,
       alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
@@ -469,7 +474,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     // Catalog rows: nearest Scrollable is the horizontal ListView, so the
     // keepVisible pair above often never moves the page. Lift in the vertical
     // hub scroller when the card sits under the bottom inset (focus ring bleed).
-    final box = context.findRenderObject();
+    final box = scrollContext.findRenderObject();
     final h = box is RenderBox && box.hasSize
         ? box.size.height
         : shellPosterCardHeight(context);
@@ -477,7 +482,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         ? h * (widget.scaleOnFocus - 1) / 2 + 2.5
         : (widget.showFocusBorder ? 2.5 : 0.0);
     shellTvRevealCatalogRowFocus(
-      context,
+      scrollContext,
       extraBottomPx: bleed,
       extraTopPx: bleed,
     );
@@ -502,6 +507,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       onRightEdge: widget.onRightEdge,
       onUpEdge: widget.onUpEdge,
       onDownEdge: widget.onDownEdge,
+      containDpad: ShellTvContainDpad.activeOf(context),
     );
     if (handled == KeyEventResult.handled) return handled;
 

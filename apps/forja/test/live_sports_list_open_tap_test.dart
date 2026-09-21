@@ -1,7 +1,51 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 void main() {
+  group('kitListCanShowSidePanel', () {
+    test('needs chrome', () {
+      expect(
+        kitListCanShowSidePanel(
+          hasChrome: false,
+          layoutWidth: 1200,
+        ),
+        isFalse,
+      );
+    });
+
+    test('wide desktop docks', () {
+      expect(
+        kitListCanShowSidePanel(
+          hasChrome: true,
+          layoutWidth: ShellTokens.sidePanelWideBreakpoint,
+        ),
+        isTrue,
+      );
+    });
+
+    test('narrow desktop falls back', () {
+      expect(
+        kitListCanShowSidePanel(
+          hasChrome: true,
+          layoutWidth: ShellTokens.sidePanelWideBreakpoint - 1,
+        ),
+        isFalse,
+      );
+    });
+
+    test('Android TV docks even when the list strip is narrow', () {
+      expect(
+        kitListCanShowSidePanel(
+          hasChrome: true,
+          layoutWidth: 600,
+          androidTv: true,
+        ),
+        isTrue,
+      );
+    });
+  });
+
   group('resolveKitListTapOpen', () {
     test('panel + wide → side panel', () {
       expect(

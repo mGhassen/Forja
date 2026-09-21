@@ -110,8 +110,10 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       _s._exoViewId!,
     ).listen(_onExoEvent);
     if (mounted) setState(() => _s._playerReady = true);
-    // Let ExoPlayerView attach before open() - same frame-delay as ExoPlayerScreen.
+    // Let ExoPlayerView attach + layout before open() — opening over a
+    // zero-sized TextureView leaves a zoomed crop (issue 129).
     await Future<void>.delayed(Duration.zero);
+    await WidgetsBinding.instance.endOfFrame;
     if (!mounted || _s._disposed) return;
     await _openCurrent();
     _startWatchdog();
@@ -415,7 +417,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         break;
       case 'renderedFirstFrame':
         _noteVideoFrame(reason: 'exo first frame');
-        _maybeRemountExoFitAfterMediaKit();
+        _maybeRemountExoFitOnce();
         break;
       case 'cues':
         final raw = event['texts'];
@@ -450,20 +452,27 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     _syncPlaybackBannerVisibility();
   }
 
-  /// Same as VOD issue 129: MediaKit→Exo TextureView can paint zoomed until
-  /// remount. Bump [_videoEpoch] once after first frame.
-  void _maybeRemountExoFitAfterMediaKit() {
-    if (!_s._exoFitRemountAfterMediaKit ||
-        _s._exoFitRemountDone ||
-        _s._disposed) {
-      return;
-    }
+  /// Same as VOD issue 129: TextureView can paint zoomed until remount.
+  /// MediaKit→Exo race, or Android TextureView cold-open (phone + TV; IPTV
+  /// Exo is always TextureView — issue 133).
+  void _maybeRemountExoFitOnce() {
+    if (_s._exoFitRemountDone || _s._disposed) return;
+    final needRemount =
+        _s._exoFitRemountAfterMediaKit || Platform.isAndroid;
+    if (!needRemount) return;
     _s._exoFitRemountDone = true;
+    final afterMediaKit = _s._exoFitRemountAfterMediaKit;
     _s._exoFitRemountAfterMediaKit = false;
-    MpvExclusiveSession.instance.acknowledgeExoFitRemount();
+    if (afterMediaKit) {
+      MpvExclusiveSession.instance.acknowledgeExoFitRemount();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _s._disposed || !_s._exoBackend) return;
-      debugPrint('[IPTV] remount Exo TextureView after MediaKit surface race');
+      debugPrint(
+        afterMediaKit
+            ? '[IPTV] remount Exo TextureView after MediaKit surface race'
+            : '[IPTV] remount Exo TextureView after Android cold-open first frame',
+      );
       setState(() => _s._videoEpoch++);
       final id = _s._exoViewId;
       if (id != null) {

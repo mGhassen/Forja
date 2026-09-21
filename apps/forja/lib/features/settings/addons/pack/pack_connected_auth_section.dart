@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/packs/settings/pack_connected_auth_spec.dart
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 /// Generic Connected Services rows for packs that declare `settings.auth`
 /// (RFC-102). No pack-id hardcoding — Simkl stays a separate host panel.
 class PackConnectedAuthSection extends StatefulWidget {
@@ -171,8 +172,8 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
                     if (spec.subtitle.isNotEmpty) ...[
                       Text(
                         spec.subtitle,
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: TextStyle(
+                          fontSize: SettingsTokens.typeSizeOf(context, 13),
                           color: ForjaShellColors.textSecondary,
                         ),
                       ),
@@ -277,9 +278,21 @@ class _PackAuthLoginDialogState extends State<_PackAuthLoginDialog> {
     _ensureControllers();
     final methodChips = widget.methods.length > 1;
     return AlertDialog(
-      title: Text('Login · ${widget.title}'),
+      insetPadding: SettingsTokens.dialogInsetPaddingOf(context),
+      titlePadding: SettingsTokens.dialogTitlePaddingOf(context),
+      contentPadding: SettingsTokens.dialogContentPaddingOf(context),
+      title: Text(
+        'Login · ${widget.title}',
+        style: TextStyle(
+          fontSize: SettingsTokens.pageTitleSizeOf(context),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
       content: SizedBox(
-        width: 360,
+        width: SettingsTokens.dialogMaxWidthOf(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

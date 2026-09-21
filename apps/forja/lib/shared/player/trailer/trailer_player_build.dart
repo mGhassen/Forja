@@ -91,13 +91,16 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 )
               else if (_s._controller != null)
                 Positioned.fill(
-                  child: Video(
-                    controller: _s._controller!,
-                    controls: NoVideoControls,
-                    fit: BoxFit.contain,
-                    fill: Colors.black,
-                    subtitleViewConfiguration: const SubtitleViewConfiguration(
-                      visible: true,
+                  child: SizedBox.expand(
+                    child: Video(
+                      controller: _s._controller!,
+                      controls: NoVideoControls,
+                      fit: BoxFit.contain,
+                      fill: Colors.black,
+                      subtitleViewConfiguration:
+                          const SubtitleViewConfiguration(
+                        visible: true,
+                      ),
                     ),
                   ),
                 ),

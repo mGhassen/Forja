@@ -74,6 +74,8 @@ import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 part 'pt_player_engine_core.dart';
 part 'pt_player_mk_tunables.dart';

@@ -323,8 +323,11 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       onKeyEvent: (node, event) {
         final custom = widget.onKeyEvent?.call(node, event);
         if (custom == KeyEventResult.handled) return KeyEventResult.handled;
-        final arrow =
-            shellTvHandleRowArrows(event: event, tvMeta: widget.tvMeta);
+        final arrow = shellTvHandleRowArrows(
+          event: event,
+          tvMeta: widget.tvMeta,
+          containDpad: ShellTvContainDpad.activeOf(context),
+        );
         if (arrow == KeyEventResult.handled) return arrow;
         final pageBack =
             shellTvSettingsBackwardEdge(context: context, event: event);

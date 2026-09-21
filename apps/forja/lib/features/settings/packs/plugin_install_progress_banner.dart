@@ -3,6 +3,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Sticky progress card while Engine/Nuvio packs download or update.
@@ -79,9 +80,9 @@ class _PluginInstallBanner extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: ForjaShellColors.textPrimary,
-                        fontSize: 13,
+                        fontSize: SettingsTokens.rowTitleSizeOf(context),
                         fontWeight: FontWeight.w600,
                         height: 1.3,
                       ),
@@ -91,9 +92,9 @@ class _PluginInstallBanner extends StatelessWidget {
                       progress.label,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: ForjaShellColors.textSecondary,
-                        fontSize: 11,
+                        fontSize: SettingsTokens.groupLabelSizeOf(context),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -107,7 +108,7 @@ class _PluginInstallBanner extends StatelessWidget {
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary
                               .withValues(alpha: 0.75),
-                          fontSize: 10,
+                          fontSize: SettingsTokens.groupLabelSizeOf(context),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -119,7 +120,7 @@ class _PluginInstallBanner extends StatelessWidget {
                 '$percent%',
                 style: TextStyle(
                   color: style.accent,
-                  fontSize: 12,
+                  fontSize: SettingsTokens.rowSubtitleSizeOf(context),
                   fontWeight: FontWeight.w700,
                 ),
               ),

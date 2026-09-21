@@ -9,6 +9,22 @@ enum ShellPaintTvZone { nav, hero, topBar, chipStrip, row, grid, settings }
 /// Scroll-into-view mode when a paint widget takes focus.
 enum ShellPaintEnsureVisible { off, row, item }
 
+/// Ancestor whose render extent should be scrolled into view instead of the
+/// focused chrome alone (e.g. Popular rank digit left of the poster focus ring).
+class ShellPaintEnsureVisibleExtent extends InheritedWidget {
+  const ShellPaintEnsureVisibleExtent({super.key, required super.child});
+
+  /// Element context for [Scrollable.ensureVisible] — includes siblings outside
+  /// focus chrome. Null when no ancestor is mounted.
+  static BuildContext? maybeContext(BuildContext context) =>
+      context.getElementForInheritedWidgetOfExactType<
+          ShellPaintEnsureVisibleExtent>();
+
+  @override
+  bool updateShouldNotify(covariant ShellPaintEnsureVisibleExtent oldWidget) =>
+      false;
+}
+
 /// Row axis for host [TvKitRow] registration (vertical lists vs rails).
 enum ShellPaintTvRowAxis { horizontal, vertical }
 

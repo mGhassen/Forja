@@ -12,11 +12,12 @@ abstract final class ChannelCardTokens {
 
   /// Fixed title strip under the logo — keeps the logo band height stable.
   static const double titleBarHeight = 36;
-  static const double titleBarHeightTv = 26;
+  static const double titleBarHeightTv = 22;
   static const double titleBarPadH = 8;
   static const double titleBarPadHTv = 6;
   static const double cardTitleFontSize = 12;
-  static const double cardTitleFontSizeTv = ShellTokens.tvBodyFontSize;
+  /// Dense logo tiles ([widthTv]) — meta ladder, not body (body reads oversized).
+  static const double cardTitleFontSizeTv = ShellTokens.tvMetaFontSize;
 
   /// EPG sheet / meta type.
   static const double titleFontSize = 14;
@@ -25,6 +26,18 @@ abstract final class ChannelCardTokens {
   static const double metaFontSizeTv = ShellTokens.tvMetaFontSize;
   static const double badgeFontSize = 8;
   static const double badgeFontSizeTv = ShellTokens.tvMetaFontSize;
+
+  /// Sources-style list row (narrow / List view).
+  static const double listRowHeight = 56;
+  static const double listRowHeightTv = 44;
+  static const double listTitleFontSize = 13;
+  static const double listTitleFontSizeTv = ShellTokens.tvBodyFontSize;
+  static const double listLogoSize = 36;
+  static const double listLogoSizeTv = 28;
+  static const double listPadH = 12;
+  static const double listPadHTv = listPadH * ShellTokens.tvChromeScale;
+  static const double listPadV = 8;
+  static const double listPadVTv = listPadV * ShellTokens.tvChromeScale;
 
   /// Inset for [BoxFit.contain] logos inside the full logo band (card face).
   static const double logoPad = 10;
@@ -46,4 +59,11 @@ abstract final class ChannelCardTokens {
   static double epgSlotHeightOf(bool tv) =>
       tv ? epgSlotHeightTv : epgSlotHeight;
   static double logoPadOf(bool tv) => tv ? logoPadTv : logoPad;
+  static double listRowHeightOf(bool tv) =>
+      tv ? listRowHeightTv : listRowHeight;
+  static double listTitleFontSizeOf(bool tv) =>
+      tv ? listTitleFontSizeTv : listTitleFontSize;
+  static double listLogoSizeOf(bool tv) => tv ? listLogoSizeTv : listLogoSize;
+  static double listPadHOf(bool tv) => tv ? listPadHTv : listPadH;
+  static double listPadVOf(bool tv) => tv ? listPadVTv : listPadV;
 }

@@ -81,15 +81,17 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Video(
-                      key: _s._videoViewKey,
-                      controller: _s._controller,
-                      controls: NoVideoControls,
-                      fit: _s._videoFit,
-                      fill: Colors.black,
-                      subtitleViewConfiguration:
-                          const SubtitleViewConfiguration(
-                        visible: false,
+                    SizedBox.expand(
+                      child: Video(
+                        key: _s._videoViewKey,
+                        controller: _s._controller,
+                        controls: NoVideoControls,
+                        fit: _s._videoFit,
+                        fill: Colors.black,
+                        subtitleViewConfiguration:
+                            const SubtitleViewConfiguration(
+                          visible: false,
+                        ),
                       ),
                     ),
                     if (mini)

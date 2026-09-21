@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 const kKitListOpenModeDefault = 'panel';
 
@@ -31,8 +32,23 @@ ValueListenable<int> get packSettingsRevisionListenable =>
 ///
 /// Live Sports declares `openSetting` / `panelTabs`. Those must never fall
 /// through to `open.surface:live` (hub tab re-request is a no-op). Panel needs
-/// chrome + wide layout; otherwise open the detail page.
+/// chrome + room to dock (or Android TV); otherwise open the detail page.
 enum KitListTapOpen { panel, details, openTap }
+
+/// Whether a kit list may paint / open the docked streams side panel.
+///
+/// Matches [SidePanelOverlay.defaultUseSideRail]: wide layouts dock; Android TV
+/// always docks even when Portals (or nav) leaves the list strip under
+/// [ShellTokens.sidePanelWideBreakpoint].
+bool kitListCanShowSidePanel({
+  required bool hasChrome,
+  required double layoutWidth,
+  bool androidTv = false,
+}) {
+  if (!hasChrome) return false;
+  if (androidTv) return true;
+  return layoutWidth >= ShellTokens.sidePanelWideBreakpoint;
+}
 
 KitListTapOpen resolveKitListTapOpen({
   required String openMode,

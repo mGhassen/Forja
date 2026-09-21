@@ -3,6 +3,7 @@ package com.forjahq.app
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -10,6 +11,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
 import androidx.media3.common.AudioAttributes
@@ -817,15 +819,43 @@ class ExoPlayerHost(
         refreshContentFrameLayout()
     }
 
-    /** Re-assert FIT/user mode + requestLayout after surface races (issue 129). */
+    /**
+     * Re-assert FIT/user mode + content aspect after surface races (issue 129).
+     *
+     * ATV TextureView cold-open (emulator SurfaceProducer / goldfish) can keep a
+     * zoomed matrix until remount — clear transform + re-apply VideoSize aspect
+     * before Dart's one-shot PlatformView remount.
+     */
     private fun refreshContentFrameLayout() {
         val view = playerView ?: return
         view.post {
             if (playerView !== view) return@post
-            view.resizeMode = resizeMode
-            view.requestLayout()
-            view.invalidate()
+            applyContentFramePass(view)
+            // Second pass after layout — TextureView matrix sometimes sticks
+            // until the frame after requestLayout (cold-open zoom).
+            view.post {
+                if (playerView !== view) return@post
+                applyContentFramePass(view)
+            }
         }
+    }
+
+    private fun applyContentFramePass(view: PlayerView) {
+        view.resizeMode = resizeMode
+        val videoSize = player?.videoSize
+        if (videoSize != null && videoSize.height > 0) {
+            val ratio =
+                videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
+            view.findViewById<AspectRatioFrameLayout>(
+                androidx.media3.ui.R.id.exo_content_frame,
+            )?.setAspectRatio(ratio)
+        }
+        (view.videoSurfaceView as? TextureView)?.let { texture ->
+            texture.setTransform(Matrix())
+            texture.requestLayout()
+        }
+        view.requestLayout()
+        view.invalidate()
     }
 
     fun getTracks(): Map<String, Any?> {

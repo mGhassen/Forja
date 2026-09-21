@@ -96,9 +96,9 @@ class _SettingsEnginePackPendingTileState
       children: [
         Text(
           widget.packName,
-          style: const TextStyle(
+          style: TextStyle(
             color: ForjaShellColors.textPrimary,
-            fontSize: 14,
+            fontSize: SettingsTokens.rowTitleSizeOf(context),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -107,8 +107,8 @@ class _SettingsEnginePackPendingTileState
           sourceUrl,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 11,
+          style: TextStyle(
+            fontSize: SettingsTokens.groupLabelSizeOf(context),
             color: ForjaShellColors.textSecondary,
           ),
         ),
@@ -120,7 +120,7 @@ class _SettingsEnginePackPendingTileState
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: SettingsTokens.groupLabelSizeOf(context),
               color: ForjaShellColors.brandGreen.withValues(
                 alpha: 0.95,
               ),
@@ -134,7 +134,7 @@ class _SettingsEnginePackPendingTileState
     final statusLabel = Text(
       status,
       style: TextStyle(
-        fontSize: 10,
+        fontSize: SettingsTokens.groupLabelSizeOf(context),
         fontWeight: FontWeight.w700,
         color: activeProgress != null
             ? ForjaShellColors.brandGreen
@@ -361,8 +361,8 @@ class SettingsEnginePackInstallStatus extends StatelessWidget {
         line,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: 11,
+        style: TextStyle(
+          fontSize: SettingsTokens.groupLabelSizeOf(context),
           color: ForjaShellColors.brandGreen,
           fontWeight: FontWeight.w600,
         ),
@@ -371,8 +371,8 @@ class SettingsEnginePackInstallStatus extends StatelessWidget {
     if (update != null) {
       return Text(
         'Update available: v${update!.remoteVersion}',
-        style: const TextStyle(
-          fontSize: 11,
+        style: TextStyle(
+          fontSize: SettingsTokens.groupLabelSizeOf(context),
           color: ForjaShellColors.brandGreen,
           fontWeight: FontWeight.w600,
         ),

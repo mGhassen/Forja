@@ -6,6 +6,7 @@ import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 const _kP2pBullets = [
   'Your IP address will be visible to other peers in the network',
@@ -121,21 +122,38 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
       ),
     ];
 
+    final titleSize = SettingsTokens.pageTitleSizeOf(context);
+    final bodySize = SettingsTokens.rowSubtitleSizeOf(context);
+    final size = MediaQuery.sizeOf(context);
+    final maxW = SettingsTokens.dialogMaxWidthOf(context, size.width);
+    final maxH = SettingsTokens.dialogMaxHeightOf(context, size.height);
+    final bodyStyle = TextStyle(
+      color: ForjaShellColors.textSecondary,
+      fontSize: bodySize,
+      height: 1.4,
+    );
+
     return AlertDialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
+      insetPadding: SettingsTokens.dialogInsetPaddingOf(context),
+      titlePadding: SettingsTokens.dialogTitlePaddingOf(context),
+      contentPadding: SettingsTokens.dialogContentPaddingOf(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(
+          SettingsTokens.dialogRadiusOf(context),
+        ),
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
-      title: const Text(
+      title: Text(
         'P2P Streaming',
         style: TextStyle(
           color: ForjaShellColors.textPrimary,
           fontWeight: FontWeight.w700,
+          fontSize: titleSize,
         ),
       ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 460),
+        constraints: BoxConstraints(maxWidth: maxW, maxHeight: maxH),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,12 +161,9 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
             children: [
               const _VpnRecommendBanner(),
               const SizedBox(height: 14),
-              const Text(
+              Text(
                 'This stream uses peer-to-peer (P2P) technology. By continuing, you confirm you are aware that:',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  height: 1.4,
-                ),
+                style: bodyStyle,
               ),
               const SizedBox(height: 12),
               for (final line in _kP2pBullets) ...[
@@ -157,33 +172,16 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        '•  ',
-                        style: TextStyle(
-                          color: ForjaShellColors.textSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          line,
-                          style: const TextStyle(
-                            color: ForjaShellColors.textSecondary,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
+                      Text('•  ', style: bodyStyle),
+                      Expanded(child: Text(line, style: bodyStyle)),
                     ],
                   ),
                 ),
               ],
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'You use this feature entirely at your own risk. Direct torrent, Stremio, and Nuvio can be turned off anytime in Settings.',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  height: 1.4,
-                ),
+                style: bodyStyle,
               ),
             ],
           ),
@@ -218,7 +216,7 @@ class _VpnRecommendBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _amber.withValues(alpha: 0.35)),
       ),
-      child: const Padding(
+      child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,7 +229,7 @@ class _VpnRecommendBanner extends StatelessWidget {
                 style: TextStyle(
                   color: ForjaShellColors.textPrimary,
                   height: 1.35,
-                  fontSize: 13.5,
+                  fontSize: SettingsTokens.typeSizeOf(context, 13.5),
                   fontWeight: FontWeight.w600,
                 ),
               ),

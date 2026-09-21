@@ -358,9 +358,9 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
       children: [
         Text(
           '$_selectedCount selected',
-          style: const TextStyle(
+          style: TextStyle(
             color: ForjaShellColors.textSecondary,
-            fontSize: 12,
+            fontSize: SettingsTokens.rowSubtitleSizeOf(context),
           ),
         ),
         const Spacer(),
@@ -462,7 +462,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
           _body,
           style: TextStyle(
             color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-            fontSize: 13,
+            fontSize: SettingsTokens.rowSubtitleSizeOf(context),
             height: 1.4,
           ),
         ),
@@ -601,7 +601,7 @@ class _PackPromptRow extends StatelessWidget {
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary
                               .withValues(alpha: 0.55),
-                          fontSize: 10,
+                          fontSize: SettingsTokens.groupLabelSizeOf(context),
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.8,
                         ),
@@ -623,11 +623,11 @@ class _PackPromptRow extends StatelessWidget {
                                 .withValues(alpha: 0.35),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Official',
                           style: TextStyle(
                             color: ForjaShellColors.brandGreen,
-                            fontSize: 9,
+                            fontSize: SettingsTokens.groupLabelSizeOf(context),
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.5,
                           ),
@@ -650,11 +650,11 @@ class _PackPromptRow extends StatelessWidget {
                                 .withValues(alpha: 0.4),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Recommended',
                           style: TextStyle(
-                            color: Color(0xFFFF4D1C),
-                            fontSize: 9,
+                            color: const Color(0xFFFF4D1C),
+                            fontSize: SettingsTokens.groupLabelSizeOf(context),
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.5,
                           ),
@@ -668,7 +668,7 @@ class _PackPromptRow extends StatelessWidget {
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary
                               .withValues(alpha: 0.55),
-                          fontSize: 10,
+                          fontSize: SettingsTokens.groupLabelSizeOf(context),
                           fontFamily: 'monospace',
                         ),
                       ),
@@ -680,7 +680,7 @@ class _PackPromptRow extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: muted,
-                    fontSize: 14,
+                    fontSize: SettingsTokens.rowTitleSizeOf(context),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -693,7 +693,7 @@ class _PackPromptRow extends StatelessWidget {
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary
                           .withValues(alpha: 0.45),
-                      fontSize: 10,
+                      fontSize: SettingsTokens.groupLabelSizeOf(context),
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
                     ),
@@ -708,9 +708,9 @@ class _PackPromptRow extends StatelessWidget {
                           : actionLabel,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ForjaShellColors.textSecondary,
-                    fontSize: 12,
+                    fontSize: SettingsTokens.rowSubtitleSizeOf(context),
                     height: 1.35,
                   ),
                 ),

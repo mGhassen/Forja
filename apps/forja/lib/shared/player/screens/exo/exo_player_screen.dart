@@ -58,6 +58,7 @@ import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 part 'exo_player_sources.dart';
 part 'exo_player_tracks.dart';
 part 'exo_player_failover.dart';
@@ -394,7 +395,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _seedSourceSession(_sources);
     if (mounted) setState(() {});
     _eventSub = ExoPlayerBridge.eventsFor(_viewId).listen(_onNativeEvent);
+    // Let Positioned.fill / AndroidView settle before open — opening over a
+    // zero-sized TextureView leaves a zoomed crop on ATV (issue 129 A02).
     await Future<void>.delayed(Duration.zero);
+    await WidgetsBinding.instance.endOfFrame;
     if (!mounted || _disposed) return;
     await _openCurrentSource();
     unawaited(_fetchSubtitles());
@@ -447,17 +451,29 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     }
   }
 
-  /// MediaKit→Exo with ANR-capped prepare: first TextureView paint can be
-  /// zoomed (bigger than screen). Remount once — same as switching away and
-  /// back to Exo, which already fixed it for users (issue 129).
-  void _maybeRemountFitAfterMediaKit() {
-    if (!_fitRemountAfterMediaKit || _fitRemountDone || _disposed) return;
+  /// One-shot TextureView remount after first paint (issue 129).
+  ///
+  /// MediaKit→Exo ANR-capped prepare can leave a zoomed crop; Android
+  /// TextureView cold-open (phone + TV, emulator SurfaceProducer) hits the
+  /// same bad first layout. Remount matches the user workaround (switch away
+  /// and back to Exo).
+  void _maybeRemountFitOnce() {
+    if (_fitRemountDone || _disposed) return;
+    final needRemount = _fitRemountAfterMediaKit || Platform.isAndroid;
+    if (!needRemount) return;
     _fitRemountDone = true;
+    final afterMediaKit = _fitRemountAfterMediaKit;
     _fitRemountAfterMediaKit = false;
-    MpvExclusiveSession.instance.acknowledgeExoFitRemount();
+    if (afterMediaKit) {
+      MpvExclusiveSession.instance.acknowledgeExoFitRemount();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _disposed) return;
-      debugPrint('[ExoPlayer] remount TextureView after MediaKit surface race');
+      debugPrint(
+        afterMediaKit
+            ? '[ExoPlayer] remount TextureView after MediaKit surface race'
+            : '[ExoPlayer] remount TextureView after Android cold-open first frame',
+      );
       setState(() => _platformMountGen++);
       unawaited(ExoPlayerBridge.setResizeMode(_viewId, _resizeMode));
     });
@@ -723,7 +739,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         }
         break;
       case 'renderedFirstFrame':
-        _maybeRemountFitAfterMediaKit();
+        _maybeRemountFitOnce();
         break;
       case 'cues':
         // Avoid setState — ValueListenableBuilder only (issue 151 / 230).
@@ -2000,8 +2016,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   Widget _buildControlsOverlay() {
-    const btnSize = 38.0;
-    const iconSz = 20.0;
+    final tv = _isTv;
+    final btnSize = tv
+        ? ShellTokens.playerChromeBtnSizeTv
+        : ShellTokens.playerChromeBtnSize;
+    final iconSz = tv
+        ? ShellTokens.playerChromeIconSizeTv
+        : ShellTokens.playerChromeIconSize;
+    final timeFs = tv
+        ? ShellTokens.playerChromeTimeFontSizeTv
+        : ShellTokens.playerChromeTimeFontSize;
     final compact = MediaQuery.sizeOf(context).width < 700;
     final tvFocus = _isTv;
     final hasTorrentSources = _usesCatalogSourcesPanel;
@@ -2260,7 +2284,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             PlayerTimeRange(
                               position: _position,
                               duration: _duration,
-                              fontSize: 11,
+                              fontSize: timeFs,
                             ),
                           ],
                         ),
@@ -2588,22 +2612,26 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.white24),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 'Next Episode',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 13,
+                                  fontSize: _isTv
+                                      ? ShellTokens.playerChromeStatusFontSizeTv
+                                      : ShellTokens.playerChromeStatusFontSize,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              SizedBox(width: 6),
+                              const SizedBox(width: 6),
                               Icon(
                                 Icons.arrow_forward_rounded,
                                 color: Colors.white,
-                                size: 18,
+                                size: _isTv
+                                    ? ShellTokens.playerChromeIconSizeTv
+                                    : 18,
                               ),
                             ],
                           ),

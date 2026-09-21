@@ -60,6 +60,7 @@ import 'package:forja_foundation/widgets/catalog/recent_search_helper_tile.dart'
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
 import 'package:forja_foundation/widgets/catalog/server_grid.dart';
 import 'package:forja_foundation/widgets/catalog/shell_mood_circle.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/action_chip.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_category_rail.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
@@ -436,12 +437,19 @@ Widget? paintFoundationType(
             propsStringOr(props, 'imageUrl', propsStringOr(props, 'url', '')),
       );
     case 'moodCircle':
+      final tv = ShellPaintScope.usesTvDensityOf(context);
       return MoodCircle(
         label: propsStringOr(props, 'label', ''),
         imageUrl: propsString(props, 'imageUrl'),
         selected: propsBool(props, 'selected'),
         active: propsBool(props, 'active'),
-        size: propsLengthOr(context, props, 'size', 72),
+        size: propsLengthOr(
+          context,
+          props,
+          'size',
+          tv ? ShellTokens.moodCircleSizeTv : 72,
+        ),
+        layout: tv ? MoodCircleLayout.tvScrollable : MoodCircleLayout.desktop,
         accent: propsColor(props, 'accent'),
         onTap: () {},
       );
@@ -1246,11 +1254,9 @@ Widget? paintFoundationType(
         options: _filterSheetOptions(props),
         tvFocus: propsBool(props, 'tvFocus'),
         autofocusFirst: propsBool(props, 'autofocusFirst'),
-        radius: propsLengthOr(context, props, 'radius', 12),
-        fontSize: propsLengthOr(context, props, 'fontSize', 16),
-        padding: sheetPad != null
-            ? EdgeInsets.all(sheetPad)
-            : const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        radius: propsLength(context, props, 'radius'),
+        fontSize: propsLength(context, props, 'fontSize'),
+        padding: sheetPad != null ? EdgeInsets.all(sheetPad) : null,
       );
     case 'filterSheetOption':
       final optPad = propsLength(context, props, 'padding') ?? propsLength(context, props, 'pad');
@@ -1352,7 +1358,11 @@ Widget? paintFoundationType(
         icon: propsString(props, 'icon'),
       );
       return ShellMoodCircleItem(
-        layout: MoodCircleLayout.desktop,
+        layout: ShellMoodCircleLayout.resolve(
+          context,
+          itemCount: 1,
+          maxWidth: MediaQuery.sizeOf(context).width,
+        ),
         label: propsStringOr(props, 'label', ''),
         icon: mood.icon,
         accent: propsColor(props, 'accent') ?? mood.accent,

@@ -35,6 +35,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 /// Right-side Sources panel in the player - same shell/chrome/tiles as
 /// media-details Sources (torrent search list), not in-torrent file picker.
 class PlayerSourcesPanel {
@@ -452,8 +453,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   /// User wheel/drag on the list — cancel auto scroll-to-playing for this open.
   bool _userDismissedScrollToCurrent = false;
   int _scrollToCurrentAttempts = 0;
-  /// TV: claim D-pad on the playing/selected row once it is mounted.
-  bool _tvListClaimPending = true;
+  /// TV: open claims the kind tab (Forja); ↓ from search may claim the list.
+  bool _tvListClaimPending = false;
   VoidCallback? _tvListFocusUp;
 
   /// Once the user taps Torrents / Stremio / Nuvio, never auto-steal the kind
@@ -4066,7 +4067,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
     // Bleed past TorrentSourcesPanel horizontal padding (Container forbids
     // negative margin). Keep header/footer inset; list tiles go edge-to-edge.
-    final hPad = ShellTokens.playerSidePanelPadding;
+    final hPad = ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.playerSidePanelPaddingTv
+        : ShellTokens.playerSidePanelPadding;
     final panelList = LayoutBuilder(
       builder: (context, constraints) {
         final bleed = hPad.left + hPad.right;
