@@ -808,44 +808,43 @@ class CinematicHeroState extends State<CinematicHero> {
     required bool compact,
     required double desktopTextWidth,
   }) {
-    final body = compact
-        ? LayoutBuilder(
-            builder: (context, constraints) {
-              return Align(
-                alignment: Alignment.bottomLeft,
-                child: _buildCompactColumn(
-                  slide,
-                  maxHeight: constraints.maxHeight,
-                  maxWidth: constraints.maxWidth,
-                  isActive: isActive,
-                ),
-              );
-            },
-          )
-        : LayoutBuilder(
-            builder: (context, constraints) {
-              return Align(
-                alignment: Alignment(
-                  -1,
-                  widget.layout.resolvedTextColumnVerticalAlign,
-                ),
-                child: SizedBox(
-                  width: desktopTextWidth,
-                  child: _buildDesktopColumn(
-                    slide,
-                    maxHeight: constraints.maxHeight,
-                    maxWidth: desktopTextWidth,
-                    isActive: isActive,
-                  ),
-                ),
-              );
-            },
+    // Do not CrossfadeSwap the whole column — that remounts host CTAs (shared
+    // FocusNodes) on every carousel advance and drops TV/desktop focus.
+    // Title / meta / overview crossfade inside the column builders; action
+    // row stays a stable sibling.
+    if (compact) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return Align(
+            alignment: Alignment.bottomLeft,
+            child: _buildCompactColumn(
+              slide,
+              maxHeight: constraints.maxHeight,
+              maxWidth: constraints.maxWidth,
+              isActive: isActive,
+            ),
           );
-    return CrossfadeSwap(
-      child: KeyedSubtree(
-        key: ValueKey(slide.id),
-        child: body,
-      ),
+        },
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Align(
+          alignment: Alignment(
+            -1,
+            widget.layout.resolvedTextColumnVerticalAlign,
+          ),
+          child: SizedBox(
+            width: desktopTextWidth,
+            child: _buildDesktopColumn(
+              slide,
+              maxHeight: constraints.maxHeight,
+              maxWidth: desktopTextWidth,
+              isActive: isActive,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -892,53 +891,60 @@ class CinematicHeroState extends State<CinematicHero> {
       actionRowHeight: actionRowH,
     );
 
+    final chrome = ClipRect(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (layoutFit.titleHeight > 0)
+            SizedBox(
+              height: layoutFit.titleHeight,
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: _buildTitle(
+                  slide,
+                  desktop: true,
+                  slotHeight: layoutFit.titleHeight,
+                ),
+              ),
+            ),
+          if (layoutFit.showMeta) ...[
+            SizedBox(height: titleGap),
+            SizedBox(
+              height: metaSlotHeight,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _buildMetaRow(slide, singleLine: true),
+              ),
+            ),
+          ],
+          if (layoutFit.showOverview) ...[
+            SizedBox(height: metaOverviewGap),
+            SizedBox(
+              height: layoutFit.overviewSlotHeight,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: HeroOverviewText(
+                  overview: overview,
+                  style: overviewStyle,
+                  maxLines: layoutFit.overviewMaxLines,
+                  shrinkWrap: false,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        ClipRect(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (layoutFit.titleHeight > 0)
-                SizedBox(
-                  height: layoutFit.titleHeight,
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: _buildTitle(
-                      slide,
-                      desktop: true,
-                      slotHeight: layoutFit.titleHeight,
-                    ),
-                  ),
-                ),
-              if (layoutFit.showMeta) ...[
-                SizedBox(height: titleGap),
-                SizedBox(
-                  height: metaSlotHeight,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: _buildMetaRow(slide, singleLine: true),
-                  ),
-                ),
-              ],
-              if (layoutFit.showOverview) ...[
-                SizedBox(height: metaOverviewGap),
-                SizedBox(
-                  height: layoutFit.overviewSlotHeight,
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: HeroOverviewText(
-                      overview: overview,
-                      style: overviewStyle,
-                      maxLines: layoutFit.overviewMaxLines,
-                      shrinkWrap: false,
-                    ),
-                  ),
-                ),
-              ],
-            ],
+        CrossfadeSwap(
+          child: KeyedSubtree(
+            key: ValueKey('hero-chrome-${slide.id}'),
+            child: chrome,
           ),
         ),
         if (layoutFit.actionRowHeight > 0 || upcomingReserve > 0) ...[
@@ -1030,22 +1036,33 @@ class CinematicHeroState extends State<CinematicHero> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildTitle(slide, compact: true),
-          SizedBox(height: titleMetaGap),
-          _buildMetaRow(slide, singleLine: true),
-          if (overviewLines > 0) ...[
-            SizedBox(height: metaOverviewGap),
-            HeroOverviewText(
-              overview: overview,
-              style: TextStyle(
-                fontSize: overviewFontSize,
-                height: overviewHeight,
-                color: const Color(0x99FFFFFF),
+          CrossfadeSwap(
+            child: KeyedSubtree(
+              key: ValueKey('hero-chrome-${slide.id}'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTitle(slide, compact: true),
+                  SizedBox(height: titleMetaGap),
+                  _buildMetaRow(slide, singleLine: true),
+                  if (overviewLines > 0) ...[
+                    SizedBox(height: metaOverviewGap),
+                    HeroOverviewText(
+                      overview: overview,
+                      style: TextStyle(
+                        fontSize: overviewFontSize,
+                        height: overviewHeight,
+                        color: const Color(0x99FFFFFF),
+                      ),
+                      maxLines: overviewLines,
+                      shrinkWrap: true,
+                    ),
+                  ],
+                ],
               ),
-              maxLines: overviewLines,
-              shrinkWrap: true,
             ),
-          ],
+          ),
           SizedBox(height: actionGap),
           widget.upcomingNoticeBuilder?.call(context, slide) ??
               const SizedBox.shrink(),

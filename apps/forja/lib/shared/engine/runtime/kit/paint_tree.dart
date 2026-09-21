@@ -3670,15 +3670,12 @@ class _BecauseMount extends StatefulWidget {
 class _BecauseMountState extends State<_BecauseMount> {
   int _shuffleKey = 0;
   List<Map<String, dynamic>> _seeds = const [];
-  var _seedsReady = false;
   StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
 
   @override
   void initState() {
     super.initState();
-    // Same pattern as Continue: cache seeds in state. A FutureBuilder
-    // rebuilt with a new future each paint resets to waiting → empty →
-    // shrink, so the Because rail vanished under hub rebuilds.
+    // Cache seeds in state (same as Continue). Never FutureBuilder-per-build.
     WatchHistory.revision.addListener(_reloadSeeds);
     if (widget.mergeHomeWatchHistory) {
       _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
@@ -3702,19 +3699,9 @@ class _BecauseMountState extends State<_BecauseMount> {
         mergeHomeWatchHistory: widget.mergeHomeWatchHistory,
       );
       if (!mounted) return;
-      debugPrint(
-        '[Because] seeds=${list.length} merge=${widget.mergeHomeWatchHistory} '
-        'plugin=${widget.pluginId}',
-      );
-      setState(() {
-        _seeds = list;
-        _seedsReady = true;
-      });
-    } catch (e) {
-      debugPrint('[Because] seed load failed: $e');
-      if (!mounted) return;
+      setState(() => _seeds = list);
+    } catch (_) {
       // Keep last seeds — do not wipe the rail on a transient failure.
-      setState(() => _seedsReady = true);
     }
   }
 
@@ -3726,35 +3713,27 @@ class _BecauseMountState extends State<_BecauseMount> {
       PackPaintArtifact.stableSortOrder(tabReserve, 'because-shuffle');
       PackPaintArtifact.stableSortOrder(tabReserve, 'because');
     }
-    if (!_seedsReady) {
-      // Hold layout space while seeds load — avoid permanent shrink flash.
-      return SizedBox(height: InteractivePosterCard.cardHeight(context) + 48);
-    }
     final seeds = _seeds;
     if (seeds.isEmpty) return const SizedBox.shrink();
     final load = packLoadSpec(widget.spec['load']);
-    if (load == null) {
-      debugPrint('[Because] missing load spec');
-      return const SizedBox.shrink();
-    }
+    if (load == null) return const SizedBox.shrink();
+    // Cap seeds — EngineJS params stay small; one seed is enough to fetch.
+    final seedParams = seeds.length <= 12 ? seeds : seeds.sublist(0, 12);
     return PackLoadedPaint(
-      key: ValueKey('because-$_shuffleKey-${seeds.length}'),
+      key: ValueKey('because-$_shuffleKey-${seedParams.length}'),
       pluginId: widget.pluginId,
       packSourceUrl: widget.packSourceUrl,
       tabId: widget.tabId,
       action: load.action,
       params: {
         ...load.params,
-        'resumeSeeds': seeds,
+        'resumeSeeds': seedParams,
         'shuffleKey': _shuffleKey,
       },
       fallbackSpec: widget.spec,
       builder: (ctx, node) {
         final items = node['items'];
         if (items is! List || items.isEmpty) {
-          debugPrint(
-            '[Because] empty items after load (seeds=${seeds.length})',
-          );
           return const SizedBox.shrink();
         }
                 final tab = widget.tabId ??

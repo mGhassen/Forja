@@ -694,17 +694,31 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       );
     }
 
+    var bustBecauseCache = false;
     if (!force) {
       final resolved = PackLoadedPaint._resolved[key];
       if (resolved != null) {
-        PackLoadedPaint._resolved[_warmPaintKey] = resolved;
-        return Future.value(resolved);
+        if (_isUnusableBecauseCache(resolved, runParams)) {
+          PackLoadedPaint._resolved.remove(key);
+          PackLoadedPaint._resolved.remove(_warmPaintKey);
+          PackLoadedPaint._memo.remove(key);
+          bustBecauseCache = true;
+        } else {
+          PackLoadedPaint._resolved[_warmPaintKey] = resolved;
+          return Future.value(resolved);
+        }
       }
       final hit = PackLoadedPaint._memo[key];
-      if (hit != null) {
+      if (hit != null && !bustBecauseCache) {
         return hit.then((env) {
-          PackLoadedPaint._resolved[key] = env;
-          PackLoadedPaint._resolved[_warmPaintKey] = env;
+          if (_isUnusableBecauseCache(env, runParams)) {
+            PackLoadedPaint._resolved.remove(key);
+            PackLoadedPaint._resolved.remove(_warmPaintKey);
+            PackLoadedPaint._memo.remove(key);
+          } else {
+            PackLoadedPaint._resolved[key] = env;
+            PackLoadedPaint._resolved[_warmPaintKey] = env;
+          }
           return env;
         });
       }
@@ -716,22 +730,35 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         packSourceUrl: widget.packSourceUrl,
       );
       if (peeked != null && peeked.ok) {
-        PackLoadedPaint._resolved[key] = peeked;
-        PackLoadedPaint._resolved[_warmPaintKey] = peeked;
-        return Future.value(peeked);
+        if (_isUnusableBecauseCache(peeked, runParams)) {
+          bustBecauseCache = true;
+        } else {
+          PackLoadedPaint._resolved[key] = peeked;
+          PackLoadedPaint._resolved[_warmPaintKey] = peeked;
+          return Future.value(peeked);
+        }
       }
     } else {
       PackLoadedPaint._resolved.remove(key);
       PackLoadedPaint._resolved.remove(_warmPaintKey);
       PackLoadedPaint._memo.remove(key);
     }
+    final refresh = force || bustBecauseCache;
     final future = packOpaqueRun(
       pluginId: widget.pluginId,
       action: widget.action,
       params: runParams,
       packSourceUrl: widget.packSourceUrl,
-      forceRefresh: force,
+      forceRefresh: refresh,
     ).then((env) {
+      // Never sticky-cache an empty Because envelope when seeds were sent —
+      // a prior failed recommendations call would hide the row forever.
+      if (_isUnusableBecauseCache(env, runParams)) {
+        PackLoadedPaint._resolved.remove(key);
+        PackLoadedPaint._resolved.remove(_warmPaintKey);
+        PackLoadedPaint._memo.remove(key);
+        return env;
+      }
       PackLoadedPaint._resolved[key] = env;
       PackLoadedPaint._resolved[_warmPaintKey] = env;
       return env;
@@ -754,6 +781,21 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       for (final k in keys)
         if (k != 'force' && k != 'refresh') '$k=${params[k]}',
     ].join('&');
+  }
+
+  /// Empty Because ok-envelope with seeds present — do not sticky-cache.
+  /// Otherwise a one-shot recommendations miss hides the row until process death.
+  static bool _isUnusableBecauseCache(
+    MetaEnvelope env,
+    Map<String, dynamic> params,
+  ) {
+    final rail = (params['rail'] ?? '').toString().trim();
+    if (rail != 'because') return false;
+    final seeds = params['resumeSeeds'];
+    if (seeds is! List || seeds.isEmpty) return false;
+    if (!env.ok) return false;
+    final items = env.data?['items'];
+    return items is! List || items.isEmpty;
   }
 
   bool _mapEquals(Map<String, dynamic> a, Map<String, dynamic> b) {
