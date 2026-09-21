@@ -68,6 +68,7 @@ import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -3268,7 +3269,11 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
             continue;
           }
           if (children.isNotEmpty) {
-            children.add(const SizedBox(width: 10));
+            children.add(SizedBox(
+              width: ShellPaintScope.usesTvDensityOf(context)
+                  ? DetailsTokens.heroPillGapTv
+                  : DetailsTokens.heroPillGap,
+            ));
           }
           children.add(child);
         }

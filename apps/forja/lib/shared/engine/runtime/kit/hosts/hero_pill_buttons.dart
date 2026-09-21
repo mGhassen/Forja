@@ -54,7 +54,9 @@ class HeroPillPlayButton extends StatelessWidget {
     final policy = ShellScope.inputPolicyOf(context);
     final style = HeroPillStyle.forTone(_tone);
     final leading = iconWidget ??
-        (icon != null ? Icon(icon, size: kHeroPillIconSize) : null);
+        (icon != null
+            ? Icon(icon, size: heroPillIconSizeOf(context))
+            : null);
     final useTvCompact = policy.useFocusableMoodChips;
     final tvMeta = tvTabId != null && useTvCompact
         ? ShellTvFocusMeta(

@@ -95,7 +95,12 @@ class CatalogMenu extends StatelessWidget {
           if (count != null && count! > 0)
             Text(
               '$count',
-              style: const TextStyle(color: Colors.white38, fontSize: 14),
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: ShellPaintScope.usesTvDensityOf(context)
+                    ? ShellTokens.tvBodyFontSize
+                    : 14,
+              ),
             ),
         ],
       );
@@ -126,19 +131,30 @@ class CatalogMenu extends StatelessWidget {
           if (count != null && count! > 0)
             Text(
               '$count',
-              style: const TextStyle(color: Colors.white38, fontSize: 14),
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: ShellPaintScope.usesTvDensityOf(context)
+                    ? ShellTokens.tvBodyFontSize
+                    : 14,
+              ),
             ),
         ],
       );
     }
 
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
     final padded = Padding(
       padding: EdgeInsets.fromLTRB(
         inShellTopBar
-            ? ShellTokens.shellTopBarMenuLeadingInset(context)
+            ? (tvDensity
+                ? ShellTokens.bodyHorizontalPadding +
+                    ShellTokens.homeTopBarMenuLeadingInsetTv
+                : ShellTokens.shellTopBarMenuLeadingInset(context))
             : ShellTokens.compactChromeLeadingInset(context),
         inShellTopBar
-            ? ShellTokens.shellHeaderTopPadding
+            ? (tvDensity
+                ? ShellTokens.shellHeaderTopPaddingTv
+                : ShellTokens.shellHeaderTopPadding)
             : ShellTokens.tabHeaderTopPadding,
         ShellTokens.bodyHorizontalPadding,
         inShellTopBar ? 0 : 4,

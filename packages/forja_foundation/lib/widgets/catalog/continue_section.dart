@@ -98,7 +98,11 @@ class ContinueSection extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               clipBehavior: Clip.none,
               padding: listPadding ??
-                  const EdgeInsets.symmetric(horizontal: 24),
+                  EdgeInsets.symmetric(
+                    horizontal: ShellPaintScope.usesTvDensityOf(context)
+                        ? ShellTokens.tvHomeSectionHorizontalPadding
+                        : ShellTokens.homeSectionHorizontalPadding,
+                  ),
               itemCount: entryList.length,
               separatorBuilder: (_, _) => SizedBox(width: cardGap),
               itemBuilder: (_, i) {

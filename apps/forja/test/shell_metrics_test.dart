@@ -13,34 +13,43 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 
 void main() {
-  test('tv leanback uses poster scale + milder chrome scale', () {
-    expect(ShellTokens.posterCardWidthTv, 70);
+  test('tv uses one chrome scale for posters, layout, and type weight', () {
+    expect(ShellTokens.tvChromeScale, 0.72);
     expect(
-      ShellTokens.tvLayoutScale,
+      ShellTokens.posterCardWidthTv,
       closeTo(
-        ShellTokens.posterCardWidthTv / ShellTokens.posterCardWidthDesktop,
+        ShellTokens.posterCardWidthDesktop * ShellTokens.tvChromeScale,
         0.001,
       ),
     );
-    expect(ShellTokens.tvChromeScale, 0.72);
+    expect(
+      ShellTokens.tvLayoutScale,
+      closeTo(ShellTokens.tvChromeScale, 0.001),
+    );
     expect(
       ShellTokens.navRailWidthTv / ShellTokens.navRailWidth,
-      closeTo(ShellTokens.tvLayoutScale, 0.001),
+      closeTo(ShellTokens.tvChromeScale, 0.001),
     );
     expect(
-      ShellTokens.posterCardWidthTv / ShellTokens.posterCardWidthDesktop,
-      closeTo(ShellTokens.tvLayoutScale, 0.001),
+      ShellTokens.controlHeightTv,
+      closeTo(ShellTokens.controlHeight * ShellTokens.tvChromeScale, 0.001),
     );
-    expect(ShellTokens.navRailWidthTv, closeTo(120 * 70 / 190, 0.001));
-    // Interactive chrome stays milder than poster spatial scale.
-    expect(ShellTokens.tvChromeScale, greaterThan(ShellTokens.tvLayoutScale));
-    expect(ShellTokens.shellProviderTileWidthTv, 68);
-    expect(ShellTokens.homeMenuRowHeightTv, 24);
-    expect(ShellTokens.controlHeightTv, 28);
-    expect(ShellTokens.continueWatchingCardWidthTv, 120);
-    expect(SettingsTokens.sidebarWidthTv, 180);
-    expect(SettingsTokens.rowMinHeightTv, 40);
-    expect(DetailsTokens.sectionSpacingTv, 24);
+    // Hero CTA reserve must not crush below painted pill height.
+    expect(
+      ShellTokens.controlHeightTv,
+      greaterThanOrEqualTo(DetailsTokens.heroPillHeightTv - 0.001),
+    );
+    expect(ShellTokens.tvBodyFontSize, 11);
+    expect(ShellTokens.tvTitleFontSize, 14);
+    expect(ShellTokens.tvMetaFontSize, 10);
+    expect(
+      SettingsTokens.sidebarWidthTv,
+      closeTo(SettingsTokens.sidebarWidth * ShellTokens.tvChromeScale, 0.001),
+    );
+    expect(
+      DetailsTokens.sectionSpacingTv,
+      closeTo(DetailsTokens.sectionSpacing * ShellTokens.tvChromeScale, 0.001),
+    );
   });
 
   test('channelCards and poster packing fill the row', () {
@@ -88,11 +97,11 @@ void main() {
     expect(tv.navRailItemSpacing, lessThan(desktop.navRailItemSpacing));
     expect(
       tv.navRailWidth / desktop.navRailWidth,
-      closeTo(ShellTokens.tvLayoutScale, 0.001),
+      closeTo(ShellTokens.tvChromeScale, 0.001),
     );
     expect(
       tv.posterCardWidth / desktop.posterCardWidth,
-      closeTo(ShellTokens.tvLayoutScale, 0.001),
+      closeTo(ShellTokens.tvChromeScale, 0.001),
     );
     expect(desktop.usesTvDensity, isFalse);
     expect(tv.usesTvDensity, isTrue);
@@ -106,7 +115,6 @@ void main() {
   });
 
   test('input policies match profile expectations', () {
-    // Desktop: hover + D-pad + Ken Burns. TV: D-pad, no hover / Ken Burns.
     expect(ShellInputPolicy.desktop.scaleOnHover, isTrue);
     expect(ShellInputPolicy.desktop.scaleOnFocus, isTrue);
     expect(ShellInputPolicy.desktop.wrapAppFocusTraversal, isTrue);
@@ -163,7 +171,6 @@ void main() {
         ),
       );
 
-      // ATV floating menus match desktop (anchored) — never force centered.
       expect(ShellInputPolicy.desktop.useFocusableMoodChips, isTrue);
       expect(desktopCentered, isFalse);
       expect(tvCentered, isFalse);

@@ -1,44 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Layout constants for the Settings category hub (RFC-033).
 ///
-/// TV sizes are leanback literals (not desktop × iso-desktop 0.85).
+/// TV sizes follow [ShellTokens.tvChromeScale] (same weight as catalog cards).
 abstract final class SettingsTokens {
   /// Below this width, use list → push instead of sidebar.
   static const double splitMinWidth = 900;
 
+  static const double _s = ShellTokens.tvChromeScale;
+
   static const double sidebarWidth = 260;
-  static const double sidebarWidthTv = 180;
+  static const double sidebarWidthTv = sidebarWidth * _s;
   static const double detailMaxWidth = 720;
   /// Flat green left-bar + ink fill (category rail and detail rows) — no card radius.
   static const double categoryTileRadius = 0;
   static const double groupRadius = 12;
   static const double rowMinHeight = 56;
-  static const double rowMinHeightTv = 40;
+  static const double rowMinHeightTv = rowMinHeight * _s;
   static const double groupSpacing = 24;
-  static const double groupSpacingTv = 14;
+  static const double groupSpacingTv = groupSpacing * _s;
   static const double pagePadding = 20;
-  static const double pagePaddingTv = 12;
+  static const double pagePaddingTv = pagePadding * _s;
   static const double groupLabelSize = 11;
-  static const double groupLabelSizeTv = 10;
+  static const double groupLabelSizeTv = ShellTokens.tvMetaFontSize;
   static const double categoryTitleSize = 15;
-  static const double categoryTitleSizeTv = 11;
+  static const double categoryTitleSizeTv = ShellTokens.tvBodyFontSize;
   static const double categoryIconSize = 22;
-  static const double categoryIconSizeTv = 16;
+  static const double categoryIconSizeTv = categoryIconSize * _s;
   static const double pageTitleSize = 22;
-  static const double pageTitleSizeTv = 14;
+  static const double pageTitleSizeTv = ShellTokens.tvTitleFontSize;
   /// Hub list / sidebar "Settings" title ([ShellTabHeader]).
   static const double hubTitleSize = 24;
-  static const double hubTitleSizeTv = 14;
+  static const double hubTitleSizeTv = ShellTokens.tvTitleFontSize;
 
   /// Flat switch geometry — thumb is always a circle (never non-uniform scaled).
   static const double switchTrackWidth = 34;
-  static const double switchTrackWidthTv = 24;
+  static const double switchTrackWidthTv = switchTrackWidth * _s;
   static const double switchTrackHeight = 18;
-  static const double switchTrackHeightTv = 12;
+  static const double switchTrackHeightTv = switchTrackHeight * _s;
   static const double switchThumbSize = 12;
-  static const double switchThumbSizeTv = 8;
+  static const double switchThumbSizeTv = switchThumbSize * _s;
 
   /// True when Settings should show the split sidebar layout.
   /// Desktop / wide and Android TV (1080p+) use the same hub chrome.

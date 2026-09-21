@@ -130,9 +130,12 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
 
   Widget _row(bool active) {
     final selected = widget.selected;
-    final labelFontSize = ShellPaintScope.usesTvDensityOf(context)
-        ? ShellTokens.tvBodyFontSize
-        : 12.0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final labelFontSize = tv ? ShellTokens.tvBodyFontSize : 12.0;
+    final padH = ShellTokens.chromeScale(14, tv: tv);
+    final padV = ShellTokens.chromeScale(8, tv: tv);
+    final iconSize = ShellTokens.chromeScale(16, tv: tv);
+    final gap = ShellTokens.chromeScale(8, tv: tv);
     // Hover / D-pad wins the strong tint. Selected (idle) still uses status
     // color — desktop has no autofocus, so weight-only was invisible.
     final lit = active || selected;
@@ -140,7 +143,7 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
     return AnimatedContainer(
       duration: ForjaMotionTheme.of(context).fillOnly.duration,
       curve: ForjaMotionTheme.of(context).fillOnly.resolvedCurve,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       color: active
           ? widget.statusColor.withValues(alpha: 0.12)
           : selected
@@ -148,8 +151,8 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
               : Colors.transparent,
       child: Row(
         children: [
-          Icon(widget.icon, size: 16, color: accent),
-          const SizedBox(width: 8),
+          Icon(widget.icon, size: iconSize, color: accent),
+          SizedBox(width: gap),
           Expanded(
             child: Text(
               widget.label,
@@ -455,7 +458,11 @@ class _ListStatusPinState extends State<ListStatusPin> {
       child: FocusableTap(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        child: SizedBox(width: 40, height: 40, child: Center(child: child)),
+        child: SizedBox(
+          width: ShellTokens.controlHeightTv,
+          height: ShellTokens.controlHeightTv,
+          child: Center(child: child),
+        ),
       ),
     );
   }

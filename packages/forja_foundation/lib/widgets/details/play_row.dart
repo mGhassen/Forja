@@ -58,28 +58,32 @@ class DetailsHeroActionRowFit extends StatelessWidget {
 
 /// Soft “not playable yet” chip for hub details heroes (upcoming titles).
 ///
-/// Height matches [ShellTokens.shellButtonHeight] so hero footer budget fits.
+/// Height matches control height so hero footer budget fits.
 class DetailsUpcomingNotice extends StatelessWidget {
   const DetailsUpcomingNotice({
     super.key,
     this.releaseDateLabel,
   });
 
-  static const double height = ShellTokens.shellButtonHeight;
-
   /// Human premiere label (e.g. `Jun 14, 2026`), or null/empty if unknown.
   final String? releaseDateLabel;
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final height =
+        tv ? ShellTokens.controlHeightTv : ShellTokens.shellButtonHeight;
     final date = releaseDateLabel?.trim() ?? '';
     final hasDate = date.isNotEmpty;
     final label = hasDate ? 'Coming soon · $date' : 'Coming soon';
-    final bodyFontSize = ShellPaintScope.usesTvDensityOf(context)
-        ? ShellTokens.tvBodyFontSize
-        : 14.0;
+    final bodyFontSize =
+        tv ? ShellTokens.tvBodyFontSize : 14.0;
+    final padH = ShellTokens.chromeScale(14, tv: tv);
+    final iconSize = ShellTokens.chromeScale(18, tv: tv);
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 380),
+      constraints: BoxConstraints(
+        maxWidth: ShellTokens.chromeScale(380, tv: tv),
+      ),
       child: SizedBox(
         height: height,
         child: DecoratedBox(
@@ -89,16 +93,16 @@ class DetailsUpcomingNotice extends StatelessWidget {
             border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 14),
+            padding: EdgeInsets.symmetric(horizontal: padH),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.schedule_rounded,
                   color: Colors.amber.shade200,
-                  size: 18,
+                  size: iconSize,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: ShellTokens.chromeScale(8, tv: tv)),
                 Flexible(
                   child: Text(
                     label,

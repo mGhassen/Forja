@@ -20,6 +20,22 @@ double heroPillIconSizeOf(BuildContext context, {bool? tvDensity}) {
   return tv ? DetailsTokens.heroPillIconSizeTv : DetailsTokens.heroPillIconSize;
 }
 
+double heroPillLabelPadEndOf(BuildContext context, {bool? tvDensity}) {
+  final tv = tvDensity ?? ShellPaintScope.usesTvDensityOf(context);
+  return tv
+      ? DetailsTokens.heroPillLabelPadEndTv
+      : DetailsTokens.heroPillLabelPadEnd;
+}
+
+double heroPillGapOf(BuildContext context, {bool? tvDensity}) {
+  final tv = tvDensity ?? ShellPaintScope.usesTvDensityOf(context);
+  return tv ? DetailsTokens.heroPillGapTv : DetailsTokens.heroPillGap;
+}
+
+double heroPillHorizontalPadOf(BuildContext context, {bool? tvDensity}) {
+  return heroPillLabelPadEndOf(context, tvDensity: tvDensity);
+}
+
 Color heroPillHoverFill({required bool pressed}) =>
     Colors.white.withValues(alpha: pressed ? 0.24 : 0.18);
 
@@ -280,7 +296,9 @@ class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
               child: Opacity(
                 opacity: labelOpacity,
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 14),
+                  padding: EdgeInsets.only(
+                    right: heroPillLabelPadEndOf(context),
+                  ),
                   child: Text(
                     widget.label,
                     maxLines: 1,
@@ -330,7 +348,7 @@ class HeroMagnetIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconTheme = IconTheme.of(context);
-    final resolvedSize = size ?? iconTheme.size ?? kHeroPillIconSize;
+    final resolvedSize = size ?? iconTheme.size ?? heroPillIconSizeOf(context);
     final resolvedColor = color ?? iconTheme.color ?? kHeroPillForegroundDark;
     return SizedBox(
       width: resolvedSize,
@@ -549,7 +567,9 @@ class _HeroPillGroupedSlotSurfaceState extends State<HeroPillGroupedSlotSurface>
                     child: Opacity(
                       opacity: _labelOpacity.value,
                       child: Padding(
-                        padding: const EdgeInsets.only(right: 14),
+                        padding: EdgeInsets.only(
+                    right: heroPillLabelPadEndOf(context),
+                  ),
                         child: Text(
                           widget.label,
                           maxLines: 1,
@@ -609,7 +629,9 @@ class HeroPillSegmentSurface extends StatelessWidget {
       duration: ForjaMotionTheme.of(context).heroPillHover.duration,
       curve: ForjaMotionTheme.of(context).heroPillHover.resolvedCurve,
       height: pillHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: heroPillHorizontalPadOf(context),
+      ),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: lit

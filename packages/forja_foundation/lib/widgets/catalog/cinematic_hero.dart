@@ -867,7 +867,9 @@ class CinematicHeroState extends State<CinematicHero> {
     final metaSlotHeight = layout.scaledChrome(layout.resolvedMetaSlotHeight);
     final metaOverviewGap =
         layout.scaledChrome(layout.resolvedMetaOverviewGap);
-    final actionRowH = layout.scaledChrome(ShellTokens.shellButtonHeight);
+    final actionRowH = layout.tvDensity
+        ? ShellTokens.controlHeightTv
+        : ShellTokens.shellButtonHeight;
     final overview = slide.overview.trim();
     final upcomingReserve = slide.isUpcoming
         ? layout.scaledChrome(layout.resolvedUpcomingNoticeReserve)
@@ -982,21 +984,30 @@ class CinematicHeroState extends State<CinematicHero> {
     required double maxWidth,
     bool isActive = true,
   }) {
+    final layout = widget.layout;
+    final tv = layout.tvDensity;
     final overview = slide.overview.trim();
-    const titleMetaGap = 8.0;
-    const metaOverviewGap = 8.0;
-    const actionGap = ShellTokens.heroActionGapDesktop;
-    const overviewFontSize = 13.0;
+    final titleMetaGap = tv ? layout.scaledChrome(8) : 8.0;
+    final metaOverviewGap = tv ? layout.scaledChrome(8) : 8.0;
+    final actionGap = tv
+        ? layout.scaledChrome(ShellTokens.heroActionGapDesktop)
+        : ShellTokens.heroActionGapDesktop;
+    final overviewFontSize =
+        tv ? layout.scaledType(13) : 13.0;
     const overviewHeight = 1.35;
     const overviewMaxLinesCap = 3;
-    const metaReserve = 24.0;
+    final metaReserve = tv ? layout.scaledChrome(24) : 24.0;
     final overviewLineHeight = overviewFontSize * overviewHeight;
+    final ctaH =
+        tv ? ShellTokens.controlHeightTv : ShellTokens.shellButtonHeight;
     // Worst-case chrome so synopsis shrinks/drops before the Column overflows.
-    final fixedChrome = ShellTokens.heroTitleSlotHeightCompact +
+    final fixedChrome = (tv
+            ? layout.scaledChrome(ShellTokens.heroTitleSlotHeightCompact)
+            : ShellTokens.heroTitleSlotHeightCompact) +
         titleMetaGap +
         metaReserve +
         actionGap +
-        ShellTokens.shellButtonHeight;
+        ctaH;
     var overviewLines = 0;
     if (overview.isNotEmpty) {
       final budget = maxHeight - fixedChrome - metaOverviewGap;
@@ -1020,22 +1031,22 @@ class CinematicHeroState extends State<CinematicHero> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildTitle(slide, compact: true),
-          const SizedBox(height: titleMetaGap),
+          SizedBox(height: titleMetaGap),
           _buildMetaRow(slide, singleLine: true),
           if (overviewLines > 0) ...[
-            const SizedBox(height: metaOverviewGap),
+            SizedBox(height: metaOverviewGap),
             HeroOverviewText(
               overview: overview,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: overviewFontSize,
                 height: overviewHeight,
-                color: Color(0x99FFFFFF),
+                color: const Color(0x99FFFFFF),
               ),
               maxLines: overviewLines,
               shrinkWrap: true,
             ),
           ],
-          const SizedBox(height: actionGap),
+          SizedBox(height: actionGap),
           widget.upcomingNoticeBuilder?.call(context, slide) ??
               const SizedBox.shrink(),
           widget.actionRowBuilder?.call(context, slide, isActive: isActive) ??

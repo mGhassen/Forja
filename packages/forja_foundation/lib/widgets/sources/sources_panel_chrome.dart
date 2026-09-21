@@ -296,6 +296,9 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
     return RawScrollbar(
       controller: _listScroll,
       interactive: interactive,
+      // TV (non-interactive): keep the thumb visible for D-pad position.
+      thumbVisibility: interactive ? null : true,
+      trackVisibility: interactive ? null : true,
       thickness: ForjaScrollbarStyle.thickness,
       radius: ForjaScrollbarStyle.radius,
       mainAxisMargin: ForjaScrollbarStyle.mainAxisMargin,

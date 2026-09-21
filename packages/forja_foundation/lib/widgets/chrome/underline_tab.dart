@@ -107,15 +107,26 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
                     Colors.white,
                     (t - _hoverT) / (_selectedT - _hoverT),
                   )!;
-        final tabHeight = 34.0;
-        final tabFont = 17.0;
-        final hoverW = 28.0;
+        final tv = ShellPaintScope.usesTvDensityOf(context);
+        final tabHeight = tv
+            ? ShellTokens.homeMenuRowHeightTv
+            : ShellTokens.homeMenuRowHeight;
+        final tabFont = tv
+            ? ShellTokens.kitTopBarTabFontSizeTv
+            : ShellTokens.kitTopBarTabFontSize;
+        final hoverW = tv
+            ? ShellTokens.kitTopBarUnderlineHoverWidth * ShellTokens.tvChromeScale
+            : ShellTokens.kitTopBarUnderlineHoverWidth;
+        final underlineExtra = tv
+            ? ShellTokens.kitTopBarUnderlineSelectedExtra *
+                ShellTokens.tvChromeScale
+            : ShellTokens.kitTopBarUnderlineSelectedExtra;
         final underline = t <= 0
             ? 0.0
             : t < _hoverT
                 ? hoverW * (t / _hoverT)
                 : hoverW +
-                    4.0 * ((t - _hoverT) / (_selectedT - _hoverT));
+                    underlineExtra * ((t - _hoverT) / (_selectedT - _hoverT));
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,7 +150,11 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
                 ),
               ),
             ),
-            SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
+            SizedBox(
+              height: tv
+                  ? ShellTokens.shellCategoryUnderlineGap * ShellTokens.tvChromeScale
+                  : ShellTokens.shellCategoryUnderlineGap,
+            ),
             Container(
               height: ShellTokens.shellNavUnderlineHeight,
               width: underline,
