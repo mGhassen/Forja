@@ -15,6 +15,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 void _toastStatusWrite(bool ok, String to) {
   if (to.isEmpty) {
@@ -312,7 +313,8 @@ class _LegacyTogglePin extends StatelessWidget {
                     ? Icons.favorite_rounded
                     : Icons.favorite_border_rounded)
               : (inList ? Icons.bookmark_rounded : Icons.add_rounded),
-          size: iconSize ?? (useHeartIcon ? 24 : 20),
+          size: iconSize ??
+              ShellPaintScope.iconOf(context, useHeartIcon ? 24 : 20),
           color: inList
               ? (iconColorActive ??
                     (useHeartIcon ? Colors.white : ForjaShellColors.iconActive))
@@ -375,7 +377,7 @@ class BookmarkHeroIcon extends StatelessWidget {
                 : null);
         return Icon(
           listStatusPinIcon(status),
-          size: 20,
+          size: ShellPaintScope.iconOf(context, 20),
           color: listStatusPinColor(status),
         );
       },
@@ -602,7 +604,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
                 label: listStatusLabel(status),
                 iconWidget: Icon(
                   listStatusPinIcon(status),
-                  size: 20,
+                  size: ShellPaintScope.iconOf(context, 20),
                   color: listStatusPinColor(status),
                 ),
                 onTap: (!widget.enabled || _busy) ? null : _toggle,

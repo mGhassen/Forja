@@ -105,7 +105,7 @@ class DetailsCastSection extends StatelessWidget {
                         child: Icon(
                           Icons.person,
                           color: Colors.white.withValues(alpha: 0.24),
-                          size: 36,
+                          size: ShellPaintScope.iconOf(context, 36),
                         ),
                       ),
               );

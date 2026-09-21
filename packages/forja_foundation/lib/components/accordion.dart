@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Expandable / collapsible section.
 class Accordion extends StatefulWidget {
@@ -85,7 +86,7 @@ class _AccordionState extends State<Accordion> {
                   child: Icon(
                     Icons.expand_more,
                     color: theme.textSecondary,
-                    size: 22,
+                    size: ShellPaintScope.iconOf(context, 22),
                   ),
                 ),
               ],

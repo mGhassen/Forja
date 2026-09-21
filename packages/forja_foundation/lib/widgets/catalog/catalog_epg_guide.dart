@@ -695,11 +695,7 @@ class _ChannelCellState extends State<_ChannelCell> {
                 error: const SizedBox(
                   width: 34,
                   height: 34,
-                  child: Icon(
-                    Icons.tv_rounded,
-                    size: 18,
-                    color: Colors.white38,
-                  ),
+                  child: _EpgChannelPlaceholderIcon(),
                 ),
               ),
             )
@@ -707,11 +703,7 @@ class _ChannelCellState extends State<_ChannelCell> {
             const SizedBox(
               width: 34,
               height: 34,
-              child: Icon(
-                Icons.tv_rounded,
-                size: 18,
-                color: Colors.white38,
-              ),
+              child: _EpgChannelPlaceholderIcon(),
             ),
           const SizedBox(width: 8),
           Expanded(
@@ -740,6 +732,19 @@ class _ChannelCellState extends State<_ChannelCell> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _EpgChannelPlaceholderIcon extends StatelessWidget {
+  const _EpgChannelPlaceholderIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      Icons.tv_rounded,
+      size: ShellPaintScope.iconOf(context, 18),
+      color: Colors.white38,
     );
   }
 }

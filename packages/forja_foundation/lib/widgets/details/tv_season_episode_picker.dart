@@ -1040,7 +1040,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                             right: 8,
                             child: Icon(
                               Icons.check_circle_rounded,
-                              size: 16,
+                              size: ShellPaintScope.iconOf(context, 16),
                               color: Colors.white.withValues(alpha: 0.9),
                             ),
                           ),

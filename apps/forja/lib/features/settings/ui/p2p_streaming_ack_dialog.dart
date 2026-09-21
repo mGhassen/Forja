@@ -221,7 +221,11 @@ class _VpnRecommendBanner extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.vpn_lock_rounded, size: 18, color: _amber),
+            Icon(
+              Icons.vpn_lock_rounded,
+              size: SettingsTokens.filledButtonIconSizeOf(context),
+              color: _amber,
+            ),
             SizedBox(width: 10),
             Expanded(
               child: Text(

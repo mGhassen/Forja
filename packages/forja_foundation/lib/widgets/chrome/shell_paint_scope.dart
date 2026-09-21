@@ -177,6 +177,10 @@ class ShellPaintScope extends InheritedWidget {
   static bool usesTvDensityOf(BuildContext context) =>
       maybeOf(context)?.usesTvDensity ?? false;
 
+  /// Desktop icon px → leanback via [ShellTokens.iconSizeFor].
+  static double iconOf(BuildContext context, [double desktop = ShellTokens.iconSize]) =>
+      ShellTokens.iconSizeFor(desktop, tv: usesTvDensityOf(context));
+
   static bool interactiveActive(
     BuildContext context, {
     required bool hovered,

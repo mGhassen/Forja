@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_theme.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 typedef ProviderTap = void Function(String providerId);
 
@@ -72,7 +73,11 @@ class ForjaServerGrid extends StatelessWidget {
                         ),
                       ),
                       if (active)
-                        const Icon(Icons.check_circle, size: 16, color: DesignTokens.primary),
+                        Icon(
+                          Icons.check_circle,
+                          size: ShellPaintScope.iconOf(context, 16),
+                          color: DesignTokens.primary,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 4),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// A single breadcrumb segment.
 class BreadcrumbItem {
@@ -31,7 +32,7 @@ class Breadcrumb extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: theme.spaceSm / 2),
           child: Icon(
             Icons.chevron_right,
-            size: 16,
+            size: ShellPaintScope.iconOf(context, 16),
             color: theme.textSecondary,
           ),
         );

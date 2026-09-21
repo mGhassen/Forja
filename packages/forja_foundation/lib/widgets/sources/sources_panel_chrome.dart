@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart' show kitPanelTabIcon;
 import 'package:forja_foundation/widgets/sources/live_tv_browse.dart';
@@ -393,14 +394,20 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
             IconButton(
               tooltip: 'Reload',
               onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
-              icon: const Icon(Icons.refresh_rounded, size: 20),
+              icon: Icon(
+                Icons.refresh_rounded,
+                size: ShellPaintScope.iconOf(context, 20),
+              ),
               color: ForjaShellColors.textSecondary,
             ),
           if (widget.onClosed != null)
             IconButton(
               tooltip: 'Close',
               onPressed: widget.onClosed,
-              icon: const Icon(Icons.close_rounded, size: 20),
+              icon: Icon(
+                Icons.close_rounded,
+                size: ShellPaintScope.iconOf(context, 20),
+              ),
               color: ForjaShellColors.textSecondary,
             ),
         ],
@@ -428,7 +435,10 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
                 label: Text(tab.label),
                 selected: tab.id == _tabId,
                 onSelected: (_) => _selectTab(tab.id),
-                avatar: Icon(kitPanelTabIcon(tab.icon), size: 16),
+                avatar: Icon(
+                  kitPanelTabIcon(tab.icon),
+                  size: ShellPaintScope.iconOf(context, 16),
+                ),
               ),
           ],
         );
@@ -541,7 +551,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
           children: [
             Icon(
               Icons.search_off_rounded,
-              size: 40,
+              size: ShellPaintScope.iconOf(context, 40),
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.45),
             ),
             const SizedBox(height: 12),

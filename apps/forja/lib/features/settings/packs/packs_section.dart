@@ -1169,11 +1169,11 @@ class _PackInstallFailuresBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 2),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
             child: Icon(
               Icons.error_outline_rounded,
-              size: 18,
+              size: SettingsTokens.filledButtonIconSizeOf(context),
               color: Color(0xFFF87171),
             ),
           ),

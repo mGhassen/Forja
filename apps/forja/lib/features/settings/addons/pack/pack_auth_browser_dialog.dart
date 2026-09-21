@@ -198,7 +198,10 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: _copyConnectScript,
-                    icon: const Icon(Icons.copy, size: 18),
+                    icon: Icon(
+                      Icons.copy,
+                      size: SettingsTokens.filledButtonIconSizeOf(context),
+                    ),
                     label: const Text('Copy connect script'),
                   ),
                 ),

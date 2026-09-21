@@ -72,7 +72,11 @@ class _PluginInstallBanner extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: style.accent),
+              Icon(
+                icon,
+                size: SettingsTokens.filledButtonIconSizeOf(context),
+                color: style.accent,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(

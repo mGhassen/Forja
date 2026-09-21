@@ -494,10 +494,10 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           ..._localIps.map(
             (ip) => SettingsActionRow(
               title: '$ip:$_serverPort',
-              trailing: const Icon(
+              trailing: Icon(
                 Icons.copy_rounded,
                 color: ForjaShellColors.iconMuted,
-                size: 20,
+                size: SettingsTokens.iconButtonIconSizeOf(context),
               ),
               onTap: () => _copyAddress(ip),
             ),

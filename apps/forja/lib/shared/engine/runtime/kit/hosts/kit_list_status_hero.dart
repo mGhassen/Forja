@@ -6,6 +6,7 @@ import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/list_status_hero.dart';
 
 /// Details hero pin — host wires [ListFollow] into foundation [ListStatusHero].
@@ -109,7 +110,7 @@ class KitListStatusHeroPaint extends StatelessWidget {
               label: listStatusLabel(status),
               iconWidget: Icon(
                 listStatusPinIcon(status),
-                size: 20,
+                size: ShellPaintScope.iconOf(context, 20),
                 color: listStatusPinColor(status),
               ),
               onTap: onTap,

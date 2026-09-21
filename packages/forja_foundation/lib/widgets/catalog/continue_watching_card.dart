@@ -100,7 +100,11 @@ class ContinueWatchingCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         placeholder: const ColoredBox(color: Color(0xFF0A0A0A)),
                       )
-                    : const Icon(Icons.movie, color: Colors.white24, size: 40),
+                    : Icon(
+                        Icons.movie,
+                        color: Colors.white24,
+                        size: ShellPaintScope.iconOf(context, 40),
+                      ),
               ),
               Container(
                 decoration: BoxDecoration(
@@ -145,10 +149,10 @@ class ContinueWatchingCard extends StatelessWidget {
                                 color: Colors.black.withValues(alpha: 0.5),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.info_outline_rounded,
                                 color: Colors.white70,
-                                size: 14,
+                                size: ShellPaintScope.iconOf(context, 14),
                               ),
                             ),
                           ),

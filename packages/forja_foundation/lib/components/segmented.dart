@@ -124,7 +124,7 @@ class _SegmentState<T> extends State<_Segment<T>> {
                 if (widget.option.icon != null) ...[
                   Icon(
                     widget.option.icon,
-                    size: 16,
+                    size: ShellPaintScope.iconOf(context, 16),
                     color: widget.selected
                         ? theme.textPrimary
                         : theme.textSecondary,

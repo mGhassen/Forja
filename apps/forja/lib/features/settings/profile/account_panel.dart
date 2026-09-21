@@ -356,10 +356,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                     SettingsActionRow(
                       title: 'Retry',
                       subtitle: 'Reload profiles from the cloud',
-                      leading: const Icon(
+                      leading: Icon(
                         Icons.refresh_rounded,
                         color: ForjaShellColors.iconMuted,
-                        size: 22,
+                        size: SettingsTokens.iconButtonIconSizeOf(context),
                       ),
                       onTap: _busy ? null : () => unawaited(_refreshRemote()),
                       trailing: const SizedBox.shrink(),
@@ -369,10 +369,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                     subtitle:
                         'Clear the session on this device even if the network '
                         'is down',
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.logout_rounded,
                       color: Color(0xFFF87171),
-                      size: 22,
+                      size: SettingsTokens.iconButtonIconSizeOf(context),
                     ),
                     destructive: true,
                     onTap: _busy ? null : () => unawaited(_signOut()),
@@ -489,10 +489,10 @@ class _SignedInAccountBody extends StatelessWidget {
             SettingsActionRow(
               title: 'Sign out',
               subtitle: 'Returns to the sign-in screen on this device',
-              leading: const Icon(
+              leading: Icon(
                 Icons.logout_rounded,
                 color: Color(0xFFF87171),
-                size: 22,
+                size: SettingsTokens.iconButtonIconSizeOf(context),
               ),
               destructive: true,
               onTap: busy ? null : onSignOut,
@@ -732,10 +732,10 @@ class _SignedOutAccountBody extends StatelessWidget {
               SettingsActionRow(
                 title: 'Create an account on the web',
                 subtitle: 'Use a phone or computer - then link this TV',
-                leading: const Icon(
+                leading: Icon(
                   Icons.person_add_alt_1_rounded,
                   color: ForjaShellColors.iconMuted,
-                  size: 22,
+                  size: SettingsTokens.iconButtonIconSizeOf(context),
                 ),
                 onTap: formLocked ? null : onOpenSignup,
               ),
@@ -804,10 +804,10 @@ class _SignedOutAccountBody extends StatelessWidget {
               SettingsActionRow(
                 title: 'Create an account on the web',
                 subtitle: 'Opens the Forja portal in your browser',
-                leading: const Icon(
+                leading: Icon(
                   Icons.person_add_alt_1_rounded,
                   color: ForjaShellColors.iconMuted,
-                  size: 22,
+                  size: SettingsTokens.iconButtonIconSizeOf(context),
                 ),
                 onTap: formLocked ? null : onOpenSignup,
               ),
@@ -900,10 +900,10 @@ class _SignedOutAccountBody extends StatelessWidget {
             SettingsActionRow(
               title: 'Create an account on the web',
               subtitle: 'Opens the Forja portal in your browser',
-              leading: const Icon(
+              leading: Icon(
                 Icons.person_add_alt_1_rounded,
                 color: ForjaShellColors.iconMuted,
-                size: 22,
+                size: SettingsTokens.iconButtonIconSizeOf(context),
               ),
               onTap: formLocked ? null : onOpenSignup,
             ),

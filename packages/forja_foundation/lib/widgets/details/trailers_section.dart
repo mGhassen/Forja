@@ -133,10 +133,10 @@ class DetailsTrailersSection extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.9),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.play_arrow_rounded,
                             color: Colors.black,
-                            size: 26,
+                            size: ShellPaintScope.iconOf(context, 26),
                           ),
                         ),
                       ),

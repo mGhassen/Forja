@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Input with optional prefix / suffix slots flanking the field.
 class InputGroup extends StatelessWidget {
@@ -30,7 +31,10 @@ class InputGroup extends StatelessWidget {
             Padding(
               padding: EdgeInsets.only(left: theme.spaceMd),
               child: IconTheme(
-                data: IconThemeData(color: theme.textSecondary, size: 18),
+                data: IconThemeData(
+                  color: theme.textSecondary,
+                  size: ShellPaintScope.iconOf(context, 18),
+                ),
                 child: DefaultTextStyle(
                   style: TextStyle(color: theme.textSecondary, fontSize: 13),
                   child: prefix!,
@@ -55,7 +59,10 @@ class InputGroup extends StatelessWidget {
             Padding(
               padding: EdgeInsets.only(right: theme.spaceMd),
               child: IconTheme(
-                data: IconThemeData(color: theme.textSecondary, size: 18),
+                data: IconThemeData(
+                  color: theme.textSecondary,
+                  size: ShellPaintScope.iconOf(context, 18),
+                ),
                 child: DefaultTextStyle(
                   style: TextStyle(color: theme.textSecondary, fontSize: 13),
                   child: suffix!,

@@ -16,6 +16,7 @@ import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:forja_foundation/widgets/guide/guide_focus_paint.dart';
 
@@ -803,7 +804,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
             child: Icon(
               Icons.close_rounded,
               color: GuideChromeStyle.iconMuted,
-              size: 22,
+              size: ShellPaintScope.iconOf(context, 22),
             ),
           ),
         ),
@@ -815,7 +816,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       icon: Icons.close_rounded,
       tooltip: 'Close',
       color: GuideChromeStyle.iconMuted,
-      iconSize: 22,
+      iconSize: ShellPaintScope.iconOf(context, 22),
       onPressed: onTap,
     );
   }
@@ -843,7 +844,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
           idleBorder: Colors.transparent,
           subtle: true,
         ),
-        child: Icon(icon, color: color, size: _tv ? 22 : 24),
+        child: Icon(icon, color: color, size: ShellPaintScope.iconOf(context, 24)),
       ),
     );
     return liveTap(
@@ -1187,7 +1188,11 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                                         'Choose local file',
                                                     color: GuideChromeStyle
                                                         .iconMuted,
-                                                    iconSize: 20,
+                                                    iconSize:
+                                                        ShellPaintScope.iconOf(
+                                                      context,
+                                                      20,
+                                                    ),
                                                     onPressed:
                                                         _pickPlaylistFile,
                                                   )
@@ -1222,7 +1227,11 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                                           'Generate MAC',
                                                       color: GuideChromeStyle
                                                           .iconMuted,
-                                                      iconSize: 20,
+                                                      iconSize:
+                                                          ShellPaintScope.iconOf(
+                                                        context,
+                                                        20,
+                                                      ),
                                                       onPressed: () => setState(
                                                         () => _userCtrl.text =
                                                             StalkerMac
@@ -1735,7 +1744,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
         icon: icon,
         tooltip: tooltip,
         color: GuideChromeStyle.iconMuted,
-        iconSize: 20,
+        iconSize: ShellPaintScope.iconOf(context, 20),
         onPressed: onTap,
       );
     }
@@ -1773,7 +1782,11 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
             idleBorder: Colors.transparent,
             subtle: true,
           ),
-          child: Icon(icon, color: GuideChromeStyle.iconMuted, size: 20),
+          child: Icon(
+            icon,
+            color: GuideChromeStyle.iconMuted,
+            size: ShellPaintScope.iconOf(context, 20),
+          ),
         ),
       ),
     );

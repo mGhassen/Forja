@@ -1228,7 +1228,7 @@ class _TestResult extends StatelessWidget {
           Icon(
             ok ? Icons.check_circle_rounded : Icons.error_rounded,
             color: color,
-            size: 16,
+            size: SettingsTokens.filledButtonIconSizeOf(context),
           ),
           const SizedBox(width: 8),
           Expanded(

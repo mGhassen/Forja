@@ -194,7 +194,7 @@ class EpisodeRangeSelector extends StatelessWidget {
                     const SizedBox(width: 4),
                     Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      size: 18,
+                      size: ShellPaintScope.iconOf(context, 18),
                       color: cinematic.textPrimary,
                     ),
                   ],

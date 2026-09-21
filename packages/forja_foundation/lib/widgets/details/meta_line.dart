@@ -106,7 +106,11 @@ class _DetailsMetaLine extends StatelessWidget {
       items.add(Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.star_rounded, size: 16, color: Colors.amber.shade400),
+          Icon(
+            Icons.star_rounded,
+            size: ShellPaintScope.iconOf(context, 16),
+            color: Colors.amber.shade400,
+          ),
           const SizedBox(width: 4),
           Text(
             rating.toStringAsFixed(1),
@@ -186,7 +190,11 @@ class _HomeMetaRow extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+          Icon(
+            Icons.star_rounded,
+            size: ShellPaintScope.iconOf(context, 14),
+            color: Colors.amber,
+          ),
           const SizedBox(width: 4),
           Text(
             voteAverage.toStringAsFixed(1),

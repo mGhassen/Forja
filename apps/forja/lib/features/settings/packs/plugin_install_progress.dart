@@ -8,6 +8,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
 class _PhaseIcon extends StatelessWidget {
   const _PhaseIcon({required this.phase});
 
@@ -20,7 +21,11 @@ class _PhaseIcon extends StatelessWidget {
       PluginInstallPhase.installing => Icons.download_rounded,
       PluginInstallPhase.ready => Icons.check_circle_rounded,
     };
-    return Icon(icon, size: 16, color: ForjaShellColors.brandGreen);
+    return Icon(
+      icon,
+      size: SettingsTokens.filledButtonIconSizeOf(context),
+      color: ForjaShellColors.brandGreen,
+    );
   }
 }
 
@@ -310,7 +315,11 @@ class _PendingActionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = Icon(icon, color: color, size: 20);
+    final child = Icon(
+      icon,
+      color: color,
+      size: SettingsTokens.iconButtonIconSizeOf(context),
+    );
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (tv) {
       return shellFocusableTap(
@@ -326,7 +335,11 @@ class _PendingActionIcon extends StatelessWidget {
         tvZone: ShellTvZone.settings,
         ensureVisibleMode: ShellPaintEnsureVisible.item,
         onLeftEdge: onLeftEdge,
-        child: SizedBox(width: 40, height: 40, child: Center(child: child)),
+        child: SizedBox(
+          width: SettingsTokens.iconButtonHitSizeOf(context),
+          height: SettingsTokens.iconButtonHitSizeOf(context),
+          child: Center(child: child),
+        ),
       );
     }
     return IconButton(tooltip: tooltip, onPressed: onPressed, icon: child);

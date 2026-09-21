@@ -874,8 +874,12 @@ class _ChannelPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Icon(Icons.tv_rounded, color: Colors.white24, size: 36),
+    return Center(
+      child: Icon(
+        Icons.tv_rounded,
+        color: Colors.white24,
+        size: ShellPaintScope.iconOf(context, 36),
+      ),
     );
   }
 }

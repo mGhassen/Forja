@@ -7,6 +7,7 @@ import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
@@ -1347,7 +1348,8 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
                       Padding(
                         padding: const EdgeInsets.only(left: 6),
                         child: Icon(Icons.chevron_right_rounded,
-                            color: _accent, size: 18),
+                            color: _accent,
+                            size: ShellPaintScope.iconOf(context, 18)),
                       ),
                   ],
                 ),
@@ -1577,7 +1579,11 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                 ),
               ),
               if (active)
-                Icon(Icons.play_arrow_rounded, color: _accent, size: 20),
+                Icon(
+                  Icons.play_arrow_rounded,
+                  color: _accent,
+                  size: ShellPaintScope.iconOf(context, 20),
+                ),
             ],
           ),
         ),

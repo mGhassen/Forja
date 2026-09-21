@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Visual tone for [Alert].
 enum AlertVariant {
@@ -50,7 +51,11 @@ class Alert extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(resolvedIcon, size: 20, color: colors.foreground),
+          Icon(
+            resolvedIcon,
+            size: ShellPaintScope.iconOf(context, 20),
+            color: colors.foreground,
+          ),
           SizedBox(width: theme.spaceMd),
           Expanded(
             child: Column(
@@ -88,7 +93,11 @@ class Alert extends StatelessWidget {
           if (onDismiss != null)
             IconButton(
               onPressed: onDismiss,
-              icon: Icon(Icons.close, size: 18, color: theme.textSecondary),
+              icon: Icon(
+                Icons.close,
+                size: ShellPaintScope.iconOf(context, 18),
+                color: theme.textSecondary,
+              ),
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),

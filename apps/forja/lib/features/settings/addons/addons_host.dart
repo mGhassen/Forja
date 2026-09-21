@@ -481,20 +481,23 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
       ],
     );
 
-    final leading =
-        Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 22);
+    final leading = Icon(
+      meta.icon,
+      color: ForjaShellColors.textSecondary,
+      size: SettingsTokens.categoryIconSizeOf(context),
+    );
 
     // Same trailing slot for every row so chevrons share one right edge —
     // toggle rows used to pin the arrow in a 40 + 4 slot while plain rows
     // put a bare Icon inside content padding.
-    const chevron = SizedBox(
-      width: 40,
-      height: 40,
+    final chevron = SizedBox(
+      width: SettingsTokens.iconButtonHitSizeOf(context),
+      height: SettingsTokens.iconButtonHitSizeOf(context),
       child: Center(
         child: Icon(
           Icons.chevron_right_rounded,
           color: ForjaShellColors.iconMuted,
-          size: 22,
+          size: SettingsTokens.expandChevronSizeOf(context),
         ),
       ),
     );

@@ -181,7 +181,11 @@ class _BecauseSeedPoster extends StatelessWidget {
         ),
       ),
       child: url.isEmpty
-          ? const Icon(Icons.movie_outlined, color: Colors.white38, size: 18)
+          ? Icon(
+              Icons.movie_outlined,
+              color: Colors.white38,
+              size: ShellPaintScope.iconOf(context, 18),
+            )
           : ForjaNetworkImage(
               url: url,
               fit: BoxFit.cover,
