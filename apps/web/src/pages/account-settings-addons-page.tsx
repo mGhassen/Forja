@@ -1,33 +1,15 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
-import { useProfileSettings } from '@/hooks/use-profile-settings'
+import { usePlaybackSetting } from '@/hooks/use-user-setting'
 import {
-  useForjaSetting,
-  useNavigationSetting,
-  usePlaybackSetting,
-} from '@/hooks/use-user-setting'
-import {
-  availableFeatureTabIds,
-  emptyForjaPayload,
   emptyPreferencesPayload,
-  DEFAULT_NAV_TAB,
-  pruneNavigationToAvailable,
-  type ForjaPayload,
-  type NavigationPayload,
   type PreferencesPayload,
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
-
-type NavDraft = {
-  order: string[]
-  visible: Set<string>
-  defaultTab: string
-}
 
 type AddonRowProps = {
   title: string
@@ -107,37 +89,6 @@ function AddonRow({
   )
 }
 
-function navFromServer(value: unknown): NavDraft {
-  const n = value as NavigationPayload | undefined
-  return {
-    order: [...(n?.tabOrder ?? [])],
-    visible: new Set(n?.visibleIds ?? []),
-    defaultTab: n?.defaultTab ?? DEFAULT_NAV_TAB,
-  }
-}
-
-function emptyNavDraft(): NavDraft {
-  return {
-    order: [],
-    visible: new Set(),
-    defaultTab: DEFAULT_NAV_TAB,
-  }
-}
-
-function navToPayload(
-  draft: NavDraft,
-  availableIds: string[],
-): NavigationPayload {
-  return pruneNavigationToAvailable(
-    {
-      visibleIds: draft.order.filter((id) => draft.visible.has(id)),
-      tabOrder: draft.order,
-      defaultTab: draft.defaultTab,
-    },
-    availableIds,
-  )
-}
-
 function playbackFromServer(value: unknown): PreferencesPayload {
   return {
     ...emptyPreferencesPayload(),
@@ -151,13 +102,7 @@ function playbackFromServer(value: unknown): PreferencesPayload {
  * Stremio/Nuvio manifests). Hub packs are Plugins, not Addons.
  */
 export function AccountSettingsAddonsPage() {
-  const settings = useProfileSettings()
   const playback = usePlaybackSetting()
-  const navigation = useNavigationSetting()
-  const forja = useForjaSetting()
-  const [hostBusy, setHostBusy] = useState(false)
-  const [hostError, setHostError] = useState<Error | null>(null)
-  const [hostFlash, setHostFlash] = useState(false)
 
   const playDraft = useCommitDraft({
     profileId: playback.profileId,
@@ -169,137 +114,30 @@ export function AccountSettingsAddonsPage() {
     save: playback.save,
   })
 
-  const packsDraft = useCommitDraft({
-    profileId: forja.profileId,
-    updatedAt: forja.data?.updated_at,
-    isReady: Boolean(forja.data) && !forja.isLoading,
-    serverValue: forja.data?.payload,
-    mapServer: (value: unknown) => ({
-      packs: (value as ForjaPayload | undefined)?.packs ?? [],
-      onboarded: (value as ForjaPayload | undefined)?.onboarded,
-    }),
-    makeEmpty: emptyForjaPayload,
-    save: forja.save,
-  })
-
-  const availableIdsRef = useRef<string[]>([])
-  const navDraft = useCommitDraft({
-    profileId: navigation.profileId,
-    updatedAt: navigation.data?.updated_at,
-    isReady: Boolean(navigation.data) && !navigation.isLoading,
-    serverValue: navigation.data?.payload,
-    mapServer: navFromServer,
-    makeEmpty: emptyNavDraft,
-    save: navigation.save,
-    toPayload: (draft) => navToPayload(draft, availableIdsRef.current),
-  })
-
-  const cloudNavIds = useMemo(() => {
-    const n = navigation.data?.payload
-    return [...(n?.visibleIds ?? []), ...(n?.tabOrder ?? [])]
-  }, [navigation.data?.payload])
-
-  const availableIds = availableFeatureTabIds({
-    addonFeatureIptv: playDraft.draft.addon_feature_iptv,
-    packs: packsDraft.draft.packs,
-    cloudNavIds,
-  })
-  availableIdsRef.current = availableIds
-
-  const busy =
-    hostBusy ||
-    playDraft.controlsLocked ||
-    playDraft.isSaving ||
-    navDraft.controlsLocked ||
-    navDraft.isSaving ||
-    packsDraft.controlsLocked
+  const busy = playDraft.controlsLocked || playDraft.isSaving
 
   const setPlayBool = (key: keyof PreferencesPayload, value: boolean) => {
     void playDraft.commit((prev) => ({ ...prev, [key]: value }))
   }
 
-  /** IPTV: unlock + default Features rail. */
+  /** IPTV player prefs flag only — Features IPTV tab comes from the IPTV hub pack. */
   const setIptvAddon = (on: boolean) => {
-    void (async () => {
-      const prevPlay = playDraft.draft
-      const prevNav = navDraft.draft
-      const nextPlayback: PreferencesPayload = {
-        ...prevPlay,
-        addon_feature_iptv: on,
-        ...(on ? {} : { iptv_epg_enabled: false }),
-      }
-      const nextAvailable = availableFeatureTabIds({
-        addonFeatureIptv: nextPlayback.addon_feature_iptv,
-        packs: packsDraft.draft.packs,
-        cloudNavIds,
-      })
-
-      let nextNav = pruneNavigationToAvailable(
-        {
-          visibleIds: [...prevNav.visible],
-          tabOrder: prevNav.order,
-          defaultTab: prevNav.defaultTab,
-        },
-        nextAvailable,
-      )
-      const visible = new Set(nextNav.visibleIds)
-      if (on) visible.add('iptv')
-      else visible.delete('iptv')
-      const order = nextNav.tabOrder.includes('iptv')
-        ? nextNav.tabOrder
-        : on
-          ? [...nextNav.tabOrder, 'iptv']
-          : nextNav.tabOrder
-      nextNav = pruneNavigationToAvailable(
-        {
-          visibleIds: order.filter((id) => visible.has(id)),
-          tabOrder: order,
-          defaultTab: nextNav.defaultTab,
-        },
-        nextAvailable,
-      )
-
-      playDraft.setDraft(nextPlayback)
-      navDraft.setDraft({
-        order: nextNav.tabOrder,
-        visible: new Set(nextNav.visibleIds),
-        defaultTab: nextNav.defaultTab,
-      })
-      availableIdsRef.current = nextAvailable
-
-      setHostBusy(true)
-      setHostError(null)
-      try {
-        await settings.patch({
-          playback: nextPlayback,
-          navigation: nextNav,
-        })
-        setHostFlash(true)
-        window.setTimeout(() => setHostFlash(false), 2000)
-      } catch (e) {
-        playDraft.setDraft(prevPlay)
-        navDraft.setDraft(prevNav)
-        setHostError(e instanceof Error ? e : new Error('Save failed'))
-      } finally {
-        setHostBusy(false)
-      }
-    })()
+    void playDraft.commit((prev) => ({
+      ...prev,
+      addon_feature_iptv: on,
+      ...(on ? {} : { iptv_epg_enabled: false }),
+    }))
   }
-
-  const footerSaving = hostBusy || playDraft.isSaving || navDraft.isSaving
-  const footerFlash = hostFlash || playDraft.savedFlash || navDraft.savedFlash
-  const footerError =
-    hostError ?? playDraft.saveError ?? navDraft.saveError
 
   return (
     <AccountSettingsShell
       title="Addons"
-      description="Host product surfaces — same list as Settings → Addons in the app. Switches activate each addon; open a row to configure. Live Sports and other hubs are Forja Packs (app downloads scripts), then show under Features."
+      description="Host product surfaces — same list as Settings → Addons in the app. Hub tabs (IPTV, Live Sports, Home, …) come from Forja Packs on this profile, then show under Features."
       footer={
         <SettingsAutosaveFooter
-          isSaving={footerSaving}
-          savedFlash={footerFlash}
-          error={footerError}
+          isSaving={playDraft.isSaving}
+          savedFlash={playDraft.savedFlash}
+          error={playDraft.saveError}
         />
       }
     >
@@ -316,7 +154,7 @@ export function AccountSettingsAddonsPage() {
         />
         <AddonRow
           title="IPTV"
-          description="Portals, EPG, live quality"
+          description="Live player prefs (EPG, quality). The IPTV tab comes from the IPTV hub pack under Forja Packs."
           checked={playDraft.draft.addon_feature_iptv === true}
           onCheckedChange={(v) => setIptvAddon(v)}
           href="/account/settings/iptv"

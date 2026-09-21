@@ -4,6 +4,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 String? propsString(Map<String, dynamic> props, String key) {
   final v = props[key];
@@ -35,6 +37,32 @@ double? propsNum(Map<String, dynamic> props, String key) {
 
 double propsNumOr(Map<String, dynamic> props, String key, double fallback) =>
     propsNum(props, key) ?? fallback;
+
+/// Desktop px length from pack → TV × [ShellTokens.tvLayoutScale].
+///
+/// Use for width/height/gap/pad/fontSize. Keep [propsNum] for fractions,
+/// scales, progress, aspect ratios, and other non-length numbers.
+double? propsLength(
+  BuildContext context,
+  Map<String, dynamic> props,
+  String key,
+) {
+  final v = propsNum(props, key);
+  if (v == null) return null;
+  return ShellTokens.densityScale(
+    v,
+    tv: ShellPaintScope.usesTvDensityOf(context),
+  );
+}
+
+/// Pack length or [fallback] as-is (caller passes density-aware defaults).
+double propsLengthOr(
+  BuildContext context,
+  Map<String, dynamic> props,
+  String key,
+  double fallback,
+) =>
+    propsLength(context, props, key) ?? fallback;
 
 int? propsInt(Map<String, dynamic> props, String key) {
   final v = props[key];

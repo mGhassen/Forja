@@ -1196,13 +1196,13 @@ class PackPaintTree extends StatelessWidget {
           tvItemIndex: _chromeIndexOfAction(context, actions, searchId),
           onDownEdge: onDownEdge,
           collapsedSize:
-              PackPaintArtifact.packDouble(searchAction['collapsedSize']),
+              PackPaintArtifact.packLength(context, searchAction['collapsedSize']),
           expandedWidth:
-              PackPaintArtifact.packDouble(searchAction['expandedWidth']),
-          fontSize: PackPaintArtifact.packDouble(searchAction['fontSize']),
-          iconSize: PackPaintArtifact.packDouble(searchAction['iconSize']),
+              PackPaintArtifact.packLength(context, searchAction['expandedWidth']),
+          fontSize: PackPaintArtifact.packLength(context, searchAction['fontSize']),
+          iconSize: PackPaintArtifact.packLength(context, searchAction['iconSize']),
           fieldIconSize:
-              PackPaintArtifact.packDouble(searchAction['fieldIconSize']),
+              PackPaintArtifact.packLength(context, searchAction['fieldIconSize']),
         ),
       );
     }
@@ -1317,11 +1317,11 @@ class PackPaintTree extends StatelessWidget {
         placeholder: hint.isEmpty ? 'Search…' : hint,
         alwaysOpen: true,
         tvItemIndex: 0,
-        collapsedSize: PackPaintArtifact.packDouble(search['collapsedSize']),
-        expandedWidth: PackPaintArtifact.packDouble(search['expandedWidth']),
-        fontSize: PackPaintArtifact.packDouble(search['fontSize']),
-        iconSize: PackPaintArtifact.packDouble(search['iconSize']),
-        fieldIconSize: PackPaintArtifact.packDouble(search['fieldIconSize']),
+        collapsedSize: PackPaintArtifact.packLength(context, search['collapsedSize']),
+        expandedWidth: PackPaintArtifact.packLength(context, search['expandedWidth']),
+        fontSize: PackPaintArtifact.packLength(context, search['fontSize']),
+        iconSize: PackPaintArtifact.packLength(context, search['iconSize']),
+        fieldIconSize: PackPaintArtifact.packLength(context, search['fieldIconSize']),
       ),
     );
   }
@@ -1827,9 +1827,9 @@ class PackPaintTree extends StatelessWidget {
                     canShowSidePanel: chrome != null && wide,
                   ) ==
                   KitListTapOpen.panel;
-          final gap = PackPaintArtifact.packDouble(spec['gap']);
-          final pad = PackPaintArtifact.packDouble(spec['pad']);
-          final cardWidth = PackPaintArtifact.packDouble(spec['cardWidth']);
+          final gap = PackPaintArtifact.packLength(context, spec['gap']);
+          final pad = PackPaintArtifact.packLength(context, spec['pad']);
+          final cardWidth = PackPaintArtifact.packLength(context, spec['cardWidth']);
           final listId = (spec['id'] ?? 'items').toString().trim();
           final kindFilterLive = kindMenu == 'cats';
           final currentKind = kindFilter;
@@ -2617,8 +2617,8 @@ class PackPaintTree extends StatelessWidget {
       );
     }
     if (vertical) {
-      final width =
-          (spec['width'] is num) ? (spec['width'] as num).toDouble() : 220.0;
+      final width = PackPaintArtifact.packLength(context, spec['width']) ??
+          catalogSideRailWidth(context);
       final searchHeader = _categoryBarSearchHeader(context, spec);
       if (CategoryBarActionHost.featuresEnabled(spec)) {
         return Consumer(
@@ -2661,6 +2661,7 @@ class PackPaintTree extends StatelessWidget {
       padding: PackPaintArtifact.packPad(
         spec['pad'] ?? spec['padding'],
         fallback: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        context: context,
       ),
       onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
     );
@@ -2717,8 +2718,8 @@ class PackPaintTree extends StatelessWidget {
     final scope = LayoutScope.maybeOf(context);
     final actions = propsActionMaps(spec);
     final selections = _topBarSelections(scope, actions);
-    final height = PackPaintArtifact.packDouble(spec['height']);
-    final gap = PackPaintArtifact.packDouble(spec['gap']);
+    final height = PackPaintArtifact.packLength(context, spec['height']);
+    final gap = PackPaintArtifact.packLength(context, spec['gap']);
     final padRaw = spec['pad'] ?? spec['padding'];
     final padding = padRaw == null
         ? null
@@ -2730,6 +2731,7 @@ class PackPaintTree extends StatelessWidget {
               ShellTokens.bodyHorizontalPadding,
               4,
             ),
+            context: context,
           );
     final chromeDown = _chromeFocusDown(scope, spec);
     return Consumer(
@@ -3446,7 +3448,7 @@ class _MoodMountState extends State<_MoodMount> {
     }
     if (parsed.isEmpty) return const SizedBox.shrink();
     final defaultPad = catalogSectionHorizontalPadding(context);
-    final pad = PackPaintArtifact.packDouble(widget.spec['pad']) ?? defaultPad;
+    final pad = PackPaintArtifact.packLength(context, widget.spec['pad']) ?? defaultPad;
     final titlePad = PackPaintArtifact.titlePadInsets(
       widget.spec['titlePad'],
       context,
@@ -3493,10 +3495,10 @@ class _MoodMountState extends State<_MoodMount> {
             maxWidth: constraints.maxWidth,
           );
           final rowHeight =
-              PackPaintArtifact.packDouble(widget.spec['rowHeight']) ??
+              PackPaintArtifact.packLength(context, widget.spec['rowHeight']) ??
                   layout.rowHeight;
           final chipGap =
-              PackPaintArtifact.packDouble(widget.spec['gap']) ??
+              PackPaintArtifact.packLength(context, widget.spec['gap']) ??
                   layout.horizontalGap;
           final tab = (widget.tabId ?? '').trim();
           const chipRowId = 'mood-chips';
@@ -3656,7 +3658,8 @@ class _BecauseMountState extends State<_BecauseMount> {
                     LayoutScope.maybeOf(ctx)?.tabId ??
                     TvFocusGraph.tabIdOf(ctx);
                 final defaultPad = catalogSectionHorizontalPadding(ctx);
-                final pad = PackPaintArtifact.packDouble(
+                final pad = PackPaintArtifact.packLength(
+                      ctx,
                       widget.spec['pad'] ?? node['pad'],
                     ) ??
                     defaultPad;
@@ -3665,18 +3668,23 @@ class _BecauseMountState extends State<_BecauseMount> {
                   ctx,
                 );
                 final canShuffle = node['canShuffle'] == true;
-                final gap = PackPaintArtifact.packDouble(
+                final gap = PackPaintArtifact.packLength(
+                      ctx,
                       widget.spec['gap'] ?? node['gap'],
                     ) ??
                     shellPosterCardRowGap(ctx);
+                // Raw desktop px — fromPaint applies TV scale once.
                 final packCardW = PackPaintArtifact.packDouble(
                   widget.spec['cardWidth'] ?? node['cardWidth'],
                 );
                 final packCardH = PackPaintArtifact.packDouble(
                   widget.spec['cardHeight'] ?? node['cardHeight'],
                 );
-                final cardH =
-                    packCardH ?? InteractivePosterCard.cardHeight(ctx);
+                final cardH = PackPaintArtifact.packLength(
+                      ctx,
+                      widget.spec['cardHeight'] ?? node['cardHeight'],
+                    ) ??
+                    InteractivePosterCard.cardHeight(ctx);
                 final sizedCards = <Widget>[];
                 for (var i = 0; i < items.length; i++) {
                   final raw = items[i];
@@ -3750,13 +3758,16 @@ class _BecauseMountState extends State<_BecauseMount> {
                   seedPosterUrl: (node['seedPoster'] ?? '').toString().isEmpty
                       ? null
                       : (node['seedPoster'] ?? '').toString(),
-                  kickerFontSize: PackPaintArtifact.packDouble(
+                  kickerFontSize: PackPaintArtifact.packLength(
+                    ctx,
                     widget.spec['kickerFontSize'] ?? node['kickerFontSize'],
                   ),
-                  titleFontSize: PackPaintArtifact.packDouble(
+                  titleFontSize: PackPaintArtifact.packLength(
+                    ctx,
                     widget.spec['titleFontSize'] ?? node['titleFontSize'],
                   ),
-                  seeAllFontSize: PackPaintArtifact.packDouble(
+                  seeAllFontSize: PackPaintArtifact.packLength(
+                    ctx,
                     widget.spec['seeAllFontSize'] ?? node['seeAllFontSize'],
                   ),
                   trailing: canShuffle
@@ -4017,17 +4028,17 @@ class _ContinueMountState extends State<_ContinueMount> {
             ? ShellTokens.shellContinueWatchingCardWidthDesktop
             : ShellTokens.shellContinueWatchingCardWidthCompact);
     final cardW =
-        PackPaintArtifact.packDouble(widget.spec['cardWidth']) ?? defaultW;
-    final cardH = PackPaintArtifact.packDouble(widget.spec['cardHeight']) ??
+        PackPaintArtifact.packLength(context, widget.spec['cardWidth']) ?? defaultW;
+    final cardH = PackPaintArtifact.packLength(context, widget.spec['cardHeight']) ??
         (cardW * 9 / 16);
     final defaultPad = catalogSectionHorizontalPadding(context);
     final pad =
-        PackPaintArtifact.packDouble(widget.spec['pad']) ?? defaultPad;
+        PackPaintArtifact.packLength(context, widget.spec['pad']) ?? defaultPad;
     final titlePad = PackPaintArtifact.titlePadInsets(
       widget.spec['titlePad'],
       context,
     );
-    final gap = PackPaintArtifact.packDouble(widget.spec['gap']) ??
+    final gap = PackPaintArtifact.packLength(context, widget.spec['gap']) ??
         shellPosterCardRowGap(context);
     return TvKitRow(
       tabId: tab,
@@ -4042,13 +4053,13 @@ class _ContinueMountState extends State<_ContinueMount> {
         cardHeight: cardH,
         cardGap: gap,
         titleFontSize:
-            PackPaintArtifact.packDouble(widget.spec['titleFontSize']),
+            PackPaintArtifact.packLength(context, widget.spec['titleFontSize']),
         cardTitleFontSize:
-            PackPaintArtifact.packDouble(widget.spec['cardTitleFontSize']),
+            PackPaintArtifact.packLength(context, widget.spec['cardTitleFontSize']),
         cardSubtitleFontSize:
-            PackPaintArtifact.packDouble(widget.spec['cardSubtitleFontSize']),
+            PackPaintArtifact.packLength(context, widget.spec['cardSubtitleFontSize']),
         cardRemainingFontSize:
-            PackPaintArtifact.packDouble(widget.spec['cardRemainingFontSize']),
+            PackPaintArtifact.packLength(context, widget.spec['cardRemainingFontSize']),
         titlePadding: EdgeInsets.fromLTRB(
           pad,
           titlePad.top,

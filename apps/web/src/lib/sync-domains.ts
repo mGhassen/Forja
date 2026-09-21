@@ -179,14 +179,11 @@ export type NavigationPayload = {
   defaultTab?: string
 }
 
-/** Host-owned shell tabs (Addons / Features). Catalog hubs are opaque pack
- * `nav.tabId` values synced from the app — never bake hub inventory here
- * (RFC-081 · RFC-087). Live Sports is pack-only — not listed. */
-export const HOST_CORE_NAV_TABS = [
-  { id: 'iptv', label: 'IPTV' },
-] as const
+/** Host-owned shell tabs for Features inventory. Empty — IPTV / Live Sports /
+ * hubs are pack-contributed (matches Flutter `addonGatedNavIds` = {}). */
+export const HOST_CORE_NAV_TABS = [] as const
 
-export const HOST_CORE_NAV_IDS: string[] = HOST_CORE_NAV_TABS.map((t) => t.id)
+export const HOST_CORE_NAV_IDS: string[] = []
 
 /** @deprecated RFC-093 — always false; Live Sports is pack-only. */
 export function playbackLiveSportsUnlocked(
@@ -226,14 +223,12 @@ function titleCaseNavId(id: string): string {
 }
 
 /**
- * Features row label — host-core label, else synced pack `name` for that hub
- * slot, else title-case of the opaque id. Never bake pack/plugin names here.
+ * Features row label — synced pack `name` for that hub slot, else title-case
+ * of the opaque id. Never bake pack/plugin names here.
  */
 export function navTabLabel(id: string, packs?: ForjaPackRow[]): string {
   const t = id.trim()
   if (!t || t === 'settings') return 'Settings'
-  const core = HOST_CORE_NAV_TABS.find((row) => row.id === t)
-  if (core) return core.label
   if (packs?.length) {
     for (const pack of packs) {
       if (pack.enabled === false) continue
@@ -476,10 +471,7 @@ export function hubTabIdFromPackManifestUrl(manifestUrl: string): string | null 
   const lower = path.toLowerCase()
   // Flutter: hubs/manifest.json → home
   if (lower.endsWith('hubs/manifest.json')) {
-    return isPersistedNavId('home') &&
-      !(HOST_CORE_NAV_IDS as string[]).includes('home')
-      ? 'home'
-      : null
+    return isPersistedNavId('home') ? 'home' : null
   }
   const parts = lower.split('/').filter(Boolean)
   const hubsIdx = parts.findIndex((p) => p === 'hubs')
@@ -488,7 +480,6 @@ export function hubTabIdFromPackManifestUrl(manifestUrl: string): string | null 
   const folderId = slot.replace(/-/g, '_')
   const id = folderId
   if (!isPersistedNavId(id)) return null
-  if ((HOST_CORE_NAV_IDS as string[]).includes(id)) return null
   return id
 }
 
@@ -505,31 +496,26 @@ export function hubTabIdsFromForjaPacks(packs: ForjaPackRow[]): string[] {
   return out
 }
 
-/** RFC-086 / RFC-087 derived Features inventory — not `tabOrder` alone.
- * Hub tabs from pack manifest URLs on the profile; opaque ids already in
- * cloud navigation are unioned (no baked pack inventory). */
+/** RFC-086 / RFC-087 Features inventory — same rule as the app:
+ * hub tabs from **enabled** packs on the profile (IPTV / Live Sports / Home / …).
+ * Cloud `visibleIds` / `tabOrder` are visibility/order only — never inventory.
+ * `addonFeatureIptv` is ignored (IPTV is pack-only; Flutter `addonGatedNavIds` is empty). */
 export function availableFeatureTabIds(opts: {
+  /** @deprecated IPTV is pack-only — ignored. */
   addonFeatureIptv?: boolean
   /** Ignored (RFC-093). */
   addonFeatureLiveSports?: boolean
   /** @deprecated */
   addonFeatureLiveMatches?: boolean
   packs: ForjaPackRow[]
-  /** `visibleIds` ∪ `tabOrder` from cloud navigation (opaque pack tab ids). */
-  cloudNavIds?: Iterable<string>
 }): string[] {
   const ids: string[] = []
   const seen = new Set<string>()
-  const add = (raw: string) => {
-    const id = raw.trim()
-    if (!isPersistedNavId(id) || seen.has(id)) return
-    if (id === 'iptv' && opts.addonFeatureIptv !== true) return
+  for (const id of hubTabIdsFromForjaPacks(opts.packs)) {
+    if (!isPersistedNavId(id) || seen.has(id)) continue
     seen.add(id)
     ids.push(id)
   }
-  if (opts.addonFeatureIptv === true) add('iptv')
-  for (const id of hubTabIdsFromForjaPacks(opts.packs)) add(id)
-  for (const id of opts.cloudNavIds ?? []) add(id)
   return ids
 }
 
@@ -588,19 +574,13 @@ export function navigationAfterForjaPacksChange(opts: {
   const flags = {
     addonFeatureIptv: opts.addonFeatureIptv,
   }
-  const cloudNavIds = [
-    ...(opts.navigation?.visibleIds ?? []),
-    ...(opts.navigation?.tabOrder ?? []),
-  ]
   const prevAvailable = availableFeatureTabIds({
     ...flags,
     packs: opts.prevPacks,
-    cloudNavIds,
   })
   const nextAvailable = availableFeatureTabIds({
     ...flags,
     packs: opts.nextPacks,
-    cloudNavIds,
   })
   const prevSet = new Set(prevAvailable)
   const newlyAvailable = nextAvailable.filter((id) => !prevSet.has(id))

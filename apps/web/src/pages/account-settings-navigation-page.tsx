@@ -8,19 +8,16 @@ import { useCommitDraft } from '@/hooks/use-commit-draft'
 import {
   useForjaSetting,
   useNavigationSetting,
-  usePlaybackSetting,
 } from '@/hooks/use-user-setting'
 import {
   availableFeatureTabIds,
   DEFAULT_NAV_TAB,
   emptyForjaPayload,
-  emptyPreferencesPayload,
   navTabLabel,
   normalizeNavigationPayload,
   pruneNavigationToAvailable,
   type ForjaPayload,
   type NavigationPayload,
-  type PreferencesPayload,
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
 
@@ -42,23 +39,11 @@ function emptyNavDraft(): NavDraft {
   }
 }
 
-/** Inventory from cloud slices — never empty playDraft on first hydrate. */
-function availableFromServer(
-  playbackPayloadValue: unknown,
-  forjaPayloadValue: unknown,
-  navigationPayloadValue: unknown,
-): string[] {
-  const play = playbackPayloadValue as PreferencesPayload | undefined
+/** Inventory from enabled hub packs on the profile — same as the app. */
+function availableFromServer(forjaPayloadValue: unknown): string[] {
   const packs =
     (forjaPayloadValue as ForjaPayload | undefined)?.packs ?? []
-  const nav = normalizeNavigationPayload(
-    navigationPayloadValue as NavigationPayload | undefined,
-  )
-  return availableFeatureTabIds({
-    addonFeatureIptv: play?.addon_feature_iptv,
-    packs,
-    cloudNavIds: [...nav.visibleIds, ...nav.tabOrder],
-  })
+  return availableFeatureTabIds({ packs })
 }
 
 function navDraftFromServer(value: unknown): NavDraft {
@@ -75,7 +60,6 @@ function navDraftFromServer(value: unknown): NavDraft {
 export function AccountSettingsNavigationPage() {
   const queryClient = useQueryClient()
   const navigation = useNavigationSetting()
-  const playback = usePlaybackSetting()
   const forja = useForjaSetting()
 
   // Soft-pull while Features is open (no Realtime — issue 224 T43). App → web
@@ -98,19 +82,6 @@ export function AccountSettingsNavigationPage() {
     }
   }, [navigation.profileId, queryClient])
 
-  const playDraft = useCommitDraft({
-    profileId: playback.profileId,
-    updatedAt: playback.data?.updated_at,
-    isReady: Boolean(playback.data) && !playback.isLoading,
-    serverValue: playback.data?.payload,
-    mapServer: (value: unknown) => ({
-      ...emptyPreferencesPayload(),
-      ...((value as PreferencesPayload | undefined) ?? {}),
-    }),
-    makeEmpty: emptyPreferencesPayload,
-    save: playback.save,
-  })
-
   const packsDraft = useCommitDraft({
     profileId: forja.profileId,
     updatedAt: forja.data?.updated_at,
@@ -124,21 +95,13 @@ export function AccountSettingsNavigationPage() {
     save: forja.save,
   })
 
-  // Cloud playback/packs/nav — drafts start empty until effects run.
+  // Inventory = enabled hub packs only (same as the app).
   const availableIds = useMemo(
     () =>
       availableFromServer(
-        playback.data?.payload ?? playDraft.draft,
         forja.data?.payload ?? { packs: packsDraft.draft.packs },
-        navigation.data?.payload,
       ),
-    [
-      playback.data?.payload,
-      forja.data?.payload,
-      navigation.data?.payload,
-      playDraft.draft,
-      packsDraft.draft.packs,
-    ],
+    [forja.data?.payload, packsDraft.draft.packs],
   )
 
   const {
@@ -240,7 +203,7 @@ export function AccountSettingsNavigationPage() {
   return (
     <AccountSettingsShell
       title="Features"
-      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Unlock IPTV under Addons; Live Sports and other hub tabs appear when those packs are on this profile (the app downloads hub scripts)."
+      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Hub tabs (Home, IPTV, Live Sports, …) appear when those packs are enabled on this profile (the app downloads hub scripts)."
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}
@@ -251,7 +214,7 @@ export function AccountSettingsNavigationPage() {
     >
       <SettingsSection
         label="Tabs"
-        description="Star sets the default tab after launch or profile switch. Only unlocked Addons and hub packs on this profile are listed."
+        description="Star sets the default tab after launch or profile switch. Only enabled hub packs on this profile are listed."
       >
         <ul className="divide-y divide-forja-border/60">
           {featureOrder.length === 0 ? (

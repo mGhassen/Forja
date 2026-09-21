@@ -183,8 +183,7 @@ abstract final class PackPaintArtifact {
         final aspect = aspectRaw == 'landscape'
             ? PosterAspect.landscape
             : PosterAspect.portrait;
-        final width =
-            props['width'] is num ? (props['width'] as num).toDouble() : null;
+        final width = packLength(context, props['width']);
         final motion = ForjaMotionTheme.presetFromName(
           props['motion']?.toString(),
         );
@@ -212,11 +211,11 @@ abstract final class PackPaintArtifact {
           onTap: onTap ?? () {},
           aspect: aspect,
           width: width,
-          height:
-              props['height'] is num ? (props['height'] as num).toDouble() : null,
-          borderRadius: packDouble(props['borderRadius'] ?? props['radius']),
-          titleFontSize: packDouble(props['titleFontSize']),
-          metaFontSize: packDouble(props['metaFontSize']),
+          height: packLength(context, props['height']),
+          borderRadius:
+              packLength(context, props['borderRadius'] ?? props['radius']),
+          titleFontSize: packLength(context, props['titleFontSize']),
+          metaFontSize: packLength(context, props['metaFontSize']),
           motion: motion,
           scaleOnFocus: focus ?? hover,
         );
@@ -225,12 +224,10 @@ abstract final class PackPaintArtifact {
         final tv = packBool(props['tvDensity']) == true ||
             ShellPaintScope.usesTvDensityOf(context);
         final scale = tv ? ShellTokens.tvLayoutScale : 1.0;
-        final w = (props['width'] is num)
-            ? (props['width'] as num).toDouble()
-            : EventCardTokens.paintFallbackWidth * scale;
-        final h = (props['height'] is num)
-            ? (props['height'] as num).toDouble()
-            : EventCardTokens.paintFallbackHeight * scale;
+        final w = packLength(context, props['width']) ??
+            EventCardTokens.paintFallbackWidth * scale;
+        final h = packLength(context, props['height']) ??
+            EventCardTokens.paintFallbackHeight * scale;
         return EventCard(
           title: (props['title'] ?? '').toString(),
           posterUrl: (props['posterUrl'] ?? props['imageUrl'] ?? '').toString(),
@@ -247,22 +244,19 @@ abstract final class PackPaintArtifact {
           width: w,
           height: h,
           tvDensity: tv,
-          borderRadius: packDouble(props['borderRadius'] ?? props['radius']) ??
-              EventCardTokens.radius,
-          titleFontSize:
-              (packDouble(props['titleFontSize']) ?? EventCardTokens.titleFontSize) *
-                  scale,
-          metaFontSize:
-              (packDouble(props['metaFontSize']) ?? EventCardTokens.metaFontSize) *
-                  scale,
-          badgeFontSize:
-              (packDouble(props['badgeFontSize']) ?? EventCardTokens.badgeFontSize) *
-                  scale,
-          playOverlaySize:
-              (packDouble(props['playOverlaySize']) ??
-                      EventCardTokens.playOverlaySize) *
-                  scale,
-          padV: packDouble(props['padV']) ?? EventCardTokens.padV,
+          borderRadius:
+              packLength(context, props['borderRadius'] ?? props['radius']) ??
+                  EventCardTokens.radius * scale,
+          titleFontSize: packLength(context, props['titleFontSize']) ??
+              EventCardTokens.titleFontSize * scale,
+          metaFontSize: packLength(context, props['metaFontSize']) ??
+              EventCardTokens.metaFontSize * scale,
+          badgeFontSize: packLength(context, props['badgeFontSize']) ??
+              EventCardTokens.badgeFontSize * scale,
+          playOverlaySize: packLength(context, props['playOverlaySize']) ??
+              EventCardTokens.playOverlaySize * scale,
+          padV: packLength(context, props['padV']) ??
+              EventCardTokens.padV * scale,
           onTap: onTap,
         );
       default:
@@ -323,6 +317,19 @@ abstract final class PackPaintArtifact {
     return double.tryParse(raw.toString());
   }
 
+  /// Desktop px length from pack JSON → TV × [ShellTokens.tvLayoutScale].
+  ///
+  /// Packs author desktop baselines (same as SettingsTokens). Fractions /
+  /// multipliers stay on [packDouble] (aspect, hoverScale, heightFraction, …).
+  static double? packLength(BuildContext context, Object? raw) {
+    final v = packDouble(raw);
+    if (v == null) return null;
+    return ShellTokens.densityScale(
+      v,
+      tv: ShellPaintScope.usesTvDensityOf(context),
+    );
+  }
+
   static bool? packBool(Object? raw) {
     if (raw == null) return null;
     if (raw is bool) return raw;
@@ -341,27 +348,42 @@ abstract final class PackPaintArtifact {
 
   /// Pack `pad` / `padding`: number → horizontal (keeps [fallback] vertical);
   /// `{ l|left, t|top, r|right, b|bottom }` map; null → [fallback].
+  ///
+  /// Pack-provided edges are desktop px (scaled on TV). [fallback] is already
+  /// density-resolved by the caller — do not re-scale it.
   static EdgeInsets packPad(
     Object? raw, {
     required EdgeInsets fallback,
+    BuildContext? context,
   }) {
     if (raw == null) return fallback;
+    final tv = context != null && ShellPaintScope.usesTvDensityOf(context);
+    double scale(double v) => ShellTokens.densityScale(v, tv: tv);
     if (raw is num) {
-      final h = raw.toDouble();
+      final h = scale(raw.toDouble());
       return EdgeInsets.fromLTRB(h, fallback.top, h, fallback.bottom);
     }
     if (raw is Map) {
       return EdgeInsets.fromLTRB(
-        packDouble(raw['l'] ?? raw['left']) ?? fallback.left,
-        packDouble(raw['t'] ?? raw['top']) ?? fallback.top,
-        packDouble(raw['r'] ?? raw['right']) ?? fallback.right,
-        packDouble(raw['b'] ?? raw['bottom']) ?? fallback.bottom,
+        packDouble(raw['l'] ?? raw['left']) != null
+            ? scale(packDouble(raw['l'] ?? raw['left'])!)
+            : fallback.left,
+        packDouble(raw['t'] ?? raw['top']) != null
+            ? scale(packDouble(raw['t'] ?? raw['top'])!)
+            : fallback.top,
+        packDouble(raw['r'] ?? raw['right']) != null
+            ? scale(packDouble(raw['r'] ?? raw['right'])!)
+            : fallback.right,
+        packDouble(raw['b'] ?? raw['bottom']) != null
+            ? scale(packDouble(raw['b'] ?? raw['bottom'])!)
+            : fallback.bottom,
       );
     }
     return fallback;
   }
 
   /// Pack `titlePad`: number → both edges; `{ top, bottom }` map; null → density defaults.
+  /// Pack-provided values are desktop px (scaled on TV).
   static ({double top, double bottom}) titlePadInsets(
     Object? raw,
     BuildContext context, {
@@ -372,13 +394,13 @@ abstract final class PackPaintArtifact {
     final bottom0 = defaultBottom ?? catalogSectionBottomGap(context);
     if (raw == null) return (top: top0, bottom: bottom0);
     if (raw is num) {
-      final v = raw.toDouble();
+      final v = packLength(context, raw)!;
       return (top: v, bottom: v);
     }
     if (raw is Map) {
       return (
-        top: packDouble(raw['top']) ?? top0,
-        bottom: packDouble(raw['bottom']) ?? bottom0,
+        top: packLength(context, raw['top']) ?? top0,
+        bottom: packLength(context, raw['bottom']) ?? bottom0,
       );
     }
     return (top: top0, bottom: bottom0);
@@ -649,7 +671,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     final sortOrder =
         explicitSort ?? PackPaintArtifact.stableSortOrder(tabId, rowId);
     final defaultPad = catalogSectionHorizontalPadding(context);
-    final pad = PackPaintArtifact.packDouble(node['pad']) ?? defaultPad;
+    final pad =
+        PackPaintArtifact.packLength(context, node['pad']) ?? defaultPad;
     final useCompact = widget.compactTop || node['compactTop'] == true;
     final titlePad = PackPaintArtifact.titlePadInsets(
       node['titlePad'],
@@ -658,17 +681,22 @@ class _PackPosterRailState extends State<_PackPosterRail> {
       defaultBottom: catalogSectionBottomGap(context),
     );
     final defaultGap = shellPosterCardRowGap(context);
-    final gap = PackPaintArtifact.packDouble(node['gap']) ?? defaultGap;
+    final gap =
+        PackPaintArtifact.packLength(context, node['gap']) ?? defaultGap;
     final rankedGap =
-        PackPaintArtifact.packDouble(node['rankedGap']) ?? gap;
+        PackPaintArtifact.packLength(context, node['rankedGap']) ?? gap;
     final aspect = aspectFallback == 'landscape'
         ? PosterAspect.landscape
         : PosterAspect.portrait;
+    // Raw desktop px — [fromPaint] applies TV scale once.
     final itemWidth = PackPaintArtifact.packDouble(node['itemWidth']);
     final itemHeight = PackPaintArtifact.packDouble(
       node['itemHeight'] ?? node['height'],
     );
-    final cardH = itemHeight ??
+    final cardH = PackPaintArtifact.packLength(
+          context,
+          node['itemHeight'] ?? node['height'],
+        ) ??
         InteractivePosterCard.cardHeight(context, aspect: aspect);
     final sep = ranked ? rankedGap : gap;
     final pageLoad = packLoadSpec(node['pageLoad']);
@@ -678,7 +706,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
       if (title.isEmpty) return const SizedBox.shrink();
       return ShellSectionTitle(
         title: title,
-        fontSize: PackPaintArtifact.packDouble(node['titleFontSize']),
+        fontSize: PackPaintArtifact.packLength(context, node['titleFontSize']),
         padding: EdgeInsetsDirectional.only(
           start: pad,
           top: titlePad.top,
@@ -716,7 +744,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
           if (title.isNotEmpty)
             ShellSectionTitle(
               title: title,
-              fontSize: PackPaintArtifact.packDouble(node['titleFontSize']),
+              fontSize:
+                  PackPaintArtifact.packLength(context, node['titleFontSize']),
               padding: EdgeInsetsDirectional.only(
                 start: pad,
                 top: titlePad.top,

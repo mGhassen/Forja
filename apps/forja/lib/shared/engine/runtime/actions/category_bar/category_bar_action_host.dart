@@ -12,6 +12,8 @@ import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_channel_grid_focus.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_category_rail.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/chrome/live_favorite_star.dart';
@@ -609,7 +611,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       ref.watch(liveCategoryListsEpochProvider(tab));
     }
     final categorySort = ref.watch(iptvLiveCategorySortProvider);
-    final width = _d('width') ?? 220.0;
+    final width = _d(context, 'width') ?? catalogSideRailWidth(context);
     final tvTab = tab.isNotEmpty ? tab : 'iptv';
 
     if (_loading && _items.isEmpty) {
@@ -694,12 +696,13 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         items: items,
         selectedId: widget.selectedId,
         width: width,
-        rowHeight: _d('rowHeight'),
-        fontSize: _d('fontSize'),
-        iconSize: _d('iconSize'),
-        rowPadH: _d('rowPadH'),
-        listPadV: _d('listPadV') ?? 8,
-        pinSlotWidth: _d('pinSlotWidth') ?? 28,
+        rowHeight: _d(context, 'rowHeight'),
+        fontSize: _d(context, 'fontSize'),
+        iconSize: _d(context, 'iconSize'),
+        rowPadH: _d(context, 'rowPadH'),
+        listPadV: _d(context, 'listPadV') ?? catalogCategoryRailListPadV(context),
+        pinSlotWidth:
+            _d(context, 'pinSlotWidth') ?? catalogCategoryRailPinSlotWidth(context),
         onSelect: _onSelectCategory,
         onTogglePin: onTogglePin,
         onReorder: onReorder,
@@ -786,9 +789,14 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     );
   }
 
-  double? _d(String k) {
+  /// Pack desktop px → TV × [ShellTokens.tvLayoutScale].
+  double? _d(BuildContext context, String k) {
     final raw = widget.spec[k];
-    return raw is num ? raw.toDouble() : null;
+    if (raw is! num) return null;
+    return ShellTokens.densityScale(
+      raw.toDouble(),
+      tv: ShellPaintScope.usesTvDensityOf(context),
+    );
   }
 }
 
