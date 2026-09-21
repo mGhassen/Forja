@@ -192,8 +192,8 @@ class PluginRegistry {
   /// Host owns chrome ids as **opaque strings**. Packs may omit `nav.tabId`.
   /// - Hub tree URL → `nav.tabId` if set, else opaque `forjaHqSlot` path segment
   /// - Community / arbitrary URL → `p_<urlHash>` (+ optional local label)
-  /// Never map slot names in Dart — packs that need a stable id ≠ folder declare
-  /// `nav.tabId` when folder slot ≠ preferred Features id.
+  /// Prefer omitting `nav.tabId` so Features id == hub folder. Only set
+  /// `nav.tabId` when the folder slug cannot be the Features id.
   static String hostNavId({
     required String sourceUrl,
     required String authorTabId,

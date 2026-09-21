@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
@@ -182,13 +182,7 @@ export function AccountSettingsAddonsPage() {
     save: forja.save,
   })
 
-  const availableIds = availableFeatureTabIds({
-    addonFeatureIptv: playDraft.draft.addon_feature_iptv,
-    packs: packsDraft.draft.packs,
-  })
-  const availableIdsRef = useRef(availableIds)
-  availableIdsRef.current = availableIds
-
+  const availableIdsRef = useRef<string[]>([])
   const navDraft = useCommitDraft({
     profileId: navigation.profileId,
     updatedAt: navigation.data?.updated_at,
@@ -199,6 +193,18 @@ export function AccountSettingsAddonsPage() {
     save: navigation.save,
     toPayload: (draft) => navToPayload(draft, availableIdsRef.current),
   })
+
+  const cloudNavIds = useMemo(() => {
+    const n = navigation.data?.payload
+    return [...(n?.visibleIds ?? []), ...(n?.tabOrder ?? [])]
+  }, [navigation.data?.payload])
+
+  const availableIds = availableFeatureTabIds({
+    addonFeatureIptv: playDraft.draft.addon_feature_iptv,
+    packs: packsDraft.draft.packs,
+    cloudNavIds,
+  })
+  availableIdsRef.current = availableIds
 
   const busy =
     hostBusy ||
@@ -225,6 +231,7 @@ export function AccountSettingsAddonsPage() {
       const nextAvailable = availableFeatureTabIds({
         addonFeatureIptv: nextPlayback.addon_feature_iptv,
         packs: packsDraft.draft.packs,
+        cloudNavIds,
       })
 
       let nextNav = pruneNavigationToAvailable(

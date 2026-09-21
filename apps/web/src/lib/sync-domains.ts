@@ -217,25 +217,33 @@ export const ARCHIVED_NAV_IDS = new Set([
   'anime_arabic',
 ])
 
-/** Display-only hints when a pack tab id is already in cloud — not an inventory. */
-const NAV_LABEL_HINTS: Record<string, string> = {
-  iptv: 'IPTV',
-  live_sports: 'Live Sports',
-  home: 'Home',
-  anime: 'Anime',
-  asian_drama: 'Asian Drama',
-  mylist: 'My List',
-}
-
-export function navTabLabel(id: string): string {
-  if (id === 'settings') return 'Settings'
-  const hint = NAV_LABEL_HINTS[id]
-  if (hint) return hint
+function titleCaseNavId(id: string): string {
   return id
     .split(/[_-]+/)
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
+}
+
+/**
+ * Features row label — host-core label, else synced pack `name` for that hub
+ * slot, else title-case of the opaque id. Never bake pack/plugin names here.
+ */
+export function navTabLabel(id: string, packs?: ForjaPackRow[]): string {
+  const t = id.trim()
+  if (!t || t === 'settings') return 'Settings'
+  const core = HOST_CORE_NAV_TABS.find((row) => row.id === t)
+  if (core) return core.label
+  if (packs?.length) {
+    for (const pack of packs) {
+      if (pack.enabled === false) continue
+      const hubId = hubTabIdFromPackManifestUrl(pack.manifestUrl ?? '')
+      if (hubId !== t) continue
+      const name = pack.name?.trim()
+      if (name) return name
+    }
+  }
+  return titleCaseNavId(t)
 }
 
 function isPersistedNavId(id: string): boolean {
@@ -477,7 +485,8 @@ export function hubTabIdFromPackManifestUrl(manifestUrl: string): string | null 
   const hubsIdx = parts.findIndex((p) => p === 'hubs')
   const slot = hubsIdx >= 0 ? parts[hubsIdx + 1] : undefined
   if (!slot || slot === 'manifest.json') return null
-  const id = slot.replace(/-/g, '_')
+  const folderId = slot.replace(/-/g, '_')
+  const id = folderId
   if (!isPersistedNavId(id)) return null
   if ((HOST_CORE_NAV_IDS as string[]).includes(id)) return null
   return id
@@ -497,7 +506,8 @@ export function hubTabIdsFromForjaPacks(packs: ForjaPackRow[]): string[] {
 }
 
 /** RFC-086 / RFC-087 derived Features inventory — not `tabOrder` alone.
- * Live Sports is pack-only — hub tabs come from packs. */
+ * Hub tabs from pack manifest URLs on the profile; opaque ids already in
+ * cloud navigation are unioned (no baked pack inventory). */
 export function availableFeatureTabIds(opts: {
   addonFeatureIptv?: boolean
   /** Ignored (RFC-093). */
@@ -505,10 +515,21 @@ export function availableFeatureTabIds(opts: {
   /** @deprecated */
   addonFeatureLiveMatches?: boolean
   packs: ForjaPackRow[]
+  /** `visibleIds` ∪ `tabOrder` from cloud navigation (opaque pack tab ids). */
+  cloudNavIds?: Iterable<string>
 }): string[] {
   const ids: string[] = []
-  if (opts.addonFeatureIptv === true) ids.push('iptv')
-  ids.push(...hubTabIdsFromForjaPacks(opts.packs))
+  const seen = new Set<string>()
+  const add = (raw: string) => {
+    const id = raw.trim()
+    if (!isPersistedNavId(id) || seen.has(id)) return
+    if (id === 'iptv' && opts.addonFeatureIptv !== true) return
+    seen.add(id)
+    ids.push(id)
+  }
+  if (opts.addonFeatureIptv === true) add('iptv')
+  for (const id of hubTabIdsFromForjaPacks(opts.packs)) add(id)
+  for (const id of opts.cloudNavIds ?? []) add(id)
   return ids
 }
 
@@ -567,13 +588,19 @@ export function navigationAfterForjaPacksChange(opts: {
   const flags = {
     addonFeatureIptv: opts.addonFeatureIptv,
   }
+  const cloudNavIds = [
+    ...(opts.navigation?.visibleIds ?? []),
+    ...(opts.navigation?.tabOrder ?? []),
+  ]
   const prevAvailable = availableFeatureTabIds({
     ...flags,
     packs: opts.prevPacks,
+    cloudNavIds,
   })
   const nextAvailable = availableFeatureTabIds({
     ...flags,
     packs: opts.nextPacks,
+    cloudNavIds,
   })
   const prevSet = new Set(prevAvailable)
   const newlyAvailable = nextAvailable.filter((id) => !prevSet.has(id))

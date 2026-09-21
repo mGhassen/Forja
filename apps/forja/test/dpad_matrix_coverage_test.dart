@@ -64,7 +64,7 @@ void main() {
   tearDown(() {
     ShellTvFocusCoordinator.clearTab('iptv');
     ShellTvFocusCoordinator.clearTab('live_sports');
-    ShellTvFocusCoordinator.clearTab('mylist');
+    ShellTvFocusCoordinator.clearTab('my_list');
     ShellTvFocusCoordinator.clearTab('settings');
     ShellTvFocusCoordinator.clearTab('home');
   });
@@ -422,7 +422,7 @@ void main() {
     });
 
     testWidgets('My List kind↓status↓grid + pageBack ladder', (tester) async {
-      const tab = 'mylist';
+      const tab = 'my_list';
       ShellTvFocus.currentNavTabId = tab;
       final kind = FocusNode();
       final status = FocusNode();

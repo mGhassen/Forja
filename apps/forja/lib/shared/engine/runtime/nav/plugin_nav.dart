@@ -702,7 +702,8 @@ abstract final class PluginNavRegistry {
   }
 
   /// Rewrite Features/rail ids when a ForjaHQ folder slot differs from the
-  /// pack's `nav.tabId` (RFC-094). Dedupes if both were visible.
+  /// pack's `nav.tabId` (RFC-094). Dedupes if both were visible. Mapping comes
+  /// only from installed packs — never a baked pack-id table.
   static Future<bool> _remapForjaHqSlotAliasesInNavbar({
     required List<(EnginePack, EnginePlugin, MetaNavSpec)> hubs,
   }) async {

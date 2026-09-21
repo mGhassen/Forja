@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronUp, Lock, Star } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
@@ -29,8 +30,8 @@ type NavDraft = {
   defaultTab: string
 }
 
-function labelFor(id: string): string {
-  return navTabLabel(id)
+function labelFor(id: string, packs: ForjaPayload['packs']): string {
+  return navTabLabel(id, packs)
 }
 
 function emptyNavDraft(): NavDraft {
@@ -45,13 +46,18 @@ function emptyNavDraft(): NavDraft {
 function availableFromServer(
   playbackPayloadValue: unknown,
   forjaPayloadValue: unknown,
+  navigationPayloadValue: unknown,
 ): string[] {
   const play = playbackPayloadValue as PreferencesPayload | undefined
   const packs =
     (forjaPayloadValue as ForjaPayload | undefined)?.packs ?? []
+  const nav = normalizeNavigationPayload(
+    navigationPayloadValue as NavigationPayload | undefined,
+  )
   return availableFeatureTabIds({
     addonFeatureIptv: play?.addon_feature_iptv,
     packs,
+    cloudNavIds: [...nav.visibleIds, ...nav.tabOrder],
   })
 }
 
@@ -67,9 +73,30 @@ function navDraftFromServer(value: unknown): NavDraft {
 }
 
 export function AccountSettingsNavigationPage() {
+  const queryClient = useQueryClient()
   const navigation = useNavigationSetting()
   const playback = usePlaybackSetting()
   const forja = useForjaSetting()
+
+  // Soft-pull while Features is open (no Realtime — issue 224 T43). App → web
+  // toggles land without leaving the browser tab.
+  useEffect(() => {
+    const profileId = navigation.profileId
+    if (!profileId) return
+    const softPull = () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['profile_settings'],
+      })
+    }
+    softPull()
+    const onFocus = () => softPull()
+    window.addEventListener('focus', onFocus)
+    const tick = window.setInterval(softPull, 4000)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      window.clearInterval(tick)
+    }
+  }, [navigation.profileId, queryClient])
 
   const playDraft = useCommitDraft({
     profileId: playback.profileId,
@@ -97,16 +124,18 @@ export function AccountSettingsNavigationPage() {
     save: forja.save,
   })
 
-  // Cloud playback/packs first — drafts start empty until effects run.
+  // Cloud playback/packs/nav — drafts start empty until effects run.
   const availableIds = useMemo(
     () =>
       availableFromServer(
         playback.data?.payload ?? playDraft.draft,
         forja.data?.payload ?? { packs: packsDraft.draft.packs },
+        navigation.data?.payload,
       ),
     [
       playback.data?.payload,
       forja.data?.payload,
+      navigation.data?.payload,
       playDraft.draft,
       packsDraft.draft.packs,
     ],
@@ -203,6 +232,10 @@ export function AccountSettingsNavigationPage() {
   }
 
   const locked = controlsLocked || isSaving
+  const packRows =
+    (forja.data?.payload as ForjaPayload | undefined)?.packs ??
+    packsDraft.draft.packs
+  const tabLabel = (id: string) => labelFor(id, packRows)
 
   return (
     <AccountSettingsShell
@@ -230,6 +263,7 @@ export function AccountSettingsNavigationPage() {
           {featureOrder.map((id, index) => {
             const on = draft.visible.has(id)
             const isDefault = draft.defaultTab === id
+            const name = tabLabel(id)
             return (
               <li
                 key={id}
@@ -238,7 +272,7 @@ export function AccountSettingsNavigationPage() {
                 <div className="flex shrink-0 flex-col gap-0.5">
                   <button
                     type="button"
-                    aria-label={`Move ${labelFor(id)} up`}
+                    aria-label={`Move ${name} up`}
                     disabled={locked || index === 0}
                     onClick={() => move(index, -1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
@@ -247,7 +281,7 @@ export function AccountSettingsNavigationPage() {
                   </button>
                   <button
                     type="button"
-                    aria-label={`Move ${labelFor(id)} down`}
+                    aria-label={`Move ${name} down`}
                     disabled={locked || index === featureOrder.length - 1}
                     onClick={() => move(index, 1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
@@ -261,14 +295,14 @@ export function AccountSettingsNavigationPage() {
                     on ? 'text-forja-text' : 'text-forja-muted',
                   )}
                 >
-                  {labelFor(id)}
+                  {name}
                 </span>
                 <button
                   type="button"
                   aria-label={
                     isDefault
-                      ? `${labelFor(id)} is default tab`
-                      : `Set ${labelFor(id)} as default tab`
+                      ? `${name} is default tab`
+                      : `Set ${name} as default tab`
                   }
                   disabled={locked || !on}
                   onClick={() =>
@@ -290,7 +324,7 @@ export function AccountSettingsNavigationPage() {
                   type="button"
                   role="switch"
                   aria-checked={on}
-                  aria-label={`Show ${labelFor(id)}`}
+                  aria-label={`Show ${name}`}
                   disabled={locked}
                   onClick={() => setVisible(id, !on)}
                   className={cn(
