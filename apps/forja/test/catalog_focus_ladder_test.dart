@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
@@ -371,6 +372,69 @@ void main() {
       );
       await tester.pump();
       expect(moodChip.hasFocus, isTrue);
+    },
+  );
+
+  testWidgets(
+    '↓ pack focusDown to because prefers because-shuffle when mounted',
+    (tester) async {
+      final moodChip = FocusNode(debugLabel: 'mood-chip');
+      final shuffle = FocusNode(debugLabel: 'because-shuffle');
+      final because = FocusNode(debugLabel: 'because');
+      final sChips = PackPaintArtifact.stableSortOrder(_tab, 'mood-chips');
+      final sShuffle =
+          PackPaintArtifact.stableSortOrder(_tab, 'because-shuffle');
+      final sBecause = PackPaintArtifact.stableSortOrder(_tab, 'because');
+
+      addTearDown(() {
+        moodChip.dispose();
+        shuffle.dispose();
+        because.dispose();
+      });
+
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [
+              TvKitRow(
+                rowId: 'mood-chips',
+                sortOrder: sChips,
+                itemCount: 1,
+                onFocusDown: kitFocusEdge(_tab, 'because', down: true),
+                child: _item(node: moodChip, rowId: 'mood-chips', index: 0),
+              ),
+              TvKitRow(
+                rowId: 'because-shuffle',
+                sortOrder: sShuffle,
+                itemCount: 1,
+                child: _item(node: shuffle, rowId: 'because-shuffle', index: 0),
+              ),
+              TvKitRow(
+                rowId: 'because',
+                sortOrder: sBecause,
+                itemCount: 1,
+                child: _item(node: because, rowId: 'because', index: 0),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      moodChip.requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'mood-chips',
+          currentIndex: 0,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(shuffle.hasFocus, isTrue);
+      expect(because.hasFocus, isFalse);
     },
   );
 

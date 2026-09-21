@@ -33,10 +33,12 @@ class LayoutScope extends InheritedWidget {
   /// Host resolves pack `focusUp` / `focusDown` / side edges to callbacks.
   ///
   /// [last] → remembered index; [lastItem] → final index on the row.
+  /// [down] → focusDown path (may prefer `{rowId}-shuffle` chrome when present).
   final VoidCallback? Function(
     String? rowId, {
     bool last,
     bool lastItem,
+    bool down,
   })? focusEdge;
 
   static LayoutScope? maybeOf(BuildContext context) {
@@ -61,10 +63,11 @@ class LayoutScope extends InheritedWidget {
     String? rowId, {
     bool last = false,
     bool lastItem = false,
+    bool down = false,
   }) {
     final edge = focusEdge;
     if (edge == null || rowId == null || rowId.isEmpty) return null;
-    return edge(rowId, last: last, lastItem: lastItem);
+    return edge(rowId, last: last, lastItem: lastItem, down: down);
   }
 
   @override

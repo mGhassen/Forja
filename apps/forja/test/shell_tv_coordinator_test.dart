@@ -911,6 +911,47 @@ void main() {
     },
   );
 
+  testWidgets(
+    'hero notifyFocused reveals only when landing from another zone',
+    (tester) async {
+      final play = FocusNode(debugLabel: 'hero-play');
+      var revealed = 0;
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'home',
+        defaultFocus: () => play,
+        heroReveal: () => revealed++,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Focus(focusNode: play, child: const SizedBox(width: 40, height: 40)),
+        ),
+      );
+      await tester.pump();
+
+      const meta = ShellTvFocusMeta(tabId: 'home', zone: ShellTvZone.hero);
+
+      // First land on hero (no prior memory) → reveal once.
+      meta.notifyFocused(play);
+      expect(revealed, 1);
+
+      // Window focus / resume re-fires focus while still on hero → no yank.
+      meta.notifyFocused(play);
+      expect(revealed, 1);
+
+      // Leave to a row, then return → reveal again.
+      ShellTvFocusCoordinator.saveFocus(
+        'home',
+        ShellTvFocusMemory(zone: ShellTvZone.row, rowId: 'popular', node: play),
+      );
+      meta.notifyFocused(play);
+      expect(revealed, 2);
+
+      play.dispose();
+      ShellTvFocusCoordinator.clearTab('home');
+    },
+  );
+
   testWidgets('restoreTabFocus ignores stale nav-only memory', (tester) async {
     final pageNode = FocusNode(debugLabel: 'page-item');
     ShellTvFocusCoordinator.saveFocus(

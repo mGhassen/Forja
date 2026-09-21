@@ -7,11 +7,13 @@ String normalizeCoverUrl(String raw) {
   final value = raw.trim();
   if (value.isEmpty) return value;
   final uri = Uri.tryParse(value);
-  if (uri == null) return value;
+  if (uri == null) return paintableNetworkImageUrl(value);
   if (uri.host == 'media.themoviedb.org' || uri.host == 'image.tmdb.org') {
-    return uri.replace(host: 'tmdb.forjahq.xyz').toString();
+    return paintableNetworkImageUrl(
+      uri.replace(host: 'tmdb.forjahq.xyz').toString(),
+    );
   }
-  return value;
+  return paintableNetworkImageUrl(value);
 }
 
 /// Absolute `http(s)` URLs only. Relative `/path` keys stay unchanged
@@ -23,4 +25,19 @@ String resolveAbsoluteCoverUrl(String raw) {
     return value;
   }
   return value;
+}
+
+/// URL safe for Flutter [Image.network] / Android [ImageDecoder].
+///
+/// TMDB title logos are often `.svg`. Android cannot decode SVG, so http(s)
+/// paths ending in `.svg` are rewritten to `.png` (same asset on TMDB / our
+/// gateway). Pack-local `file://` / relative SVGs are left alone — paint those
+/// with `SvgPicture`, not [Image.network].
+String paintableNetworkImageUrl(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) return value;
+  final lower = value.toLowerCase();
+  final http = lower.startsWith('http://') || lower.startsWith('https://');
+  if (!http || !lower.endsWith('.svg')) return value;
+  return '${value.substring(0, value.length - 4)}.png';
 }

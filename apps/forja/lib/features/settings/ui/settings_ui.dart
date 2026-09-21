@@ -114,7 +114,7 @@ class SettingsCategoryTile extends StatefulWidget {
   final IconData icon;
   /// When set, replaces the default [Icon] (e.g. pack-update alert).
   final Widget? leading;
-  /// Optional chip after the title column (e.g. pack-update badge).
+  /// Optional chip under the title column (e.g. pack-update badge).
   final Widget? trailing;
   final String title;
   final String? subtitle;
@@ -212,13 +212,17 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
                       ),
                     ),
                   ],
+                  if (widget.trailing != null) ...[
+                    const SizedBox(height: 6),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: widget.trailing!,
+                    ),
+                  ],
                 ],
               ),
             ),
-            if (widget.trailing != null) ...[
-              const SizedBox(width: 8),
-              widget.trailing!,
-            ],
             if (!SettingsTokens.useSplitLayout(context))
               Icon(
                 Icons.chevron_right_rounded,

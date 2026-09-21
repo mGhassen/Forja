@@ -783,14 +783,14 @@ class PackPaintTree extends StatelessWidget {
               onDownEdge: down.isEmpty
                   ? null
                   : () =>
-                      scope?.resolveFocusEdge(down, last: true)?.call(),
+                      scope?.resolveFocusEdge(down, last: true, down: true)?.call(),
               onUpEdge: up.isEmpty
                   ? null
                   : () => scope?.resolveFocusEdge(up, last: true)?.call(),
               onTap: () {
                 onSelect(item.id);
                 if (down.isNotEmpty) {
-                  scope?.resolveFocusEdge(down, last: true)?.call();
+                  scope?.resolveFocusEdge(down, last: true, down: true)?.call();
                 }
               },
             );
@@ -1267,7 +1267,7 @@ class PackPaintTree extends StatelessWidget {
         .toString()
         .trim();
     if (raw.isEmpty) return null;
-    return scope?.resolveFocusEdge(raw, last: true);
+    return scope?.resolveFocusEdge(raw, last: true, down: true);
   }
 
   Widget Function(Widget child)? _chromeTvWrap(
@@ -1502,8 +1502,8 @@ class PackPaintTree extends StatelessWidget {
     final scope = LayoutScope.maybeOf(context);
     final bleed = (node['bleed'] ?? '').toString().trim();
     final focusDown = bleed.isNotEmpty
-        ? scope?.resolveFocusEdge(bleed)
-        : scope?.resolveFocusEdge((node['focusDown'] ?? '').toString());
+        ? scope?.resolveFocusEdge(bleed, down: true)
+        : scope?.resolveFocusEdge((node['focusDown'] ?? '').toString(), down: true);
     final tab = (tabId ?? scope?.tabId ?? '').trim();
 
     return _HubTvCinematicHero(
@@ -3578,7 +3578,10 @@ class _MoodMountState extends State<_MoodMount> {
             final packFocusUp = LayoutScope.maybeOf(context)
                 ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
             final packFocusDown = LayoutScope.maybeOf(context)
-                ?.resolveFocusEdge((widget.spec['focusDown'] ?? '').toString());
+                ?.resolveFocusEdge(
+                  (widget.spec['focusDown'] ?? '').toString(),
+                  down: true,
+                );
             return TvChipStrip(
               tabId: tab.isEmpty ? null : tab,
               rowId: chipRowId,
@@ -3698,6 +3701,7 @@ class _BecauseMountState extends State<_BecauseMount> {
                 final packFocusDown = LayoutScope.maybeOf(ctx)
                     ?.resolveFocusEdge(
                       (widget.spec['focusDown'] ?? '').toString(),
+                      down: true,
                     );
                 final gap = PackPaintArtifact.packLength(
                       ctx,
@@ -4082,7 +4086,7 @@ class _ContinueMountState extends State<_ContinueMount> {
       onFocusUp: LayoutScope.maybeOf(context)
           ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString()),
       onFocusDown: LayoutScope.maybeOf(context)
-          ?.resolveFocusEdge((widget.spec['focusDown'] ?? '').toString()),
+          ?.resolveFocusEdge((widget.spec['focusDown'] ?? '').toString(), down: true),
       child: ContinueSection(
         title: 'Continue Watching',
         scrollController: _scroll,

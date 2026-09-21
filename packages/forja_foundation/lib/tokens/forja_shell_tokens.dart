@@ -39,13 +39,13 @@ abstract final class ShellTokens {
   static const double tvChromeScale = 0.62;
 
   /// Softer than [tvChromeScale] — hero band / title reserve stay readable at 10ft.
-  static const double tvHeroScale = 0.85;
+  static const double tvHeroScale = 0.80;
 
   /// Leanback type ladder — separate from spatial [tvChromeScale].
   /// Keep smaller than desktop so type matches dense cards (not 14/16 desktop-ish).
-  static const double tvBodyFontSize = 11;
-  static const double tvTitleFontSize = 14;
-  static const double tvMetaFontSize = 10;
+  static const double tvBodyFontSize = 10;
+  static const double tvTitleFontSize = 12;
+  static const double tvMetaFontSize = 9;
 
   /// Map a desktop font size onto the leanback ladder.
   static double tvTypeSize(double desktop) {

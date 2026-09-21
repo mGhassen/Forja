@@ -2009,7 +2009,14 @@ class ShellTvFocusMeta {
     }
     switch (zone) {
       case ShellTvZone.hero:
-        ShellTvFocusCoordinator.revealHeroForTab(tabId);
+        // Scroll-to-top only when landing on hero from another zone.
+        // Desktop window focus / app resume re-fires onFocusChange on the
+        // still-focused hero CTA while the user may have mouse-scrolled away —
+        // revealing again yanked the hub feed back to Spotlight.
+        final prior = ShellTvFocusCoordinator.memoryFor(tabId);
+        if (prior?.zone != ShellTvZone.hero) {
+          ShellTvFocusCoordinator.revealHeroForTab(tabId);
+        }
         ShellTvFocusCoordinator.saveFocus(
           tabId,
           ShellTvFocusMemory(zone: ShellTvZone.hero, node: node),

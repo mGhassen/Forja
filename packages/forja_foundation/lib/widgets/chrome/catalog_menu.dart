@@ -61,7 +61,7 @@ class CatalogMenu extends StatelessWidget {
                 : ShellTokens.kitTopBarTabGapWide);
     final tabId = (scope.tabId ?? ShellPaintTvTabScope.tabIdOf(context) ?? '')
         .trim();
-    final focusDown = scope.resolveFocusEdge(spec['focusDown']?.toString());
+    final focusDown = scope.resolveFocusEdge(spec['focusDown']?.toString(), down: true);
     final focusLeft = scope.resolveFocusEdge(spec['focusLeft']?.toString());
     final focusRight = scope.resolveFocusEdge(
       spec['focusRight']?.toString(),

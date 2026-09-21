@@ -688,7 +688,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     final focusUp = LayoutScope.maybeOf(context)
         ?.resolveFocusEdge((node['focusUp'] ?? '').toString());
     final focusDown = LayoutScope.maybeOf(context)
-        ?.resolveFocusEdge((node['focusDown'] ?? '').toString());
+        ?.resolveFocusEdge((node['focusDown'] ?? '').toString(), down: true);
     // Unique vertical order — shared sortOrder 100 made ↓ trap on the first
     // poster rail (_nextRow needs strictly greater sortOrder). Prefer pack
     // sortOrder; else first-seen paint order for this tab+rowId.

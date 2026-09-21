@@ -933,8 +933,14 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         widgetSpecs: layoutWidgetSpecIndex(_widgets),
         tabId: _pageKey,
         onSelect: _onLayoutSelect,
-        focusEdge: (rowId, {last = false, lastItem = false}) =>
-            kitFocusEdge(_pageKey, rowId, last: last, lastItem: lastItem),
+        focusEdge: (rowId, {last = false, lastItem = false, down = false}) =>
+            kitFocusEdge(
+              _pageKey,
+              rowId,
+              last: last,
+              lastItem: lastItem,
+              down: down,
+            ),
         child: child,
       ),
     );

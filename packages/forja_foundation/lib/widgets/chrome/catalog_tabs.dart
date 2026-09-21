@@ -63,7 +63,7 @@ class CatalogTabs extends StatelessWidget {
         selected: selected,
         onSelect: onSelect,
         onUp: scope.resolveFocusEdge(spec['focusUp']?.toString(), last: true),
-        onDown: scope.resolveFocusEdge(spec['focusDown']?.toString()),
+        onDown: scope.resolveFocusEdge(spec['focusDown']?.toString(), down: true),
         onLeft: scope.resolveFocusEdge(spec['focusLeft']?.toString()),
         onRight: scope.resolveFocusEdge(
           spec['focusRight']?.toString(),

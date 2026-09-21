@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 6 / 6** fix · **1 / 3** acceptance |
+| **Progress** | **Complete · 7 / 7** fix · **1 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I309-T04 | All catalog hub packs declare `focus` + rail edges (Home/Anime/Asian Drama/Kids/Cartoon/Aflem/Arabic/Shahid); host honors continue/mood/because; kit-edge miss falls through | ✅ |
 | 5 | I309-T05 | Pre-reserve hub TV sortOrder in layout widget order (Featured bleed before Mood) so Popular↓ does not jump to genre rails | ✅ |
 | 6 | I309-T06 | Home pack: New Releases ↓ → genre_0 → genre_1 → genre_2 (↑ reverse); empty Continue / shuffle still pack-edge + host miss | ✅ |
+| 7 | I309-T07 | Pack names Because poster rail (`focusDown: 'because'`); host ↓ prefers `because-shuffle` chrome when mounted | ✅ |
 
 ---
 
