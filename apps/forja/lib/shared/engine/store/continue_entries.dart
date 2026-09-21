@@ -139,3 +139,45 @@ Future<List<Map<String, dynamic>>> catalogContinueEntries(
   final homeEntries = await _homeTabContinueEntries();
   return _mergeContinueEntriesByShow([...packEntries, ...homeEntries]);
 }
+
+/// Opaque resume seeds for layout widget type `because`.
+///
+/// When [mergeHomeWatchHistory] is true (Home hub), seeds include the same
+/// WatchHistoryService movie/TV rows Continue Watching merges — not only the
+/// pack plugin's [WatchHistory] store (often empty on Home).
+Future<List<Map<String, dynamic>>> catalogResumeSeeds(
+  String pluginId, {
+  bool mergeHomeWatchHistory = false,
+}) async {
+  final out = <Map<String, dynamic>>[];
+  final seenTmdb = <String>{};
+
+  void addSeed(Map<String, dynamic> entry) {
+    final meta = entry['meta'];
+    if (meta is! Map) return;
+    final metaMap = Map<String, dynamic>.from(meta);
+    final ids = metaMap['ids'];
+    final tmdb = ids is Map ? (ids['tmdb'] ?? '').toString().trim() : '';
+    if (tmdb.isNotEmpty) {
+      if (seenTmdb.contains(tmdb)) return;
+      seenTmdb.add(tmdb);
+    }
+    final title = (entry['title'] ?? metaMap['name'] ?? '').toString();
+    out.add({
+      'title': title,
+      'meta': metaMap,
+    });
+  }
+
+  for (final e in await WatchHistory.getAll(pluginId)) {
+    addSeed(e);
+  }
+  if (!mergeHomeWatchHistory) return out;
+
+  final history = await WatchHistoryService().getHistory();
+  for (final item in history) {
+    if (!isHomeTabWatchHistoryEntry(item)) continue;
+    addSeed(catalogEntryFromHomeWatchHistory(item));
+  }
+  return out;
+}

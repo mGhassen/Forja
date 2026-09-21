@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 
 /// One selectable logo+label row for [LogoMenuRail].
 class LogoMenuItem {
@@ -73,7 +74,7 @@ class LogoMenuRail extends StatelessWidget {
   }
 
   static Widget? _logo(String? url) {
-    final trimmed = url?.trim() ?? '';
+    final trimmed = paintableNetworkImageUrl(url?.trim() ?? '');
     if (trimmed.isEmpty) return null;
     return Image.network(
       trimmed,

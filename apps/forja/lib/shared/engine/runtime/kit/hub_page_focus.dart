@@ -84,7 +84,7 @@ void bindHubPageFocus(String tabId, HubPageFocus focus) {
   if (tabId.isEmpty) return;
 
   if (focus.isEmpty) {
-    TvHeroActions.bind(tabId, preferCustomRestoreFromNav: false);
+    ShellTvFocusCoordinator.clearTabEnterRestore(tabId);
     ShellTvFocusCoordinator.setPageBackOnRowLeftEdge(tabId, false);
     return;
   }
@@ -130,6 +130,10 @@ void bindHubPageFocus(String tabId, HubPageFocus focus) {
   final hasRestore = (focus.restore ?? focus.enter)?.isNotEmpty == true;
   final hasEnter = focus.enter?.isNotEmpty == true;
   final hasBack = focus.pageBack.isNotEmpty;
+
+  // Always replace enter/restore — registerTabDefaults merges and would keep
+  // a stale Featured restore after Home dropped pack `restore`.
+  ShellTvFocusCoordinator.clearTabEnterRestore(tabId);
 
   TvHeroActions.bind(
     tabId,

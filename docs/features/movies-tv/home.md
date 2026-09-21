@@ -30,7 +30,7 @@ Tap **Home** in the navigation bar (first tab by default).
 - Continue Watching is host-owned (your watch history), not pack data.
 - On **desktop**, drag-select the hero title text to copy it (logo titles are images). Alt-tab / window focus keeps your scroll position — it does not jump back to Spotlight.
 
-- On **Android TV**, first open focuses the **Home** nav rail item; **RIGHT** or **Enter** moves into the page. From the top **Search** tab, **↓** lands on the hero gallery; **←/→** swaps slides; **OK** opens details; **↓** continues into **View details** then catalog rails.
+- On **Android TV**, first open focuses the **Home** nav rail item; **RIGHT** or **Enter** / OK on Home lands on hero **View details**; **→** from View details reaches the pin (**+**); **←** from View details returns to the nav. From the top **Search** tab, **↓** lands on the hero gallery; **←/→** swaps slides; **OK** opens details; **↓** continues into **View details** then catalog rails.
 
 ## Related
 

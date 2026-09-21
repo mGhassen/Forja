@@ -135,15 +135,3 @@ class WatchHistory {
     return null;
   }
 }
-
-/// Opaque resume rows for pack `because` rails — host does not interpret meta.
-Future<List<Map<String, dynamic>>> catalogResumeSeeds(String pluginId) async {
-  final entries = await WatchHistory.getAll(pluginId);
-  return [
-    for (final e in entries)
-      {
-        'title': e['title'],
-        if (e['meta'] is Map) 'meta': e['meta'],
-      },
-  ];
-}

@@ -3055,6 +3055,7 @@ class _HubTvCinematicHero extends StatefulWidget {
 
 class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   final FocusNode _playFocus = FocusNode(debugLabel: 'hub-hero-details');
+  final FocusNode _followFocus = FocusNode(debugLabel: 'hub-hero-follow');
   final FocusNode _galleryFocus = FocusNode(debugLabel: 'hub-hero-gallery');
   final GlobalKey<CinematicHeroState> _heroKey = GlobalKey<CinematicHeroState>();
 
@@ -3075,6 +3076,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     // Do not TvHeroActions.unbind — PackLayoutPainter owns tab teardown and
     // may still need enterFromNav / restore for list hubs after hero unmount.
     _playFocus.dispose();
+    _followFocus.dispose();
     _galleryFocus.dispose();
     super.dispose();
   }
@@ -3111,6 +3113,11 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   void _focusPlay() {
     if (!_playFocus.canRequestFocus) return;
     _playFocus.requestFocus();
+  }
+
+  void _focusFollow() {
+    if (!_followFocus.canRequestFocus) return;
+    _followFocus.requestFocus();
   }
 
   void _focusTopBar() {
@@ -3237,6 +3244,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
             if (details == null) continue;
             final useAuto = tv && policy.heroPlayAutoFocus && !autofocusUsed;
             if (useAuto) autofocusUsed = true;
+            final hasFollow = follow != null;
             child = HeroPillPlayButton(
               label: action.label ?? 'View details',
               icon: PackPaintTree._heroActionIcon(action.icon),
@@ -3253,6 +3261,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               // hub-hero-gallery (full-bleed overlay) after denser TV posters.
               onUpEdge: tv ? _focusGallery : null,
               onDownEdge: tv ? widget.focusDown : null,
+              onRightEdge: tv && hasFollow ? _focusFollow : null,
               onKeyEvent: tv
                   ? (node, event) {
                       if (!shellTvIsNavigationKey(event)) {
@@ -3273,8 +3282,10 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               target: follow,
               tvTabId: tab.isEmpty ? null : tab,
               tvItemIndexStart: 1,
+              focusNode: tv ? _followFocus : null,
               onUpEdge: tv ? _focusGallery : null,
               onDownEdge: tv ? widget.focusDown : null,
+              onLeftEdge: tv ? _focusPlay : null,
               enabled: true,
             );
           } else {

@@ -261,6 +261,14 @@ abstract final class ShellTvFocusCoordinator {
     _tabPreferCustomNavRestore.remove(tabId);
   }
 
+  /// Drop pack enter/restore land callbacks (hero [defaultFocus] remains).
+  static void clearTabEnterRestore(String tabId) {
+    if (tabId.isEmpty) return;
+    _tabEnterFocus.remove(tabId);
+    _tabRestoreFocus.remove(tabId);
+    _tabPreferCustomNavRestore.remove(tabId);
+  }
+
   /// Settings detail: ← on column 0 of a [TvKitRow] exits like Back.
   static void setPageBackOnRowLeftEdge(String tabId, bool enabled) {
     if (enabled) {

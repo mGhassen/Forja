@@ -177,9 +177,11 @@ class HeroPillIconGroup extends StatelessWidget {
     this.tvTabId,
     this.onUpEdge,
     this.onDownEdge,
+    this.onLeftEdge,
     this.onRightEdge,
     this.tvRowId,
     this.tvItemIndexStart,
+    this.focusNode,
   });
 
   final List<HeroPillIconSlot> slots;
@@ -187,9 +189,12 @@ class HeroPillIconGroup extends StatelessWidget {
   final String? tvTabId;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final String? tvRowId;
   final int? tvItemIndexStart;
+  /// Optional focus node for the first slot (hub View details ↔ pin).
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +218,9 @@ class HeroPillIconGroup extends StatelessWidget {
             tvTabId: tvTabId,
             onUpEdge: onUpEdge,
             onDownEdge: onDownEdge,
+            onLeftEdge: i == 0 ? onLeftEdge : null,
             onRightEdge: i == slots.length - 1 ? onRightEdge : null,
+            focusNode: i == 0 ? focusNode : null,
             tvRowId: tvRowId,
             tvItemIndex: tvItemIndexStart != null
                 ? tvItemIndexStart! + i
@@ -398,7 +405,9 @@ class _HeroPillGroupedSlot extends StatelessWidget {
     this.tvTabId,
     this.onUpEdge,
     this.onDownEdge,
+    this.onLeftEdge,
     this.onRightEdge,
+    this.focusNode,
     this.tvRowId,
     this.tvItemIndex,
   });
@@ -415,7 +424,9 @@ class _HeroPillGroupedSlot extends StatelessWidget {
   final String? tvTabId;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final FocusNode? focusNode;
   final String? tvRowId;
   final int? tvItemIndex;
 
@@ -439,6 +450,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
         : null;
     final effectiveOnKey = onUpEdge != null ||
             onDownEdge != null ||
+            onLeftEdge != null ||
             onRightEdge != null
         ? (FocusNode node, KeyEvent event) {
             if (onUpEdge != null) {
@@ -454,6 +466,12 @@ class _HeroPillGroupedSlot extends StatelessWidget {
               onDownEdge!();
               return KeyEventResult.handled;
             }
+            if (onLeftEdge != null &&
+                shellTvIsNavigationKey(event) &&
+                event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+              onLeftEdge!();
+              return KeyEventResult.handled;
+            }
             if (onRightEdge != null &&
                 shellTvIsNavigationKey(event) &&
                 event.logicalKey == LogicalKeyboardKey.arrowRight) {
@@ -467,6 +485,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
     return _wrapOrder(
       ForjaInteractive(
         onTap: onTap,
+        focusNode: focusNode,
         onKeyEvent: effectiveOnKey,
         tvMeta: tvMeta,
         hoverScale: 1,

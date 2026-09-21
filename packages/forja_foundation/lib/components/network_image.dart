@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 
 /// Network image for catalog cards — absolute http(s) URLs only.
 ///
@@ -62,6 +63,7 @@ class ForjaNetworkImage extends StatelessWidget {
     final surface = ColoredBox(color: theme.surfaceElevated);
     final loading = placeholder ?? surface;
     final fallback = error ?? loading;
+    final paintUrl = paintableNetworkImageUrl(url);
 
     if (!_isAbsolute) {
       return SizedBox(
@@ -84,8 +86,8 @@ class ForjaNetworkImage extends StatelessWidget {
             if (paintUnderlay) surface,
             Positioned.fill(
               child: Image.network(
-                url.trim(),
-                key: useOldImageOnUrlChange ? null : ValueKey(url.trim()),
+                paintUrl,
+                key: useOldImageOnUrlChange ? null : ValueKey(paintUrl),
                 fit: fit,
                 alignment: alignment,
                 cacheWidth: memCacheWidth,

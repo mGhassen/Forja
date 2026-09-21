@@ -1,3 +1,4 @@
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:rust/rust.dart';
 
 class PlayerHeroMetadata {
@@ -18,8 +19,11 @@ bool playerNeedsRichMetadata(Movie movie) {
 
 String? tmdbLogoImageUrlFromPath(String rawPath) {
   final path = rawPath.trim();
-  if (path.isEmpty || path.toLowerCase().endsWith('.svg')) return null;
-  if (path.startsWith('http')) return path;
+  if (path.isEmpty) return null;
+  if (path.startsWith('http')) {
+    final paint = paintableNetworkImageUrl(path);
+    return paint.isEmpty ? null : paint;
+  }
   return null;
 }
 

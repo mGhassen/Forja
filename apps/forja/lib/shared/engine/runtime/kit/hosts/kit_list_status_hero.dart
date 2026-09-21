@@ -17,6 +17,9 @@ class KitListStatusHero extends StatelessWidget {
     this.tvItemIndexStart = 0,
     this.onUpEdge,
     this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.focusNode,
     this.onMenuOpenChanged,
     this.enabled = true,
   });
@@ -26,6 +29,9 @@ class KitListStatusHero extends StatelessWidget {
   final int tvItemIndexStart;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final FocusNode? focusNode;
   final ValueChanged<bool>? onMenuOpenChanged;
   final bool enabled;
 
@@ -52,6 +58,9 @@ class KitListStatusHero extends StatelessWidget {
       tvItemIndexStart: tvItemIndexStart,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
+      focusNode: focusNode,
       onMenuOpenChanged: onMenuOpenChanged,
       enabled: enabled,
     );

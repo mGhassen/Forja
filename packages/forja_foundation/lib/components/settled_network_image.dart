@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 
 /// Network image that crossfades to the next URL after it has decoded.
 class SettledNetworkImage extends StatefulWidget {
@@ -63,8 +64,9 @@ class _SettledNetworkImageState extends State<SettledNetworkImage> {
   }
 
   Widget _frame(String url) {
+    final paintUrl = paintableNetworkImageUrl(url);
     return Image.network(
-      url,
+      paintUrl,
       fit: widget.fit,
       alignment: widget.alignment,
       filterQuality: widget.filterQuality,
@@ -95,7 +97,7 @@ class _SettledNetworkImageState extends State<SettledNetworkImage> {
         if (_base.isNotEmpty) _frame(_base),
         if (_incoming != null)
           Image.network(
-            _incoming!,
+            paintableNetworkImageUrl(_incoming!),
             fit: widget.fit,
             alignment: widget.alignment,
             filterQuality: widget.filterQuality,

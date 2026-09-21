@@ -3,6 +3,7 @@ import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Layout metrics for circular mood / category pickers.
@@ -122,7 +123,7 @@ class MoodCircle extends StatelessWidget {
     final border = selected ? theme.brandGreen : theme.borderSubtle;
     final bg =
         selected ? ForjaShellColors.chipSelectedBg : theme.surfaceElevated;
-    final url = imageUrl?.trim() ?? '';
+    final url = paintableNetworkImageUrl(imageUrl?.trim() ?? '');
 
     Widget content;
     if (child != null) {

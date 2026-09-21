@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 
 class WatchProviderTile {
   const WatchProviderTile({required this.name, required this.logoUrl});
@@ -53,7 +54,7 @@ class HeroWatchProvidersRow extends StatelessWidget {
                 width: tileSize,
                 height: tileSize,
                 child: Image.network(
-                  provider.logoUrl,
+                  paintableNetworkImageUrl(provider.logoUrl),
                   fit: BoxFit.contain,
                   errorBuilder: (_, _, _) => Text(
                     provider.name,

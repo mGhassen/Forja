@@ -43,9 +43,9 @@ abstract final class ShellTokens {
 
   /// Leanback type ladder — separate from spatial [tvChromeScale].
   /// Keep smaller than desktop so type matches dense cards (not 14/16 desktop-ish).
-  static const double tvBodyFontSize = 10;
-  static const double tvTitleFontSize = 12;
-  static const double tvMetaFontSize = 9;
+  static const double tvBodyFontSize = 8;
+  static const double tvTitleFontSize = 10;
+  static const double tvMetaFontSize = 7;
 
   /// Map a desktop font size onto the leanback ladder.
   static double tvTypeSize(double desktop) {
@@ -748,7 +748,8 @@ abstract final class ShellTokens {
   static const double moodCircleIconSizeActiveTv = 20;
 
   /// circle + gap + (lines × size × height) + bottom pad + font-metric slack.
-  static const double moodCircleRowHeightTv = moodCircleSizeTv +
+  static const double moodCircleRowHeightTv =
+      moodCircleSizeTv +
       moodCircleLabelGapTv +
       (moodCircleLabelMaxLinesTv *
           moodCircleLabelFontSizeTv *

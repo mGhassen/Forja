@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 
 enum HeroTitleStyle { details, home }
 
@@ -256,7 +257,7 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
 
   @override
   Widget build(BuildContext context) {
-    final logoUrl = widget.logoUrl?.trim() ?? '';
+    final logoUrl = paintableNetworkImageUrl(widget.logoUrl?.trim() ?? '');
     final defaultHeight = widget.tvDensity ? ShellTokens.heroLogoMaxHeightTv : 96.0;
     final logoHeight = widget.slotHeight == null
         ? defaultHeight
@@ -386,6 +387,7 @@ class _HomeHeroTitleSlot extends StatelessWidget {
                     ? ShellTokens.heroTitleSlotHeightDesktop
                     : resolvedLogoMax + 14);
     final hasLogo = logoUrl != null && logoUrl!.isNotEmpty;
+    final paintLogo = hasLogo ? paintableNetworkImageUrl(logoUrl!) : '';
     final textMaxHeight = hasLogo ? resolvedLogoMax : resolvedSlotHeight;
     final fallback = _plainTitleText(
       context,
@@ -404,14 +406,14 @@ class _HomeHeroTitleSlot extends StatelessWidget {
         alignment: Alignment.bottomLeft,
         child: Padding(
           padding: EdgeInsets.only(bottom: desktop || compact ? 0 : 14),
-          child: hasLogo
+          child: paintLogo.isNotEmpty
               ? SizedBox(
                   height: resolvedLogoMax,
                   width: resolvedMaxWidth,
                   child: Align(
                     alignment: Alignment.bottomLeft,
                     child: Image.network(
-                      logoUrl!,
+                      paintLogo,
                       height: resolvedLogoMax,
                       width: resolvedMaxWidth,
                       fit: BoxFit.contain,
