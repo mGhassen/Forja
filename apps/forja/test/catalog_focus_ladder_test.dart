@@ -76,6 +76,38 @@ void main() {
     );
   });
 
+  test('reserveHubFocusRowOrder locks layout order before late bleed paint', () {
+    // Simulate wrong first-seen order (mood before featured) then correct.
+    PackPaintArtifact.stableSortOrder(_tab, 'mood-chips');
+    PackPaintArtifact.stableSortOrder(_tab, 'mood-results');
+    PackPaintArtifact.stableSortOrder(_tab, 'featured');
+    PackPaintArtifact.stableSortOrder(_tab, 'popular');
+
+    PackPaintArtifact.reserveHubFocusRowOrder(_tab, const [
+      'featured',
+      'popular',
+      'continue_watching',
+      'mood-chips',
+      'mood-results',
+      'because-shuffle',
+      'because',
+      'new_releases',
+      'genre_animation',
+    ]);
+
+    final featured = PackPaintArtifact.stableSortOrder(_tab, 'featured');
+    final popular = PackPaintArtifact.stableSortOrder(_tab, 'popular');
+    final continueRow =
+        PackPaintArtifact.stableSortOrder(_tab, 'continue_watching');
+    final mood = PackPaintArtifact.stableSortOrder(_tab, 'mood-chips');
+    final genre = PackPaintArtifact.stableSortOrder(_tab, 'genre_animation');
+
+    expect(featured, lessThan(popular));
+    expect(popular, lessThan(continueRow));
+    expect(continueRow, lessThan(mood));
+    expect(mood, lessThan(genre));
+  });
+
   testWidgets(
     '↓ walk popular → continue → mood-chips → mood-results → shuffle → because',
     (tester) async {

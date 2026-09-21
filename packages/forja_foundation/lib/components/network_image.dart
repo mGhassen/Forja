@@ -7,8 +7,10 @@ import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 /// image provider.
 ///
 /// Outer [Stack] + [StackFit.expand] keeps the paint box fixed to the parent
-/// (channel logo slot, poster cell). A solid surface sits under the decoded
-/// frame so transparent PNGs do not show chrome through empty pixels. Custom
+/// (channel logo slot, poster cell). When [paintUnderlay] is true (default), a
+/// solid surface sits under the decoded frame so transparent PNGs do not show
+/// chrome through empty pixels. Channel cards set [paintUnderlay] false so the
+/// card face shows through — no nested elevated square on focus/hover. Custom
 /// [placeholder] widgets (icons, skeletons) show only while loading — removed
 /// once the first frame arrives so they cannot stack under a loaded logo.
 /// [gaplessPlayback] keeps the prior frame on URL updates when
@@ -28,6 +30,7 @@ class ForjaNetworkImage extends StatelessWidget {
     this.useOldImageOnUrlChange = true,
     this.memCacheWidth,
     this.filterQuality = FilterQuality.medium,
+    this.paintUnderlay = true,
   });
 
   final String url;
@@ -42,6 +45,10 @@ class ForjaNetworkImage extends StatelessWidget {
   final bool useOldImageOnUrlChange;
   final int? memCacheWidth;
   final FilterQuality filterQuality;
+
+  /// Solid [ForjaThemeExtension.surfaceElevated] under the image. Turn off for
+  /// channel logos so transparent PNGs sit on the card face (no inset square).
+  final bool paintUnderlay;
 
   bool get _isAbsolute {
     final u = url.trim();
@@ -74,7 +81,7 @@ class ForjaNetworkImage extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            surface,
+            if (paintUnderlay) surface,
             Positioned.fill(
               child: Image.network(
                 url.trim(),

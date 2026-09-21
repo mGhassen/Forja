@@ -11,6 +11,7 @@ import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
+import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
 import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
@@ -456,9 +457,99 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         packSourceUrl: widget.packSourceUrl,
         widgets: widgets,
       );
+      // Lock TV sortOrder to layout order before async bleed/rails paint.
+      PackPaintArtifact.reserveHubFocusRowOrder(
+        tab,
+        hubFocusRowIdsFromLayout(widgets),
+      );
       _bindHubTvDefaults(tab);
     }
     markShellTabFresh();
+  }
+
+  /// Focus row ids in visual / D-pad order (hero bleed → rails → mood → …).
+  static List<String> hubFocusRowIdsFromLayout(
+    List<Map<String, dynamic>> widgets,
+  ) {
+    String? bleedKey;
+    Map<String, dynamic>? bleedSpec;
+    for (final w in widgets) {
+      final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+      if (type != LayoutTypes.hero) continue;
+      final bleed = (w['bleed'] ?? '').toString().trim();
+      if (bleed.isNotEmpty) bleedKey = bleed;
+      break;
+    }
+    if (bleedKey != null) {
+      for (final preferRail in [true, false]) {
+        for (final w in widgets) {
+          final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+          if (preferRail) {
+            final isRail = type == LayoutTypes.row ||
+                type == 'rail' ||
+                type == 'ranked' ||
+                type == LayoutTypes.list;
+            if (!isRail) continue;
+          } else if (type == LayoutTypes.mood ||
+              type == LayoutTypes.continueWatching ||
+              type == LayoutTypes.because ||
+              type == LayoutTypes.hero ||
+              type == LayoutTypes.verticalFilters) {
+            continue;
+          }
+          final id = (w['id'] ?? '').toString().trim();
+          final rail = (w['rail'] ?? '').toString().trim();
+          if (id != bleedKey && rail != bleedKey) continue;
+          bleedSpec = w;
+          break;
+        }
+        if (bleedSpec != null) break;
+      }
+    }
+
+    final out = <String>[];
+    void add(String id) {
+      final t = id.trim();
+      if (t.isEmpty) return;
+      if (out.contains(t)) return;
+      out.add(t);
+    }
+
+    for (final w in widgets) {
+      final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+      if (type == LayoutTypes.verticalFilters) continue;
+      if (identical(w, bleedSpec) && bleedSpec?['hideWhenBleed'] == true) {
+        // Bleed rides under hero — reserve its id when we hit the hero.
+        continue;
+      }
+      if (type == LayoutTypes.hero) {
+        if (bleedKey != null) add(bleedKey);
+        continue;
+      }
+      if (type == LayoutTypes.continueWatching) {
+        final id = (w['id'] ?? 'continue_watching').toString().trim();
+        add(id.isEmpty ? 'continue_watching' : id);
+        continue;
+      }
+      if (type == LayoutTypes.mood) {
+        add('mood-chips');
+        add('mood-results');
+        continue;
+      }
+      if (type == LayoutTypes.because) {
+        add('because-shuffle');
+        add('because');
+        continue;
+      }
+      if (type == LayoutTypes.row ||
+          type == 'rail' ||
+          type == 'ranked' ||
+          type == LayoutTypes.list) {
+        final id = (w['id'] ?? w['rail'] ?? '').toString().trim();
+        add(id);
+      }
+    }
+    return out;
   }
 
   Future<void> _loadPage({bool force = false, bool keepPainted = false}) async {

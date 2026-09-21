@@ -512,36 +512,24 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     final titleBarH = ChannelCardTokens.titleBarHeightOf(tv);
     final titleSize = widget.titleFontSize ??
         ChannelCardTokens.cardTitleFontSizeOf(tv);
-    final logoPad = ChannelCardTokens.logoFramePadOf(tv);
-    final logoPadBottom = ChannelCardTokens.logoFramePadBottomOf(tv);
-    final logoInner = ChannelCardTokens.logoInnerPadOf(tv);
+    final logoPad = ChannelCardTokens.logoPadOf(tv);
     final titlePadH = ChannelCardTokens.titleBarPadHOf(tv);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Full logo band = remaining card face (title + EPG are fixed height).
+        // No inset AspectRatio square — that painted a second surface that only
+        // showed on focus/hover when the card face lightened.
         Expanded(
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Fixed 1:1 logo frame — same square slot for placeholder + logo.
-              // Never let PNG aspect / title length resize this box.
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  logoPad,
-                  logoPad,
-                  logoPad,
-                  logoPadBottom,
-                ),
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: ChannelCardTokens.logoAspectRatio,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(radius),
-                      child: _logoThumb(
-                        contain: true,
-                        padding: logoInner,
-                      ),
-                    ),
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: topRadius,
+                  child: _logoThumb(
+                    contain: true,
+                    padding: logoPad,
                   ),
                 ),
               ),
@@ -624,6 +612,8 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
       filterQuality:
           cacheWidth != null ? FilterQuality.low : FilterQuality.medium,
       useOldImageOnUrlChange: false,
+      // Card face is the underlay — no elevated square that only shows on focus.
+      paintUnderlay: false,
       placeholder: const _ChannelPlaceholder(),
       error: const _ChannelPlaceholder(),
     );

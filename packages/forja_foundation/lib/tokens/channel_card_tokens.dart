@@ -26,14 +26,9 @@ abstract final class ChannelCardTokens {
   static const double badgeFontSize = 8;
   static const double badgeFontSizeTv = ShellTokens.tvMetaFontSize;
 
-  /// Fixed 1:1 logo frame centered in the card’s logo band (pre-wipe TV body).
-  static const double logoAspectRatio = 1;
-  static const double logoFramePad = 8;
-  static const double logoFramePadTv = 6;
-  static const double logoFramePadBottom = 4;
-  static const double logoFramePadBottomTv = 3;
-  static const double logoInnerPad = 6;
-  static const double logoInnerPadTv = 4;
+  /// Inset for [BoxFit.contain] logos inside the full logo band (card face).
+  static const double logoPad = 10;
+  static const double logoPadTv = 8;
 
   /// Leanback channel tile width — hand-tuned logo face (denser than film posters).
   /// Keep in sync with [ShellTokens.channelCardWidthTv].
@@ -50,8 +45,5 @@ abstract final class ChannelCardTokens {
   static double badgeFontSizeOf(bool tv) => tv ? badgeFontSizeTv : badgeFontSize;
   static double epgSlotHeightOf(bool tv) =>
       tv ? epgSlotHeightTv : epgSlotHeight;
-  static double logoFramePadOf(bool tv) => tv ? logoFramePadTv : logoFramePad;
-  static double logoFramePadBottomOf(bool tv) =>
-      tv ? logoFramePadBottomTv : logoFramePadBottom;
-  static double logoInnerPadOf(bool tv) => tv ? logoInnerPadTv : logoInnerPad;
+  static double logoPadOf(bool tv) => tv ? logoPadTv : logoPad;
 }

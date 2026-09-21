@@ -42,6 +42,28 @@ abstract final class PackPaintArtifact {
     });
   }
 
+  /// Drop cached orders for [tabId] so [reserveHubFocusRowOrder] can rebuild.
+  static void clearStableSortOrdersForTab(String tabId) {
+    if (tabId.isEmpty) return;
+    final prefix = '$tabId\u0000';
+    _sortByRailKey.removeWhere((k, _) => k.startsWith(prefix));
+  }
+
+  /// Assign sortOrder in **layout widget order** before async rails paint.
+  ///
+  /// Without this, Mood/Continue reserve sync while Featured (bleed load) is
+  /// still pending — Featured gets a later number, so ↑ from Featured lands on
+  /// Mood and ↓ from Popular jumps to a late genre rail.
+  static void reserveHubFocusRowOrder(String tabId, List<String> rowIds) {
+    if (tabId.isEmpty || rowIds.isEmpty) return;
+    clearStableSortOrdersForTab(tabId);
+    for (final raw in rowIds) {
+      final id = raw.trim();
+      if (id.isEmpty) continue;
+      stableSortOrder(tabId, id);
+    }
+  }
+
   @visibleForTesting
   static void clearStableSortOrdersForTest() {
     _sortByRailKey.clear();
