@@ -5,6 +5,7 @@ import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
+import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
@@ -111,13 +112,22 @@ abstract final class HostPlaybackOpen {
       }
       if (!ctx.mounted) return false;
 
-      // Open player immediately — guide catalog is a network fetch and must not
-      // block the first paint / stream start.
+      // Open player immediately. Stub guide paints Search/Guide chrome now;
+      // full shelf attaches in the background (shelf-first, then network).
+      ChannelGuide? guide = channelGuide;
       Future<ChannelGuide?>? guideFuture;
-      if (channelGuide == null &&
+      if (guide == null &&
           !vodPlayback &&
           portalKey != null &&
           portalKey.trim().isNotEmpty) {
+        guide = PortalChannelGuideOpen.stub(
+          streamId: streamId ?? '',
+          title: t,
+          logoUrl: logoUrl,
+          categoryId: categoryId,
+          epgChannelId: epgChannelId,
+          playUrl: playUrl,
+        );
         guideFuture = PortalChannelGuideOpen.build(
           portalKey: portalKey,
           streamId: streamId ?? '',
@@ -169,7 +179,7 @@ abstract final class HostPlaybackOpen {
         title: t,
         subtitle: subtitle,
         logoUrl: logoUrl,
-        channelGuide: channelGuide,
+        channelGuide: guide,
         channelGuideFuture: guideFuture,
         engineContext: engineContext,
         liveSourceKind: liveSourceKind,
@@ -259,15 +269,9 @@ abstract final class HostPlaybackOpen {
   static Future<Portal?> _portalForKey(String portalKey) async {
     final key = portalKey.trim();
     if (key.isEmpty) return null;
-    final portals = await PortalStore.load();
-    final lower = key.toLowerCase();
-    for (final v in portals) {
-      if (PortalChannelGuideOpen.packPortalKey(v.portal) == lower) {
-        return v.portal;
-      }
-      if (v.key == key || v.credKey == key) return v.portal;
-    }
-    return null;
+    // Vault-first — pack Add/Import never write [PortalStore] alone.
+    final portals = await PortalsHost.loadVaultVerifiedPortals();
+    return PortalChannelGuideOpen.matchPortal(portals, key)?.portal;
   }
 
   static bool _vodFromOpen(MetaOpen? open) {

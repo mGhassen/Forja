@@ -21,7 +21,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
-| **Addons** | Playback, IPTV, Live Sports, torrent, Stremio, Nuvio, Debrid, Connected services, LAN. Playback is first (player prefs, no switch). Other rows show a switch on the row. **OK / click the row** turns the addon on or off; the **chevron on the right** opens that addon's settings. Installed packs can declare typed settings that appear **inside** the matching addon (e.g. Live Sports hub → Setup: Forja Live / Sports, merge). | Always |
+| **Addons** | Playback, torrent, Stremio, Nuvio, Connected services, LAN. Playback is first (player prefs, no switch). Other host rows show a switch. **OK / click the row** turns the addon on or off; the **chevron on the right** opens that addon's settings. Enabled packs can add more rows (IPTV, Live Sports, My List, Debrid, …) and typed settings inside those pages. On the **web portal**, the same host list plus discovered pack rows appear; Connected services / LAN / Debrid API keys stay in the app. | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | [Features](navigation-bar.md) | Tab visibility, order, default menu — Addons/packs unlock features and default them on; Features hide/reorder | Always |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
@@ -30,7 +30,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 ## Tips
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
-- IPTV / Live Sports alone → **Addons** and **Forja Packs** stay in the category list. Built-in addons stay listed even when off — the switch turns them on. Pack install is **Forja Packs**; packs may also contribute settings fields inside the matching Addon detail (manifest `settings`), and host sections still list installed plugins (e.g. Stremio URLs under **Addons → Stremio**).
+- IPTV / Live Sports alone → **Addons** and **Forja Packs** stay in the category list. Built-in addons stay listed even when off — the switch turns them on. Pack install is **Forja Packs**; packs may also contribute Addon rows and settings fields (manifest `settings`). The web portal mirrors that list for the active profile.
 - On **desktop**, Tab / arrow keys show the same green left-bar focus chrome on
   category tiles and detail rows (hidden again while you use the mouse). Arrow
   focus on a category does **not** auto-switch the right pane — click or

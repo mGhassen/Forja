@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
-import 'package:forja/shared/engine/portals/store/storage.dart';
+import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/shell/shell_bus.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 
@@ -80,15 +80,9 @@ class _ChannelCatalogHealthHostState extends State<ChannelCatalogHealthHost> {
   static Future<Portal?> _portalForKey(String portalKey) async {
     final key = portalKey.trim();
     if (key.isEmpty) return null;
-    final portals = await PortalStore.load();
-    final lower = key.toLowerCase();
-    for (final v in portals) {
-      if (PortalChannelGuideOpen.packPortalKey(v.portal) == lower) {
-        return v.portal;
-      }
-      if (v.key == key || v.credKey == key) return v.portal;
-    }
-    return null;
+    // Vault-first — pack Add/Import never write [PortalStore] alone.
+    final portals = await PortalsHost.loadVaultVerifiedPortals();
+    return PortalChannelGuideOpen.matchPortal(portals, key)?.portal;
   }
 
   /// Mint a real HTTP URL for Stalker pending handoff; pass through Xtream/M3U.

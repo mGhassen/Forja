@@ -8,6 +8,7 @@ import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart
 import 'package:forja/shared/engine/packs/settings/pack_hub_select_options.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 import 'package:forja/shared/engine/store/list_open_prefs.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
@@ -47,6 +48,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   @override
   void initState() {
     super.initState();
+    PackSettingsStore.onNonSecretUserWrite ??= schedulePackSettingsSyncPush;
     if (widget.plugins == null) {
       EngineService.changeNotifier.addListener(_onEngineChanged);
     }

@@ -319,7 +319,8 @@ abstract final class PackPaintArtifact {
 
   /// Desktop px length from pack JSON → TV × [ShellTokens.tvLayoutScale].
   ///
-  /// Packs author desktop baselines (same as SettingsTokens). Fractions /
+  /// Packs author desktop baselines. Catalog sizes track leanback poster
+  /// density (same spatial scale as Settings / nav chrome). Fractions /
   /// multipliers stay on [packDouble] (aspect, hoverScale, heightFraction, …).
   static double? packLength(BuildContext context, Object? raw) {
     final v = packDouble(raw);

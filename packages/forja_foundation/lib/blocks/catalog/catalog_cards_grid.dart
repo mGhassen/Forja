@@ -1128,7 +1128,9 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     final list = _compactList;
     final cardW = CatalogChannelCard.cardWidth(context);
     final cardH = CatalogChannelCard.cardHeight(context);
-    final gap = widget.gap ?? 10.0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final gap = widget.gap ??
+        ShellTokens.densityScale(10.0, tv: tv);
     final leading = widget.pad ?? ShellTokens.catalogSplitGridLeadingPad;
     final trailing = widget.pad ?? ShellTokens.catalogSplitGridTrailingPad;
 

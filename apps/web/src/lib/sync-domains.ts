@@ -164,12 +164,23 @@ export type ForjaPayload = {
   onboarded?: boolean
 }
 
+/**
+ * Non-secret pack Addon settings (RFC-089) — pluginId → fieldId → value.
+ * Passwords / secrets stay device-local and must never be written here.
+ */
+export type PackSettingsPayload = Record<
+  string,
+  Record<string, boolean | string | string[]>
+>
+
 export type ConnectedServicesPayload = {
   /** @deprecated Provider order is device-local — never write to cloud. */
   providers?: ProvidersPayload
   stremio?: StremioPayload
   nuvio?: NuvioPayload
   forja?: ForjaPayload
+  /** Pack-declared settings fields (non-secret). */
+  packSettings?: PackSettingsPayload
 }
 
 export type NavigationPayload = {
@@ -355,14 +366,14 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
     key: 'addons',
     title: 'Addons',
     description:
-      'Host product surfaces (Playback, IPTV, torrent, Stremio, Nuvio). Detail routes under /addons.',
+      'Same list as the app: Playback, torrent, Stremio, Nuvio, plus pack settings rows from enabled Forja Packs.',
     href: '/account/settings/addons',
   },
   {
     key: 'iptv',
     title: 'IPTV portals',
     description:
-      'Assign Xtream portals and IPTV EPG for this profile. Open from Addons → IPTV.',
+      'Assign Xtream portals and IPTV EPG for this profile. Open from Addons → IPTV when the IPTV pack is on.',
     href: '/account/settings/iptv',
   },
   {
@@ -707,7 +718,33 @@ function compactNavigation(n: NavigationPayload | undefined): NavigationPayload 
   return out
 }
 
-/** Compact before DB write: full playback; stremio/nuvio/forja under connectedServices.
+/** Compact pack settings — drop empty plugins; keep bool/string/string[]. */
+export function compactPackSettings(
+  raw: PackSettingsPayload | undefined,
+): PackSettingsPayload | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const out: PackSettingsPayload = {}
+  for (const [pluginId, fields] of Object.entries(raw)) {
+    const pid = pluginId.trim()
+    if (!pid || !fields || typeof fields !== 'object') continue
+    const next: Record<string, boolean | string | string[]> = {}
+    for (const [fieldId, value] of Object.entries(fields)) {
+      const fid = fieldId.trim()
+      if (!fid) continue
+      if (typeof value === 'boolean') {
+        next[fid] = value
+      } else if (typeof value === 'string') {
+        next[fid] = value
+      } else if (Array.isArray(value)) {
+        next[fid] = value.map((e) => String(e).trim()).filter(Boolean)
+      }
+    }
+    if (Object.keys(next).length) out[pid] = next
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+/** Compact before DB write: full playback; stremio/nuvio/forja/packSettings under connectedServices.
  * Provider order is device-local — never persist. Never write iptv (portals/M3U). */
 export function compactProfileSettingsPayload(
   full: ProfileSettingsPayload,
@@ -716,12 +753,14 @@ export function compactProfileSettingsPayload(
   const stremio = compactStremio(full.connectedServices?.stremio)
   const nuvio = compactNuvio(full.connectedServices?.nuvio)
   const forja = compactForja(full.connectedServices?.forja)
+  const packSettings = compactPackSettings(full.connectedServices?.packSettings)
   const navigation = compactNavigation(full.navigation)
 
   const connectedServices: ConnectedServicesPayload = {}
   if (stremio) connectedServices.stremio = stremio
   if (nuvio) connectedServices.nuvio = nuvio
   if (forja) connectedServices.forja = forja
+  if (packSettings) connectedServices.packSettings = packSettings
 
   const out: ProfileSettingsPayload = {}
   if (playback) out.playback = playback
@@ -753,12 +792,14 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
       ? { onboarded: true as const }
       : {}),
   }
+  const packSettings =
+    compactPackSettings(p.connectedServices?.packSettings) ?? {}
 
   void p.films
 
   return {
     playback: { ...base.playback, ...p.playback },
-    connectedServices: { stremio, nuvio, forja },
+    connectedServices: { stremio, nuvio, forja, packSettings },
     navigation: normalizeNavigationPayload(p.navigation),
   }
 }

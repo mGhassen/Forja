@@ -5,14 +5,22 @@ class HeroDesktopTextLayout {
   const HeroDesktopTextLayout({
     required this.titleHeight,
     required this.showOverview,
+    required this.showMeta,
     required this.overviewMaxLines,
     required this.overviewSlotHeight,
+    required this.actionRowHeight,
   });
 
   final double titleHeight;
   final bool showOverview;
+
+  /// When false, skip title↔meta gap and the meta slot (tight TV bleed).
+  final bool showMeta;
   final int overviewMaxLines;
   final double overviewSlotHeight;
+
+  /// Reserved height for the CTA row (may shrink below [ShellTokens.shellButtonHeight]).
+  final double actionRowHeight;
 }
 
 /// Fits title + optional overview into [maxHeight] for Home / hub heroes.
@@ -21,6 +29,9 @@ class HeroDesktopTextLayout {
 /// title slot and overview lines before dropping the synopsis entirely.
 /// Pass [reservedBelowOverview] for extra chrome under the overview (e.g. upcoming
 /// notice) so that height is part of the fit budget.
+///
+/// Guarantees the returned layout's painted height (title + meta + overview +
+/// actions + [reservedBelowOverview]) is ≤ [maxHeight] (within 0.01px).
 ///
 /// Nullable chrome overrides: omit → [ShellTokens] (pack visual props).
 HeroDesktopTextLayout heroDesktopTextLayout({
@@ -36,6 +47,7 @@ HeroDesktopTextLayout heroDesktopTextLayout({
   int? overviewMaxLines,
   double? overviewFontSize,
   double? overviewLineHeight,
+  double? actionRowHeight,
 }) {
   final titleGap = titleMetaGap ?? ShellTokens.heroTitleMetaGapDesktop;
   final actionGap = metaActionsGap ?? ShellTokens.heroMetaActionsGapDesktop;
@@ -46,13 +58,8 @@ HeroDesktopTextLayout heroDesktopTextLayout({
   final fontSize = overviewFontSize ?? ShellTokens.heroOverviewFontSizeDesktop;
   final lineHeight =
       overviewLineHeight ?? ShellTokens.heroOverviewLineHeightDesktop;
-
-  final baseWithoutOverview =
-      titleGap +
-      metaH +
-      actionGap +
-      ShellTokens.shellButtonHeight +
-      reservedBelowOverview;
+  final actionH = actionRowHeight ?? ShellTokens.shellButtonHeight;
+  final budget = maxHeight < 0 ? 0.0 : maxHeight;
 
   double textH(int lines) => fontSize * lineHeight * lines;
 
@@ -62,79 +69,195 @@ HeroDesktopTextLayout heroDesktopTextLayout({
     return text + ShellTokens.heroOverviewReadMoreGap + fontSize * lineHeight;
   }
 
-  bool fits(double titleH, double overviewBlock) =>
-      titleH + baseWithoutOverview + overviewBlock <= maxHeight;
+  double chrome({
+    required bool withMeta,
+    required double actionsH,
+  }) {
+    final metaBlock = withMeta ? titleGap + metaH : 0.0;
+    final actionBlock = actionsH > 0 ? actionGap + actionsH : 0.0;
+    return metaBlock + actionBlock + reservedBelowOverview;
+  }
 
-  var titleHeight = titleSlotMax;
+  bool fits({
+    required double titleH,
+    required double overviewBlock,
+    required bool withMeta,
+    required double actionsH,
+  }) =>
+      titleH + chrome(withMeta: withMeta, actionsH: actionsH) + overviewBlock <=
+      budget + 0.01;
 
-  if (!hasOverview) {
-    if (!fits(titleHeight, 0)) {
-      titleHeight = (maxHeight - baseWithoutOverview).clamp(
-        minTitleHeight,
-        titleSlotMax,
-      );
-    }
+  HeroDesktopTextLayout pack({
+    required double titleH,
+    required bool overview,
+    required bool withMeta,
+    required int lines,
+    required double slot,
+    required double actionsH,
+  }) {
     return HeroDesktopTextLayout(
-      titleHeight: titleHeight,
-      showOverview: false,
-      overviewMaxLines: 0,
-      overviewSlotHeight: 0,
+      titleHeight: titleH.clamp(0.0, titleSlotMax),
+      showOverview: overview,
+      showMeta: withMeta,
+      overviewMaxLines: overview ? lines : 0,
+      overviewSlotHeight: overview ? slot : 0,
+      actionRowHeight: actionsH.clamp(0.0, actionH),
     );
   }
 
+  // --- Preferred: full title + overview ---
+  var titleHeight = titleSlotMax;
   var lines = maxLines;
   var includeReadMore = true;
-  var slot = slotFor(lines, includeReadMore: includeReadMore);
-  var overviewBlock = metaGap + slot;
+  var slot = hasOverview ? slotFor(lines, includeReadMore: includeReadMore) : 0.0;
+  var overviewBlock = hasOverview ? metaGap + slot : 0.0;
+  var withMeta = true;
+  var actionsH = actionH;
 
-  if (!fits(titleHeight, overviewBlock)) {
-    titleHeight = (maxHeight - baseWithoutOverview - overviewBlock).clamp(
-      minTitleHeight,
-      titleSlotMax,
-    );
-  }
+  if (hasOverview) {
+    if (!fits(
+      titleH: titleHeight,
+      overviewBlock: overviewBlock,
+      withMeta: withMeta,
+      actionsH: actionsH,
+    )) {
+      titleHeight = (budget - chrome(withMeta: withMeta, actionsH: actionsH) - overviewBlock)
+          .clamp(minTitleHeight, titleSlotMax);
+    }
 
-  while (!fits(titleHeight, overviewBlock) && lines > 1) {
-    lines--;
-    slot = slotFor(lines, includeReadMore: includeReadMore);
-    overviewBlock = metaGap + slot;
-    titleHeight = (maxHeight - baseWithoutOverview - overviewBlock).clamp(
-      minTitleHeight,
-      titleSlotMax,
-    );
-  }
+    while (!fits(
+          titleH: titleHeight,
+          overviewBlock: overviewBlock,
+          withMeta: withMeta,
+          actionsH: actionsH,
+        ) &&
+        lines > 1) {
+      lines--;
+      slot = slotFor(lines, includeReadMore: includeReadMore);
+      overviewBlock = metaGap + slot;
+      titleHeight =
+          (budget - chrome(withMeta: withMeta, actionsH: actionsH) - overviewBlock)
+              .clamp(minTitleHeight, titleSlotMax);
+    }
 
-  // Keep read-more reserve whenever overview shows — HeroOverviewText always
-  // paints Read More for truncated copy in fixed slots.
-  if (!fits(titleHeight, overviewBlock)) {
+    if (fits(
+      titleH: titleHeight,
+      overviewBlock: overviewBlock,
+      withMeta: withMeta,
+      actionsH: actionsH,
+    )) {
+      return pack(
+        titleH: titleHeight,
+        overview: true,
+        withMeta: withMeta,
+        lines: lines,
+        slot: slot,
+        actionsH: actionsH,
+      );
+    }
+
+    // Keep read-more reserve at min title if it still fits.
     titleHeight = minTitleHeight;
-    if (fits(titleHeight, overviewBlock)) {
-      return HeroDesktopTextLayout(
-        titleHeight: titleHeight,
-        showOverview: true,
-        overviewMaxLines: lines,
-        overviewSlotHeight: slot,
+    if (fits(
+      titleH: titleHeight,
+      overviewBlock: overviewBlock,
+      withMeta: withMeta,
+      actionsH: actionsH,
+    )) {
+      return pack(
+        titleH: titleHeight,
+        overview: true,
+        withMeta: withMeta,
+        lines: lines,
+        slot: slot,
+        actionsH: actionsH,
       );
     }
-    titleHeight = titleSlotMax;
-    if (!fits(titleHeight, 0)) {
-      titleHeight = (maxHeight - baseWithoutOverview).clamp(
-        minTitleHeight,
-        titleSlotMax,
-      );
-    }
-    return HeroDesktopTextLayout(
-      titleHeight: titleHeight,
-      showOverview: false,
-      overviewMaxLines: 0,
-      overviewSlotHeight: 0,
+  }
+
+  // --- Drop overview; keep meta + actions ---
+  overviewBlock = 0;
+  titleHeight = titleSlotMax;
+  if (!fits(
+    titleH: titleHeight,
+    overviewBlock: 0,
+    withMeta: withMeta,
+    actionsH: actionsH,
+  )) {
+    titleHeight =
+        (budget - chrome(withMeta: withMeta, actionsH: actionsH)).clamp(
+          0.0,
+          titleSlotMax,
+        );
+  }
+  if (fits(
+    titleH: titleHeight,
+    overviewBlock: 0,
+    withMeta: withMeta,
+    actionsH: actionsH,
+  )) {
+    return pack(
+      titleH: titleHeight,
+      overview: false,
+      withMeta: withMeta,
+      lines: 0,
+      slot: 0,
+      actionsH: actionsH,
     );
   }
 
-  return HeroDesktopTextLayout(
-    titleHeight: titleHeight,
-    showOverview: true,
-    overviewMaxLines: lines,
-    overviewSlotHeight: slot,
+  // --- Drop meta; keep actions ---
+  withMeta = false;
+  titleHeight =
+      (budget - chrome(withMeta: false, actionsH: actionsH)).clamp(0.0, titleSlotMax);
+  if (fits(
+    titleH: titleHeight,
+    overviewBlock: 0,
+    withMeta: false,
+    actionsH: actionsH,
+  )) {
+    return pack(
+      titleH: titleHeight,
+      overview: false,
+      withMeta: false,
+      lines: 0,
+      slot: 0,
+      actionsH: actionsH,
+    );
+  }
+
+  // --- Shrink action row to whatever remains ---
+  final remaining = budget - reservedBelowOverview;
+  if (remaining <= 0) {
+    return pack(
+      titleH: 0,
+      overview: false,
+      withMeta: false,
+      lines: 0,
+      slot: 0,
+      actionsH: 0,
+    );
+  }
+  // Prefer a bit of title over a full CTA when both cannot fit.
+  if (remaining <= actionGap) {
+    return pack(
+      titleH: remaining,
+      overview: false,
+      withMeta: false,
+      lines: 0,
+      slot: 0,
+      actionsH: 0,
+    );
+  }
+  final maxActions = (remaining - actionGap).clamp(0.0, actionH);
+  titleHeight = (remaining - actionGap - maxActions).clamp(0.0, titleSlotMax);
+  actionsH = maxActions;
+  return pack(
+    titleH: titleHeight,
+    overview: false,
+    withMeta: false,
+    lines: 0,
+    slot: 0,
+    actionsH: actionsH,
   );
 }

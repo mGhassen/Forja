@@ -834,6 +834,7 @@ class CinematicHeroState extends State<CinematicHero> {
                   child: _buildDesktopColumn(
                     slide,
                     maxHeight: constraints.maxHeight,
+                    maxWidth: desktopTextWidth,
                     isActive: isActive,
                   ),
                 ),
@@ -851,6 +852,7 @@ class CinematicHeroState extends State<CinematicHero> {
   Widget _buildDesktopColumn(
     CinematicHeroSlide slide, {
     required double maxHeight,
+    required double maxWidth,
     bool isActive = true,
   }) {
     final layout = widget.layout;
@@ -862,26 +864,33 @@ class CinematicHeroState extends State<CinematicHero> {
     );
     final titleGap = layout.scaledChrome(layout.resolvedTitleMetaGap);
     final actionGap = layout.scaledChrome(layout.resolvedMetaActionsGap);
+    final metaSlotHeight = layout.scaledChrome(layout.resolvedMetaSlotHeight);
+    final metaOverviewGap =
+        layout.scaledChrome(layout.resolvedMetaOverviewGap);
+    final actionRowH = layout.scaledChrome(ShellTokens.shellButtonHeight);
     final overview = slide.overview.trim();
     final upcomingReserve = slide.isUpcoming
         ? layout.scaledChrome(layout.resolvedUpcomingNoticeReserve)
         : 0.0;
+    // Pass the same scaled chrome the Column paints. Host/metrics already
+    // resolve profile min title — do not scale heroMinTitleHeight again.
     final layoutFit = heroDesktopTextLayout(
       maxHeight: maxHeight,
       hasOverview: overview.isNotEmpty,
-      minTitleHeight: layout.scaledChrome(widget.layout.heroMinTitleHeight),
+      minTitleHeight: layout.heroMinTitleHeight,
       reservedBelowOverview: upcomingReserve,
-      titleSlotHeight: layout.titleSlotHeight,
-      metaSlotHeight: layout.metaSlotHeight,
-      titleMetaGap: layout.titleMetaGap,
-      metaActionsGap: layout.metaActionsGap,
-      metaOverviewGap: layout.metaOverviewGap,
-      overviewMaxLines: layout.overviewMaxLines,
-      overviewFontSize: layout.overviewFontSize,
-      overviewLineHeight: layout.overviewLineHeight,
+      titleSlotHeight: layout.scaledChrome(layout.resolvedTitleSlotHeight),
+      metaSlotHeight: metaSlotHeight,
+      titleMetaGap: titleGap,
+      metaActionsGap: actionGap,
+      metaOverviewGap: metaOverviewGap,
+      overviewMaxLines: layout.resolvedOverviewMaxLines,
+      overviewFontSize: layout.scaledType(layout.resolvedOverviewFontSize),
+      overviewLineHeight: layout.resolvedOverviewLineHeight,
+      actionRowHeight: actionRowH,
     );
 
-    return Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -890,29 +899,30 @@ class CinematicHeroState extends State<CinematicHero> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                height: layoutFit.titleHeight,
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: _buildTitle(
-                    slide,
-                    desktop: true,
-                    slotHeight: layoutFit.titleHeight,
+              if (layoutFit.titleHeight > 0)
+                SizedBox(
+                  height: layoutFit.titleHeight,
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: _buildTitle(
+                      slide,
+                      desktop: true,
+                      slotHeight: layoutFit.titleHeight,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: titleGap),
-              SizedBox(
-                height: layout.scaledChrome(layout.resolvedMetaSlotHeight),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: _buildMetaRow(slide, singleLine: true),
-                ),
-              ),
-              if (layoutFit.showOverview) ...[
+              if (layoutFit.showMeta) ...[
+                SizedBox(height: titleGap),
                 SizedBox(
-                  height: layout.scaledChrome(layout.resolvedMetaOverviewGap),
+                  height: metaSlotHeight,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _buildMetaRow(slide, singleLine: true),
+                  ),
                 ),
+              ],
+              if (layoutFit.showOverview) ...[
+                SizedBox(height: metaOverviewGap),
                 SizedBox(
                   height: layoutFit.overviewSlotHeight,
                   child: Align(
@@ -929,12 +939,40 @@ class CinematicHeroState extends State<CinematicHero> {
             ],
           ),
         ),
-        SizedBox(height: actionGap),
-        widget.upcomingNoticeBuilder?.call(context, slide) ??
-            const SizedBox.shrink(),
-        widget.actionRowBuilder?.call(context, slide, isActive: isActive) ??
-            const SizedBox.shrink(),
+        if (layoutFit.actionRowHeight > 0 || upcomingReserve > 0) ...[
+          SizedBox(height: actionGap),
+          widget.upcomingNoticeBuilder?.call(context, slide) ??
+              const SizedBox.shrink(),
+          SizedBox(
+            height: layoutFit.actionRowHeight,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: widget.actionRowBuilder
+                        ?.call(context, slide, isActive: isActive) ??
+                    const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ],
       ],
+    );
+
+    // Bleed rail can leave < chrome height; fitter drops title/meta/overview
+    // but CTA intrinsic height still needs a last-resort scaleDown.
+    // FittedBox measures with unbounded max constraints — pin width so the
+    // meta Row's Flexible/Expanded children stay legal.
+    if (!maxHeight.isFinite || maxHeight <= 0) return column;
+    final sized = SizedBox(width: maxWidth, child: column);
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.topLeft,
+        child: sized,
+      ),
     );
   }
 

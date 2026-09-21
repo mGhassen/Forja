@@ -7,11 +7,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// Key: `pack_setting_v1_<pluginId>_<fieldId>`.
 /// Secrets (RFC-101): `pack_secret_v1_<pluginId>_<fieldId>` via [SecureSettings].
+/// Non-secret cloud sync is scheduled via [onNonSecretUserWrite] (issue 307).
 abstract final class PackSettingsStore {
   PackSettingsStore._();
 
   /// Bumped on every write so open-mode gates / UI can rebuild (RFC-104).
   static final ValueNotifier<int> revision = ValueNotifier(0);
+
+  /// Hook for cloud `packSettings` push — wired from sync bootstrap.
+  static void Function()? onNonSecretUserWrite;
 
   /// Bump prefs revision and optionally invalidate that plugin’s hub mount.
   /// Settings UI must not remount — hubs listen via [PluginRegistry.hubFeedEpoch].
@@ -21,6 +25,12 @@ abstract final class PackSettingsStore {
     final id = pluginId.trim();
     if (id.isEmpty) return;
     PluginRegistry.bumpHubFeedEpoch(pluginIds: [id]);
+  }
+
+  /// User-facing non-secret write: bump + optional cloud push hook.
+  static void _bumpUser(String pluginId, {bool reloadHub = true}) {
+    _bump(pluginId, reloadHub: reloadHub);
+    onNonSecretUserWrite?.call();
   }
 
   static const _prefix = 'pack_setting_v1_';
@@ -57,7 +67,11 @@ abstract final class PackSettingsStore {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key(pluginId, fieldId), value);
-    _bump(pluginId, reloadHub: reloadHub);
+    if (reloadHub) {
+      _bumpUser(pluginId, reloadHub: true);
+    } else {
+      _bump(pluginId, reloadHub: false);
+    }
   }
 
   static Future<String> getString(
@@ -79,7 +93,11 @@ abstract final class PackSettingsStore {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(key(pluginId, fieldId), value);
-    _bump(pluginId, reloadHub: reloadHub);
+    if (reloadHub) {
+      _bumpUser(pluginId, reloadHub: true);
+    } else {
+      _bump(pluginId, reloadHub: false);
+    }
   }
 
   static Future<String> getSecret(

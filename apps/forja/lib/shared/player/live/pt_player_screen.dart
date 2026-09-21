@@ -1097,7 +1097,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     return h > 0 ? '$h:${two(m)}:${two(sec)}' : '${two(m)}:${two(sec)}';
   }
 
-  /// Late [channelGuide] (open-first, catalog in background).
+  /// Late [channelGuide] (open-first stub, then full shelf).
   void _applyChannelGuide(ChannelGuide guide) {
     _selectedGroupId = guide.initialGroupId;
     _currentChannelId = guide.initialChannelId;
@@ -1115,7 +1115,10 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   void didUpdateWidget(covariant PtPlayerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     final next = widget.channelGuide;
-    if (oldWidget.channelGuide == null && next != null) {
+    final prev = oldWidget.channelGuide;
+    // Stub → full shelf (or first attach). Reference inequality is enough —
+    // ChannelGuide has no == and deferred open always builds a new instance.
+    if (next != null && !identical(prev, next)) {
       setState(() => _applyChannelGuide(next));
     }
   }

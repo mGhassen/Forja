@@ -72,31 +72,6 @@ class _CatalogEpgGuideHostState extends State<CatalogEpgGuideHost> {
     return '$portalKey|$streamId|$epgId';
   }
 
-  /// Pack keys are `url|username`; [Portal.key] is `platform|url|user|pass`.
-  VerifiedPortal? _matchPortal(
-    List<VerifiedPortal> portals,
-    String portalKey,
-  ) {
-    final key = portalKey.trim().toLowerCase();
-    if (key.isEmpty) return null;
-    for (final p in portals) {
-      if (p.key.toLowerCase() == key) return p;
-      if (p.credKey.toLowerCase() == key) return p;
-      if (PortalChannelGuideOpen.packPortalKey(p.portal) == key) return p;
-    }
-    // Soft match: key contains url|username or vice versa.
-    for (final p in portals) {
-      final pack = PortalChannelGuideOpen.packPortalKey(p.portal);
-      if (pack.isEmpty) continue;
-      if (key.contains(pack) || pack.contains(key)) return p;
-      final user = p.portal.username.trim().toLowerCase();
-      if (user.isNotEmpty && (key.endsWith('|$user') || key == user)) {
-        return p;
-      }
-    }
-    return null;
-  }
-
   Future<GuideEpgCache?> _cacheFor(String portalKey) async {
     if (!_epgEnabled) return null;
     final key = portalKey.trim();
@@ -104,7 +79,7 @@ class _CatalogEpgGuideHostState extends State<CatalogEpgGuideHost> {
     final existing = _caches[key];
     if (existing != null) return existing;
     final portals = await _portals();
-    var match = _matchPortal(portals, key);
+    var match = PortalChannelGuideOpen.matchPortal(portals, key);
     // Single EPG portal — still paint when pack key drifted.
     if (match == null) {
       final epgCapable = [

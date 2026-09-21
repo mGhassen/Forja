@@ -7,37 +7,42 @@ import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 
 void main() {
-  test('tv layout scale is iso-desktop 0.85', () {
-    expect(ShellTokens.tvLayoutScale, 0.85);
+  test('tv leanback scale follows poster / desktop ratio', () {
+    expect(ShellTokens.posterCardWidthTv, 70);
     expect(
-      ShellTokens.posterCardWidthTv,
-      closeTo(ShellTokens.posterCardWidthDesktop * ShellTokens.tvLayoutScale, 0.001),
+      ShellTokens.tvLayoutScale,
+      closeTo(
+        ShellTokens.posterCardWidthTv / ShellTokens.posterCardWidthDesktop,
+        0.001,
+      ),
     );
     expect(
       ShellTokens.tvPosterCardRowGap,
-      closeTo(ShellTokens.posterCardRowGap * ShellTokens.tvLayoutScale, 0.001),
+      4,
     );
     expect(
       ShellTokens.tvHomeRowSpacing,
       closeTo(ShellTokens.homeRowSpacing * ShellTokens.tvLayoutScale, 0.001),
     );
+    expect(ShellTokens.continueWatchingCardWidthTv, 120);
     expect(
-      ShellTokens.continueWatchingCardWidthTv,
-      closeTo(
-        ShellTokens.shellContinueWatchingCardWidthDesktop *
-            ShellTokens.tvLayoutScale,
-        0.001,
-      ),
-    );
-    expect(
-      ShellTokens.navRailWidthTv /
-          ShellTokens.navRailWidth,
+      ShellTokens.navRailWidthTv / ShellTokens.navRailWidth,
       closeTo(ShellTokens.tvLayoutScale, 0.001),
     );
+    expect(
+      ShellTokens.posterCardWidthTv / ShellTokens.posterCardWidthDesktop,
+      closeTo(ShellTokens.tvLayoutScale, 0.001),
+    );
+    expect(ShellTokens.navRailWidthTv, closeTo(120 * 70 / 190, 0.001));
+    expect(SettingsTokens.sidebarWidthTv, 180);
+    expect(SettingsTokens.rowMinHeightTv, 40);
+    expect(DetailsTokens.sectionSpacingTv, 24);
   });
 
   test('channelCards and poster packing fill the row', () {
@@ -83,9 +88,14 @@ void main() {
     expect(tv.navRailWidth, lessThan(desktop.navRailWidth));
     expect(tv.navRailLogoWidth, lessThan(desktop.navRailLogoWidth));
     expect(tv.navRailItemSpacing, lessThan(desktop.navRailItemSpacing));
+    // One leanback scale: nav chrome and catalog posters share poster/desktop.
     expect(
       tv.navRailWidth / desktop.navRailWidth,
-      closeTo(tv.posterCardWidth / desktop.posterCardWidth, 0.001),
+      closeTo(ShellTokens.tvLayoutScale, 0.001),
+    );
+    expect(
+      tv.posterCardWidth / desktop.posterCardWidth,
+      closeTo(ShellTokens.tvLayoutScale, 0.001),
     );
     expect(desktop.usesTvDensity, isFalse);
     expect(tv.usesTvDensity, isTrue);

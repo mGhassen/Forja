@@ -40,8 +40,8 @@ double propsNumOr(Map<String, dynamic> props, String key, double fallback) =>
 
 /// Desktop px length from pack → TV × [ShellTokens.tvLayoutScale].
 ///
-/// Use for width/height/gap/pad/fontSize. Keep [propsNum] for fractions,
-/// scales, progress, aspect ratios, and other non-length numbers.
+/// Use for width/height/gap/pad/fontSize on catalog mounts. Keep [propsNum]
+/// for fractions, scales, progress, aspect ratios, and other non-length numbers.
 double? propsLength(
   BuildContext context,
   Map<String, dynamic> props,

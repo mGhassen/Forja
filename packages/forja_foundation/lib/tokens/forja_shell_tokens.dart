@@ -23,30 +23,25 @@ abstract final class ShellTokens {
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
 
-  /// Iso-desktop TV spatial scale — same schema as desktop, slightly smaller.
-  static const double tvLayoutScale = 0.85;
+  /// Catalog poster widths — TV drives leanback spatial scale.
+  static const double posterCardWidthMobile = 165;
+  static const double posterCardWidthDesktop = 190;
+  static const double posterCardWidthTv = 70;
 
-  /// Type floors at 10ft (never crush below these when scaling).
-  static const double tvBodyFontSizeMin = 11;
-  static const double tvTitleFontSizeMin = 13;
-  static const double tvMetaFontSizeMin = 10;
+  /// Leanback spatial scale (poster / desktop). Type uses a separate ladder.
+  static const double tvLayoutScale =
+      posterCardWidthTv / posterCardWidthDesktop; // ≈ 0.368
 
-  /// Scaled desktop body/title/meta (14 / 20 / 11) with floors.
-  static const double tvBodyFontSize = 14 * tvLayoutScale; // 11.9
-  static const double tvTitleFontSize = 20 * tvLayoutScale; // 17
-  static const double tvMetaFontSize =
-      tvMetaFontSizeMin; // 11*0.85 < 10 → floor
+  /// Leanback type steps — spatial uses [tvLayoutScale]; type never does.
+  static const double tvBodyFontSize = 11;
+  static const double tvTitleFontSize = 14;
+  static const double tvMetaFontSize = 10;
 
-  /// Map a desktop font size onto TV (scale + floors).
+  /// Map a desktop font size onto the leanback ladder.
   static double tvTypeSize(double desktop) {
-    final s = desktop * tvLayoutScale;
-    if (desktop >= 16) {
-      return s < tvTitleFontSizeMin ? tvTitleFontSizeMin : s;
-    }
-    if (desktop >= 12) {
-      return s < tvBodyFontSizeMin ? tvBodyFontSizeMin : s;
-    }
-    return s < tvMetaFontSizeMin ? tvMetaFontSizeMin : s;
+    if (desktop >= 16) return tvTitleFontSize;
+    if (desktop >= 12) return tvBodyFontSize;
+    return tvMetaFontSize;
   }
 
   /// Below this window width the nav rail collapses to a menu button + drawer.
@@ -123,16 +118,15 @@ abstract final class ShellTokens {
   /// Line-height multiplier for rail labels — slot must match or glyphs clip.
   static const double navRailLabelLineHeight = 1.2;
   static const double navRailItemSpacing = 28;
-  static const double navRailItemSpacingTv = navRailItemSpacing * tvLayoutScale;
+  static const double navRailItemSpacingTv = 12;
   static const double navRailItemSpacingMin = 2;
   static const double navRailLogoGapDesktop = 20;
-  static const double navRailLogoGapTv = navRailLogoGapDesktop * tvLayoutScale;
+  static const double navRailLogoGapTv = 8;
   static const double navRailBottomPaddingDesktop = 16;
-  static const double navRailBottomPaddingTv =
-      navRailBottomPaddingDesktop * tvLayoutScale;
-  static const double navRailTopPaddingTv = shellHeaderTopPaddingTv;
-  static const double navRailProfileSpacingTv = 4 * tvLayoutScale;
-  static const double navRailNavPadVTv = 4 * tvLayoutScale;
+  static const double navRailBottomPaddingTv = 8;
+  static const double navRailTopPaddingTv = 8;
+  static const double navRailProfileSpacingTv = 4;
+  static const double navRailNavPadVTv = 4;
   static const double navRailNavReserveDesktop = 16;
   static const double navRailScrollPadV = 8;
   static const double navRailLogoHoverScale = 1.04;
@@ -485,7 +479,7 @@ abstract final class ShellTokens {
   /// Vertical gap between Home content rows (not hero → first row).
   static const double homeRowSpacing = 24;
 
-  /// TV home row spacing — desktop × [tvLayoutScale].
+  /// Compact leanback catalog spacing (pairs with [posterCardWidthTv]).
   static const double tvHomeRowSpacing = homeRowSpacing * tvLayoutScale;
   static const double tvHomeSectionHorizontalPadding =
       homeSectionHorizontalPadding * tvLayoutScale;
@@ -504,34 +498,29 @@ abstract final class ShellTokens {
   /// viewport above the focused row so ↑ does not pin flush to the top edge.
   static const double tvDetailsRowFocusTopInsetFraction = 0.25;
 
-  static const double tvHomeSectionTitleTopCompact =
-      homeSectionTitleTopCompactDesktop * tvLayoutScale;
-  static const double tvHomeSectionTitleTop =
-      homeSectionTitleTop * tvLayoutScale;
-  static const double tvHomeSectionHeaderHeight = tvTitleFontSize;
-  static const double tvHomeSectionBottomGap = 16 * tvLayoutScale;
-  static const double tvPosterCardRowGap = posterCardRowGap * tvLayoutScale;
+  static const double tvHomeSectionTitleTopCompact = 2;
+  static const double tvHomeSectionTitleTop = 10;
+  static const double tvHomeSectionHeaderHeight = 11;
+  static const double tvHomeSectionBottomGap = 4;
+  /// Compact leanback catalog spacing (pairs with [posterCardWidthTv]).
+  static const double tvPosterCardRowGap = 4;
 
   /// Gap between poster cards in hub rails (desktop / non-TV).
   /// ~14 separator + former desktop focus-bleed room (bleed is TV-only now).
   static const double posterCardRowGap = 32;
 
-  /// Catalog poster card widths by shell profile.
-  static const double posterCardWidthMobile = 165;
-  static const double posterCardWidthDesktop = 190;
-  static const double posterCardWidthTv =
-      posterCardWidthDesktop * tvLayoutScale;
-
-  /// TV chrome — desktop × [tvLayoutScale].
-  static const double navRailWidthTv = navRailWidth * tvLayoutScale;
-  static const double navRailLogoWidthTv = navRailLogoWidth * tvLayoutScale;
+  /// Leanback chrome — same ratio as [posterCardWidthTv] / [posterCardWidthDesktop].
+  static const double navRailWidthTv =
+      navRailWidth * posterCardWidthTv / posterCardWidthDesktop;
+  static const double navRailLogoWidthTv =
+      navRailLogoWidth * posterCardWidthTv / posterCardWidthDesktop;
   static const double navRailLogoHeightTv = navRailLogoWidthTv * 160 / 370;
 
-  /// TV hero chrome — desktop × [tvLayoutScale].
+  /// Leanback hero chrome — same ratio as catalog density.
   static const double heroLogoMaxHeightTv =
-      heroLogoMaxHeightDesktop * tvLayoutScale;
+      heroLogoMaxHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
   static const double heroTitleSlotHeightTv =
-      heroTitleSlotHeightDesktop * tvLayoutScale;
+      heroTitleSlotHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
   static const double posterCardWideBreakpoint = 900;
   static const double posterCardAspectRatio = 1.5;
   static const double posterCardRadius = 14;
@@ -541,14 +530,14 @@ abstract final class ShellTokens {
   static const double posterTitleFontSizeTv = tvBodyFontSize;
   static const double cardFocusBorderWidth = 1.5;
   static const double cardFocusBleedExtra = 1;
-  static const double continueWatchingCardWidthTv =
-      shellContinueWatchingCardWidthDesktop * tvLayoutScale;
+  static const double continueWatchingCardWidthTv = 120;
 
   /// Shared control / chip height (Portals, action chips, hero pills).
   static const double controlHeight = 40;
-  static const double controlHeightTv = controlHeight * tvLayoutScale;
+  static const double controlHeightTv = 28;
   static const double sideRailWidth = 220;
-  static const double sideRailWidthTv = sideRailWidth * tvLayoutScale;
+  static const double sideRailWidthTv =
+      sideRailWidth * posterCardWidthTv / posterCardWidthDesktop;
   static const double emptyShellSideRailWidth = 72;
   static const double sidePanelWidth = 380;
   static const double focusBorderRadius = 12;
@@ -558,8 +547,7 @@ abstract final class ShellTokens {
   static const double hubCardTitleFontSizeDesktop = 14;
   static const double hubCardTitleFontSizeTv = tvBodyFontSize;
   static const double heroCompactRightInsetDesktop = 20;
-  static const double heroCompactRightInsetTv =
-      heroCompactRightInsetDesktop * tvLayoutScale;
+  static const double heroCompactRightInsetTv = 16;
   static const double heroMinTitleHeightDesktop = 72;
   static const double heroMinTitleHeightTv =
       heroMinTitleHeightDesktop * tvLayoutScale;
@@ -760,9 +748,23 @@ abstract final class ShellTokens {
   static const double emptyFeaturesCardGapCompact = 10;
   static const Duration emptyFeaturesCardAnim = Duration(milliseconds: 140);
 
-  /// Scale a desktop length for TV. Prefer this over hand `*Tv` sizes.
+  /// Leanback interactive chrome (top bar, chips, pills). Milder than spatial.
+  static const double tvChromeScale = 0.72;
+
+  /// Scale a desktop length for TV ([tvLayoutScale] = poster/desktop).
   static double densityScale(double value, {required bool tv}) =>
       tv ? value * tvLayoutScale : value;
+
+  /// Scale desktop chrome by [tvChromeScale] when [tv] is true.
+  static double chromeScale(
+    double value, {
+    required bool tv,
+    double min = 0,
+  }) {
+    if (!tv) return value;
+    final s = value * tvChromeScale;
+    return s < min ? min : s;
+  }
 
   /// Scale a desktop EdgeInsets for TV.
   static EdgeInsets densityInsets(EdgeInsets value, {required bool tv}) =>

@@ -22,13 +22,14 @@ const ADDONS_NESTED_PREFIXES = [
   '/account/settings/stremio',
   '/account/settings/nuvio',
   '/account/settings/torrent',
+  '/account/settings/addon',
 ] as const
 
 const profileCategories = [
   {
     href: '/account/settings/addons',
     title: 'Addons',
-    subtitle: 'Playback, IPTV, torrent, Stremio, Nuvio',
+    subtitle: 'Playback, torrent, Stremio, Nuvio, pack settings',
     icon: Blocks,
   },
   {

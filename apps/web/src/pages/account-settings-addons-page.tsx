@@ -1,12 +1,22 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
-import { usePlaybackSetting } from '@/hooks/use-user-setting'
 import {
+  useForjaSetting,
+  usePlaybackSetting,
+} from '@/hooks/use-user-setting'
+import {
+  discoverPackAddonBuckets,
+  type PackAddonBucket,
+} from '@/lib/pack-addon-discovery'
+import {
+  emptyForjaPayload,
   emptyPreferencesPayload,
+  type ForjaPayload,
   type PreferencesPayload,
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
@@ -96,13 +106,23 @@ function playbackFromServer(value: unknown): PreferencesPayload {
   }
 }
 
+function forjaFromServer(value: unknown): ForjaPayload {
+  const payload = value as ForjaPayload | undefined
+  return {
+    packs: payload?.packs ?? [],
+    ...(payload?.onboarded === true ? { onboarded: true as const } : {}),
+  }
+}
+
 /**
- * Cloud Addons hub — mirrors Settings → Addons in the app.
- * Master switches + links into detail pages (Playback prefs, IPTV portals,
- * Stremio/Nuvio manifests). Hub packs are Plugins, not Addons.
+ * Cloud Addons hub — same host rows + pack-discovered buckets as
+ * Settings → Addons in the app (RFC-089).
  */
 export function AccountSettingsAddonsPage() {
   const playback = usePlaybackSetting()
+  const forja = useForjaSetting()
+  const [packBuckets, setPackBuckets] = useState<PackAddonBucket[]>([])
+  const [packLoading, setPackLoading] = useState(true)
 
   const playDraft = useCommitDraft({
     profileId: playback.profileId,
@@ -114,25 +134,54 @@ export function AccountSettingsAddonsPage() {
     save: playback.save,
   })
 
+  const packsDraft = useCommitDraft({
+    profileId: forja.profileId,
+    updatedAt: forja.data?.updated_at,
+    isReady: Boolean(forja.data) && !forja.isLoading,
+    serverValue: forja.data?.payload,
+    mapServer: forjaFromServer,
+    makeEmpty: emptyForjaPayload,
+    save: forja.save,
+  })
+
+  const packs = packsDraft.draft.packs
+  const packsKey = useMemo(
+    () =>
+      packs
+        .map((p) => `${p.manifestUrl}|${p.enabled !== false ? 1 : 0}`)
+        .sort()
+        .join('\n'),
+    [packs],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    setPackLoading(true)
+    void (async () => {
+      try {
+        const buckets = await discoverPackAddonBuckets(packs)
+        if (!cancelled) setPackBuckets(buckets)
+      } catch {
+        if (!cancelled) setPackBuckets([])
+      } finally {
+        if (!cancelled) setPackLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [packsKey, packs])
+
   const busy = playDraft.controlsLocked || playDraft.isSaving
 
   const setPlayBool = (key: keyof PreferencesPayload, value: boolean) => {
     void playDraft.commit((prev) => ({ ...prev, [key]: value }))
   }
 
-  /** IPTV player prefs flag only — Features IPTV tab comes from the IPTV hub pack. */
-  const setIptvAddon = (on: boolean) => {
-    void playDraft.commit((prev) => ({
-      ...prev,
-      addon_feature_iptv: on,
-      ...(on ? {} : { iptv_epg_enabled: false }),
-    }))
-  }
-
   return (
     <AccountSettingsShell
       title="Addons"
-      description="Host product surfaces — same list as Settings → Addons in the app. Hub tabs (IPTV, Live Sports, Home, …) come from Forja Packs on this profile, then show under Features."
+      description="Same list as Settings → Addons in the app. Host surfaces below; pack settings rows appear when those packs are enabled on this profile."
       footer={
         <SettingsAutosaveFooter
           isSaving={playDraft.isSaving}
@@ -143,7 +192,7 @@ export function AccountSettingsAddonsPage() {
     >
       <SettingsSection
         label="Built-in addons"
-        description="Always listed. Packs do not add rows here — they contribute settings under Forja Packs or hub tabs under Features."
+        description="Playback, Direct torrent, Stremio, and Nuvio. Connected services and LAN stay in the app."
       >
         <AddonRow
           title="Playback"
@@ -153,17 +202,8 @@ export function AccountSettingsAddonsPage() {
           disabled={busy}
         />
         <AddonRow
-          title="IPTV"
-          description="Live player prefs (EPG, quality). The IPTV tab comes from the IPTV hub pack under Forja Packs."
-          checked={playDraft.draft.addon_feature_iptv === true}
-          onCheckedChange={(v) => setIptvAddon(v)}
-          href="/account/settings/iptv"
-          hrefLabel="Portals"
-          disabled={busy}
-        />
-        <AddonRow
           title="Direct torrent"
-          description="Torrent indexer packs, Jackett / Prowlarr in the app"
+          description="Jackett, Prowlarr, torrent engine"
           checked={playDraft.draft.play_source_torrent_enabled ?? true}
           onCheckedChange={(v) => setPlayBool('play_source_torrent_enabled', v)}
           href="/account/settings/torrent"
@@ -172,7 +212,7 @@ export function AccountSettingsAddonsPage() {
         />
         <AddonRow
           title="Stremio"
-          description="Install and manage Stremio addon URLs"
+          description="Stremio addons"
           checked={playDraft.draft.play_source_stremio_enabled ?? true}
           onCheckedChange={(v) => setPlayBool('play_source_stremio_enabled', v)}
           href="/account/settings/stremio"
@@ -181,19 +221,54 @@ export function AccountSettingsAddonsPage() {
         />
         <AddonRow
           title="Nuvio"
-          description="Install and manage Nuvio scraper manifests"
+          description="Nuvio scrapers"
           checked={playDraft.draft.play_source_nuvio_enabled ?? true}
           onCheckedChange={(v) => setPlayBool('play_source_nuvio_enabled', v)}
           href="/account/settings/nuvio"
           hrefLabel="Scrapers"
           disabled={busy}
         />
-        <p className="px-0.5 pb-2 pt-4 text-xs text-forja-muted">
-          Debrid, Connected services, and LAN stay in the app. Live Sports and
-          other hub packs are added under Forja Packs on this profile; the app
-          downloads and installs them.
-        </p>
       </SettingsSection>
+
+      <SettingsSection
+        label="Pack settings"
+        description="Discovered from enabled Forja Packs on this profile (same as the app). Install packs under Forja Packs."
+      >
+        {packLoading ? (
+          <p className="px-0.5 py-2 text-sm text-forja-muted">
+            Loading pack settings…
+          </p>
+        ) : packBuckets.length === 0 ? (
+          <p className="px-0.5 py-2 text-sm text-forja-muted">
+            No pack settings yet. Enable IPTV, Live Sports, My List, Debrid, or
+            other packs with Addon settings under{' '}
+            <Link
+              to="/account/settings/forja"
+              className="text-forja-green hover:underline"
+            >
+              Forja Packs
+            </Link>
+            .
+          </p>
+        ) : (
+          packBuckets.map((bucket) => (
+            <AddonRow
+              key={bucket.id}
+              title={bucket.title}
+              description={bucket.subtitle}
+              hasToggle={false}
+              href={bucket.href}
+              hrefLabel={bucket.id === 'iptv' ? 'Portals' : 'Settings'}
+            />
+          ))
+        )}
+      </SettingsSection>
+
+      <p className="px-0.5 pb-2 text-xs text-forja-muted">
+        Debrid API keys, Connected services (Simkl), and LAN stay in the app.
+        Non-secret pack settings (Live Sports Setup, My List open hubs, …) sync
+        with your devices.
+      </p>
     </AccountSettingsShell>
   )
 }

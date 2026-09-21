@@ -7,6 +7,9 @@ import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
+import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
+import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
+import 'package:forja/shared/engine/store/list_open_prefs.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shared/sync/bridge/packs_onboarding_store.dart';
@@ -23,7 +26,12 @@ import 'package:rust/rust.dart';
 /// IPTV portals sync via `user_iptv_portals` / `iptv_portals` - never
 /// `profile_settings`. M3U playlists are device-local only.
 class SyncDomainBridge {
-  SyncDomainBridge._();
+  SyncDomainBridge._() {
+    PackSettingsStore.onNonSecretUserWrite ??= () {
+      notePackSettingsDirty();
+      schedulePush(_domainPackSettings);
+    };
+  }
   static final SyncDomainBridge instance = SyncDomainBridge._();
 
   /// Debounce key for portal assignment pushes (not profile_settings.iptv).
@@ -32,6 +40,7 @@ class SyncDomainBridge {
   static const _domainStremio = 'stremio';
   static const _domainNuvio = 'nuvio';
   static const _domainForja = 'forja';
+  static const _domainPackSettings = 'pack_settings';
   static const _domainNavigation = 'navigation';
 
   final _settings = SettingsService();
@@ -51,6 +60,8 @@ class SyncDomainBridge {
   /// Addons switch still looked ON (optimistic UI).
   int _preferencesLocalGen = 0;
   int _preferencesSyncedGen = 0;
+  int _packSettingsLocalGen = 0;
+  int _packSettingsSyncedGen = 0;
 
   /// IPTV inventory dirty while a local add/edit/delete has not finished a
   /// cloud replace. Portal-panel / soft pulls must flush or skip apply so
@@ -143,6 +154,8 @@ class SyncDomainBridge {
     _navigationSyncedGen = 0;
     _preferencesLocalGen = 0;
     _preferencesSyncedGen = 0;
+    _packSettingsLocalGen = 0;
+    _packSettingsSyncedGen = 0;
     _iptvLocalGen = 0;
     _iptvSyncedGen = 0;
     _lastNavigationPushAt = null;
@@ -450,10 +463,13 @@ class SyncDomainBridge {
     if (!SyncService.instance.isSignedIn) return;
     final navGenAtStart = _navigationLocalGen;
     final prefsGenAtStart = _preferencesLocalGen;
+    final packSettingsGenAtStart = _packSettingsLocalGen;
     final overlayNav =
         overlayDomains == null || overlayDomains.contains(_domainNavigation);
     final overlayPrefs = overlayDomains == null ||
         overlayDomains.contains(_domainPreferences);
+    final overlayPackSettings = overlayDomains == null ||
+        overlayDomains.contains(_domainPackSettings);
     final payload = await _buildMergedCloudPayload(
       allowEmptyStremioWipe: allowEmptyStremioWipe,
       allowEmptyNuvioWipe: allowEmptyNuvioWipe,
@@ -481,6 +497,10 @@ class SyncDomainBridge {
     }
     if (overlayPrefs && prefsGenAtStart == _preferencesLocalGen) {
       _preferencesSyncedGen = prefsGenAtStart;
+    }
+    if (overlayPackSettings &&
+        packSettingsGenAtStart == _packSettingsLocalGen) {
+      _packSettingsSyncedGen = packSettingsGenAtStart;
     }
     final pushIptv =
         overlayDomains == null || overlayDomains.contains(_domainIptv);
@@ -536,6 +556,12 @@ class SyncDomainBridge {
   void notePreferencesDirty() {
     if (_preferencesLocalGen == _preferencesSyncedGen) {
       _preferencesLocalGen++;
+    }
+  }
+
+  void notePackSettingsDirty() {
+    if (_packSettingsLocalGen == _packSettingsSyncedGen) {
+      _packSettingsLocalGen++;
     }
   }
 
@@ -658,10 +684,12 @@ class SyncDomainBridge {
     final stremio = await _exportStremioCompact();
     final nuvio = await _exportNuvioCompact();
     final forja = await _exportForjaCompact();
+    final packSettings = await _exportPackSettingsCompact();
     final connected = <String, dynamic>{};
     if (stremio.isNotEmpty) connected['stremio'] = stremio;
     if (nuvio.isNotEmpty) connected['nuvio'] = nuvio;
     if (forja.isNotEmpty) connected['forja'] = forja;
+    if (packSettings.isNotEmpty) connected['packSettings'] = packSettings;
     if (connected.isNotEmpty) out['connectedServices'] = connected;
 
     final navigation = await _exportNavigationCompact();
@@ -717,6 +745,8 @@ class SyncDomainBridge {
         overlayAll || overlayDomains.contains(_domainStremio);
     final overlayNuvio = overlayAll || overlayDomains.contains(_domainNuvio);
     final overlayForja = overlayAll || overlayDomains.contains(_domainForja);
+    final overlayPackSettings =
+        overlayAll || overlayDomains.contains(_domainPackSettings);
 
     if (overlayPlayback) {
       final playback = local['playback'];
@@ -832,6 +862,12 @@ class SyncDomainBridge {
       }
     }
 
+    if (overlayPackSettings) {
+      if (localConnected.containsKey('packSettings')) {
+        connected['packSettings'] = localConnected['packSettings'];
+      }
+    }
+
     if (connected.isNotEmpty) {
       next['connectedServices'] = connected;
     } else {
@@ -930,6 +966,21 @@ class SyncDomainBridge {
           '[Sync] importForja empty — cloud omitted connectedServices.forja',
         );
         await importForja(const <String, dynamic>{});
+      }
+      final packSettingsPending =
+          !resetLocalFirst &&
+          _packSettingsLocalGen != _packSettingsSyncedGen;
+      if (packSettingsPending) {
+        debugPrint(
+          '[Sync] skip packSettings apply — local pack settings edit '
+          'not synced yet',
+        );
+      } else {
+        final packSettings = connected['packSettings'];
+        if (packSettings is Map) {
+          await importPackSettings(Map<String, dynamic>.from(packSettings));
+          _packSettingsSyncedGen = _packSettingsLocalGen;
+        }
       }
     } else {
       // Full profile row with no connectedServices → no forja membership.
@@ -1052,6 +1103,113 @@ class SyncDomainBridge {
       out['onboarded'] = true;
     }
     return out;
+  }
+
+  /// Non-secret pack Addon settings keyed by pluginId (RFC-089 / issue 307).
+  Future<Map<String, dynamic>> _exportPackSettingsCompact() async {
+    final packs = await EngineService.instance.listPacks();
+    final out = <String, Map<String, dynamic>>{};
+    for (final pack in packs) {
+      if (!pack.enabled) continue;
+      for (final plugin in pack.plugins) {
+        if (!plugin.enabled) continue;
+        final spec = PackAddonSettingsSpec.fromPlugin(plugin);
+        if (spec == null || spec.fields.isEmpty) continue;
+        final fields = <String, dynamic>{};
+        for (final field in spec.fields) {
+          if (field.type == PackAddonSettingsFieldType.password) continue;
+          switch (field.type) {
+            case PackAddonSettingsFieldType.toggle:
+              fields[field.id] = await PackSettingsStore.getBool(
+                spec.pluginId,
+                field.id,
+                defaultValue: field.defaultBool,
+              );
+            case PackAddonSettingsFieldType.multiSelect:
+              fields[field.id] = await PackSettingsStore.getStringList(
+                spec.pluginId,
+                field.id,
+                defaultValue: field.defaultStringList,
+              );
+            case PackAddonSettingsFieldType.select:
+            case PackAddonSettingsFieldType.text:
+            case PackAddonSettingsFieldType.hubSelect:
+              var value = await PackSettingsStore.getString(
+                spec.pluginId,
+                field.id,
+                defaultValue: field.defaultString,
+              );
+              if (field.type == PackAddonSettingsFieldType.hubSelect &&
+                  field.listOpenDefault &&
+                  field.hubTypes.isNotEmpty) {
+                final fromPrefs = await ListOpenPrefs.defaultPluginId(
+                  field.hubTypes.first,
+                );
+                if (fromPrefs != null && fromPrefs.isNotEmpty) {
+                  value = fromPrefs;
+                }
+              }
+              fields[field.id] = value;
+            case PackAddonSettingsFieldType.password:
+              break;
+          }
+        }
+        if (fields.isNotEmpty) out[spec.pluginId] = fields;
+      }
+    }
+    return out;
+  }
+
+  /// Apply cloud pack settings into [PackSettingsStore] (no secrets).
+  Future<void> importPackSettings(Map<String, dynamic> payload) async {
+    for (final entry in payload.entries) {
+      final pluginId = entry.key.trim();
+      if (pluginId.isEmpty) continue;
+      final raw = entry.value;
+      if (raw is! Map) continue;
+      for (final fieldEntry in raw.entries) {
+        final fieldId = fieldEntry.key.toString().trim();
+        if (fieldId.isEmpty) continue;
+        final value = fieldEntry.value;
+        if (value is bool) {
+          await PackSettingsStore.setBool(
+            pluginId,
+            fieldId,
+            value,
+            reloadHub: false,
+          );
+        } else if (value is List) {
+          await PackSettingsStore.setStringList(
+            pluginId,
+            fieldId,
+            [
+              for (final e in value)
+                if (e.toString().trim().isNotEmpty) e.toString().trim(),
+            ],
+            reloadHub: false,
+          );
+        } else if (value is String || value is num) {
+          final s = value.toString();
+          await PackSettingsStore.setString(
+            pluginId,
+            fieldId,
+            s,
+            reloadHub: false,
+          );
+          // My List openDefault.* → ListOpenPrefs
+          if (fieldId.startsWith('openDefault.')) {
+            final type = fieldId.substring('openDefault.'.length).trim();
+            if (type.isNotEmpty) {
+              await ListOpenPrefs.setDefaultPluginId(
+                type,
+                s.trim().isEmpty ? null : s.trim(),
+              );
+            }
+          }
+        }
+      }
+    }
+    PackSettingsStore.revision.value++;
   }
 
   Future<Map<String, dynamic>> _exportNavigationCompact() async {
@@ -1678,6 +1836,13 @@ void scheduleNuvioSyncPush() =>
 
 void scheduleForjaSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainForja);
+
+void schedulePackSettingsSyncPush() {
+  SyncDomainBridge.instance.notePackSettingsDirty();
+  SyncDomainBridge.instance.schedulePush(
+    SyncDomainBridge._domainPackSettings,
+  );
+}
 
 /// Push `onboarded` without wiping cloud pack membership when local packs are empty.
 void scheduleForjaOnboardedSyncPush() =>
