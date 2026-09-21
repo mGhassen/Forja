@@ -33,6 +33,11 @@ void main() {
       ShellTokens.controlHeightTv,
       closeTo(ShellTokens.controlHeight * ShellTokens.tvChromeScale, 0.001),
     );
+    // Nav profile — same boost as desktop (TV icons already chrome-scaled).
+    expect(
+      ShellTokens.navRailProfileAvatarScaleTv,
+      ShellTokens.navRailProfileAvatarScaleDesktop,
+    );
     // Channel family — hand-tuned, not mobile × chromeScale.
     expect(ShellTokens.channelCardWidthTv, ChannelCardTokens.widthTv);
     expect(ShellTokens.channelCardWidthTv, 110);

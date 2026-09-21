@@ -143,8 +143,13 @@ Future<List<Map<String, dynamic>>> catalogContinueEntries(
 /// Opaque resume seeds for layout widget type `because`.
 ///
 /// When [mergeHomeWatchHistory] is true (Home hub), seeds include the same
-/// Continue Watching pool. Pack-store seeds always load first so a home-history
-/// failure cannot wipe the rail.
+/// Continue Watching pool **and** full home [WatchHistoryService] movie/TV
+/// rows. Pack-store seeds always load first so a home-history failure cannot
+/// wipe the rail.
+///
+/// Each seed is a lean `{title, meta}` with `meta.ids.tmdb` set — EngineJS
+/// `tmdbBecause` needs that id; full MetaItem graphs are stripped so QuickJS
+/// params stay small.
 Future<List<Map<String, dynamic>>> catalogResumeSeeds(
   String pluginId, {
   bool mergeHomeWatchHistory = false,
@@ -153,26 +158,51 @@ Future<List<Map<String, dynamic>>> catalogResumeSeeds(
   final seenTmdb = <String>{};
 
   void addSeed(Map<String, dynamic> entry) {
-    Map<String, dynamic>? metaMap;
-    final parsed = WatchHistory.metaFromEntry(entry);
-    if (parsed != null) {
-      metaMap = parsed.toJson();
-    } else {
-      final raw = entry['meta'];
-      if (raw is Map) metaMap = Map<String, dynamic>.from(raw);
-    }
-    if (metaMap == null) return;
-    final ids = metaMap['ids'];
-    final tmdb = ids is Map ? (ids['tmdb'] ?? '').toString().trim() : '';
-    if (tmdb.isNotEmpty) {
+    try {
+      Map<String, dynamic>? metaMap;
+      try {
+        final parsed = WatchHistory.metaFromEntry(entry);
+        if (parsed != null) metaMap = parsed.toJson();
+      } catch (_) {}
+      if (metaMap == null) {
+        final raw = entry['meta'];
+        if (raw is Map) metaMap = Map<String, dynamic>.from(raw);
+      }
+      if (metaMap == null) return;
+
+      var tmdb = '';
+      final ids = metaMap['ids'];
+      if (ids is Map) {
+        tmdb = (ids['tmdb'] ?? '').toString().trim();
+      }
+      // Fallback: id shaped like `tmdb:movie:550`.
+      if (tmdb.isEmpty) {
+        final id = (metaMap['id'] ?? '').toString();
+        final parts = id.split(':');
+        if (parts.length >= 3 && parts.first == 'tmdb') {
+          tmdb = parts.last.trim();
+        }
+      }
+      if (tmdb.isEmpty) return;
       if (seenTmdb.contains(tmdb)) return;
       seenTmdb.add(tmdb);
-    }
-    final title = (entry['title'] ?? metaMap['name'] ?? '').toString();
-    out.add({
-      'title': title,
-      'meta': metaMap,
-    });
+
+      final title = (entry['title'] ?? metaMap['name'] ?? '').toString();
+      final mediaType = (metaMap['type'] ?? 'movie').toString().trim();
+      out.add({
+        'title': title,
+        'meta': {
+          'id': (metaMap['id'] ?? 'tmdb:$mediaType:$tmdb').toString(),
+          'type': mediaType == 'tv' ? 'tv' : 'movie',
+          'name': title,
+          if ((metaMap['poster'] ?? '').toString().isNotEmpty)
+            'poster': metaMap['poster'],
+          if ((metaMap['background'] ?? '').toString().isNotEmpty)
+            'background': metaMap['background'],
+          'ids': {'tmdb': tmdb},
+        },
+      });
+    } catch (_) {}
   }
 
   // Pack plugin store first — never lose these if home merge fails.

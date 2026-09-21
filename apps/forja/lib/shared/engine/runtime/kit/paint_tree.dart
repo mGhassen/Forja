@@ -88,6 +88,14 @@ import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 import 'package:rust/rust.dart'
     show WatchHistoryService, canResumeFromSavedProgress;
 
+/// Pack JSON bool — EngineJS / JSON sometimes deliver `'true'` / `1`.
+bool _packTruthy(Object? value) {
+  if (value == true) return true;
+  if (value == 1) return true;
+  final s = value?.toString().trim().toLowerCase() ?? '';
+  return s == 'true' || s == '1';
+}
+
 /// One mount table: pack `{ type, props, children?, load? }` → foundation.
 ///
 /// Prepared pages and small chrome types are the same catalog — packs compose
@@ -327,14 +335,14 @@ class PackPaintTree extends StatelessWidget {
           pluginId: pluginId,
           packSourceUrl: packSourceUrl,
           tabId: tabId,
-          mergeHomeWatchHistory: node['mergeHomeWatchHistory'] == true,
+          mergeHomeWatchHistory: _packTruthy(node['mergeHomeWatchHistory']),
         );
       case LayoutTypes.continueWatching:
         return _ContinueMount(
           spec: node,
           pluginId: pluginId,
           tabId: tabId,
-          mergeHomeWatchHistory: node['mergeHomeWatchHistory'] == true,
+          mergeHomeWatchHistory: _packTruthy(node['mergeHomeWatchHistory']),
         );
       case 'catalogBody':
         return CatalogBody.fromProps(props, sections: kids);
@@ -3662,6 +3670,7 @@ class _BecauseMount extends StatefulWidget {
 class _BecauseMountState extends State<_BecauseMount> {
   int _shuffleKey = 0;
   List<Map<String, dynamic>> _seeds = const [];
+  var _seedsReady = false;
   StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
 
   @override
@@ -3693,9 +3702,19 @@ class _BecauseMountState extends State<_BecauseMount> {
         mergeHomeWatchHistory: widget.mergeHomeWatchHistory,
       );
       if (!mounted) return;
-      setState(() => _seeds = list);
-    } catch (_) {
+      debugPrint(
+        '[Because] seeds=${list.length} merge=${widget.mergeHomeWatchHistory} '
+        'plugin=${widget.pluginId}',
+      );
+      setState(() {
+        _seeds = list;
+        _seedsReady = true;
+      });
+    } catch (e) {
+      debugPrint('[Because] seed load failed: $e');
+      if (!mounted) return;
       // Keep last seeds — do not wipe the rail on a transient failure.
+      setState(() => _seedsReady = true);
     }
   }
 
@@ -3707,10 +3726,17 @@ class _BecauseMountState extends State<_BecauseMount> {
       PackPaintArtifact.stableSortOrder(tabReserve, 'because-shuffle');
       PackPaintArtifact.stableSortOrder(tabReserve, 'because');
     }
+    if (!_seedsReady) {
+      // Hold layout space while seeds load — avoid permanent shrink flash.
+      return SizedBox(height: InteractivePosterCard.cardHeight(context) + 48);
+    }
     final seeds = _seeds;
     if (seeds.isEmpty) return const SizedBox.shrink();
     final load = packLoadSpec(widget.spec['load']);
-    if (load == null) return const SizedBox.shrink();
+    if (load == null) {
+      debugPrint('[Because] missing load spec');
+      return const SizedBox.shrink();
+    }
     return PackLoadedPaint(
       key: ValueKey('because-$_shuffleKey-${seeds.length}'),
       pluginId: widget.pluginId,
@@ -3726,6 +3752,9 @@ class _BecauseMountState extends State<_BecauseMount> {
       builder: (ctx, node) {
         final items = node['items'];
         if (items is! List || items.isEmpty) {
+          debugPrint(
+            '[Because] empty items after load (seeds=${seeds.length})',
+          );
           return const SizedBox.shrink();
         }
                 final tab = widget.tabId ??
