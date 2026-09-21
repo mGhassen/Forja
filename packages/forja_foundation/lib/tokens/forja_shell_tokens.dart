@@ -508,6 +508,14 @@ abstract final class ShellTokens {
   static const double posterTitleFontSizeMobile = 13;
   static const double posterTitleFontSizeDesktop = 14;
   static const double posterTitleFontSizeTv = tvBodyFontSize;
+
+  /// Outlined rank digit behind Popular / top-N posters (outside focus chrome).
+  static const double posterRankFontSize = 120;
+  static const double posterRankStrokeWidth = 2;
+  static const double posterRankLetterSpacing = -8;
+  static const double posterRankLineHeight = 0.85;
+  static const double posterRankStrokeAlpha = 0.1;
+
   static const double cardFocusBorderWidth = 1.5;
   static const double cardFocusBleedExtra = 1;
   static const double continueWatchingCardWidthTv =

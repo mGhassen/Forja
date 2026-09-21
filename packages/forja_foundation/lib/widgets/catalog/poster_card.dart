@@ -195,26 +195,7 @@ class PosterCard extends StatelessWidget {
 
     if (rank == null) return tappable;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          '$rank',
-          style: TextStyle(
-            fontSize: 120,
-            fontWeight: FontWeight.w900,
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
-              ..color = Colors.white.withValues(alpha: 0.1),
-            height: 0.85,
-            letterSpacing: -8,
-          ),
-        ),
-        tappable,
-      ],
-    );
+    return PosterRankRow(rank: rank!, child: tappable);
   }
 
   Widget _titleFallback(bool compact) {
@@ -227,6 +208,53 @@ class PosterCard extends StatelessWidget {
           color: Colors.white24,
         ),
       ),
+    );
+  }
+}
+
+/// Large outlined rank digit for Popular / top-N rails.
+///
+/// Keep outside focus/hover chrome so the border wraps the poster only.
+class PosterRankMark extends StatelessWidget {
+  const PosterRankMark({super.key, required this.rank});
+
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      '$rank',
+      style: TextStyle(
+        fontSize: ShellTokens.posterRankFontSize,
+        fontWeight: FontWeight.w900,
+        foreground: Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = ShellTokens.posterRankStrokeWidth
+          ..color = Colors.white
+              .withValues(alpha: ShellTokens.posterRankStrokeAlpha),
+        height: ShellTokens.posterRankLineHeight,
+        letterSpacing: ShellTokens.posterRankLetterSpacing,
+      ),
+    );
+  }
+}
+
+/// Rank digit + poster; use when composing focus chrome around [child] only.
+class PosterRankRow extends StatelessWidget {
+  const PosterRankRow({super.key, required this.rank, required this.child});
+
+  final int rank;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        PosterRankMark(rank: rank),
+        child,
+      ],
     );
   }
 }

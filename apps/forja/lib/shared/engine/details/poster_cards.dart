@@ -8,7 +8,7 @@ import 'package:rust/rust.dart';
 export 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart'
     show PosterAspect, InteractivePosterCard;
 export 'package:forja_foundation/widgets/catalog/poster_card.dart'
-    show PosterCard, RatingBadge;
+    show PosterCard, PosterRankMark, PosterRankRow, RatingBadge;
 
 typedef MovieRatingBadge = RatingBadge;
 
@@ -71,7 +71,7 @@ class MoviePosterCard extends StatelessWidget {
           )
         : null;
 
-    return shellFocusableTap(
+    Widget card = shellFocusableTap(
       context: context,
       onTap: onTap,
       borderRadius: radius,
@@ -87,7 +87,6 @@ class MoviePosterCard extends StatelessWidget {
         title: movie.title,
         subtitle: metaLine(movie),
         rating: movie.voteAverage > 0 ? movie.voteAverage : null,
-        rank: rank,
         listPin: pin,
         width: w,
         height: h,
@@ -97,6 +96,10 @@ class MoviePosterCard extends StatelessWidget {
         inset: 10,
       ),
     );
+    if (rank != null) {
+      card = PosterRankRow(rank: rank!, child: card);
+    }
+    return card;
   }
 }
 

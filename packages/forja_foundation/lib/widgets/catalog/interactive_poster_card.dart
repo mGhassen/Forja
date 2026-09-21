@@ -8,7 +8,13 @@ import 'package:forja_foundation/widgets/catalog/poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 export 'package:forja_foundation/widgets/catalog/poster_card.dart'
-    show PosterCard, PosterAspect, RatingBadge, RatingBadgeText;
+    show
+        PosterCard,
+        PosterAspect,
+        PosterRankMark,
+        PosterRankRow,
+        RatingBadge,
+        RatingBadgeText;
 
 /// Poster card with [ShellPaintScope.focusableTap] + optional long-press hold.
 ///
@@ -235,12 +241,12 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
         focused: _focused,
       );
       final pin = widget.listPinBuilder?.call(active: active) ?? widget.listPin;
+      // Rank is composed outside focus chrome so the border wraps the poster only.
       return PosterCard(
         imageUrl: widget.imageUrl,
         title: widget.title,
         subtitle: widget.subtitle,
         rating: widget.rating,
-        rank: widget.rank,
         badge: widget.badge,
         listPin: pin,
         aspect: widget.aspect,
@@ -279,6 +285,10 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
         builder: (context, _) => paintCard(hovered: _hoveredN.value),
       ),
     );
+
+    if (widget.rank != null) {
+      card = PosterRankRow(rank: widget.rank!, child: card);
+    }
 
     if (widget.onLongPress != null) {
       card = GestureDetector(
