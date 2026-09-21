@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
+import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -186,7 +187,7 @@ Widget catalogMoodRowSkeleton({
   required BuildContext context,
   String? title,
   bool compact = false,
-  double chipRowHeight = 122,
+  double? chipRowHeight,
   double? resultsCardHeight,
   double resultsCardWidth = 190,
   int chipCount = 6,
@@ -196,6 +197,10 @@ Widget catalogMoodRowSkeleton({
   final hPad = catalogSectionHorizontalPadding(context);
   final titleTop = catalogSectionTitleTop(context, compact: compact);
   final bottomGap = catalogSectionBottomGap(context);
+  final resolvedChipRowHeight = chipRowHeight ??
+      (catalogUsesTvDensity(context)
+          ? ShellTokens.moodCircleRowHeightTv
+          : MoodCircleLayout.desktop.rowHeight);
   final body = Padding(
     padding: EdgeInsets.only(top: titleTop),
     child: Column(
@@ -208,7 +213,7 @@ Widget catalogMoodRowSkeleton({
               : homeTitleBarSkeleton(width: 160),
         ),
         SizedBox(
-          height: chipRowHeight,
+          height: resolvedChipRowHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const NeverScrollableScrollPhysics(),
@@ -263,12 +268,17 @@ Widget catalogMoodRowSkeleton({
 double catalogMoodRowSkeletonHeight({
   required BuildContext context,
   bool compact = false,
-  double chipRowHeight = 122,
+  double? chipRowHeight,
   double? resultsCardHeight,
 }) {
   final titleTop = catalogSectionTitleTop(context, compact: compact);
   final bottomGap = catalogSectionBottomGap(context);
-  var h = titleTop + kCatalogSectionTitleLineHeight + bottomGap + chipRowHeight;
+  final resolvedChipRowHeight = chipRowHeight ??
+      (catalogUsesTvDensity(context)
+          ? ShellTokens.moodCircleRowHeightTv
+          : MoodCircleLayout.desktop.rowHeight);
+  var h =
+      titleTop + kCatalogSectionTitleLineHeight + bottomGap + resolvedChipRowHeight;
   if (resultsCardHeight != null) {
     h += 12 + resultsCardHeight;
   }

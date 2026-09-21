@@ -21,9 +21,14 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
-  testWidgets('logo paints inside a fixed 1:1 AspectRatio frame', (tester) async {
+  testWidgets('logo fills the full logo band — no inset AspectRatio square', (
+    tester,
+  ) async {
     const cardW = 160.0;
     const cardH = 180.0;
+    final expectedBandH = cardH -
+        ChannelCardTokens.titleBarHeight -
+        ChannelCardTokens.epgSlotHeight;
 
     await tester.pumpWidget(
       _wrap(
@@ -37,29 +42,24 @@ void main() {
     );
     await tester.pump();
 
-    final frame = tester.widget<AspectRatio>(find.byType(AspectRatio));
-    expect(frame.aspectRatio, ChannelCardTokens.logoAspectRatio);
+    // No nested 1:1 frame — logo band is the full Expanded face.
+    expect(find.byType(AspectRatio), findsNothing);
 
-    final frameSize = tester.getSize(find.byType(AspectRatio));
-    expect(frameSize.width, closeTo(frameSize.height, 0.5));
-    // Square is bounded by the padded logo band, not the full card face.
-    expect(frameSize.width, lessThan(cardW));
-    expect(
-      frameSize.width,
-      greaterThan(cardW * 0.5),
-    );
-
-    // Empty URL still shows the TV placeholder inside that fixed frame.
+    // Empty URL still shows the TV placeholder in that band.
     expect(find.byIcon(Icons.tv_rounded), findsOneWidget);
+    final placeholderCenter = tester.getCenter(find.byIcon(Icons.tv_rounded));
+    final cardTop = tester.getTopLeft(find.byType(CatalogChannelCard)).dy;
+    expect(
+      placeholderCenter.dy,
+      closeTo(cardTop + expectedBandH / 2, 2.0),
+    );
   });
 
-  testWidgets('long titles do not change the 1:1 logo frame size', (
-    tester,
-  ) async {
+  testWidgets('long titles do not change the logo band height', (tester) async {
     const cardW = 160.0;
     const cardH = 180.0;
 
-    Future<Size> frameSizeFor(String title) async {
+    Future<double> placeholderY(String title) async {
       await tester.pumpWidget(
         _wrap(
           CatalogChannelCard(
@@ -71,14 +71,13 @@ void main() {
         ),
       );
       await tester.pump();
-      return tester.getSize(find.byType(AspectRatio));
+      return tester.getCenter(find.byIcon(Icons.tv_rounded)).dy;
     }
 
-    final short = await frameSizeFor('VIP - NO EVENT');
-    final long = await frameSizeFor(
+    final shortY = await placeholderY('VIP - NO EVENT');
+    final longY = await placeholderY(
       '##### GOLDEN EVENTS ##### EXTRA LONG TITLE THAT WOULD WRAP',
     );
-    expect(short, long);
-    expect(short.width, closeTo(short.height, 0.5));
+    expect(longY, closeTo(shortY, 0.5));
   });
 }

@@ -733,12 +733,28 @@ abstract final class ShellTokens {
   static const double viewButtonGapTv = 10;
 
   /// Accent mood circles on TV (leanback catalog rows).
+  ///
+  /// Hand-tuned — not desktop × [tvLayoutScale]. Type uses the leanback ladder,
+  /// so geometry must leave room for [moodCircleLabelFontSizeTv] × lines.
   static const double moodCircleSizeTv = 42;
   static const double moodCircleItemWidthTv = 58;
   static const double moodCircleGapTv = 6;
   static const double moodCircleLabelFontSizeTv = tvMetaFontSize;
   static const double moodCircleLabelGapTv = 6;
   static const double moodCircleLabelLineHeightTv = 1.15;
+  static const int moodCircleLabelMaxLinesTv = 2;
+  static const double moodCircleBottomPadTv = moodCircleLabelGapTv;
+  static const double moodCircleIconSizeTv = 15;
+  static const double moodCircleIconSizeActiveTv = 20;
+
+  /// circle + gap + (lines × size × height) + bottom pad + font-metric slack.
+  static const double moodCircleRowHeightTv = moodCircleSizeTv +
+      moodCircleLabelGapTv +
+      (moodCircleLabelMaxLinesTv *
+          moodCircleLabelFontSizeTv *
+          moodCircleLabelLineHeightTv) +
+      moodCircleBottomPadTv +
+      2;
 
   /// Catalog load ticker (IPTV shelf / hub list loading page).
   static const double catalogLoadingTickerMaxWidth = 360;

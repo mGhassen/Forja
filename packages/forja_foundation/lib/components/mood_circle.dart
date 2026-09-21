@@ -16,6 +16,8 @@ class MoodCircleLayout {
     required this.iconSize,
     required this.iconSizeActive,
     required this.labelMaxLines,
+    required this.labelGap,
+    this.labelLineHeight = 1.15,
   });
 
   final double circleSize;
@@ -26,28 +28,35 @@ class MoodCircleLayout {
   final double iconSize;
   final double iconSizeActive;
   final int labelMaxLines;
+  final double labelGap;
+  final double labelLineHeight;
 
   static const desktop = MoodCircleLayout(
     circleSize: 72,
     itemWidth: 96,
     horizontalGap: 24,
+    // circle + gap + label slot + bottom pad (slot > 2× line for wrapping slack).
     rowHeight: 72 + 8 + 34 + 8,
     labelFontSize: 12.5,
     iconSize: 26,
     iconSizeActive: 34,
     labelMaxLines: 2,
+    labelGap: 8,
+    labelLineHeight: 1.15,
   );
 
-  /// Desktop metrics × [ShellTokens.tvLayoutScale] — same packing, no shrink-fit.
-  static final tvScrollable = MoodCircleLayout(
-    circleSize: desktop.circleSize * ShellTokens.tvLayoutScale,
-    itemWidth: desktop.itemWidth * ShellTokens.tvLayoutScale,
-    horizontalGap: desktop.horizontalGap * ShellTokens.tvLayoutScale,
-    rowHeight: desktop.rowHeight * ShellTokens.tvLayoutScale,
-    labelFontSize: ShellTokens.tvTypeSize(desktop.labelFontSize),
-    iconSize: desktop.iconSize * ShellTokens.tvLayoutScale,
-    iconSizeActive: desktop.iconSizeActive * ShellTokens.tvLayoutScale,
-    labelMaxLines: desktop.labelMaxLines,
+  /// Hand-tuned leanback packing ([ShellTokens.moodCircle*] — not chrome-scaled).
+  static const tvScrollable = MoodCircleLayout(
+    circleSize: ShellTokens.moodCircleSizeTv,
+    itemWidth: ShellTokens.moodCircleItemWidthTv,
+    horizontalGap: ShellTokens.moodCircleGapTv,
+    rowHeight: ShellTokens.moodCircleRowHeightTv,
+    labelFontSize: ShellTokens.moodCircleLabelFontSizeTv,
+    iconSize: ShellTokens.moodCircleIconSizeTv,
+    iconSizeActive: ShellTokens.moodCircleIconSizeActiveTv,
+    labelMaxLines: ShellTokens.moodCircleLabelMaxLinesTv,
+    labelGap: ShellTokens.moodCircleLabelGapTv,
+    labelLineHeight: ShellTokens.moodCircleLabelLineHeightTv,
   );
 
   double contentWidth(int itemCount) {
@@ -263,7 +272,7 @@ class _AccentMoodCircle extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           circle,
-          SizedBox(height: layout.labelMaxLines == 1 ? 6 : 8),
+          SizedBox(height: layout.labelGap),
           Text(
             label,
             maxLines: layout.labelMaxLines,
@@ -275,7 +284,7 @@ class _AccentMoodCircle extends StatelessWidget {
                   : Colors.white.withValues(alpha: active ? 1.0 : 0.72),
               fontSize: layout.labelFontSize,
               fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-              height: 1.15,
+              height: layout.labelLineHeight,
             ),
           ),
         ],
