@@ -189,6 +189,3 @@ class DetailsCastSection extends StatelessWidget {
     );
   }
 }
-
-/// Host alias.
-typedef MediaDetailsCastSection = DetailsCastSection;

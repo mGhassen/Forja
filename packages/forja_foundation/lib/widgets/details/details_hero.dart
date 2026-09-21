@@ -418,6 +418,12 @@ class _DetailsHeroLayout extends StatelessWidget {
     Widget factsOverlay({required Widget body}) {
       final factsChild = _factsChild();
       final hasFacts = factsChild != null;
+      final factsMaxWidth = tvDensity
+          ? DetailsTokens.factsMaxWidthTv
+          : DetailsTokens.factsMaxWidth;
+      final factsRadius = tvDensity
+          ? DetailsTokens.factsRadiusTv
+          : DetailsTokens.factsRadius;
       return SizedBox(
         width: double.infinity,
         height: maxHeight,
@@ -430,11 +436,11 @@ class _DetailsHeroLayout extends StatelessWidget {
                 alignment: Alignment.topRight,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: 300,
+                    maxWidth: factsMaxWidth,
                     maxHeight: maxHeight!,
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(factsRadius),
                     child: AnimatedOpacity(
                       opacity: hasFacts ? 1 : 0,
                       duration: const Duration(milliseconds: 700),

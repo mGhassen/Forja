@@ -73,7 +73,14 @@ class FactsPanel extends StatelessWidget {
         .toList(growable: false);
     if (visible.isEmpty) return const SizedBox.shrink();
 
-    const radius = DetailsTokens.factsRadius;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final radius =
+        tv ? DetailsTokens.factsRadiusTv : DetailsTokens.factsRadius;
+    final padH = tv ? DetailsTokens.factsPadHTv : DetailsTokens.factsPadH;
+    final padVEdge =
+        tv ? DetailsTokens.factsPadVEdgeTv : DetailsTokens.factsPadVEdge;
+    final padVMid =
+        tv ? DetailsTokens.factsPadVMidTv : DetailsTokens.factsPadVMid;
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),
@@ -94,10 +101,10 @@ class FactsPanel extends StatelessWidget {
               ),
             Padding(
               padding: EdgeInsets.fromLTRB(
-                20,
-                i == 0 ? 16 : 10,
-                20,
-                i == visible.length - 1 ? 16 : 10,
+                padH,
+                i == 0 ? padVEdge : padVMid,
+                padH,
+                i == visible.length - 1 ? padVEdge : padVMid,
               ),
               child: _FactRow(
                 label: visible[i].label,
@@ -248,7 +255,9 @@ class _FactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final size = tv ? DetailsTokens.bodyFontSizeTv : 13.0;
+    final size = tv
+        ? DetailsTokens.bodyFontSizeTv
+        : DetailsTokens.factsFontSize;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

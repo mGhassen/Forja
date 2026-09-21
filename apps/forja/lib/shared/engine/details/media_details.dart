@@ -6,6 +6,7 @@ export 'package:forja_foundation/widgets/details/tv_season_episode_picker.dart';
 export 'package:forja_foundation/widgets/details/watch_progress_bar.dart';
 export 'package:forja_foundation/widgets/details/watch_series_progress.dart';
 
+export 'media_details_cast_section.dart';
 export 'media_details_scroll_page.dart';
 export 'media_details_torrent_action_row.dart';
 export 'media_details_tracker_handlers.dart';

@@ -981,14 +981,26 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
 
     var protocolOrder = metaRowBase;
     final castSection = hasCast
-        ? DetailsCastSection(
+        ? MediaDetailsCastSection(
             cast: castMaps,
             title: isAnime ? 'Characters' : 'Cast',
+            tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+            tvRowId: tvFocus ? 'cast' : null,
+            tvRowOrder: protocolOrder,
+            tvFocusUp: firstMetaFocusUp,
           )
         : null;
     if (hasCast) protocolOrder++;
     final crewSection = hasCrew
-        ? DetailsCastSection(cast: crewMaps, title: 'Crew')
+        ? MediaDetailsCastSection(
+            cast: crewMaps,
+            title: 'Crew',
+            tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+            tvRowId: tvFocus ? 'crew' : null,
+            tvRowOrder: protocolOrder,
+            // Cast owns ↑ when present; otherwise Crew is first meta row.
+            tvFocusUp: hasCast ? null : firstMetaFocusUp,
+          )
         : null;
     if (hasCrew) protocolOrder++;
     final trailersSection = hasBodyTrailers

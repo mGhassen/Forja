@@ -107,7 +107,20 @@ abstract final class DetailsTokens {
   static const double episodeRangeMenuHeightTv = episodeRangeMenuHeight * _s;
   static const int episodeRangeMenuMaxRows = 8;
   static const double episodeRangeMenuRadius = 20;
+
+  /// Right-column production facts card on the details hero.
+  static const double factsMaxWidth = 300;
+  static const double factsMaxWidthTv = factsMaxWidth * _s;
+  static const double factsPadH = 20;
+  static const double factsPadHTv = factsPadH * _s;
+  static const double factsPadVEdge = 16;
+  static const double factsPadVEdgeTv = factsPadVEdge * _s;
+  static const double factsPadVMid = 10;
+  static const double factsPadVMidTv = factsPadVMid * _s;
   static const double factsRadius = 12;
+  static const double factsRadiusTv = factsRadius * _s;
+  static const double factsFontSize = 13;
+
   static const double sectionTitleFontSize = 18;
   static const double sectionTitleFontSizeTv = ShellTokens.tvTitleFontSize;
   static const double bodyFontSize = 14;
