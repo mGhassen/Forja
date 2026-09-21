@@ -1013,6 +1013,24 @@ abstract final class ShellTokens {
   /// Hot strip on the window's left edge — hover opens the compact nav drawer.
   static const double compactNavEdgeHoverWidth = 12;
 
+  /// Portal / OTP share-code cells (Add Portal collapsed).
+  static const double shareCodeCellWidth = 38;
+  static const double shareCodeCellWidthTv = 22;
+  static const double shareCodeCellHeight = 76;
+  static const double shareCodeCellHeightTv = 30;
+  static const double shareCodeCellGap = 6;
+  static const double shareCodeCellGapTv = 4;
+  static const double shareCodeCellRadius = 8;
+  static const double shareCodeCellRadiusTv = 5;
+  static const double shareCodeFontSize = 26;
+  static const double shareCodeFontSizeTv = tvTitleFontSize;
+  static const double shareCodeExpandSize = 38;
+  static const double shareCodeExpandSizeTv = 26;
+  static const double shareCodeCollapsedBodyHeight = 196;
+  static const double shareCodeCollapsedBodyHeightTv = 108;
+  static const double shareCodeDialogWidth = 440;
+  static const double shareCodeDialogWidthTv = 320;
+
   static const double packUpdateMenuBadgeFontSize = 10;
   static const double packUpdateMenuBadgeFontSizeTv = tvMetaFontSize;
   static const double packUpdateMenuBadgePadH = 6;

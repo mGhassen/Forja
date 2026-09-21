@@ -12,7 +12,11 @@ const kHubHeroDetailsFocusId = 'hero-details';
 ///
 /// [last] restores the remembered index on the row.
 /// [lastItem] focuses the final index (`itemCount - 1`) — used for pack
-/// `focusUpRight` → chrome Portals chip without hardcoding the index.
+/// `focusUpRight: portals` → chrome Portals chip without hardcoding the index.
+///
+/// Pack top-bar action ids that live inside the `chrome` [TvKitRow]:
+/// - `catalog` → selected Live/Movies/Series shelf chip (chrome index 0)
+/// - `portals` + [lastItem] → trailing Portals chip (not the open panel list)
 ///
 /// [down]: when true, prefer a registered `{rowId}-shuffle` chrome row if it
 /// has items (e.g. pack `focusDown: 'because'` → `because-shuffle` when the
@@ -31,12 +35,23 @@ VoidCallback? kitFocusEdge(
   if (id.isEmpty) return null;
   return () {
     var target = id;
+    var useLast = last;
+    var useLastItem = lastItem;
     if (down) {
       final chrome = '$id-shuffle';
       final shuffle = ShellTvFocusCoordinator.rowHandle(tabId, chrome);
       if (shuffle != null && shuffle.itemCount > 0) {
         target = chrome;
       }
+    }
+    // Shelf / Portals chip sit on the chrome row — pack names the action id.
+    if (target == 'catalog') {
+      target = 'chrome';
+      useLast = false;
+      useLastItem = false;
+    } else if (target == 'portals' && useLastItem) {
+      target = 'chrome';
+      useLastItem = true;
     }
     // Hero View details is defaultFocus + item node — not a TvKitRow handle.
     if (target == kHubHeroDetailsFocusId) {
@@ -47,7 +62,7 @@ VoidCallback? kitFocusEdge(
       return;
     }
     final bool ok;
-    if (lastItem) {
+    if (useLastItem) {
       final handle = ShellTvFocusCoordinator.rowHandle(tabId, target);
       if (handle == null || handle.itemCount <= 0) {
         ok = false;
@@ -59,7 +74,7 @@ VoidCallback? kitFocusEdge(
           index: index,
         );
       }
-    } else if (last) {
+    } else if (useLast) {
       ok = ShellTvFocusCoordinator.focusRowItemRemembered(tabId, target);
     } else {
       var landed = ShellTvFocusCoordinator.focusRowItem(tabId, target, 0);

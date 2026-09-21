@@ -119,6 +119,19 @@ class _ButtonState extends State<Button> {
       padding: widget.padding,
     );
     final tv = ShellPaintScope.usesTvDensityOf(context);
+    final resolvedHeight = widget.height ??
+        (tv ? dims.height * ShellTokens.tvChromeScale : dims.height);
+    final resolvedFontSize = widget.fontSize ??
+        (tv ? ShellTokens.tvTypeSize(dims.fontSize) : dims.fontSize);
+    final resolvedPadding = widget.padding ??
+        (tv
+            ? EdgeInsets.symmetric(
+                horizontal: switch (dims.padding) {
+                  EdgeInsets e => e.horizontal / 2 * ShellTokens.tvChromeScale,
+                  _ => 10.0,
+                },
+              )
+            : dims.padding);
     // Explicit [iconSize] is caller-owned (already density-aware). Defaults densify.
     final resolvedIconSize = widget.iconSize ??
         ShellTokens.iconSizeFor(dims.iconSize, tv: tv);
@@ -171,7 +184,7 @@ class _ButtonState extends State<Button> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: colors.foreground,
-                  fontSize: dims.fontSize,
+                  fontSize: resolvedFontSize,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
                   decoration: widget.variant == ButtonVariant.link
@@ -206,12 +219,14 @@ class _ButtonState extends State<Button> {
       enabled: enabled,
       statesController: _states,
       style: style,
-      padding: dims.padding,
+      padding: resolvedPadding,
       constraints: BoxConstraints(
-        minHeight: dims.height,
-        minWidth: widget.size == ButtonSize.icon ? dims.height : 0,
+        minHeight: resolvedHeight,
+        minWidth: widget.size == ButtonSize.icon ? resolvedHeight : 0,
       ),
-      borderRadius: BorderRadius.circular(theme.radiusMd),
+      borderRadius: BorderRadius.circular(
+        tv ? theme.radiusMd * ShellTokens.tvChromeScale : theme.radiusMd,
+      ),
       tooltip: widget.tooltip,
       onKeyEvent: widget.onKeyEvent,
       child: content,

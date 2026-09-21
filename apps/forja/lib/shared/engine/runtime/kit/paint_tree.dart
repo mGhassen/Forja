@@ -1962,7 +1962,8 @@ class PackPaintTree extends StatelessWidget {
               last: true,
             );
             // Pack `focusUpLeft` / `focusUpRight` — half-column ↑ from top row.
-            // `focusUpRight` uses lastItem so chrome lands on the trailing chip.
+            // Left: selected shelf (`catalog` → chrome slot 0). Right: Portals
+            // chip (`portals` + lastItem → chrome trailing).
             final upLeft = scope?.resolveFocusEdge(
               (spec['focusUpLeft'] ?? '').toString(),
             );

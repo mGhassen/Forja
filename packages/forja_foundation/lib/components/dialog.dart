@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/button.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Dialog tone.
 enum ForjaDialogType {
@@ -18,16 +21,36 @@ Future<T?> showForjaDialog<T>({
   ForjaDialogType type = ForjaDialogType.default_,
   bool barrierDismissible = true,
 }) {
+  final hostPaint = ShellPaintScope.maybeOf(context);
   return showDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
-    builder: (ctx) => ForjaDialog(
-      title: title,
-      description: description,
-      body: body,
-      actions: actions,
-      type: type,
-    ),
+    builder: (ctx) {
+      Widget dialog = ForjaDialog(
+        title: title,
+        description: description,
+        body: body,
+        actions: actions,
+        type: type,
+      );
+      // Overlay routes leave the host [ShellPaintScope]; rehost density so
+      // leanback type / padding still apply.
+      if (hostPaint != null) {
+        dialog = ShellPaintScope(
+          useTvFocus: hostPaint.useTvFocus,
+          scaleOnHover: hostPaint.scaleOnHover,
+          usesTvDensity: hostPaint.usesTvDensity,
+          focusStyled: hostPaint.focusStyled,
+          focusableTapBuilder: hostPaint.focusableTapBuilder,
+          wrapTvRow: hostPaint.wrapTvRow,
+          wrapHorizontalScroller: hostPaint.wrapHorizontalScroller,
+          absorbHorizontalScroll: hostPaint.absorbHorizontalScroll,
+          isActivateKey: hostPaint.isActivateKey,
+          child: dialog,
+        );
+      }
+      return dialog;
+    },
   );
 }
 
@@ -51,20 +74,30 @@ class ForjaDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final titleColor = type == ForjaDialogType.destructive
         ? const Color(0xFFF87171)
         : theme.textPrimary;
+    final screen = MediaQuery.sizeOf(context);
+    final maxW = SettingsTokens.dialogMaxWidthOf(context, screen.width);
+    final pad = tv ? theme.spaceMd : theme.spaceLg;
+    final gapSm = tv ? 4.0 : theme.spaceSm;
+    final gapMd = tv ? theme.spaceSm : theme.spaceMd;
+    final gapLg = tv ? theme.spaceMd : theme.spaceLg;
 
     return Dialog(
       backgroundColor: theme.surfaceElevated,
+      insetPadding: SettingsTokens.dialogInsetPaddingOf(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(theme.radiusMd),
+        borderRadius: BorderRadius.circular(
+          SettingsTokens.dialogRadiusOf(context),
+        ),
         side: BorderSide(color: theme.borderSubtle),
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: BoxConstraints(maxWidth: maxW),
         child: Padding(
-          padding: EdgeInsets.all(theme.spaceLg),
+          padding: EdgeInsets.all(pad),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -73,32 +106,32 @@ class ForjaDialog extends StatelessWidget {
                 title,
                 style: TextStyle(
                   color: titleColor,
-                  fontSize: 18,
+                  fontSize: tv ? ShellTokens.tvTitleFontSize : 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               if (description != null) ...[
-                SizedBox(height: theme.spaceSm),
+                SizedBox(height: gapSm),
                 Text(
                   description!,
                   style: TextStyle(
                     color: theme.textSecondary,
-                    fontSize: 14,
+                    fontSize: tv ? ShellTokens.tvBodyFontSize : 14,
                     height: 1.4,
                   ),
                 ),
               ],
               if (body != null) ...[
-                SizedBox(height: theme.spaceMd),
+                SizedBox(height: gapMd),
                 body!,
               ],
               if (actions != null && actions!.isNotEmpty) ...[
-                SizedBox(height: theme.spaceLg),
+                SizedBox(height: gapLg),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     for (var i = 0; i < actions!.length; i++) ...[
-                      if (i > 0) SizedBox(width: theme.spaceSm),
+                      if (i > 0) SizedBox(width: gapSm),
                       actions![i],
                     ],
                   ],

@@ -62,9 +62,9 @@ abstract final class GuideChromeStyle {
         ),
       );
 
-  static BoxDecoration dialogSurface() => BoxDecoration(
+  static BoxDecoration dialogSurface({bool tv = false}) => BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(tv ? 10 : 14),
         border: Border.all(color: border),
       );
 

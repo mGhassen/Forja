@@ -84,11 +84,23 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
 
   static const _codeLen = PortalShare.shareCodeLength;
 
-  double get _codeBoxWidth => _tv ? 28.0 : (_compact ? 30.0 : 38.0);
+  double get _codeBoxWidth => _tv
+      ? ShellTokens.shareCodeCellWidthTv
+      : (_compact ? 30.0 : ShellTokens.shareCodeCellWidth);
 
-  double get _codeBoxHeight => _tv ? 42.0 : (_compact ? 52.0 : 76.0);
+  double get _codeBoxHeight => _tv
+      ? ShellTokens.shareCodeCellHeightTv
+      : (_compact ? 52.0 : ShellTokens.shareCodeCellHeight);
 
-  double get _codeFontSize => _tv ? ShellTokens.tvTitleFontSize : (_compact ? 20.0 : 26.0);
+  double get _codeFontSize => _tv
+      ? ShellTokens.shareCodeFontSizeTv
+      : (_compact ? 20.0 : ShellTokens.shareCodeFontSize);
+
+  double get _codeCellGap =>
+      _tv ? ShellTokens.shareCodeCellGapTv : ShellTokens.shareCodeCellGap;
+
+  double get _codeCellRadius =>
+      _tv ? ShellTokens.shareCodeCellRadiusTv : ShellTokens.shareCodeCellRadius;
 
   late final TextEditingController _labelCtrl;
   late final TextEditingController _urlCtrl;
@@ -875,9 +887,11 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     final gapBeforeManual = _tv ? 12.0 : (_compact ? 18.0 : 28.0);
     final gapBeforeActions = _tv ? 10.0 : (_compact ? 12.0 : 20.0);
     // Collapsed: room to vertically center "Share code" + paste field as one block.
-    final collapsedBodyHeight = _tv ? 152.0 : (_compact ? 172.0 : 196.0);
+    final collapsedBodyHeight = _tv
+        ? ShellTokens.shareCodeCollapsedBodyHeightTv
+        : (_compact ? 172.0 : ShellTokens.shareCodeCollapsedBodyHeight);
     final surfacePadding = _tv
-        ? const EdgeInsets.fromLTRB(16, 14, 12, 12)
+        ? const EdgeInsets.fromLTRB(14, 10, 10, 10)
         : _compact
             ? const EdgeInsets.fromLTRB(16, 16, 12, 16)
             : EdgeInsets.fromLTRB(
@@ -887,17 +901,24 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                 _editing || _showManualForm || _namingImported ? 24 : 20,
               );
     final screenH = MediaQuery.sizeOf(context).height;
+    final screenW = MediaQuery.sizeOf(context).width;
     final tvInsetV = 20.0;
     final maxHeight = _tv
-        ? (screenH - tvInsetV * 2).clamp(400.0, screenH)
+        ? (screenH - tvInsetV * 2).clamp(280.0, screenH)
         : screenH -
             MediaQuery.viewInsetsOf(context).bottom -
             (_compact ? 32.0 : 64.0);
-    final dialogMaxWidth = _tv ? 420.0 : 440.0;
+    final dialogMaxWidth = _tv
+        ? ShellTokens.shareCodeDialogWidthTv
+            .clamp(240.0, screenW - 48)
+            .toDouble()
+        : ShellTokens.shareCodeDialogWidth;
     final titleLabel = _namingImported
         ? 'Portal name'
         : (_editing ? 'Edit Portal' : 'Add Portal');
-    final expandBtnSize = _tv ? 34.0 : 38.0;
+    final expandBtnSize = _tv
+        ? ShellTokens.shareCodeExpandSizeTv
+        : ShellTokens.shareCodeExpandSize;
     final expandOverlap = expandBtnSize / 2;
     return TvKitRow(
       tabId: widget.tabId,
@@ -943,7 +964,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                   bottom: showExpandToggle ? expandOverlap : 0,
                 ),
                 child: DecoratedBox(
-                  decoration: GuideChromeStyle.dialogSurface(),
+                  decoration: GuideChromeStyle.dialogSurface(tv: _tv),
                   child: Padding(
                     padding: surfacePadding,
                     child: AnimatedSwitcher(
@@ -1452,11 +1473,13 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     for (var i = 0; i < 4; i++) ...[
-                      if (i > 0) const SizedBox(width: 6),
+                      if (i > 0) SizedBox(width: _codeCellGap),
                       _shareCodeCell(i),
                     ],
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: _tv ? 5 : 8,
+                      ),
                       child: Text(
                         '-',
                         style: GoogleFonts.jetBrainsMono(
@@ -1467,7 +1490,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                       ),
                     ),
                     for (var i = 4; i < 8; i++) ...[
-                      if (i > 4) const SizedBox(width: 6),
+                      if (i > 4) SizedBox(width: _codeCellGap),
                       _shareCodeCell(i),
                     ],
                   ],
@@ -1571,7 +1594,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: active ? 0.08 : 0.05),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(_codeCellRadius),
           border: Border.all(
             color: borderColor,
             width: pasteFocused ? 1.5 : 1,
@@ -1592,7 +1615,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
 
   Widget _platformTabs() {
     final tv = liveUseTvFocus(context);
-    const tabH = 42.0;
+    final tabH = tv ? 28.0 : 42.0;
     return SizedBox(
       height: tabH,
       child: Row(
@@ -1635,7 +1658,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                 label,
                 style: GoogleFonts.plusJakartaSans(
                   color: fg,
-                  fontSize: 13,
+                  fontSize: tv ? ShellTokens.tvBodyFontSize : 13,
                   fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),

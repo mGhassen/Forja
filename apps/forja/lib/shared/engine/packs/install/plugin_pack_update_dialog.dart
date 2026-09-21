@@ -7,7 +7,10 @@ import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Confirm overlay listing plugin packs with pending version bumps.
 class PluginPackUpdateOverlay extends StatelessWidget {
@@ -130,55 +133,65 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
     final title = count == 1
         ? 'Update plugin pack?'
         : 'Update $count plugin packs?';
-    final tv = _tvFocusActive(context);
+    final tv = _tvFocusActive(context) ||
+        ShellPaintScope.usesTvDensityOf(context);
+    final maxW = SettingsTokens.dialogMaxWidthOf(
+      context,
+      MediaQuery.sizeOf(context).width,
+    );
+    final radius = SettingsTokens.dialogRadiusOf(context);
+    final pad = tv
+        ? const EdgeInsets.fromLTRB(14, 12, 14, 10)
+        : const EdgeInsets.fromLTRB(20, 18, 20, 16);
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 440),
+      constraints: BoxConstraints(maxWidth: maxW),
       child: Material(
         color: ForjaShellColors.cinematic.menuSurface,
         elevation: 12,
         shadowColor: Colors.black54,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(radius),
           side: const BorderSide(color: ForjaShellColors.borderSubtle),
         ),
         clipBehavior: Clip.antiAlias,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+          padding: pad,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: ForjaShellColors.textPrimary,
                   fontWeight: FontWeight.w700,
-                  fontSize: 18,
+                  fontSize: tv ? ShellTokens.tvTitleFontSize : 18,
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: tv ? 6 : 10),
               Text(
                 count == 1
                     ? 'Download and install the newer version of this pack.'
                     : 'Download and install newer versions of these packs.',
-                style: const TextStyle(
+                style: TextStyle(
                   color: ForjaShellColors.textSecondary,
+                  fontSize: tv ? ShellTokens.tvBodyFontSize : null,
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: tv ? 10 : 16),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 220),
+                constraints: BoxConstraints(maxHeight: tv ? 140 : 220),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: Colors.black26,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(tv ? 6 : 8),
                     border: Border.all(color: ForjaShellColors.borderSubtle),
                   ),
                   child: ListView.separated(
                     shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    padding: EdgeInsets.symmetric(vertical: tv ? 2 : 4),
                     itemCount: widget.updates.length,
                     separatorBuilder: (_, _) => const Divider(
                       height: 1,
@@ -187,27 +200,28 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
                     itemBuilder: (context, i) {
                       final u = widget.updates[i];
                       return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: tv ? 8 : 12,
+                          vertical: tv ? 6 : 10,
                         ),
                         child: Row(
                           children: [
                             Expanded(
                               child: Text(
                                 u.packName,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: ForjaShellColors.textPrimary,
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                                  fontSize:
+                                      tv ? ShellTokens.tvBodyFontSize : 13,
                                 ),
                               ),
                             ),
                             Text(
                               'v${u.installedVersion} → v${u.remoteVersion}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: ForjaShellColors.textSecondary,
-                                fontSize: 12,
+                                fontSize: tv ? ShellTokens.tvMetaFontSize : 12,
                                 fontFamily: 'monospace',
                               ),
                             ),
@@ -218,9 +232,9 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: tv ? 14 : 24),
               Button(
-              variant: ButtonVariant.primary,
+                variant: ButtonVariant.primary,
                 label:
                     _busy ? 'Updating…' : (count == 1 ? 'Update' : 'Update all'),
                 expand: true,
@@ -228,10 +242,10 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
                 focusNode: _confirmFocus,
                 onPressed: _busy ? null : _submit,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: tv ? 2 : 4),
               Center(
                 child: Button(
-                variant: ButtonVariant.ghost,
+                  variant: ButtonVariant.ghost,
                   label: 'Cancel',
                   focusNode: _cancelFocus,
                   onPressed: _busy ? null : widget.onCancel,

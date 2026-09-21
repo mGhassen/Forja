@@ -161,8 +161,14 @@ class _WidgetShelfState extends State<WidgetShelf> {
                 item: visible[i],
                 selected: selectedId == visible[i].id ||
                     (selectedId.isEmpty && i == 0 && visible.length == 1),
-                listIndex: widget.chromeItemIndex ??
-                    widget.items.indexWhere((e) => e.id == visible[i].id),
+                // chromeItemIndex collapses the shelf to one chrome slot — only
+                // the selected tab owns that index so ↑ from catalog lands on
+                // Live/Movies/Series as selected (siblings must not overwrite).
+                listIndex: widget.chromeItemIndex != null
+                    ? (visible[i].id == selected.id
+                        ? widget.chromeItemIndex
+                        : null)
+                    : widget.items.indexWhere((e) => e.id == visible[i].id),
                 isFirst: i == 0,
                 isLast: i == visible.length - 1,
                 height: resolvedHeight,
@@ -213,7 +219,8 @@ class _WidgetShelfTab extends StatefulWidget {
 
   final WidgetShelfItem item;
   final bool selected;
-  final int listIndex;
+  /// Chrome-row TV index. Null = focusable for local traversal only (not registered).
+  final int? listIndex;
   final bool isFirst;
   final bool isLast;
   final double height;

@@ -29,9 +29,23 @@ void main() {
       expect(ShellTvFocusCoordinator.takeKitEdgeMiss(), isTrue);
     });
 
-    test('lastItem marks miss when target row is unregistered', () {
+    test('catalog remaps to chrome index 0; portals+lastItem to chrome last',
+        () {
+      expect(kitFocusEdge('tab', 'catalog'), isNotNull);
+      expect(kitFocusEdge('tab', 'portals', lastItem: true), isNotNull);
+      // focusRight portals (no lastItem) stays the portals panel row.
+      expect(kitFocusEdge('tab', 'portals', last: true), isNotNull);
+    });
+
+    test('catalog remaps miss when chrome is unregistered', () {
       ShellTvFocusCoordinator.beginKitEdgeAttempt();
-      kitFocusEdge('orphan-tab', 'chrome', lastItem: true)!.call();
+      kitFocusEdge('orphan-tab', 'catalog')!.call();
+      expect(ShellTvFocusCoordinator.takeKitEdgeMiss(), isTrue);
+    });
+
+    test('portals+lastItem remaps miss when chrome is unregistered', () {
+      ShellTvFocusCoordinator.beginKitEdgeAttempt();
+      kitFocusEdge('orphan-tab', 'portals', lastItem: true)!.call();
       expect(ShellTvFocusCoordinator.takeKitEdgeMiss(), isTrue);
     });
 
