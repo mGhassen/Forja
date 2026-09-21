@@ -46,7 +46,7 @@ void main() {
       ),
     );
     expect(deskLen, 140);
-    expect(tvLen, closeTo(140 * ShellTokens.tvLayoutScale, 0.001));
+    expect(tvLen, closeTo(140 * ShellTokens.tvChromeScale, 0.001));
   });
 
   testWidgets('propsLength matches packLength contract', (tester) async {
@@ -64,6 +64,6 @@ void main() {
         ),
       ),
     );
-    expect(scaled, closeTo(140 * ShellTokens.tvLayoutScale, 0.001));
+    expect(scaled, closeTo(140 * ShellTokens.tvChromeScale, 0.001));
   });
 }

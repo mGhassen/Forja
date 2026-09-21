@@ -23,16 +23,8 @@ abstract final class ShellTokens {
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
 
-  /// Catalog poster widths — TV drives leanback spatial scale.
-  static const double posterCardWidthMobile = 165;
-  static const double posterCardWidthDesktop = 190;
-  static const double posterCardWidthTv = 70;
-
-  /// Leanback spatial scale (poster / desktop). Type uses a separate ladder.
-  static const double tvLayoutScale =
-      posterCardWidthTv / posterCardWidthDesktop; // ≈ 0.368
-
-  /// Leanback type steps — spatial uses [tvLayoutScale]; type never does.
+  /// Leanback type steps — one ladder for rail / top bar / details / settings.
+  /// Spatial layout still uses [tvLayoutScale]; type never does.
   static const double tvBodyFontSize = 11;
   static const double tvTitleFontSize = 14;
   static const double tvMetaFontSize = 10;
@@ -72,9 +64,6 @@ abstract final class ShellTokens {
     if (!usesCompactNavDrawer(context)) return bodyHorizontalPadding;
     return compactMenuLeadingInset(context) + shellNavMenuButtonWidth;
   }
-
-  /// Hot strip on the window's left edge — hover opens the compact nav drawer.
-  static const double compactNavEdgeHoverWidth = 12;
 
   static const double navRailIconSize = 36;
 
@@ -146,12 +135,11 @@ abstract final class ShellTokens {
   );
 
   /// Pack-update badge on profile / Settings nav chrome.
-  static const double packUpdateBadgeSize = 22;
-  static const double packUpdateBadgeSizeTv = 20;
-  static const double packUpdateBadgeSizeBottomNav = 18;
-  static const double packUpdateBadgeCornerInset = 12;
-  static const double packUpdateFlyoutIconSize = 16;
-  static const double packUpdateSettingsIconSize = 24;
+  static const double packUpdateBadgeSize = 15;
+  static const double packUpdateBadgeSizeTv = 14;
+  static const double packUpdateBadgeSizeBottomNav = 13;
+  static const double packUpdateBadgeCornerInset = 2;
+  static const double packUpdateFlyoutIconSize = 14;
   static const double packUpdateFlyoutWidth = 168;
   static const double packUpdateFlyoutPadH = 14;
   static const double packUpdateFlyoutPadV = 12;
@@ -163,10 +151,6 @@ abstract final class ShellTokens {
   static const double packUpdateFlyoutBlur = 28;
   static const double packUpdateFlyoutOffset = 10;
   static const double packUpdateFlyoutSlide = 8;
-  static const double packUpdateMenuBadgePadH = 6;
-  static const double packUpdateMenuBadgePadV = 2;
-  static const double packUpdateMenuBadgeRadius = 4;
-  static const double packUpdateMenuBadgeFontSize = 10;
   static const double packUpdateHeartbeatScaleMin = 0.88;
   static const double packUpdateHeartbeatScaleMax = 1.08;
   static const double packUpdateGlyphScale = 0.62;
@@ -185,11 +169,6 @@ abstract final class ShellTokens {
   static const double shellButtonRadius = 6;
   static const double shellNavUnderlineHeight = 3;
   static const double shellHeaderTopPadding = 16;
-  static const double shellHeaderTopPaddingTv =
-      shellHeaderTopPadding * tvLayoutScale;
-
-  /// Compact ☰ glyph — smaller than rail destination icons.
-  static const double shellNavMenuButtonIconSize = 22;
   static const double navRailLogoWidth = 80;
   static const double navRailLogoHeight = navRailLogoWidth * 160 / 370;
   static const double shellCategoryUnderlineGap = 6;
@@ -209,14 +188,10 @@ abstract final class ShellTokens {
   static const double shellProviderTileHeight = 54;
   static const double shellProviderTileSize = shellProviderTileHeight;
   static const double shellProviderTileRadius = 6.5;
-
-  /// TV VF / provider rail — desktop × [tvLayoutScale].
-  static const double shellProviderTileWidthTv =
-      shellProviderTileWidth * tvLayoutScale;
-  static const double shellProviderTileHeightTv =
-      shellProviderTileHeight * tvLayoutScale;
-  static const double shellProviderTileRadiusTv =
-      shellProviderTileRadius * tvLayoutScale;
+  /// Leanback VF / provider rail — denser than desktop, still logo-readable.
+  static const double shellProviderTileWidthTv = 68;
+  static const double shellProviderTileHeightTv = 38;
+  static const double shellProviderTileRadiusTv = 5;
   static const double shellProviderTopBarLogoInset = 0.14;
   static const double shellProviderRailMaxHeightFraction = 0.88;
   static const Duration shellProviderRailScrollAnimation = Duration(
@@ -229,34 +204,26 @@ abstract final class ShellTokens {
   static const double shellProviderTileCheckWidth = 12;
   static const double shellProviderTileCheckHeight = 10;
   static const double shellProviderRailGap = 10;
-  static const double shellProviderRailGapTv =
-      shellProviderRailGap * tvLayoutScale;
+  static const double shellProviderRailGapTv = 6;
   static const double shellProviderRailPadH = 12;
-  static const double shellProviderRailPadHTv =
-      shellProviderRailPadH * tvLayoutScale;
+  static const double shellProviderRailPadHTv = 8;
   static const double shellProviderRailPadV = 14;
-  static const double shellProviderRailPadVTv =
-      shellProviderRailPadV * tvLayoutScale;
+  static const double shellProviderRailPadVTv = 8;
   static const double shellProviderRailWidth =
       shellProviderTileWidth + shellProviderRailPadH * 2;
   static const double shellProviderRailWidthTv =
       shellProviderTileWidthTv + shellProviderRailPadHTv * 2;
   static const double shellProviderRailInset = 10;
-  static const double shellProviderRailInsetTv =
-      shellProviderRailInset * tvLayoutScale;
+  static const double shellProviderRailInsetTv = 6;
   static const double shellProviderRailRadius = 18;
-  static const double shellProviderRailRadiusTv =
-      shellProviderRailRadius * tvLayoutScale;
+  static const double shellProviderRailRadiusTv = 12;
 
   /// Selected-provider mark before Films — rectangle (wordmark-friendly).
   static const double shellProviderTopBarIconWidth = 88;
   static const double shellProviderTopBarIconHeight = 40;
-
-  /// TV — desktop × [tvLayoutScale].
-  static const double shellProviderTopBarIconWidthTv =
-      shellProviderTopBarIconWidth * tvLayoutScale;
-  static const double shellProviderTopBarIconHeightTv =
-      shellProviderTopBarIconHeight * tvLayoutScale;
+  /// Leanback — denser than desktop (matches [tvChromeScale]).
+  static const double shellProviderTopBarIconWidthTv = 64;
+  static const double shellProviderTopBarIconHeightTv = 30;
 
   static const double shellProviderStripHeight =
       shellProviderCardHeight * shellProviderHoverScale + 4;
@@ -274,40 +241,36 @@ abstract final class ShellTokens {
   /// Home Films / TV / Categories text menu (not provider strip).
   /// Label band for Films / TV / Categories (underline sits below).
   static const double homeMenuRowHeight = 34;
-  static const double homeMenuRowHeightTv = homeMenuRowHeight * tvLayoutScale;
+  static const double homeMenuRowHeightTv = 24;
   static const double homeTopBarHeight =
       shellHeaderTopPadding +
       homeMenuRowHeight +
       shellCategoryUnderlineGap +
       shellNavUnderlineHeight;
   static const double homeTopBarHeightTv =
-      shellHeaderTopPaddingTv +
+      shellHeaderTopPadding +
       homeMenuRowHeightTv +
-      shellCategoryUnderlineGap * tvLayoutScale +
+      shellCategoryUnderlineGap +
       shellNavUnderlineHeight;
 
   /// Extra inset before the Films tab in [HomeTopBar].
   static const double homeTopBarMenuLeadingInset = 28;
-  static const double homeTopBarMenuLeadingInsetTv =
-      homeTopBarMenuLeadingInset * tvLayoutScale;
+  static const double homeTopBarMenuLeadingInsetTv = 16;
 
   /// Hoisted `kit.menu` → `kit.tabs` gap in [KitTopBar].
   static const double kitTopBarStatusRowTopGap = 10;
-  static const double kitTopBarStatusRowTopGapTv =
-      kitTopBarStatusRowTopGap * tvLayoutScale;
+  static const double kitTopBarStatusRowTopGapTv = 6;
   static const double kitTopBarStatusRowHeight = 42;
-  static const double kitTopBarStatusRowHeightTv =
-      kitTopBarStatusRowHeight * tvLayoutScale;
+  static const double kitTopBarStatusRowHeightTv = 30;
   static const double kitTopBarHideSlideDistance = 56;
-  static const double kitTopBarTabGapTv = kitTopBarTabGapWide * tvLayoutScale;
+  static const double kitTopBarTabGapTv = 16;
   static const double kitTopBarTabGapCompact = 20;
   static const double kitTopBarTabGapWide = 36;
   static const double kitTopBarTabGapCompactMaxWidth = 560;
   static const double kitTopBarTabFontSize = 17;
   static const double kitTopBarTabFontSizeTv = tvTitleFontSize;
   static const double kitTopBarChevronSize = 18;
-  static const double kitTopBarChevronSizeTv =
-      kitTopBarChevronSize * tvLayoutScale;
+  static const double kitTopBarChevronSizeTv = 14;
   static const double kitTopBarIconGap = 6;
   static const double kitTopBarChevronGap = 4;
   static const double kitTopBarUnderlineHoverWidth = 28;
@@ -317,11 +280,9 @@ abstract final class ShellTokens {
   static const double homeCategoriesMenuOffsetY = 4;
   static const double homeCategoriesMenuRadius = 8;
   static const double homeCategoriesMenuRowPadH = 16;
-  static const double homeCategoriesMenuRowPadHTv =
-      homeCategoriesMenuRowPadH * tvLayoutScale;
+  static const double homeCategoriesMenuRowPadHTv = 12;
   static const double homeCategoriesMenuRowPadV = 10;
-  static const double homeCategoriesMenuRowPadVTv =
-      homeCategoriesMenuRowPadV * tvLayoutScale;
+  static const double homeCategoriesMenuRowPadVTv = 6;
   static const double homeCategoriesMenuFontSize = 14;
   static const double homeCategoriesMenuFontSizeTv = tvBodyFontSize;
   static double get kitTopBarTwoRowHeight =>
@@ -341,8 +302,7 @@ abstract final class ShellTokens {
 
   /// Home Categories popup: visible rows before scrolling.
   static const double homeCategoriesMenuRowHeight = 38;
-  static const double homeCategoriesMenuRowHeightTv =
-      homeCategoriesMenuRowHeight * tvLayoutScale;
+  static const double homeCategoriesMenuRowHeightTv = 28;
   static const int homeCategoriesMenuMaxVisibleRows = 8;
   static double get homeCategoriesMenuMaxHeight =>
       homeCategoriesMenuRowHeight * homeCategoriesMenuMaxVisibleRows;
@@ -354,11 +314,9 @@ abstract final class ShellTokens {
   static const double musicDesktopSidebarWidth = 260;
   static const double musicDesktopBreakpoint = 900;
 
-  /// Below this body width the hero text column goes full-width (compact
-  /// horizontal). Height stays cinematic — do not shrink the band.
+  /// Minimum Home body width for the full cinematic hero; narrower uses compact hero.
   static const double heroDesktopMinBodyWidth = 1000;
 
-  /// @Deprecated — height no longer shrinks on narrow; kept for callers/tests.
   static const double heroHeightFractionCompact = 0.50;
   static const double heroMinHeightCompact = 280;
   static const double heroLogoMaxHeightCompact = 72;
@@ -422,7 +380,7 @@ abstract final class ShellTokens {
   static const double heroTextColumnWidthDesktop = 480;
 
   /// Top inset for hero text: clears [homeTopBarHeight] plus breathing room.
-  static double get heroTextColumnTopInsetDesktop => homeTopBarHeight + 28;
+  static double get heroTextColumnTopInsetDesktop => homeTopBarHeight + 16;
 
   /// Vertical align for hero text within the hero band (-1 top … 1 bottom).
   static const double heroTextColumnVerticalAlign = -0.82;
@@ -480,9 +438,8 @@ abstract final class ShellTokens {
   static const double homeRowSpacing = 24;
 
   /// Compact leanback catalog spacing (pairs with [posterCardWidthTv]).
-  static const double tvHomeRowSpacing = homeRowSpacing * tvLayoutScale;
-  static const double tvHomeSectionHorizontalPadding =
-      homeSectionHorizontalPadding * tvLayoutScale;
+  static const double tvHomeRowSpacing = 3;
+  static const double tvHomeSectionHorizontalPadding = 0;
   static const double tvHeroHeightFraction = 0.72;
   static const double tvHeroNextRowPeekFraction = 0.10;
 
@@ -502,19 +459,24 @@ abstract final class ShellTokens {
   static const double tvHomeSectionTitleTop = 10;
   static const double tvHomeSectionHeaderHeight = 11;
   static const double tvHomeSectionBottomGap = 4;
-  /// Compact leanback catalog spacing (pairs with [posterCardWidthTv]).
   static const double tvPosterCardRowGap = 4;
 
   /// Gap between poster cards in hub rails (desktop / non-TV).
   /// ~14 separator + former desktop focus-bleed room (bleed is TV-only now).
   static const double posterCardRowGap = 32;
 
+  /// Catalog poster card widths by shell profile.
+  static const double posterCardWidthMobile = 165;
+  static const double posterCardWidthDesktop = 190;
+  static const double posterCardWidthTv = 70;
+
   /// Leanback chrome — same ratio as [posterCardWidthTv] / [posterCardWidthDesktop].
   static const double navRailWidthTv =
       navRailWidth * posterCardWidthTv / posterCardWidthDesktop;
   static const double navRailLogoWidthTv =
       navRailLogoWidth * posterCardWidthTv / posterCardWidthDesktop;
-  static const double navRailLogoHeightTv = navRailLogoWidthTv * 160 / 370;
+  static const double navRailLogoHeightTv =
+      navRailLogoWidthTv * 160 / 370;
 
   /// Leanback hero chrome — same ratio as catalog density.
   static const double heroLogoMaxHeightTv =
@@ -550,15 +512,16 @@ abstract final class ShellTokens {
   static const double heroCompactRightInsetTv = 16;
   static const double heroMinTitleHeightDesktop = 72;
   static const double heroMinTitleHeightTv =
-      heroMinTitleHeightDesktop * tvLayoutScale;
+      heroMinTitleHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
   static const double heroMinHeightDesktop = 320;
 
-  /// TV min — desktop × [tvLayoutScale].
-  static const double heroMinHeightTv = heroMinHeightDesktop * tvLayoutScale;
+  /// Leanback min — same ratio as catalog density.
+  static const double heroMinHeightTv =
+      heroMinHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
+  static const double heroMetaGapTv = 14;
   static const double heroMetaGapDesktop = 10;
-  static const double heroMetaGapTv = heroMetaGapDesktop * tvLayoutScale;
+  static const double heroActionGapTv = 16;
   static const double heroActionGapDesktop = 12;
-  static const double heroActionGapTv = heroActionGapDesktop * tvLayoutScale;
   static const double heroTitleMetaGapDesktop = 20;
   static const double heroMetaActionsGapDesktop = 16;
   static const double kitScrollBottomGapDesktop = 100;
@@ -571,26 +534,21 @@ abstract final class ShellTokens {
   static const double sectionSubtitleFontSizeMin = tvMetaFontSize;
 
   static const double torrentPanelPaddingDesktop = 16;
-  static const double torrentPanelPaddingTv =
-      torrentPanelPaddingDesktop * tvLayoutScale;
+  static const double torrentPanelPaddingTv = 14;
   static const double torrentPanelTitleFontSizeDesktop = 16;
   static const double torrentPanelTitleFontSizeTv = tvTitleFontSize;
   static const double torrentPanelChipPadHDesktop = 12;
-  static const double torrentPanelChipPadHTv =
-      torrentPanelChipPadHDesktop * tvLayoutScale;
+  static const double torrentPanelChipPadHTv = 10;
   static const double torrentPanelChipPadVDesktop = 8;
-  static const double torrentPanelChipPadVTv =
-      torrentPanelChipPadVDesktop * tvLayoutScale;
+  static const double torrentPanelChipPadVTv = 6;
   static const double torrentPanelChipFontSizeDesktop = 12;
   static const double torrentPanelChipFontSizeTv = tvBodyFontSize;
   static const double torrentPanelMetaIconSizeDesktop = 14;
-  static const double torrentPanelMetaIconSizeTv =
-      torrentPanelMetaIconSizeDesktop * tvLayoutScale;
+  static const double torrentPanelMetaIconSizeTv = 13;
   static const double torrentPanelMetaFontSizeDesktop = 11;
-  static const double torrentPanelMetaFontSizeTv = tvMetaFontSize;
+  static const double torrentPanelMetaFontSizeTv = 10;
   static const double torrentPanelLeadingIconSizeDesktop = 22;
-  static const double torrentPanelLeadingIconSizeTv =
-      torrentPanelLeadingIconSizeDesktop * tvLayoutScale;
+  static const double torrentPanelLeadingIconSizeTv = 20;
   static const double torrentPanelSectionFontSizeDesktop = 16;
   static const double torrentPanelSectionFontSizeTv = tvTitleFontSize;
 
@@ -601,15 +559,13 @@ abstract final class ShellTokens {
   static const double portalsChipFontSize = 12.5;
   static const double portalsChipFontSizeTv = tvBodyFontSize;
   static const double portalsChipIconSize = 16;
-  static const double portalsChipIconSizeTv =
-      portalsChipIconSize * tvLayoutScale;
+  static const double portalsChipIconSizeTv = 12;
   static const double portalsChipChevronSize = 18;
-  static const double portalsChipChevronSizeTv =
-      portalsChipChevronSize * tvLayoutScale;
+  static const double portalsChipChevronSizeTv = 14;
   static const double portalsChipSeatsFontSize = 12;
   static const double portalsChipPadCompact = 10;
   static const double portalsChipPad = 14;
-  static const double portalsChipPadTv = portalsChipPad * tvLayoutScale;
+  static const double portalsChipPadTv = 8;
   static const double portalsChipStatusSlot = 14;
   static const double portalsChipGap = 8;
   static const double portalsChipGapTight = 6;
@@ -621,40 +577,26 @@ abstract final class ShellTokens {
 
   static const double categoryRailWidth = sideRailWidth;
   static const double categoryRailWidthTv = sideRailWidthTv;
-
-  /// Grid inset beside a category rail (Live / Movies / Series).
-  ///
-  /// Not [compactChromeLeadingInset] — the rail already clears the ☰ lane.
-  static const double catalogSplitGridLeadingPad = 8;
-  static const double catalogSplitGridTrailingPad = 12;
-
   static const double categoryRailListPadV = 8;
-  static const double categoryRailListPadVTv =
-      categoryRailListPadV * tvLayoutScale;
+  static const double categoryRailListPadVTv = 4;
   static const double categoryRailPinSlotWidth = 28;
-  static const double categoryRailPinSlotWidthTv =
-      categoryRailPinSlotWidth * tvLayoutScale;
+  static const double categoryRailPinSlotWidthTv = 22;
   static const double categoryRailRowExtent = 46;
   static const double categoryRailRowExtentCompact = 42;
-  static const double categoryRailRowExtentTv =
-      categoryRailRowExtent * tvLayoutScale;
+  static const double categoryRailRowExtentTv = 32;
   static const double categoryRailLeftBarWidth = 2.5;
   static const double categoryRailRowPadH = 12;
   static const double categoryRailRowPadHCompact = 10;
-  static const double categoryRailRowPadHTv =
-      categoryRailRowPadH * tvLayoutScale;
+  static const double categoryRailRowPadHTv = 8;
   static const double categoryRailRowPadV = 8;
   static const double categoryRailRowPadVCompact = 6;
-  static const double categoryRailRowPadVTv =
-      categoryRailRowPadV * tvLayoutScale;
+  static const double categoryRailRowPadVTv = 4;
   static const double categoryRailIconSize = 20;
   static const double categoryRailIconSizeCompact = 18;
-  static const double categoryRailIconSizeTv =
-      categoryRailIconSize * tvLayoutScale;
+  static const double categoryRailIconSizeTv = 14;
   static const double categoryRailItemGap = 12;
   static const double categoryRailItemGapCompact = 10;
-  static const double categoryRailItemGapTv =
-      categoryRailItemGap * tvLayoutScale;
+  static const double categoryRailItemGapTv = 8;
   static const double categoryRailFontSize = 14;
   static const double categoryRailFontSizeCompact = 13;
   static const double categoryRailFontSizeTv = tvBodyFontSize;
@@ -662,15 +604,14 @@ abstract final class ShellTokens {
   static const double categoryRailPinPad = 4;
 
   static const double hubTopBarItemGap = 8;
-  static const double hubTopBarItemGapTv = hubTopBarItemGap * tvLayoutScale;
+  static const double hubTopBarItemGapTv = 6;
   static const double hubTopBarSectionGap = 12;
-  static const double hubTopBarSectionGapTv =
-      hubTopBarSectionGap * tvLayoutScale;
+  static const double hubTopBarSectionGapTv = 8;
   static const double hubTopBarTabRadius = 8;
   static const double hubTopBarTabPadH = 10;
-  static const double hubTopBarTabPadHTv = hubTopBarTabPadH * tvLayoutScale;
+  static const double hubTopBarTabPadHTv = 8;
   static const double hubTopBarTabPadV = 8;
-  static const double hubTopBarTabPadVTv = hubTopBarTabPadV * tvLayoutScale;
+  static const double hubTopBarTabPadVTv = 4;
   static const double hubTopBarTabFontSize = 14;
   static const double hubTopBarTabFontSizeTv = tvBodyFontSize;
 
@@ -685,13 +626,13 @@ abstract final class ShellTokens {
   static const double actionChipRadius = 20;
   static const double actionChipMaxWidth = 220;
   static const double actionChipPadH = 12;
-  static const double actionChipPadHTv = actionChipPadH * tvLayoutScale;
+  static const double actionChipPadHTv = 8;
   static const double actionChipPadV = 6;
   static const double actionChipFontSize = 11.5;
   static const double actionChipFontSizeTv = tvMetaFontSize;
   static const double actionChipGap = 6;
   static const double actionChipIconSize = 16;
-  static const double actionChipIconSizeTv = actionChipIconSize * tvLayoutScale;
+  static const double actionChipIconSizeTv = 12;
 
   static const double shellChipRadiusPill = 20;
   static const double shellChipRadius = 8;
@@ -702,22 +643,29 @@ abstract final class ShellTokens {
   static const double shellChipGapTight = 4;
 
   static const double widgetShelfHeight = 36;
-  static const double widgetShelfHeightTv = widgetShelfHeight * tvLayoutScale;
+  static const double widgetShelfHeightTv = 28;
   static const double widgetShelfRadius = 8;
   static const double widgetShelfFontSize = 12.5;
   static const double widgetShelfFontSizeTv = tvBodyFontSize;
   static const double widgetShelfIconSize = 16;
-  static const double widgetShelfIconSizeTv =
-      widgetShelfIconSize * tvLayoutScale;
+  static const double widgetShelfIconSizeTv = 12;
   static const double widgetShelfGap = 14;
-  static const double widgetShelfGapTv = widgetShelfGap * tvLayoutScale;
+  static const double widgetShelfGapTv = 8;
 
   static const double viewButtonHeight = 36;
-  static const double viewButtonHeightTv = viewButtonHeight * tvLayoutScale;
+  static const double viewButtonHeightTv = 28;
   static const double viewButtonIconSize = 18;
-  static const double viewButtonIconSizeTv = viewButtonIconSize * tvLayoutScale;
+  static const double viewButtonIconSizeTv = 14;
   static const double viewButtonGap = 16;
-  static const double viewButtonGapTv = viewButtonGap * tvLayoutScale;
+  static const double viewButtonGapTv = 10;
+
+  /// Accent mood circles on TV (leanback catalog rows).
+  static const double moodCircleSizeTv = 42;
+  static const double moodCircleItemWidthTv = 58;
+  static const double moodCircleGapTv = 6;
+  static const double moodCircleLabelFontSizeTv = tvMetaFontSize;
+  static const double moodCircleLabelGapTv = 6;
+  static const double moodCircleLabelLineHeightTv = 1.15;
 
   static const double eventSearchCollapsed = controlHeight;
   static const double eventSearchExpanded = 260;
@@ -735,23 +683,51 @@ abstract final class ShellTokens {
   static const double sheetHandleWidth = 36;
   static const double sheetHandleHeight = 4;
 
-  static const double emptyFeaturesTitleGapTv =
-      emptyFeaturesTitleGapDesktop * tvLayoutScale;
+  static const double emptyFeaturesTitleGapTv = 14;
   static const double emptyFeaturesTitleGapDesktop = 28;
-  static const double emptyFeaturesBodyGapTv =
-      emptyFeaturesBodyGapDesktop * tvLayoutScale;
+  static const double emptyFeaturesBodyGapTv = 10;
   static const double emptyFeaturesBodyGapDesktop = 14;
-  static const double emptyFeaturesCardsGapTv =
-      emptyFeaturesCardsGapDesktop * tvLayoutScale;
+  static const double emptyFeaturesCardsGapTv = 20;
   static const double emptyFeaturesCardsGapDesktop = 32;
   static const double emptyFeaturesCardGap = 12;
   static const double emptyFeaturesCardGapCompact = 10;
   static const Duration emptyFeaturesCardAnim = Duration(milliseconds: 140);
 
-  /// Leanback interactive chrome (top bar, chips, pills). Milder than spatial.
+  /// TV chrome scale vs desktop poster baseline — derived, not a second magic number.
+  static double get tvLayoutScale =>
+      posterCardWidthTv / posterCardWidthDesktop;
+
+  /// Leanback interactive chrome (top bar, chips, pills, VF tiles).
+  /// Milder than [tvLayoutScale] so focus targets stay readable.
   static const double tvChromeScale = 0.72;
 
-  /// Scale a desktop length for TV ([tvLayoutScale] = poster/desktop).
+  /// Grid inset beside a category rail (Live / Movies / Series).
+  ///
+  /// Not [compactChromeLeadingInset] — the rail already clears the ☰ lane.
+  static const double catalogSplitGridLeadingPad = 8;
+
+  static const double catalogSplitGridTrailingPad = 12;
+
+  /// Hot strip on the window's left edge — hover opens the compact nav drawer.
+  static const double compactNavEdgeHoverWidth = 12;
+
+  static const double packUpdateMenuBadgeFontSize = 10;
+
+  static const double packUpdateMenuBadgePadH = 6;
+
+  static const double packUpdateMenuBadgePadV = 2;
+
+  static const double packUpdateMenuBadgeRadius = 4;
+
+  static const double packUpdateSettingsIconSize = 24;
+
+  /// Compact ☰ glyph — smaller than rail destination icons.
+  static const double shellNavMenuButtonIconSize = 22;
+
+  /// TV shell header top pad — leanback keeps desktop pad (not × poster scale).
+  static const double shellHeaderTopPaddingTv = shellHeaderTopPadding;
+
+  /// Scale a desktop token by [tvLayoutScale] when [tv] is true.
   static double densityScale(double value, {required bool tv}) =>
       tv ? value * tvLayoutScale : value;
 
@@ -765,15 +741,6 @@ abstract final class ShellTokens {
     final s = value * tvChromeScale;
     return s < min ? min : s;
   }
-
-  /// Scale a desktop EdgeInsets for TV.
-  static EdgeInsets densityInsets(EdgeInsets value, {required bool tv}) =>
-      EdgeInsets.fromLTRB(
-        densityScale(value.left, tv: tv),
-        densityScale(value.top, tv: tv),
-        densityScale(value.right, tv: tv),
-        densityScale(value.bottom, tv: tv),
-      );
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
   static const double homeSectionTitleTop = 36;

@@ -904,8 +904,8 @@ Widget? paintFoundationType(
     case 'catalogPosterGrid':
       final layout = CatalogPosterGridLayout(
         columns: propsInt(props, 'columns') ?? 4,
-        cardW: propsLengthOr(context, props, 'cardW', propsLengthOr(context, props, 'cardWidth', ShellTokens.densityScale(120, tv: catalogUsesTvDensity(context)))),
-        cardH: propsLengthOr(context, props, 'cardH', propsLengthOr(context, props, 'cardHeight', ShellTokens.densityScale(180, tv: catalogUsesTvDensity(context)))),
+        cardW: propsLengthOr(context, props, 'cardW', propsLengthOr(context, props, 'cardWidth', catalogUsesTvDensity(context) ? ShellTokens.posterCardWidthTv : 120)),
+        cardH: propsLengthOr(context, props, 'cardH', propsLengthOr(context, props, 'cardHeight', catalogUsesTvDensity(context) ? ShellTokens.posterCardWidthTv * ShellTokens.posterCardAspectRatio : 180)),
         gap: propsLengthOr(context, props, 'gap', 12),
         leading: propsLengthOr(context, props, 'leading', ShellTokens.homeSectionHorizontalPadding),
         rightPad: propsLengthOr(context, props, 'rightPad', ShellTokens.homeSectionHorizontalPadding),
@@ -1626,8 +1626,8 @@ Widget? paintFoundationType(
     case 'catalogPosterLoadingGrid':
       final layout = CatalogPosterGridLayout(
         columns: propsInt(props, 'columns') ?? 4,
-        cardW: propsLengthOr(context, props, 'cardW', propsLengthOr(context, props, 'cardWidth', ShellTokens.densityScale(120, tv: catalogUsesTvDensity(context)))),
-        cardH: propsLengthOr(context, props, 'cardH', propsLengthOr(context, props, 'cardHeight', ShellTokens.densityScale(180, tv: catalogUsesTvDensity(context)))),
+        cardW: propsLengthOr(context, props, 'cardW', propsLengthOr(context, props, 'cardWidth', catalogUsesTvDensity(context) ? ShellTokens.posterCardWidthTv : 120)),
+        cardH: propsLengthOr(context, props, 'cardH', propsLengthOr(context, props, 'cardHeight', catalogUsesTvDensity(context) ? ShellTokens.posterCardWidthTv * ShellTokens.posterCardAspectRatio : 180)),
         gap: propsLengthOr(context, props, 'gap', 12),
         leading: propsLengthOr(context, props, 'leading', ShellTokens.homeSectionHorizontalPadding),
         rightPad: propsLengthOr(context, props, 'rightPad', ShellTokens.homeSectionHorizontalPadding),

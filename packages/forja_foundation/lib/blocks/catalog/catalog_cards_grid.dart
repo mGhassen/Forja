@@ -445,7 +445,7 @@ class CatalogCardsGrid extends StatelessWidget {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final minW = InteractiveEventCard.cardWidth(context);
     final minH = InteractiveEventCard.cardHeight(context);
-    final gap = this.gap ?? ShellTokens.densityScale(14.0, tv: tv);
+    final gap = this.gap ?? ShellTokens.chromeScale(14.0, tv: tv);
     final pad = this.pad ?? catalogSectionHorizontalPadding(context);
 
     return LayoutBuilder(
@@ -1130,7 +1130,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     final cardH = CatalogChannelCard.cardHeight(context);
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final gap = widget.gap ??
-        ShellTokens.densityScale(10.0, tv: tv);
+        ShellTokens.chromeScale(10.0, tv: tv);
     final leading = widget.pad ?? ShellTokens.catalogSplitGridLeadingPad;
     final trailing = widget.pad ?? ShellTokens.catalogSplitGridTrailingPad;
 
@@ -1216,8 +1216,8 @@ class InteractiveEventCard extends StatefulWidget {
     final base = catalogContinueCardHeight(context, wide: true);
     final tv = ShellPaintScope.usesTvDensityOf(context);
     return (base * EventCardTokens.desktopHeightScale).clamp(
-      ShellTokens.densityScale(EventCardTokens.desktopHeightMin, tv: tv),
-      ShellTokens.densityScale(EventCardTokens.desktopHeightMax, tv: tv),
+      ShellTokens.chromeScale(EventCardTokens.desktopHeightMin, tv: tv),
+      ShellTokens.chromeScale(EventCardTokens.desktopHeightMax, tv: tv),
     );
   }
 
@@ -1252,11 +1252,11 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
         ) ||
         widget.selected;
     final radius = EventCardTokens.radius;
-    final playDia = ShellTokens.densityScale(
+    final playDia = ShellTokens.chromeScale(
       EventCardTokens.playOverlaySize,
       tv: tv,
     );
-    final playIcon = ShellTokens.densityScale(
+    final playIcon = ShellTokens.chromeScale(
       EventCardTokens.playIconSize,
       tv: tv,
     );

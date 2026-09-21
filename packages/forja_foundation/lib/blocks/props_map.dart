@@ -38,10 +38,11 @@ double? propsNum(Map<String, dynamic> props, String key) {
 double propsNumOr(Map<String, dynamic> props, String key, double fallback) =>
     propsNum(props, key) ?? fallback;
 
-/// Desktop px length from pack → TV × [ShellTokens.tvLayoutScale].
+/// Desktop px length from pack → TV × [ShellTokens.tvChromeScale].
 ///
 /// Use for width/height/gap/pad/fontSize on catalog mounts. Keep [propsNum]
 /// for fractions, scales, progress, aspect ratios, and other non-length numbers.
+/// Poster card widths stay on [ShellTokens.posterCardWidthTv], not this helper.
 double? propsLength(
   BuildContext context,
   Map<String, dynamic> props,
@@ -49,7 +50,7 @@ double? propsLength(
 ) {
   final v = propsNum(props, key);
   if (v == null) return null;
-  return ShellTokens.densityScale(
+  return ShellTokens.chromeScale(
     v,
     tv: ShellPaintScope.usesTvDensityOf(context),
   );

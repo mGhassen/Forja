@@ -223,7 +223,7 @@ abstract final class PackPaintArtifact {
       case 'event':
         final tv = packBool(props['tvDensity']) == true ||
             ShellPaintScope.usesTvDensityOf(context);
-        final scale = tv ? ShellTokens.tvLayoutScale : 1.0;
+        final scale = tv ? ShellTokens.tvChromeScale : 1.0;
         final w = packLength(context, props['width']) ??
             EventCardTokens.paintFallbackWidth * scale;
         final h = packLength(context, props['height']) ??
@@ -317,15 +317,17 @@ abstract final class PackPaintArtifact {
     return double.tryParse(raw.toString());
   }
 
-  /// Desktop px length from pack JSON → TV × [ShellTokens.tvLayoutScale].
+  /// Desktop px length from pack JSON → TV × [ShellTokens.tvChromeScale].
   ///
-  /// Packs author desktop baselines. Catalog sizes track leanback poster
-  /// density (same spatial scale as Settings / nav chrome). Fractions /
+  /// Packs author desktop baselines. Interactive pack chrome (pads, fonts,
+  /// buttons, panel widths) uses the milder leanback chrome scale — not the
+  /// poster spatial ratio (~0.37), which would crush focus targets. Catalog
+  /// poster widths still come from [ShellTokens.posterCardWidthTv]. Fractions /
   /// multipliers stay on [packDouble] (aspect, hoverScale, heightFraction, …).
   static double? packLength(BuildContext context, Object? raw) {
     final v = packDouble(raw);
     if (v == null) return null;
-    return ShellTokens.densityScale(
+    return ShellTokens.chromeScale(
       v,
       tv: ShellPaintScope.usesTvDensityOf(context),
     );
@@ -359,7 +361,7 @@ abstract final class PackPaintArtifact {
   }) {
     if (raw == null) return fallback;
     final tv = context != null && ShellPaintScope.usesTvDensityOf(context);
-    double scale(double v) => ShellTokens.densityScale(v, tv: tv);
+    double scale(double v) => ShellTokens.chromeScale(v, tv: tv);
     if (raw is num) {
       final h = scale(raw.toDouble());
       return EdgeInsets.fromLTRB(h, fallback.top, h, fallback.bottom);

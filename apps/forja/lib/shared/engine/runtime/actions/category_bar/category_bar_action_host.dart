@@ -789,11 +789,11 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     );
   }
 
-  /// Pack desktop px → TV × [ShellTokens.tvLayoutScale].
+  /// Pack desktop px → TV × [ShellTokens.tvChromeScale].
   double? _d(BuildContext context, String k) {
     final raw = widget.spec[k];
     if (raw is! num) return null;
-    return ShellTokens.densityScale(
+    return ShellTokens.chromeScale(
       raw.toDouble(),
       tv: ShellPaintScope.usesTvDensityOf(context),
     );

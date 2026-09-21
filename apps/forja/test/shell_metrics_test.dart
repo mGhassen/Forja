@@ -13,7 +13,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 
 void main() {
-  test('tv leanback scale follows poster / desktop ratio', () {
+  test('tv leanback uses poster scale + milder chrome scale', () {
     expect(ShellTokens.posterCardWidthTv, 70);
     expect(
       ShellTokens.tvLayoutScale,
@@ -22,15 +22,7 @@ void main() {
         0.001,
       ),
     );
-    expect(
-      ShellTokens.tvPosterCardRowGap,
-      4,
-    );
-    expect(
-      ShellTokens.tvHomeRowSpacing,
-      closeTo(ShellTokens.homeRowSpacing * ShellTokens.tvLayoutScale, 0.001),
-    );
-    expect(ShellTokens.continueWatchingCardWidthTv, 120);
+    expect(ShellTokens.tvChromeScale, 0.72);
     expect(
       ShellTokens.navRailWidthTv / ShellTokens.navRailWidth,
       closeTo(ShellTokens.tvLayoutScale, 0.001),
@@ -40,6 +32,12 @@ void main() {
       closeTo(ShellTokens.tvLayoutScale, 0.001),
     );
     expect(ShellTokens.navRailWidthTv, closeTo(120 * 70 / 190, 0.001));
+    // Interactive chrome stays milder than poster spatial scale.
+    expect(ShellTokens.tvChromeScale, greaterThan(ShellTokens.tvLayoutScale));
+    expect(ShellTokens.shellProviderTileWidthTv, 68);
+    expect(ShellTokens.homeMenuRowHeightTv, 24);
+    expect(ShellTokens.controlHeightTv, 28);
+    expect(ShellTokens.continueWatchingCardWidthTv, 120);
     expect(SettingsTokens.sidebarWidthTv, 180);
     expect(SettingsTokens.rowMinHeightTv, 40);
     expect(DetailsTokens.sectionSpacingTv, 24);
@@ -88,7 +86,6 @@ void main() {
     expect(tv.navRailWidth, lessThan(desktop.navRailWidth));
     expect(tv.navRailLogoWidth, lessThan(desktop.navRailLogoWidth));
     expect(tv.navRailItemSpacing, lessThan(desktop.navRailItemSpacing));
-    // One leanback scale: nav chrome and catalog posters share poster/desktop.
     expect(
       tv.navRailWidth / desktop.navRailWidth,
       closeTo(ShellTokens.tvLayoutScale, 0.001),
