@@ -94,11 +94,11 @@ class CatalogChannelCard extends StatefulWidget {
   final VoidCallback? onRightEdge;
   final VoidCallback? onUpEdge;
 
-  /// Desktop/TV live channel tile — leanback uses [ShellTokens.channelCardWidthTv]
-  /// (denser than film posters) so the grid packs more logo columns.
+  /// Desktop/TV live channel tile — leanback uses [ChannelCardTokens.widthTv]
+  /// (hand-tuned logo face; denser than film posters).
   static double cardWidth(BuildContext context) {
     if (ShellPaintScope.usesTvDensityOf(context)) {
-      return ShellTokens.channelCardWidthTv;
+      return ChannelCardTokens.widthTv;
     }
     return ShellTokens.posterCardWidthMobile;
   }
@@ -327,15 +327,17 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     _epgFuture = future;
     final list = await future;
     if (!mounted || list.isEmpty) return;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: ForjaShellColors.surfaceElevated,
       builder: (_) => _ChannelEpgSheet(
         title: widget.title,
         programmes: list,
-        titleFontSize:
-            widget.titleFontSize ?? ChannelCardTokens.titleFontSize,
-        metaFontSize: widget.metaFontSize ?? ChannelCardTokens.metaFontSize,
+        titleFontSize: widget.titleFontSize ??
+            ChannelCardTokens.titleFontSizeOf(tv),
+        metaFontSize: widget.metaFontSize ??
+            ChannelCardTokens.metaFontSizeOf(tv),
       ),
     );
   }
@@ -504,26 +506,42 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     required bool? health,
   }) {
     final fav = widget.favoriteBuilder?.call(active: active);
-    final radius = widget.radius ?? ChannelCardTokens.radius;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final radius = widget.radius ?? ChannelCardTokens.radiusOf(tv);
     final topRadius = BorderRadius.vertical(top: Radius.circular(radius));
-    final titleBarH = ChannelCardTokens.titleBarHeight;
-    final titleSize =
-        widget.titleFontSize ?? ChannelCardTokens.cardTitleFontSize;
+    final titleBarH = ChannelCardTokens.titleBarHeightOf(tv);
+    final titleSize = widget.titleFontSize ??
+        ChannelCardTokens.cardTitleFontSizeOf(tv);
+    final logoPad = ChannelCardTokens.logoFramePadOf(tv);
+    final logoPadBottom = ChannelCardTokens.logoFramePadBottomOf(tv);
+    final logoInner = ChannelCardTokens.logoInnerPadOf(tv);
+    final titlePadH = ChannelCardTokens.titleBarPadHOf(tv);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Fixed remaining height: title bar + EPG are constant, so this logo
-        // slot never shrinks/grows with title text or logo aspect ratio.
         Expanded(
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: topRadius,
-                  child: _logoThumb(
-                    contain: true,
-                    padding: ChannelCardTokens.logoPad,
+              // Fixed 1:1 logo frame — same square slot for placeholder + logo.
+              // Never let PNG aspect / title length resize this box.
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  logoPad,
+                  logoPad,
+                  logoPad,
+                  logoPadBottom,
+                ),
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: ChannelCardTokens.logoAspectRatio,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(radius),
+                      child: _logoThumb(
+                        contain: true,
+                        padding: logoInner,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -551,9 +569,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         SizedBox(
           height: titleBarH,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ChannelCardTokens.titleBarPadH,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: titlePadH),
             // No Tooltip — hover overlay steals MouseRegion and freezes the grid.
             child: Align(
               alignment: Alignment.centerLeft,
@@ -578,10 +594,10 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         ),
         _EpgNowFooter(
           future: _epgFuture,
-          epgSlotHeight:
-              widget.epgSlotHeight ?? ChannelCardTokens.epgSlotHeight,
-          badgeFontSize:
-              widget.badgeFontSize ?? ChannelCardTokens.badgeFontSize,
+          epgSlotHeight: widget.epgSlotHeight ??
+              ChannelCardTokens.epgSlotHeightOf(tv),
+          badgeFontSize: widget.badgeFontSize ??
+              ChannelCardTokens.badgeFontSizeOf(tv),
         ),
       ],
     );

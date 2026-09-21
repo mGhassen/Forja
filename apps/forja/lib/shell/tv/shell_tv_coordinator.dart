@@ -1559,8 +1559,10 @@ abstract final class ShellTvFocusCoordinator {
     if (!down) {
       // Explicit onFocusUp (e.g. Featured → View details) when set.
       if (handle.onFocusUp != null) {
+        beginKitEdgeAttempt();
         handle.onFocusUp!();
-        return true;
+        if (!takeKitEdgeMiss()) return true;
+        // Pack edge miss (empty Continue, unmounted row) — walk sortOrder.
       }
       if (handle.isFirstRow) {
         return focusHero(revealFull: true, tabId: tabId);
@@ -1597,14 +1599,16 @@ abstract final class ShellTvFocusCoordinator {
     }
 
     if (handle.onFocusDown != null) {
+      beginKitEdgeAttempt();
       handle.onFocusDown!();
-      return true;
+      if (!takeKitEdgeMiss()) return true;
+      // Pack focusDown miss (e.g. popular → empty continue_watching) — walk.
     }
 
     // Walk downward past unbuilt / empty rows instead of swallowing the key.
-    var cursor = handle.sortOrder;
+    var downCursor = handle.sortOrder;
     while (true) {
-      final next = _nextRow(tabId, cursor);
+      final next = _nextRow(tabId, downCursor);
       if (next == null) {
         // No registered neighbor — scroll the hub page so below-fold slivers /
         // LazyViewportGate mount, then focus the new row (Home Popular → Mood).
@@ -1618,7 +1622,7 @@ abstract final class ShellTvFocusCoordinator {
         // Remembered index + lazy scroll (Live Sports schedule under shelf).
         return focusRowItemRemembered(tabId, next.rowId);
       }
-      cursor = next.sortOrder;
+      downCursor = next.sortOrder;
     }
   }
 

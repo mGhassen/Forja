@@ -21,16 +21,45 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
-  testWidgets('logo slot height stays fixed when the title is long', (
+  testWidgets('logo paints inside a fixed 1:1 AspectRatio frame', (tester) async {
+    const cardW = 160.0;
+    const cardH = 180.0;
+
+    await tester.pumpWidget(
+      _wrap(
+        const CatalogChannelCard(
+          title: 'VIP - NO EVENT',
+          imageUrl: '',
+          width: cardW,
+          height: cardH,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final frame = tester.widget<AspectRatio>(find.byType(AspectRatio));
+    expect(frame.aspectRatio, ChannelCardTokens.logoAspectRatio);
+
+    final frameSize = tester.getSize(find.byType(AspectRatio));
+    expect(frameSize.width, closeTo(frameSize.height, 0.5));
+    // Square is bounded by the padded logo band, not the full card face.
+    expect(frameSize.width, lessThan(cardW));
+    expect(
+      frameSize.width,
+      greaterThan(cardW * 0.5),
+    );
+
+    // Empty URL still shows the TV placeholder inside that fixed frame.
+    expect(find.byIcon(Icons.tv_rounded), findsOneWidget);
+  });
+
+  testWidgets('long titles do not change the 1:1 logo frame size', (
     tester,
   ) async {
     const cardW = 160.0;
     const cardH = 180.0;
-    final expectedLogoH = cardH -
-        ChannelCardTokens.titleBarHeight -
-        ChannelCardTokens.epgSlotHeight;
 
-    Future<Size> logoSizeFor(String title) async {
+    Future<Size> frameSizeFor(String title) async {
       await tester.pumpWidget(
         _wrap(
           CatalogChannelCard(
@@ -42,33 +71,14 @@ void main() {
         ),
       );
       await tester.pump();
-      // Logo placeholder is the only Icon in the logo Expanded stack.
-      final icon = find.byIcon(Icons.tv_rounded);
-      expect(icon, findsOneWidget);
-      // Walk up to the Expanded logo region via the card's outer size math:
-      // logo area = card height − fixed title − fixed EPG.
-      final cardBox = tester.getSize(find.byType(CatalogChannelCard));
-      expect(cardBox.height, cardH);
-      expect(cardBox.width, cardW);
-      // Placeholder centers in the logo slot — its parent expand box height
-      // equals the remaining column space.
-      final placeholderCenter = tester.getCenter(icon);
-      final cardTopLeft = tester.getTopLeft(find.byType(CatalogChannelCard));
-      final logoBottom = cardTopLeft.dy + expectedLogoH;
-      expect(placeholderCenter.dy, lessThan(logoBottom));
-      expect(
-        placeholderCenter.dy,
-        closeTo(cardTopLeft.dy + expectedLogoH / 2, 1.0),
-      );
-      return Size(cardW, expectedLogoH);
+      return tester.getSize(find.byType(AspectRatio));
     }
 
-    final short = await logoSizeFor('VIP - NO EVENT');
-    final long = await logoSizeFor(
+    final short = await frameSizeFor('VIP - NO EVENT');
+    final long = await frameSizeFor(
       '##### GOLDEN EVENTS ##### EXTRA LONG TITLE THAT WOULD WRAP',
     );
-    expect(short.height, expectedLogoH);
-    expect(long.height, expectedLogoH);
-    expect(long.height, short.height);
+    expect(short, long);
+    expect(short.width, closeTo(short.height, 0.5));
   });
 }

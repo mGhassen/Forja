@@ -3575,6 +3575,10 @@ class _MoodMountState extends State<_MoodMount> {
           }
 
           if (tvNav) {
+            final packFocusUp = LayoutScope.maybeOf(context)
+                ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
+            final packFocusDown = LayoutScope.maybeOf(context)
+                ?.resolveFocusEdge((widget.spec['focusDown'] ?? '').toString());
             return TvChipStrip(
               tabId: tab.isEmpty ? null : tab,
               rowId: chipRowId,
@@ -3584,6 +3588,10 @@ class _MoodMountState extends State<_MoodMount> {
               ),
               itemCount: parsed.length,
               resultsRowId: resultsRowId,
+              onFocusUp: packFocusUp,
+              // Pack focusDown used when mood-results is empty / unmounted —
+              // chip ↓ still prefers results via shellTvChipDownToRow first.
+              onFocusDown: packFocusDown,
               builder: (context, edgesFor) {
                 if (fits) {
                   return centeredRow(scaleToFit: true, edgesFor: edgesFor);
@@ -3685,6 +3693,12 @@ class _BecauseMountState extends State<_BecauseMount> {
                   ctx,
                 );
                 final canShuffle = node['canShuffle'] == true;
+                final packFocusUp = LayoutScope.maybeOf(ctx)
+                    ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
+                final packFocusDown = LayoutScope.maybeOf(ctx)
+                    ?.resolveFocusEdge(
+                      (widget.spec['focusDown'] ?? '').toString(),
+                    );
                 final gap = PackPaintArtifact.packLength(
                       ctx,
                       widget.spec['gap'] ?? node['gap'],
@@ -3799,6 +3813,7 @@ class _BecauseMountState extends State<_BecauseMount> {
                               rowId: 'because-shuffle',
                               sortOrder: shuffleSort,
                               itemCount: 1,
+                              onFocusUp: packFocusUp,
                               onFocusDown: () {
                                 ShellTvFocusCoordinator.focusRowItem(
                                   tabKey,
@@ -3813,6 +3828,7 @@ class _BecauseMountState extends State<_BecauseMount> {
                                 tvItemIndex: 0,
                                 tvZone: ShellTvZone.row,
                                 onTap: () => setState(() => _shuffleKey++),
+                                onUpEdge: packFocusUp,
                                 onDownEdge: () {
                                   ShellTvFocusCoordinator.focusRowItem(
                                     tabKey,
@@ -3851,7 +3867,8 @@ class _BecauseMountState extends State<_BecauseMount> {
                                     0,
                                   );
                                 }
-                              : null,
+                              : packFocusUp,
+                          onFocusDown: packFocusDown,
                           child: rail,
                         ),
                 );
@@ -4062,6 +4079,10 @@ class _ContinueMountState extends State<_ContinueMount> {
       rowId: resolvedRowId,
       sortOrder: PackPaintArtifact.stableSortOrder(tab, resolvedRowId),
       itemCount: _entries.length,
+      onFocusUp: LayoutScope.maybeOf(context)
+          ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString()),
+      onFocusDown: LayoutScope.maybeOf(context)
+          ?.resolveFocusEdge((widget.spec['focusDown'] ?? '').toString()),
       child: ContinueSection(
         title: 'Continue Watching',
         scrollController: _scroll,

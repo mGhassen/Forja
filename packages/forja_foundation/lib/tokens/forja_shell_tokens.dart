@@ -23,8 +23,23 @@ abstract final class ShellTokens {
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
 
-  /// One TV density for cards, chrome, and pack lengths (not iso 0.85).
+  /// Leanback density families — do **not** apply [tvChromeScale] to every surface.
+  ///
+  /// | Family | Rule |
+  /// |---|---|
+  /// | **Chrome / controls** | [tvChromeScale] — chips, pads, pack lengths, control height |
+  /// | **Type** | [tvTypeSize] ladder — never × chromeScale |
+  /// | **Film posters** | [posterCardWidthTv] — default desktop × chromeScale |
+  /// | **Channel logos** | [ChannelCardTokens.widthTv] — hand-tuned logo face |
+  /// | **Hero** | [tvHeroScale] — softer than chrome so Featured stays tall |
+  /// | **Portals rows** | [PortalListTokens.rowHeightTv] — hand-tuned readable rows |
+  /// | **Empty / loading** | type ladder + mild pad scale |
+  ///
+  /// Sniff: if × scale looks correct but ugly, add a hand `*Tv` token for that family.
   static const double tvChromeScale = 0.62;
+
+  /// Softer than [tvChromeScale] — hero band / title reserve stay readable at 10ft.
+  static const double tvHeroScale = 0.85;
 
   /// Leanback type ladder — separate from spatial [tvChromeScale].
   /// Keep smaller than desktop so type matches dense cards (not 14/16 desktop-ish).
@@ -484,14 +499,13 @@ abstract final class ShellTokens {
   static const double posterCardWidthMobile = 165;
   static const double posterCardWidthDesktop = 190;
 
-  /// TV posters share [tvChromeScale] with type / chrome / pack lengths.
+  /// TV posters — chrome family (desktop × [tvChromeScale]).
   static const double posterCardWidthTv =
       posterCardWidthDesktop * tvChromeScale;
 
-  /// IPTV / live channel tiles — denser than film posters ([posterCardWidthTv])
-  /// so the grid packs more logo columns; still leanback-scaled from mobile.
-  static const double channelCardWidthTv =
-      posterCardWidthMobile * tvChromeScale;
+  /// IPTV / live channel tiles — **channel family** hand-tuned logo face
+  /// (keep in sync with [ChannelCardTokens.widthTv]); denser than posters.
+  static const double channelCardWidthTv = 110;
 
   /// Leanback chrome — same ratio as [posterCardWidthTv] / [posterCardWidthDesktop].
   static const double navRailWidthTv =
@@ -541,18 +555,18 @@ abstract final class ShellTokens {
   static const double hubCardTitleFontSizeTv = tvBodyFontSize;
   static const double heroCompactRightInsetDesktop = 20;
   static const double heroCompactRightInsetTv =
-      heroCompactRightInsetDesktop * tvChromeScale;
+      heroCompactRightInsetDesktop * tvHeroScale;
   static const double heroMinTitleHeightDesktop = 72;
   static const double heroMinTitleHeightTv =
-      heroMinTitleHeightDesktop * tvChromeScale;
+      heroMinTitleHeightDesktop * tvHeroScale;
   static const double heroMinHeightDesktop = 320;
 
-  /// TV min — same unified chrome scale (tall enough for CTAs + Featured peek).
-  static const double heroMinHeightTv = heroMinHeightDesktop * tvChromeScale;
+  /// TV min — hero family ([tvHeroScale]), not full chrome crush.
+  static const double heroMinHeightTv = heroMinHeightDesktop * tvHeroScale;
   static const double heroMetaGapDesktop = 10;
-  static const double heroMetaGapTv = heroMetaGapDesktop * tvChromeScale;
+  static const double heroMetaGapTv = heroMetaGapDesktop * tvHeroScale;
   static const double heroActionGapDesktop = 12;
-  static const double heroActionGapTv = heroActionGapDesktop * tvChromeScale;
+  static const double heroActionGapTv = heroActionGapDesktop * tvHeroScale;
   static const double heroTitleMetaGapDesktop = 20;
   static const double heroMetaActionsGapDesktop = 16;
   static const double kitScrollBottomGapDesktop = 100;
@@ -799,10 +813,11 @@ abstract final class ShellTokens {
   static const double emptyFeaturesCardGapCompact = 10;
   static const Duration emptyFeaturesCardAnim = Duration(milliseconds: 140);
 
-  /// TV density == [tvChromeScale] (posters, chrome, pack lengths share one scale).
+  /// Default pack / layout scale — chrome family ([tvChromeScale]).
+  /// Posters use this; channels / hero / portals use hand-tuned families.
   static double get tvLayoutScale => posterCardWidthTv / posterCardWidthDesktop;
 
-  /// Alias kept for call sites — same factor as [tvLayoutScale].
+  /// Alias kept for call sites — same factor as [tvLayoutScale] for chrome.
   // tvChromeScale is defined near the top of this class.
 
   /// Grid inset beside a category rail (Live / Movies / Series).

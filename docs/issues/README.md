@@ -302,7 +302,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [306-[fixed]-…](fixed/306-[fixed]-iptv-player-search-guide-vault-portals.md) | IPTV player Search/Guide missing (vault + catalog gate) | P1 | High | fixed | Complete · 6/6 · A 0/2 | — |
 | [307-[open]-…](307-[open]-web-addons-pack-settings-parity.md) | Web Addons list + pack settings parity | P1 | High | open | 9/9 · A 0/4 | [RFC-089](../rfc/fixed/089-[fixed]-pack-addon-settings.md) |
 | [308-[fixed]-…](fixed/308-[fixed]-iptv-pack-add-never-syncs-web.md) | IPTV pack Add never syncs portals to web | P0 | Critical | fixed | Complete · 4/4 · A 0/2 | [307](307-[open]-web-addons-pack-settings-parity.md) |
-| [309-[fixed]-…](fixed/309-[fixed]-android-tv-home-dpad-dies-on-popular.md) | Android TV Home D-pad ↓ dies on Popular | P0 | High | fixed | Complete · 3/3 · A 1/3 | — |
+| [309-[fixed]-…](fixed/309-[fixed]-android-tv-home-dpad-dies-on-popular.md) | Android TV Home D-pad ↓ dies on Popular | P0 | High | fixed | Complete · 4/4 · A 1/3 | — |
 | [289-[fixed]-…](fixed/289-[fixed]-profile-pack-membership-bleed.md) | New profile inherits other profile packs | P0 | Critical | fixed | Complete · 5/5 · A 0/4 | [217](fixed/217-[fixed]-iptv-portals-bleed-across-profiles.md) · [259](259-[open]-cloud-pack-auto-install-before-profile-splash.md) |
 | [286-[fixed]-…](fixed/286-[fixed]-iptv-channels-hub-pack-restore.md) | Restore IPTV Channels hub (pack curated + portal scan) | P1 | High | fixed | Complete · 4/4 · A 0/3 | [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) |
 | [284-[fixed]-…](fixed/284-[fixed]-macos-27-window-zoom-snap-back.md) | macOS 27 title-bar zoom snaps back / boxed relaunch | P1 | High | fixed | Complete · 5/5 · A 0/2 | — |

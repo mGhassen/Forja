@@ -7,14 +7,17 @@ import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja_foundation/tokens/channel_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 
 void main() {
-  test('tv uses one chrome scale for posters, layout, and type weight', () {
-    expect(ShellTokens.tvChromeScale, 0.72);
+  test('tv density families: chrome scale + hand-tuned cards/hero/portals', () {
+    expect(ShellTokens.tvChromeScale, 0.62);
+    expect(ShellTokens.tvHeroScale, 0.85);
     expect(
       ShellTokens.posterCardWidthTv,
       closeTo(
@@ -27,28 +30,35 @@ void main() {
       closeTo(ShellTokens.tvChromeScale, 0.001),
     );
     expect(
-      ShellTokens.navRailWidthTv / ShellTokens.navRailWidth,
-      closeTo(ShellTokens.tvChromeScale, 0.001),
-    );
-    expect(
       ShellTokens.controlHeightTv,
       closeTo(ShellTokens.controlHeight * ShellTokens.tvChromeScale, 0.001),
+    );
+    // Channel family — hand-tuned, not mobile × chromeScale.
+    expect(ShellTokens.channelCardWidthTv, ChannelCardTokens.widthTv);
+    expect(ShellTokens.channelCardWidthTv, 110);
+    expect(
+      ShellTokens.channelCardWidthTv,
+      lessThan(ShellTokens.posterCardWidthTv),
+    );
+    // Hero family — softer than chrome crush.
+    expect(
+      ShellTokens.heroMinHeightTv,
+      closeTo(ShellTokens.heroMinHeightDesktop * ShellTokens.tvHeroScale, 0.001),
+    );
+    expect(
+      ShellTokens.heroMinHeightTv,
+      greaterThan(ShellTokens.heroMinHeightDesktop * ShellTokens.tvChromeScale),
+    );
+    // Portals family — hand row height.
+    expect(PortalListTokens.rowHeightTv, 80);
+    expect(
+      PortalListTokens.rowHeightTv,
+      greaterThan(PortalListTokens.rowHeight * ShellTokens.tvChromeScale),
     );
     // Hero CTA reserve must not crush below painted pill height.
     expect(
       ShellTokens.controlHeightTv,
       greaterThanOrEqualTo(DetailsTokens.heroPillHeightTv - 0.001),
-    );
-    expect(
-      ShellTokens.channelCardWidthTv,
-      closeTo(
-        ShellTokens.posterCardWidthMobile * ShellTokens.tvChromeScale,
-        0.001,
-      ),
-    );
-    expect(
-      ShellTokens.channelCardWidthTv,
-      lessThan(ShellTokens.posterCardWidthTv),
     );
     expect(ShellTokens.tvBodyFontSize, 11);
     expect(ShellTokens.tvTitleFontSize, 14);

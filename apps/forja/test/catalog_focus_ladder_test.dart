@@ -288,6 +288,61 @@ void main() {
   });
 
   testWidgets(
+    '↓ pack focusDown miss (empty continue) walks to mood-chips',
+    (tester) async {
+      final popular = FocusNode(debugLabel: 'popular');
+      final moodChip = FocusNode(debugLabel: 'mood-chip');
+      final sPopular = PackPaintArtifact.stableSortOrder(_tab, 'popular');
+      final sChips = PackPaintArtifact.stableSortOrder(_tab, 'mood-chips');
+
+      addTearDown(() {
+        popular.dispose();
+        moodChip.dispose();
+      });
+
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [
+              TvKitRow(
+                rowId: 'popular',
+                sortOrder: sPopular,
+                itemCount: 1,
+                onFocusDown: () {
+                  ShellTvFocusCoordinator.beginKitEdgeAttempt();
+                  ShellTvFocusCoordinator.markKitEdgeMiss();
+                },
+                child: _item(node: popular, rowId: 'popular', index: 0),
+              ),
+              TvKitRow(
+                rowId: 'mood-chips',
+                sortOrder: sChips,
+                itemCount: 1,
+                child: _item(node: moodChip, rowId: 'mood-chips', index: 0),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      popular.requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'popular',
+          currentIndex: 0,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(moodChip.hasFocus, isTrue);
+    },
+  );
+
+  testWidgets(
     '↓ from last registered row nudges page scroll then lands on new neighbor',
     (tester) async {
       final popular = FocusNode(debugLabel: 'popular');

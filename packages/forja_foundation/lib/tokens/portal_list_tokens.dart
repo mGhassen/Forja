@@ -1,11 +1,16 @@
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Layout tokens for portal list / probe chrome.
+///
+/// Row height / action rail are **hand-tuned** on TV (readable seats/meta).
+/// Pads and hit boxes follow [ShellTokens.tvChromeScale]. Type uses the
+/// leanback ladder. See density families on [ShellTokens].
 abstract final class PortalListTokens {
   static const double rowHeight = 98;
-  static const double rowHeightTv = rowHeight * ShellTokens.tvChromeScale;
+  /// Hand — not × chromeScale (98×0.62 ≈ 61 is too tight for seats/meta).
+  static const double rowHeightTv = 80;
   static const double actionWidth = 108;
-  static const double actionWidthTv = actionWidth * ShellTokens.tvChromeScale;
+  static const double actionWidthTv = 84;
   static const double titleFontSize = 13;
   static const double titleFontSizeTv = ShellTokens.tvBodyFontSize;
   static const double metaFontSize = 11;
