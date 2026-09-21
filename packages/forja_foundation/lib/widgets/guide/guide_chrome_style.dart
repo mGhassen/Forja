@@ -77,8 +77,8 @@ abstract final class GuideChromeStyle {
       );
 }
 
-/// Thin position scroller for long TV catalog / guide lists.
-/// No-op off TV so desktop/mobile keep existing chrome.
+/// Thin green position scroller for **list** chrome (categories, channels,
+/// schedules, Portals, guide). No-op off TV — desktop uses [ForjaScrollBehavior].
 class LiveTvScrollbar extends StatelessWidget {
   const LiveTvScrollbar({
     super.key,

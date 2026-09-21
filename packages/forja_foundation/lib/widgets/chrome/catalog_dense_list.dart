@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 
 /// Dense list chrome — host supplies row [itemBuilder] + optional focus wrap.
 class CatalogDenseList extends StatelessWidget {
@@ -32,8 +33,47 @@ class CatalogDenseList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final external = controller;
+    if (external != null) {
+      return _buildScrollable(
+        context,
+        scroll: external,
+        itemCount: itemCount,
+        itemBuilder: itemBuilder,
+        leading: leading,
+        topPadding: topPadding,
+        trailing: trailing,
+        bottomPadding: bottomPadding,
+        separatorColor: separatorColor,
+        wrapScroll: wrapScroll,
+      );
+    }
+    return _CatalogDenseListOwnedScroll(
+      itemCount: itemCount,
+      itemBuilder: itemBuilder,
+      leading: leading,
+      topPadding: topPadding,
+      trailing: trailing,
+      bottomPadding: bottomPadding,
+      separatorColor: separatorColor,
+      wrapScroll: wrapScroll,
+    );
+  }
+
+  static Widget _buildScrollable(
+    BuildContext context, {
+    required ScrollController scroll,
+    required int itemCount,
+    required IndexedWidgetBuilder itemBuilder,
+    double? leading,
+    double topPadding = 4,
+    double? trailing,
+    double bottomPadding = 0,
+    Color? separatorColor,
+    Widget Function(Widget child)? wrapScroll,
+  }) {
     final list = ListView.separated(
-      controller: controller,
+      controller: scroll,
       padding: EdgeInsets.fromLTRB(
         leading ?? ShellTokens.compactChromeLeadingInset(context),
         topPadding,
@@ -49,7 +89,62 @@ class CatalogDenseList extends StatelessWidget {
       itemBuilder: itemBuilder,
     );
     final wrap = wrapScroll;
-    return wrap == null ? list : wrap(list);
+    final child = wrap == null ? list : wrap(list);
+    return LiveTvScrollbar(controller: scroll, child: child);
+  }
+}
+
+/// Owns a [ScrollController] when the host did not pass one (kit paint mounts).
+class _CatalogDenseListOwnedScroll extends StatefulWidget {
+  const _CatalogDenseListOwnedScroll({
+    required this.itemCount,
+    required this.itemBuilder,
+    required this.leading,
+    required this.topPadding,
+    required this.trailing,
+    required this.bottomPadding,
+    required this.separatorColor,
+    required this.wrapScroll,
+  });
+
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final double? leading;
+  final double topPadding;
+  final double? trailing;
+  final double bottomPadding;
+  final Color? separatorColor;
+  final Widget Function(Widget child)? wrapScroll;
+
+  @override
+  State<_CatalogDenseListOwnedScroll> createState() =>
+      _CatalogDenseListOwnedScrollState();
+}
+
+class _CatalogDenseListOwnedScrollState
+    extends State<_CatalogDenseListOwnedScroll> {
+  late final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CatalogDenseList._buildScrollable(
+      context,
+      scroll: _scroll,
+      itemCount: widget.itemCount,
+      itemBuilder: widget.itemBuilder,
+      leading: widget.leading,
+      topPadding: widget.topPadding,
+      trailing: widget.trailing,
+      bottomPadding: widget.bottomPadding,
+      separatorColor: widget.separatorColor,
+      wrapScroll: widget.wrapScroll,
+    );
   }
 }
 

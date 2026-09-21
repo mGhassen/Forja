@@ -11,6 +11,7 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
+import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// One category rail row — props only (pack / host supply state).
@@ -333,62 +334,65 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
       );
     }
 
-    final list = ColoredBox(
-      color: ForjaShellColors.bgDark,
-      child: SizedBox(
-        width: railW,
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (notification) {
-            if (notification is ScrollUpdateNotification &&
-                (notification.scrollDelta ?? 0) != 0) {
-              _CatalogCategoryRowState.clearHover();
-            }
-            return false;
-          },
-          child: CustomScrollView(
-            controller: _scroll,
-            slivers: [
-              SliverPadding(
-                padding: EdgeInsets.symmetric(vertical: _listPadV(context)),
-                sliver: SliverMainAxisGroup(
-                  slivers: [
-                    if (fixed.isNotEmpty)
-                      SliverFixedExtentList(
-                        itemExtent: _rowExtent(context),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, i) => rowFor(fixed[i], i),
-                          childCount: fixed.length,
-                          addAutomaticKeepAlives: false,
+    final list = LiveTvScrollbar(
+      controller: _scroll,
+      child: ColoredBox(
+        color: ForjaShellColors.bgDark,
+        child: SizedBox(
+          width: railW,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollUpdateNotification &&
+                  (notification.scrollDelta ?? 0) != 0) {
+                _CatalogCategoryRowState.clearHover();
+              }
+              return false;
+            },
+            child: CustomScrollView(
+              controller: _scroll,
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(vertical: _listPadV(context)),
+                  sliver: SliverMainAxisGroup(
+                    slivers: [
+                      if (fixed.isNotEmpty)
+                        SliverFixedExtentList(
+                          itemExtent: _rowExtent(context),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, i) => rowFor(fixed[i], i),
+                            childCount: fixed.length,
+                            addAutomaticKeepAlives: false,
+                          ),
                         ),
-                      ),
-                    if (movable.isNotEmpty)
-                      canReorder
-                          ? SliverReorderableList(
-                              itemCount: movable.length,
-                              itemExtent: _rowExtent(context),
-                              proxyDecorator: _reorderProxy,
-                              onReorderItem: (oldIndex, newIndex) {
-                                widget.onReorder?.call(oldIndex, newIndex);
-                              },
-                              itemBuilder: (context, i) => rowFor(
-                                movable[i],
-                                fixed.length + i,
-                                reorderIndex: i,
+                      if (movable.isNotEmpty)
+                        canReorder
+                            ? SliverReorderableList(
+                                itemCount: movable.length,
+                                itemExtent: _rowExtent(context),
+                                proxyDecorator: _reorderProxy,
+                                onReorderItem: (oldIndex, newIndex) {
+                                  widget.onReorder?.call(oldIndex, newIndex);
+                                },
+                                itemBuilder: (context, i) => rowFor(
+                                  movable[i],
+                                  fixed.length + i,
+                                  reorderIndex: i,
+                                ),
+                              )
+                            : SliverFixedExtentList(
+                                itemExtent: _rowExtent(context),
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, i) =>
+                                      rowFor(movable[i], fixed.length + i),
+                                  childCount: movable.length,
+                                  addAutomaticKeepAlives: false,
+                                ),
                               ),
-                            )
-                          : SliverFixedExtentList(
-                              itemExtent: _rowExtent(context),
-                              delegate: SliverChildBuilderDelegate(
-                                (context, i) =>
-                                    rowFor(movable[i], fixed.length + i),
-                                childCount: movable.length,
-                                addAutomaticKeepAlives: false,
-                              ),
-                            ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

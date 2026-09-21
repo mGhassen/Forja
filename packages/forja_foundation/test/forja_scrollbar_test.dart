@@ -1,52 +1,75 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 
 void main() {
   tearDown(() {
     debugDefaultTargetPlatformOverride = null;
-    ShellTokens.nativeAndroidTvDetected = false;
   });
 
-  Widget app({
-    required TargetPlatform platform,
-    required Widget body,
-    bool tvDensity = false,
-  }) {
-    return MaterialApp(
-      scrollBehavior: const ForjaScrollBehavior(),
-      theme: ThemeData(platform: platform),
-      home: Scaffold(
-        body: ShellPaintScope(
-          useTvFocus: tvDensity,
-          scaleOnHover: !tvDensity,
-          focusStyled: (_, {required focused}) => focused,
-          usesTvDensity: tvDensity,
-          child: body,
-        ),
-      ),
-    );
-  }
-
-  ListView longList() => ListView(
-        children: List.generate(
-          40,
-          (i) => SizedBox(height: 80, child: Text('row $i')),
-        ),
-      );
-
-  testWidgets('Android TV density paints green RawScrollbar', (tester) async {
+  testWidgets('Android TV does not auto-paint scrollbar on every scrollable', (
+    tester,
+  ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
 
     await tester.pumpWidget(
-      app(
-        platform: TargetPlatform.android,
-        tvDensity: true,
-        body: longList(),
+      MaterialApp(
+        scrollBehavior: const ForjaScrollBehavior(),
+        theme: ThemeData(platform: TargetPlatform.android),
+        home: Scaffold(
+          body: ShellPaintScope(
+            useTvFocus: true,
+            scaleOnHover: false,
+            focusStyled: (_, {required focused}) => focused,
+            usesTvDensity: true,
+            child: ListView(
+              children: List.generate(
+                40,
+                (i) => SizedBox(height: 80, child: Text('row $i')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(RawScrollbar), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('LiveTvScrollbar paints green thumb on TV density', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: TargetPlatform.android),
+        home: Scaffold(
+          body: ShellPaintScope(
+            useTvFocus: true,
+            scaleOnHover: false,
+            focusStyled: (_, {required focused}) => focused,
+            usesTvDensity: true,
+            child: LiveTvScrollbar(
+              controller: scroll,
+              child: ListView(
+                controller: scroll,
+                children: List.generate(
+                  40,
+                  (i) => SizedBox(height: 80, child: Text('row $i')),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
     await tester.pump();
@@ -54,29 +77,7 @@ void main() {
     expect(find.byType(RawScrollbar), findsOneWidget);
     final bar = tester.widget<RawScrollbar>(find.byType(RawScrollbar));
     expect(bar.thumbVisibility, isTrue);
-    expect(bar.trackVisibility, isTrue);
-    expect(bar.interactive, isFalse);
     expect(bar.thumbColor, ForjaScrollbarStyle.thumbColor);
-
-    debugDefaultTargetPlatformOverride = null;
-  });
-
-  testWidgets('Android phone skips auto green scrollbar', (tester) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    ShellTokens.nativeAndroidTvDetected = false;
-
-    await tester.pumpWidget(
-      app(
-        platform: TargetPlatform.android,
-        tvDensity: false,
-        body: longList(),
-      ),
-    );
-    await tester.pump();
-
-    expect(find.byType(RawScrollbar), findsNothing);
-
     debugDefaultTargetPlatformOverride = null;
   });
 
@@ -85,15 +86,22 @@ void main() {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
 
     await tester.pumpWidget(
-      app(
-        platform: TargetPlatform.macOS,
-        body: longList(),
+      MaterialApp(
+        scrollBehavior: const ForjaScrollBehavior(),
+        theme: ThemeData(platform: TargetPlatform.macOS),
+        home: Scaffold(
+          body: ListView(
+            children: List.generate(
+              40,
+              (i) => SizedBox(height: 80, child: Text('row $i')),
+            ),
+          ),
+        ),
       ),
     );
     await tester.pump();
 
     expect(find.byType(RawScrollbar), findsOneWidget);
-
     debugDefaultTargetPlatformOverride = null;
   });
 }

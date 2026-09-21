@@ -4,6 +4,7 @@ import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Probe fields for the desktop hover detail card — opaque strings only.
@@ -148,7 +149,7 @@ class PortalListPanel extends StatelessWidget {
         ),
       );
     }
-    return ListView.builder(
+    return _PortalItemsScroll(
       itemCount: list.length,
       itemBuilder: (context, i) => build(context, list[i], i),
     );
@@ -223,6 +224,42 @@ class PortalListPanel extends StatelessWidget {
         return KeyEventResult.ignored;
       },
       child: column,
+    );
+  }
+}
+
+/// Owns a scroll controller for the items+[itemBuilder] path.
+class _PortalItemsScroll extends StatefulWidget {
+  const _PortalItemsScroll({
+    required this.itemCount,
+    required this.itemBuilder,
+  });
+
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+
+  @override
+  State<_PortalItemsScroll> createState() => _PortalItemsScrollState();
+}
+
+class _PortalItemsScrollState extends State<_PortalItemsScroll> {
+  late final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LiveTvScrollbar(
+      controller: _scroll,
+      child: ListView.builder(
+        controller: _scroll,
+        itemCount: widget.itemCount,
+        itemBuilder: widget.itemBuilder,
+      ),
     );
   }
 }

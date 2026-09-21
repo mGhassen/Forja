@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Shared green thumb chrome — matches Live TV / Providers lists.
 abstract final class ForjaScrollbarStyle {
@@ -27,17 +25,13 @@ abstract final class ForjaScrollbarStyle {
       );
 }
 
-/// Desktop + Android TV Material auto-scrollbar paints grey `onSurface` thumbs
-/// by default. Replace with the green [RawScrollbar] so every scrollable matches
-/// Providers / Live TV.
+/// Desktop Material auto-scrollbar paints grey `onSurface` thumbs by default.
+/// Replace with the green [RawScrollbar] so every scrollable matches Providers.
+///
+/// Android TV does **not** get an auto bar — use [LiveTvScrollbar] (or an
+/// explicit [Scrollbar] / [RawScrollbar]) on list chrome only.
 class ForjaScrollBehavior extends MaterialScrollBehavior {
   const ForjaScrollBehavior();
-
-  static bool _androidTvScrollbars(BuildContext context) {
-    if (ShellTokens.isAndroidTvDevice) return true;
-    if (ShellPaintScope.usesTvDensityOf(context)) return true;
-    return ShellTokens.isTvLayout(context);
-  }
 
   @override
   Widget buildScrollbar(
@@ -54,49 +48,23 @@ class ForjaScrollBehavior extends MaterialScrollBehavior {
           case TargetPlatform.macOS:
           case TargetPlatform.windows:
             assert(details.controller != null);
-            return _greenScrollbar(
-              controller: details.controller!,
+            return RawScrollbar(
+              controller: details.controller,
+              thickness: ForjaScrollbarStyle.thickness,
+              radius: ForjaScrollbarStyle.radius,
+              mainAxisMargin: ForjaScrollbarStyle.mainAxisMargin,
+              crossAxisMargin: ForjaScrollbarStyle.crossAxisMargin,
+              thumbColor: ForjaScrollbarStyle.thumbColor,
+              trackColor: ForjaScrollbarStyle.trackColor,
+              trackBorderColor: Colors.transparent,
               child: child,
             );
           case TargetPlatform.android:
-            if (!_androidTvScrollbars(context)) return child;
-            assert(details.controller != null);
-            return _greenScrollbar(
-              controller: details.controller!,
-              // Leanback: keep the thumb visible so D-pad position is obvious.
-              thumbVisibility: true,
-              trackVisibility: true,
-              interactive: false,
-              child: child,
-            );
           case TargetPlatform.fuchsia:
           case TargetPlatform.iOS:
             return child;
         }
     }
-  }
-
-  static Widget _greenScrollbar({
-    required ScrollController controller,
-    required Widget child,
-    bool? thumbVisibility,
-    bool? trackVisibility,
-    bool interactive = true,
-  }) {
-    return RawScrollbar(
-      controller: controller,
-      thickness: ForjaScrollbarStyle.thickness,
-      radius: ForjaScrollbarStyle.radius,
-      mainAxisMargin: ForjaScrollbarStyle.mainAxisMargin,
-      crossAxisMargin: ForjaScrollbarStyle.crossAxisMargin,
-      thumbColor: ForjaScrollbarStyle.thumbColor,
-      trackColor: ForjaScrollbarStyle.trackColor,
-      trackBorderColor: Colors.transparent,
-      thumbVisibility: thumbVisibility,
-      trackVisibility: trackVisibility,
-      interactive: interactive,
-      child: child,
-    );
   }
 }
 

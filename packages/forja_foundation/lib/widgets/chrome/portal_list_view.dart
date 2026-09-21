@@ -8,6 +8,7 @@ import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Opaque header action for [PortalListView] — no product verbs in the DS.
@@ -174,11 +175,15 @@ class _PortalListViewState extends State<PortalListView> {
   final _searchCtrl = TextEditingController();
   final _searchFocus = FocusNode(debugLabel: 'portal-panel-search');
   final ValueNotifier<String?> _hoverRowId = ValueNotifier<String?>(null);
+  late final ScrollController _ownedListScroll = ScrollController();
   String _query = '';
   bool _searchOpen = false;
 
   /// Header icon index the search toggle (magnifier ⇄ close ×) paints at.
   static const _searchHeaderIndex = 0;
+
+  ScrollController get _listScroll =>
+      widget.listScrollController ?? _ownedListScroll;
 
   @override
   void initState() {
@@ -191,6 +196,7 @@ class _PortalListViewState extends State<PortalListView> {
     _hoverRowId.dispose();
     _searchCtrl.dispose();
     _searchFocus.dispose();
+    _ownedListScroll.dispose();
     super.dispose();
   }
 
@@ -556,38 +562,40 @@ class _PortalListViewState extends State<PortalListView> {
 
   Widget _buildList(List<PortalListItem> filtered, {required String tab}) {
     final last = filtered.length - 1;
-    return NotificationListener<ScrollNotification>(
-      onNotification: _onListScrollNotification,
-      child: ListView.builder(
-        controller: widget.listScrollController,
-        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-        itemExtent: widget.rowHeight,
-        scrollCacheExtent: ScrollCacheExtent.pixels(
-          widget.rowHeight * 14,
-        ),
-        addAutomaticKeepAlives: false,
-        itemCount: filtered.length,
-        itemBuilder: (context, index) {
-          final item = filtered[index];
-          return PortalListRow(
-            key: ValueKey<String>(item.id),
-            item: item,
-            leanback: widget.leanback,
-            height: widget.rowHeight,
-            listIndex: index,
-            hoverOwnerId: widget.leanback ? null : _hoverRowId,
-            onSelect: widget.busy || widget.onSelect == null
-                ? null
-                : () => widget.onSelect!(item),
-            onFavorite: widget.busy || widget.onFavorite == null
-                ? null
-                : () => widget.onFavorite!(item),
-            onEdit: widget.busy || widget.onEdit == null
-                ? null
-                : () => widget.onEdit!(item),
-            onCopyShareCode: widget.busy || widget.onCopyShareCode == null
-                ? null
-                : () => widget.onCopyShareCode!(item),
+    return LiveTvScrollbar(
+      controller: _listScroll,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onListScrollNotification,
+        child: ListView.builder(
+          controller: _listScroll,
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          itemExtent: widget.rowHeight,
+          scrollCacheExtent: ScrollCacheExtent.pixels(
+            widget.rowHeight * 14,
+          ),
+          addAutomaticKeepAlives: false,
+          itemCount: filtered.length,
+          itemBuilder: (context, index) {
+            final item = filtered[index];
+            return PortalListRow(
+              key: ValueKey<String>(item.id),
+              item: item,
+              leanback: widget.leanback,
+              height: widget.rowHeight,
+              listIndex: index,
+              hoverOwnerId: widget.leanback ? null : _hoverRowId,
+              onSelect: widget.busy || widget.onSelect == null
+                  ? null
+                  : () => widget.onSelect!(item),
+              onFavorite: widget.busy || widget.onFavorite == null
+                  ? null
+                  : () => widget.onFavorite!(item),
+              onEdit: widget.busy || widget.onEdit == null
+                  ? null
+                  : () => widget.onEdit!(item),
+              onCopyShareCode: widget.busy || widget.onCopyShareCode == null
+                  ? null
+                  : () => widget.onCopyShareCode!(item),
             onHoverEnter: () {
               // Mouse/trackpad hover = pointer browse (I147) — not only scroll.
               widget.onListPointerBrowse?.call();
@@ -621,6 +629,7 @@ class _PortalListViewState extends State<PortalListView> {
                 : null,
           );
         },
+        ),
       ),
     );
   }

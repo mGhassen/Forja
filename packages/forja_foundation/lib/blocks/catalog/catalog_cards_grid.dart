@@ -20,6 +20,7 @@ import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
+import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 
 /// Props map from a pack list `items[]` entry (`paint.props` or flat).
@@ -1176,7 +1177,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       onJump: _letterJump,
       child: body,
     );
-    return body;
+    return LiveTvScrollbar(controller: _scroll, child: body);
   }
 }
 
