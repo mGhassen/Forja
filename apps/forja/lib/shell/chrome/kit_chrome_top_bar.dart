@@ -81,10 +81,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
 
   /// KeepAlive hubs all mount — only the active tab owns [hubHeroSearch].
   void _syncSharedSearchFocus() {
-    if (ShellTvFocus.currentNavTabId != widget.tabId &&
-        widget.tabId != 'home') {
-      return;
-    }
+    if (ShellTvFocus.currentNavTabId != widget.tabId) return;
     ShellTvFocus.hubHeroSearch = _searchFocus;
   }
 

@@ -172,6 +172,74 @@ void main() {
       await tester.pump();
       expect(cat1.hasFocus, isTrue, reason: 'pageBack items→cats remembered');
     });
+
+    testWidgets(
+      'empty HubPageFocus clears restore so defaultFocus owns nav land',
+      (tester) async {
+        // Flat cinematic hubs omit pages.*.focus — same contract as Home.
+        const tab = 'catalog';
+        ShellTvFocus.currentNavTabId = tab;
+        ShellTvFocusCoordinator.setNavOrder([tab]);
+        ShellTvFocusCoordinator.clearTab(tab);
+
+        final hero = FocusNode(debugLabel: 'hero-details');
+        final bleed = FocusNode(debugLabel: 'bleed-0');
+        addTearDown(() {
+          hero.dispose();
+          bleed.dispose();
+          ShellTvFocusCoordinator.clearTab(tab);
+        });
+
+        await tester.pumpWidget(
+          _wrapTv(
+            tab,
+            Column(
+              children: [
+                Focus(focusNode: hero, child: const SizedBox(width: 40, height: 40)),
+                TvKitRow(
+                  tabId: tab,
+                  rowId: 'bleed',
+                  sortOrder: 1,
+                  itemCount: 1,
+                  child: _rowItem(
+                    tabId: tab,
+                    rowId: 'bleed',
+                    index: 0,
+                    node: bleed,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        await tester.pump();
+
+        ShellTvFocusCoordinator.registerTabDefaults(
+          tab,
+          defaultFocus: () => hero,
+        );
+
+        // Stale pack restore (shelf) then clear — hero defaultFocus must win.
+        bindHubPageFocus(
+          tab,
+          HubPageFocus.parse({
+            'focus': {
+              'restore': 'bleed',
+              'restoreMode': 'remembered',
+            },
+          }),
+        );
+        bindHubPageFocus(tab, HubPageFocus.empty);
+
+        expect(ShellTvFocusCoordinator.restoreTabFocus(tab), isTrue);
+        await tester.pump();
+        expect(
+          hero.hasFocus,
+          isTrue,
+          reason: 'flat catalog land is hero View details, not bleed shelf',
+        );
+      },
+    );
   });
 
   group('Hub spines (IPTV / Live / Lists)', () {
