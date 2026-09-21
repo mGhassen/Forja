@@ -156,7 +156,9 @@ Not synced — device-specific or sensitive:
 - The desktop chooser, rail, and Profile & account page use the same avatar
   artwork selected on the web
 - Add, edit, search, favorite, share, or remove IPTV portals from
-  the web (share codes match the app peer-code flow). On the web IPTV page,
+  the web (share codes match the app peer-code flow). Portals you **Add** or
+  **Import** in the app sync to this list for the same profile (open **Portals**
+  or resume the app if an older local-only portal is missing). On the web IPTV page,
   portals are a compact list (expiry, name, URL, seats). Lists paginate every 10 items.
   Checkboxes support **Select all** (matching search results) and batch **Export** /
   **Remove** (with confirm). Remove drops the portal from this profile only — the shared

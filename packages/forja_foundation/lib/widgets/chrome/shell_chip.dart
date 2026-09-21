@@ -310,6 +310,28 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             widget.fontSize == ShellTokens.shellChipFontSize
         ? ShellTokens.shellChipFontSizeTv
         : widget.fontSize;
+    final iconSize = tvDensity &&
+            widget.iconSize == ShellTokens.shellChipIconSize
+        ? ShellTokens.shellChipIconSizeTv
+        : widget.iconSize;
+    final padding = tvDensity &&
+            widget.padding ==
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 8)
+        ? const EdgeInsets.symmetric(
+            horizontal: ShellTokens.shellChipPadHTv,
+            vertical: ShellTokens.shellChipPadVTv,
+          )
+        : widget.padding;
+    final gap = tvDensity
+        ? ShellTokens.shellChipGapTv
+        : ShellTokens.shellChipGap;
+    final gapTight = tvDensity
+        ? ShellTokens.shellChipGapTightTv
+        : ShellTokens.shellChipGapTight;
+    final radius = tvDensity &&
+            widget.radius == ShellTokens.shellChipRadiusPill
+        ? ShellTokens.shellChipRadiusPillTv
+        : widget.radius;
 
     return AnimatedContainer(
       duration: tv
@@ -319,15 +341,15 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
       decoration: shellChipDecoration(
         selected: selected,
         accentHover: accent,
-        radius: widget.radius,
+        radius: radius,
       ),
-      padding: widget.padding,
+      padding: padding,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.icon != null) ...[
-            Icon(widget.icon, size: widget.iconSize, color: fg),
-            const SizedBox(width: ShellTokens.shellChipGap),
+            Icon(widget.icon, size: iconSize, color: fg),
+            SizedBox(width: gap),
           ],
           Text(
             widget.label,
@@ -339,7 +361,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             ),
           ),
           if (widget.loading) ...[
-            const SizedBox(width: ShellTokens.shellChipGapTight),
+            SizedBox(width: gapTight),
             ForjaBusyCancelGlyph(
               color: fg,
               hovered: busyHovered,
@@ -347,7 +369,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
               onCancel: widget.onCancel,
             ),
           ] else if (showReload) ...[
-            const SizedBox(width: ShellTokens.shellChipGap),
+            SizedBox(width: gap),
             ExcludeFocus(
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
@@ -362,7 +384,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
                     curve: Curves.easeOutCubic,
                     child: Icon(
                       Icons.refresh_rounded,
-                      size: widget.iconSize,
+                      size: iconSize,
                       color: reloadColor,
                     ),
                   ),
@@ -370,7 +392,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
               ),
             ),
           ] else if (widget.trailing != null) ...[
-            const SizedBox(width: ShellTokens.shellChipGapTight),
+            SizedBox(width: gapTight),
             widget.trailing!,
           ],
         ],

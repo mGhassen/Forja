@@ -118,6 +118,30 @@ class _PortalsChipState extends State<PortalsChip> {
         tvDensity ? ShellTokens.portalsChipIconSizeTv : widget.iconSize;
     final chevronSize =
         tvDensity ? ShellTokens.portalsChipChevronSizeTv : widget.chevronSize;
+    final seatsFontSize = tvDensity
+        ? ShellTokens.tvMetaFontSize
+        : widget.seatsFontSize;
+    final statusSlot = tvDensity
+        ? ShellTokens.chromeScale(ShellTokens.portalsChipStatusSlot, tv: true)
+        : ShellTokens.portalsChipStatusSlot;
+    final gap = tvDensity
+        ? ShellTokens.chromeScale(ShellTokens.portalsChipGap, tv: true)
+        : ShellTokens.portalsChipGap;
+    final gapTight = tvDensity
+        ? ShellTokens.chromeScale(ShellTokens.portalsChipGapTight, tv: true)
+        : ShellTokens.portalsChipGapTight;
+    final labelMaxMin = tvDensity
+        ? ShellTokens.chromeScale(ShellTokens.portalsChipLabelMaxMin, tv: true)
+        : ShellTokens.portalsChipLabelMaxMin;
+    final labelMaxMax = tvDensity
+        ? ShellTokens.chromeScale(ShellTokens.portalsChipLabelMaxMax, tv: true)
+        : ShellTokens.portalsChipLabelMaxMax;
+    final labelMaxFallback = tvDensity
+        ? ShellTokens.chromeScale(
+            ShellTokens.portalsChipLabelMaxFallback,
+            tv: true,
+          )
+        : ShellTokens.portalsChipLabelMaxFallback;
     final tvFocused = widget.tvFocus &&
         ShellPaintScope.focusStyledOf(context, focused: _focused);
     final active = _chromeActiveFor(hovered);
@@ -150,15 +174,11 @@ class _PortalsChipState extends State<PortalsChip> {
     // grows left while the body/chevron right edge stays put.
     final bodyW = packWidth != null ? (packWidth - hPad * 2) : null;
     final labelMax = bodyW != null
-        ? (bodyW -
-                ShellTokens.portalsChipStatusSlot -
-                ShellTokens.portalsChipGap -
-                chevronSize)
-            .clamp(
-              ShellTokens.portalsChipLabelMaxMin,
-              ShellTokens.portalsChipLabelMaxMax,
-            )
-        : ShellTokens.portalsChipLabelMaxFallback;
+        ? (bodyW - statusSlot - gap - chevronSize).clamp(
+            labelMaxMin,
+            labelMaxMax,
+          )
+        : labelMaxFallback;
 
     final labelText = Text(
       widget.label,
@@ -173,8 +193,8 @@ class _PortalsChipState extends State<PortalsChip> {
     );
 
     final status = SizedBox(
-      width: ShellTokens.portalsChipStatusSlot,
-      height: ShellTokens.portalsChipStatusSlot,
+      width: statusSlot,
+      height: statusSlot,
       child: Center(
         child: widget.hasPortal
             ? _statusDot()
@@ -204,7 +224,7 @@ class _PortalsChipState extends State<PortalsChip> {
         child: Row(
           children: [
             status,
-            const SizedBox(width: ShellTokens.portalsChipGap),
+            SizedBox(width: gap),
             Expanded(child: labelText),
             chevron,
           ],
@@ -215,12 +235,12 @@ class _PortalsChipState extends State<PortalsChip> {
         mainAxisSize: MainAxisSize.min,
         children: [
           status,
-          const SizedBox(width: ShellTokens.portalsChipGap),
+          SizedBox(width: gap),
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: labelMax),
             child: labelText,
           ),
-          const SizedBox(width: ShellTokens.portalsChipGapTight),
+          SizedBox(width: gapTight),
           chevron,
         ],
       );
@@ -253,12 +273,8 @@ class _PortalsChipState extends State<PortalsChip> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (widget.hasPortal && revealSeats) ...[
-              _seats(),
-              SizedBox(
-                width: widget.compact
-                    ? ShellTokens.portalsChipGapTight
-                    : ShellTokens.portalsChipGap,
-              ),
+              _seats(fontSize: seatsFontSize),
+              SizedBox(width: widget.compact ? gapTight : gap),
             ],
             body,
           ],
@@ -299,12 +315,18 @@ class _PortalsChipState extends State<PortalsChip> {
   }
 
   Widget _statusDot() {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final slot = ShellTokens.chromeScale(
+      ShellTokens.portalsChipStatusSlot,
+      tv: tv,
+    );
+    final dot = ShellTokens.chromeScale(ShellTokens.portalsChipDotSize, tv: tv);
     // Always spin while probing — including soft-refresh after a known
     // green/red (otherwise the pin looks frozen on hover recheck).
     if (widget.checking) {
       return SizedBox(
-        width: ShellTokens.portalsChipStatusSlot,
-        height: ShellTokens.portalsChipStatusSlot,
+        width: slot,
+        height: slot,
         child: CircularProgressIndicator(
           strokeWidth: ShellTokens.portalsChipStatusStroke,
           color: _statusColor(),
@@ -312,13 +334,13 @@ class _PortalsChipState extends State<PortalsChip> {
       );
     }
     return Container(
-      width: ShellTokens.portalsChipDotSize,
-      height: ShellTokens.portalsChipDotSize,
+      width: dot,
+      height: dot,
       decoration: BoxDecoration(color: _statusColor(), shape: BoxShape.circle),
     );
   }
 
-  Widget _seats() {
+  Widget _seats({required double fontSize}) {
     final used = (widget.seatsUsed ?? '').trim().isEmpty
         ? '0'
         : widget.seatsUsed!.trim();
@@ -335,7 +357,7 @@ class _PortalsChipState extends State<PortalsChip> {
       maxLines: 1,
       style: GoogleFonts.plusJakartaSans(
         color: color,
-        fontSize: widget.seatsFontSize,
+        fontSize: fontSize,
         fontWeight: FontWeight.w700,
         height: 1,
       ),

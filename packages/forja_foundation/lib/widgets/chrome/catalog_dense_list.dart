@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 
 /// Dense list chrome — host supplies row [itemBuilder] + optional focus wrap.
@@ -159,18 +160,28 @@ class CatalogDenseRowSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final titleF = _titleFactors[index % _titleFactors.length];
     final metaF = _metaFactors[index % _metaFactors.length];
+    final padH = ShellTokens.chromeScale(12, tv: tv);
+    final padV = ShellTokens.chromeScale(10, tv: tv);
+    final dot = ShellTokens.chromeScale(8, tv: tv);
+    final gap = ShellTokens.chromeScale(10, tv: tv);
+    final titleH = ShellTokens.chromeScale(12, tv: tv);
+    final metaH = ShellTokens.chromeScale(10, tv: tv);
+    final metaGap = ShellTokens.chromeScale(6, tv: tv);
+    final trailW = ShellTokens.chromeScale(28, tv: tv);
+    final icon = ShellTokens.chromeScale(16, tv: tv);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       child: Row(
         children: [
-          const Skeleton(
-            width: 8,
-            height: 8,
-            borderRadius: BorderRadius.all(Radius.circular(4)),
+          Skeleton(
+            width: dot,
+            height: dot,
+            borderRadius: BorderRadius.all(Radius.circular(dot / 2)),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: gap),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,24 +189,26 @@ class CatalogDenseRowSkeleton extends StatelessWidget {
                 FractionallySizedBox(
                   widthFactor: titleF,
                   alignment: Alignment.centerLeft,
-                  child: const Skeleton(height: 12),
+                  child: Skeleton(height: titleH),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: metaGap),
                 FractionallySizedBox(
                   widthFactor: metaF,
                   alignment: Alignment.centerLeft,
-                  child: const Skeleton(height: 10),
+                  child: Skeleton(height: metaH),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          const Skeleton(width: 28, height: 10),
-          const SizedBox(width: 8),
-          const Skeleton(
-            width: 16,
-            height: 16,
-            borderRadius: BorderRadius.all(Radius.circular(4)),
+          SizedBox(width: ShellTokens.chromeScale(8, tv: tv)),
+          Skeleton(width: trailW, height: metaH),
+          SizedBox(width: ShellTokens.chromeScale(8, tv: tv)),
+          Skeleton(
+            width: icon,
+            height: icon,
+            borderRadius: BorderRadius.all(
+              Radius.circular(ShellTokens.chromeScale(4, tv: tv)),
+            ),
           ),
         ],
       ),
@@ -224,7 +237,10 @@ class CatalogScheduleDenseSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const rowExtent = ShellTokens.denseListRowExtent;
+        final tv = ShellPaintScope.usesTvDensityOf(context);
+        final rowExtent = tv
+            ? ShellTokens.denseListRowExtentTv
+            : ShellTokens.denseListRowExtent;
         final avail = constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : MediaQuery.sizeOf(context).height * 0.55;
@@ -268,35 +284,46 @@ class CatalogListEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final iconSize = ShellTokens.chromeScale(40, tv: tv);
+    final titleSize = tv
+        ? ShellTokens.tvTitleFontSize
+        : 16.0;
+    final detailSize = tv
+        ? ShellTokens.tvBodyFontSize
+        : 13.0;
+    final gap = ShellTokens.chromeScale(14, tv: tv);
+    final detailGap = ShellTokens.chromeScale(6, tv: tv);
+    final padH = ShellTokens.chromeScale(32, tv: tv);
     return Padding(
       padding: EdgeInsets.only(top: topPadding),
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: EdgeInsets.symmetric(horizontal: padH),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
-                size: 40,
+                size: iconSize,
                 color: ForjaShellColors.textSecondary.withValues(alpha: 0.45),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: gap),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: titleSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: detailGap),
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
-                  fontSize: 13,
+                  fontSize: detailSize,
                 ),
               ),
             ],

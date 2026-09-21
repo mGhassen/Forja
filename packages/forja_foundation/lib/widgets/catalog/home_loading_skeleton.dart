@@ -214,22 +214,39 @@ Widget catalogMoodRowSkeleton({
             physics: const NeverScrollableScrollPhysics(),
             padding: EdgeInsets.symmetric(horizontal: hPad),
             itemCount: chipCount,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (_, _) => Column(
-              children: [
-                Skeleton(
-                  width: 72,
-                  height: 72,
-                  borderRadius: BorderRadius.circular(36),
-                ),
-                const SizedBox(height: 8),
-                homeTitleBarSkeleton(width: 56, height: 12),
-              ],
+            separatorBuilder: (_, _) => SizedBox(
+              width: catalogUsesTvDensity(context)
+                  ? ShellTokens.moodCircleGapTv
+                  : 12,
             ),
+            itemBuilder: (_, _) {
+              final tv = catalogUsesTvDensity(context);
+              final circle = tv
+                  ? ShellTokens.moodCircleSizeTv
+                  : 72.0;
+              final labelW = tv
+                  ? ShellTokens.moodCircleItemWidthTv
+                  : 56.0;
+              final labelGap = tv
+                  ? ShellTokens.moodCircleLabelGapTv
+                  : 8.0;
+              final labelH = tv ? ShellTokens.tvMetaFontSize : 12.0;
+              return Column(
+                children: [
+                  Skeleton(
+                    width: circle,
+                    height: circle,
+                    borderRadius: BorderRadius.circular(circle / 2),
+                  ),
+                  SizedBox(height: labelGap),
+                  homeTitleBarSkeleton(width: labelW, height: labelH),
+                ],
+              );
+            },
           ),
         ),
         if (resultsCardHeight != null) ...[
-          const SizedBox(height: 12),
+          SizedBox(height: ShellTokens.chromeScale(12, tv: catalogUsesTvDensity(context))),
           homeCatalogCardRowSkeleton(
             itemCount: resultCount,
             horizontalPadding: hPad,
@@ -434,27 +451,41 @@ class _HubLoadingTickerState extends State<_HubLoadingTicker> {
 
 /// Matches [BecauseSection] header: 36×50 seed poster + two title lines.
 Widget homeBecauseTitleSkeleton() {
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      Skeleton(
-        width: 36,
-        height: 50,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      const SizedBox(width: 12),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+  return Builder(
+    builder: (context) {
+      final tv = catalogUsesTvDensity(context);
+      final seedW = ShellTokens.chromeScale(36, tv: tv);
+      final seedH = ShellTokens.chromeScale(50, tv: tv);
+      final gap = ShellTokens.chromeScale(12, tv: tv);
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // "Because you watched" — 11.5 / w700
-          homeTitleBarSkeleton(width: 118, height: 12),
-          const SizedBox(height: 2),
-          // Seed title — 19 / w800
-          homeTitleBarSkeleton(width: 168, height: 19),
+          Skeleton(
+            width: seedW,
+            height: seedH,
+            borderRadius: BorderRadius.circular(
+              ShellTokens.chromeScale(6, tv: tv),
+            ),
+          ),
+          SizedBox(width: gap),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              homeTitleBarSkeleton(
+                width: ShellTokens.chromeScale(118, tv: tv),
+                height: tv ? ShellTokens.tvMetaFontSize : 12,
+              ),
+              SizedBox(height: ShellTokens.chromeScale(2, tv: tv)),
+              homeTitleBarSkeleton(
+                width: ShellTokens.chromeScale(168, tv: tv),
+                height: tv ? ShellTokens.tvTitleFontSize : 19,
+              ),
+            ],
+          ),
         ],
-      ),
-    ],
+      );
+    },
   );
 }
 

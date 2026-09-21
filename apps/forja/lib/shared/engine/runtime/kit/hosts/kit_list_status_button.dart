@@ -394,6 +394,7 @@ class KitListStatusControl extends StatefulWidget {
     this.tvTabId,
     this.tvItemIndexStart = 0,
     this.onUpEdge,
+    this.onDownEdge,
     this.onRightEdge,
     this.onMenuOpenChanged,
     this.enabled = true,
@@ -406,6 +407,7 @@ class KitListStatusControl extends StatefulWidget {
   final String? tvTabId;
   final int tvItemIndexStart;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
   final VoidCallback? onRightEdge;
   final ValueChanged<bool>? onMenuOpenChanged;
   /// Inactive hero carousel slides: visual only (no FocusNode / onTap).
@@ -585,6 +587,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
             tvRowId: tv != null ? MediaDetailsTv.heroRowId : null,
             tvItemIndexStart: widget.tvItemIndexStart,
             onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
             onRightEdge: widget.onRightEdge,
             slots: [
               HeroPillIconSlot(

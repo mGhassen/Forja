@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Dense schedule/event row paint — props only (RFC-106 Zone A).
 ///
@@ -17,10 +19,13 @@ class EventDenseTile extends StatelessWidget {
     this.focused = false,
     this.hovered = false,
     this.onTap,
-    this.fontSize = 14,
-    this.metaFontSize = 12,
-    this.pad = const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-    this.iconSize = 20,
+    this.fontSize = ShellTokens.eventDenseFontSize,
+    this.metaFontSize = ShellTokens.eventDenseMetaFontSize,
+    this.pad = const EdgeInsets.symmetric(
+      horizontal: ShellTokens.eventDensePadH,
+      vertical: ShellTokens.eventDensePadV,
+    ),
+    this.iconSize = ShellTokens.eventDenseIconSize,
   });
 
   final String title;
@@ -49,6 +54,40 @@ class EventDenseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final titleFs = tv
+        ? (fontSize == ShellTokens.eventDenseFontSize
+            ? ShellTokens.eventDenseFontSizeTv
+            : ShellTokens.tvTypeSize(fontSize))
+        : fontSize;
+    final metaFs = tv
+        ? (metaFontSize == ShellTokens.eventDenseMetaFontSize
+            ? ShellTokens.eventDenseMetaFontSizeTv
+            : ShellTokens.tvTypeSize(metaFontSize))
+        : metaFontSize;
+    final ico = tv
+        ? (iconSize == ShellTokens.eventDenseIconSize
+            ? ShellTokens.eventDenseIconSizeTv
+            : ShellTokens.chromeScale(iconSize, tv: true))
+        : iconSize;
+    final padding = tv &&
+            pad ==
+                const EdgeInsets.symmetric(
+                  horizontal: ShellTokens.eventDensePadH,
+                  vertical: ShellTokens.eventDensePadV,
+                )
+        ? const EdgeInsets.symmetric(
+            horizontal: ShellTokens.eventDensePadHTv,
+            vertical: ShellTokens.eventDensePadVTv,
+          )
+        : pad;
+    final dot = tv
+        ? ShellTokens.eventDenseLiveDotTv
+        : ShellTokens.eventDenseLiveDot;
+    final leadGap = ShellTokens.chromeScale(10, tv: tv);
+    final idleLead = ShellTokens.chromeScale(18, tv: tv);
+    final trailGap = ShellTokens.chromeScale(8, tv: tv);
+
     final titleColor = !playable
         ? Colors.white54
         : selected
@@ -65,26 +104,26 @@ class EventDenseTile extends StatelessWidget {
         border: Border(
           left: BorderSide(
             color: selected ? ForjaShellColors.brandGreen : Colors.transparent,
-            width: 3,
+            width: ShellTokens.chromeScale(3, tv: tv),
           ),
         ),
       ),
       child: Padding(
-        padding: pad,
+        padding: padding,
         child: Row(
           children: [
             if (airing)
               Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(right: 10),
+                width: dot,
+                height: dot,
+                margin: EdgeInsets.only(right: leadGap),
                 decoration: const BoxDecoration(
                   color: Color(0xFF22C55E),
                   shape: BoxShape.circle,
                 ),
               )
             else
-              const SizedBox(width: 18),
+              SizedBox(width: idleLead),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,14 +136,16 @@ class EventDenseTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: titleColor,
-                        fontSize: fontSize,
+                        fontSize: titleFs,
                         fontWeight: titleWeight,
                       ),
                     ),
                   ),
                   if (meta.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: EdgeInsets.only(
+                        top: ShellTokens.chromeScale(2, tv: tv),
+                      ),
                       child: CrossfadeSwap(
                         child: Text(
                           meta,
@@ -113,7 +154,7 @@ class EventDenseTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: ForjaShellColors.textSecondary,
-                            fontSize: metaFontSize,
+                            fontSize: metaFs,
                           ),
                         ),
                       ),
@@ -123,7 +164,7 @@ class EventDenseTile extends StatelessWidget {
             ),
             if (viewers > 0)
               Padding(
-                padding: const EdgeInsets.only(left: 8),
+                padding: EdgeInsets.only(left: trailGap),
                 child: CrossfadeSwap(
                   child: Text(
                     '$viewers',
@@ -133,18 +174,18 @@ class EventDenseTile extends StatelessWidget {
                           ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
                           : ForjaShellColors.textSecondary
                               .withValues(alpha: 0.85),
-                      fontSize: metaFontSize,
+                      fontSize: metaFs,
                     ),
                   ),
                 ),
               ),
             if (playable)
               Padding(
-                padding: const EdgeInsets.only(left: 8),
+                padding: EdgeInsets.only(left: trailGap),
                 child: Icon(
                   Icons.chevron_right_rounded,
                   color: accent,
-                  size: iconSize,
+                  size: ico,
                 ),
               ),
           ],

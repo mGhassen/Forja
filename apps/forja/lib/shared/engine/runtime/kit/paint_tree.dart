@@ -2874,16 +2874,26 @@ class _KitTopBarCatalogProgressChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxW = (MediaQuery.sizeOf(context).width * 0.42).clamp(160.0, 360.0);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final maxW = (MediaQuery.sizeOf(context).width * 0.42).clamp(
+      ShellTokens.chromeScale(160, tv: tv),
+      ShellTokens.chromeScale(360, tv: tv),
+    );
+    final padH = ShellTokens.chromeScale(12, tv: tv);
+    final padV = ShellTokens.chromeScale(7, tv: tv);
+    final radius = ShellTokens.chromeScale(20, tv: tv);
+    final spin = ShellTokens.chromeScale(12, tv: tv);
+    final gap = ShellTokens.chromeScale(8, tv: tv);
+    final fontSize = tv ? ShellTokens.tvMetaFontSize : 11.5;
     return ExcludeFocus(
       child: Tooltip(
         message: label,
         child: Container(
           constraints: BoxConstraints(maxWidth: maxW),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.45),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(radius),
             border: Border.all(
               color: ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
             ),
@@ -2891,15 +2901,15 @@ class _KitTopBarCatalogProgressChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(
-                width: 12,
-                height: 12,
+              SizedBox(
+                width: spin,
+                height: spin,
                 child: CircularProgressIndicator(
-                  strokeWidth: 1.8,
+                  strokeWidth: ShellTokens.chromeScale(1.8, tv: tv),
                   color: ForjaShellColors.sectionAccent,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: gap),
               Flexible(
                 child: CrossfadeSwap(
                   child: Text(
@@ -2908,9 +2918,9 @@ class _KitTopBarCatalogProgressChip extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: 11.5,
+                      fontSize: fontSize,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -3239,6 +3249,10 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               tvTabId: tab.isEmpty ? null : tab,
               tvRowId: 'hero-details',
               tvItemIndex: 0,
+              // Explicit edges — ForjaInteractive geometric ↓ otherwise lands on
+              // hub-hero-gallery (full-bleed overlay) after denser TV posters.
+              onUpEdge: tv ? _focusGallery : null,
+              onDownEdge: tv ? widget.focusDown : null,
               onKeyEvent: tv
                   ? (node, event) {
                       if (!shellTvIsNavigationKey(event)) {
@@ -3248,10 +3262,6 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
                         if (ShellTvFocusCoordinator.focusActiveNavTab()) {
                           return KeyEventResult.handled;
                         }
-                      }
-                      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                        _focusGallery();
-                        return KeyEventResult.handled;
                       }
                       return KeyEventResult.ignored;
                     }
@@ -3263,6 +3273,8 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               target: follow,
               tvTabId: tab.isEmpty ? null : tab,
               tvItemIndexStart: 1,
+              onUpEdge: tv ? _focusGallery : null,
+              onDownEdge: tv ? widget.focusDown : null,
               enabled: true,
             );
           } else {

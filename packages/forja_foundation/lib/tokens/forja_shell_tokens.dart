@@ -643,23 +643,50 @@ abstract final class ShellTokens {
   static const double actionChipHeight = controlHeight;
   static const double actionChipHeightTv = controlHeightTv;
   static const double actionChipRadius = 20;
+  static const double actionChipRadiusTv = actionChipRadius * tvChromeScale;
   static const double actionChipMaxWidth = 220;
   static const double actionChipPadH = 12;
   static const double actionChipPadHTv = 8;
   static const double actionChipPadV = 6;
+  static const double actionChipPadVTv = actionChipPadV * tvChromeScale;
   static const double actionChipFontSize = 11.5;
   static const double actionChipFontSizeTv = tvMetaFontSize;
   static const double actionChipGap = 6;
+  static const double actionChipGapTv = actionChipGap * tvChromeScale;
   static const double actionChipIconSize = 16;
   static const double actionChipIconSizeTv = 12;
 
   static const double shellChipRadiusPill = 20;
+  static const double shellChipRadiusPillTv = shellChipRadiusPill * tvChromeScale;
   static const double shellChipRadius = 8;
+  static const double shellChipRadiusTv = shellChipRadius * tvChromeScale;
   static const double shellChipFontSize = 12.5;
   static const double shellChipFontSizeTv = tvBodyFontSize;
   static const double shellChipIconSize = 14;
+  static const double shellChipIconSizeTv = actionChipIconSizeTv;
+  static const double shellChipPadH = 14;
+  static const double shellChipPadHTv = shellChipPadH * tvChromeScale;
+  static const double shellChipPadV = 8;
+  static const double shellChipPadVTv = shellChipPadV * tvChromeScale;
   static const double shellChipGap = 6;
+  static const double shellChipGapTv = shellChipGap * tvChromeScale;
   static const double shellChipGapTight = 4;
+  static const double shellChipGapTightTv = shellChipGapTight * tvChromeScale;
+
+  static const double denseListRowExtent = 52;
+  static const double denseListRowExtentTv = denseListRowExtent * tvChromeScale;
+  static const double eventDenseFontSize = 14;
+  static const double eventDenseFontSizeTv = tvTitleFontSize;
+  static const double eventDenseMetaFontSize = 12;
+  static const double eventDenseMetaFontSizeTv = tvBodyFontSize;
+  static const double eventDenseIconSize = 20;
+  static const double eventDenseIconSizeTv = actionChipIconSizeTv;
+  static const double eventDensePadH = 12;
+  static const double eventDensePadHTv = eventDensePadH * tvChromeScale;
+  static const double eventDensePadV = 10;
+  static const double eventDensePadVTv = eventDensePadV * tvChromeScale;
+  static const double eventDenseLiveDot = 8;
+  static const double eventDenseLiveDotTv = eventDenseLiveDot * tvChromeScale;
 
   static const double widgetShelfHeight = 36;
   static const double widgetShelfHeightTv = 28;
@@ -686,14 +713,60 @@ abstract final class ShellTokens {
   static const double moodCircleLabelGapTv = 6;
   static const double moodCircleLabelLineHeightTv = 1.15;
 
+  /// Catalog load ticker (IPTV shelf / hub list loading page).
+  static const double catalogLoadingTickerMaxWidth = 360;
+  static const double catalogLoadingTickerMaxWidthTv =
+      catalogLoadingTickerMaxWidth * tvChromeScale;
+  static const double catalogLoadingTickerPadH = 28;
+  static const double catalogLoadingTickerPadHTv =
+      catalogLoadingTickerPadH * tvChromeScale;
+  static const double catalogLoadingTickerPadV = 24;
+  static const double catalogLoadingTickerPadVTv =
+      catalogLoadingTickerPadV * tvChromeScale;
+  static const double catalogLoadingTickerGap = 20;
+  static const double catalogLoadingTickerGapTv =
+      catalogLoadingTickerGap * tvChromeScale;
+  static const double catalogLoadingTickerDetailGap = 8;
+  static const double catalogLoadingTickerDetailGapTv =
+      catalogLoadingTickerDetailGap * tvChromeScale;
+  static const double catalogLoadingTickerTitleFontSize = 18;
+  static const double catalogLoadingTickerTitleFontSizeTv = tvTitleFontSize;
+  static const double catalogLoadingTickerDetailFontSize = 13;
+  static const double catalogLoadingTickerDetailFontSizeTv = tvBodyFontSize;
+  static const double catalogLoadingTickerSpinner = 36;
+  static const double catalogLoadingTickerSpinnerTv =
+      catalogLoadingTickerSpinner * tvChromeScale;
+  static const double catalogLoadingTickerStroke = 3;
+  static const double catalogLoadingTickerStrokeTv =
+      catalogLoadingTickerStroke * tvChromeScale;
+  static const double catalogLoadingListCardWidth = 160;
+  static const double catalogLoadingListCardWidthTv =
+      catalogLoadingListCardWidth * tvChromeScale;
+  static const double catalogLoadingListCardHeight = 100;
+  static const double catalogLoadingListCardHeightTv =
+      catalogLoadingListCardHeight * tvChromeScale;
+  static const double catalogLoadingListGap = 12;
+  static const double catalogLoadingListGapTv =
+      catalogLoadingListGap * tvChromeScale;
+  static const double catalogLoadingListPadH = 16;
+  static const double catalogLoadingListPadHTv =
+      catalogLoadingListPadH * tvChromeScale;
+  static const double catalogLoadingTickerSlotHeight = 160;
+  static const double catalogLoadingTickerSlotHeightTv =
+      catalogLoadingTickerSlotHeight * tvChromeScale;
+
   static const double eventSearchCollapsed = controlHeight;
+  static const double eventSearchCollapsedTv = controlHeightTv;
   static const double eventSearchExpanded = 260;
+  static const double eventSearchExpandedTv = eventSearchExpanded * tvChromeScale;
   static const double eventSearchFontSize = 13;
+  static const double eventSearchFontSizeTv = tvBodyFontSize;
   static const double eventSearchIconSize = 20;
+  static const double eventSearchIconSizeTv = actionChipIconSizeTv;
   static const double eventSearchClearIconSize = 18;
+  static const double eventSearchClearIconSizeTv = actionChipIconSizeTv;
 
   static const double favStarIconSize = 14;
-  static const double denseListRowExtent = 52;
   static const double scrollerArrowOffset = 8;
   static const double scrollerArrowIconSize = 24;
   static const double filterSheetRadius = 12;

@@ -340,6 +340,8 @@ class EventListSearchState extends State<EventListSearch>
   }
 
   Widget _fieldChrome() {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final fieldPadV = ShellTokens.chromeScale(10, tv: tv);
     final field = widget.fieldBuilder?.call(
           context,
           controller: _ctrl,
@@ -367,9 +369,15 @@ class EventListSearchState extends State<EventListSearch>
               color: Colors.white.withValues(alpha: 0.38),
               fontSize: widget.fontSize,
             ),
-            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            contentPadding: EdgeInsets.symmetric(vertical: fieldPadV),
           ),
         );
+
+    final pad = ShellTokens.chromeScale(4, tv: tv);
+    final lead = ShellTokens.chromeScale(8, tv: tv);
+    final mid = ShellTokens.chromeScale(6, tv: tv);
+    final closePad = ShellTokens.chromeScale(6, tv: tv);
+    final closeRadius = ShellTokens.chromeScale(16, tv: tv);
 
     return Container(
       height: widget.collapsedSize,
@@ -378,21 +386,21 @@ class EventListSearchState extends State<EventListSearch>
         borderRadius: BorderRadius.circular(widget.collapsedSize / 2),
         border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
-      padding: const EdgeInsets.only(left: 4, right: 4),
+      padding: EdgeInsets.only(left: pad, right: pad),
       child: Row(
         children: [
-          const SizedBox(width: 8),
+          SizedBox(width: lead),
           Icon(
             Icons.search_rounded,
             color: Colors.white70,
             size: widget.fieldIconSize,
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: mid),
           Expanded(child: field),
           ShellPaintScope.focusableTap(
             context: context,
             onTap: () => _close(clearQuery: true),
-            borderRadius: 16,
+            borderRadius: closeRadius,
             motion: ForjaMotionPreset.fillOnly,
             suppressInkHover: true,
             showFocusFill: false,
@@ -411,7 +419,7 @@ class EventListSearchState extends State<EventListSearch>
                 );
                 final closeTv = _tv && _closeFocused;
                 return Padding(
-                  padding: const EdgeInsets.all(6),
+                  padding: EdgeInsets.all(closePad),
                   child: Icon(
                     Icons.close_rounded,
                     size: widget.fieldIconSize,

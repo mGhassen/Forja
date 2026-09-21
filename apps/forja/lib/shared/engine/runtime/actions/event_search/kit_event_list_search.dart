@@ -9,6 +9,7 @@ import 'package:forja/shared/engine/runtime/shell/shell_bus.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/event_list_search.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -129,6 +130,27 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
     final compact = !widget.alwaysOpen &&
         MediaQuery.sizeOf(context).width < 760;
     final useTv = shellTvBrowseSearch(context);
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final collapsed = widget.collapsedSize ??
+        (tvDensity
+            ? ShellTokens.eventSearchCollapsedTv
+            : ShellTokens.eventSearchCollapsed);
+    final expanded = widget.expandedWidth ??
+        (tvDensity
+            ? ShellTokens.eventSearchExpandedTv
+            : ShellTokens.eventSearchExpanded);
+    final fontSize = widget.fontSize ??
+        (tvDensity
+            ? ShellTokens.eventSearchFontSizeTv
+            : ShellTokens.eventSearchFontSize);
+    final iconSize = widget.iconSize ??
+        (tvDensity
+            ? ShellTokens.eventSearchIconSizeTv
+            : ShellTokens.eventSearchIconSize);
+    final fieldIconSize = widget.fieldIconSize ??
+        (tvDensity
+            ? ShellTokens.eventSearchClearIconSizeTv
+            : ShellTokens.eventSearchClearIconSize);
 
     return EventListSearch(
       key: _searchKey,
@@ -146,11 +168,11 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
       onDownEdge: widget.onDownEdge,
-      collapsedSize: widget.collapsedSize ?? kEventListSearchCollapsed,
-      expandedWidth: widget.expandedWidth ?? kEventListSearchExpanded,
-      fontSize: widget.fontSize ?? 13,
-      iconSize: widget.iconSize ?? 20,
-      fieldIconSize: widget.fieldIconSize ?? 18,
+      collapsedSize: collapsed,
+      expandedWidth: expanded,
+      fontSize: fontSize,
+      iconSize: iconSize,
+      fieldIconSize: fieldIconSize,
       fieldBuilder: !useTv
           ? null
           : (ctx, {
@@ -169,17 +191,19 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
                 browsePlaceholder: widget.placeholder,
                 browseHintStyle: GoogleFonts.plusJakartaSans(
                   color: Colors.white38,
-                  fontSize: widget.fontSize ?? 13,
+                  fontSize: fontSize,
                 ),
-                caretHeight: 16,
+                caretHeight: ShellTokens.chromeScale(16, tv: tvDensity),
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontSize: widget.fontSize ?? 13,
+                  fontSize: fontSize,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: ShellTokens.chromeScale(10, tv: tvDensity),
+                  ),
                 ),
               );
             },

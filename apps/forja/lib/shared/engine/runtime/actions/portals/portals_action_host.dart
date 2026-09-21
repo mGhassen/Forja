@@ -10,6 +10,7 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portals_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 
 export 'package:forja/shared/engine/portals/portals_host.dart'
@@ -41,7 +42,11 @@ abstract final class PortalsActionHost {
   }) {
     double? d(String key) {
       final raw = action?[key];
-      return raw is num ? raw.toDouble() : null;
+      if (raw is! num) return null;
+      return ShellTokens.chromeScale(
+        raw.toDouble(),
+        tv: ShellPaintScope.usesTvDensityOf(context),
+      );
     }
 
     final width = d('width');

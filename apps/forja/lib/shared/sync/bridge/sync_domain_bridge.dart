@@ -351,6 +351,14 @@ class SyncDomainBridge {
     // Otherwise keep the boundary wipe (already empty when resetLocalFirst).
     final nav = await _settings.getNavbarConfig();
     if (nav.contains('iptv')) {
+      // Issue 308: pack Add writes vault only — heal into PortalStore before
+      // soft-pull so empty cloud cannot leave web at 0 while the app shows rows.
+      if (!resetLocalFirst) {
+        await PortalVaultInventory.mirrorVaultToStoreAndScheduleSync(
+          onlyIfStoreEmpty: true,
+        );
+        await flushIptvPushIfDirty();
+      }
       if (_iptvLocalGen != _iptvSyncedGen) {
         debugPrint(
           '[Sync] skip IPTV soft-pull apply — local inventory still dirty',

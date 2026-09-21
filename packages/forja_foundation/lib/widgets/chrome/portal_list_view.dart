@@ -521,19 +521,20 @@ class _PortalListViewState extends State<PortalListView> {
         tv ? ShellTokens.tvTitleFontSize : 16.0;
     final bodyFontSize =
         tv ? ShellTokens.tvBodyFontSize : 12.0;
+    final pad = PortalListTokens.panelPadOf(tv) * 2;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(pad),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.inbox_outlined,
-              size: PortalListTokens.emptyIconSize,
+              size: PortalListTokens.emptyIconSizeOf(tv),
               color: Colors.white38,
             ),
             if (widget.emptyTitle.trim().isNotEmpty) ...[
-              const SizedBox(height: PortalListTokens.itemSpacing),
+              SizedBox(height: PortalListTokens.itemSpacingOf(tv)),
               Text(
                 widget.emptyTitle,
                 style: GoogleFonts.plusJakartaSans(
@@ -544,7 +545,7 @@ class _PortalListViewState extends State<PortalListView> {
               ),
             ],
             if (widget.emptyDescription.trim().isNotEmpty) ...[
-              const SizedBox(height: PortalListTokens.sectionGap),
+              SizedBox(height: PortalListTokens.sectionGapOf(tv)),
               Text(
                 widget.emptyDescription,
                 textAlign: TextAlign.center,

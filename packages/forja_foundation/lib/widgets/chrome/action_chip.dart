@@ -91,9 +91,12 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
     final padding = tvDensity
         ? EdgeInsets.symmetric(
             horizontal: ShellTokens.actionChipPadHTv,
-            vertical: ShellTokens.actionChipPadV,
+            vertical: ShellTokens.actionChipPadVTv,
           )
         : widget.padding;
+    final radius =
+        tvDensity ? ShellTokens.actionChipRadiusTv : widget.radius;
+    final gap = tvDensity ? ShellTokens.actionChipGapTv : widget.gap;
     final tvFocused = ShellPaintScope.focusStyledOf(context, focused: _focused);
 
     if (widget.iconOnly) {
@@ -174,7 +177,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         constraints: BoxConstraints(maxWidth: widget.maxWidth),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(widget.radius),
+          borderRadius: BorderRadius.circular(radius),
           border: Border.all(color: border, width: tvFocused ? 1.5 : 1),
         ),
         padding: padding,
@@ -183,7 +186,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
           children: [
             if (widget.icon != null) ...[
               Icon(widget.icon, size: iconSize, color: fg),
-              if (widget.label.isNotEmpty) SizedBox(width: widget.gap),
+              if (widget.label.isNotEmpty) SizedBox(width: gap),
             ],
             if (widget.label.isNotEmpty)
               Flexible(
@@ -208,7 +211,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         onEnter: (_) => _setHovered(true),
         onExit: (_) => _setHovered(false),
         child: shellRoundedInkHost(
-          radius: widget.radius,
+          radius: radius,
           onTap: widget.onTap,
           child: ListenableBuilder(
             listenable: _hoveredN,
@@ -221,7 +224,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: widget.radius,
+      borderRadius: radius,
       motion: ForjaMotionPreset.fillOnly,
       suppressInkHover: true,
       showFocusFill: false,

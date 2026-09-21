@@ -25,6 +25,7 @@ class HeroPillPlayButton extends StatelessWidget {
     this.onKeyEvent,
     this.tvTabId,
     this.onUpEdge,
+    this.onDownEdge,
     this.onRightEdge,
     this.tvRowId,
     this.tvItemIndex,
@@ -42,6 +43,7 @@ class HeroPillPlayButton extends StatelessWidget {
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
   final String? tvTabId;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
   final VoidCallback? onRightEdge;
   final String? tvRowId;
   final int? tvItemIndex;
@@ -69,6 +71,7 @@ class HeroPillPlayButton extends StatelessWidget {
           )
         : null;
     final effectiveOnKey = onUpEdge != null ||
+            onDownEdge != null ||
             onRightEdge != null ||
             onKeyEvent != null
         ? (FocusNode node, KeyEvent event) {
@@ -78,6 +81,12 @@ class HeroPillPlayButton extends StatelessWidget {
                 return true;
               });
               if (up == KeyEventResult.handled) return up;
+            }
+            if (onDownEdge != null &&
+                shellTvIsNavigationKey(event) &&
+                event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              onDownEdge!();
+              return KeyEventResult.handled;
             }
             if (onRightEdge != null &&
                 shellTvIsNavigationKey(event) &&
@@ -167,6 +176,7 @@ class HeroPillIconGroup extends StatelessWidget {
     this.tvFocusOrderStart,
     this.tvTabId,
     this.onUpEdge,
+    this.onDownEdge,
     this.onRightEdge,
     this.tvRowId,
     this.tvItemIndexStart,
@@ -176,6 +186,7 @@ class HeroPillIconGroup extends StatelessWidget {
   final int? tvFocusOrderStart;
   final String? tvTabId;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
   final VoidCallback? onRightEdge;
   final String? tvRowId;
   final int? tvItemIndexStart;
@@ -201,6 +212,7 @@ class HeroPillIconGroup extends StatelessWidget {
             useTvCompact: useTvCompact,
             tvTabId: tvTabId,
             onUpEdge: onUpEdge,
+            onDownEdge: onDownEdge,
             onRightEdge: i == slots.length - 1 ? onRightEdge : null,
             tvRowId: tvRowId,
             tvItemIndex: tvItemIndexStart != null
@@ -385,6 +397,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
     this.focusOrder,
     this.tvTabId,
     this.onUpEdge,
+    this.onDownEdge,
     this.onRightEdge,
     this.tvRowId,
     this.tvItemIndex,
@@ -401,6 +414,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
   final FocusOrder? focusOrder;
   final String? tvTabId;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
   final VoidCallback? onRightEdge;
   final String? tvRowId;
   final int? tvItemIndex;
@@ -423,7 +437,9 @@ class _HeroPillGroupedSlot extends StatelessWidget {
             itemIndex: tvItemIndex,
           )
         : null;
-    final effectiveOnKey = onUpEdge != null || onRightEdge != null
+    final effectiveOnKey = onUpEdge != null ||
+            onDownEdge != null ||
+            onRightEdge != null
         ? (FocusNode node, KeyEvent event) {
             if (onUpEdge != null) {
               final up = ShellTvFocus.onArrowUp(event, () {
@@ -431,6 +447,12 @@ class _HeroPillGroupedSlot extends StatelessWidget {
                 return true;
               });
               if (up == KeyEventResult.handled) return up;
+            }
+            if (onDownEdge != null &&
+                shellTvIsNavigationKey(event) &&
+                event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              onDownEdge!();
+              return KeyEventResult.handled;
             }
             if (onRightEdge != null &&
                 shellTvIsNavigationKey(event) &&

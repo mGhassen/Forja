@@ -68,19 +68,26 @@ class _ShellErrorRetryPanelState extends State<ShellErrorRetryPanel> {
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
     final messageFontSize =
         tvDensity ? ShellTokens.tvBodyFontSize : 14.0;
+    final pad = ShellTokens.chromeScale(32, tv: tvDensity);
+    final gap = ShellTokens.chromeScale(16, tv: tvDensity);
+    final iconSize = ShellTokens.chromeScale(
+      widget.statusIconSize,
+      tv: tvDensity,
+    );
+    final radius = ShellTokens.chromeScale(24, tv: tvDensity);
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(pad),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               widget.statusIcon,
               color: ForjaShellColors.sectionAccent,
-              size: widget.statusIconSize,
+              size: iconSize,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: gap),
             Text(
               widget.message,
               textAlign: TextAlign.center,
@@ -89,13 +96,13 @@ class _ShellErrorRetryPanelState extends State<ShellErrorRetryPanel> {
                 fontSize: messageFontSize,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: gap),
             if (tvFocus)
               ShellPaintScope.focusableTap(
                 context: context,
                 onTap: widget.onRetry,
                 focusNode: _retryFocus,
-                borderRadius: 24,
+                borderRadius: radius,
                 motion: ForjaMotionPreset.chipLift,
                 ensureVisibleMode: ShellPaintEnsureVisible.item,
                 child: _RetryButtonFace(
@@ -103,6 +110,7 @@ class _ShellErrorRetryPanelState extends State<ShellErrorRetryPanel> {
                   icon: widget.buttonIcon,
                   enabled: widget.onRetry != null,
                   fontSize: messageFontSize,
+                  tv: tvDensity,
                 ),
               )
             else
@@ -128,28 +136,35 @@ class _RetryButtonFace extends StatelessWidget {
     required this.icon,
     required this.enabled,
     required this.fontSize,
+    this.tv = false,
   });
 
   final String label;
   final IconData icon;
   final bool enabled;
   final double fontSize;
+  final bool tv;
 
   @override
   Widget build(BuildContext context) {
     final fg = enabled ? Colors.black : Colors.black38;
     final bg = enabled ? Colors.white : Colors.white.withValues(alpha: 0.45);
+    final radius = ShellTokens.chromeScale(24, tv: tv);
+    final padH = ShellTokens.chromeScale(18, tv: tv);
+    final padV = ShellTokens.chromeScale(10, tv: tv);
+    final iconSize = ShellTokens.chromeScale(18, tv: tv);
+    final gap = ShellTokens.chromeScale(8, tv: tv);
 
     return Material(
       color: bg,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(radius),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: fg, size: 18),
-            const SizedBox(width: 8),
+            Icon(icon, color: fg, size: iconSize),
+            SizedBox(width: gap),
             Text(
               label,
               style: TextStyle(

@@ -56,18 +56,41 @@ abstract final class PortalsHost {
   }
 
   /// Opaque pack action (`listPortals`, `selectPortal`, `addPortal`, …).
+  ///
+  /// After inventory mutations (add/edit/import), mirror vault → [PortalStore]
+  /// and schedule cloud sync so web Profile → IPTV sees the same portals
+  /// (issue 308 — pack writes vault only).
   static Future<MetaEnvelope> run({
     required String pluginId,
     required String action,
     Map<String, dynamic> params = const {},
-  }) {
-    return MetaRuntime.instance.run(
+  }) async {
+    final env = await MetaRuntime.instance.run(
       pluginId: pluginId,
       action: action,
       params: params,
       forceRefresh: true,
     );
+    if (env.ok && _actionMutatesPortalInventory(action)) {
+      await mirrorVaultToStoreAndScheduleSync();
+    }
+    return env;
   }
+
+  static bool _actionMutatesPortalInventory(String action) {
+    final a = action.trim().toLowerCase();
+    return a == 'addportal' ||
+        a == 'editportal' ||
+        a == 'importportal';
+  }
+
+  /// Vault → [PortalStore] → [scheduleIptvSyncPush] (issue 308).
+  static Future<void> mirrorVaultToStoreAndScheduleSync({
+    bool onlyIfStoreEmpty = false,
+  }) =>
+      PortalVaultInventory.mirrorVaultToStoreAndScheduleSync(
+        onlyIfStoreEmpty: onlyIfStoreEmpty,
+      );
 
   /// Top-bar chip label from vault only — never runs pack `listPortals`.
   ///
@@ -237,6 +260,9 @@ abstract final class PortalsHost {
   ///
   /// Matches legacy `IptvController.preparePortalPanel`: throttle cloud pull,
   /// mirror store → vault, never wipe Live/Movies catalog.
+  ///
+  /// Issue 308: pack Add writes vault only — mirror vault → store + schedule
+  /// push **before** pull so empty cloud cannot win over unsynced inventory.
   static Future<void> preparePortalPanel() async {
     final inflight = _portalPanelPrepareInflight;
     if (inflight != null) return inflight;
@@ -249,6 +275,8 @@ abstract final class PortalsHost {
     () async {
       try {
         if (SyncService.instance.isSignedIn) {
+          // Heal vault-only portals into PortalStore before pull/flush.
+          await mirrorVaultToStoreAndScheduleSync(onlyIfStoreEmpty: true);
           final now = DateTime.now();
           final recent = _lastPortalPanelPullAt != null &&
               now.difference(_lastPortalPanelPullAt!) <
@@ -594,10 +622,12 @@ abstract final class PortalsHost {
     if (favs.contains(portalKey)) {
       favs.remove(portalKey);
       await saveFavoriteKeys(favs);
+      unawaited(mirrorVaultToStoreAndScheduleSync());
       return false;
     }
     favs.add(portalKey);
     await saveFavoriteKeys(favs);
+    unawaited(mirrorVaultToStoreAndScheduleSync());
     return true;
   }
 

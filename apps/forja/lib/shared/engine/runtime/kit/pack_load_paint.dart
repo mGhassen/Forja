@@ -13,10 +13,12 @@ import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 
 /// Reserved loading slot for one pack layout node (structure-stable).
@@ -50,23 +52,37 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
   if (type == LayoutTypes.list) {
     final ticker = kitListLoadingTickerCopy(context, spec);
     if (ticker != null) {
+      final tv = ShellPaintScope.usesTvDensityOf(context);
       return (
         placeholder: CatalogLoadingTicker(title: ticker.$1, detail: ticker.$2),
-        height: 160,
+        height: tv
+            ? ShellTokens.catalogLoadingTickerSlotHeightTv
+            : ShellTokens.catalogLoadingTickerSlotHeight,
       );
     }
-    const cardW = 160.0;
-    const cardH = 100.0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final cardW = tv
+        ? ShellTokens.catalogLoadingListCardWidthTv
+        : ShellTokens.catalogLoadingListCardWidth;
+    final cardH = tv
+        ? ShellTokens.catalogLoadingListCardHeightTv
+        : ShellTokens.catalogLoadingListCardHeight;
+    final gap = tv
+        ? ShellTokens.catalogLoadingListGapTv
+        : ShellTokens.catalogLoadingListGap;
+    final padH = tv
+        ? ShellTokens.catalogLoadingListPadHTv
+        : ShellTokens.catalogLoadingListPadH;
     final grid = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: EdgeInsets.fromLTRB(padH, 8, padH, 24),
       child: Column(
         children: [
           for (var r = 0; r < 3; r++) ...[
-            if (r > 0) const SizedBox(height: 12),
+            if (r > 0) SizedBox(height: gap),
             Row(
               children: [
                 for (var c = 0; c < 4; c++) ...[
-                  if (c > 0) const SizedBox(width: 12),
+                  if (c > 0) SizedBox(width: gap),
                   homeCardSkeleton(width: cardW, height: cardH),
                 ],
               ],
@@ -77,7 +93,7 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
     );
     return (
       placeholder: shimmer ? homeLoadingShimmer(grid) : grid,
-      height: 8 + 3 * cardH + 2 * 12 + 24,
+      height: 8 + 3 * cardH + 2 * gap + 24,
     );
   }
 
@@ -117,7 +133,10 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
   }
 
   if (type == LayoutTypes.mood) {
-    final chipH = MoodCircleLayout.desktop.rowHeight;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final chipH = tv
+        ? MoodCircleLayout.tvScrollable.rowHeight
+        : MoodCircleLayout.desktop.rowHeight;
     return (
       placeholder: catalogMoodRowSkeleton(
         context: context,

@@ -7,6 +7,8 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Exact pre-wipe IPTV Sort popup — Categories + Channels sections.
 class IptvLiveSortMenu extends StatefulWidget {
@@ -54,9 +56,12 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final pad = ShellTokens.chromeScale(10, tv: tv);
+    final bottom = ShellTokens.chromeScale(12, tv: tv);
     return PlayerPopupListFocusScope(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+        padding: EdgeInsets.fromLTRB(pad, pad, pad, bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -73,7 +78,9 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
                 },
               ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: EdgeInsets.symmetric(
+                vertical: ShellTokens.chromeScale(8, tv: tv),
+              ),
               child: Divider(height: 1, color: PlayerPopupTokens.border),
             ),
             _sectionLabel('Channels'),
@@ -94,13 +101,20 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
   }
 
   Widget _sectionLabel(String text) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final pad = ShellTokens.chromeScale(6, tv: tv);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+      padding: EdgeInsets.fromLTRB(
+        pad,
+        pad,
+        pad,
+        ShellTokens.chromeScale(4, tv: tv),
+      ),
       child: Text(
         text,
         style: GoogleFonts.plusJakartaSans(
           color: PlayerPopupTokens.muted,
-          fontSize: 11,
+          fontSize: tv ? ShellTokens.tvMetaFontSize : 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.4,
         ),
@@ -156,6 +170,11 @@ class _IptvSortRowState extends State<_IptvSortRow> {
     final bg = widget.selected || highlight
         ? PlayerPopupTokens.accentFill
         : Colors.transparent;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final pad = ShellTokens.chromeScale(10, tv: tv);
+    final iconSize = ShellTokens.chromeScale(18, tv: tv);
+    final gap = ShellTokens.chromeScale(10, tv: tv);
+    final fontSize = tv ? ShellTokens.tvBodyFontSize : 13.0;
 
     return Material(
       color: bg,
@@ -168,23 +187,23 @@ class _IptvSortRowState extends State<_IptvSortRow> {
         hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: pad, vertical: pad),
           child: Row(
             children: [
               Icon(
                 widget.icon,
-                size: 18,
+                size: iconSize,
                 color: widget.selected || highlight
                     ? PlayerPopupTokens.accent
                     : Colors.white.withValues(alpha: 0.75),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: gap),
               Expanded(
                 child: Text(
                   widget.label,
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: fontSize,
                     fontWeight: widget.selected || highlight
                         ? FontWeight.w700
                         : FontWeight.w500,
@@ -194,7 +213,7 @@ class _IptvSortRowState extends State<_IptvSortRow> {
               if (widget.selected)
                 Icon(
                   Icons.check_rounded,
-                  size: 18,
+                  size: iconSize,
                   color: PlayerPopupTokens.accent,
                 ),
             ],

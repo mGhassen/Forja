@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/sources/sources_types.dart';
 
 /// Empty key = **All** (every matched channel).
 const kSourcesCategoryAll = '';
 
-const kSourcesSearchCollapsed = 40.0;
-const kSourcesSearchExpanded = 260.0;
+const kSourcesSearchCollapsed = ShellTokens.eventSearchCollapsed;
+const kSourcesSearchExpanded = ShellTokens.eventSearchExpanded;
 
 String sourcesCategoryKey(SourcesRow row) {
   final cat = (row.subtitle ?? '').trim();
@@ -218,16 +220,31 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
   @override
   Widget build(BuildContext context) {
     final tvFocus = widget.useTvBrowse;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final collapsed = tv
+        ? ShellTokens.eventSearchCollapsedTv
+        : ShellTokens.eventSearchCollapsed;
+    final expanded = tv
+        ? ShellTokens.eventSearchExpandedTv
+        : ShellTokens.eventSearchExpanded;
+    final iconSize = tv
+        ? ShellTokens.eventSearchIconSizeTv
+        : ShellTokens.eventSearchIconSize;
+    final fieldIconSize = tv
+        ? ShellTokens.eventSearchClearIconSizeTv
+        : ShellTokens.eventSearchClearIconSize;
+    final fontSize = tv
+        ? ShellTokens.eventSearchFontSizeTv
+        : ShellTokens.eventSearchFontSize;
     return AnimatedBuilder(
       animation: _expand,
       builder: (context, _) {
         final t = _expand.value;
-        final width = kSourcesSearchCollapsed +
-            (kSourcesSearchExpanded - kSourcesSearchCollapsed) * t;
+        final width = collapsed + (expanded - collapsed) * t;
         // Fixed size — no Align (Align expands in Row and gets clipped/scaled).
         return SizedBox(
           width: width,
-          height: kSourcesSearchCollapsed,
+          height: collapsed,
           child: ClipRect(
             clipBehavior: t > 0.01 ? Clip.hardEdge : Clip.none,
             child: Stack(
@@ -239,11 +256,17 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
                   child: IgnorePointer(
                     ignoring: t < 0.55,
                     child: OverflowBox(
-                      maxWidth: kSourcesSearchExpanded,
+                      maxWidth: expanded,
                       alignment: Alignment.centerLeft,
                       child: SizedBox(
-                        width: kSourcesSearchExpanded,
-                        child: _field(context, tvFocus: tvFocus),
+                        width: expanded,
+                        child: _field(
+                          context,
+                          tvFocus: tvFocus,
+                          collapsed: collapsed,
+                          fontSize: fontSize,
+                          fieldIconSize: fieldIconSize,
+                        ),
                       ),
                     ),
                   ),
@@ -253,7 +276,11 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
                     opacity: (1.0 - t * 1.4).clamp(0.0, 1.0),
                     child: IgnorePointer(
                       ignoring: t > 0.2,
-                      child: _icon(context),
+                      child: _icon(
+                        context,
+                        collapsed: collapsed,
+                        iconSize: iconSize,
+                      ),
                     ),
                   ),
               ],
@@ -264,7 +291,11 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
     );
   }
 
-  Widget _icon(BuildContext context) {
+  Widget _icon(
+    BuildContext context, {
+    required double collapsed,
+    required double iconSize,
+  }) {
     // No scale — hover/focus paint fill only (matches hero pill chrome).
     return Tooltip(
       message: 'Search channels',
@@ -274,8 +305,8 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
           onTap: _openSearch,
           customBorder: const CircleBorder(),
           child: Ink(
-            width: kSourcesSearchCollapsed,
-            height: kSourcesSearchCollapsed,
+            width: collapsed,
+            height: collapsed,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
               shape: BoxShape.circle,
@@ -283,10 +314,10 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
                 color: Colors.white.withValues(alpha: 0.18),
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.search_rounded,
               color: Colors.white70,
-              size: 20,
+              size: iconSize,
             ),
           ),
         ),
@@ -294,7 +325,14 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
     );
   }
 
-  Widget _field(BuildContext context, {required bool tvFocus}) {
+  Widget _field(
+    BuildContext context, {
+    required bool tvFocus,
+    required double collapsed,
+    required double fontSize,
+    required double fieldIconSize,
+  }) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final field = widget.fieldBuilder?.call(
           context,
           controller: _ctrl,
@@ -307,7 +345,7 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
           focusNode: _focus,
           onChanged: _onChanged,
           onSubmitted: (_) => _focus.unfocus(),
-          style: const TextStyle(color: Colors.white, fontSize: 13),
+          style: TextStyle(color: Colors.white, fontSize: fontSize),
           cursorColor: ForjaShellColors.sectionAccent,
           decoration: InputDecoration(
             isDense: true,
@@ -315,31 +353,42 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
             hintText: 'Search channels…',
             hintStyle: TextStyle(
               color: Colors.white.withValues(alpha: 0.38),
-              fontSize: 13,
+              fontSize: fontSize,
             ),
-            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            contentPadding: EdgeInsets.symmetric(
+              vertical: ShellTokens.chromeScale(10, tv: tv),
+            ),
           ),
         );
     return Container(
-      height: kSourcesSearchCollapsed,
+      height: collapsed,
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(kSourcesSearchCollapsed / 2),
+        borderRadius: BorderRadius.circular(collapsed / 2),
         border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
-      padding: const EdgeInsets.only(left: 4, right: 4),
+      padding: EdgeInsets.only(
+        left: ShellTokens.chromeScale(4, tv: tv),
+        right: ShellTokens.chromeScale(4, tv: tv),
+      ),
       child: Row(
         children: [
-          const SizedBox(width: 8),
-          const Icon(Icons.search_rounded, color: Colors.white70, size: 18),
-          const SizedBox(width: 6),
+          SizedBox(width: ShellTokens.chromeScale(8, tv: tv)),
+          Icon(Icons.search_rounded, color: Colors.white70, size: fieldIconSize),
+          SizedBox(width: ShellTokens.chromeScale(6, tv: tv)),
           Expanded(child: field),
           InkWell(
             onTap: () => _close(clearQuery: true),
-            borderRadius: BorderRadius.circular(16),
-            child: const Padding(
-              padding: EdgeInsets.all(6),
-              child: Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+            borderRadius: BorderRadius.circular(
+              ShellTokens.chromeScale(16, tv: tv),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(ShellTokens.chromeScale(6, tv: tv)),
+              child: Icon(
+                Icons.close_rounded,
+                color: Colors.white70,
+                size: fieldIconSize,
+              ),
             ),
           ),
         ],
@@ -388,16 +437,23 @@ class _SourcesCategoryRailRowState extends State<SourcesCategoryRailRow> {
   Widget _tile(bool hovered) {
     final selected = widget.selected;
     final lit = selected || _focused || hovered;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final padH = ShellTokens.chromeScale(10, tv: tv);
+    final padV = ShellTokens.chromeScale(9, tv: tv);
+    final radius = ShellTokens.chromeScale(8, tv: tv);
+    final labelFs = tv ? ShellTokens.tvBodyFontSize : 12.0;
+    final countFs = tv ? ShellTokens.tvMetaFontSize : 11.0;
+    final gap = ShellTokens.chromeScale(6, tv: tv);
     return AnimatedContainer(
       duration: ForjaMotionTheme.of(context).fillOnly.duration,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(
         color: selected
             ? ForjaShellColors.sectionAccent.withValues(alpha: 0.18)
             : lit
                 ? ForjaShellColors.surfaceElevated
                 : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: selected
               ? ForjaShellColors.sectionAccent.withValues(alpha: 0.55)
@@ -417,17 +473,17 @@ class _SourcesCategoryRailRowState extends State<SourcesCategoryRailRow> {
                 color: selected
                     ? ForjaShellColors.cinematic.textPrimary
                     : ForjaShellColors.cinematic.textSecondary,
-                fontSize: 12,
+                fontSize: labelFs,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: gap),
           Text(
             '${widget.count}',
             style: TextStyle(
               color: ForjaShellColors.cinematic.textSecondary,
-              fontSize: 11,
+              fontSize: countFs,
               fontWeight: FontWeight.w500,
             ),
           ),

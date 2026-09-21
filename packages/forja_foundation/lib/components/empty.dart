@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Size scale for [Empty].
 enum EmptySize {
@@ -28,17 +30,20 @@ class Empty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
-    final dims = _dims(size);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final dims = _dims(size, tv: tv);
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(theme.spaceLg),
+        padding: EdgeInsets.all(
+          ShellTokens.chromeScale(theme.spaceLg, tv: tv),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
               Icon(icon, size: dims.iconSize, color: theme.textSecondary),
-              SizedBox(height: theme.spaceMd),
+              SizedBox(height: ShellTokens.chromeScale(theme.spaceMd, tv: tv)),
             ],
             if (title != null)
               Text(
@@ -51,7 +56,7 @@ class Empty extends StatelessWidget {
                 ),
               ),
             if (description != null) ...[
-              SizedBox(height: theme.spaceSm),
+              SizedBox(height: ShellTokens.chromeScale(theme.spaceSm, tv: tv)),
               Text(
                 description!,
                 textAlign: TextAlign.center,
@@ -63,7 +68,7 @@ class Empty extends StatelessWidget {
               ),
             ],
             if (action != null) ...[
-              SizedBox(height: theme.spaceMd),
+              SizedBox(height: ShellTokens.chromeScale(theme.spaceMd, tv: tv)),
               action!,
             ],
           ],
@@ -72,23 +77,31 @@ class Empty extends StatelessWidget {
     );
   }
 
-  static _EmptyDims _dims(EmptySize size) => switch (size) {
-        EmptySize.sm => const _EmptyDims(
-            iconSize: 28,
-            titleSize: 14,
-            bodySize: 12,
-          ),
-        EmptySize.md => const _EmptyDims(
-            iconSize: 40,
-            titleSize: 16,
-            bodySize: 13,
-          ),
-        EmptySize.lg => const _EmptyDims(
-            iconSize: 56,
-            titleSize: 20,
-            bodySize: 14,
-          ),
-      };
+  static _EmptyDims _dims(EmptySize size, {required bool tv}) {
+    final base = switch (size) {
+      EmptySize.sm => const _EmptyDims(
+          iconSize: 28,
+          titleSize: 14,
+          bodySize: 12,
+        ),
+      EmptySize.md => const _EmptyDims(
+          iconSize: 40,
+          titleSize: 16,
+          bodySize: 13,
+        ),
+      EmptySize.lg => const _EmptyDims(
+          iconSize: 56,
+          titleSize: 20,
+          bodySize: 14,
+        ),
+    };
+    if (!tv) return base;
+    return _EmptyDims(
+      iconSize: ShellTokens.chromeScale(base.iconSize, tv: true),
+      titleSize: ShellTokens.tvTypeSize(base.titleSize),
+      bodySize: ShellTokens.tvTypeSize(base.bodySize),
+    );
+  }
 }
 
 class _EmptyDims {

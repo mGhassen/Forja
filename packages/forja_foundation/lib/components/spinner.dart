@@ -15,20 +15,25 @@ class Spinner extends StatelessWidget {
     this.size = SpinnerSize.md,
     this.color,
     this.strokeWidth,
+    this.dimension,
   });
 
   final SpinnerSize size;
   final Color? color;
   final double? strokeWidth;
 
+  /// When set, overrides [size] pixel dimensions (TV chrome scale).
+  final double? dimension;
+
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
-    final dim = switch (size) {
-      SpinnerSize.sm => 16.0,
-      SpinnerSize.md => 24.0,
-      SpinnerSize.lg => 36.0,
-    };
+    final dim = dimension ??
+        switch (size) {
+          SpinnerSize.sm => 16.0,
+          SpinnerSize.md => 24.0,
+          SpinnerSize.lg => 36.0,
+        };
     final stroke = strokeWidth ??
         switch (size) {
           SpinnerSize.sm => 2.0,

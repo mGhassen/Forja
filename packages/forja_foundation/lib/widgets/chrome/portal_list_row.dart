@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_probe_detail_card.dart';
@@ -116,6 +117,21 @@ class _PortalListRowState extends State<PortalListRow> {
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
     return tvDensity ? PortalListTokens.metaFontSizeTv : widget.metaFontSize;
   }
+
+  bool get _tvDensity => ShellPaintScope.usesTvDensityOf(context);
+
+  double get _rowHeight =>
+      _tvDensity && widget.height == PortalListTokens.rowHeight
+          ? PortalListTokens.rowHeightTv
+          : widget.height;
+
+  double get _actionWidth =>
+      _tvDensity && widget.actionWidth == PortalListTokens.actionWidth
+          ? PortalListTokens.actionWidthTv
+          : widget.actionWidth;
+
+  double get _rowPadH => PortalListTokens.rowPadHOf(_tvDensity);
+  double get _rowIconSize => PortalListTokens.rowIconSizeOf(_tvDensity);
 
   bool get _actionChromeFocused =>
       _favoriteFocus.hasFocus ||
@@ -476,7 +492,7 @@ class _PortalListRowState extends State<PortalListRow> {
     final railAnim = widget.leanback
         ? Duration.zero
         : ForjaMotionTheme.of(context).cardLift.duration;
-    final cardHeight = widget.height - 4;
+    final cardHeight = _rowHeight - 4;
 
     Widget tile = ExcludeFocus(
       excluding: deleting,
@@ -488,7 +504,7 @@ class _PortalListRowState extends State<PortalListRow> {
             fit: StackFit.passthrough,
             children: [
               SizedBox(
-                height: widget.height,
+                height: _rowHeight,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: DecoratedBox(
@@ -510,17 +526,17 @@ class _PortalListRowState extends State<PortalListRow> {
                         AnimatedContainer(
                           duration: railAnim,
                           curve: Curves.easeOutCubic,
-                          width: reveal ? widget.actionWidth : 0,
+                          width: reveal ? _actionWidth : 0,
                           height: cardHeight,
                           child: !reveal
                               ? const SizedBox.shrink()
                               : ClipRect(
                                   child: OverflowBox(
-                                    minWidth: widget.actionWidth,
-                                    maxWidth: widget.actionWidth,
+                                    minWidth: _actionWidth,
+                                    maxWidth: _actionWidth,
                                     alignment: Alignment.centerRight,
                                     child: SizedBox(
-                                      width: widget.actionWidth,
+                                      width: _actionWidth,
                                       height: cardHeight,
                                       child: _tvActionRailScope(
                                         _buildActionRail(),
@@ -599,11 +615,11 @@ class _PortalListRowState extends State<PortalListRow> {
                     : Colors.white.withValues(alpha: 0.88);
 
     final content = Padding(
-      padding: const EdgeInsets.fromLTRB(
-        PortalListTokens.rowPadH,
-        8,
-        10,
-        8,
+      padding: EdgeInsets.fromLTRB(
+        _rowPadH,
+        ShellTokens.chromeScale(8, tv: _tvDensity),
+        ShellTokens.chromeScale(10, tv: _tvDensity),
+        ShellTokens.chromeScale(8, tv: _tvDensity),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -719,7 +735,7 @@ class _PortalListRowState extends State<PortalListRow> {
                             isFav
                                 ? Icons.star_rounded
                                 : Icons.star_outline_rounded,
-                            size: PortalListTokens.rowIconSize,
+                            size: _rowIconSize,
                             color: isFav || _favoriteFocus.hasFocus
                                 ? const Color(0xFFFBBF24)
                                 : Colors.white30,
@@ -738,7 +754,7 @@ class _PortalListRowState extends State<PortalListRow> {
                           isFav
                               ? Icons.star_rounded
                               : Icons.star_outline_rounded,
-                          size: PortalListTokens.rowIconSize,
+                          size: _rowIconSize,
                           color: isFav
                               ? const Color(0xFFFBBF24)
                               : Colors.white30,
@@ -1241,13 +1257,19 @@ class _RailAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final hit = PortalListTokens.rowActionHitSizeOf(tv);
+    final iconSize = PortalListTokens.rowIconSizeOf(tv);
+    final chipRadius = tv
+        ? PortalListTokens.chipRadiusTv
+        : PortalListTokens.chipRadius;
     Widget iconPaint({required bool lit}) {
       return SizedBox(
-        width: 32,
-        height: 32,
+        width: hit,
+        height: hit,
         child: Icon(
           icon,
-          size: PortalListTokens.rowIconSize,
+          size: iconSize,
           color: lit ? ForjaShellColors.brandGreen : color,
         ),
       );
@@ -1267,7 +1289,7 @@ class _RailAction extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(PortalListTokens.chipRadius),
+          borderRadius: BorderRadius.circular(chipRadius),
           child: _HoverLitIcon(
             tooltip: tooltip,
             icon: icon,
@@ -1316,6 +1338,9 @@ class _HoverLitIconState extends State<_HoverLitIcon> {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final hit = PortalListTokens.rowActionHitSizeOf(tv);
+    final iconSize = PortalListTokens.rowIconSizeOf(tv);
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -1323,11 +1348,11 @@ class _HoverLitIconState extends State<_HoverLitIcon> {
       child: Tooltip(
         message: widget.tooltip,
         child: SizedBox(
-          width: 32,
-          height: 32,
+          width: hit,
+          height: hit,
           child: Icon(
             widget.icon,
-            size: PortalListTokens.rowIconSize,
+            size: iconSize,
             color: _hovered ? ForjaShellColors.brandGreen : widget.idle,
           ),
         ),

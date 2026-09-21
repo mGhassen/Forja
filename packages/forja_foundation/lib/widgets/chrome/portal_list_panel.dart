@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
@@ -134,9 +135,10 @@ class PortalListPanel extends StatelessWidget {
         ? PortalListTokens.titleFontSizeTv
         : PortalListTokens.titleFontSize;
     if (list.isEmpty) {
+      final tv = ShellPaintScope.usesTvDensityOf(context);
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(PortalListTokens.panelPadOf(tv) * 2),
           child: Text(
             'No portals yet.\nTap + to add one.',
             textAlign: TextAlign.center,
@@ -162,14 +164,15 @@ class PortalListPanel extends StatelessWidget {
     final resolvedStatusFontSize = ShellPaintScope.usesTvDensityOf(context)
         ? PortalListTokens.metaFontSizeTv
         : statusFontSize;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
 
     Widget? statusChild = status;
     if (statusChild == null && statusText.isNotEmpty) {
       statusChild = Padding(
         padding: pad ??
-            const EdgeInsets.symmetric(
-              horizontal: PortalListTokens.panelPad,
-              vertical: 4,
+            EdgeInsets.symmetric(
+              horizontal: PortalListTokens.panelPadOf(tv),
+              vertical: ShellTokens.chromeScale(4, tv: tv),
             ),
         child: Text(
           statusText,
