@@ -59,6 +59,8 @@ class PluginRegistry {
   /// Bumped when hub [EngineCache] entries are wiped (install / script edit / remove).
   /// PackLayoutHost listens here — not [changeNotifier] — so lean sync / provider packs
   /// do not blank keep-alive hub rails on every notify.
+  /// Off-screen hubs only mark stale (refresh on next tab select); the visible hub
+  /// soft-reloads immediately (issues 305 / 311).
   static final ValueNotifier<int> hubFeedEpoch = ValueNotifier<int>(0);
 
   /// Plugin ids last wiped into [hubFeedEpoch]. Empty = all hubs.

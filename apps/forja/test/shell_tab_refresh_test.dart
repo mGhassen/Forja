@@ -82,4 +82,24 @@ void main() {
     state.onShellTabShown();
     expect(state.shellTabVisible, isTrue);
   });
+
+  testWidgets(
+    'markShellTabStale forces refreshIfStale after hide (pack-reload deferral)',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: _StaleProbe()));
+      final state = tester.state<_StaleProbeState>(find.byType(_StaleProbe));
+
+      await state.refreshIfStale();
+      expect(state.refreshCount, 1);
+
+      state.onShellTabHidden();
+      // Pack reload while off-screen: stale only — no refresh until shown.
+      state.markShellTabStale();
+      expect(state.refreshCount, 1);
+
+      state.onShellTabShown();
+      await state.refreshIfStale();
+      expect(state.refreshCount, 2);
+    },
+  );
 }

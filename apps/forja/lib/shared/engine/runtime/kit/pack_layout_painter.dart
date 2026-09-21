@@ -97,6 +97,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   HubPageFocus _pageFocus = HubPageFocus.empty;
   String? _tvBoundKey;
   bool _listStyleHydrateStarted = false;
+  /// Pack install wiped this hub's cache while the tab was off-screen.
+  /// Soft-reload on next [onShellTabRefresh] (user opens the hub) — do not
+  /// stampede feed/rail/layout for every keep-alive hub on Reload packs.
+  bool _pendingHubFeedSoftReload = false;
 
   String get _pageKey => widget.tabId?.trim() ?? '';
 
@@ -268,6 +272,21 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   void _onHubFeedEpoch() {
     if (!mounted) return;
     if (!PluginRegistry.hubFeedEpochTouches(widget.pluginId)) return;
+    // Off-screen keep-alive: flag only. MainScreen.refreshIfStale on tab show
+    // runs the soft reload — Reload packs must not re-fetch every hub now.
+    if (!shellTabVisible) {
+      _pendingHubFeedSoftReload = true;
+      _refreshForceNetwork = true;
+      markShellTabStale();
+      return;
+    }
+    unawaited(_applyHubFeedSoftReload());
+  }
+
+  /// Soft reload after pack script wipe (issue 305 / 311).
+  Future<void> _applyHubFeedSoftReload() async {
+    if (!mounted) return;
+    _pendingHubFeedSoftReload = false;
     // Soft: keep painted rails while scripts refresh. Must bump refreshEpoch
     // so PackLoadedPaint rebinds — layout-only soft reload left Home on a
     // stale/empty page-feed slice (Popular title, no hero) after Reload packs.
@@ -282,7 +301,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         _pageFeedFuture = _bindPageFeed(forceRefresh: true);
       }
     });
-    unawaited(_loadPage(force: true, keepPainted: true));
+    await _loadPage(force: true, keepPainted: true);
   }
 
   /// Bookmark / Simkl list write — only hubs with a status-tab list (My List).
@@ -321,8 +340,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   }
 
   @override
-  Future<void> onShellTabRefresh({required bool force}) =>
-      _loadPage(force: force);
+  Future<void> onShellTabRefresh({required bool force}) async {
+    if (_pendingHubFeedSoftReload) {
+      await _applyHubFeedSoftReload();
+      return;
+    }
+    await _loadPage(force: force);
+  }
 
   Map<String, dynamic> _pageRunParams() => <String, dynamic>{
         ...?widget.pageParams,
