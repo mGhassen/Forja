@@ -375,6 +375,64 @@ void main() {
   );
 
   testWidgets(
+    '↓ pack focusDown miss (empty because) walks to new_releases',
+    (tester) async {
+      final moodChip = FocusNode(debugLabel: 'mood-chip');
+      final newReleases = FocusNode(debugLabel: 'new_releases');
+      final sChips = PackPaintArtifact.stableSortOrder(_tab, 'mood-chips');
+      PackPaintArtifact.stableSortOrder(_tab, 'because-shuffle');
+      PackPaintArtifact.stableSortOrder(_tab, 'because');
+      final sNew = PackPaintArtifact.stableSortOrder(_tab, 'new_releases');
+
+      addTearDown(() {
+        moodChip.dispose();
+        newReleases.dispose();
+      });
+
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [
+              TvKitRow(
+                rowId: 'mood-chips',
+                sortOrder: sChips,
+                itemCount: 1,
+                onFocusDown: () {
+                  ShellTvFocusCoordinator.beginKitEdgeAttempt();
+                  // Pack focusDown: because-shuffle — unmounted / empty.
+                  ShellTvFocusCoordinator.markKitEdgeMiss();
+                },
+                child: _item(node: moodChip, rowId: 'mood-chips', index: 0),
+              ),
+              TvKitRow(
+                rowId: 'new_releases',
+                sortOrder: sNew,
+                itemCount: 1,
+                child: _item(node: newReleases, rowId: 'new_releases', index: 0),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      moodChip.requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'mood-chips',
+          currentIndex: 0,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(newReleases.hasFocus, isTrue);
+    },
+  );
+
+  testWidgets(
     '↓ from last registered row nudges page scroll then lands on new neighbor',
     (tester) async {
       final popular = FocusNode(debugLabel: 'popular');
