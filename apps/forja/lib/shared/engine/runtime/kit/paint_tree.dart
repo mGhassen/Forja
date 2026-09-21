@@ -3660,24 +3660,42 @@ class _BecauseMount extends StatefulWidget {
 
 class _BecauseMountState extends State<_BecauseMount> {
   int _shuffleKey = 0;
+  List<Map<String, dynamic>> _seeds = const [];
   StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
-  var _seedEpoch = 0;
 
   @override
   void initState() {
     super.initState();
+    // Same pattern as Continue: cache seeds in state. A FutureBuilder
+    // rebuilt with a new future each paint resets to waiting → empty →
+    // shrink, so the Because rail vanished under hub rebuilds.
+    WatchHistory.revision.addListener(_reloadSeeds);
     if (widget.mergeHomeWatchHistory) {
       _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
-        if (!mounted) return;
-        setState(() => _seedEpoch++);
+        unawaited(_reloadSeeds());
       });
     }
+    unawaited(_reloadSeeds());
   }
 
   @override
   void dispose() {
+    WatchHistory.revision.removeListener(_reloadSeeds);
     unawaited(_homeHistorySub?.cancel());
     super.dispose();
+  }
+
+  Future<void> _reloadSeeds() async {
+    try {
+      final list = await catalogResumeSeeds(
+        widget.pluginId,
+        mergeHomeWatchHistory: widget.mergeHomeWatchHistory,
+      );
+      if (!mounted) return;
+      setState(() => _seeds = list);
+    } catch (_) {
+      // Keep last seeds — do not wipe the rail on a transient failure.
+    }
   }
 
   @override
@@ -3688,38 +3706,27 @@ class _BecauseMountState extends State<_BecauseMount> {
       PackPaintArtifact.stableSortOrder(tabReserve, 'because-shuffle');
       PackPaintArtifact.stableSortOrder(tabReserve, 'because');
     }
-    return ValueListenableBuilder<int>(
-      valueListenable: WatchHistory.revision,
-      builder: (context, _, _) {
-        return FutureBuilder<List<Map<String, dynamic>>>(
-          // Epoch forces a new future when home history stream ticks.
-          key: ValueKey('because-seeds-$_seedEpoch'),
-          future: catalogResumeSeeds(
-            widget.pluginId,
-            mergeHomeWatchHistory: widget.mergeHomeWatchHistory,
-          ),
-          builder: (context, snap) {
-            final seeds = snap.data ?? const [];
-            if (seeds.isEmpty) return const SizedBox.shrink();
-            final load = packLoadSpec(widget.spec['load']);
-            if (load == null) return const SizedBox.shrink();
-            return PackLoadedPaint(
-              key: ValueKey('because-$_shuffleKey-${seeds.length}'),
-              pluginId: widget.pluginId,
-              packSourceUrl: widget.packSourceUrl,
-              tabId: widget.tabId,
-              action: load.action,
-              params: {
-                ...load.params,
-                'resumeSeeds': seeds,
-                'shuffleKey': _shuffleKey,
-              },
-              fallbackSpec: widget.spec,
-              builder: (ctx, node) {
-                final items = node['items'];
-                if (items is! List || items.isEmpty) {
-                  return const SizedBox.shrink();
-                }
+    final seeds = _seeds;
+    if (seeds.isEmpty) return const SizedBox.shrink();
+    final load = packLoadSpec(widget.spec['load']);
+    if (load == null) return const SizedBox.shrink();
+    return PackLoadedPaint(
+      key: ValueKey('because-$_shuffleKey-${seeds.length}'),
+      pluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+      tabId: widget.tabId,
+      action: load.action,
+      params: {
+        ...load.params,
+        'resumeSeeds': seeds,
+        'shuffleKey': _shuffleKey,
+      },
+      fallbackSpec: widget.spec,
+      builder: (ctx, node) {
+        final items = node['items'];
+        if (items is! List || items.isEmpty) {
+          return const SizedBox.shrink();
+        }
                 final tab = widget.tabId ??
                     LayoutScope.maybeOf(ctx)?.tabId ??
                     TvFocusGraph.tabIdOf(ctx);
@@ -3919,10 +3926,6 @@ class _BecauseMountState extends State<_BecauseMount> {
                 return section;
               },
             );
-          },
-        );
-      },
-    );
   }
 }
 
