@@ -143,8 +143,8 @@ Future<List<Map<String, dynamic>>> catalogContinueEntries(
 /// Opaque resume seeds for layout widget type `because`.
 ///
 /// When [mergeHomeWatchHistory] is true (Home hub), seeds include the same
-/// WatchHistoryService movie/TV rows Continue Watching merges — not only the
-/// pack plugin's [WatchHistory] store (often empty on Home).
+/// Continue Watching pool. Pack-store seeds always load first so a home-history
+/// failure cannot wipe the rail.
 Future<List<Map<String, dynamic>>> catalogResumeSeeds(
   String pluginId, {
   bool mergeHomeWatchHistory = false,
@@ -153,9 +153,15 @@ Future<List<Map<String, dynamic>>> catalogResumeSeeds(
   final seenTmdb = <String>{};
 
   void addSeed(Map<String, dynamic> entry) {
-    final meta = entry['meta'];
-    if (meta is! Map) return;
-    final metaMap = Map<String, dynamic>.from(meta);
+    Map<String, dynamic>? metaMap;
+    final parsed = WatchHistory.metaFromEntry(entry);
+    if (parsed != null) {
+      metaMap = parsed.toJson();
+    } else {
+      final raw = entry['meta'];
+      if (raw is Map) metaMap = Map<String, dynamic>.from(raw);
+    }
+    if (metaMap == null) return;
     final ids = metaMap['ids'];
     final tmdb = ids is Map ? (ids['tmdb'] ?? '').toString().trim() : '';
     if (tmdb.isNotEmpty) {
@@ -169,15 +175,32 @@ Future<List<Map<String, dynamic>>> catalogResumeSeeds(
     });
   }
 
-  for (final e in await WatchHistory.getAll(pluginId)) {
-    addSeed(e);
-  }
+  // Pack plugin store first — never lose these if home merge fails.
+  try {
+    for (final e in await WatchHistory.getAll(pluginId)) {
+      addSeed(e);
+    }
+  } catch (_) {}
+
   if (!mergeHomeWatchHistory) return out;
 
-  final history = await WatchHistoryService().getHistory();
-  for (final item in history) {
-    if (!isHomeTabWatchHistoryEntry(item)) continue;
-    addSeed(catalogEntryFromHomeWatchHistory(item));
-  }
+  // Same identity pool as Continue Watching.
+  try {
+    for (final e in await catalogContinueEntries(
+      pluginId,
+      mergeHomeWatchHistory: true,
+    )) {
+      addSeed(e);
+    }
+  } catch (_) {}
+
+  try {
+    final history = await WatchHistoryService().getHistory();
+    for (final item in history) {
+      if (!isHomeTabWatchHistoryEntry(item)) continue;
+      addSeed(catalogEntryFromHomeWatchHistory(item));
+    }
+  } catch (_) {}
+
   return out;
 }

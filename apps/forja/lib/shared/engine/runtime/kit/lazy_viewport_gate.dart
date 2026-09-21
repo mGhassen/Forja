@@ -84,11 +84,11 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
   }
 
   void _warmFromPrefetch() {
-    // Activate only — do not notifyVisible. Cascading here would load every
-    // claimed row below the fold; ahead is meant to stay a fixed lead of
-    // [kKitRowPrefetchAhead] from the actually visible row.
     if (!mounted || _activated) return;
     setState(_markActivated);
+    // Warm the next ahead slots from this claimed index (fixed lead).
+    final index = _prefetchIndex;
+    if (index != null) _chrome?.rowPrefetch.notifyVisible(index);
   }
 
   void _activateFromViewport() {
