@@ -1079,8 +1079,6 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
       child: widget.scrollable
           ? Scrollbar(
               controller: _scrollController,
-              thumbVisibility: true,
-              interactive: true,
               child: forjaSuppressAutoScrollbar(
                 context: context,
                 child: SingleChildScrollView(
@@ -1656,8 +1654,6 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
         constraints: BoxConstraints(maxHeight: maxH),
         child: Scrollbar(
           controller: _scrollController,
-          thumbVisibility: true,
-          interactive: true,
           child: forjaSuppressAutoScrollbar(
             context: context,
             child: ListView.separated(

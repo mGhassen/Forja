@@ -484,6 +484,10 @@ abstract final class ShellTokens {
   static const double posterCardWidthTv =
       posterCardWidthDesktop * tvChromeScale;
 
+  /// IPTV / live channel tiles — denser than film posters so the grid packs
+  /// more logo columns (fill-width cells stay proportional).
+  static const double channelCardWidthTv = 70;
+
   /// Leanback chrome — same ratio as [posterCardWidthTv] / [posterCardWidthDesktop].
   static const double navRailWidthTv =
       navRailWidth * posterCardWidthTv / posterCardWidthDesktop;

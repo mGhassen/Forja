@@ -89,11 +89,11 @@ class CatalogChannelCard extends StatefulWidget {
   final VoidCallback? onRightEdge;
   final VoidCallback? onUpEdge;
 
-  /// Desktop/TV live channel tile — leanback uses [ShellTokens.posterCardWidthTv]
-  /// so the grid packs more columns (fill-width cells stay proportional).
+  /// Desktop/TV live channel tile — leanback uses [ShellTokens.channelCardWidthTv]
+  /// (denser than film posters) so the grid packs more logo columns.
   static double cardWidth(BuildContext context) {
     if (ShellPaintScope.usesTvDensityOf(context)) {
-      return ShellTokens.posterCardWidthTv;
+      return ShellTokens.channelCardWidthTv;
     }
     return ShellTokens.posterCardWidthMobile;
   }

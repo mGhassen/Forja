@@ -76,7 +76,8 @@ void main() {
 
     expect(find.byType(RawScrollbar), findsOneWidget);
     final bar = tester.widget<RawScrollbar>(find.byType(RawScrollbar));
-    expect(bar.thumbVisibility, isTrue);
+    expect(bar.thumbVisibility, isNull);
+    expect(bar.interactive, isFalse);
     expect(bar.thumbColor, ForjaScrollbarStyle.thumbColor);
     debugDefaultTargetPlatformOverride = null;
   });

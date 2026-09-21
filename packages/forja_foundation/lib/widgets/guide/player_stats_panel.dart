@@ -80,7 +80,6 @@ class _PlayerStatsListState extends State<PlayerStatsList> {
       onKeyEvent: _onKey,
       child: Scrollbar(
         controller: _scroll,
-        thumbVisibility: true,
         child: forjaSuppressAutoScrollbar(
           context: context,
           child: ListView(

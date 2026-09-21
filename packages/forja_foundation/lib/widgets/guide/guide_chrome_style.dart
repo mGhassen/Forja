@@ -78,7 +78,8 @@ abstract final class GuideChromeStyle {
 }
 
 /// Thin green position scroller for **list** chrome (categories, channels,
-/// schedules, Portals, guide). No-op off TV — desktop uses [ForjaScrollBehavior].
+/// schedules, Portals, guide). Shows while scrolling, then fades. No-op off TV
+/// — desktop uses [ForjaScrollBehavior].
 class LiveTvScrollbar extends StatelessWidget {
   const LiveTvScrollbar({
     super.key,
@@ -98,8 +99,6 @@ class LiveTvScrollbar extends StatelessWidget {
     if (!on) return child;
     return RawScrollbar(
       controller: controller,
-      thumbVisibility: true,
-      trackVisibility: true,
       interactive: false,
       thickness: ForjaScrollbarStyle.thickness,
       radius: ForjaScrollbarStyle.radius,

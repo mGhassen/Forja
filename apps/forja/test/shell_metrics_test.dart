@@ -39,6 +39,11 @@ void main() {
       ShellTokens.controlHeightTv,
       greaterThanOrEqualTo(DetailsTokens.heroPillHeightTv - 0.001),
     );
+    expect(ShellTokens.channelCardWidthTv, 70);
+    expect(
+      ShellTokens.channelCardWidthTv,
+      lessThan(ShellTokens.posterCardWidthTv),
+    );
     expect(ShellTokens.tvBodyFontSize, 11);
     expect(ShellTokens.tvTitleFontSize, 14);
     expect(ShellTokens.tvMetaFontSize, 10);
