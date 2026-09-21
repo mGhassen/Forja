@@ -12,6 +12,7 @@ class CatalogBody extends StatelessWidget {
     required this.sections,
     this.controller,
     this.bottomGap = 0,
+    this.cacheExtent,
     this.sectionSliver,
     this.emptyChild,
   });
@@ -20,6 +21,7 @@ class CatalogBody extends StatelessWidget {
     Map<String, dynamic> props, {
     required List<Widget> sections,
     ScrollController? controller,
+    double? cacheExtent,
     Widget? emptyChild,
     Widget Function(BuildContext context, Widget section, int index)?
         sectionSliver,
@@ -28,6 +30,7 @@ class CatalogBody extends StatelessWidget {
       sections: sections,
       controller: controller,
       bottomGap: propsNumOr(props, 'bottomGap', 0),
+      cacheExtent: cacheExtent,
       sectionSliver: sectionSliver,
       emptyChild: emptyChild,
     );
@@ -36,6 +39,10 @@ class CatalogBody extends StatelessWidget {
   final List<Widget> sections;
   final ScrollController? controller;
   final double bottomGap;
+
+  /// Extra build window beyond the viewport. Hub TV D-pad needs below-fold
+  /// rails mounted so [TvKitRow] can register before ↓ reaches them.
+  final double? cacheExtent;
 
   final Widget Function(BuildContext context, Widget section, int index)?
       sectionSliver;
@@ -49,6 +56,7 @@ class CatalogBody extends StatelessWidget {
     }
     return CustomScrollView(
       controller: controller,
+      cacheExtent: cacheExtent,
       slivers: [
         for (var i = 0; i < sections.length; i++)
           sectionSliver?.call(context, sections[i], i) ??

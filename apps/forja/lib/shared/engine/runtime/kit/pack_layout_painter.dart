@@ -23,7 +23,9 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/vertical_filters_rail.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -199,6 +201,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       ShellBus.hubScrollOffsetFor(tab).value = 0;
       // Drop tab TV defaults — hero may have merged defaultFocus into the same id.
       TvHeroActions.unbind(tab);
+      ShellTvFocusCoordinator.setTabPageScroll(tab, null);
     }
     super.dispose();
   }
@@ -211,6 +214,26 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     bindHubPageFocus(tab, _pageFocus);
     // Hero CTA merges defaultFocus via TvHeroActions.bind (no enter overwrite).
     TvHeroActions.bind(tab, heroReveal: _revealHeroScroll);
+    ShellTvFocusCoordinator.setTabPageScroll(tab, _nudgeHubPageScroll);
+  }
+
+  /// One catalog-row step — mounts below-fold slivers / LazyViewportGate for ↓.
+  bool _nudgeHubPageScroll({required bool down}) {
+    if (!_scroll.hasClients) return false;
+    final pos = _scroll.position;
+    if (!pos.hasPixels || !pos.hasContentDimensions) return false;
+    // Title pad + poster height + section gap — enough to reveal the next rail.
+    final step = catalogSectionTitleTop(context) +
+        shellPosterCardHeight(context) +
+        ShellTokens.homeRowSpacing +
+        48;
+    final target = down
+        ? (pos.pixels + step).clamp(0.0, pos.maxScrollExtent)
+        : (pos.pixels - step).clamp(0.0, pos.maxScrollExtent);
+    if ((target - pos.pixels).abs() < 1.0) return false;
+    // Instant jump — animated scroll leaves D-pad focus clipped mid-tween.
+    pos.jumpTo(target);
+    return true;
   }
 
   void _revealHeroScroll() {
@@ -886,9 +909,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final fullPage = _fullPageBody();
     if (fullPage != null) return fullPage;
     final sections = _composeSections();
+    // Build ~2 viewports below the fold so Mood / Because register for D-pad
+    // before ↓ reaches Popular's last on-screen neighbor.
+    final cacheExtent = MediaQuery.sizeOf(context).height * 2;
     return CatalogBody(
       controller: _scroll,
       bottomGap: ShellTokens.homeRowSpacing,
+      cacheExtent: cacheExtent,
       sections: sections,
       sectionSliver: (context, section, index) {
         final gap = index == 0

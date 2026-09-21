@@ -288,6 +288,73 @@ void main() {
   });
 
   testWidgets(
+    '↓ from last registered row nudges page scroll then lands on new neighbor',
+    (tester) async {
+      final popular = FocusNode(debugLabel: 'popular');
+      final moodChip = FocusNode(debugLabel: 'mood-chip');
+      final sPopular = PackPaintArtifact.stableSortOrder(_tab, 'popular');
+      final sChips = PackPaintArtifact.stableSortOrder(_tab, 'mood-chips');
+      var nudged = false;
+
+      addTearDown(() {
+        popular.dispose();
+        moodChip.dispose();
+        ShellTvFocusCoordinator.setTabPageScroll(_tab, null);
+      });
+
+      // Mood tile is mounted (has FocusNode context) but its TvKitRow is not
+      // registered yet — same as a below-fold Home section outside cacheExtent.
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [
+              TvKitRow(
+                rowId: 'popular',
+                sortOrder: sPopular,
+                itemCount: 1,
+                child: _item(node: popular, rowId: 'popular', index: 0),
+              ),
+              _item(node: moodChip, rowId: 'mood-chips', index: 0),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      popular.requestFocus();
+      await tester.pump();
+
+      ShellTvFocusCoordinator.setTabPageScroll(_tab, ({required bool down}) {
+        expect(down, isTrue);
+        nudged = true;
+        ShellTvFocusCoordinator.registerRow(
+          ShellTvRowHandle(
+            tabId: _tab,
+            rowId: 'mood-chips',
+            sortOrder: sChips,
+            itemCount: 1,
+            nodeAt: (i) => i == 0 ? moodChip : null,
+          ),
+        );
+        return true;
+      });
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'popular',
+          currentIndex: 0,
+          down: true,
+        ),
+        isTrue,
+      );
+      expect(nudged, isTrue);
+      await tester.pump();
+      await tester.pump();
+      expect(moodChip.hasFocus, isTrue);
+    },
+  );
+
+  testWidgets(
     '↓ walks search filter strips with distinct sortOrders (genre→country→language)',
     (tester) async {
       final genre = FocusNode(debugLabel: 'genre');

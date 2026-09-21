@@ -24,7 +24,7 @@ abstract final class ShellTokens {
   static const double navRailWidth = 120;
 
   /// One TV density for cards, chrome, and pack lengths (not iso 0.85).
-  static const double tvChromeScale = 0.72;
+  static const double tvChromeScale = 0.62;
 
   /// Leanback type ladder — separate from spatial [tvChromeScale].
   /// Keep smaller than desktop so type matches dense cards (not 14/16 desktop-ish).
@@ -192,6 +192,7 @@ abstract final class ShellTokens {
   static const double shellProviderTileHeight = 54;
   static const double shellProviderTileSize = shellProviderTileHeight;
   static const double shellProviderTileRadius = 6.5;
+
   /// Leanback VF / provider rail — denser than desktop, still logo-readable.
   static const double shellProviderTileWidthTv = 68;
   static const double shellProviderTileHeightTv = 38;
@@ -225,6 +226,7 @@ abstract final class ShellTokens {
   /// Selected-provider mark before Films — rectangle (wordmark-friendly).
   static const double shellProviderTopBarIconWidth = 88;
   static const double shellProviderTopBarIconHeight = 40;
+
   /// Leanback — denser than desktop (matches [tvChromeScale]).
   static const double shellProviderTopBarIconWidthTv = 64;
   static const double shellProviderTopBarIconHeightTv = 30;
@@ -277,7 +279,8 @@ abstract final class ShellTokens {
   static const double kitTopBarTabFontSize = 17;
   static const double kitTopBarTabFontSizeTv = tvTitleFontSize;
   static const double kitTopBarChevronSize = 18;
-  static const double kitTopBarChevronSizeTv = kitTopBarChevronSize * tvChromeScale;
+  static const double kitTopBarChevronSizeTv =
+      kitTopBarChevronSize * tvChromeScale;
   static const double kitTopBarIconGap = 6;
   static const double kitTopBarChevronGap = 4;
   static const double kitTopBarUnderlineHoverWidth = 28;
@@ -480,6 +483,7 @@ abstract final class ShellTokens {
   /// Catalog poster card widths by shell profile.
   static const double posterCardWidthMobile = 165;
   static const double posterCardWidthDesktop = 190;
+
   /// TV posters share [tvChromeScale] with type / chrome / pack lengths.
   static const double posterCardWidthTv =
       posterCardWidthDesktop * tvChromeScale;
@@ -494,8 +498,7 @@ abstract final class ShellTokens {
       navRailWidth * posterCardWidthTv / posterCardWidthDesktop;
   static const double navRailLogoWidthTv =
       navRailLogoWidth * posterCardWidthTv / posterCardWidthDesktop;
-  static const double navRailLogoHeightTv =
-      navRailLogoWidthTv * 160 / 370;
+  static const double navRailLogoHeightTv = navRailLogoWidthTv * 160 / 370;
 
   /// Leanback hero chrome — same ratio as catalog density.
   static const double heroLogoMaxHeightTv =
@@ -666,7 +669,8 @@ abstract final class ShellTokens {
   static const double actionChipIconSizeTv = 12;
 
   static const double shellChipRadiusPill = 20;
-  static const double shellChipRadiusPillTv = shellChipRadiusPill * tvChromeScale;
+  static const double shellChipRadiusPillTv =
+      shellChipRadiusPill * tvChromeScale;
   static const double shellChipRadius = 8;
   static const double shellChipRadiusTv = shellChipRadius * tvChromeScale;
   static const double shellChipFontSize = 12.5;
@@ -767,7 +771,8 @@ abstract final class ShellTokens {
   static const double eventSearchCollapsed = controlHeight;
   static const double eventSearchCollapsedTv = controlHeightTv;
   static const double eventSearchExpanded = 260;
-  static const double eventSearchExpandedTv = eventSearchExpanded * tvChromeScale;
+  static const double eventSearchExpandedTv =
+      eventSearchExpanded * tvChromeScale;
   static const double eventSearchFontSize = 13;
   static const double eventSearchFontSizeTv = tvBodyFontSize;
   static const double eventSearchIconSize = 20;
@@ -795,8 +800,7 @@ abstract final class ShellTokens {
   static const Duration emptyFeaturesCardAnim = Duration(milliseconds: 140);
 
   /// TV density == [tvChromeScale] (posters, chrome, pack lengths share one scale).
-  static double get tvLayoutScale =>
-      posterCardWidthTv / posterCardWidthDesktop;
+  static double get tvLayoutScale => posterCardWidthTv / posterCardWidthDesktop;
 
   /// Alias kept for call sites — same factor as [tvLayoutScale].
   // tvChromeScale is defined near the top of this class.
@@ -832,11 +836,7 @@ abstract final class ShellTokens {
       tv ? value * tvLayoutScale : value;
 
   /// Scale desktop chrome by [tvChromeScale] when [tv] is true.
-  static double chromeScale(
-    double value, {
-    required bool tv,
-    double min = 0,
-  }) {
+  static double chromeScale(double value, {required bool tv, double min = 0}) {
     if (!tv) return value;
     final s = value * tvChromeScale;
     return s < min ? min : s;

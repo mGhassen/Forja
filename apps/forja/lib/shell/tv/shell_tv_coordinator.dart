@@ -112,6 +112,12 @@ abstract final class ShellTvFocusCoordinator {
   /// channels → category). Return true when Back was consumed.
   static final Map<String, bool Function()> _tabPageBack = {};
 
+  /// Hub catalog page scroller — nudge when ↓/↑ has no registered neighbor
+  /// yet (below-fold [SliverToBoxAdapter] / [LazyViewportGate] not mounted).
+  /// Returns true when scroll pixels moved.
+  static final Map<String, bool Function({required bool down})> _tabPageScroll =
+      {};
+
   /// When set, ← at column 0 of a [TvKitRow] runs [tryPageBack] (Settings
   /// detail → category rail). Catalog tabs omit this so ← still traps / nav.
   static final Set<String> _pageBackOnRowLeftEdge = {};
@@ -166,12 +172,91 @@ abstract final class ShellTvFocusCoordinator {
     }
   }
 
+  /// Bind / clear the hub [CustomScrollView] nudge used when vertical D-pad
+  /// runs out of registered rows (Home Popular → Mood, lazy New Releases, …).
+  static void setTabPageScroll(
+    String tabId,
+    bool Function({required bool down})? scroll,
+  ) {
+    if (tabId.isEmpty) return;
+    if (scroll == null) {
+      _tabPageScroll.remove(tabId);
+    } else {
+      _tabPageScroll[tabId] = scroll;
+    }
+  }
+
+  static bool _nudgeTabPage(String tabId, {required bool down}) {
+    final scroll = _tabPageScroll[tabId];
+    if (scroll == null) return false;
+    return scroll(down: down);
+  }
+
+  /// First focusable catalog row with [sortOrder] strictly above [afterSortOrder].
+  static bool focusFirstContentRowBelow(String tabId, int afterSortOrder) {
+    final list = _rowsByTab[tabId];
+    if (list == null || list.isEmpty) return false;
+    for (final row in list) {
+      if (row.sortOrder <= afterSortOrder) continue;
+      if (row.sortOrder < 0) continue;
+      if (row.itemCount <= 0) continue;
+      if (focusRowItemRemembered(tabId, row.rowId)) return true;
+    }
+    return false;
+  }
+
+  /// First focusable catalog row with [sortOrder] strictly below [beforeSortOrder].
+  static bool focusFirstContentRowAbove(String tabId, int beforeSortOrder) {
+    final list = _rowsByTab[tabId];
+    if (list == null || list.isEmpty) return false;
+    ShellTvRowHandle? best;
+    for (final row in list) {
+      if (row.sortOrder >= beforeSortOrder) continue;
+      if (row.sortOrder < 0) continue;
+      if (row.itemCount <= 0) continue;
+      if (best == null || row.sortOrder > best.sortOrder) best = row;
+    }
+    if (best == null) return false;
+    return focusRowItemRemembered(tabId, best.rowId);
+  }
+
+  /// Scroll the hub page, then land on the next/prev registered row.
+  static bool _scrollPageAndFocusNeighbor({
+    required String tabId,
+    required int sortOrder,
+    required bool down,
+  }) {
+    final moved = _nudgeTabPage(tabId, down: down);
+    if (!moved) {
+      // Already at scroll extent and nothing else registered — trap.
+      return true;
+    }
+    var tries = 0;
+    const maxTries = 16;
+    void attempt() {
+      final ok = down
+          ? focusFirstContentRowBelow(tabId, sortOrder)
+          : focusFirstContentRowAbove(tabId, sortOrder);
+      if (ok) return;
+      if (tries++ >= maxTries) return;
+      // Gate / sliver may need another nudge after the first paint.
+      if (tries == 4 || tries == 8 || tries == 12) {
+        _nudgeTabPage(tabId, down: down);
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    return true;
+  }
+
   static void unregisterTabDefaults(String tabId) {
     _tabDefaultFocus.remove(tabId);
     _tabHeroReveal.remove(tabId);
     _tabEnterFocus.remove(tabId);
     _tabRestoreFocus.remove(tabId);
     _tabPageBack.remove(tabId);
+    _tabPageScroll.remove(tabId);
     _pageBackOnRowLeftEdge.remove(tabId);
     _tabPreferCustomNavRestore.remove(tabId);
   }
@@ -1520,7 +1605,15 @@ abstract final class ShellTvFocusCoordinator {
     var cursor = handle.sortOrder;
     while (true) {
       final next = _nextRow(tabId, cursor);
-      if (next == null) return true; // trap at last reachable row
+      if (next == null) {
+        // No registered neighbor — scroll the hub page so below-fold slivers /
+        // LazyViewportGate mount, then focus the new row (Home Popular → Mood).
+        return _scrollPageAndFocusNeighbor(
+          tabId: tabId,
+          sortOrder: handle.sortOrder,
+          down: true,
+        );
+      }
       if (next.itemCount > 0) {
         // Remembered index + lazy scroll (Live Sports schedule under shelf).
         return focusRowItemRemembered(tabId, next.rowId);
