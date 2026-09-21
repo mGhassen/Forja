@@ -924,8 +924,9 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   void _landSelected({required bool preferCategoryFocus}) {
     final idx = _indexOfSelected();
     if (idx < 0) return;
-    setState(() => _selectedIndex = idx);
     if (preferCategoryFocus) {
+      // Scroll to last-played but leave focus on cats — no channel chrome.
+      if (_selectedIndex != -1) setState(() => _selectedIndex = -1);
       _scrollToIndex(idx);
       widget.onArmFocusMemory?.call(idx);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -935,6 +936,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       });
       return;
     }
+    setState(() => _selectedIndex = idx);
     _scrollAndMaybeFocus(idx, focus: true);
   }
 
@@ -1087,7 +1089,10 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
             : () => widget.loadEpgProgrammes!(item),
         health: widget.itemHealth?.call(item),
         healthListenable: widget.itemHealthListenable?.call(item),
-        highlighted: panelSelected || i == _selectedIndex,
+        // Sticky last-played id stays for land/scroll; paint is single-chrome
+        // (focus / hover / letter-jump emphasize only).
+        highlighted: panelSelected,
+        emphasize: i == _selectedIndex,
         showLogo: _showChannelLogo(id),
         listLayout: list,
         width: list ? null : layout?.cardW,
@@ -1106,9 +1111,12 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
                 setState(() => _selectedIndex = i);
                 widget.onItemTap!(item);
               },
-        onInteractiveActive: widget.onItemInteractiveActive == null
-            ? null
-            : (active) => widget.onItemInteractiveActive!(item, active: active),
+        onInteractiveActive: (active) {
+          if (active && _selectedIndex != i) {
+            setState(() => _selectedIndex = i);
+          }
+          widget.onItemInteractiveActive?.call(item, active: active);
+        },
         onTvFocusGained: _leanbackOnly
             ? () {
                 _revealChannelLogo(id);

@@ -69,41 +69,42 @@ class ForjaNetworkImage extends StatelessWidget {
       height: height,
       child: ClipRRect(
         borderRadius: radius,
-        // Expand first so [Image.network] always paints into the parent slot
-        // (channel cards, posters). Never size to the PNG's intrinsic pixels.
+        // Expand + Positioned.fill so paint always matches the parent slot
+        // (channel logo box, poster cell). Never size to PNG intrinsic pixels.
         child: Stack(
           fit: StackFit.expand,
           children: [
             surface,
-            Image.network(
-              url.trim(),
-              key: useOldImageOnUrlChange ? null : ValueKey(url.trim()),
-              fit: fit,
-              alignment: alignment,
-              width: width,
-              height: height,
-              cacheWidth: memCacheWidth,
-              filterQuality: filterQuality,
-              gaplessPlayback: true,
-              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                final loaded = wasSynchronouslyLoaded || frame != null;
-                Widget image = child;
-                if (!wasSynchronouslyLoaded && fadeDuration != Duration.zero) {
-                  image = AnimatedOpacity(
-                    opacity: loaded ? 1 : 0,
-                    duration: fadeDuration,
-                    curve: Curves.easeOut,
-                    child: child,
+            Positioned.fill(
+              child: Image.network(
+                url.trim(),
+                key: useOldImageOnUrlChange ? null : ValueKey(url.trim()),
+                fit: fit,
+                alignment: alignment,
+                cacheWidth: memCacheWidth,
+                filterQuality: filterQuality,
+                gaplessPlayback: true,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  final loaded = wasSynchronouslyLoaded || frame != null;
+                  Widget image = child;
+                  if (!wasSynchronouslyLoaded &&
+                      fadeDuration != Duration.zero) {
+                    image = AnimatedOpacity(
+                      opacity: loaded ? 1 : 0,
+                      duration: fadeDuration,
+                      curve: Curves.easeOut,
+                      child: child,
+                    );
+                  }
+                  if (loaded) return image;
+                  // Icon/skeleton only while waiting — never under a loaded logo.
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [loading, image],
                   );
-                }
-                if (loaded) return image;
-                // Icon/skeleton only while waiting — never under a loaded logo.
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [loading, image],
-                );
-              },
-              errorBuilder: (_, _, _) => fallback,
+                },
+                errorBuilder: (_, _, _) => fallback,
+              ),
             ),
           ],
         ),

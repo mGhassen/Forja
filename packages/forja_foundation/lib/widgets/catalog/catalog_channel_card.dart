@@ -29,6 +29,7 @@ class CatalogChannelCard extends StatefulWidget {
     this.health,
     this.healthListenable,
     this.highlighted = false,
+    this.emphasize = false,
     this.showLogo = true,
     this.listLayout = false,
     this.width,
@@ -60,7 +61,11 @@ class CatalogChannelCard extends StatefulWidget {
 
   /// Per-channel health — preferred so probe results do not rebuild sibling cards.
   final ValueListenable<bool?>? healthListenable;
+  /// Sticky last-played / panel id — SoT only; does **not** paint alone.
   final bool highlighted;
+
+  /// Letter-jump / local select lit — same chrome as focus/hover (single owner).
+  final bool emphasize;
 
   /// Leanback lazy logos — false until settle / focus reveal.
   final bool showLogo;
@@ -151,7 +156,8 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         context,
         hovered: hovered,
         focused: focused,
-      );
+      ) ||
+      widget.emphasize;
 
   bool get _epgEnabled =>
       widget.programmes.isNotEmpty || widget.loadProgrammes != null;
@@ -177,6 +183,11 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         (!identical(previous.programmes, widget.programmes) &&
             widget.programmes.isNotEmpty)) {
       _epgFuture = _resolveEpg();
+    }
+    if (previous.emphasize != widget.emphasize) {
+      widget.onInteractiveActive?.call(
+        widget.emphasize || _hoveredN.value || _focusedN.value,
+      );
     }
   }
 
@@ -274,11 +285,8 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   }
 
   Color _border(bool? health, bool active) {
-    // Letter-jump / panel selection — keep selected chrome even while hovered
-    // (same idea as category rail selected row).
-    if (widget.highlighted) {
-      return ForjaShellColors.chipSelectedBorder;
-    }
+    // Single chrome owner: focus / hover / letter-jump lit only.
+    // Sticky [highlighted] is land/scroll SoT — never a second border.
     if (health == null) {
       return Colors.white.withValues(alpha: active ? 0.18 : 0.08);
     }
@@ -290,30 +298,22 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
 
   /// Sources / Portals list chrome (bordered rect + inner left probe bar).
   Color _listBackground(bool active) {
-    if (widget.highlighted) {
-      return ForjaShellColors.brandGreen.withValues(alpha: 0.16);
-    }
     if (active) return ForjaShellColors.chipSelectedBg;
     return Colors.white.withValues(alpha: 0.04);
   }
 
   Color _listBorder(bool active) {
-    if (widget.highlighted) {
-      return active
-          ? ForjaShellColors.brandGreen
-          : ForjaShellColors.brandGreen.withValues(alpha: 0.40);
-    }
     if (active) return ForjaShellColors.chipSelectedBorder;
     return Colors.white.withValues(alpha: 0.07);
   }
 
   double _listBorderWidth(bool active) {
-    if (widget.highlighted || active) return 1.5;
+    if (active) return 1.5;
     return 1;
   }
 
-  Color _listLeftBar(bool? health) {
-    if (widget.highlighted) return ForjaShellColors.brandGreen;
+  Color _listLeftBar(bool? health, bool active) {
+    if (active) return ForjaShellColors.brandGreen;
     return switch (health) {
       true => const Color(0xFF22C55E),
       false => const Color(0xFFEF4444),
@@ -375,7 +375,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: _surface(health, active || widget.highlighted),
+            color: _surface(health, active),
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(color: _border(health, active)),
           ),
@@ -413,7 +413,11 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
       );
     }
 
-    return card;
+    // Sticky last-played stays in semantics only — not a second paint border.
+    return Semantics(
+      selected: widget.highlighted,
+      child: card,
+    );
   }
 
   /// Flat Sources-panel row — bordered rect + inner left health/selection bar.
@@ -423,8 +427,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     required bool? health,
   }) {
     final fav = widget.favoriteBuilder?.call(active: active);
-    final selected = widget.highlighted;
-    final titleColor = selected
+    final titleColor = active
         ? ForjaShellColors.brandGreen
         : health == false
             ? Colors.white54
@@ -445,7 +448,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ColoredBox(
-              color: _listLeftBar(health),
+              color: _listLeftBar(health, active),
               child: const SizedBox(width: 4),
             ),
             Expanded(
@@ -479,7 +482,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                             fontSize: 13,
                             height: 1.25,
                             fontWeight:
-                                selected ? FontWeight.w600 : FontWeight.w500,
+                                active ? FontWeight.w600 : FontWeight.w500,
                           ),
                         ),
                       ),
@@ -503,16 +506,26 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     final fav = widget.favoriteBuilder?.call(active: active);
     final radius = widget.radius ?? ChannelCardTokens.radius;
     final topRadius = BorderRadius.vertical(top: Radius.circular(radius));
+    final titleBarH = ChannelCardTokens.titleBarHeight;
+    final titleSize =
+        widget.titleFontSize ?? ChannelCardTokens.cardTitleFontSize;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Fixed remaining height: title bar + EPG are constant, so this logo
+        // slot never shrinks/grows with title text or logo aspect ratio.
         Expanded(
           child: Stack(
             fit: StackFit.expand,
             children: [
-              ClipRRect(
-                borderRadius: topRadius,
-                child: _logoThumb(contain: true, padding: 10),
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: topRadius,
+                  child: _logoThumb(
+                    contain: true,
+                    padding: ChannelCardTokens.logoPad,
+                  ),
+                ),
               ),
               if (active)
                 Positioned.fill(
@@ -535,26 +548,26 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(8),
-          // No Tooltip — hover overlay steals MouseRegion and freezes the grid.
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 220),
+        SizedBox(
+          height: titleBarH,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ChannelCardTokens.titleBarPadH,
+            ),
+            // No Tooltip — hover overlay steals MouseRegion and freezes the grid.
+            child: Align(
+              alignment: Alignment.centerLeft,
               child: CrossfadeSwap(
                 child: Text(
                   widget.title,
                   key: ValueKey(widget.title),
-                  maxLines: 3,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  softWrap: true,
                   style: GoogleFonts.plusJakartaSans(
                     color: health == false
                         ? Colors.white54
                         : Colors.white,
-                    fontSize: 12,
+                    fontSize: titleSize,
                     height: 1.15,
                     fontWeight: FontWeight.w500,
                   ),
