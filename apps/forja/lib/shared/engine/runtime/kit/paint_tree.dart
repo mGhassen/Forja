@@ -326,6 +326,7 @@ class PackPaintTree extends StatelessWidget {
           pluginId: pluginId,
           packSourceUrl: packSourceUrl,
           tabId: tabId,
+          mergeHomeWatchHistory: node['mergeHomeWatchHistory'] == true,
         );
       case LayoutTypes.continueWatching:
         return _ContinueMount(
@@ -3644,12 +3645,14 @@ class _BecauseMount extends StatefulWidget {
     required this.pluginId,
     this.packSourceUrl,
     this.tabId,
+    this.mergeHomeWatchHistory = false,
   });
 
   final Map<String, dynamic> spec;
   final String pluginId;
   final String? packSourceUrl;
   final String? tabId;
+  final bool mergeHomeWatchHistory;
 
   @override
   State<_BecauseMount> createState() => _BecauseMountState();
@@ -3657,6 +3660,48 @@ class _BecauseMount extends StatefulWidget {
 
 class _BecauseMountState extends State<_BecauseMount> {
   int _shuffleKey = 0;
+  List<Map<String, dynamic>> _seeds = const [];
+  StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
+  var _seedsReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WatchHistory.revision.addListener(_reloadSeeds);
+    if (widget.mergeHomeWatchHistory) {
+      _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
+        unawaited(_reloadSeeds());
+      });
+    }
+    unawaited(_reloadSeeds());
+  }
+
+  @override
+  void dispose() {
+    WatchHistory.revision.removeListener(_reloadSeeds);
+    unawaited(_homeHistorySub?.cancel());
+    super.dispose();
+  }
+
+  Future<void> _reloadSeeds() async {
+    try {
+      final list = await catalogResumeSeeds(
+        widget.pluginId,
+        mergeHomeWatchHistory: widget.mergeHomeWatchHistory,
+      );
+      if (!mounted) return;
+      setState(() {
+        _seeds = list;
+        _seedsReady = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _seeds = const [];
+        _seedsReady = true;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3666,29 +3711,24 @@ class _BecauseMountState extends State<_BecauseMount> {
       PackPaintArtifact.stableSortOrder(tabReserve, 'because-shuffle');
       PackPaintArtifact.stableSortOrder(tabReserve, 'because');
     }
-    return ValueListenableBuilder<int>(
-      valueListenable: WatchHistory.revision,
-      builder: (context, _, _) {
-        return FutureBuilder<List<Map<String, dynamic>>>(
-          future: catalogResumeSeeds(widget.pluginId),
-          builder: (context, snap) {
-            final seeds = snap.data ?? const [];
-            if (seeds.isEmpty) return const SizedBox.shrink();
-            final load = packLoadSpec(widget.spec['load']);
-            if (load == null) return const SizedBox.shrink();
-            return PackLoadedPaint(
-              key: ValueKey('because-$_shuffleKey'),
-              pluginId: widget.pluginId,
-              packSourceUrl: widget.packSourceUrl,
-              tabId: widget.tabId,
-              action: load.action,
-              params: {
-                ...load.params,
-                'resumeSeeds': seeds,
-                'shuffleKey': _shuffleKey,
-              },
-              fallbackSpec: widget.spec,
-              builder: (ctx, node) {
+    if (!_seedsReady) return const SizedBox.shrink();
+    final seeds = _seeds;
+    if (seeds.isEmpty) return const SizedBox.shrink();
+    final load = packLoadSpec(widget.spec['load']);
+    if (load == null) return const SizedBox.shrink();
+    return PackLoadedPaint(
+      key: ValueKey('because-$_shuffleKey-${seeds.length}'),
+      pluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+      tabId: widget.tabId,
+      action: load.action,
+      params: {
+        ...load.params,
+        'resumeSeeds': seeds,
+        'shuffleKey': _shuffleKey,
+      },
+      fallbackSpec: widget.spec,
+      builder: (ctx, node) {
                 final items = node['items'];
                 if (items is! List || items.isEmpty) {
                   return const SizedBox.shrink();
@@ -3888,10 +3928,6 @@ class _BecauseMountState extends State<_BecauseMount> {
                         ),
                 );
                 return section;
-              },
-            );
-          },
-        );
       },
     );
   }

@@ -1,5 +1,5 @@
 /// How many catalog rows below the visible one to warm-fetch.
-const int kKitRowPrefetchAhead = 1;
+const int kKitRowPrefetchAhead = 2;
 
 /// Shell row index → warm callback registry. Row [index] calls [notifyVisible]
 /// to start fetching for [index + 1] … [index + ahead] without waiting for

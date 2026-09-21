@@ -63,10 +63,8 @@ void main() {
     expect(ShellTokens.tvBodyFontSize, 10);
     expect(ShellTokens.tvTitleFontSize, 12);
     expect(ShellTokens.tvMetaFontSize, 9);
-    expect(
-      SettingsTokens.sidebarWidthTv,
-      closeTo(SettingsTokens.sidebarWidth * ShellTokens.tvChromeScale, 0.001),
-    );
+    expect(SettingsTokens.sidebarWidth, 340);
+    expect(SettingsTokens.sidebarWidthTv, 280);
     expect(
       DetailsTokens.sectionSpacingTv,
       closeTo(DetailsTokens.sectionSpacing * ShellTokens.tvChromeScale, 0.001),

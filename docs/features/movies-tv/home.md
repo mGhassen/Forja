@@ -17,7 +17,7 @@ Tap **Home** in the navigation bar (first tab by default).
 - **Watch services** — re-tap **Home** in the nav (already on Home) to open the floating streaming-service panel; tap again to clear. On **desktop**, hover **Home** ~1s also opens it (leave the panel / Home ~1s to hide). On **Android TV**, hold **OK** on Home ~500ms (or long-press on phone). The selected service appears as a mark before **Films**. Selecting a logo filters Home rails via the pack watch-provider vertical filter.
 - Open a poster or hero **View details** (glass pill by default; pack may restyle) for the normal movie/TV details page (Sources / play). Glass **+** on the hero opens Plan to Watch / Watching / … (Simkl when connected).
 - Search from the Home top-bar **Search** tab or **Cmd+F** / **Ctrl+F** — same hub kit search overlay. The Home pack owns search (`action: search` / `_search.js`): structured TMDB with the tune filter lens (type, score, year, genre, country, **language**). Idle Search shows last queries above varied catalog recommendations; after you submit, suggestions refresh from the top match (never the same titles as the result cards). Results always fill a page (related titles pad a thin match; empty queries fall back to trending). Scroll loads up to **3** pages total — pages 2–3 are relatedness hops from a new seed each time. Results run when you press **Enter** / **OK** (or tap a recent / recommendation) — not on every keystroke. Filter-only Search (no typed title) works after you submit the lens. Anime / Asian Drama stay pack-owned title search too.
-- Resume from **Continue watching** (host watch history).
+- Resume from **Continue watching** (host watch history). **Because you watched** recommendations use that same history.
 
 ## Setup (if needed)
 
@@ -26,7 +26,7 @@ Tap **Home** in the navigation bar (first tab by default).
 
 ## Tips
 
-- Hub rails come from the ForjaHQ **Hubs** pack — layout can change without an app update when the pack bumps. Cold start warms layout + first-paint rails into the shared catalog cache during splash; Home loads after splash so it hits that cache instead of racing pack hydrate. Leaving Home and coming back keeps the rails already on screen (re-tap Home or Reload packs to force a refresh).
+- Hub rails come from the ForjaHQ **Hubs** pack — layout can change without an app update when the pack bumps. Cold start warms layout + first-paint rails into the shared catalog cache during splash; Home loads after splash so it hits that cache instead of racing pack hydrate. Leaving Home and coming back keeps the rails already on screen (re-tap Home or Reload packs to force a refresh). Scrolling down starts the next ~two rails before they reach the screen.
 - Continue Watching is host-owned (your watch history), not pack data.
 - On **desktop**, drag-select the hero title text to copy it (logo titles are images). Alt-tab / window focus keeps your scroll position — it does not jump back to Spotlight.
 

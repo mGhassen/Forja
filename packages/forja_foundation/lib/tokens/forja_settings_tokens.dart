@@ -11,9 +11,13 @@ abstract final class SettingsTokens {
 
   static const double _s = ShellTokens.tvChromeScale;
 
-  static const double sidebarWidth = 260;
-  static const double sidebarWidthTv = sidebarWidth * _s;
+  /// Category rail — wide enough for title + subtitle without heavy ellipsis.
+  static const double sidebarWidth = 280;
+
+  /// Leanback — hand width so labels stay readable (not × [tvChromeScale]).
+  static const double sidebarWidthTv = 220;
   static const double detailMaxWidth = 720;
+
   /// Flat green left-bar + ink fill (category rail and detail rows) — no card radius.
   static const double categoryTileRadius = 0;
   static const double groupRadius = 12;
@@ -31,6 +35,7 @@ abstract final class SettingsTokens {
   static const double categoryIconSizeTv = categoryIconSize * _s;
   static const double pageTitleSize = 22;
   static const double pageTitleSizeTv = ShellTokens.tvTitleFontSize;
+
   /// Hub list / sidebar "Settings" title ([ShellTabHeader]).
   static const double hubTitleSize = 24;
   static const double hubTitleSizeTv = ShellTokens.tvTitleFontSize;
