@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/focus/focus_edge.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 
 void main() {
   group('kitFocusEdge', () {
@@ -31,6 +32,48 @@ void main() {
     test('lastItem marks miss when target row is unregistered', () {
       ShellTvFocusCoordinator.beginKitEdgeAttempt();
       kitFocusEdge('orphan-tab', 'chrome', lastItem: true)!.call();
+      expect(ShellTvFocusCoordinator.takeKitEdgeMiss(), isTrue);
+    });
+
+    testWidgets(
+      'hero-details reveals and focuses defaultFocus (View details)',
+      (tester) async {
+        const tab = 'catalog';
+        final details = FocusNode(debugLabel: 'hero-details');
+        addTearDown(() {
+          details.dispose();
+          ShellTvFocusCoordinator.clearTab(tab);
+        });
+
+        ShellTvFocusCoordinator.setNavOrder([tab]);
+        ShellTvFocus.currentNavTabId = tab;
+        ShellTvFocusCoordinator.clearTab(tab);
+        TvHeroActions.bind(tab, defaultFocus: () => details);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Focus(
+              focusNode: details,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        ShellTvFocusCoordinator.beginKitEdgeAttempt();
+        kitFocusEdge(tab, kHubHeroDetailsFocusId)!.call();
+        await tester.pump();
+
+        expect(ShellTvFocusCoordinator.takeKitEdgeMiss(), isFalse);
+        expect(details.hasPrimaryFocus, isTrue);
+      },
+    );
+
+    test('hero-details marks miss when defaultFocus cannot land', () {
+      const tab = 'orphan-hero';
+      ShellTvFocusCoordinator.clearTab(tab);
+      ShellTvFocusCoordinator.beginKitEdgeAttempt();
+      kitFocusEdge(tab, kHubHeroDetailsFocusId)!.call();
       expect(ShellTvFocusCoordinator.takeKitEdgeMiss(), isTrue);
     });
 

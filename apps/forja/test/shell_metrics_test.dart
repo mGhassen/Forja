@@ -60,11 +60,23 @@ void main() {
       ShellTokens.controlHeightTv,
       greaterThanOrEqualTo(DetailsTokens.heroPillHeightTv - 0.001),
     );
-    expect(ShellTokens.tvBodyFontSize, 10);
-    expect(ShellTokens.tvTitleFontSize, 12);
-    expect(ShellTokens.tvMetaFontSize, 9);
+    expect(ShellTokens.tvBodyFontSize, 8);
+    expect(ShellTokens.tvTitleFontSize, 10);
+    expect(ShellTokens.tvMetaFontSize, 7);
     expect(SettingsTokens.sidebarWidth, 340);
     expect(SettingsTokens.sidebarWidthTv, 280);
+    // Settings roles → shell ladder (title / body / meta) — no parallel scale.
+    expect(SettingsTokens.hubTitleSizeTv, ShellTokens.tvTitleFontSize);
+    expect(SettingsTokens.pageTitleSizeTv, ShellTokens.tvTitleFontSize);
+    expect(SettingsTokens.categoryTitleSizeTv, ShellTokens.tvBodyFontSize);
+    expect(SettingsTokens.rowTitleSizeTv, ShellTokens.tvBodyFontSize);
+    expect(SettingsTokens.categorySubtitleSizeTv, ShellTokens.tvMetaFontSize);
+    expect(SettingsTokens.rowSubtitleSizeTv, ShellTokens.tvMetaFontSize);
+    expect(SettingsTokens.groupLabelSizeTv, ShellTokens.tvMetaFontSize);
+    expect(
+      SettingsTokens.categoryTitleSizeTv,
+      greaterThan(SettingsTokens.categorySubtitleSizeTv),
+    );
     expect(
       DetailsTokens.sectionSpacingTv,
       closeTo(DetailsTokens.sectionSpacing * ShellTokens.tvChromeScale, 0.001),

@@ -134,6 +134,8 @@ void bindHubPageFocus(String tabId, HubPageFocus focus) {
   // Always replace enter/restore — registerTabDefaults merges and would keep
   // a stale Featured restore after Home dropped pack `restore`.
   ShellTvFocusCoordinator.clearTabEnterRestore(tabId);
+  // Same for pageBack: null merge leaves a prior rail ladder (Back → Featured).
+  if (!hasBack) ShellTvFocusCoordinator.clearTabPageBack(tabId);
 
   TvHeroActions.bind(
     tabId,

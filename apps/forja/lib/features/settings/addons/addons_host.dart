@@ -462,9 +462,9 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
       children: [
         settingsTitleText(
           meta.title,
-          const TextStyle(
+          TextStyle(
             color: ForjaShellColors.textPrimary,
-            fontSize: 15,
+            fontSize: SettingsTokens.rowTitleSizeOf(context),
             fontWeight: FontWeight.w600,
           ),
           adminOnly: meta.adminOnly,
@@ -473,9 +473,9 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
         const SizedBox(height: 2),
         Text(
           meta.subtitle,
-          style: const TextStyle(
+          style: TextStyle(
             color: ForjaShellColors.textSecondary,
-            fontSize: 12,
+            fontSize: SettingsTokens.rowSubtitleSizeOf(context),
           ),
         ),
       ],

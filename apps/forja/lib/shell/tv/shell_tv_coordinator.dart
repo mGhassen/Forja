@@ -269,6 +269,12 @@ abstract final class ShellTvFocusCoordinator {
     _tabPreferCustomNavRestore.remove(tabId);
   }
 
+  /// Drop [pageBack] for a tab (flat catalog hubs omit it; null merge would keep a stale ladder).
+  static void clearTabPageBack(String tabId) {
+    if (tabId.isEmpty) return;
+    _tabPageBack.remove(tabId);
+  }
+
   /// Settings detail: ← on column 0 of a [TvKitRow] exits like Back.
   static void setPageBackOnRowLeftEdge(String tabId, bool enabled) {
     if (enabled) {
@@ -1913,8 +1919,9 @@ class ShellTvFocusMeta {
         // Column 0: pack pageBack ladder (e.g. IPTV items → cats).
         if (idx % cols <= 0) {
           if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
-            ShellTvFocusCoordinator.tryPageBack(tid);
+            if (ShellTvFocusCoordinator.tryPageBack(tid)) return true;
           }
+          ShellTvFocusCoordinator.focusActiveNavTab();
           return true;
         }
         return ShellTvFocusCoordinator.moveInGrid(
@@ -1941,10 +1948,13 @@ class ShellTvFocusMeta {
           ShellTvFocusCoordinator.focusActiveNavTab();
           return true;
         }
-        // Settings detail rows: ← leaves the page (same ladder as Back).
+        // IPTV / My List panes: ← walks pageBack; outermost → nav.
         if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
-          ShellTvFocusCoordinator.tryPageBack(tid);
+          if (ShellTvFocusCoordinator.tryPageBack(tid)) return true;
+          ShellTvFocusCoordinator.focusActiveNavTab();
+          return true;
         }
+        ShellTvFocusCoordinator.focusActiveNavTab();
         return true;
       }
       return ShellTvFocusCoordinator.focusAdjacentInRow(

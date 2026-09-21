@@ -1697,6 +1697,23 @@ void main() {
     },
   );
 
+  test('clearTabPageBack drops a stale Back ladder', () {
+    var calls = 0;
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'home',
+      pageBack: () {
+        calls++;
+        return true;
+      },
+    );
+    expect(ShellTvFocusCoordinator.tryPageBack('home'), isTrue);
+    expect(calls, 1);
+    ShellTvFocusCoordinator.clearTabPageBack('home');
+    expect(ShellTvFocusCoordinator.tryPageBack('home'), isFalse);
+    expect(calls, 1);
+    ShellTvFocusCoordinator.clearTab('home');
+  });
+
   testWidgets(
     'handleShellBackKey on Settings-only page arms exit (skips nav)',
     (tester) async {

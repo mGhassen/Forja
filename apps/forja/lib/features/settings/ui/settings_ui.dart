@@ -15,15 +15,10 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 
-double _tvBody(BuildContext context, {double desktop = 15}) =>
-    ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.tvBodyFontSize
-        : desktop;
+double _tvBody(BuildContext context) => SettingsTokens.rowTitleSizeOf(context);
 
-double _tvMeta(BuildContext context, {double desktop = 12.5}) =>
-    ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.tvMetaFontSize
-        : desktop;
+double _tvMeta(BuildContext context) =>
+    SettingsTokens.rowSubtitleSizeOf(context);
 
 /// Green sparkles beside admin-only Settings titles (`accounts.is_admin`).
 class SettingsAdminTitle extends StatelessWidget {
@@ -208,7 +203,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: subtitleColor,
-                        fontSize: 12,
+                        fontSize: SettingsTokens.categorySubtitleSizeOf(context),
                       ),
                     ),
                   ],
@@ -499,9 +494,9 @@ class _SettingsTvExpandableSideRowState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   DefaultTextStyle.merge(
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: SettingsTokens.rowTitleSizeOf(context),
                       color: ForjaShellColors.textPrimary,
                     ),
                     child: widget.title,
@@ -1434,10 +1429,10 @@ class SettingsSelectRow extends StatelessWidget {
                             value,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: ForjaShellColors.textPrimary,
                               fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                              fontSize: SettingsTokens.rowTitleSizeOf(context),
                             ),
                           ),
                         ),
@@ -1454,10 +1449,10 @@ class SettingsSelectRow extends StatelessWidget {
                         value: options.contains(value) ? value : null,
                         hint: Text(
                           value,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: ForjaShellColors.textPrimary,
                             fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                            fontSize: SettingsTokens.rowTitleSizeOf(context),
                           ),
                         ),
                         dropdownColor: ForjaShellColors.cinematic.menuSurface,
@@ -1466,10 +1461,10 @@ class SettingsSelectRow extends StatelessWidget {
                           color: ForjaShellColors.brandGreen,
                           size: 20,
                         ),
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: ForjaShellColors.textPrimary,
                           fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontSize: SettingsTokens.rowTitleSizeOf(context),
                         ),
                         items: options
                             .map(
@@ -1859,7 +1854,7 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
             widget.title,
             style: TextStyle(
               color: ForjaShellColors.textPrimary,
-              fontSize: _tvBody(context, desktop: 14),
+              fontSize: _tvBody(context),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1869,7 +1864,7 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
               widget.subtitle!,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: _tvMeta(context, desktop: 11),
+                fontSize: _tvMeta(context),
               ),
             ),
           ],
@@ -2008,7 +2003,7 @@ class SettingsTextAction extends StatelessWidget {
     final style = TextStyle(
       color: enabled ? color : color.withValues(alpha: 0.4),
       fontWeight: FontWeight.w600,
-      fontSize: 13,
+      fontSize: SettingsTokens.rowTitleSizeOf(context),
     );
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (!tv) {
@@ -2439,7 +2434,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
         color: enabled
             ? ForjaShellColors.textPrimary
             : ForjaShellColors.textSecondary.withValues(alpha: 0.55),
-        fontSize: 14,
+        fontSize: SettingsTokens.rowTitleSizeOf(context),
       ),
       cursorColor: ForjaShellColors.brandGreen,
       decoration: InputDecoration(
@@ -2520,7 +2515,7 @@ class SettingsStatusRow extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: ForjaShellColors.textPrimary,
-                    fontSize: _tvBody(context, desktop: 14),
+                    fontSize: _tvBody(context),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -2530,7 +2525,7 @@ class SettingsStatusRow extends StatelessWidget {
                     subtitle!,
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: _tvMeta(context, desktop: 12),
+                      fontSize: _tvMeta(context),
                     ),
                   ),
                 ],

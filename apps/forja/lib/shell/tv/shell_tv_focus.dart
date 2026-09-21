@@ -499,6 +499,46 @@ KeyEventResult shellTvHandleRowArrows({
   return KeyEventResult.ignored;
 }
 
+/// Spatial ←/→/↑/↓ for foundation [Button] / Material focus nodes.
+///
+/// App-root [DirectionalFocusAction] no-ops ←/→ so catalog rows own horizontal
+/// traps. [FocusableControl] / [ForjaInteractive] drive [FocusNode.focusInDirection]
+/// themselves; Material buttons do not — pass this as [Button.onKeyEvent].
+KeyEventResult shellTvSpatialFocusArrows({
+  required FocusNode node,
+  required KeyEvent event,
+}) {
+  if (event is KeyUpEvent) {
+    ShellTvHoldAccel.note(event);
+    return KeyEventResult.ignored;
+  }
+  if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+  ShellTvHoldAccel.note(event);
+  final key = event.logicalKey;
+  TraversalDirection? direction;
+  if (key == LogicalKeyboardKey.arrowLeft) {
+    direction = TraversalDirection.left;
+  } else if (key == LogicalKeyboardKey.arrowRight) {
+    direction = TraversalDirection.right;
+  } else if (key == LogicalKeyboardKey.arrowUp) {
+    direction = TraversalDirection.up;
+  } else if (key == LogicalKeyboardKey.arrowDown) {
+    direction = TraversalDirection.down;
+  }
+  if (direction == null) return KeyEventResult.ignored;
+  final vertical = direction == TraversalDirection.up ||
+      direction == TraversalDirection.down;
+  final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
+  var n = FocusManager.instance.primaryFocus ?? node;
+  var moved = false;
+  for (var i = 0; i < steps; i++) {
+    if (!n.focusInDirection(direction)) break;
+    moved = true;
+    n = FocusManager.instance.primaryFocus ?? n;
+  }
+  return moved ? KeyEventResult.handled : KeyEventResult.ignored;
+}
+
 /// TV catalog item - block Flutter geometry from moving focus across rows.
 KeyEventResult shellTvTrapRowGeometry({
   required KeyEvent event,

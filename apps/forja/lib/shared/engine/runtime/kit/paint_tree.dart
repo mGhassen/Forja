@@ -32,6 +32,7 @@ import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_foundation_mount.dart';
+import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
@@ -3256,7 +3257,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               // Keep node mounted for nav RIGHT restore even when not autofocus.
               focusNode: tv ? _playFocus : null,
               tvTabId: tab.isEmpty ? null : tab,
-              tvRowId: 'hero-details',
+              tvRowId: kHubHeroDetailsFocusId,
               tvItemIndex: 0,
               // Explicit edges — ForjaInteractive geometric ↓ otherwise lands on
               // hub-hero-gallery (full-bleed overlay) after denser TV posters.

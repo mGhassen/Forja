@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:rust/rust.dart';
-import 'package:forja_foundation/components/button.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -96,7 +96,31 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final tv = _tvFocusActive(context);
+    // Material [Button] traps ←/→ under app-root DirectionalFocus — use
+    // [SettingsFilledButton] (shellFocusableTap) with explicit peer edges.
+    final actions = <Widget>[
+      if (!widget.reviewOnly)
+        SettingsFilledButton(
+          label: 'Cancel',
+          secondary: true,
+          focusNode: _cancelFocus,
+          onPressed: () => Navigator.pop(context, false),
+          onRightEdge: () {
+            if (_confirmFocus.canRequestFocus) _confirmFocus.requestFocus();
+          },
+        ),
+      SettingsFilledButton(
+        label: widget.reviewOnly ? 'Close' : 'I am aware',
+        focusNode: _confirmFocus,
+        onPressed: () => Navigator.pop(context, true),
+        onLeftEdge: widget.reviewOnly
+            ? null
+            : () {
+                if (_cancelFocus.canRequestFocus) _cancelFocus.requestFocus();
+              },
+      ),
+    ];
+
     return AlertDialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
       shape: RoundedRectangleBorder(
@@ -166,19 +190,15 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
         ),
       ),
       actions: [
-        if (!widget.reviewOnly)
-          Button(
-            label: 'Cancel',
-            autofocus: tv,
-            focusNode: _cancelFocus,
-            onPressed: () => Navigator.pop(context, false),
-          ),
-        Button(
-          variant: ButtonVariant.primary,
-          label: widget.reviewOnly ? 'Close' : 'I am aware',
-          autofocus: tv && widget.reviewOnly,
-          focusNode: _confirmFocus,
-          onPressed: () => Navigator.pop(context, true),
+        // Own the row — OverflowBar + Material buttons miss TV ←/→ peers.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            for (var i = 0; i < actions.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              actions[i],
+            ],
+          ],
         ),
       ],
     );

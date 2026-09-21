@@ -619,4 +619,73 @@ void main() {
       expect(ShellTvContainDpad.activeOf(boxCtx), isTrue);
     },
   );
+
+  testWidgets(
+    'shellTvSpatialFocusArrows: → moves between side-by-side Material focus nodes '
+    'under app-root DirectionalFocus no-op',
+    (tester) async {
+      final left = FocusNode(debugLabel: 'dlg-cancel');
+      final right = FocusNode(debugLabel: 'dlg-confirm');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: ShellInputPolicy.maybeWrapFocusTraversal(
+                enabled: true,
+                child: Scaffold(
+                  body: TvOverlayScope(
+                    autofocusFirst: false,
+                    child: SizedBox(
+                      width: 320,
+                      height: 80,
+                      child: Row(
+                        children: [
+                          Focus(
+                            focusNode: left,
+                            autofocus: true,
+                            onKeyEvent: (node, event) =>
+                                shellTvSpatialFocusArrows(
+                              node: node,
+                              event: event,
+                            ),
+                            child: const SizedBox(width: 120, height: 48),
+                          ),
+                          Focus(
+                            focusNode: right,
+                            onKeyEvent: (node, event) =>
+                                shellTvSpatialFocusArrows(
+                              node: node,
+                              event: event,
+                            ),
+                            child: const SizedBox(width: 120, height: 48),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(left.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(right.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(left.hasPrimaryFocus, isTrue);
+
+      left.dispose();
+      right.dispose();
+    },
+  );
 }
