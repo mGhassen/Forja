@@ -6,11 +6,12 @@ import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 /// Named [ForjaNetworkImage] to avoid clashing with Flutter's [NetworkImage]
 /// image provider.
 ///
-/// A solid surface sits under the decoded frame so transparent PNGs (channel
-/// logos, title art) do not show chrome through empty pixels. Custom
-/// [placeholder] widgets (icons, skeletons) show only while loading — they
-/// are removed once the first frame arrives so they cannot stack under a
-/// loaded logo. [gaplessPlayback] keeps the prior frame on URL updates when
+/// Outer [Stack] + [StackFit.expand] keeps the paint box fixed to the parent
+/// (channel logo slot, poster cell). A solid surface sits under the decoded
+/// frame so transparent PNGs do not show chrome through empty pixels. Custom
+/// [placeholder] widgets (icons, skeletons) show only while loading — removed
+/// once the first frame arrives so they cannot stack under a loaded logo.
+/// [gaplessPlayback] keeps the prior frame on URL updates when
 /// [useOldImageOnUrlChange] is true. First frame fades in ([fadeDuration]).
 class ForjaNetworkImage extends StatelessWidget {
   const ForjaNetworkImage({
@@ -68,39 +69,43 @@ class ForjaNetworkImage extends StatelessWidget {
       height: height,
       child: ClipRRect(
         borderRadius: radius,
-        child: Image.network(
-          url.trim(),
-          key: useOldImageOnUrlChange ? null : ValueKey(url.trim()),
-          fit: fit,
-          alignment: alignment,
-          width: width,
-          height: height,
-          cacheWidth: memCacheWidth,
-          filterQuality: filterQuality,
-          gaplessPlayback: true,
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            final loaded = wasSynchronouslyLoaded || frame != null;
-            Widget image = child;
-            if (!wasSynchronouslyLoaded && fadeDuration != Duration.zero) {
-              image = AnimatedOpacity(
-                opacity: loaded ? 1 : 0,
-                duration: fadeDuration,
-                curve: Curves.easeOut,
-                child: child,
-              );
-            }
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                // Opaque underlay for transparent logos / PNGs.
-                surface,
-                // Icon/skeleton placeholders — only while waiting for a frame.
-                if (!loaded) loading,
-                image,
-              ],
-            );
-          },
-          errorBuilder: (_, _, _) => fallback,
+        // Expand first so [Image.network] always paints into the parent slot
+        // (channel cards, posters). Never size to the PNG's intrinsic pixels.
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            surface,
+            Image.network(
+              url.trim(),
+              key: useOldImageOnUrlChange ? null : ValueKey(url.trim()),
+              fit: fit,
+              alignment: alignment,
+              width: width,
+              height: height,
+              cacheWidth: memCacheWidth,
+              filterQuality: filterQuality,
+              gaplessPlayback: true,
+              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                final loaded = wasSynchronouslyLoaded || frame != null;
+                Widget image = child;
+                if (!wasSynchronouslyLoaded && fadeDuration != Duration.zero) {
+                  image = AnimatedOpacity(
+                    opacity: loaded ? 1 : 0,
+                    duration: fadeDuration,
+                    curve: Curves.easeOut,
+                    child: child,
+                  );
+                }
+                if (loaded) return image;
+                // Icon/skeleton only while waiting — never under a loaded logo.
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [loading, image],
+                );
+              },
+              errorBuilder: (_, _, _) => fallback,
+            ),
+          ],
         ),
       ),
     );

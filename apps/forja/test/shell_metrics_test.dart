@@ -39,7 +39,13 @@ void main() {
       ShellTokens.controlHeightTv,
       greaterThanOrEqualTo(DetailsTokens.heroPillHeightTv - 0.001),
     );
-    expect(ShellTokens.channelCardWidthTv, 70);
+    expect(
+      ShellTokens.channelCardWidthTv,
+      closeTo(
+        ShellTokens.posterCardWidthMobile * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
     expect(
       ShellTokens.channelCardWidthTv,
       lessThan(ShellTokens.posterCardWidthTv),

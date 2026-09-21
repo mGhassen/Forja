@@ -70,6 +70,40 @@ void main() {
     skip: kIsWeb,
   );
 
+  testWidgets(
+    'logo paint box fills the parent slot (not intrinsic PNG size)',
+    (tester) async {
+      final httpClient = _FakeHttpClient()..responseBytes = _kTransparentPng;
+      _installFakeHttp(httpClient);
+      try {
+        await tester.pumpWidget(
+          _wrap(
+            const SizedBox(
+              width: 120,
+              height: 120,
+              child: ForjaNetworkImage(
+                url: 'https://example.test/logo.png',
+                fit: BoxFit.contain,
+                fadeDuration: Duration.zero,
+              ),
+            ),
+          ),
+        );
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        });
+        await tester.pump();
+
+        final imageSize = tester.getSize(find.byType(Image));
+        expect(imageSize.width, 120);
+        expect(imageSize.height, 120);
+      } finally {
+        _clearFakeHttp();
+      }
+    },
+    skip: kIsWeb,
+  );
+
   testWidgets('shows error widget when the logo URL fails', (tester) async {
     final httpClient = _FakeHttpClient()
       ..statusCode = HttpStatus.notFound
