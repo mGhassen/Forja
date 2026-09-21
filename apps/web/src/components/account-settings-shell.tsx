@@ -97,11 +97,15 @@ function NavGroup({
 function isProfileNavSelected(href: string, pathname: string): boolean {
   if (href === '/account/settings/addons') {
     if (pathname === href || pathname.startsWith(`${href}/`)) return true
-    return ADDONS_NESTED_PREFIXES.some(
-      (p) => pathname === p || pathname.startsWith(`${p}/`),
-    )
+    return isAddonsNestedPath(pathname)
   }
   return pathname === href
+}
+
+function isAddonsNestedPath(pathname: string): boolean {
+  return ADDONS_NESTED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  )
 }
 
 function NavLink({
@@ -229,6 +233,15 @@ export function AccountSettingsShell({
             </aside>
 
             <section className="pt-7 lg:px-10 lg:pt-3">
+              {isAddonsNestedPath(pathname) ? (
+                <Link
+                  to="/account/settings/addons"
+                  className="mb-4 inline-flex items-center gap-1.5 text-sm text-forja-muted hover:text-forja-green"
+                >
+                  <ArrowLeft className="size-4" />
+                  Addons
+                </Link>
+              ) : null}
               {title ? (
                 <h2 className="font-display text-3xl tracking-tight">{title}</h2>
               ) : null}

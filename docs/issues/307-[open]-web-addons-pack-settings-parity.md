@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 4** acceptance |
+| **Progress** | **9 / 9** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 6 | I307-T06 | Local pack-settings writes schedule sync push | ✅ |
 | 7 | I307-T07 | Feature docs + changelog describe web Addons discovery + synced pack settings | ✅ |
 | 8 | I307-T08 | Debrid / password fields stay app-only on web (honest copy) | ✅ |
+| 9 | I307-T09 | Web Addons always surfaces IPTV / hub pack rows from pack URL heuristics (local checkout paths the browser cannot fetch) | ✅ |
 
 ---
 

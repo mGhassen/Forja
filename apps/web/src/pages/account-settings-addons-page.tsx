@@ -11,6 +11,7 @@ import {
 } from '@/hooks/use-user-setting'
 import {
   discoverPackAddonBuckets,
+  packAddonBucketsFromUrls,
   type PackAddonBucket,
 } from '@/lib/pack-addon-discovery'
 import {
@@ -144,6 +145,7 @@ export function AccountSettingsAddonsPage() {
     save: forja.save,
   })
 
+  const forjaReady = Boolean(forja.data) && !forja.isLoading
   const packs = packsDraft.draft.packs
   const packsKey = useMemo(
     () =>
@@ -155,14 +157,25 @@ export function AccountSettingsAddonsPage() {
   )
 
   useEffect(() => {
+    if (!forjaReady) {
+      setPackLoading(true)
+      setPackBuckets([])
+      return
+    }
+
     let cancelled = false
-    setPackLoading(true)
+    // Sync seed from URLs so IPTV Portals appears even when manifest fetch fails
+    // (Flutter often syncs local `/Users/…/hubs/iptv/manifest.json` paths).
+    const seeded = packAddonBucketsFromUrls(packs)
+    setPackBuckets(seeded)
+    setPackLoading(seeded.length === 0)
+
     void (async () => {
       try {
         const buckets = await discoverPackAddonBuckets(packs)
         if (!cancelled) setPackBuckets(buckets)
       } catch {
-        if (!cancelled) setPackBuckets([])
+        if (!cancelled) setPackBuckets(seeded)
       } finally {
         if (!cancelled) setPackLoading(false)
       }
@@ -170,7 +183,7 @@ export function AccountSettingsAddonsPage() {
     return () => {
       cancelled = true
     }
-  }, [packsKey, packs])
+  }, [packsKey, packs, forjaReady])
 
   const busy = playDraft.controlsLocked || playDraft.isSaving
 

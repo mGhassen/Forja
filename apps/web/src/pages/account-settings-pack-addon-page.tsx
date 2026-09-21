@@ -400,15 +400,6 @@ export function AccountSettingsPackAddonPage({
               </ul>
             </SettingsSection>
           ) : null}
-
-          <p className="px-0.5 text-xs text-forja-muted">
-            <Link
-              to="/account/settings/addons"
-              className="text-forja-green hover:underline"
-            >
-              ← All Addons
-            </Link>
-          </p>
         </>
       )}
     </AccountSettingsShell>

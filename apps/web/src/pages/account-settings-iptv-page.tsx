@@ -585,7 +585,7 @@ export function AccountSettingsIptvPage() {
   return (
     <AccountSettingsShell
       title="IPTV"
-      description="Addons → IPTV — programme guide and Xtream portals for this profile. Turn the IPTV tab on from the Addons hub. Live quality and recovery stay in the app."
+      description="Addons → IPTV — programme guide and Xtream portals for this profile. Shown when the IPTV pack is enabled on this profile."
       wide
       footer={
         <SettingsAutosaveFooter

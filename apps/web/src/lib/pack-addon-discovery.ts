@@ -398,8 +398,73 @@ async function fetchManifestJson(
 }
 
 /**
+ * Sync hub/debrid Addons rows from enabled pack URLs only (no network).
+ * Used so IPTV Portals stays visible when Flutter synced local checkout paths
+ * the browser cannot fetch.
+ */
+export function packAddonBucketsFromUrls(
+  packs: ForjaPackRow[],
+): PackAddonBucket[] {
+  const byAddon = new Map<
+    string,
+    {
+      titleHints: string[]
+      fields: PackSettingsField[]
+      pluginIds: Set<string>
+    }
+  >()
+
+  for (const pack of packs) {
+    if (pack.enabled === false) continue
+    const url =
+      typeof pack.manifestUrl === 'string' ? pack.manifestUrl.trim() : ''
+    if (!url) continue
+    const heuristic = heuristicAddonFromUrl(url)
+    if (!heuristic || HOST_ADDON_IDS.has(heuristic.addonId)) continue
+    const bucket = byAddon.get(heuristic.addonId) ?? {
+      titleHints: [],
+      fields: [],
+      pluginIds: new Set<string>(),
+    }
+    if (!bucket.titleHints.includes(heuristic.title)) {
+      bucket.titleHints.push(heuristic.title)
+    }
+    bucket.pluginIds.add(heuristic.pluginId)
+    if (heuristic.addonId === 'debrid' && bucket.fields.length === 0) {
+      bucket.fields.push(...debridFallbackFields())
+      for (const p of DEBRID_PLUGINS) bucket.pluginIds.add(p.id)
+    } else if (bucket.fields.length === 0) {
+      const fallback = OFFICIAL_FIELD_FALLBACKS[heuristic.pluginId]
+      if (fallback) bucket.fields.push(...fallback)
+    }
+    byAddon.set(heuristic.addonId, bucket)
+  }
+
+  return [...byAddon.keys()].sort().map((id) => {
+    const b = byAddon.get(id)!
+    const pluginCount = b.pluginIds.size || 1
+    const title =
+      b.titleHints.find((t) => t.trim()) || titleFromAddonId(id)
+    return {
+      id,
+      title,
+      subtitle:
+        id === 'iptv'
+          ? 'Xtream portals and programme guide'
+          : pluginCount === 1
+            ? 'Pack settings'
+            : `${pluginCount} pack settings`,
+      href: hrefForAddon(id),
+      fields: b.fields,
+      pluginCount,
+    }
+  })
+}
+
+/**
  * Pack-contributed Addons rows for enabled packs on the profile.
- * Tries live manifests; falls back to URL heuristics + official field schemas.
+ * Tries live manifests; always merges URL heuristics + official field schemas
+ * so local checkout paths still produce IPTV / Live Sports / … rows.
  */
 export async function discoverPackAddonBuckets(
   packs: ForjaPackRow[],
@@ -417,18 +482,17 @@ export async function discoverPackAddonBuckets(
 
   await Promise.all(
     enabled.map(async (pack) => {
-      const url = pack.manifestUrl.trim()
+      const url =
+        typeof pack.manifestUrl === 'string' ? pack.manifestUrl.trim() : ''
       if (!url) return
       const manifest = await fetchManifestJson(url)
       const plugins = Array.isArray(manifest?.plugins)
         ? (manifest!.plugins as ManifestPlugin[])
         : []
 
-      let contributed = false
       for (const plugin of plugins) {
         const hit = contribFromPlugin(plugin)
         if (!hit) continue
-        contributed = true
         const bucket = byAddon.get(hit.addonId) ?? {
           titleHints: [],
           fields: [],
@@ -446,8 +510,9 @@ export async function discoverPackAddonBuckets(
         byAddon.set(hit.addonId, bucket)
       }
 
-      if (contributed) return
-
+      // Always merge URL heuristics. Browser cannot fetch local checkout paths
+      // (`/Users/…/hubs/iptv/manifest.json`) that Flutter syncs as-is — without
+      // this, IPTV / Live Sports / My List / Debrid vanish from web Addons.
       const heuristic = heuristicAddonFromUrl(url)
       if (!heuristic || HOST_ADDON_IDS.has(heuristic.addonId)) return
       const bucket = byAddon.get(heuristic.addonId) ?? {
@@ -455,7 +520,9 @@ export async function discoverPackAddonBuckets(
         fields: [],
         pluginIds: new Set<string>(),
       }
-      bucket.titleHints.push(heuristic.title)
+      if (!bucket.titleHints.includes(heuristic.title)) {
+        bucket.titleHints.push(heuristic.title)
+      }
       bucket.pluginIds.add(heuristic.pluginId)
       if (heuristic.addonId === 'debrid' && bucket.fields.length === 0) {
         bucket.fields.push(...debridFallbackFields())
@@ -486,7 +553,11 @@ export async function discoverPackAddonBuckets(
       id,
       title,
       subtitle:
-        pluginCount === 1 ? 'Pack settings' : `${pluginCount} pack settings`,
+        id === 'iptv'
+          ? 'Xtream portals and programme guide'
+          : pluginCount === 1
+            ? 'Pack settings'
+            : `${pluginCount} pack settings`,
       href: hrefForAddon(id),
       fields: b.fields,
       pluginCount,
