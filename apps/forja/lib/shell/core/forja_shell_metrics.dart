@@ -121,7 +121,8 @@ class ShellMetrics {
   );
 
   /// Leanback density — rows fill the body edge-to-edge after the nav rail.
-  /// Rail width / logo share [ShellTokens.tvLayoutScale] with poster cards.
+  /// Rail width / logo use [ShellTokens.tvChromeScale]; posters use
+  /// [ShellTokens.posterCardWidthTv] (film family).
   static const tv = ShellMetrics(
     posterCardWidth: ShellTokens.posterCardWidthTv,
     hubCardTitleFontSize: ShellTokens.hubCardTitleFontSizeTv,

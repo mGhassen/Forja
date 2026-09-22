@@ -48,7 +48,7 @@ double catalogContinueCardHeight(BuildContext context, {required bool wide}) {
       : ShellTokens.shellContinueWatchingCardHeightCompact;
 }
 
-/// Category / side rail — desktop × [ShellTokens.tvLayoutScale] on TV.
+/// Category / side rail — desktop × [ShellTokens.tvChromeScale] on TV.
 double catalogSideRailWidth(BuildContext context) =>
     catalogUsesTvDensity(context)
         ? ShellTokens.categoryRailWidthTv

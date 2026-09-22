@@ -29,7 +29,7 @@ abstract final class ShellTokens {
   /// |---|---|
   /// | **Chrome / controls** | [tvChromeScale] — chips, pads, pack lengths, control height |
   /// | **Type** | [tvTypeSize] ladder — never × chromeScale |
-  /// | **Film posters** | [posterCardWidthTv] — default desktop × chromeScale |
+  /// | **Film posters** | [posterCardWidthTv] — hand-tuned denser than chrome |
   /// | **Channel logos** | [ChannelCardTokens.widthTv] — hand-tuned logo face |
   /// | **Hero** | [tvHeroScale] — softer than chrome so Featured stays tall |
   /// | **Portals rows** | [PortalListTokens.rowHeightTv] — hand-tuned readable rows |
@@ -680,26 +680,23 @@ abstract final class ShellTokens {
   static const double posterCardWidthMobile = 165;
   static const double posterCardWidthDesktop = 190;
 
-  /// TV posters — chrome family (desktop × [tvChromeScale]).
-  static const double posterCardWidthTv =
-      posterCardWidthDesktop * tvChromeScale;
+  /// TV film posters — **film family** hand-tuned (denser than × [tvChromeScale]).
+  static const double posterCardWidthTv = 100;
 
   /// IPTV / live channel tiles — **channel family** hand-tuned logo face
-  /// (keep in sync with [ChannelCardTokens.widthTv]); denser than posters.
+  /// (keep in sync with [ChannelCardTokens.widthTv]).
   static const double channelCardWidthTv = 110;
 
-  /// Leanback chrome — same ratio as [posterCardWidthTv] / [posterCardWidthDesktop].
-  static const double navRailWidthTv =
-      navRailWidth * posterCardWidthTv / posterCardWidthDesktop;
-  static const double navRailLogoWidthTv =
-      navRailLogoWidth * posterCardWidthTv / posterCardWidthDesktop;
+  /// Leanback chrome — [tvChromeScale] (not film poster width).
+  static const double navRailWidthTv = navRailWidth * tvChromeScale;
+  static const double navRailLogoWidthTv = navRailLogoWidth * tvChromeScale;
   static const double navRailLogoHeightTv = navRailLogoWidthTv * 160 / 370;
 
-  /// Leanback hero chrome — same ratio as catalog density.
+  /// Leanback hero chrome — chrome scale (hero band height stays on [tvHeroScale]).
   static const double heroLogoMaxHeightTv =
-      heroLogoMaxHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
+      heroLogoMaxHeightDesktop * tvChromeScale;
   static const double heroTitleSlotHeightTv =
-      heroTitleSlotHeightDesktop * posterCardWidthTv / posterCardWidthDesktop;
+      heroTitleSlotHeightDesktop * tvChromeScale;
 
   /// Fallback text title (no logo) — hand ladder, not × chrome (10ft readable).
   static const double heroFallbackTitleMin = 20;
@@ -755,8 +752,7 @@ abstract final class ShellTokens {
   static const double controlHeight = 40;
   static const double controlHeightTv = controlHeight * tvChromeScale;
   static const double sideRailWidth = 220;
-  static const double sideRailWidthTv =
-      sideRailWidth * posterCardWidthTv / posterCardWidthDesktop;
+  static const double sideRailWidthTv = sideRailWidth * tvChromeScale;
   static const double emptyShellSideRailWidth = 72;
   static const double sidePanelWidth = 380;
   /// Leanback Portals / side rail — chrome family.
@@ -1480,12 +1476,9 @@ abstract final class ShellTokens {
   static const double toastActionPadH = 8;
   static const double toastActionPadV = 6;
 
-  /// Default pack / layout scale — chrome family ([tvChromeScale]).
-  /// Posters use this; channels / hero / portals use hand-tuned families.
+  /// Film-poster spatial ratio (card radius / local chrome on posters).
+  /// Pack chrome lengths use [tvChromeScale] via [chromeScale], not this.
   static double get tvLayoutScale => posterCardWidthTv / posterCardWidthDesktop;
-
-  /// Alias kept for call sites — same factor as [tvLayoutScale] for chrome.
-  // tvChromeScale is defined near the top of this class.
 
   /// Grid inset beside a category rail (Live / Movies / Series).
   ///
@@ -1563,7 +1556,7 @@ abstract final class ShellTokens {
   static const double searchCardWidthDesktop = 140;
   static const double searchCardWidthCompact = 120;
 
-  /// Leanback — chrome family (same ratio as film posters).
+  /// Leanback search result cells — chrome family (not film poster width).
   static const double searchCardWidthTv =
       searchCardWidthDesktop * tvChromeScale;
 

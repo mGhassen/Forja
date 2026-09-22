@@ -18,12 +18,11 @@ void main() {
   test('tv density families: chrome scale + hand-tuned cards/hero/portals', () {
     expect(ShellTokens.tvChromeScale, 0.62);
     expect(ShellTokens.tvHeroScale, 0.80);
+    // Film family — denser than × chromeScale; chrome stays on tvChromeScale.
+    expect(ShellTokens.posterCardWidthTv, 100);
     expect(
       ShellTokens.posterCardWidthTv,
-      closeTo(
-        ShellTokens.posterCardWidthDesktop * ShellTokens.tvChromeScale,
-        0.001,
-      ),
+      lessThan(ShellTokens.posterCardWidthDesktop * ShellTokens.tvChromeScale),
     );
     // Score chip — desktop stays readable; TV uses the dense type ladder.
     expect(ShellTokens.posterRatingFontSize, 11);
@@ -38,7 +37,14 @@ void main() {
     );
     expect(
       ShellTokens.tvLayoutScale,
-      closeTo(ShellTokens.tvChromeScale, 0.001),
+      closeTo(
+        ShellTokens.posterCardWidthTv / ShellTokens.posterCardWidthDesktop,
+        0.001,
+      ),
+    );
+    expect(
+      ShellTokens.navRailWidthTv,
+      closeTo(ShellTokens.navRailWidth * ShellTokens.tvChromeScale, 0.001),
     );
     expect(
       ShellTokens.controlHeightTv,
@@ -139,13 +145,9 @@ void main() {
       ShellTokens.navRailProfileAvatarScaleTv,
       ShellTokens.navRailProfileAvatarScaleDesktop,
     );
-    // Channel family — hand-tuned, not mobile × chromeScale.
+    // Channel family — hand-tuned logo face (not film poster width).
     expect(ShellTokens.channelCardWidthTv, ChannelCardTokens.widthTv);
     expect(ShellTokens.channelCardWidthTv, 110);
-    expect(
-      ShellTokens.channelCardWidthTv,
-      lessThan(ShellTokens.posterCardWidthTv),
-    );
     // Hero family — softer than chrome crush.
     expect(
       ShellTokens.heroMinHeightTv,
@@ -333,8 +335,9 @@ void main() {
     );
     expect(
       tv.posterCardWidth / desktop.posterCardWidth,
-      closeTo(ShellTokens.tvChromeScale, 0.001),
+      closeTo(ShellTokens.tvLayoutScale, 0.001),
     );
+    expect(tv.posterCardWidth, ShellTokens.posterCardWidthTv);
     expect(desktop.usesTvDensity, isFalse);
     expect(tv.usesTvDensity, isTrue);
     expect(tv.allowCompactNavDrawer, isFalse);
