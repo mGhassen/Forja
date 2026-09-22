@@ -36,7 +36,7 @@ abstract final class ShellTokens {
   /// | **Empty / loading** | type ladder + mild pad scale |
   ///
   /// Sniff: if × scale looks correct but ugly, add a hand `*Tv` token for that family.
-  static const double tvChromeScale = 0.62;
+  static const double tvChromeScale = 0.72;
 
   /// Softer than [tvChromeScale] — hero band / title reserve stay readable at 10ft.
   static const double tvHeroScale = 0.80;
@@ -563,17 +563,17 @@ abstract final class ShellTokens {
   static const double posterTitleFontSizeTv = tvBodyFontSize;
 
   /// Star + score chip on film poster corners (type family on TV — not × chrome).
-  static const double posterRatingFontSize = 9;
+  static const double posterRatingFontSize = 11;
   static const double posterRatingFontSizeTv = tvMetaFontSize;
-  static const double posterRatingIconSize = 9;
+  static const double posterRatingIconSize = 12;
   static const double posterRatingIconSizeTv = 7;
-  static const double posterRatingPadH = 5;
-  static const double posterRatingPadV = 2;
+  static const double posterRatingPadH = 7;
+  static const double posterRatingPadV = 4;
   static const double posterRatingPadHTv = 3;
   static const double posterRatingPadVTv = 1;
-  static const double posterRatingRadius = 4;
+  static const double posterRatingRadius = 8;
   static const double posterRatingRadiusTv = 3;
-  static const double posterRatingGap = 2;
+  static const double posterRatingGap = 3;
   static const double posterRatingGapTv = 1;
 
   /// Text corner badge on posters (NOW / REMAKE / …).
