@@ -60,6 +60,37 @@ void main() {
       expect(metaItemToMovie(meta)?.id, 1396);
     });
 
+    test('hub play context keeps enriched title logo for player hero', () {
+      final meta = MetaItem.fromJson({
+        'id': 'test-hub:1',
+        'type': 'series',
+        'name': 'Test Series',
+        'logo': 'https://tmdb.forjahq.xyz/t/p/w500/title-logo.png',
+        'background': 'https://cdn.example/backdrop.jpg',
+        'videos': [
+          {
+            'id': '1',
+            'episode': 1,
+            'title': 'Episode 1',
+          },
+          {
+            'id': '2',
+            'episode': 2,
+            'title': 'Episode 2',
+          },
+        ],
+      });
+      final ctx = catalogPlayContextFromMeta(meta: meta);
+      expect(
+        ctx.movie.logoPath,
+        'https://tmdb.forjahq.xyz/t/p/w500/title-logo.png',
+      );
+      expect(
+        metaItemToMovie(meta)?.logoPath,
+        'https://tmdb.forjahq.xyz/t/p/w500/title-logo.png',
+      );
+    });
+
     test('hub play context keeps enriched episode stills for player panel', () {
       final meta = MetaItem.fromJson({
         'id': 'test-hub:1',
@@ -86,7 +117,7 @@ void main() {
       expect(ctx.kitEpisodes!.length, 2);
       expect(
         ctx.kitEpisodes![0].thumbnailUrl,
-        'https://image.tmdb.org/t/p/w300/still1.jpg',
+        'https://tmdb.forjahq.xyz/t/p/w300/still1.jpg',
       );
       expect(
         ctx.kitEpisodes![1].thumbnailUrl,

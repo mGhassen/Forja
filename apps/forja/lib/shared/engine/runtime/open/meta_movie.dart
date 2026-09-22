@@ -62,6 +62,7 @@ Movie? metaItemToMovie(MetaItem item) {
     final isMovie = item.type == 'movie' || item.tmdbMediaType == 'movie';
     final poster = item.poster.trim();
     final backdrop = item.background.trim();
+    final logo = item.logo.trim();
     final imdb = item.ids['imdb']?.toString();
     return Movie(
       id: movieId,
@@ -71,6 +72,7 @@ Movie? metaItemToMovie(MetaItem item) {
       backdropPath: catalogPosterPathForMovie(
         backdrop.isNotEmpty ? backdrop : poster,
       ),
+      logoPath: catalogPosterPathForMovie(logo),
       voteAverage: item.rating ?? 0,
       releaseDate: item.releaseInfo,
       overview: item.description,
@@ -106,6 +108,7 @@ Movie? metaItemToMovie(MetaItem item) {
     title: item.name,
     posterPath: catalogPosterPathForMovie(item.poster),
     backdropPath: catalogPosterPathForMovie(item.background),
+    logoPath: catalogPosterPathForMovie(item.logo),
     voteAverage: item.rating ?? 0,
     releaseDate: item.releaseInfo,
     overview: item.description,

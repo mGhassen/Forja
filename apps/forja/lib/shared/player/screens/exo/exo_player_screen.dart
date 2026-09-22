@@ -455,8 +455,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   ///
   /// MediaKit→Exo ANR-capped prepare can leave a zoomed crop; Android
   /// TextureView cold-open (phone + TV, emulator SurfaceProducer) hits the
-  /// same bad first layout. Remount matches the user workaround (switch away
-  /// and back to Exo).
+  /// same bad first layout.
+  ///
+  /// Bumping the PlatformView key alone is **not** the user workaround
+  /// (switch engine away → back). That path tears down the Exo host and
+  /// reopens. Remount-only left the same player bound to a bad scale —
+  /// `setResizeMode` also raced before the new AndroidView attached.
+  /// Android TV (and MediaKit races) reopen after layout; phone cold-open
+  /// waits for layout then re-asserts FIT.
   void _maybeRemountFitOnce() {
     if (_fitRemountDone || _disposed) return;
     final needRemount = _fitRemountAfterMediaKit || Platform.isAndroid;
@@ -467,16 +473,46 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (afterMediaKit) {
       MpvExclusiveSession.instance.acknowledgeExoFitRemount();
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(
+      _remountFitAfterFirstFrame(
+        afterMediaKit: afterMediaKit,
+        reopen: afterMediaKit || _isTv,
+      ),
+    );
+  }
+
+  Future<void> _remountFitAfterFirstFrame({
+    required bool afterMediaKit,
+    required bool reopen,
+  }) async {
+    if (!mounted || _disposed) return;
+    debugPrint(
+      reopen
+          ? (afterMediaKit
+              ? '[ExoPlayer] remount+reopen TextureView after MediaKit surface race'
+              : '[ExoPlayer] remount+reopen TextureView after ATV cold-open first frame')
+          : '[ExoPlayer] remount TextureView after Android cold-open first frame',
+    );
+    // MediaCodec is still reconnecting when first frame fires after a raced
+    // MediaKit teardown (goldfish BAD_INDEX / surface generation bumps).
+    // Brief cool-down matches the Player-menu switch path without the 1.5s.
+    if (afterMediaKit) {
+      await Future<void>.delayed(const Duration(milliseconds: 350));
       if (!mounted || _disposed) return;
-      debugPrint(
-        afterMediaKit
-            ? '[ExoPlayer] remount TextureView after MediaKit surface race'
-            : '[ExoPlayer] remount TextureView after Android cold-open first frame',
-      );
-      setState(() => _platformMountGen++);
-      unawaited(ExoPlayerBridge.setResizeMode(_viewId, _resizeMode));
-    });
+    }
+    setState(() => _platformMountGen++);
+    // Wait until the new AndroidView is in the tree and laid out — calling
+    // setResizeMode in the same turn as setState hit the *old* PlayerView.
+    await Future<void>.delayed(Duration.zero);
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || _disposed) return;
+    if (reopen) {
+      // Same effect as switching away and back to Exo: fresh surface + open.
+      await _reopenAfterSurfaceFallback();
+      return;
+    }
+    await ExoPlayerBridge.setResizeMode(_viewId, _resizeMode);
   }
 
   Future<void> _openCurrentSource() async {
@@ -2640,7 +2676,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 PlayerStatusOverlay(
                   controller: _statusController,
                   bufferingListenable: _isBufferingNotifier,
-                  header: 'CHECKING SOURCES',
+                  header: 'Checking sources',
                 ),
               ParentalGuideLayer(
                 imdbId: widget.movie?.imdbId,

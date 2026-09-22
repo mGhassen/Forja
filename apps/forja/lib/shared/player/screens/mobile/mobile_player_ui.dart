@@ -74,18 +74,23 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
       widget.episodeOverview ?? _s._episodeOverview;
 
   Future<void> _loadHeroMetadata() async {
-    if (widget.episodes != null) return;
     final movie = widget.movie;
     if (movie == null) return;
+    final hubEpisodes = widget.episodes != null;
+    // Hub episode lists own episode overview; still enrich thin title meta
+    // (logo / synopsis / genres) when the pack did not ship them.
+    if (hubEpisodes && !playerNeedsRichMetadata(movie)) return;
     final metadata = await loadPlayerHeroMetadata(
       movie: movie,
-      season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
+      season: hubEpisodes ? null : widget.selectedSeason,
+      episode: hubEpisodes ? null : widget.selectedEpisode,
     );
     if (!mounted || metadata == null) return;
     setState(() {
       _s._heroMovie = metadata.movie;
-      _s._episodeOverview = metadata.episodeOverview;
+      if (!hubEpisodes) {
+        _s._episodeOverview = metadata.episodeOverview;
+      }
     });
   }
 

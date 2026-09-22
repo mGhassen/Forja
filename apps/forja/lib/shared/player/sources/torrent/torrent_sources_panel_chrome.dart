@@ -285,6 +285,9 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     final providersTopGap = metrics.usesTvDensity
         ? ShellTokens.torrentPanelProvidersTopGapTv
         : ShellTokens.torrentPanelProvidersTopGapDesktop;
+    final listTopGap = metrics.usesTvDensity
+        ? ShellTokens.torrentPanelListTopGapTv
+        : ShellTokens.torrentPanelListTopGapDesktop;
     widget.onProvideListFocusUp?.call(_focusSearchOrProvidersFromList);
 
     // No extra top inset — panel padding owns the edge; a TV-only pad left a
@@ -413,7 +416,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
               : null,
           onFiltersDownEdge: _tv ? _focusList : null,
         ),
-        SizedBox(height: gap * 0.5),
+        SizedBox(height: listTopGap),
         if (widget.showCacheLine && widget.cacheRefreshToken != null) ...[
           SizedBox(height: gap * 0.5),
           TorrentCacheStorageLine(refreshToken: widget.cacheRefreshToken!),

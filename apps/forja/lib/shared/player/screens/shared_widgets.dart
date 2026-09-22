@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'utils.dart'; // Ensure formatDuration is available
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 class PlayerIconButton extends StatelessWidget {
   final IconData icon;
@@ -386,8 +388,36 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final thumbR =
-            (_isDragging || _tvFocused || _tvScrubArmed) ? 8.0 : 6.0;
+        final thumbR = playerChromeScale(
+          context,
+          (_isDragging || _tvFocused || _tvScrubArmed)
+              ? ShellTokens.playerChromeSeekThumbRadiusActive
+              : ShellTokens.playerChromeSeekThumbRadius,
+        );
+        final trackH = playerChromeScale(
+          context,
+          (_isDragging || _tvScrubArmed)
+              ? ShellTokens.playerChromeSeekTrackHeightActive
+              : _tvFocused
+                  ? ShellTokens.playerChromeSeekTrackHeightFocused
+                  : ShellTokens.playerChromeSeekTrackHeight,
+        );
+        final hitH = playerChromeScale(
+          context,
+          ShellTokens.playerChromeSeekHitHeight,
+        );
+        final tipFs = playerChromeTypeSize(
+          context,
+          ShellTokens.playerChromeTimeFontSize,
+        );
+        final tipPadH = playerChromeScale(context, 8);
+        final tipPadV = playerChromeScale(context, 4);
+        final tipRadius = playerChromeScale(context, 4);
+        final tipHalf = playerChromeScale(context, 24);
+        final tipTop = _tvScrubSpeedLabel != null
+            ? -playerChromeScale(context, 52)
+            : -playerChromeScale(context, 35);
+        final speedFs = playerChromeTypeSize(context, 11);
         final playPx = relativePosition * constraints.maxWidth;
         final thumbLeft = (playPx - thumbR).clamp(
           0.0,
@@ -452,14 +482,14 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                widget.onSeek?.call(Duration(milliseconds: value.toInt()));
             },
             child: SizedBox(
-              height: 30, // Touch target height
+              height: hitH,
               child: Stack(
                 alignment: Alignment.centerLeft,
                 clipBehavior: Clip.none, // Allow tooltip to overflow upwards
                 children: [
                   // Background Track
                   Container(
-                    height: _tvFocused ? 4.0 : 3.0,
+                    height: trackH,
                     width: double.infinity,
                     color: Colors.white.withValues(alpha: _tvFocused ? 0.40 : 0.30),
                   ),
@@ -467,7 +497,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                   FractionallySizedBox(
                     widthFactor: bufferedRelative,
                     child: Container(
-                      height: _tvFocused ? 4.0 : 3.0,
+                      height: trackH,
                       color: Colors.white.withValues(alpha: 0.55),
                     ),
                   ),
@@ -475,13 +505,13 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                     SeekBarZoneLayer(
                       zones: widget.zones,
                       width: constraints.maxWidth,
-                      height: _tvFocused ? 4.0 : 3.0,
+                      height: trackH,
                     ),
                   // Played Track
                   FractionallySizedBox(
                     widthFactor: relativePosition,
                     child: Container(
-                      height: _tvFocused ? 4.0 : 3.0,
+                      height: trackH,
                       color: ForjaShellColors.brandGreen,
                     ),
                   ),
@@ -495,13 +525,16 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                         color: ForjaShellColors.brandGreen,
                         shape: BoxShape.circle,
                         border: _tvScrubArmed
-                            ? Border.all(color: Colors.white, width: 2)
+                            ? Border.all(
+                                color: Colors.white,
+                                width: playerChromeScale(context, 2),
+                              )
                             : null,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            blurRadius: playerChromeScale(context, 4),
+                            offset: Offset(0, playerChromeScale(context, 2)),
                           ),
                         ],
                       ),
@@ -514,16 +547,19 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                           ? (relativePosition * constraints.maxWidth) 
                           : _isHovering
                               ? (_hoverValue / safeTotal * constraints.maxWidth)
-                              : (relativePosition * constraints.maxWidth)) - 24,
-                      top: _tvScrubSpeedLabel != null ? -52 : -35,
+                              : (relativePosition * constraints.maxWidth)) - tipHalf,
+                      top: tipTop,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: tipPadH,
+                              vertical: tipPadV,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.8),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(tipRadius),
                             ),
                             child: Text(
                               formatDuration(Duration(
@@ -533,21 +569,23 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                                         ? _hoverValue.toInt()
                                         : widget.position.inMilliseconds,
                               )),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: tipFs,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                           if (_tvScrubSpeedLabel case final speed?)
                             Padding(
-                              padding: const EdgeInsets.only(top: 2),
+                              padding: EdgeInsets.only(
+                                top: playerChromeScale(context, 2),
+                              ),
                               child: Text(
                                 speed,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 11,
+                                  fontSize: speedFs,
                                   fontWeight: FontWeight.w700,
                                   height: 1,
                                   letterSpacing: 0.4,

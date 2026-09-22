@@ -39,7 +39,7 @@ From **Home**, **Anime**, **Asian Drama**, **IPTV** (Movies / Series), or **My L
 | **Anime** | Megaplay / VidNest / Miruro race (or Forja Auto when on) | AniList + MAL ids passed to providers; see [Anime](anime.md) tips for provider order |
 | **Asian Drama** | KissKH native extract | Upcoming titles disable play until published |
 
-Loading uses the shared cinematic resolve overlay (**Finding / Checking / Probing / Opening**). **Cancel**, leaving the page, or switching tabs stops in-flight checks.
+Loading uses the shared cinematic resolve overlay (**Finding / Checking / Probing / Opening**). On **Android TV** that page uses leanback density. **Cancel**, leaving the page, or switching tabs stops in-flight checks.
 
 ## Tips
 

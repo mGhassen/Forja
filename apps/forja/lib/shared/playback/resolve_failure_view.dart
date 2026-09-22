@@ -7,6 +7,7 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Tone for resolve / loading-page failures.
@@ -114,23 +115,94 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
   Widget build(BuildContext context) {
     final failure = widget.failure;
     final compact = widget.compact;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final mouseHover = ShellScope.inputPolicyOf(context).scaleOnHover;
     final leanback = tvFocus && !mouseHover;
     final accent = failure.tone == ResolveFailureTone.waiting
         ? Colors.amber.shade200
         : AppTheme.primaryColor;
-    final iconSize = compact ? 40.0 : 52.0;
-    final titleSize = compact ? 18.0 : 22.0;
+    final iconSize = compact
+        ? (tv
+            ? ShellTokens.streamLoadingFailureIconCompactTv
+            : ShellTokens.streamLoadingFailureIconCompact)
+        : (tv
+            ? ShellTokens.streamLoadingFailureIconTv
+            : ShellTokens.streamLoadingFailureIcon);
+    final iconPad = tv
+        ? ShellTokens.streamLoadingFailureIconPadTv
+        : ShellTokens.streamLoadingFailureIconPad;
+    final titleSize = compact
+        ? (tv
+            ? ShellTokens.streamLoadingFailureTitleFontSizeCompactTv
+            : ShellTokens.streamLoadingFailureTitleFontSizeCompact)
+        : (tv
+            ? ShellTokens.streamLoadingFailureTitleFontSizeTv
+            : ShellTokens.streamLoadingFailureTitleFontSize);
+    final detailSize = compact
+        ? (tv
+            ? ShellTokens.streamLoadingFailureDetailFontSizeCompactTv
+            : ShellTokens.streamLoadingFailureDetailFontSizeCompact)
+        : (tv
+            ? ShellTokens.streamLoadingFailureDetailFontSizeTv
+            : ShellTokens.streamLoadingFailureDetailFontSize);
+    final maxW = tv
+        ? ShellTokens.streamLoadingFailureMaxWidthTv
+        : ShellTokens.streamLoadingFailureMaxWidth;
+    final titleGap = compact
+        ? (tv
+            ? ShellTokens.streamLoadingFailureTitleGapCompactTv
+            : ShellTokens.streamLoadingFailureTitleGapCompact)
+        : (tv
+            ? ShellTokens.streamLoadingFailureTitleGapTv
+            : ShellTokens.streamLoadingFailureTitleGap);
+    final detailGap = compact
+        ? (tv
+            ? ShellTokens.streamLoadingFailureDetailGapCompactTv
+            : ShellTokens.streamLoadingFailureDetailGapCompact)
+        : (tv
+            ? ShellTokens.streamLoadingFailureDetailGapTv
+            : ShellTokens.streamLoadingFailureDetailGap);
+    final actionsGap = compact
+        ? (tv
+            ? ShellTokens.streamLoadingFailureActionsGapCompactTv
+            : ShellTokens.streamLoadingFailureActionsGapCompact)
+        : (tv
+            ? ShellTokens.streamLoadingFailureActionsGapTv
+            : ShellTokens.streamLoadingFailureActionsGap);
+    final secondaryGap = tv
+        ? ShellTokens.streamLoadingFailureSecondaryGapTv
+        : ShellTokens.streamLoadingFailureSecondaryGap;
+    final secondaryPadH = tv
+        ? ShellTokens.streamLoadingFailureSecondaryPadHTv
+        : ShellTokens.streamLoadingFailureSecondaryPadH;
+    final secondaryPadV = tv
+        ? ShellTokens.streamLoadingFailureSecondaryPadVTv
+        : ShellTokens.streamLoadingFailureSecondaryPadV;
+    final secondaryFont = tv
+        ? ShellTokens.streamLoadingFailureSecondaryFontSizeTv
+        : ShellTokens.streamLoadingFailureSecondaryFontSize;
+    final buttonRadius = tv
+        ? ShellTokens.streamLoadingFailureButtonRadiusTv
+        : ShellTokens.streamLoadingFailureButtonRadius;
+    final buttonPadH = tv
+        ? ShellTokens.streamLoadingFailureButtonPadHTv
+        : ShellTokens.streamLoadingFailureButtonPadH;
+    final buttonPadV = tv
+        ? ShellTokens.streamLoadingFailureButtonPadVTv
+        : ShellTokens.streamLoadingFailureButtonPadV;
+    final buttonFont = tv
+        ? ShellTokens.streamLoadingFailureButtonFontSizeTv
+        : ShellTokens.streamLoadingFailureButtonFontSize;
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 420),
+      constraints: BoxConstraints(maxWidth: maxW),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: iconSize + 28,
-            height: iconSize + 28,
+            width: iconSize + iconPad,
+            height: iconSize + iconPad,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: accent.withValues(alpha: 0.12),
@@ -138,7 +210,7 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
             ),
             child: Icon(failure.icon, color: accent, size: iconSize * 0.55),
           ),
-          SizedBox(height: compact ? 16 : 20),
+          SizedBox(height: titleGap),
           Text(
             failure.title,
             textAlign: TextAlign.center,
@@ -152,27 +224,27 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
             ),
           ),
           if (failure.detail != null && failure.detail!.trim().isNotEmpty) ...[
-            SizedBox(height: compact ? 8 : 10),
+            SizedBox(height: detailGap),
             Text(
               failure.detail!,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.62),
-                fontSize: compact ? 13.0 : 14.0,
+                fontSize: detailSize,
                 fontWeight: FontWeight.w400,
                 height: 1.45,
                 fontFamily: 'Poppins',
               ),
             ),
           ],
-          SizedBox(height: compact ? 22 : 28),
+          SizedBox(height: actionsGap),
           if (failure.onPrimary != null)
             leanback
                 ? shellFocusableTap(
                     context: context,
                     onTap: failure.onPrimary,
                     focusNode: _primaryFocus,
-                    borderRadius: 12,
+                    borderRadius: buttonRadius,
                     scaleOnFocus: 1.0,
                     showFocusBorder: true,
                     onDownEdge: failure.onSecondary != null
@@ -197,25 +269,25 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 14,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: buttonPadH,
+                        vertical: buttonPadV,
                       ),
-                      textStyle: const TextStyle(
+                      textStyle: TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: buttonFont,
                       ),
                     ),
                   ),
           if (failure.onSecondary != null) ...[
-            const SizedBox(height: 6),
+            SizedBox(height: secondaryGap),
             leanback
                 ? shellFocusableTap(
                     context: context,
                     onTap: failure.onSecondary,
                     focusNode: _secondaryFocus,
-                    borderRadius: 12,
+                    borderRadius: buttonRadius,
                     scaleOnFocus: 1.0,
                     showFocusBorder: true,
                     onUpEdge: failure.onPrimary != null
@@ -226,9 +298,9 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                           }
                         : null,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: secondaryPadH,
+                        vertical: secondaryPadV,
                       ),
                       child: Text(
                         failure.secondaryLabel,
@@ -236,7 +308,7 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                           color: Colors.white.withValues(alpha: 0.75),
                           fontFamily: 'Poppins',
                           fontWeight: FontWeight.w500,
-                          fontSize: 13,
+                          fontSize: secondaryFont,
                         ),
                       ),
                     ),
@@ -249,7 +321,7 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                         color: Colors.white.withValues(alpha: 0.55),
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                        fontSize: secondaryFont,
                       ),
                     ),
                   ),
@@ -271,11 +343,27 @@ class _PrimaryFailureButtonFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final radius = tv
+        ? ShellTokens.streamLoadingFailureButtonRadiusTv
+        : ShellTokens.streamLoadingFailureButtonRadius;
+    final padH = tv
+        ? ShellTokens.streamLoadingFailureButtonPadHTv
+        : ShellTokens.streamLoadingFailureButtonPadH;
+    final padV = tv
+        ? ShellTokens.streamLoadingFailureButtonPadVTv
+        : ShellTokens.streamLoadingFailureButtonPadV;
+    final gap = tv
+        ? ShellTokens.streamLoadingFailureIconGapTv
+        : ShellTokens.streamLoadingFailureIconGap;
+    final fontSize = tv
+        ? ShellTokens.streamLoadingFailureButtonFontSizeTv
+        : ShellTokens.streamLoadingFailureButtonFontSize;
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(radius),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -284,13 +372,13 @@ class _PrimaryFailureButtonFace extends StatelessWidget {
               size: ShellPaintScope.iconOf(context, 18),
               color: Colors.black,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: gap),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w600,
-                fontSize: 14,
+                fontSize: fontSize,
                 color: Colors.black,
               ),
             ),

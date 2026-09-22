@@ -20,16 +20,18 @@ bool playerNeedsRichMetadata(Movie movie) {
 String? tmdbLogoImageUrlFromPath(String rawPath) {
   final path = rawPath.trim();
   if (path.isEmpty) return null;
-  if (path.startsWith('http')) {
-    final paint = paintableNetworkImageUrl(path);
-    return paint.isEmpty ? null : paint;
-  }
-  return null;
+  final absolute = path.startsWith('http')
+      ? path
+      : (path.startsWith('/') ? TmdbApi.getImageUrl(path) : '');
+  if (absolute.isEmpty) return null;
+  final paint = paintableNetworkImageUrl(absolute);
+  return paint.isEmpty ? null : paint;
 }
 
-/// TMDB title logo for hero / loading chrome when [Movie.logoPath] is empty.
+/// Title logo for hero / loading chrome when [Movie.logoPath] is empty.
 ///
-/// Returns absolute https only — relative API paths are not rewritten to a CDN.
+/// Absolute pack URLs paint as-is; relative TMDB `/file_path` keys go through
+/// the Forja gateway. Fetches a logo when [Movie.id] is a positive TMDB id.
 Future<String?> resolveTmdbLogoImageUrl(Movie movie) async {
   final fromMovie = tmdbLogoImageUrlFromPath(movie.logoPath);
   if (fromMovie != null) return fromMovie;

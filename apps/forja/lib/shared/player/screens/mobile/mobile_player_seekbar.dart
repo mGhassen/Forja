@@ -125,17 +125,41 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
           ),
         );
       },
-      // 32px tall hit area - much easier to grab on touch
+      // Hit strip densifies under leanback ShellPaintScope.
       child: SizedBox(
-        height: 32,
+        height: playerChromeScale(
+          context,
+          ShellTokens.playerChromeSeekHitHeight,
+        ),
         child: Align(
           alignment: Alignment.center,
           child: LayoutBuilder(
             builder: (context, constraints) {
               _trackWidth = constraints.maxWidth;
 
-              final trackH = _isDragging ? 6.0 : 3.5;
-              final thumbR = _isDragging ? 8.0 : 5.5;
+              final trackH = playerChromeScale(
+                context,
+                _isDragging
+                    ? ShellTokens.playerChromeSeekTrackHeightActive
+                    : ShellTokens.playerChromeSeekTrackHeight,
+              );
+              final thumbR = playerChromeScale(
+                context,
+                _isDragging
+                    ? ShellTokens.playerChromeSeekThumbRadiusActive
+                    : ShellTokens.playerChromeSeekThumbRadius,
+              );
+              final tipW = playerChromeScale(context, 72);
+              final tipHalf = tipW / 2;
+              final tipTop = -playerChromeScale(context, 34);
+              final tipPadH = playerChromeScale(context, 8);
+              final tipPadV = playerChromeScale(context, 4);
+              final tipRadius = playerChromeScale(context, 8);
+              final tipLabelW = playerChromeScale(context, 56);
+              final tipFs = playerChromeTypeSize(
+                context,
+                ShellTokens.playerChromeTimeFontSize,
+              );
               final playPx = (_playFrac * _trackWidth).clamp(0.0, _trackWidth);
               final thumbLeft = (playPx - thumbR).clamp(
                 0.0,
@@ -200,7 +224,7 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
                                 BoxShadow(
                                   color: ForjaShellColors.brandGreen
                                       .withValues(alpha: 0.35),
-                                  blurRadius: 8,
+                                  blurRadius: playerChromeScale(context, 8),
                                 ),
                               ]
                             : [],
@@ -210,25 +234,25 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
                   // Drag time label - floats above thumb while dragging
                   if (_isDragging && widget.duration.inMilliseconds > 0)
                     Positioned(
-                      left: (playPx - 36).clamp(0.0, _trackWidth - 72),
-                      top: -34,
+                      left: (playPx - tipHalf).clamp(0.0, _trackWidth - tipW),
+                      top: tipTop,
                       child: _PlayerChromeSurface(
-                        radius: 8,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                        radius: tipRadius,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: tipPadH,
+                          vertical: tipPadV,
                         ),
                         child: SizedBox(
-                          width: 56,
+                          width: tipLabelW,
                           child: Text(
                             formatDuration(_dragTime),
                             textAlign: TextAlign.center,
                             maxLines: 1,
                             softWrap: false,
                             overflow: TextOverflow.visible,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 11,
+                              fontSize: tipFs,
                               fontWeight: FontWeight.w600,
                               fontFamily: 'monospace',
                               letterSpacing: 0.3,

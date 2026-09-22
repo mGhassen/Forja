@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Direct / HTTP stream resolve body for [LoadingOverlay].
 class DirectStreamLoadingPanel extends StatelessWidget {
@@ -86,6 +88,44 @@ class DirectStreamLoadingPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final headlineSize = tv
+        ? ShellTokens.streamLoadingHeadlineFontSizeTv
+        : ShellTokens.streamLoadingHeadlineFontSize;
+    final hintSize = tv
+        ? ShellTokens.streamLoadingHintFontSizeTv
+        : ShellTokens.streamLoadingHintFontSize;
+    final hintGap = tv
+        ? ShellTokens.streamLoadingHintGapTv
+        : ShellTokens.streamLoadingHintGap;
+    final hintPad = tv
+        ? ShellTokens.streamLoadingHintPadHTv
+        : ShellTokens.streamLoadingHintPadH;
+    final progressGap = tv
+        ? ShellTokens.streamLoadingProgressGapTv
+        : ShellTokens.streamLoadingProgressGap;
+    final progressW = tv
+        ? ShellTokens.streamLoadingProgressWidthTv
+        : ShellTokens.streamLoadingProgressWidth;
+    final progressH = tv
+        ? ShellTokens.streamLoadingProgressHeightTv
+        : ShellTokens.streamLoadingProgressHeight;
+    final metaGap = tv
+        ? ShellTokens.streamLoadingProgressMetaGapTv
+        : ShellTokens.streamLoadingProgressMetaGap;
+    final metaSize = tv
+        ? ShellTokens.streamLoadingMetaFontSizeTv
+        : ShellTokens.streamLoadingMetaFontSize;
+    final tipSize = tv
+        ? ShellTokens.streamLoadingTipFontSizeTv
+        : ShellTokens.streamLoadingTipFontSize;
+    final tipGap = tv
+        ? ShellTokens.streamLoadingHintGapTv
+        : ShellTokens.streamLoadingHintGap;
+    final tipPad = tv
+        ? ShellTokens.streamLoadingCancelPadHTv
+        : ShellTokens.streamLoadingCancelPadH;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -94,7 +134,7 @@ class DirectStreamLoadingPanel extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.92),
-            fontSize: 18,
+            fontSize: headlineSize,
             fontWeight: FontWeight.w600,
             height: 1.25,
             letterSpacing: 0.15,
@@ -102,15 +142,15 @@ class DirectStreamLoadingPanel extends StatelessWidget {
           ),
         ),
         if (_hint != null && _hint!.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: hintGap),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: hintPad),
             child: Text(
               _hint!,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.52),
-                fontSize: 13,
+                fontSize: hintSize,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
                 letterSpacing: 0.1,
@@ -120,9 +160,9 @@ class DirectStreamLoadingPanel extends StatelessWidget {
           ),
         ],
         if (_probeMode) ...[
-          const SizedBox(height: 22),
+          SizedBox(height: progressGap),
           SizedBox(
-            width: 220,
+            width: progressW,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(2),
               child: TweenAnimationBuilder<double>(
@@ -131,14 +171,14 @@ class DirectStreamLoadingPanel extends StatelessWidget {
                 curve: Curves.easeOutCubic,
                 builder: (context, value, _) => LinearProgressIndicator(
                   value: _probeWorkActive ? null : (value > 0 ? value : null),
-                  minHeight: 3,
+                  minHeight: progressH,
                   backgroundColor: Colors.white.withValues(alpha: 0.12),
                   color: AppTheme.primaryColor,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: metaGap),
           Text(
             _probeSkipped > 0
                 ? '$_probeChecked / $_probeTotal checked · $_probeReady up · $_probeSkipped skipped on TV'
@@ -146,16 +186,16 @@ class DirectStreamLoadingPanel extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 11,
+              fontSize: metaSize,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2,
               fontFamily: 'Poppins',
             ),
           ),
           if (_probeSkipped > 0) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: tipGap),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+              padding: EdgeInsets.symmetric(horizontal: tipPad),
               child: Text(
                 _skippedProbeLabels.join(' · '),
                 textAlign: TextAlign.center,
@@ -163,7 +203,7 @@ class DirectStreamLoadingPanel extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.35),
-                  fontSize: 10,
+                  fontSize: tipSize,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.2,
                   fontFamily: 'Poppins',

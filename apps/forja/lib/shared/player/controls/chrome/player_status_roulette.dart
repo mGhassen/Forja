@@ -5,6 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
+import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 enum StatusRouletteKind { loading, success, failed, info }
 
@@ -196,7 +201,7 @@ class PlayerStatusOverlay extends StatelessWidget {
     super.key,
     required this.controller,
     this.bufferingListenable,
-    this.header = 'CHECKING SOURCES',
+    this.header = 'Checking sources',
   });
 
   final PlayerStatusController controller;
@@ -228,19 +233,15 @@ class PlayerStatusOverlay extends StatelessWidget {
       }
 
       final hasRouletteProgress = controller.entries.any(isStatusRouletteEntry);
-      final overlayHeader = hasRouletteProgress ? header : 'BUFFERING';
+      final overlayHeader = hasRouletteProgress ? header : 'Buffering';
 
       return Stack(
         clipBehavior: Clip.none,
         children: [
           if (rouletteEntries.isNotEmpty)
-            Positioned(
-              top: 0,
-              right: 12,
-              bottom: 0,
+            Positioned.fill(
               child: IgnorePointer(
-                child: Align(
-                  alignment: Alignment.centerRight,
+                child: Center(
                   child: StatusRouletteView(
                     entries: rouletteEntries,
                     header: overlayHeader,
@@ -309,12 +310,10 @@ class StatusRouletteView extends StatelessWidget {
     super.key,
     required this.entries,
     required this.header,
-    this.centered = false,
   });
 
   final List<StatusRouletteEntry> entries;
   final String header;
-  final bool centered;
 
   StatusRouletteEntry? get _activeEntry {
     for (final entry in entries) {
@@ -336,6 +335,7 @@ class StatusRouletteView extends StatelessWidget {
     final active = _activeEntry;
     if (active == null) return const SizedBox.shrink();
 
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final previous = _previousEntry;
     final checkedCount = entries
         .where((e) => e.kind != StatusRouletteKind.loading)
@@ -344,106 +344,165 @@ class StatusRouletteView extends StatelessWidget {
         .where((e) => e.kind == StatusRouletteKind.success)
         .length;
     final totalCount = entries.length;
+    final progress = totalCount > 0 ? checkedCount / totalCount : 0.0;
+    final workActive = active.kind == StatusRouletteKind.loading;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: centered
-          ? CrossAxisAlignment.center
-          : CrossAxisAlignment.end,
-      children: [
-        Text(
-          header,
-          textAlign: centered ? TextAlign.center : TextAlign.right,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.55),
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 2.5,
-            fontFamily: 'Poppins',
-          ),
+    final maxWidth = tv
+        ? ShellTokens.playerStatusCardMaxWidthTv
+        : ShellTokens.playerStatusCardMaxWidth;
+    final padding = tv
+        ? ShellTokens.playerStatusCardPaddingTv
+        : ShellTokens.playerStatusCardPadding;
+    final radius = tv
+        ? ShellTokens.playerStatusCardRadiusTv
+        : ShellTokens.playerStatusCardRadius;
+    final headerSize = tv
+        ? ShellTokens.playerStatusHeaderFontSizeTv
+        : ShellTokens.playerStatusHeaderFontSize;
+    final metaSize = tv
+        ? ShellTokens.playerStatusMetaFontSizeTv
+        : ShellTokens.playerStatusMetaFontSize;
+    final slotHeight = tv
+        ? ShellTokens.playerStatusRouletteSlotHeightTv
+        : ShellTokens.playerStatusRouletteSlotHeight;
+    final headerGap = tv
+        ? ShellTokens.playerStatusHeaderGapTv
+        : ShellTokens.playerStatusHeaderGap;
+    final progressGap = tv
+        ? ShellTokens.playerStatusProgressGapTv
+        : ShellTokens.playerStatusProgressGap;
+    final metaGap = tv
+        ? ShellTokens.playerStatusMetaGapTv
+        : ShellTokens.playerStatusMetaGap;
+    final barHeight = tv
+        ? ShellTokens.playerStatusProgressHeightTv
+        : ShellTokens.playerStatusProgressHeight;
+
+    final metaLabel = totalCount > 0
+        ? '$checkedCount / $totalCount'
+            '${readyCount > 0 ? '  ·  $readyCount ready' : ''}'
+        : 'Starting…';
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: PlayerPopupTokens.shellBg,
+          borderRadius: BorderRadius.circular(radius),
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 72,
-          width: 220,
-          child: ClipRect(
-            child: Stack(
-              alignment: centered ? Alignment.center : Alignment.centerRight,
-              clipBehavior: Clip.hardEdge,
-              children: [
-                if (previous != null &&
-                    previous.kind != StatusRouletteKind.loading)
-                  Align(
-                    alignment: centered
-                        ? Alignment.topCenter
-                        : Alignment.topRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: _StatusRouletteRow(
-                        entry: previous,
-                        dimmed: true,
-                        compact: true,
-                        centered: centered,
-                      ),
-                    ),
-                  ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 420),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  layoutBuilder: (current, previousChildren) => Stack(
-                    alignment: centered
-                        ? Alignment.center
-                        : Alignment.centerRight,
+        child: Padding(
+          padding: padding,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                header,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textSecondary,
+                  fontSize: headerSize,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              SizedBox(height: headerGap),
+              SizedBox(
+                height: slotHeight,
+                width: double.infinity,
+                child: ClipRect(
+                  child: Stack(
+                    alignment: Alignment.center,
                     clipBehavior: Clip.hardEdge,
                     children: [
-                      ...previousChildren,
-                      ?current,
+                      if (previous != null &&
+                          previous.kind != StatusRouletteKind.loading)
+                        Align(
+                          alignment: Alignment.topCenter,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: tv ? 2 : 4),
+                            child: _StatusRouletteRow(
+                              entry: previous,
+                              dimmed: true,
+                              compact: true,
+                              centered: true,
+                            ),
+                          ),
+                        ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 420),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        layoutBuilder: (current, previousChildren) => Stack(
+                          alignment: Alignment.center,
+                          clipBehavior: Clip.hardEdge,
+                          children: [
+                            ...previousChildren,
+                            ?current,
+                          ],
+                        ),
+                        transitionBuilder: (child, animation) {
+                          final slide =
+                              Tween<Offset>(
+                                begin: const Offset(0, 0.55),
+                                end: Offset.zero,
+                              ).animate(
+                                CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeOutCubic,
+                                ),
+                              );
+                          return ClipRect(
+                            child: SlideTransition(
+                              position: slide,
+                              child: FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              ),
+                            ),
+                          );
+                        },
+                        child: _StatusRouletteRow(
+                          key: ValueKey('${active.id}-${active.kind.name}'),
+                          entry: active,
+                          centered: true,
+                        ),
+                      ),
                     ],
                   ),
-                  transitionBuilder: (child, animation) {
-                    final slide =
-                        Tween<Offset>(
-                          begin: const Offset(0, 0.55),
-                          end: Offset.zero,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOutCubic,
-                          ),
-                        );
-                    return ClipRect(
-                      child: SlideTransition(
-                        position: slide,
-                        child: FadeTransition(opacity: animation, child: child),
-                      ),
-                    );
-                  },
-                  child: _StatusRouletteRow(
-                    key: ValueKey('${active.id}-${active.kind.name}'),
-                    entry: active,
-                    centered: centered,
+                ),
+              ),
+              SizedBox(height: progressGap),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(barHeight),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: progress),
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) => LinearProgressIndicator(
+                    value: workActive ? null : (value > 0 ? value : null),
+                    minHeight: barHeight,
+                    backgroundColor: Colors.white.withValues(alpha: 0.12),
+                    color: AppTheme.primaryColor,
                   ),
                 ),
-              ],
-            ),
+              ),
+              SizedBox(height: metaGap),
+              Text(
+                metaLabel,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textSecondary
+                      .withValues(alpha: 0.85),
+                  fontSize: metaSize,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 10),
-        Text(
-          totalCount > 0
-              ? '$checkedCount / $totalCount'
-                    '${readyCount > 0 ? '  ·  $readyCount ready' : ''}'
-              : 'Starting…',
-          textAlign: centered ? TextAlign.center : TextAlign.right,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.45),
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            fontFamily: 'Poppins',
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -464,38 +523,63 @@ class _StatusRouletteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final isLoading = entry.kind == StatusRouletteKind.loading;
     final isFailed = entry.kind == StatusRouletteKind.failed;
     final alpha = dimmed ? 0.45 : (isFailed ? 0.65 : 1.0);
+    final labelSize = compact
+        ? (tv
+            ? ShellTokens.playerStatusLabelFontSizeCompactTv
+            : ShellTokens.playerStatusLabelFontSizeCompact)
+        : (tv
+            ? ShellTokens.playerStatusLabelFontSizeTv
+            : ShellTokens.playerStatusLabelFontSize);
+    final spinnerSize = tv
+        ? ShellTokens.playerStatusSpinnerSizeTv
+        : ShellTokens.playerStatusSpinnerSize;
+    final spinnerStroke = tv
+        ? ShellTokens.playerStatusSpinnerStrokeTv
+        : ShellTokens.playerStatusSpinnerStroke;
+    final iconSize = tv
+        ? ShellTokens.playerStatusIconSizeTv
+        : ShellTokens.playerStatusIconSize;
+    final starSize = compact ? (tv ? 9.0 : 11.0) : (tv ? 11.0 : 14.0);
+    final gap = tv ? 6.0 : 10.0;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment:
+          centered ? MainAxisAlignment.center : MainAxisAlignment.start,
       children: [
         if (!compact && !isLoading) ...[
           SizedBox(
-            width: 16,
-            height: 16,
-            child: _StatusIcon(kind: entry.kind, dimmed: dimmed),
+            width: iconSize,
+            height: iconSize,
+            child: _StatusIcon(
+              kind: entry.kind,
+              dimmed: dimmed,
+              size: iconSize,
+            ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: gap),
         ],
         if (entry.highlight && !dimmed) ...[
           Icon(
             Icons.star_rounded,
-            size: compact ? 11 : 13,
+            size: starSize,
             color: Colors.amber.withValues(alpha: isFailed ? 0.4 : 0.85),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: tv ? 3 : 4),
         ],
         Flexible(
           child: Text(
             entry.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            textAlign: centered ? TextAlign.center : TextAlign.right,
+            textAlign: centered ? TextAlign.center : TextAlign.start,
             style: TextStyle(
               color: Colors.white.withValues(alpha: alpha),
-              fontSize: compact ? 12 : 15,
+              fontSize: labelSize,
               fontWeight: isLoading && !dimmed
                   ? FontWeight.w600
                   : FontWeight.w500,
@@ -504,13 +588,13 @@ class _StatusRouletteRow extends StatelessWidget {
           ),
         ),
         if (isLoading && !dimmed) ...[
-          const SizedBox(width: 10),
+          SizedBox(width: gap),
           SizedBox(
-            width: 14,
-            height: 14,
+            width: spinnerSize,
+            height: spinnerSize,
             child: CircularProgressIndicator(
-              strokeWidth: 1.6,
-              color: Colors.white.withValues(alpha: 0.75),
+              strokeWidth: spinnerStroke,
+              color: Colors.white.withValues(alpha: 0.85),
             ),
           ),
         ],
@@ -520,10 +604,15 @@ class _StatusRouletteRow extends StatelessWidget {
 }
 
 class _StatusIcon extends StatelessWidget {
-  const _StatusIcon({required this.kind, this.dimmed = false});
+  const _StatusIcon({
+    required this.kind,
+    this.dimmed = false,
+    required this.size,
+  });
 
   final StatusRouletteKind kind;
   final bool dimmed;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -531,25 +620,25 @@ class _StatusIcon extends StatelessWidget {
     switch (kind) {
       case StatusRouletteKind.loading:
         return CircularProgressIndicator(
-          strokeWidth: 1.8,
+          strokeWidth: size > 14 ? 2.0 : 1.6,
           color: Colors.white.withValues(alpha: 0.9 * alpha),
         );
       case StatusRouletteKind.failed:
         return Icon(
           Icons.close_rounded,
-          size: 16,
+          size: size,
           color: Colors.red.shade400.withValues(alpha: alpha),
         );
       case StatusRouletteKind.success:
         return Icon(
           Icons.check_rounded,
-          size: 16,
-          color: Color(0xFF22C55E).withValues(alpha: alpha),
+          size: size,
+          color: const Color(0xFF22C55E).withValues(alpha: alpha),
         );
       case StatusRouletteKind.info:
         return Icon(
           Icons.info_outline_rounded,
-          size: 16,
+          size: size,
           color: Colors.white.withValues(alpha: 0.7 * alpha),
         );
     }

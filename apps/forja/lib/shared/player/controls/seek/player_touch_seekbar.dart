@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Touch-friendly seek bar for mobile / TV player chrome (no hover preview).
 class PlayerTouchSeekBar extends StatefulWidget {
@@ -113,15 +115,39 @@ class _PlayerTouchSeekBarState extends State<PlayerTouchSeekBar> {
         );
       },
       child: SizedBox(
-        height: 32,
+        height: playerChromeScale(
+          context,
+          ShellTokens.playerChromeSeekHitHeight,
+        ),
         child: Align(
           alignment: Alignment.center,
           child: LayoutBuilder(
             builder: (context, constraints) {
               _trackWidth = constraints.maxWidth;
 
-              final trackH = _isDragging ? 6.0 : 3.5;
-              final thumbR = _isDragging ? 8.0 : 5.5;
+              final trackH = playerChromeScale(
+                context,
+                _isDragging
+                    ? ShellTokens.playerChromeSeekTrackHeightActive
+                    : ShellTokens.playerChromeSeekTrackHeight,
+              );
+              final thumbR = playerChromeScale(
+                context,
+                _isDragging
+                    ? ShellTokens.playerChromeSeekThumbRadiusActive
+                    : ShellTokens.playerChromeSeekThumbRadius,
+              );
+              final tipW = playerChromeScale(context, 72);
+              final tipHalf = tipW / 2;
+              final tipTop = -playerChromeScale(context, 34);
+              final tipPadH = playerChromeScale(context, 8);
+              final tipPadV = playerChromeScale(context, 4);
+              final tipRadius = playerChromeScale(context, 8);
+              final tipLabelW = playerChromeScale(context, 56);
+              final tipFs = playerChromeTypeSize(
+                context,
+                ShellTokens.playerChromeTimeFontSize,
+              );
               final playPx = (_playFrac * _trackWidth).clamp(0.0, _trackWidth);
               final thumbLeft = (playPx - thumbR).clamp(
                 0.0,
@@ -182,7 +208,7 @@ class _PlayerTouchSeekBarState extends State<PlayerTouchSeekBar> {
                                 BoxShadow(
                                   color: ForjaShellColors.brandGreen
                                       .withValues(alpha: 0.35),
-                                  blurRadius: 8,
+                                  blurRadius: playerChromeScale(context, 8),
                                 ),
                               ]
                             : [],
@@ -191,29 +217,29 @@ class _PlayerTouchSeekBarState extends State<PlayerTouchSeekBar> {
                   ),
                   if (_isDragging && widget.duration.inMilliseconds > 0)
                     Positioned(
-                      left: (playPx - 36).clamp(0.0, _trackWidth - 72),
-                      top: -34,
+                      left: (playPx - tipHalf).clamp(0.0, _trackWidth - tipW),
+                      top: tipTop,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: tipPadH,
+                          vertical: tipPadV,
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1C1C1E).withValues(alpha: 0.88),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(tipRadius),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.18),
                           ),
                         ),
                         child: SizedBox(
-                          width: 56,
+                          width: tipLabelW,
                           child: Text(
                             formatDuration(_dragTime),
                             textAlign: TextAlign.center,
                             maxLines: 1,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 11,
+                              fontSize: tipFs,
                               fontWeight: FontWeight.w600,
                               fontFamily: 'monospace',
                               letterSpacing: 0.3,

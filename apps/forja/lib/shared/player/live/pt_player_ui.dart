@@ -2131,13 +2131,21 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   Widget _liveProgressTrack({required double value, required bool compact}) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     return SizedBox(
-      height: ShellTokens.chromeScale(compact ? 28 : 32, tv: tv),
+      height: ShellTokens.chromeScale(
+        compact
+            ? ShellTokens.playerChromeSeekHitHeightCompact
+            : ShellTokens.playerChromeSeekHitHeight,
+        tv: tv,
+      ),
       child: Center(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(2),
           child: LinearProgressIndicator(
             value: value.clamp(0.0, 1.0),
-            minHeight: ShellTokens.chromeScale(3.5, tv: tv),
+            minHeight: ShellTokens.chromeScale(
+              ShellTokens.playerChromeSeekTrackHeight,
+              tv: tv,
+            ),
             backgroundColor: Colors.white24,
             color: ForjaShellColors.brandGreen,
           ),
@@ -2152,12 +2160,20 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     final tv = liveUseTvFocus(context);
     final densify = ShellPaintScope.usesTvDensityOf(context);
     final bar = SizedBox(
-      height: ShellTokens.chromeScale(compact ? 28 : 32, tv: densify),
+      height: ShellTokens.chromeScale(
+        compact
+            ? ShellTokens.playerChromeSeekHitHeightCompact
+            : ShellTokens.playerChromeSeekHitHeight,
+        tv: densify,
+      ),
       child: Center(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(2),
           child: LinearProgressIndicator(
-            minHeight: ShellTokens.chromeScale(3.5, tv: densify),
+            minHeight: ShellTokens.chromeScale(
+              ShellTokens.playerChromeSeekTrackHeight,
+              tv: densify,
+            ),
             backgroundColor: Colors.white24,
             color: ForjaShellColors.brandGreen,
           ),

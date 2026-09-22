@@ -570,6 +570,73 @@ abstract final class ShellTokens {
   static const double playerChromeProgressLogoSizeCompactTv =
       playerChromeProgressLogoSizeCompact * tvChromeScale;
 
+  /// In-player CHECKING SOURCES / buffering status card.
+  static const double playerStatusCardMaxWidth = 340;
+  static const double playerStatusCardMaxWidthTv =
+      playerStatusCardMaxWidth * tvChromeScale;
+  static const EdgeInsets playerStatusCardPadding =
+      EdgeInsets.fromLTRB(22, 18, 22, 16);
+  static const EdgeInsets playerStatusCardPaddingTv =
+      EdgeInsets.fromLTRB(14, 12, 14, 10);
+  static const double playerStatusCardRadius = 14;
+  static const double playerStatusCardRadiusTv =
+      playerStatusCardRadius * tvChromeScale;
+  static const double playerStatusHeaderFontSize = 12;
+  static const double playerStatusHeaderFontSizeTv = tvMetaFontSize;
+  static const double playerStatusLabelFontSize = 18;
+  static const double playerStatusLabelFontSizeTv = tvTitleFontSize;
+  static const double playerStatusLabelFontSizeCompact = 13;
+  static const double playerStatusLabelFontSizeCompactTv = tvBodyFontSize;
+  static const double playerStatusMetaFontSize = 12;
+  static const double playerStatusMetaFontSizeTv = tvMetaFontSize;
+  static const double playerStatusSpinnerSize = 18;
+  static const double playerStatusSpinnerSizeTv =
+      playerStatusSpinnerSize * tvChromeScale;
+  static const double playerStatusSpinnerStroke = 2.0;
+  static const double playerStatusSpinnerStrokeTv = 1.6;
+  static const double playerStatusIconSize = 18;
+  static const double playerStatusIconSizeTv =
+      playerStatusIconSize * tvChromeScale;
+  static const double playerStatusProgressHeight = 3;
+  static const double playerStatusProgressHeightTv = 2.5;
+  static const double playerStatusRouletteSlotHeight = 56;
+  static const double playerStatusRouletteSlotHeightTv =
+      playerStatusRouletteSlotHeight * tvChromeScale;
+  static const double playerStatusHeaderGap = 14;
+  static const double playerStatusHeaderGapTv =
+      playerStatusHeaderGap * tvChromeScale;
+  static const double playerStatusProgressGap = 12;
+  static const double playerStatusProgressGapTv =
+      playerStatusProgressGap * tvChromeScale;
+  static const double playerStatusMetaGap = 8;
+  static const double playerStatusMetaGapTv =
+      playerStatusMetaGap * tvChromeScale;
+
+  /// Seek / scrubber hit strip + track + thumb (Exo / MediaKit / trailer / IPTV VOD).
+  static const double playerChromeSeekHitHeight = 32;
+  static const double playerChromeSeekHitHeightTv =
+      playerChromeSeekHitHeight * tvChromeScale;
+  static const double playerChromeSeekHitHeightCompact = 28;
+  static const double playerChromeSeekHitHeightCompactTv =
+      playerChromeSeekHitHeightCompact * tvChromeScale;
+  static const double playerChromeSeekTrackHeight = 3.5;
+  static const double playerChromeSeekTrackHeightTv =
+      playerChromeSeekTrackHeight * tvChromeScale;
+  /// Drag / armed scrub — thicker than idle.
+  static const double playerChromeSeekTrackHeightActive = 6;
+  static const double playerChromeSeekTrackHeightActiveTv =
+      playerChromeSeekTrackHeightActive * tvChromeScale;
+  /// TV D-pad focus highlight — between idle and drag.
+  static const double playerChromeSeekTrackHeightFocused = 4;
+  static const double playerChromeSeekTrackHeightFocusedTv =
+      playerChromeSeekTrackHeightFocused * tvChromeScale;
+  static const double playerChromeSeekThumbRadius = 5.5;
+  static const double playerChromeSeekThumbRadiusTv =
+      playerChromeSeekThumbRadius * tvChromeScale;
+  static const double playerChromeSeekThumbRadiusActive = 8;
+  static const double playerChromeSeekThumbRadiusActiveTv =
+      playerChromeSeekThumbRadiusActive * tvChromeScale;
+
   /// Catalog / IPTV top chrome — tight under the window / title strip.
   static const double tabHeaderTopPadding = 8;
   static const double tabHeaderBottomPadding = 12;
@@ -756,8 +823,9 @@ abstract final class ShellTokens {
   /// Hand-tuned denser than desktop × chrome — match action chips / search.
   static const double torrentPanelChipPadHTv = actionChipPadHTv;
   static const double torrentPanelChipPadVDesktop = 8;
-  /// Hand-tuned denser than desktop × chrome — avoids oversized Sources pills.
-  static const double torrentPanelChipPadVTv = 3;
+  /// Leanback Sources provider chips — taller than chrome-crush so D-pad pills
+  /// stay readable (was 3; text sat on the border).
+  static const double torrentPanelChipPadVTv = 6;
   static const double torrentPanelChipFontSizeDesktop = 12;
   /// Dense strip type — same ladder rung as action chips (not body).
   static const double torrentPanelChipFontSizeTv = tvMetaFontSize;
@@ -789,6 +857,11 @@ abstract final class ShellTokens {
   static const double torrentPanelProvidersTopGapDesktop = 12;
   static const double torrentPanelProvidersTopGapTv =
       torrentPanelProvidersTopGapDesktop * tvChromeScale;
+
+  /// Air between search/filter toolbar and the stream list.
+  static const double torrentPanelListTopGapDesktop = 12;
+  static const double torrentPanelListTopGapTv =
+      torrentPanelListTopGapDesktop * tvChromeScale;
 
   /// Sources panel search field (details + player) — leanback uses chrome density.
   static const double torrentPanelSearchFontSize = 13;
@@ -1063,6 +1136,229 @@ abstract final class ShellTokens {
   static const double catalogLoadingTickerSlotHeight = 160;
   static const double catalogLoadingTickerSlotHeightTv =
       catalogLoadingTickerSlotHeight * tvChromeScale;
+
+  /// Pre-play stream loading page (backdrop + logo + status / Cancel / servers).
+  /// Chrome pads × [tvChromeScale]; type uses the leanback ladder.
+  static const double streamLoadingStatusStripReserve = 240;
+  static const double streamLoadingStatusStripReserveTv =
+      streamLoadingStatusStripReserve * tvChromeScale;
+  static const double streamLoadingProviderListExtra = 200;
+  static const double streamLoadingProviderListExtraTv =
+      streamLoadingProviderListExtra * tvChromeScale;
+  static const double streamLoadingBottomInset = 48;
+  static const double streamLoadingBottomInsetTv =
+      streamLoadingBottomInset * tvChromeScale;
+  static const double streamLoadingPadH = 24;
+  static const double streamLoadingPadHTv =
+      streamLoadingPadH * tvChromeScale;
+  static const double streamLoadingSpinnerStroke = 3;
+  static const double streamLoadingSpinnerStrokeTv =
+      streamLoadingSpinnerStroke * tvChromeScale;
+  static const double streamLoadingSpinnerGap = 28;
+  static const double streamLoadingSpinnerGapTv =
+      streamLoadingSpinnerGap * tvChromeScale;
+  static const double streamLoadingCancelGap = 24;
+  static const double streamLoadingCancelGapTv =
+      streamLoadingCancelGap * tvChromeScale;
+  static const double streamLoadingCancelGapWithProbes = 20;
+  static const double streamLoadingCancelGapWithProbesTv =
+      streamLoadingCancelGapWithProbes * tvChromeScale;
+  static const double streamLoadingTitleFontSize = 24;
+  static const double streamLoadingTitleFontSizeTv = tvTitleFontSize;
+  static const double streamLoadingTitlePadH = 40;
+  static const double streamLoadingTitlePadHTv =
+      streamLoadingTitlePadH * tvChromeScale;
+  static const double streamLoadingHeadlineFontSize = 18;
+  static const double streamLoadingHeadlineFontSizeTv = tvTitleFontSize;
+  static const double streamLoadingHintFontSize = 13;
+  static const double streamLoadingHintFontSizeTv = tvBodyFontSize;
+  static const double streamLoadingHintGap = 8;
+  static const double streamLoadingHintGapTv =
+      streamLoadingHintGap * tvChromeScale;
+  static const double streamLoadingHintPadH = 20;
+  static const double streamLoadingHintPadHTv =
+      streamLoadingHintPadH * tvChromeScale;
+  static const double streamLoadingMetaFontSize = 11;
+  static const double streamLoadingMetaFontSizeTv = tvMetaFontSize;
+  static const double streamLoadingTipFontSize = 10;
+  static const double streamLoadingTipFontSizeTv = tvMetaFontSize;
+  static const double streamLoadingProgressWidth = 220;
+  static const double streamLoadingProgressWidthTv =
+      streamLoadingProgressWidth * tvChromeScale;
+  static const double streamLoadingProgressHeight = 3;
+  static const double streamLoadingProgressHeightTv = 2.5;
+  static const double streamLoadingProgressGap = 22;
+  static const double streamLoadingProgressGapTv =
+      streamLoadingProgressGap * tvChromeScale;
+  static const double streamLoadingProgressMetaGap = 10;
+  static const double streamLoadingProgressMetaGapTv =
+      streamLoadingProgressMetaGap * tvChromeScale;
+  static const double streamLoadingCancelPadH = 32;
+  static const double streamLoadingCancelPadHTv =
+      streamLoadingCancelPadH * tvChromeScale;
+  static const double streamLoadingCancelPadV = 12;
+  static const double streamLoadingCancelPadVTv =
+      streamLoadingCancelPadV * tvChromeScale;
+  static const double streamLoadingCancelFontSize = 13;
+  static const double streamLoadingCancelFontSizeTv = tvBodyFontSize;
+  static const double streamLoadingCancelRadius = 24;
+  static const double streamLoadingCancelRadiusTv =
+      streamLoadingCancelRadius * tvChromeScale;
+  static const double streamLoadingServersChipPad = 12;
+  static const double streamLoadingServersChipPadTv =
+      streamLoadingServersChipPad * tvChromeScale;
+  static const double streamLoadingActionGap = 10;
+  static const double streamLoadingActionGapTv =
+      streamLoadingActionGap * tvChromeScale;
+  static const double streamLoadingProviderListMaxHeight = 220;
+  static const double streamLoadingProviderListMaxHeightTv =
+      streamLoadingProviderListMaxHeight * tvChromeScale;
+  static const double streamLoadingProviderListMaxWidth = 360;
+  static const double streamLoadingProviderListMaxWidthTv =
+      streamLoadingProviderListMaxWidth * tvChromeScale;
+  static const double streamLoadingProviderListRadius = 12;
+  static const double streamLoadingProviderListRadiusTv =
+      streamLoadingProviderListRadius * tvChromeScale;
+  static const double streamLoadingProviderListPadV = 6;
+  static const double streamLoadingProviderListPadVTv =
+      streamLoadingProviderListPadV * tvChromeScale;
+  static const double streamLoadingProviderRowPadH = 14;
+  static const double streamLoadingProviderRowPadHTv =
+      streamLoadingProviderRowPadH * tvChromeScale;
+  static const double streamLoadingProviderRowPadV = 10;
+  static const double streamLoadingProviderRowPadVTv =
+      streamLoadingProviderRowPadV * tvChromeScale;
+  static const double streamLoadingProviderLabelFontSize = 12;
+  static const double streamLoadingProviderLabelFontSizeTv = tvBodyFontSize;
+  static const double streamLoadingProviderStatusFontSize = 10;
+  static const double streamLoadingProviderStatusFontSizeTv = tvMetaFontSize;
+  static const double streamLoadingProviderGlyph = 14;
+  static const double streamLoadingProviderGlyphTv =
+      streamLoadingProviderGlyph * tvChromeScale;
+  static const double streamLoadingProviderPendingDot = 8;
+  static const double streamLoadingProviderPendingDotTv =
+      streamLoadingProviderPendingDot * tvChromeScale;
+  static const double streamLoadingProviderGlyphGap = 10;
+  static const double streamLoadingProviderGlyphGapTv =
+      streamLoadingProviderGlyphGap * tvChromeScale;
+  static const double streamLoadingProviderStar = 14;
+  static const double streamLoadingProviderStarTv =
+      streamLoadingProviderStar * tvChromeScale;
+  static const double streamLoadingProviderListGap = 16;
+  static const double streamLoadingProviderListGapTv =
+      streamLoadingProviderListGap * tvChromeScale;
+  static const double streamLoadingProviderTipGap = 12;
+  static const double streamLoadingProviderTipGapTv =
+      streamLoadingProviderTipGap * tvChromeScale;
+  static const double streamLoadingStatsMaxWidth = 420;
+  static const double streamLoadingStatsMaxWidthTv =
+      streamLoadingStatsMaxWidth * tvChromeScale;
+  static const double streamLoadingStatsRadius = 14;
+  static const double streamLoadingStatsRadiusTv =
+      streamLoadingStatsRadius * tvChromeScale;
+  static const double streamLoadingStatsPadH = 12;
+  static const double streamLoadingStatsPadHTv =
+      streamLoadingStatsPadH * tvChromeScale;
+  static const double streamLoadingStatsPadV = 16;
+  static const double streamLoadingStatsPadVTv =
+      streamLoadingStatsPadV * tvChromeScale;
+  static const double streamLoadingStatsIconSize = 18;
+  static const double streamLoadingStatsIconSizeTv =
+      streamLoadingStatsIconSize * tvChromeScale;
+  static const double streamLoadingStatsValueFontSize = 15;
+  static const double streamLoadingStatsValueFontSizeTv = tvTitleFontSize;
+  static const double streamLoadingStatsLabelFontSize = 11;
+  static const double streamLoadingStatsLabelFontSizeTv = tvMetaFontSize;
+  static const double streamLoadingStatsIconGap = 8;
+  static const double streamLoadingStatsIconGapTv =
+      streamLoadingStatsIconGap * tvChromeScale;
+  static const double streamLoadingStatsValueGap = 4;
+  static const double streamLoadingStatsValueGapTv =
+      streamLoadingStatsValueGap * tvChromeScale;
+  static const double streamLoadingStatsDividerHeight = 44;
+  static const double streamLoadingStatsDividerHeightTv =
+      streamLoadingStatsDividerHeight * tvChromeScale;
+  static const double streamLoadingStatsDividerMargin = 4;
+  static const double streamLoadingStatsDividerMarginTv =
+      streamLoadingStatsDividerMargin * tvChromeScale;
+  static const double streamLoadingFailureMaxWidth = 420;
+  static const double streamLoadingFailureMaxWidthTv =
+      streamLoadingFailureMaxWidth * tvChromeScale;
+  static const double streamLoadingFailureIconCompact = 40;
+  static const double streamLoadingFailureIconCompactTv =
+      streamLoadingFailureIconCompact * tvChromeScale;
+  static const double streamLoadingFailureIcon = 52;
+  static const double streamLoadingFailureIconTv =
+      streamLoadingFailureIcon * tvChromeScale;
+  static const double streamLoadingFailureIconPad = 28;
+  static const double streamLoadingFailureIconPadTv =
+      streamLoadingFailureIconPad * tvChromeScale;
+  static const double streamLoadingFailureTitleFontSize = 22;
+  static const double streamLoadingFailureTitleFontSizeTv = tvTitleFontSize;
+  static const double streamLoadingFailureTitleFontSizeCompact = 18;
+  static const double streamLoadingFailureTitleFontSizeCompactTv = tvTitleFontSize;
+  static const double streamLoadingFailureDetailFontSize = 14;
+  static const double streamLoadingFailureDetailFontSizeTv = tvBodyFontSize;
+  static const double streamLoadingFailureDetailFontSizeCompact = 13;
+  static const double streamLoadingFailureDetailFontSizeCompactTv = tvBodyFontSize;
+  static const double streamLoadingFailureButtonPadH = 22;
+  static const double streamLoadingFailureButtonPadHTv =
+      streamLoadingFailureButtonPadH * tvChromeScale;
+  static const double streamLoadingFailureButtonPadV = 14;
+  static const double streamLoadingFailureButtonPadVTv =
+      streamLoadingFailureButtonPadV * tvChromeScale;
+  static const double streamLoadingFailureButtonFontSize = 14;
+  static const double streamLoadingFailureButtonFontSizeTv = tvBodyFontSize;
+  static const double streamLoadingFailureSecondaryFontSize = 13;
+  static const double streamLoadingFailureSecondaryFontSizeTv = tvBodyFontSize;
+  static const double streamLoadingFailureButtonRadius = 12;
+  static const double streamLoadingFailureButtonRadiusTv =
+      streamLoadingFailureButtonRadius * tvChromeScale;
+  static const double streamLoadingFailureIconGap = 8;
+  static const double streamLoadingFailureIconGapTv =
+      streamLoadingFailureIconGap * tvChromeScale;
+  static const double streamLoadingFailureTitleGap = 20;
+  static const double streamLoadingFailureTitleGapTv =
+      streamLoadingFailureTitleGap * tvChromeScale;
+  static const double streamLoadingFailureTitleGapCompact = 16;
+  static const double streamLoadingFailureTitleGapCompactTv =
+      streamLoadingFailureTitleGapCompact * tvChromeScale;
+  static const double streamLoadingFailureDetailGap = 10;
+  static const double streamLoadingFailureDetailGapTv =
+      streamLoadingFailureDetailGap * tvChromeScale;
+  static const double streamLoadingFailureDetailGapCompact = 8;
+  static const double streamLoadingFailureDetailGapCompactTv =
+      streamLoadingFailureDetailGapCompact * tvChromeScale;
+  static const double streamLoadingFailureActionsGap = 28;
+  static const double streamLoadingFailureActionsGapTv =
+      streamLoadingFailureActionsGap * tvChromeScale;
+  static const double streamLoadingFailureActionsGapCompact = 22;
+  static const double streamLoadingFailureActionsGapCompactTv =
+      streamLoadingFailureActionsGapCompact * tvChromeScale;
+  static const double streamLoadingFailureSecondaryGap = 6;
+  static const double streamLoadingFailureSecondaryGapTv =
+      streamLoadingFailureSecondaryGap * tvChromeScale;
+  static const double streamLoadingFailureSecondaryPadH = 16;
+  static const double streamLoadingFailureSecondaryPadHTv =
+      streamLoadingFailureSecondaryPadH * tvChromeScale;
+  static const double streamLoadingFailureSecondaryPadV = 10;
+  static const double streamLoadingFailureSecondaryPadVTv =
+      streamLoadingFailureSecondaryPadV * tvChromeScale;
+  static const double streamLoadingBannerGap = 14;
+  static const double streamLoadingBannerGapTv =
+      streamLoadingBannerGap * tvChromeScale;
+  static const double streamLoadingReloadGap = 12;
+  static const double streamLoadingReloadGapTv =
+      streamLoadingReloadGap * tvChromeScale;
+  static const double streamLoadingReloadButtonGap = 16;
+  static const double streamLoadingReloadButtonGapTv =
+      streamLoadingReloadButtonGap * tvChromeScale;
+  static const double streamLoadingReloadButtonPadH = 22;
+  static const double streamLoadingReloadButtonPadHTv =
+      streamLoadingReloadButtonPadH * tvChromeScale;
+  static const double streamLoadingReloadButtonPadV = 10;
+  static const double streamLoadingReloadButtonPadVTv =
+      streamLoadingReloadButtonPadV * tvChromeScale;
 
   static const double eventSearchCollapsed = controlHeight;
   static const double eventSearchCollapsedTv = controlHeightTv;

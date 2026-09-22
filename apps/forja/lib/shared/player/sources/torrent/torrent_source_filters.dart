@@ -18,6 +18,7 @@ import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
@@ -1264,6 +1265,8 @@ class _TorrentSourceSearchToolbarState
     extends State<TorrentSourceSearchToolbar> {
   OverlayEntry? _filtersEntry;
   bool _wasPanelOpen = false;
+  final ValueNotifier<bool> _filtersHoveredN = ValueNotifier(false);
+  bool _filtersFocused = false;
 
   // Always show the tune control when the chrome asks for filters - empty
   // Stremio/Nuvio lists used to hide it entirely (no facets yet).
@@ -1311,6 +1314,7 @@ class _TorrentSourceSearchToolbarState
   void dispose() {
     // Remove overlay only - never setState here (element is already unmounting).
     _removeFiltersOverlay();
+    _filtersHoveredN.dispose();
     super.dispose();
   }
 
@@ -1476,6 +1480,14 @@ class _TorrentSourceSearchToolbarState
             showFocusBorder: ShellScope.inputPolicyOf(
               context,
             ).useFocusableMoodChips,
+            onFocusChange: (focused) {
+              if (_filtersFocused == focused) return;
+              setState(() => _filtersFocused = focused);
+            },
+            onHoverChange: (hovered) {
+              if (_filtersHoveredN.value == hovered) return;
+              _filtersHoveredN.value = hovered;
+            },
             onUpEdge: widget.onFiltersUpEdge,
             onDownEdge: widget.onFiltersDownEdge,
             onRightEdge: widget.onFiltersRightEdge,
@@ -1486,31 +1498,48 @@ class _TorrentSourceSearchToolbarState
                       widget.searchFocusNode!.requestFocus();
                     }
                   },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Button(
-                  variant: ButtonVariant.plainIcon,
-                  size: ButtonSize.icon,
-                  icon: Icons.tune_rounded,
-                  iconSize: filterIcon,
-                  height: filterHeight,
-                  color: (_activeCount > 0 || _filtersOpen)
-                      ? ForjaShellColors.chipSelectedIcon
-                      : ForjaShellColors.cinematic.textPrimary,
-                ),
-                if (_activeCount > 0) ...[
-                  SizedBox(width: filterGap * 0.5),
-                  Text(
-                    '$_activeCount',
-                    style: TextStyle(
-                      color: ForjaShellColors.cinematic.textPrimary,
-                      fontSize: filterFont,
-                      fontWeight: FontWeight.w600,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _filtersHoveredN,
+              builder: (context, hovered, _) {
+                final lit = ShellInputPolicy.interactiveActive(
+                  ShellScope.inputPolicyOf(context),
+                  hovered: hovered,
+                  focused: _filtersFocused,
+                  context: context,
+                );
+                final filterColor = lit
+                    ? ForjaShellColors.brandGreen
+                    : (_activeCount > 0 || _filtersOpen)
+                        ? ForjaShellColors.chipSelectedIcon
+                        : ForjaShellColors.cinematic.textPrimary;
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: filterHeight,
+                      width: filterHeight,
+                      child: Icon(
+                        Icons.tune_rounded,
+                        size: filterIcon,
+                        color: filterColor,
+                      ),
                     ),
-                  ),
-                ],
-              ],
+                    if (_activeCount > 0) ...[
+                      SizedBox(width: filterGap * 0.5),
+                      Text(
+                        '$_activeCount',
+                        style: TextStyle(
+                          color: lit
+                              ? ForjaShellColors.brandGreen
+                              : ForjaShellColors.cinematic.textPrimary,
+                          fontSize: filterFont,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
           ),
         ],

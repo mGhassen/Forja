@@ -47,7 +47,7 @@ PlayContext catalogPlayContextFromMeta({
       int.tryParse(open?.extraString('mal') ?? '');
 
   return PlayContext(
-    movie: _playMovieFor(meta, videos: vids),
+    movie: _playMovieFor(meta),
     pluginId: pluginId,
     metaItem: meta,
     metaOpen: open,
@@ -75,11 +75,11 @@ bool _metaIsMovie(MetaItem item) {
   return fmt == 'MOVIE' || item.tmdbMediaType == 'movie';
 }
 
-Movie _playMovieFor(MetaItem item, {List<MetaVideo>? videos}) {
+Movie _playMovieFor(MetaItem item) {
   final isMovie = _metaIsMovie(item);
   final poster = item.poster.trim();
   final backdrop = item.background.trim();
-  final eps = videos ?? item.videos;
+  final logo = item.logo.trim();
   final imdb = item.ids['imdb']?.toString();
   return Movie(
     id: catalogMovieIdForPlay(item),
@@ -89,9 +89,11 @@ Movie _playMovieFor(MetaItem item, {List<MetaVideo>? videos}) {
     backdropPath: catalogPosterPathForMovie(
       backdrop.isNotEmpty ? backdrop : poster,
     ),
+    logoPath: catalogPosterPathForMovie(logo),
     voteAverage: item.rating ?? 0,
     releaseDate: item.releaseInfo,
     overview: item.description,
+    genres: item.genres,
     mediaType: isMovie ? 'movie' : 'tv',
     numberOfEpisodes: metaDeclaredEpisodeCount(item),
   );

@@ -455,6 +455,10 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   /// Same as VOD issue 129: TextureView can paint zoomed until remount.
   /// MediaKit→Exo race, or Android TextureView cold-open (phone + TV; IPTV
   /// Exo is always TextureView — issue 133).
+  ///
+  /// Remount-only + immediate setResizeMode raced before the new PlatformView
+  /// attached. ATV / MediaKit races reopen after layout (switch-away-and-back);
+  /// phone cold-open waits for layout then re-asserts FIT.
   void _maybeRemountExoFitOnce() {
     if (_s._exoFitRemountDone || _s._disposed) return;
     final needRemount =
@@ -466,19 +470,43 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     if (afterMediaKit) {
       MpvExclusiveSession.instance.acknowledgeExoFitRemount();
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    final atv = !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
+    unawaited(
+      _remountExoFitAfterFirstFrame(
+        afterMediaKit: afterMediaKit,
+        reopen: afterMediaKit || atv,
+      ),
+    );
+  }
+
+  Future<void> _remountExoFitAfterFirstFrame({
+    required bool afterMediaKit,
+    required bool reopen,
+  }) async {
+    if (!mounted || _s._disposed || !_s._exoBackend) return;
+    debugPrint(
+      reopen
+          ? (afterMediaKit
+              ? '[IPTV] remount+reopen Exo TextureView after MediaKit surface race'
+              : '[IPTV] remount+reopen Exo TextureView after ATV cold-open first frame')
+          : '[IPTV] remount Exo TextureView after Android cold-open first frame',
+    );
+    if (afterMediaKit) {
+      await Future<void>.delayed(const Duration(milliseconds: 350));
       if (!mounted || _s._disposed || !_s._exoBackend) return;
-      debugPrint(
-        afterMediaKit
-            ? '[IPTV] remount Exo TextureView after MediaKit surface race'
-            : '[IPTV] remount Exo TextureView after Android cold-open first frame',
-      );
-      setState(() => _s._videoEpoch++);
-      final id = _s._exoViewId;
-      if (id != null) {
-        unawaited(ExoPlayerBridge.setResizeMode(id, 'fit'));
-      }
-    });
+    }
+    setState(() => _s._videoEpoch++);
+    await Future<void>.delayed(Duration.zero);
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || _s._disposed || !_s._exoBackend) return;
+    final id = _s._exoViewId;
+    if (id == null) return;
+    if (reopen) {
+      await _reopenAfterExoSurfaceFallback();
+      return;
+    }
+    unawaited(ExoPlayerBridge.setResizeMode(id, 'fit'));
   }
 
   /// Live skips setState on every position tick — rebuild when banner visibility

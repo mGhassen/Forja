@@ -259,7 +259,8 @@ class LoadingOverlay extends StatefulWidget {
 class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStateMixin {
   /// Space reserved at the bottom for progress / cancel so the title logo
   /// centers in the clear area above instead of overlapping it.
-  static const double _statusStripReserve = 240;
+  static const double _statusStripReserveDesktop =
+      ShellTokens.streamLoadingStatusStripReserve;
 
   late AnimationController _pulseController;
   late AnimationController _fadeOutController;
@@ -278,8 +279,22 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   final ScrollController _providerListScroll = ScrollController();
   String? _fetchedLogoUrl;
 
-  double get _logoBottomReserve =>
-      _providerListOpen ? _statusStripReserve + 200 : _statusStripReserve;
+  double _statusStripReserve(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    return tv
+        ? ShellTokens.streamLoadingStatusStripReserveTv
+        : _statusStripReserveDesktop;
+  }
+
+  double _logoBottomReserve(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final base = _statusStripReserve(context);
+    if (!_providerListOpen) return base;
+    final extra = tv
+        ? ShellTokens.streamLoadingProviderListExtraTv
+        : ShellTokens.streamLoadingProviderListExtra;
+    return base + extra;
+  }
 
   bool get _showingFailure => _failure != null;
 
@@ -591,12 +606,19 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
 
   Widget _probeStatusGlyph(StreamProviderProbeStatus status) {
     final color = _probeStatusColor(status);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final glyph = tv
+        ? ShellTokens.streamLoadingProviderGlyphTv
+        : ShellTokens.streamLoadingProviderGlyph;
+    final pending = tv
+        ? ShellTokens.streamLoadingProviderPendingDotTv
+        : ShellTokens.streamLoadingProviderPendingDot;
     return switch (status) {
       StreamProviderProbeStatus.trying => SizedBox(
-          width: 14,
-          height: 14,
+          width: glyph,
+          height: glyph,
           child: CircularProgressIndicator(
-            strokeWidth: 2,
+            strokeWidth: tv ? 1.6 : 2,
             color: color,
           ),
         ),
@@ -616,8 +638,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
           color: color,
         ),
       StreamProviderProbeStatus.pending => Container(
-          width: 8,
-          height: 8,
+          width: pending,
+          height: pending,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
@@ -627,6 +649,25 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   Widget _optionalResolveBanners() {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final bannerSize = tv
+        ? ShellTokens.streamLoadingHintFontSizeTv
+        : ShellTokens.streamLoadingHintFontSize;
+    final bannerGap = tv
+        ? ShellTokens.streamLoadingBannerGapTv
+        : ShellTokens.streamLoadingBannerGap;
+    final reloadGap = tv
+        ? ShellTokens.streamLoadingReloadGapTv
+        : ShellTokens.streamLoadingReloadGap;
+    final reloadButtonGap = tv
+        ? ShellTokens.streamLoadingReloadButtonGapTv
+        : ShellTokens.streamLoadingReloadButtonGap;
+    final reloadPadH = tv
+        ? ShellTokens.streamLoadingReloadButtonPadHTv
+        : ShellTokens.streamLoadingReloadButtonPadH;
+    final reloadPadV = tv
+        ? ShellTokens.streamLoadingReloadButtonPadVTv
+        : ShellTokens.streamLoadingReloadButtonPadV;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -636,13 +677,13 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.amber.shade200.withValues(alpha: 0.95),
-              fontSize: 13,
+              fontSize: bannerSize,
               fontWeight: FontWeight.w600,
               height: 1.35,
               fontFamily: 'Poppins',
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: bannerGap),
         ],
         if (widget.showReloadButton) ...[
           Text(
@@ -650,13 +691,13 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.62),
-              fontSize: 13,
+              fontSize: bannerSize,
               fontWeight: FontWeight.w500,
               height: 1.35,
               fontFamily: 'Poppins',
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: reloadGap),
           OutlinedButton.icon(
             onPressed: widget.onReload,
             icon: Icon(
@@ -667,15 +708,18 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
               side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-              textStyle: const TextStyle(
+              padding: EdgeInsets.symmetric(
+                horizontal: reloadPadH,
+                vertical: reloadPadV,
+              ),
+              textStyle: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: bannerSize,
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: reloadButtonGap),
         ],
       ],
     );
@@ -694,18 +738,53 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
 
   Widget _providerListPanel() {
     _syncProviderRowFocusNodes();
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final maxH = tv
+        ? ShellTokens.streamLoadingProviderListMaxHeightTv
+        : ShellTokens.streamLoadingProviderListMaxHeight;
+    final maxW = tv
+        ? ShellTokens.streamLoadingProviderListMaxWidthTv
+        : ShellTokens.streamLoadingProviderListMaxWidth;
+    final radius = tv
+        ? ShellTokens.streamLoadingProviderListRadiusTv
+        : ShellTokens.streamLoadingProviderListRadius;
+    final listPadV = tv
+        ? ShellTokens.streamLoadingProviderListPadVTv
+        : ShellTokens.streamLoadingProviderListPadV;
+    final rowPadH = tv
+        ? ShellTokens.streamLoadingProviderRowPadHTv
+        : ShellTokens.streamLoadingProviderRowPadH;
+    final rowPadV = tv
+        ? ShellTokens.streamLoadingProviderRowPadVTv
+        : ShellTokens.streamLoadingProviderRowPadV;
+    final glyph = tv
+        ? ShellTokens.streamLoadingProviderGlyphTv
+        : ShellTokens.streamLoadingProviderGlyph;
+    final glyphGap = tv
+        ? ShellTokens.streamLoadingProviderGlyphGapTv
+        : ShellTokens.streamLoadingProviderGlyphGap;
+    final labelSize = tv
+        ? ShellTokens.streamLoadingProviderLabelFontSizeTv
+        : ShellTokens.streamLoadingProviderLabelFontSize;
+    final statusSize = tv
+        ? ShellTokens.streamLoadingProviderStatusFontSizeTv
+        : ShellTokens.streamLoadingProviderStatusFontSize;
+    final star = tv
+        ? ShellTokens.streamLoadingProviderStarTv
+        : ShellTokens.streamLoadingProviderStar;
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxHeight: 220, maxWidth: 360),
+      constraints: BoxConstraints(maxHeight: maxH, maxWidth: maxW),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.55),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(radius),
           border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         ),
         child: ListView.separated(
-          scrollCacheExtent: ScrollCacheExtent.pixels(4000), controller: _providerListScroll,
+          scrollCacheExtent: ScrollCacheExtent.pixels(4000),
+          controller: _providerListScroll,
           shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: EdgeInsets.symmetric(vertical: listPadV),
           itemCount: _probes.length,
           separatorBuilder: (_, _) => Divider(
             height: 1,
@@ -716,15 +795,18 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             final canTap = _canManualCheck(probe);
             final statusColor = _probeStatusColor(probe.status);
             final row = Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: rowPadH,
+                vertical: rowPadV,
+              ),
               child: Row(
                 children: [
                   SizedBox(
-                    width: 18,
-                    height: 18,
+                    width: glyph + 4,
+                    height: glyph + 4,
                     child: Center(child: _probeStatusGlyph(probe.status)),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: glyphGap),
                   Expanded(
                     child: Text(
                       probe.label.toUpperCase(),
@@ -734,7 +816,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                         color: canTap
                             ? Colors.white.withValues(alpha: 0.9)
                             : Colors.white.withValues(alpha: 0.5),
-                        fontSize: 12,
+                        fontSize: labelSize,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.2,
                         fontFamily: 'Poppins',
@@ -744,16 +826,16 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                   if (probe.isPreferred) ...[
                     Icon(
                       Icons.star_rounded,
-                      size: 14,
+                      size: star,
                       color: Colors.amber.shade200.withValues(alpha: 0.9),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: glyphGap * 0.6),
                   ],
                   Text(
                     _probeStatusLabel(probe.status),
                     style: TextStyle(
                       color: statusColor,
-                      fontSize: 10,
+                      fontSize: statusSize,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.4,
                       fontFamily: 'Poppins',
@@ -779,17 +861,30 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   Widget _cancelChipFace() {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final padH = tv
+        ? ShellTokens.streamLoadingCancelPadHTv
+        : ShellTokens.streamLoadingCancelPadH;
+    final padV = tv
+        ? ShellTokens.streamLoadingCancelPadVTv
+        : ShellTokens.streamLoadingCancelPadV;
+    final radius = tv
+        ? ShellTokens.streamLoadingCancelRadiusTv
+        : ShellTokens.streamLoadingCancelRadius;
+    final fontSize = tv
+        ? ShellTokens.streamLoadingCancelFontSizeTv
+        : ShellTokens.streamLoadingCancelFontSize;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
       ),
       child: Text(
         'CANCEL',
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.7),
-          fontSize: 13,
+          fontSize: fontSize,
           fontWeight: FontWeight.bold,
           letterSpacing: 3,
           fontFamily: 'Poppins',
@@ -799,10 +894,17 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   Widget _serversChipFace({required bool open}) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final pad = tv
+        ? ShellTokens.streamLoadingServersChipPadTv
+        : ShellTokens.streamLoadingServersChipPad;
+    final radius = tv
+        ? ShellTokens.streamLoadingCancelRadiusTv
+        : ShellTokens.streamLoadingCancelRadius;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
         color: open ? Colors.white.withValues(alpha: 0.12) : Colors.transparent,
       ),
@@ -823,13 +925,41 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
     // Desktop hybrid shares TV D-pad flags but must keep Material hover/click.
     final leanback = policy.useFocusableMoodChips && !policy.scaleOnHover;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final radius = tv
+        ? ShellTokens.streamLoadingCancelRadiusTv
+        : ShellTokens.streamLoadingCancelRadius;
+    final padH = tv
+        ? ShellTokens.streamLoadingCancelPadHTv
+        : ShellTokens.streamLoadingCancelPadH;
+    final padV = tv
+        ? ShellTokens.streamLoadingCancelPadVTv
+        : ShellTokens.streamLoadingCancelPadV;
+    final fontSize = tv
+        ? ShellTokens.streamLoadingCancelFontSizeTv
+        : ShellTokens.streamLoadingCancelFontSize;
+    final chipPad = tv
+        ? ShellTokens.streamLoadingServersChipPadTv
+        : ShellTokens.streamLoadingServersChipPad;
+    final listGap = tv
+        ? ShellTokens.streamLoadingProviderListGapTv
+        : ShellTokens.streamLoadingProviderListGap;
+    final tipSize = tv
+        ? ShellTokens.streamLoadingTipFontSizeTv
+        : ShellTokens.streamLoadingTipFontSize;
+    final tipGap = tv
+        ? ShellTokens.streamLoadingProviderTipGapTv
+        : ShellTokens.streamLoadingProviderTipGap;
+    final actionGap = tv
+        ? ShellTokens.streamLoadingActionGapTv
+        : ShellTokens.streamLoadingActionGap;
 
     final cancelButton = leanback
         ? shellFocusableTap(
             context: context,
             focusNode: _cancelFocus,
             onTap: widget.onCancel,
-            borderRadius: 24,
+            borderRadius: radius,
             scaleOnFocus: 1.0,
             showFocusBorder: true,
             onRightEdge: showListToggle
@@ -846,21 +976,21 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             onPressed: widget.onCancel,
             style: TextButton.styleFrom(
               foregroundColor: Colors.white.withValues(alpha: 0.7),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 12,
+              padding: EdgeInsets.symmetric(
+                horizontal: padH,
+                vertical: padV,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(radius),
                 side: BorderSide(
                   color: Colors.white.withValues(alpha: 0.3),
                 ),
               ),
             ),
-            child: const Text(
+            child: Text(
               'CANCEL',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: fontSize,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 3,
                 fontFamily: 'Poppins',
@@ -875,7 +1005,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             context: context,
             focusNode: _providersButtonFocus,
             onTap: _toggleProviderList,
-            borderRadius: 24,
+            borderRadius: radius,
             scaleOnFocus: 1.0,
             showFocusBorder: true,
             onLeftEdge: () {
@@ -900,9 +1030,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                 color: Colors.white.withValues(alpha: 0.3),
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(radius),
               ),
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(chipPad),
             ),
             icon: Icon(
               _providerListOpen ? Icons.layers : Icons.layers_outlined,
@@ -918,26 +1048,26 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       children: [
         if (_providerListOpen) ...[
           _providerListPanel(),
-          const SizedBox(height: 16),
+          SizedBox(height: listGap),
           if (widget.onManualCheckProvider != null)
             Text(
               'TAP A SERVER TO CHECK IT FIRST',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.4),
-                fontSize: 10,
+                fontSize: tipSize,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1.6,
                 fontFamily: 'Poppins',
               ),
             ),
-          if (widget.onManualCheckProvider != null) const SizedBox(height: 12),
+          if (widget.onManualCheckProvider != null) SizedBox(height: tipGap),
         ],
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             cancelButton,
-            const SizedBox(width: 10),
+            SizedBox(width: actionGap),
             listButton,
           ],
         ),
@@ -959,16 +1089,23 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   Widget _titleFallback() {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final padH = tv
+        ? ShellTokens.streamLoadingTitlePadHTv
+        : ShellTokens.streamLoadingTitlePadH;
+    final fontSize = tv
+        ? ShellTokens.streamLoadingTitleFontSizeTv
+        : ShellTokens.streamLoadingTitleFontSize;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: EdgeInsets.symmetric(horizontal: padH),
       child: Text(
         widget.movie.title,
         textAlign: TextAlign.center,
         maxLines: 3,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 24,
+          fontSize: fontSize,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
           fontFamily: 'Poppins',
@@ -980,6 +1117,26 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     final backdropUrl = _resolveBackdropUrl();
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final bottom = tv
+        ? ShellTokens.streamLoadingBottomInsetTv
+        : ShellTokens.streamLoadingBottomInset;
+    final padH = tv
+        ? ShellTokens.streamLoadingPadHTv
+        : ShellTokens.streamLoadingPadH;
+    final spinnerStroke = tv
+        ? ShellTokens.streamLoadingSpinnerStrokeTv
+        : ShellTokens.streamLoadingSpinnerStroke;
+    final spinnerGap = tv
+        ? ShellTokens.streamLoadingSpinnerGapTv
+        : ShellTokens.streamLoadingSpinnerGap;
+    final cancelGap = _showProviderProbes
+        ? (tv
+            ? ShellTokens.streamLoadingCancelGapWithProbesTv
+            : ShellTokens.streamLoadingCancelGapWithProbes)
+        : (tv
+            ? ShellTokens.streamLoadingCancelGapTv
+            : ShellTokens.streamLoadingCancelGap);
     final overlay = FadeTransition(
       opacity: _fadeOutAnimation,
       child: Material(
@@ -993,7 +1150,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                   imageUrl: backdropUrl,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(color: Colors.black),
-                  errorWidget: (context, url, error) => Container(color: Colors.black),
+                  errorWidget: (context, url, error) =>
+                      Container(color: Colors.black),
                 )
               else
                 const ColoredBox(color: Colors.black),
@@ -1008,7 +1166,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                 top: 0,
                 left: 0,
                 right: 0,
-                bottom: _logoBottomReserve,
+                bottom: _logoBottomReserve(context),
                 child: Center(
                   child: FadeTransition(
                     opacity: _pulseAnimation,
@@ -1028,11 +1186,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
               ),
               DesktopWindowChrome.overlayDragStrip(),
               Positioned(
-                bottom: 48,
+                bottom: bottom,
                 left: 0,
                 right: 0,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(horizontal: padH),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1043,15 +1201,15 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                         )
                       else ...[
                         _optionalResolveBanners(),
-                        const CircularProgressIndicator(
+                        CircularProgressIndicator(
                           color: AppTheme.primaryColor,
-                          strokeWidth: 3,
+                          strokeWidth: spinnerStroke,
                         ),
-                        const SizedBox(height: 28),
+                        SizedBox(height: spinnerGap),
                         _resolveStatusBody(),
                       ],
                       if (!_showingFailure && widget.onCancel != null) ...[
-                        SizedBox(height: _showProviderProbes ? 20 : 24),
+                        SizedBox(height: cancelGap),
                         _cancelActionRow(),
                       ],
                     ],

@@ -44,17 +44,15 @@ void main() {
       ShellTokens.controlHeightTv,
       closeTo(ShellTokens.controlHeight * ShellTokens.tvChromeScale, 0.001),
     );
-    // Sources provider chips — hand-tuned denser than desktop × chrome.
+    // Sources provider chips — H matches action chips; V is a leanback hit target.
     expect(
       ShellTokens.torrentPanelChipPadHTv,
       ShellTokens.actionChipPadHTv,
     );
-    expect(ShellTokens.torrentPanelChipPadVTv, 3);
+    expect(ShellTokens.torrentPanelChipPadVTv, 6);
     expect(
       ShellTokens.torrentPanelChipPadVTv,
-      lessThan(
-        ShellTokens.torrentPanelChipPadVDesktop * ShellTokens.tvChromeScale,
-      ),
+      lessThan(ShellTokens.torrentPanelChipPadVDesktop),
     );
     expect(
       ShellTokens.torrentPanelChipFontSizeTv,
@@ -82,6 +80,52 @@ void main() {
         ShellTokens.torrentPanelPaddingDesktop * ShellTokens.tvChromeScale,
         0.001,
       ),
+    );
+    expect(
+      ShellTokens.playerStatusCardMaxWidthTv,
+      closeTo(
+        ShellTokens.playerStatusCardMaxWidth * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      ShellTokens.playerStatusLabelFontSizeTv,
+      ShellTokens.tvTitleFontSize,
+    );
+    expect(
+      ShellTokens.playerStatusHeaderFontSizeTv,
+      ShellTokens.tvMetaFontSize,
+    );
+    expect(
+      ShellTokens.streamLoadingHeadlineFontSizeTv,
+      ShellTokens.tvTitleFontSize,
+    );
+    expect(
+      ShellTokens.streamLoadingHintFontSizeTv,
+      ShellTokens.tvBodyFontSize,
+    );
+    expect(
+      ShellTokens.streamLoadingCancelFontSizeTv,
+      ShellTokens.tvBodyFontSize,
+    );
+    expect(
+      ShellTokens.streamLoadingStatusStripReserveTv,
+      closeTo(
+        ShellTokens.streamLoadingStatusStripReserve * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      ShellTokens.streamLoadingProviderListMaxWidthTv,
+      closeTo(
+        ShellTokens.streamLoadingProviderListMaxWidth *
+            ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      ShellTokens.streamLoadingFailureTitleFontSizeTv,
+      ShellTokens.tvTitleFontSize,
     );
     expect(
       DetailsTokens.sourcesPanelPaddingTv.left,

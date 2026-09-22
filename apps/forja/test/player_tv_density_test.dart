@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
+import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -56,6 +57,18 @@ void main() {
     expect(
       ShellTokens.playerChromeTimeFontSizeTv,
       ShellTokens.tvMetaFontSize,
+    );
+    expect(
+      ShellTokens.playerChromeSeekHitHeightTv,
+      lessThan(ShellTokens.playerChromeSeekHitHeight),
+    );
+    expect(
+      ShellTokens.playerChromeSeekHitHeightTv,
+      ShellTokens.playerChromeSeekHitHeight * ShellTokens.tvChromeScale,
+    );
+    expect(
+      ShellTokens.playerChromeSeekTrackHeightTv,
+      ShellTokens.playerChromeSeekTrackHeight * ShellTokens.tvChromeScale,
     );
   });
 
@@ -224,6 +237,39 @@ void main() {
     expect(buttons, findsNWidgets(2));
     expect(tester.getSize(buttons.at(0)).width, painted);
     expect(tester.getSize(buttons.at(1)).width, painted);
+  });
+
+  testWidgets('player seek bar densifies under TV ShellPaintScope', (
+    tester,
+  ) async {
+    late double hitH;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: shellPaintHostScope(
+          inputPolicy: ShellInputPolicy.tv,
+          metrics: ShellMetrics.tv,
+          child: Builder(
+            builder: (context) {
+              hitH = playerChromeScale(
+                context,
+                ShellTokens.playerChromeSeekHitHeight,
+              );
+              return Scaffold(
+                body: CustomSeekbar(
+                  duration: const Duration(minutes: 10),
+                  position: const Duration(minutes: 2),
+                  bufferedPosition: const Duration(minutes: 3),
+                  tvFocusable: true,
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    expect(hitH, ShellTokens.playerChromeSeekHitHeightTv);
+    expect(hitH, lessThan(ShellTokens.playerChromeSeekHitHeight));
+    expect(tester.getSize(find.byType(CustomSeekbar)).height, hitH);
   });
 
   testWidgets('trailer chrome card lengths densify under TV ShellPaintScope', (
