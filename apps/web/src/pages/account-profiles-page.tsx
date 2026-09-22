@@ -22,7 +22,6 @@ export function AccountProfilesPage() {
   const { signOut } = useAuth()
   const {
     profiles,
-    activeProfile,
     loading,
     canAddProfile,
     selectProfile,
@@ -178,7 +177,6 @@ export function AccountProfilesPage() {
               ) : (
                 <div className="mt-12 flex max-w-5xl flex-wrap justify-center gap-x-5 gap-y-9 sm:gap-x-7">
                   {profiles.map((profile) => {
-                    const selected = profile.id === activeProfile?.id
                     return (
                       <button
                         key={profile.id}
@@ -194,19 +192,9 @@ export function AccountProfilesPage() {
                           avatarKey={profile.avatar_key}
                           name={profile.name}
                           editing={screen === 'manage'}
-                          className={`w-full border-[3px] transition duration-200 group-hover:scale-[1.04] group-hover:border-white ${
-                            selected && screen === 'choose'
-                              ? 'border-forja-green'
-                              : 'border-transparent'
-                          }`}
+                          className="w-full border-[3px] border-transparent transition duration-200 group-hover:scale-[1.04] group-hover:border-white"
                         />
-                        <span
-                          className={`mt-3 block truncate text-base transition group-hover:text-white ${
-                            selected && screen === 'choose'
-                              ? 'text-forja-text'
-                              : 'text-forja-muted'
-                          }`}
-                        >
+                        <span className="mt-3 block truncate text-base text-forja-muted transition group-hover:text-white">
                           {profile.name}
                         </span>
                       </button>

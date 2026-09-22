@@ -828,10 +828,12 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
 
   bool _showPinFor(bool hovered) {
     if (!_canTvPin) return false;
+    // Always show when pinned so the rail advertises pin state (TV + desktop).
+    if (widget.item.pinned) return true;
     if (_leanbackOnly) {
       return widget.floating || _tvPinRevealed || _pinFocus.hasFocus;
     }
-    return widget.item.pinned || hovered || _tvFocused;
+    return hovered || _tvFocused;
   }
 
   @override

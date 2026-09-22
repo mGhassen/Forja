@@ -82,6 +82,9 @@ class _IptvSortChipState extends ConsumerState<_IptvSortChip> {
   void _openMenu() {
     final category = ref.read(iptvLiveCategorySortProvider);
     final content = ref.read(iptvLiveContentSortProvider);
+    // Leanback chrome is × tvChromeScale (~0.62); keep the panel tight to the
+    // short labels (Playlist Order / Name) instead of the 280 desktop width.
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     PlayerPopupPanel.show(
       context: context,
       title: 'Sort',
@@ -89,7 +92,7 @@ class _IptvSortChipState extends ConsumerState<_IptvSortChip> {
       anchorContext: _anchorKey.currentContext,
       alignment: Alignment.topRight,
       margin: const EdgeInsets.only(right: 12, top: 56),
-      width: 280,
+      width: tv ? 200 : 280,
       maxHeight: 420,
       shellBg: ForjaShellColors.surfaceElevated,
       child: IptvLiveSortMenu(

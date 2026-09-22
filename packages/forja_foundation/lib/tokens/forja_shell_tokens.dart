@@ -570,42 +570,41 @@ abstract final class ShellTokens {
   static const double playerChromeProgressLogoSizeCompactTv =
       playerChromeProgressLogoSizeCompact * tvChromeScale;
 
-  /// In-player CHECKING SOURCES / buffering status card.
-  static const double playerStatusCardMaxWidth = 340;
-  static const double playerStatusCardMaxWidthTv =
-      playerStatusCardMaxWidth * tvChromeScale;
-  static const EdgeInsets playerStatusCardPadding =
-      EdgeInsets.fromLTRB(22, 18, 22, 16);
-  static const EdgeInsets playerStatusCardPaddingTv =
-      EdgeInsets.fromLTRB(14, 12, 14, 10);
-  static const double playerStatusCardRadius = 14;
-  static const double playerStatusCardRadiusTv =
-      playerStatusCardRadius * tvChromeScale;
-  static const double playerStatusHeaderFontSize = 12;
+  /// In-player CHECKING SOURCES / buffering status (right-center, no card).
+  static const double playerStatusEdgeInset = 20;
+  static const double playerStatusEdgeInsetTv =
+      playerStatusEdgeInset * tvChromeScale;
+  static const double playerStatusColumnWidth = 260;
+  static const double playerStatusColumnWidthTv =
+      playerStatusColumnWidth * tvChromeScale;
+  static const double playerStatusHeaderFontSize = 11;
   static const double playerStatusHeaderFontSizeTv = tvMetaFontSize;
-  static const double playerStatusLabelFontSize = 18;
+  static const double playerStatusLabelFontSize = 17;
   static const double playerStatusLabelFontSizeTv = tvTitleFontSize;
   static const double playerStatusLabelFontSizeCompact = 13;
   static const double playerStatusLabelFontSizeCompactTv = tvBodyFontSize;
   static const double playerStatusMetaFontSize = 12;
   static const double playerStatusMetaFontSizeTv = tvMetaFontSize;
-  static const double playerStatusSpinnerSize = 18;
+  static const double playerStatusSpinnerSize = 16;
   static const double playerStatusSpinnerSizeTv =
       playerStatusSpinnerSize * tvChromeScale;
   static const double playerStatusSpinnerStroke = 2.0;
   static const double playerStatusSpinnerStrokeTv = 1.6;
-  static const double playerStatusIconSize = 18;
+  static const double playerStatusIconSize = 16;
   static const double playerStatusIconSizeTv =
       playerStatusIconSize * tvChromeScale;
-  static const double playerStatusProgressHeight = 3;
-  static const double playerStatusProgressHeightTv = 2.5;
+  static const double playerStatusProgressHeight = 2.5;
+  static const double playerStatusProgressHeightTv = 2;
+  static const double playerStatusProgressWidth = 120;
+  static const double playerStatusProgressWidthTv =
+      playerStatusProgressWidth * tvChromeScale;
   static const double playerStatusRouletteSlotHeight = 56;
   static const double playerStatusRouletteSlotHeightTv =
       playerStatusRouletteSlotHeight * tvChromeScale;
   static const double playerStatusHeaderGap = 14;
   static const double playerStatusHeaderGapTv =
       playerStatusHeaderGap * tvChromeScale;
-  static const double playerStatusProgressGap = 12;
+  static const double playerStatusProgressGap = 10;
   static const double playerStatusProgressGapTv =
       playerStatusProgressGap * tvChromeScale;
   static const double playerStatusMetaGap = 8;
@@ -859,16 +858,20 @@ abstract final class ShellTokens {
   static const double torrentPanelListTopGapTv =
       torrentPanelListTopGapDesktop * tvChromeScale;
 
-  /// Sources panel search field (details + player) — leanback uses chrome density.
+  /// Sources panel search field (details + player) — same control band as
+  /// Episodes search / top-bar chips (`controlHeight`).
+  static const double torrentPanelSearchHeight = controlHeight;
+  static const double torrentPanelSearchHeightTv = controlHeightTv;
   static const double torrentPanelSearchFontSize = 13;
   static const double torrentPanelSearchFontSizeTv = tvBodyFontSize;
   static const double torrentPanelSearchIconSize = 18;
   static const double torrentPanelSearchIconSizeTv = actionChipIconSizeTv;
-  static const double torrentPanelSearchPadH = 10;
+  static const double torrentPanelSearchPadH = 12;
   static const double torrentPanelSearchPadHTv =
       torrentPanelSearchPadH * tvChromeScale;
-  /// Tighter than desktop × chrome — field must fit leanback type without clipping.
+  /// Vertical pad inside the fixed [torrentPanelSearchHeight] face.
   static const double torrentPanelSearchPadV = 10;
+  /// Tighter than desktop × chrome — field must fit leanback type without clipping.
   static const double torrentPanelSearchPadVTv = 4;
   static const double torrentPanelSearchRadius = 10;
   static const double torrentPanelSearchRadiusTv =
@@ -878,9 +881,10 @@ abstract final class ShellTokens {
       torrentPanelSearchGap * tvChromeScale;
   static const double torrentPanelFilterIconSize = 18;
   static const double torrentPanelFilterIconSizeTv = actionChipIconSizeTv;
-  static const double torrentPanelFilterButtonHeight = 32;
+  /// Tune button beside Search — same height so the toolbar row stays aligned.
+  static const double torrentPanelFilterButtonHeight = torrentPanelSearchHeight;
   static const double torrentPanelFilterButtonHeightTv =
-      torrentPanelFilterButtonHeight * tvChromeScale;
+      torrentPanelSearchHeightTv;
 
   /// Sources / Providers stream list — estimated row for lazy scroll-into-view
   /// when the tile is not mounted yet (same keep-visible contract as IPTV cats).

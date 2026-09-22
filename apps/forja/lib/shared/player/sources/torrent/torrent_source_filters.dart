@@ -1643,11 +1643,10 @@ class _SearchFieldState extends State<_SearchField> {
     final radius = tv
         ? ShellTokens.torrentPanelSearchRadiusTv
         : ShellTokens.torrentPanelSearchRadius;
-    // Match filter button height so desktop search does not collapse thin under
-    // isDense + contentPadding alone.
-    final minHeight = tv
-        ? ShellTokens.torrentPanelFilterButtonHeightTv
-        : ShellTokens.torrentPanelFilterButtonHeight;
+    // Same fixed band as Episodes search / shell controlHeight (not the old 32).
+    final height = tv
+        ? ShellTokens.torrentPanelSearchHeightTv
+        : ShellTokens.torrentPanelSearchHeight;
     final hintStyle = TextStyle(
       color: secondary.withValues(alpha: 0.7),
       fontSize: fontSize,
@@ -1685,7 +1684,7 @@ class _SearchFieldState extends State<_SearchField> {
           );
 
     return Container(
-      constraints: BoxConstraints(minHeight: minHeight),
+      height: height,
       decoration: _torrentPanelControlDecoration(active: false, radius: radius),
       padding: EdgeInsets.symmetric(horizontal: padH),
       alignment: Alignment.centerLeft,

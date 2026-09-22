@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
-import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -234,14 +233,22 @@ class PlayerStatusOverlay extends StatelessWidget {
 
       final hasRouletteProgress = controller.entries.any(isStatusRouletteEntry);
       final overlayHeader = hasRouletteProgress ? header : 'Buffering';
+      final tv = ShellPaintScope.usesTvDensityOf(context);
+      final edgeInset = tv
+          ? ShellTokens.playerStatusEdgeInsetTv
+          : ShellTokens.playerStatusEdgeInset;
 
       return Stack(
         clipBehavior: Clip.none,
         children: [
           if (rouletteEntries.isNotEmpty)
-            Positioned.fill(
+            Positioned(
+              top: 0,
+              right: edgeInset,
+              bottom: 0,
               child: IgnorePointer(
-                child: Center(
+                child: Align(
+                  alignment: Alignment.centerRight,
                   child: StatusRouletteView(
                     entries: rouletteEntries,
                     header: overlayHeader,
@@ -347,15 +354,9 @@ class StatusRouletteView extends StatelessWidget {
     final progress = totalCount > 0 ? checkedCount / totalCount : 0.0;
     final workActive = active.kind == StatusRouletteKind.loading;
 
-    final maxWidth = tv
-        ? ShellTokens.playerStatusCardMaxWidthTv
-        : ShellTokens.playerStatusCardMaxWidth;
-    final padding = tv
-        ? ShellTokens.playerStatusCardPaddingTv
-        : ShellTokens.playerStatusCardPadding;
-    final radius = tv
-        ? ShellTokens.playerStatusCardRadiusTv
-        : ShellTokens.playerStatusCardRadius;
+    final columnWidth = tv
+        ? ShellTokens.playerStatusColumnWidthTv
+        : ShellTokens.playerStatusColumnWidth;
     final headerSize = tv
         ? ShellTokens.playerStatusHeaderFontSizeTv
         : ShellTokens.playerStatusHeaderFontSize;
@@ -377,131 +378,127 @@ class StatusRouletteView extends StatelessWidget {
     final barHeight = tv
         ? ShellTokens.playerStatusProgressHeightTv
         : ShellTokens.playerStatusProgressHeight;
+    final barWidth = tv
+        ? ShellTokens.playerStatusProgressWidthTv
+        : ShellTokens.playerStatusProgressWidth;
 
     final metaLabel = totalCount > 0
         ? '$checkedCount / $totalCount'
             '${readyCount > 0 ? '  ·  $readyCount ready' : ''}'
         : 'Starting…';
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: PlayerPopupTokens.shellBg,
-          borderRadius: BorderRadius.circular(radius),
-        ),
-        child: Padding(
-          padding: padding,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                header,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: ForjaShellColors.cinematic.textSecondary,
-                  fontSize: headerSize,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                  fontFamily: 'Poppins',
-                ),
-              ),
-              SizedBox(height: headerGap),
-              SizedBox(
-                height: slotHeight,
-                width: double.infinity,
-                child: ClipRect(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: Clip.hardEdge,
-                    children: [
-                      if (previous != null &&
-                          previous.kind != StatusRouletteKind.loading)
-                        Align(
-                          alignment: Alignment.topCenter,
-                          child: Padding(
-                            padding: EdgeInsets.only(top: tv ? 2 : 4),
-                            child: _StatusRouletteRow(
-                              entry: previous,
-                              dimmed: true,
-                              compact: true,
-                              centered: true,
-                            ),
-                          ),
-                        ),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 420),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        layoutBuilder: (current, previousChildren) => Stack(
-                          alignment: Alignment.center,
-                          clipBehavior: Clip.hardEdge,
-                          children: [
-                            ...previousChildren,
-                            ?current,
-                          ],
-                        ),
-                        transitionBuilder: (child, animation) {
-                          final slide =
-                              Tween<Offset>(
-                                begin: const Offset(0, 0.55),
-                                end: Offset.zero,
-                              ).animate(
-                                CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOutCubic,
-                                ),
-                              );
-                          return ClipRect(
-                            child: SlideTransition(
-                              position: slide,
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              ),
-                            ),
-                          );
-                        },
+    return SizedBox(
+      width: columnWidth,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            header,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: ForjaShellColors.cinematic.textSecondary,
+              fontSize: headerSize,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.6,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          SizedBox(height: headerGap),
+          SizedBox(
+            height: slotHeight,
+            width: columnWidth,
+            child: ClipRect(
+              child: Stack(
+                alignment: Alignment.centerRight,
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  if (previous != null &&
+                      previous.kind != StatusRouletteKind.loading)
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: EdgeInsets.only(top: tv ? 2 : 4),
                         child: _StatusRouletteRow(
-                          key: ValueKey('${active.id}-${active.kind.name}'),
-                          entry: active,
-                          centered: true,
+                          entry: previous,
+                          dimmed: true,
+                          compact: true,
                         ),
                       ),
-                    ],
+                    ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 420),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    layoutBuilder: (current, previousChildren) => Stack(
+                      alignment: Alignment.centerRight,
+                      clipBehavior: Clip.hardEdge,
+                      children: [
+                        ...previousChildren,
+                        ?current,
+                      ],
+                    ),
+                    transitionBuilder: (child, animation) {
+                      final slide =
+                          Tween<Offset>(
+                            begin: const Offset(0, 0.55),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutCubic,
+                            ),
+                          );
+                      return ClipRect(
+                        child: SlideTransition(
+                          position: slide,
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        ),
+                      );
+                    },
+                    child: _StatusRouletteRow(
+                      key: ValueKey('${active.id}-${active.kind.name}'),
+                      entry: active,
+                    ),
                   ),
-                ),
+                ],
               ),
-              SizedBox(height: progressGap),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(barHeight),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: progress),
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, _) => LinearProgressIndicator(
-                    value: workActive ? null : (value > 0 ? value : null),
-                    minHeight: barHeight,
-                    backgroundColor: Colors.white.withValues(alpha: 0.12),
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ),
-              SizedBox(height: metaGap),
-              Text(
-                metaLabel,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: ForjaShellColors.cinematic.textSecondary
-                      .withValues(alpha: 0.85),
-                  fontSize: metaSize,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Poppins',
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          SizedBox(height: progressGap),
+          SizedBox(
+            width: barWidth,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(barHeight),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: progress),
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, _) => LinearProgressIndicator(
+                  value: workActive ? null : (value > 0 ? value : null),
+                  minHeight: barHeight,
+                  backgroundColor: Colors.white.withValues(alpha: 0.12),
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: metaGap),
+          Text(
+            metaLabel,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: ForjaShellColors.cinematic.textSecondary
+                  .withValues(alpha: 0.85),
+              fontSize: metaSize,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -549,7 +546,7 @@ class _StatusRouletteRow extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment:
-          centered ? MainAxisAlignment.center : MainAxisAlignment.start,
+          centered ? MainAxisAlignment.center : MainAxisAlignment.end,
       children: [
         if (!compact && !isLoading) ...[
           SizedBox(
@@ -576,7 +573,7 @@ class _StatusRouletteRow extends StatelessWidget {
             entry.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            textAlign: centered ? TextAlign.center : TextAlign.start,
+            textAlign: centered ? TextAlign.center : TextAlign.right,
             style: TextStyle(
               color: Colors.white.withValues(alpha: alpha),
               fontSize: labelSize,

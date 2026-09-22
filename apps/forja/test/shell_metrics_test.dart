@@ -88,9 +88,9 @@ void main() {
       ),
     );
     expect(
-      ShellTokens.playerStatusCardMaxWidthTv,
+      ShellTokens.playerStatusColumnWidthTv,
       closeTo(
-        ShellTokens.playerStatusCardMaxWidth * ShellTokens.tvChromeScale,
+        ShellTokens.playerStatusColumnWidth * ShellTokens.tvChromeScale,
         0.001,
       ),
     );

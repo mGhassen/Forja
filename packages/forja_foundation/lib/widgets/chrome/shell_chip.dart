@@ -139,7 +139,7 @@ class ForjaShellChip extends StatefulWidget {
     this.trailing,
     this.onTap,
     this.onLongPress,
-    this.longPressDuration = const Duration(milliseconds: 1500),
+    this.longPressDuration = const Duration(seconds: 2),
     this.radius = ShellTokens.shellChipRadiusPill,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     this.fontSize = ShellTokens.shellChipFontSize,
@@ -295,8 +295,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         ShellPaintScope.focusStyledOf(context, focused: _focused);
     final accent = widget.accentHover && (hovered || focusStyled);
     final showReload = widget.onReload != null &&
-        scaleOnHover &&
-        (hovered || focusStyled);
+        (!scaleOnHover || hovered || focusStyled);
     final cinematic = ForjaShellColors.cinematic;
     final fg = accent
         ? ForjaShellColors.brandGreen

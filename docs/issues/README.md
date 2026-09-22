@@ -302,6 +302,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [306-[fixed]-…](fixed/306-[fixed]-iptv-player-search-guide-vault-portals.md) | IPTV player Search/Guide missing (vault + catalog gate) | P1 | High | fixed | Complete · 6/6 · A 0/2 | — |
 | [307-[open]-…](307-[open]-web-addons-pack-settings-parity.md) | Web Addons list + pack settings parity | P1 | High | open | 9/9 · A 0/4 | [RFC-089](../rfc/fixed/089-[fixed]-pack-addon-settings.md) |
 | [315-[fixed]-…](fixed/315-[fixed]-iptv-search-no-categories.md) | IPTV search channels but “No categories” | P0 | High | fixed | Complete · 4/4 · A 0/1 | [290](290-[open]-iptv-catalog-page-host-shelf.md) |
+| [316-[fixed]-…](fixed/316-[fixed]-hub-catalog-row-prefetch-skips-host-sections.md) | Hub catalog row prefetch skips host sections | P1 | High | fixed | Complete · 3/3 · A 3/3 | — |
+| [317-[open]-…](317-[open]-hexa-enc-hexa-cap-token-offline.md) | Hexa Sources empty — `enc-hexa` Cap token offline | P1 | High | open | 1/3 · A 1/2 | [169](169-[open]-vidfast-w-path-bundled-hls.md) |
 | [314-[open]-…](314-[open]-details-episodes-chips-range-dpad.md) | Details episodes range pad, chips view, D-pad grid | P2 | Medium | open | 5/5 · A 0/4 | — |
 | [308-[fixed]-…](fixed/308-[fixed]-iptv-pack-add-never-syncs-web.md) | IPTV pack Add never syncs portals to web | P0 | Critical | fixed | Complete · 4/4 · A 0/2 | [307](307-[open]-web-addons-pack-settings-parity.md) |
 | [309-[fixed]-…](fixed/309-[fixed]-android-tv-home-dpad-dies-on-popular.md) | Android TV Home D-pad ↓ dies on Popular | P0 | High | fixed | Complete · 7/7 · A 1/3 | — |

@@ -83,6 +83,37 @@ Widget _wrap({required Widget child, bool tv = true}) {
 
 void main() {
   testWidgets(
+    'pinned category shows pin icon on leanback without hold',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          child: CatalogCategoryRail(
+            selectedId: 'a',
+            items: const [
+              CatalogCategoryItem(
+                id: 'a',
+                label: 'EU | FR | REUNION',
+                pinnable: true,
+                pinned: true,
+              ),
+              CatalogCategoryItem(
+                id: 'b',
+                label: 'Sports',
+                pinnable: true,
+              ),
+            ],
+            onTogglePin: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.push_pin_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.push_pin_outlined), findsNothing);
+    },
+  );
+
+  testWidgets(
     'hold OK then → focuses category pin (nested focus allowed)',
     (tester) async {
       var pinned = false;

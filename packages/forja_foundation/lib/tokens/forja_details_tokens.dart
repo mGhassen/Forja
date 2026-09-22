@@ -43,13 +43,13 @@ abstract final class DetailsTokens {
   /// [ShellTokens.playerSidePanelPadding]).
   static const EdgeInsets sourcesPanelPadding = EdgeInsets.fromLTRB(
     16,
-    16,
+    24,
     12,
     12,
   );
   static const EdgeInsets sourcesPanelPaddingTv = EdgeInsets.fromLTRB(
     16 * _s,
-    8,
+    16,
     8,
     6,
   );
@@ -122,8 +122,7 @@ abstract final class DetailsTokens {
   static const double backHitPad = 12;
   static const double backHitPadTv = backHitPad * _s;
 
-  static double backIconSizeOf(bool tv) =>
-      tv ? backIconSizeTv : backIconSize;
+  static double backIconSizeOf(bool tv) => tv ? backIconSizeTv : backIconSize;
 
   static double backHitSizeOf(bool tv) =>
       backIconSizeOf(tv) + (tv ? backHitPadTv : backHitPad);
@@ -227,8 +226,9 @@ abstract final class DetailsTokens {
   }) {
     final f = firstBodyRowFraction;
     if (f == null || !f.isFinite || f <= 0 || f >= 1) return 0;
-    final vh =
-        viewportHeight.isFinite && viewportHeight > 0 ? viewportHeight : 0.0;
+    final vh = viewportHeight.isFinite && viewportHeight > 0
+        ? viewportHeight
+        : 0.0;
     if (vh <= 0 || heroHeight <= 0) return 0;
     final firstRowY = vh * f;
     final overlap = heroHeight - firstRowY;

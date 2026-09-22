@@ -171,8 +171,21 @@ class PackPaintTree extends StatelessWidget {
           compactSection: compactSection,
         ),
       );
-      // Eager rails skip the gate entirely — no placeholder frame on tab show.
-      if (eager) return _withMotion(context, spec, loadPaint);
+      // Eager rails paint immediately but still claim the prefetch lane so
+      // gated rows below (New Releases, genres) warm two rows ahead.
+      if (eager) {
+        return _withMotion(
+          context,
+          spec,
+          LazyViewportGate(
+            key: ValueKey('lazy-gate-$pluginId-$id'),
+            detectorKey: Key('lazy-$pluginId-$id'),
+            placeholderHeight: 1,
+            eager: true,
+            builder: (ctx) => loadPaint,
+          ),
+        );
+      }
       // Static structure only (no pulse) — TickerMode on tab show must not
       // look like a rail reload when the gate is still inactive.
       final compact = compactSection || spec['compactTop'] == true;
@@ -240,6 +253,20 @@ class PackPaintTree extends StatelessWidget {
     }
     theme = theme.mergeNodeProps(props);
     return ForjaMotionScope(theme: theme, child: child);
+  }
+
+  /// Eager host section that still claims a prefetch lane index.
+  Widget _prefetchParticipant({
+    required String id,
+    required Widget child,
+  }) {
+    return LazyViewportGate(
+      key: ValueKey('lazy-gate-$pluginId-$id'),
+      detectorKey: Key('lazy-$pluginId-$id'),
+      placeholderHeight: 1,
+      eager: true,
+      builder: (_) => child,
+    );
   }
 
   List<Widget> _kids(BuildContext context, Map<String, dynamic> node) {
@@ -325,26 +352,37 @@ class PackPaintTree extends StatelessWidget {
       case LayoutTypes.hero:
         return _mountHero(context, node);
       case LayoutTypes.mood:
-        return _MoodMount(
-          spec: node,
-          pluginId: pluginId,
-          packSourceUrl: packSourceUrl,
-          tabId: tabId,
+        // Host mounts load when built — still join the prefetch lane so
+        // New Releases / genres warm while Continue → Mood → Because scroll.
+        return _prefetchParticipant(
+          id: 'mood',
+          child: _MoodMount(
+            spec: node,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+          ),
         );
       case LayoutTypes.because:
-        return _BecauseMount(
-          spec: node,
-          pluginId: pluginId,
-          packSourceUrl: packSourceUrl,
-          tabId: tabId,
-          mergeHomeWatchHistory: _packTruthy(node['mergeHomeWatchHistory']),
+        return _prefetchParticipant(
+          id: 'because',
+          child: _BecauseMount(
+            spec: node,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+            mergeHomeWatchHistory: _packTruthy(node['mergeHomeWatchHistory']),
+          ),
         );
       case LayoutTypes.continueWatching:
-        return _ContinueMount(
-          spec: node,
-          pluginId: pluginId,
-          tabId: tabId,
-          mergeHomeWatchHistory: _packTruthy(node['mergeHomeWatchHistory']),
+        return _prefetchParticipant(
+          id: 'continue',
+          child: _ContinueMount(
+            spec: node,
+            pluginId: pluginId,
+            tabId: tabId,
+            mergeHomeWatchHistory: _packTruthy(node['mergeHomeWatchHistory']),
+          ),
         );
       case 'catalogBody':
         return CatalogBody.fromProps(props, sections: kids);

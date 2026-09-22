@@ -10,6 +10,10 @@ import 'package:visibility_detector/visibility_detector.dart';
 ///
 /// Activation is sticky for the session ([_activatedKeys]) so a soft remount /
 /// tab hide→show does not flash shimmer again when memo already has the rail.
+///
+/// [eager] rows paint [builder] immediately (first-paint / host mounts) but
+/// still claim a lane index and call [KitRowPrefetchLane.notifyVisible] so
+/// gated rows below stay two rows ahead.
 class LazyViewportGate extends StatefulWidget {
   const LazyViewportGate({
     super.key,
@@ -27,7 +31,8 @@ class LazyViewportGate extends StatefulWidget {
   /// Structure placeholder while off-screen / before activate.
   final Widget? placeholder;
 
-  /// When true, skip the gate (hero / first-paint rails).
+  /// When true, paint [builder] immediately (hero / first-paint / host rows)
+  /// but still participate in the prefetch lane.
   final bool eager;
 
   @override
@@ -76,7 +81,9 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
   void _ensurePrefetchSlot() {
     final chrome = PackChromeScope.maybeOf(context);
     _chrome = chrome;
-    if (chrome == null || widget.eager || _activated) return;
+    if (chrome == null) return;
+    // Claim even when already activated (eager / sticky) — host and first-paint
+    // rows must advance the prefetch frontier for gated rails below.
     final gen = chrome.rowPrefetch.generation;
     if (_prefetchIndex != null && _laneGen == gen) return;
     _laneGen = gen;
@@ -86,9 +93,9 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
   void _warmFromPrefetch() {
     if (!mounted || _activated) return;
     setState(_markActivated);
-    // Warm the next ahead slots from this claimed index (fixed lead).
-    final index = _prefetchIndex;
-    if (index != null) _chrome?.rowPrefetch.notifyVisible(index);
+    // Do not notifyVisible here — that would cascade and fetch the whole page.
+    // Only real visibility (or a late claim inside the ahead window) advances
+    // the frontier by exactly [kKitRowPrefetchAhead].
   }
 
   void _activateFromViewport() {
@@ -110,15 +117,16 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
   @override
   Widget build(BuildContext context) {
     _ensurePrefetchSlot();
-    if (_activated) return widget.builder(context);
-    // Static structure only — pulsing shimmer resumes on TickerMode when the
-    // tab is shown again and reads as a "reload" even with no fetch.
-    final ph = widget.placeholder ??
-        SizedBox(height: widget.placeholderHeight);
+    final child = _activated
+        ? widget.builder(context)
+        : (widget.placeholder ??
+            SizedBox(height: widget.placeholderHeight));
+    // Always attach the detector — eager rows still notify the lane when on
+    // screen so gated neighbors warm two rows ahead.
     return VisibilityDetector(
       key: widget.detectorKey,
       onVisibilityChanged: _onVisibilityChanged,
-      child: ph,
+      child: child,
     );
   }
 }
