@@ -444,6 +444,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             ? Future<Map<String, List<dynamic>>>.value(feedRails)
             : _bindPageFeed(forceRefresh: false);
       } else {
+        _pageFeedGen++;
         feedRails = null;
         feedError = null;
         feedFuture = _bindPageFeed(forceRefresh: true);
