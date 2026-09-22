@@ -2,7 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 
-/// Source-list / server resolve lifecycle for built-in players.
+/// Stream / server resolve lifecycle for built-in players (in-player
+/// `_loadServer` / source switch). Sources **panel** list fetches do not use
+/// this — they keep busy state local / on [playerSourcesSessionProvider].
 ///
 /// **R47-A20:** High-frequency playback ticks (position, buffered, volume) stay
 /// on local [ValueNotifier] + [ValueListenableBuilder] in player screens — not
