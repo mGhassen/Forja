@@ -90,7 +90,6 @@ class _SettingsSearchTorrentsSectionState
                 }
               },
             ),
-            const SizedBox(height: 16),
             SettingsTextField(
               controller: _flareSolverrController,
               label: 'FlareSolverr / Byparr URL',
