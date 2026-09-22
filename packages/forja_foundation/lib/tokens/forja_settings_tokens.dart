@@ -106,6 +106,13 @@ abstract final class SettingsTokens {
   static const double switchThumbSize = 12;
   static const double switchThumbSizeTv = switchThumbSize * _s;
 
+  /// Pack checklist / leading Material [Checkbox] layout slot (chrome family).
+  static const double checkboxSize = 28;
+  static const double checkboxSizeTv = checkboxSize * _s;
+  /// Dense leading checkbox beside a switch label (e.g. Forja Auto).
+  static const double checkboxSizeCompact = 24;
+  static const double checkboxSizeCompactTv = checkboxSizeCompact * _s;
+
   /// Filled CTA (Install / Update all / Retry) — chrome family, type = row title.
   static const double filledButtonHeight = 36;
   /// Hand-tuned — chrome ×scale (~22) crushes label + icon; keep denser than
@@ -336,6 +343,12 @@ abstract final class SettingsTokens {
 
   static double switchThumbSizeOf(BuildContext context) =>
       _tv(context) ? switchThumbSizeTv : switchThumbSize;
+
+  static double checkboxSizeOf(BuildContext context) =>
+      _tv(context) ? checkboxSizeTv : checkboxSize;
+
+  static double checkboxSizeCompactOf(BuildContext context) =>
+      _tv(context) ? checkboxSizeCompactTv : checkboxSizeCompact;
 
   static double filledButtonHeightOf(BuildContext context) =>
       _tv(context) ? filledButtonHeightTv : filledButtonHeight;

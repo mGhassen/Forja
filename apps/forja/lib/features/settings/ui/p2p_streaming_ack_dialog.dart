@@ -112,6 +112,7 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
         ),
       SettingsFilledButton(
         label: widget.reviewOnly ? 'Close' : 'I am aware',
+        destructive: !widget.reviewOnly,
         focusNode: _confirmFocus,
         onPressed: () => Navigator.pop(context, true),
         onLeftEdge: widget.reviewOnly

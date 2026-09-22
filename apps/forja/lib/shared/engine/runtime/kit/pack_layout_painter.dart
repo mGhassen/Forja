@@ -810,10 +810,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
     }
 
-    // Progressive first paint: fill each feed rail to its display cap, then
-    // publish in layout order (Spotlight can paint while Popular still pages).
-    // Exclusive claim across rails must refill from later TMDB pages — a fixed
-    // 2-page pool left Popular short under Films / sparse Categories (Game Show).
+    // Progressive first paint (Spotlight can land while Popular is still
+    // pooling) with release-parity economics: kick a 2-page pool per rail in
+    // parallel (pack `TMDB_HOME_FETCH_PAGES`), claim in layout order, then
+    // backfill only when exclusive claim left a rail short (sparse genres).
     final ordered = _pageFeedRailIds.toList(growable: false);
     if (ordered.isEmpty) {
       if (mounted && gen == _pageFeedGen) {
@@ -824,6 +824,17 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
       return const {};
     }
+
+    final pools = <String, Future<({List<dynamic> items, MetaError? error})>>{
+      for (final railId in ordered)
+        railId: _fetchPageFeedPool(
+          railId: railId,
+          fromPage: 1,
+          pageCount: _kPageFeedPoolPages,
+          chromeFilters: chromeFilters,
+          forceRefresh: forceRefresh,
+        ),
+    };
 
     final acc = <String, List<dynamic>>{};
     final claimed = <String>{};
@@ -836,22 +847,36 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
       var items = const <dynamic>[];
       try {
-        final result = await _fillPageFeedRail(
-          railId: railId,
+        final pool = await pools[railId]!;
+        final cap = _pageFeedRailCap(railId);
+        items = _claimPageFeedItems(
+          pool.items,
           claimed: claimed,
-          chromeFilters: chromeFilters,
-          forceRefresh: forceRefresh,
-          gen: gen,
+          cap: cap,
         );
-        if (result.items.isEmpty && result.error != null) {
-          hardError ??= result.error;
+        MetaError? railError = pool.error;
+        if (items.length < cap) {
+          final filled = await _backfillPageFeedRail(
+            railId: railId,
+            already: items,
+            claimed: claimed,
+            cap: cap,
+            startPage: _kPageFeedPoolPages + 1,
+            chromeFilters: chromeFilters,
+            forceRefresh: forceRefresh,
+            gen: gen,
+          );
+          items = filled.items;
+          railError ??= filled.error;
+        }
+        if (items.isEmpty && railError != null) {
+          hardError ??= railError;
           debugPrint(
             '[catalog] ${widget.pluginId} page-feed rail=$railId fail '
-            '${result.error?.code.wire} ${result.error?.message}',
+            '${railError.code.wire} ${railError.message}',
           );
         } else {
           anyOk = true;
-          items = result.items;
         }
       } catch (e) {
         debugPrint(
@@ -895,7 +920,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   /// Display caps — must match pack `TMDB_HOME_*_CAP` / layout pageSize.
   static const _kPageFeedPoolPageSize = 20;
-  /// Sparse genre / type filters may need many TMDB pages after exclusive claim.
+  /// Match pack `TMDB_HOME_FETCH_PAGES` — first batch per rail, fetched in parallel.
+  static const _kPageFeedPoolPages = 2;
+  /// Extra pages after the pool when exclusive claim left a rail short.
   static const _kPageFeedFillMaxPages = 10;
 
   static int _pageFeedRailCap(String railId) {
@@ -903,53 +930,130 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     return _kPageFeedPoolPageSize;
   }
 
-  /// Page TMDB until [cap] unique titles remain after cross-rail exclusive claim.
-  Future<({List<dynamic> items, MetaError? error})> _fillPageFeedRail({
+  Future<({List<dynamic> items, MetaError? error})> _runPageFeedRailPage({
     required String railId,
+    required int page,
+    required List<Map<String, dynamic>?> chromeFilters,
+    required bool forceRefresh,
+  }) async {
+    try {
+      final envelope = await packOpaqueRun(
+        pluginId: widget.pluginId,
+        packSourceUrl: widget.packSourceUrl,
+        action: 'rail',
+        params: catalogParamsWithFilters(
+          {
+            'rail': railId,
+            'page': page,
+            'limit': _kPageFeedPoolPageSize,
+            '_poolPage': true,
+          },
+          filters: chromeFilters,
+        ),
+        forceRefresh: forceRefresh,
+      );
+      if (!envelope.ok) {
+        return (items: const <dynamic>[], error: envelope.error);
+      }
+      final raw = envelope.data?['items'];
+      if (raw is! List || raw.isEmpty) {
+        return (items: const <dynamic>[], error: null);
+      }
+      return (items: List<dynamic>.from(raw), error: null);
+    } catch (e) {
+      debugPrint(
+        '[catalog] ${widget.pluginId} page-feed rail=$railId page=$page error $e',
+      );
+      return (items: const <dynamic>[], error: null);
+    }
+  }
+
+  /// Parallel TMDB pages in page order — same shape as pack `tmdbListPool`.
+  Future<({List<dynamic> items, MetaError? error})> _fetchPageFeedPool({
+    required String railId,
+    required int fromPage,
+    required int pageCount,
+    required List<Map<String, dynamic>?> chromeFilters,
+    required bool forceRefresh,
+  }) async {
+    if (pageCount <= 0) {
+      return (items: const <dynamic>[], error: null);
+    }
+    final results = await Future.wait([
+      for (var i = 0; i < pageCount; i++)
+        _runPageFeedRailPage(
+          railId: railId,
+          page: fromPage + i,
+          chromeFilters: chromeFilters,
+          forceRefresh: forceRefresh,
+        ),
+    ]);
+    MetaError? hardError;
+    final merged = <dynamic>[];
+    final seen = <String>{};
+    for (final result in results) {
+      hardError ??= result.error;
+      for (final item in result.items) {
+        final key = _pageFeedMetaKey(item);
+        if (key != null) {
+          if (seen.contains(key)) continue;
+          seen.add(key);
+        }
+        merged.add(item);
+      }
+    }
+    return (items: merged, error: hardError);
+  }
+
+  List<dynamic> _claimPageFeedItems(
+    List<dynamic> pool, {
     required Set<String> claimed,
+    required int cap,
+  }) {
+    final out = <dynamic>[];
+    for (final item in pool) {
+      if (out.length >= cap) break;
+      final key = _pageFeedMetaKey(item);
+      if (key != null) {
+        if (claimed.contains(key)) continue;
+        claimed.add(key);
+      }
+      out.add(item);
+    }
+    return out;
+  }
+
+  /// Sequential pages after the parallel pool until [cap] or upstream exhaustion.
+  Future<({List<dynamic> items, MetaError? error})> _backfillPageFeedRail({
+    required String railId,
+    required List<dynamic> already,
+    required Set<String> claimed,
+    required int cap,
+    required int startPage,
     required List<Map<String, dynamic>?> chromeFilters,
     required bool forceRefresh,
     required int gen,
   }) async {
-    final cap = _pageFeedRailCap(railId);
-    final out = <dynamic>[];
+    final out = List<dynamic>.from(already);
     MetaError? hardError;
 
-    for (var page = 1; page <= _kPageFeedFillMaxPages && out.length < cap; page++) {
+    for (var page = startPage;
+        page <= _kPageFeedFillMaxPages && out.length < cap;
+        page++) {
       if (gen != _pageFeedGen) {
         return (items: out, error: hardError);
       }
-      late final MetaEnvelope envelope;
-      try {
-        envelope = await packOpaqueRun(
-          pluginId: widget.pluginId,
-          packSourceUrl: widget.packSourceUrl,
-          action: 'rail',
-          params: catalogParamsWithFilters(
-            {
-              'rail': railId,
-              'page': page,
-              'limit': _kPageFeedPoolPageSize,
-              '_poolPage': true,
-            },
-            filters: chromeFilters,
-          ),
-          forceRefresh: forceRefresh,
-        );
-      } catch (e) {
-        debugPrint(
-          '[catalog] ${widget.pluginId} page-feed rail=$railId page=$page error $e',
-        );
+      final result = await _runPageFeedRailPage(
+        railId: railId,
+        page: page,
+        chromeFilters: chromeFilters,
+        forceRefresh: forceRefresh,
+      );
+      if (result.items.isEmpty) {
+        hardError ??= result.error;
         break;
       }
-      if (!envelope.ok) {
-        hardError ??= envelope.error;
-        break;
-      }
-      final raw = envelope.data?['items'];
-      if (raw is! List || raw.isEmpty) break;
-
-      for (final item in raw) {
+      for (final item in result.items) {
         if (out.length >= cap) break;
         final key = _pageFeedMetaKey(item);
         if (key != null) {
@@ -958,9 +1062,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         }
         out.add(item);
       }
-
-      // Upstream exhausted this rail for the current filter.
-      if (raw.length < _kPageFeedPoolPageSize) break;
+      if (result.items.length < _kPageFeedPoolPageSize) break;
     }
 
     return (items: out, error: hardError);

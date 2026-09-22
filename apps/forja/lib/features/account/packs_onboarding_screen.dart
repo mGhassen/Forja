@@ -14,6 +14,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/widgets/feedback/fractal_glass_gradient.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 TextStyle _onboardText({
   required Color color,
@@ -667,20 +668,34 @@ class _OnboardPackRow extends StatelessWidget {
       onChanged(!checked);
     }
 
-    final checkbox = SizedBox(
-      width: 28,
-      height: 28,
-      child: Checkbox(
-        value: checked,
-        onChanged: enabled ? (v) => onChanged(v == true) : null,
-        activeColor: ForjaShellColors.brandGreen,
-        checkColor: const Color(0xFF0B0A0A),
-        side: BorderSide(
-          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
-        ),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
-      ),
+    final checkbox = Builder(
+      builder: (context) {
+        final boxSize = SettingsTokens.checkboxSizeOf(context);
+        final boxScale = boxSize / SettingsTokens.checkboxSize;
+        return SizedBox(
+          width: boxSize,
+          height: boxSize,
+          child: Transform.scale(
+            scale: boxScale,
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: SettingsTokens.checkboxSize,
+              height: SettingsTokens.checkboxSize,
+              child: Checkbox(
+                value: checked,
+                onChanged: enabled ? (v) => onChanged(v == true) : null,
+                activeColor: ForjaShellColors.brandGreen,
+                checkColor: const Color(0xFF0B0A0A),
+                side: BorderSide(
+                  color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+        );
+      },
     );
 
     final row = Padding(

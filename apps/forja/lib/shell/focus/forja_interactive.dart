@@ -329,9 +329,6 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
           containDpad: ShellTvContainDpad.activeOf(context),
         );
         if (arrow == KeyEventResult.handled) return arrow;
-        final pageBack =
-            shellTvSettingsBackwardEdge(context: context, event: event);
-        if (pageBack == KeyEventResult.handled) return pageBack;
         final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
             !ShellTvDisableLinearFocus.activeOf(context);
         if (linearScope) {
@@ -364,6 +361,10 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
             return KeyEventResult.handled;
           }
         }
+        // ← → category only after spatial miss (chip strips / side actions).
+        final pageBack =
+            shellTvSettingsBackwardEdge(context: context, event: event);
+        if (pageBack == KeyEventResult.handled) return pageBack;
         final trap = shellTvTrapRowGeometry(
           event: event,
           tvFocus: policy.useFocusableMoodChips,

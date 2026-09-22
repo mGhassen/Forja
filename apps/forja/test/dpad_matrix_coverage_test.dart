@@ -799,30 +799,32 @@ void main() {
                         child: const SizedBox(width: 120, height: 40),
                       ),
                       Expanded(
-                        child: ShellTvContainDpad(
-                          child: ShellTvLinearFocusEdges(
-                            onBackwardEdge: () {
-                              exited = true;
-                              category.requestFocus();
-                              return true;
-                            },
-                            child: Column(
-                              children: [
-                                FocusableControl(
-                                  focusNode: detailA,
-                                  scaleOnFocus: 1.0,
-                                  tvMeta: detailMeta,
-                                  onTap: () {},
-                                  child: const SizedBox(width: 200, height: 40),
-                                ),
-                                FocusableControl(
-                                  focusNode: detailB,
-                                  scaleOnFocus: 1.0,
-                                  tvMeta: detailMeta,
-                                  onTap: () {},
-                                  child: const SizedBox(width: 200, height: 40),
-                                ),
-                              ],
+                        child: FocusScope(
+                          child: ShellTvContainDpad(
+                            child: ShellTvLinearFocusEdges(
+                              onBackwardEdge: () {
+                                exited = true;
+                                category.requestFocus();
+                                return true;
+                              },
+                              child: Column(
+                                children: [
+                                  FocusableControl(
+                                    focusNode: detailA,
+                                    scaleOnFocus: 1.0,
+                                    tvMeta: detailMeta,
+                                    onTap: () {},
+                                    child: const SizedBox(width: 200, height: 40),
+                                  ),
+                                  FocusableControl(
+                                    focusNode: detailB,
+                                    scaleOnFocus: 1.0,
+                                    tvMeta: detailMeta,
+                                    onTap: () {},
+                                    child: const SizedBox(width: 200, height: 40),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -855,6 +857,100 @@ void main() {
       await tester.pump();
       expect(exited, isTrue);
       expect(category.hasFocus, isTrue);
+    });
+
+    testWidgets(
+        '← between horizontal settings chips moves, not pageBack',
+        (tester) async {
+      // Regression: shellTvSettingsBackwardEdge used to run before spatial
+      // focusInDirection, so ← from Live Sports never reached Sources.
+      const tab = 'settings';
+      ShellTvFocus.currentNavTabId = tab;
+      final category = FocusNode(debugLabel: 'cat');
+      final sources = FocusNode(debugLabel: 'sources-chip');
+      final live = FocusNode(debugLabel: 'live-chip');
+      var pageBacks = 0;
+      addTearDown(() {
+        category.dispose();
+        sources.dispose();
+        live.dispose();
+      });
+
+      await tester.pumpWidget(
+        _wrapTv(
+          tab,
+          Row(
+            children: [
+              FocusableControl(
+                focusNode: category,
+                scaleOnFocus: 1.0,
+                onTap: () {},
+                child: const SizedBox(width: 80, height: 40),
+              ),
+              Expanded(
+                child: FocusScope(
+                  child: ShellTvContainDpad(
+                    child: ShellTvLinearFocusEdges(
+                      onBackwardEdge: () {
+                        pageBacks++;
+                        category.requestFocus();
+                        return true;
+                      },
+                      child: Row(
+                        children: [
+                          FocusableControl(
+                            focusNode: sources,
+                            scaleOnFocus: 1.0,
+                            showFocusBorder: true,
+                            tvMeta: const ShellTvFocusMeta(
+                              tabId: tab,
+                              zone: ShellTvZone.settings,
+                            ),
+                            onTap: () {},
+                            child: const SizedBox(width: 100, height: 40),
+                          ),
+                          FocusableControl(
+                            focusNode: live,
+                            autoFocus: true,
+                            scaleOnFocus: 1.0,
+                            showFocusBorder: true,
+                            tvMeta: const ShellTvFocusMeta(
+                              tabId: tab,
+                              zone: ShellTvZone.settings,
+                            ),
+                            onTap: () {},
+                            child: const SizedBox(width: 100, height: 40),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(live.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(sources.hasFocus, isTrue, reason: '← Live Sports → Sources');
+      expect(pageBacks, 0, reason: 'sibling chip must win over pageBack');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(live.hasFocus, isTrue, reason: '→ Sources → Live Sports');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(sources.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(pageBacks, 1);
+      expect(category.hasFocus, isTrue, reason: '← on Sources → category');
     });
 
     testWidgets(

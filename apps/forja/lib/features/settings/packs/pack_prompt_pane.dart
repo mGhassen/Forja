@@ -160,14 +160,20 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     }
   }
 
+  /// Prefer Select all → Clear → Install. Disabled toolbar actions drop their
+  /// [FocusNode] from the tree (`SettingsTextAction` / filled button), but a
+  /// detached node still reports [FocusNode.canRequestFocus] — require
+  /// [FocusNode.context] so ↑ from the first pack does not no-op.
+  bool _tryFocusToolbarAction(FocusNode node) {
+    if (node.context == null || !node.canRequestFocus) return false;
+    node.requestFocus();
+    return true;
+  }
+
   void _focusToolbar() {
-    if (_selectAllFocus.canRequestFocus) {
-      _selectAllFocus.requestFocus();
-      return;
-    }
-    if (_clearFocus.canRequestFocus) {
-      _clearFocus.requestFocus();
-    }
+    if (_tryFocusToolbarAction(_selectAllFocus)) return;
+    if (_tryFocusToolbarAction(_clearFocus)) return;
+    _tryFocusToolbarAction(_installFocus);
   }
 
   Iterable<PluginInstallCandidate> get _actionable =>
@@ -198,6 +204,11 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
       for (final c in _actionable) {
         _selected.add(_key(c));
       }
+    });
+    // Select all disables itself after this rebuild — hand focus to Install.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _tryFocusToolbarAction(_installFocus);
     });
   }
 
@@ -556,19 +567,29 @@ class _PackPromptRow extends StatelessWidget {
     }
 
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final boxSize = SettingsTokens.checkboxSizeOf(context);
+    final boxScale = boxSize / SettingsTokens.checkboxSize;
     final checkbox = SizedBox(
-      width: 28,
-      height: 28,
-      child: Checkbox(
-        value: checked,
-        onChanged: enabled ? (v) => onChanged(v == true) : null,
-        activeColor: ForjaShellColors.brandGreen,
-        checkColor: const Color(0xFF0B0A0A),
-        side: BorderSide(
-          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
+      width: boxSize,
+      height: boxSize,
+      child: Transform.scale(
+        scale: boxScale,
+        alignment: Alignment.center,
+        child: SizedBox(
+          width: SettingsTokens.checkboxSize,
+          height: SettingsTokens.checkboxSize,
+          child: Checkbox(
+            value: checked,
+            onChanged: enabled ? (v) => onChanged(v == true) : null,
+            activeColor: ForjaShellColors.brandGreen,
+            checkColor: const Color(0xFF0B0A0A),
+            side: BorderSide(
+              color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
         ),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
       ),
     );
 

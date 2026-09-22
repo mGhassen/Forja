@@ -779,10 +779,21 @@ class _NuvioAddonTile extends StatelessWidget {
       }).toList();
     }
 
+    // Same as Forja Packs: OK on the row toggles enable; details chevron expands.
     return settingsExpandableWithSideActions(
       context: context,
       storageId: 'nuvio-${addon.manifestUrl}',
       trailing: trailing,
+      onHeaderActivate: lean
+          ? null
+          : () {
+              unawaited(
+                NuvioService.instance.setAllScrapersEnabled(
+                  manifestUrl: addon.manifestUrl,
+                  enabled: !allOn,
+                ),
+              );
+            },
       leading: const Icon(
         Icons.code_rounded,
         color: ForjaShellColors.iconActive,

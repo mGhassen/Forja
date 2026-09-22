@@ -1229,6 +1229,8 @@ class _SettingsToggleRowState extends State<SettingsToggleRow> {
     final checkEnabled =
         enabled && value && widget.onLeadingCheckChanged != null;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final checkSlot = SettingsTokens.checkboxSizeCompactOf(context);
+    final checkScale = checkSlot / SettingsTokens.checkboxSizeCompact;
 
     return ListenableBuilder(
       listenable: _hoveredN,
@@ -1293,27 +1295,38 @@ class _SettingsToggleRowState extends State<SettingsToggleRow> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: Checkbox(
-                                    value: widget.leadingCheckValue,
-                                    onChanged: checkEnabled
-                                        ? (v) {
-                                            if (v != null) {
-                                              widget.onLeadingCheckChanged!(v);
-                                            }
-                                          }
-                                        : null,
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    visualDensity: VisualDensity.compact,
-                                    side: BorderSide(
-                                      color: checkEnabled
-                                          ? ForjaShellColors.textSecondary
-                                          : ForjaShellColors.borderSubtle,
+                                  width: checkSlot,
+                                  height: checkSlot,
+                                  child: Transform.scale(
+                                    scale: checkScale,
+                                    alignment: Alignment.center,
+                                    child: SizedBox(
+                                      width: SettingsTokens.checkboxSizeCompact,
+                                      height: SettingsTokens.checkboxSizeCompact,
+                                      child: Checkbox(
+                                        value: widget.leadingCheckValue,
+                                        onChanged: checkEnabled
+                                            ? (v) {
+                                                if (v != null) {
+                                                  widget.onLeadingCheckChanged!(
+                                                    v,
+                                                  );
+                                                }
+                                              }
+                                            : null,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        visualDensity: VisualDensity.compact,
+                                        side: BorderSide(
+                                          color: checkEnabled
+                                              ? ForjaShellColors.textSecondary
+                                              : ForjaShellColors.borderSubtle,
+                                        ),
+                                        activeColor:
+                                            ForjaShellColors.brandGreen,
+                                        checkColor: Colors.black,
+                                      ),
                                     ),
-                                    activeColor: ForjaShellColors.brandGreen,
-                                    checkColor: Colors.black,
                                   ),
                                 ),
                                 const SizedBox(width: 4),
@@ -2186,6 +2199,7 @@ class SettingsFilledButton extends StatelessWidget {
     this.busy = false,
     this.secondary = false,
     this.accent = false,
+    this.destructive = false,
     this.expand = false,
     this.focusNode,
     this.onLeftEdge,
@@ -2201,6 +2215,8 @@ class SettingsFilledButton extends StatelessWidget {
   final bool secondary;
   /// Brand-green tinted CTA (e.g. pack Update all).
   final bool accent;
+  /// Alert-red CTA (e.g. P2P “I am aware”).
+  final bool destructive;
   final bool expand;
   final FocusNode? focusNode;
   final VoidCallback? onLeftEdge;
@@ -2210,9 +2226,11 @@ class SettingsFilledButton extends StatelessWidget {
 
   ButtonVariant get _variant => secondary
       ? ButtonVariant.secondary
-      : accent
-          ? ButtonVariant.accent
-          : ButtonVariant.primary;
+      : destructive
+          ? ButtonVariant.destructive
+          : accent
+              ? ButtonVariant.accent
+              : ButtonVariant.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -2500,10 +2518,6 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       return shellTvLinearMenuArrows(context: context, event: event);
     }
 
-    final pageBack =
-        shellTvSettingsBackwardEdge(context: context, event: event);
-    if (pageBack == KeyEventResult.handled) return pageBack;
-
     // Spatial nearest-neighbor — same as FocusableControl. App-root
     // DirectionalFocusAction no-ops ←/→; do not require ShellTvContainDpad
     // (profile editor / overlays outside settings panes).
@@ -2531,7 +2545,9 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       }
       if (moved) return KeyEventResult.handled;
     }
-    return KeyEventResult.ignored;
+
+    // ← → category only when browse spatial miss (no left neighbor).
+    return shellTvSettingsBackwardEdge(context: context, event: event);
   }
 
   @override

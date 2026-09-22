@@ -308,9 +308,10 @@ class ShellTvLinearFocusEdges extends InheritedWidget {
 
 /// Settings detail: ← → category rail via [ShellTvLinearFocusEdges.onBackwardEdge].
 ///
-/// Call after [shellTvHandleRowArrows] so explicit [onLeftEdge] / TvKitRow
-/// column-0 still win (Addons chevron → toggle). Used when
-/// [ShellTvDisableLinearFocus] skips the linear menu path (Forja Packs 2D).
+/// Call **after** [shellTvHandleRowArrows] **and** spatial [FocusNode.focusInDirection]
+/// so a left neighbor (Stremio Sources ↔ Live Sports chips, pack side actions)
+/// wins before page-back. Explicit [onLeftEdge] / TvKitRow column-0 still win
+/// first. Used when [ShellTvDisableLinearFocus] skips the linear menu path.
 KeyEventResult shellTvSettingsBackwardEdge({
   required BuildContext context,
   required KeyEvent event,

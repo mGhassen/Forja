@@ -513,12 +513,6 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     );
     if (handled == KeyEventResult.handled) return handled;
 
-    // Settings detail: ← → category even under ShellTvDisableLinearFocus
-    // (Forja Packs 2D) — linear menu path is skipped there.
-    final pageBack =
-        shellTvSettingsBackwardEdge(context: context, event: event);
-    if (pageBack == KeyEventResult.handled) return pageBack;
-
     // Opt-in linear hosts only (rare). Default TV D-pad is spatial 2D below.
     final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
         !ShellTvDisableLinearFocus.activeOf(context);
@@ -559,6 +553,14 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         if (movedAny) return KeyEventResult.handled;
       }
     }
+
+    // Settings detail: ← → category only when no left neighbor (spatial already
+    // tried). Must not run before focusInDirection — that stole ← between
+    // horizontal chips (Stremio Sources / Live Sports). Explicit onLeftEdge /
+    // row graph still win above. Same under ShellTvDisableLinearFocus.
+    final pageBack =
+        shellTvSettingsBackwardEdge(context: context, event: event);
+    if (pageBack == KeyEventResult.handled) return pageBack;
 
     final trap = shellTvTrapRowGeometry(
       event: event,
