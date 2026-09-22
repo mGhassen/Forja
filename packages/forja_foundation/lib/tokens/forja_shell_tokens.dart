@@ -151,12 +151,18 @@ abstract final class ShellTokens {
   static const Duration navRailLabelRevealDelay = Duration(milliseconds: 300);
   /// Hold a nav tab this long to remount hubs and reload navbar config.
   static const Duration navCompleteReloadHold = Duration(seconds: 4);
-  /// Show in-icon loading while holding toward [navCompleteReloadHold].
+  /// Start the in-icon water fill while holding toward [navCompleteReloadHold].
   static const Duration navCompleteReloadHoldCue = Duration(milliseconds: 600);
-  static const double navCompleteReloadHoldIconDim = 0.35;
-  static const double navCompleteReloadHoldSpinnerScale = 0.72;
-  static const double navCompleteReloadHoldSpinnerMin = 14;
-  static const double navCompleteReloadHoldSpinnerStroke = 2;
+  /// Empty (unfilled) icon opacity during the hold fill.
+  static const double navCompleteReloadHoldIconDim = 0.4;
+  /// Wave crest height as a fraction of icon size.
+  static const double navCompleteReloadHoldWaveAmplitude = 0.08;
+  /// Horizontal wave cycles across the icon width.
+  static const double navCompleteReloadHoldWaveCycles = 1.6;
+  /// Looping wave drift period.
+  static const Duration navCompleteReloadHoldWavePeriod = Duration(
+    milliseconds: 900,
+  );
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
   static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
   static const Duration navRailLabelRevealAnimation = Duration(
@@ -972,6 +978,27 @@ abstract final class ShellTokens {
   static const double viewButtonIconSizeTv = 14;
   static const double viewButtonGap = 16;
   static const double viewButtonGapTv = 10;
+
+  /// Accent mood / sport category circles (desktop catalog + Live Sports).
+  static const double moodCircleSize = 56;
+  static const double moodCircleItemWidth = 80;
+  static const double moodCircleGap = 16;
+  static const double moodCircleLabelFontSize = 12.5;
+  static const double moodCircleLabelGap = 6;
+  static const double moodCircleLabelLineHeight = 1.15;
+  static const int moodCircleLabelMaxLines = 2;
+  static const double moodCircleBottomPad = moodCircleLabelGap;
+  static const double moodCircleIconSize = 20;
+  static const double moodCircleIconSizeActive = 26;
+  /// Label slot taller than 2× line so wrapped titles do not clip neighbors.
+  static const double moodCircleLabelSlotHeight = 34;
+
+  /// circle + gap + label slot + bottom pad.
+  static const double moodCircleRowHeight =
+      moodCircleSize +
+      moodCircleLabelGap +
+      moodCircleLabelSlotHeight +
+      moodCircleBottomPad;
 
   /// Accent mood circles on TV (leanback catalog rows).
   ///

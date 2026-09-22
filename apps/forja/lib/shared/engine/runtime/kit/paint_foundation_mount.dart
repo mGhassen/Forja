@@ -447,7 +447,7 @@ Widget? paintFoundationType(
           context,
           props,
           'size',
-          tv ? ShellTokens.moodCircleSizeTv : 72,
+          tv ? ShellTokens.moodCircleSizeTv : ShellTokens.moodCircleSize,
         ),
         layout: tv ? MoodCircleLayout.tvScrollable : MoodCircleLayout.desktop,
         accent: propsColor(props, 'accent'),
@@ -527,7 +527,12 @@ Widget? paintFoundationType(
         icon: meta.icon,
         accent: meta.accent,
         selected: propsBool(props, 'selected'),
-        size: propsLengthOr(context, props, 'size', 72),
+        size: propsLengthOr(
+          context,
+          props,
+          'size',
+          ShellTokens.moodCircleSize,
+        ),
         onTap: () {},
       );
     case 'serverGrid':

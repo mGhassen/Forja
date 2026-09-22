@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -136,8 +137,8 @@ class NavCompleteReloadHold {
   }
 }
 
-/// Dims [icon] and paints a spinner inside the glyph bounds while holding.
-class NavReloadHoldIcon extends StatelessWidget {
+/// Dims [icon] and fills it bottom-up with a waving liquid while holding.
+class NavReloadHoldIcon extends StatefulWidget {
   const NavReloadHoldIcon({
     super.key,
     required this.icon,
@@ -150,33 +151,138 @@ class NavReloadHoldIcon extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) {
-    if (!loading) return icon;
-    final spinner = (size * ShellTokens.navCompleteReloadHoldSpinnerScale)
-        .clamp(
-          ShellTokens.navCompleteReloadHoldSpinnerMin,
-          size,
-        );
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Opacity(
-            opacity: ShellTokens.navCompleteReloadHoldIconDim,
-            child: icon,
-          ),
-          SizedBox(
-            width: spinner,
-            height: spinner,
-            child: CircularProgressIndicator(
-              strokeWidth: ShellTokens.navCompleteReloadHoldSpinnerStroke,
-              color: ForjaShellColors.brandGreen,
-            ),
-          ),
-        ],
-      ),
+  State<NavReloadHoldIcon> createState() => _NavReloadHoldIconState();
+}
+
+class _NavReloadHoldIconState extends State<NavReloadHoldIcon>
+    with TickerProviderStateMixin {
+  late final AnimationController _fill;
+  late final AnimationController _wave;
+
+  static Duration get _fillDuration =>
+      ShellTokens.navCompleteReloadHold - ShellTokens.navCompleteReloadHoldCue;
+
+  @override
+  void initState() {
+    super.initState();
+    _fill = AnimationController(vsync: this, duration: _fillDuration);
+    _wave = AnimationController(
+      vsync: this,
+      duration: ShellTokens.navCompleteReloadHoldWavePeriod,
     );
+    if (widget.loading) {
+      _fill.forward(from: 0);
+      _wave.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant NavReloadHoldIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.loading && !oldWidget.loading) {
+      _fill.duration = _fillDuration;
+      _fill.forward(from: 0);
+      _wave.repeat();
+    } else if (!widget.loading && oldWidget.loading) {
+      _fill.stop();
+      _fill.value = 0;
+      _wave.stop();
+      _wave.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _fill.dispose();
+    _wave.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.loading) return widget.icon;
+    return AnimatedBuilder(
+      animation: Listenable.merge([_fill, _wave]),
+      builder: (context, _) {
+        return SizedBox(
+          width: widget.size,
+          height: widget.size,
+          child: Stack(
+            alignment: Alignment.center,
+            fit: StackFit.expand,
+            children: [
+              Opacity(
+                opacity: ShellTokens.navCompleteReloadHoldIconDim,
+                child: widget.icon,
+              ),
+              ClipPath(
+                clipper: _NavReloadWaveClipper(
+                  fill: _fill.value,
+                  phase: _wave.value,
+                  amplitude: ShellTokens.navCompleteReloadHoldWaveAmplitude,
+                  cycles: ShellTokens.navCompleteReloadHoldWaveCycles,
+                ),
+                child: ColorFiltered(
+                  colorFilter: const ColorFilter.mode(
+                    ForjaShellColors.brandGreen,
+                    BlendMode.srcIn,
+                  ),
+                  child: widget.icon,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Clips from the bottom with a sine crest so the fill reads as water rising.
+class _NavReloadWaveClipper extends CustomClipper<Path> {
+  const _NavReloadWaveClipper({
+    required this.fill,
+    required this.phase,
+    required this.amplitude,
+    required this.cycles,
+  });
+
+  final double fill;
+  final double phase;
+  final double amplitude;
+  final double cycles;
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    if (fill <= 0) return path;
+    if (fill >= 1) {
+      return Path()..addRect(Offset.zero & size);
+    }
+    final amp = size.height * amplitude;
+    // Keep the crest inside the icon as fill approaches full.
+    final level = size.height * (1 - fill);
+    final crest = level.clamp(amp, size.height - amp);
+    path.moveTo(0, size.height);
+    path.lineTo(0, crest);
+    const steps = 24;
+    for (var i = 1; i <= steps; i++) {
+      final t = i / steps;
+      final x = size.width * t;
+      final y = crest +
+          math.sin((t * cycles + phase) * math.pi * 2) * amp;
+      path.lineTo(x, y);
+    }
+    path.lineTo(size.width, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant _NavReloadWaveClipper oldClipper) {
+    return oldClipper.fill != fill ||
+        oldClipper.phase != phase ||
+        oldClipper.amplitude != amplitude ||
+        oldClipper.cycles != cycles;
   }
 }

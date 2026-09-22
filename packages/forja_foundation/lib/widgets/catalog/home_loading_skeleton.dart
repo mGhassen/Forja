@@ -311,20 +311,22 @@ Widget catalogMoodRowSkeleton({
             separatorBuilder: (_, _) => SizedBox(
               width: catalogUsesTvDensity(context)
                   ? ShellTokens.moodCircleGapTv
-                  : 12,
+                  : ShellTokens.moodCircleGap,
             ),
             itemBuilder: (_, _) {
               final tv = catalogUsesTvDensity(context);
               final circle = tv
                   ? ShellTokens.moodCircleSizeTv
-                  : 72.0;
+                  : ShellTokens.moodCircleSize;
               final labelW = tv
                   ? ShellTokens.moodCircleItemWidthTv
-                  : 56.0;
+                  : ShellTokens.moodCircleItemWidth;
               final labelGap = tv
                   ? ShellTokens.moodCircleLabelGapTv
-                  : 8.0;
-              final labelH = tv ? ShellTokens.tvMetaFontSize : 12.0;
+                  : ShellTokens.moodCircleLabelGap;
+              final labelH = tv
+                  ? ShellTokens.tvMetaFontSize
+                  : ShellTokens.moodCircleLabelFontSize;
               return Column(
                 children: [
                   Skeleton(

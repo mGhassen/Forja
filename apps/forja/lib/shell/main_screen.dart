@@ -363,9 +363,13 @@ class _MainScreenState extends ConsumerState<MainScreen>
       return;
     }
     final run = () async {
-      ForjaToast.info('Reloading navbar…');
-      for (final tabId in PluginNavRegistry.destinations.keys) {
-        final id = PluginNavRegistry.pluginIdForTabSync(tabId);
+      final tabId = _currentTabId;
+      final tabName =
+          (tabId != null ? navDestinationFor(tabId)?.label : null)?.trim();
+      final name = (tabName != null && tabName.isNotEmpty) ? tabName : 'Navbar';
+      ForjaToast.info('Reloading $name…');
+      for (final hubTabId in PluginNavRegistry.destinations.keys) {
+        final id = PluginNavRegistry.pluginIdForTabSync(hubTabId);
         if (id != null && id.isNotEmpty) {
           EngineCache.instance.wipePlugin(id);
         }
@@ -378,7 +382,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       _ensureSelectedKitTabMounted(forceRefresh: true);
       PluginRegistry.bumpHubFeedEpoch(all: true);
       if (!mounted) return;
-      ForjaToast.success('Navbar reloaded');
+      ForjaToast.success('$name reloaded');
     }();
     _completeNavbarReloadInFlight = run;
     try {

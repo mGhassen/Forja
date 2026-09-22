@@ -33,17 +33,16 @@ class MoodCircleLayout {
   final double labelLineHeight;
 
   static const desktop = MoodCircleLayout(
-    circleSize: 72,
-    itemWidth: 96,
-    horizontalGap: 24,
-    // circle + gap + label slot + bottom pad (slot > 2× line for wrapping slack).
-    rowHeight: 72 + 8 + 34 + 8,
-    labelFontSize: 12.5,
-    iconSize: 26,
-    iconSizeActive: 34,
-    labelMaxLines: 2,
-    labelGap: 8,
-    labelLineHeight: 1.15,
+    circleSize: ShellTokens.moodCircleSize,
+    itemWidth: ShellTokens.moodCircleItemWidth,
+    horizontalGap: ShellTokens.moodCircleGap,
+    rowHeight: ShellTokens.moodCircleRowHeight,
+    labelFontSize: ShellTokens.moodCircleLabelFontSize,
+    iconSize: ShellTokens.moodCircleIconSize,
+    iconSizeActive: ShellTokens.moodCircleIconSizeActive,
+    labelMaxLines: ShellTokens.moodCircleLabelMaxLines,
+    labelGap: ShellTokens.moodCircleLabelGap,
+    labelLineHeight: ShellTokens.moodCircleLabelLineHeight,
   );
 
   /// Hand-tuned leanback packing ([ShellTokens.moodCircle*] — not chrome-scaled).
@@ -75,7 +74,7 @@ class MoodCircle extends StatelessWidget {
     this.selected = false,
     this.onTap,
     this.child,
-    this.size = 72,
+    this.size = ShellTokens.moodCircleSize,
     this.focusNode,
     this.accent,
     this.icon,
