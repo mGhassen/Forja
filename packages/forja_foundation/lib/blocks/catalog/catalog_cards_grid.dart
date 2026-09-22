@@ -1117,8 +1117,14 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
                 widget.onItemTap!(item);
               },
         onInteractiveActive: (active) {
-          if (active && _selectedIndex != i) {
-            setState(() => _selectedIndex = i);
+          if (active) {
+            if (_selectedIndex != i) {
+              setState(() => _selectedIndex = i);
+            }
+          } else if (_selectedIndex == i) {
+            // TV: leaving the tile (e.g. → Portals) must drop play chrome;
+            // letter-jump still sets _selectedIndex without focus.
+            setState(() => _selectedIndex = -1);
           }
           widget.onItemInteractiveActive?.call(item, active: active);
         },

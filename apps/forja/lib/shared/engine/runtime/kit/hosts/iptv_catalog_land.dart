@@ -34,6 +34,12 @@ abstract final class IptvCatalogLand {
   /// Stream ids currently painted in the Live channel grid (after kind filter).
   static Set<String> _visibleStreamIds = const {};
 
+  /// Same ids in paint order — index lookup for category →.
+  static List<String> _visibleStreamIdsOrdered = const [];
+
+  /// Last channel the user focused / armed in the current grid (D-pad or land).
+  static String? _lastFocusedStreamId;
+
   /// When true, land scrolls + arms D-pad memory but leaves focus on cats.
   /// False after player / Fav hold-jump (focus the channel tile).
   static bool preferCategoryFocusOnLand = true;
@@ -41,16 +47,30 @@ abstract final class IptvCatalogLand {
   static String? _activePortalKey;
 
   static void setVisibleStreamIds(Iterable<String> ids) {
-    _visibleStreamIds = {
+    _visibleStreamIdsOrdered = [
       for (final raw in ids)
         if (raw.trim().isNotEmpty) raw.trim(),
-    };
+    ];
+    _visibleStreamIds = _visibleStreamIdsOrdered.toSet();
   }
 
   static bool streamVisibleInFilter(String streamId) {
     final id = streamId.trim();
     if (id.isEmpty) return false;
     return _visibleStreamIds.contains(id);
+  }
+
+  static int? indexOfVisibleStream(String streamId) {
+    final id = streamId.trim();
+    if (id.isEmpty) return null;
+    final i = _visibleStreamIdsOrdered.indexOf(id);
+    return i >= 0 ? i : null;
+  }
+
+  /// Remember which stream the items row last focused / armed (by paint index).
+  static void noteFocusedStreamAt(int index) {
+    if (index < 0 || index >= _visibleStreamIdsOrdered.length) return;
+    _lastFocusedStreamId = _visibleStreamIdsOrdered[index];
   }
 
   static void bindPortalKey(String? portalStoreKey) {
@@ -73,6 +93,7 @@ abstract final class IptvCatalogLand {
     final key = _activePortalKey;
     final id = streamId.trim();
     if (key == null || id.isEmpty) return;
+    _lastFocusedStreamId = id;
     if (highlightedStreamId.value != id) {
       highlightedStreamId.value = id;
     }
@@ -159,6 +180,7 @@ abstract final class IptvCatalogLand {
     final tab = ShellTvFocus.currentNavTabId ?? 'iptv';
     final handle = ShellTvFocusCoordinator.rowHandle(tab, itemsRowId);
     if (handle == null || handle.itemCount <= index) return false;
+    noteFocusedStreamAt(index);
     ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, itemsRowId, index);
     return true;
   }
@@ -167,8 +189,40 @@ abstract final class IptvCatalogLand {
   static bool focusItemsAt(int index) {
     if (index < 0) return false;
     final tab = ShellTvFocus.currentNavTabId ?? 'iptv';
+    noteFocusedStreamAt(index);
     ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, itemsRowId, index);
     return ShellTvFocusCoordinator.focusRowItemExact(tab, itemsRowId, index);
+  }
+
+  /// Category → : last selected channel if still in this list, else first.
+  ///
+  /// Prefers last D-pad/land focus, then [highlightedStreamId] (last played).
+  /// Never uses spatial "in front of category" geometry.
+  static bool focusItemsFromCategory({String? tabId}) {
+    final tab = (tabId ?? '').trim().isNotEmpty
+        ? tabId!.trim()
+        : (ShellTvFocus.currentNavTabId ?? 'iptv');
+    final candidates = <String>[
+      if ((_lastFocusedStreamId ?? '').trim().isNotEmpty)
+        _lastFocusedStreamId!.trim(),
+      if ((highlightedStreamId.value ?? '').trim().isNotEmpty)
+        highlightedStreamId.value!.trim(),
+    ];
+    for (final sid in candidates) {
+      final idx = indexOfVisibleStream(sid);
+      if (idx == null) continue;
+      if (focusItemsAt(idx)) return true;
+      // Lazy grid may not have the node yet — arm memory + soft focus.
+      ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, itemsRowId, idx);
+      if (ShellTvFocusCoordinator.focusRowItem(tab, itemsRowId, idx)) {
+        return true;
+      }
+    }
+    if (_visibleStreamIdsOrdered.isEmpty) return false;
+    noteFocusedStreamAt(0);
+    ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, itemsRowId, 0);
+    return ShellTvFocusCoordinator.focusRowItem(tab, itemsRowId, 0) ||
+        ShellTvFocusCoordinator.focusRowItemExact(tab, itemsRowId, 0);
   }
 
   static void _scheduleFocusChannel(String streamId) {

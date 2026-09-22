@@ -84,6 +84,7 @@ bool liveArmBrowserStreamFocusMemory(int index) {
   final tab = ShellTvFocus.currentNavTabId ?? 'iptv';
   final handle = ShellTvFocusCoordinator.rowHandle(tab, rowId);
   if (handle == null || handle.itemCount <= index) return false;
+  IptvCatalogLand.noteFocusedStreamAt(index);
   ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, rowId, index);
   return true;
 }
@@ -96,6 +97,7 @@ bool liveFocusBrowserStreamAt(int index) {
   if (index < 0) return false;
   const rowId = 'items';
   final tab = ShellTvFocus.currentNavTabId ?? 'iptv';
+  IptvCatalogLand.noteFocusedStreamAt(index);
   ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, rowId, index);
   return ShellTvFocusCoordinator.focusRowItemExact(tab, rowId, index);
 }

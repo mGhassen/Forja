@@ -4,6 +4,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
@@ -614,9 +615,31 @@ class _KitSearchPageState extends State<KitSearchPage> {
   bool _tvDensity(BuildContext context) =>
       ShellScope.metricsOf(context).usesTvDensity;
 
-  int _resultsGridColumns(BuildContext context) => _tvDensity(context)
-      ? ShellTokens.searchResultsGridColumnsTv
-      : ShellTokens.searchResultsGridColumns;
+  /// Results pane width beside the helpers column (wide layout flex 3:7).
+  double _tvSearchResultsPaneWidth(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final rail = ShellScope.metricsOf(context).navRailWidth;
+    final inset = ShellTokens.searchPageInsetTv * 2;
+    final columnGap = ShellTokens.searchColumnGapTv;
+    final content = math.max(0.0, screenW - rail - inset);
+    return math.max(0.0, (content - columnGap) * 7 / 10);
+  }
+
+  /// Desktop: fixed 4-up. TV: pack so each cell stays ≥ poster width.
+  int _resultsGridColumns(BuildContext context) {
+    if (!_tvDensity(context)) return ShellTokens.searchResultsGridColumns;
+    final dens = CatalogSearchDensity.maybeOf(context);
+    final minW = dens?.resultCardWidth ?? ShellTokens.posterCardWidthTv;
+    final gap = ShellTokens.tvPosterCardRowGap;
+    // Matches [Padding] around each film card in [_buildResultsColumn].
+    const cellPad = 8.0;
+    final resultsW = _tvSearchResultsPaneWidth(context);
+    final cols = math.max(
+      1,
+      ((resultsW + gap) / (minW + cellPad + gap)).floor(),
+    );
+    return cols.clamp(1, ShellTokens.searchResultsGridColumnsTv);
+  }
 
   String _effectiveSearchQuery([String? typed]) {
     if (!widget.structuredSearch) return (typed ?? _query).trim();

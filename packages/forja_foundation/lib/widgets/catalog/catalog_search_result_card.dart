@@ -3,6 +3,7 @@ import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Search result card paint — film (wide grid) or compact poster.
 ///
@@ -63,7 +64,29 @@ class CatalogSearchResultCard extends StatelessWidget {
   }
 
   Widget _filmBody(BuildContext context, ForjaThemeExtension theme) {
-    final size = titleFontSize ?? 13.0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final size = titleFontSize ??
+        (tv
+            ? ShellTokens.posterTitleFontSizeTv
+            : ShellTokens.posterTitleFontSizeDesktop);
+    final ratingFont = tv
+        ? ShellTokens.posterRatingFontSizeTv
+        : ShellTokens.posterRatingFontSize;
+    final ratingIcon = tv
+        ? ShellTokens.posterRatingIconSizeTv
+        : ShellTokens.posterRatingIconSize;
+    final ratingPadH =
+        tv ? ShellTokens.posterRatingPadHTv : ShellTokens.posterRatingPadH;
+    final ratingPadV =
+        tv ? ShellTokens.posterRatingPadVTv : ShellTokens.posterRatingPadV;
+    final ratingRadius =
+        tv ? ShellTokens.posterRatingRadiusTv : ShellTokens.posterRatingRadius;
+    final ratingGap =
+        tv ? ShellTokens.posterRatingGapTv : ShellTokens.posterRatingGap;
+    final metaFont =
+        tv ? ShellTokens.tvMetaFontSize : 11.0;
+    final inset = tv ? 6.0 : 10.0;
+    final ratingInset = tv ? 5.0 : 8.0;
     return SizedBox.expand(
       child: AnimatedContainer(
         duration: ShellTokens.navSelectionAnimation,
@@ -94,8 +117,8 @@ class CatalogSearchResultCard extends StatelessWidget {
                           child: Text(
                             title,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 10,
+                            style: TextStyle(
+                              fontSize: metaFont,
                               color: Colors.white24,
                             ),
                           ),
@@ -105,8 +128,8 @@ class CatalogSearchResultCard extends StatelessWidget {
                         child: Text(
                           title,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 10,
+                          style: TextStyle(
+                            fontSize: metaFont,
                             color: Colors.white24,
                           ),
                         ),
@@ -129,18 +152,16 @@ class CatalogSearchResultCard extends StatelessWidget {
               ),
               if (rating != null)
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: ratingInset,
+                  right: ratingInset,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: ShellTokens.posterRatingPadH,
-                      vertical: ShellTokens.posterRatingPadV,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: ratingPadH,
+                      vertical: ratingPadV,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(
-                        ShellTokens.posterRatingRadius,
-                      ),
+                      borderRadius: BorderRadius.circular(ratingRadius),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.08),
                       ),
@@ -148,18 +169,18 @@ class CatalogSearchResultCard extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.star_rounded,
-                          size: ShellTokens.posterRatingIconSize,
+                          size: ratingIcon,
                           color: Colors.amber,
                         ),
-                        const SizedBox(width: ShellTokens.posterRatingGap),
+                        SizedBox(width: ratingGap),
                         CrossfadeSwap(
                           child: Text(
                             rating!.toStringAsFixed(1),
                             key: ValueKey(rating!.toStringAsFixed(1)),
-                            style: const TextStyle(
-                              fontSize: ShellTokens.posterRatingFontSize,
+                            style: TextStyle(
+                              fontSize: ratingFont,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               height: 1.0,
@@ -171,9 +192,9 @@ class CatalogSearchResultCard extends StatelessWidget {
                   ),
                 ),
               Positioned(
-                bottom: 10,
-                left: 10,
-                right: 10,
+                bottom: inset,
+                left: inset,
+                right: inset,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -193,14 +214,16 @@ class CatalogSearchResultCard extends StatelessWidget {
                       ),
                     ),
                     if (subtitle != null && subtitle!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: tv ? 2 : 4),
                       CrossfadeSwap(
                         child: Text(
                           subtitle!,
                           key: ValueKey(subtitle),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.5),
-                            fontSize: 11,
+                            fontSize: metaFont,
                           ),
                         ),
                       ),

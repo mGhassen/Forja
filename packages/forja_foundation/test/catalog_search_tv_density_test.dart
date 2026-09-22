@@ -36,14 +36,20 @@ void main() {
     );
   });
 
-  test('hub search results grid is denser on TV', () {
+  test('hub search results pack to poster width on TV', () {
+    // Max columns is a cap — host packs by posterCardWidthTv so cards stay
+    // readable beside the helpers rail (not a forced skinny 6-up).
     expect(
       ShellTokens.searchResultsGridColumnsTv,
-      greaterThan(ShellTokens.searchResultsGridColumns),
+      greaterThanOrEqualTo(ShellTokens.searchResultsGridColumns),
     );
     expect(
       ShellTokens.searchCardWidthTv,
       lessThan(ShellTokens.searchCardWidthDesktop),
+    );
+    expect(
+      ShellTokens.posterCardWidthTv,
+      greaterThan(ShellTokens.searchCardWidthTv),
     );
   });
 }

@@ -1085,7 +1085,11 @@ abstract final class ShellTokens {
 
   /// Wide search results grid columns (film cards fill each cell).
   static const int searchResultsGridColumns = 4;
-  static const int searchResultsGridColumnsTv = 6;
+
+  /// Leanback search results — **max** columns. Host packs by
+  /// [posterCardWidthTv] so cards stay readable beside the helpers rail
+  /// (never force a skinny 6-up crush).
+  static const int searchResultsGridColumnsTv = 5;
 
   /// Netflix-style search: input column on desktop.
   static const double searchPageInset = 32;

@@ -11,7 +11,6 @@ import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_live_sort_pro
 import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja_foundation/blocks/catalog/catalog_channel_grid_focus.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_category_rail.dart';
@@ -688,32 +687,15 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         last: true,
       );
       void enterItems() {
-        // Focus the channel in front of this category (viewport-aligned). Never
-        // select/reload. Fall back to remembered, then first.
+        // Last selected channel if still in this list; else first tile.
         if (tvTab.isEmpty) {
           enterChannels?.call();
           return;
         }
-        double? categoryY;
-        final focusCtx = FocusManager.instance.primaryFocus?.context;
-        final box = focusCtx?.findRenderObject();
-        if (box is RenderBox && box.hasSize) {
-          categoryY = box.localToGlobal(Offset(0, box.size.height / 2)).dy;
-        }
-        if (CatalogChannelGridFocus.focusInFront(categoryGlobalY: categoryY)) {
+        if (IptvCatalogLand.focusItemsFromCategory(tabId: tvTab)) {
           return;
         }
-        final remembered = ShellTvFocusCoordinator.focusRowItemRemembered(
-          tvTab,
-          IptvCatalogLand.itemsRowId,
-        );
-        if (remembered) return;
         enterChannels?.call();
-        ShellTvFocusCoordinator.focusRowItem(
-          tvTab,
-          IptvCatalogLand.itemsRowId,
-          0,
-        );
       }
 
       final child = CatalogCategoryRail(
