@@ -376,6 +376,139 @@ void main() {
   );
 
   testWidgets(
+    '↑ from because-shuffle lands mood-results then mood-chips',
+    (tester) async {
+      final moodChip = FocusNode(debugLabel: 'mood-chip');
+      final moodResult = FocusNode(debugLabel: 'mood-result');
+      final shuffle = FocusNode(debugLabel: 'because-shuffle');
+      final sChips = PackPaintArtifact.stableSortOrder(_tab, 'mood-chips');
+      final sResults =
+          PackPaintArtifact.stableSortOrder(_tab, 'mood-results');
+      final sShuffle =
+          PackPaintArtifact.stableSortOrder(_tab, 'because-shuffle');
+
+      addTearDown(() {
+        moodChip.dispose();
+        moodResult.dispose();
+        shuffle.dispose();
+      });
+
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [
+              TvKitRow(
+                rowId: 'mood-chips',
+                sortOrder: sChips,
+                itemCount: 1,
+                child: _item(node: moodChip, rowId: 'mood-chips', index: 0),
+              ),
+              TvKitRow(
+                rowId: 'mood-results',
+                sortOrder: sResults,
+                itemCount: 1,
+                onFocusUp: kitFocusEdge(_tab, 'mood-chips'),
+                child:
+                    _item(node: moodResult, rowId: 'mood-results', index: 0),
+              ),
+              TvKitRow(
+                rowId: 'because-shuffle',
+                sortOrder: sShuffle,
+                itemCount: 1,
+                // Pack focusUp: mood posters (not chips).
+                onFocusUp: kitFocusEdge(_tab, 'mood-results'),
+                child: _item(node: shuffle, rowId: 'because-shuffle', index: 0),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      shuffle.requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'because-shuffle',
+          currentIndex: 0,
+          down: false,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(moodResult.hasFocus, isTrue);
+      expect(moodChip.hasFocus, isFalse);
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'mood-results',
+          currentIndex: 0,
+          down: false,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(moodChip.hasFocus, isTrue);
+    },
+  );
+
+  testWidgets(
+    '↑ from because-shuffle skips empty mood-results to mood-chips',
+    (tester) async {
+      final moodChip = FocusNode(debugLabel: 'mood-chip');
+      final shuffle = FocusNode(debugLabel: 'because-shuffle');
+      final sChips = PackPaintArtifact.stableSortOrder(_tab, 'mood-chips');
+      PackPaintArtifact.stableSortOrder(_tab, 'mood-results');
+      final sShuffle =
+          PackPaintArtifact.stableSortOrder(_tab, 'because-shuffle');
+
+      addTearDown(() {
+        moodChip.dispose();
+        shuffle.dispose();
+      });
+
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [
+              TvKitRow(
+                rowId: 'mood-chips',
+                sortOrder: sChips,
+                itemCount: 1,
+                child: _item(node: moodChip, rowId: 'mood-chips', index: 0),
+              ),
+              TvKitRow(
+                rowId: 'because-shuffle',
+                sortOrder: sShuffle,
+                itemCount: 1,
+                onFocusUp: kitFocusEdge(_tab, 'mood-results'),
+                child: _item(node: shuffle, rowId: 'because-shuffle', index: 0),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      shuffle.requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: _tab,
+          rowId: 'because-shuffle',
+          currentIndex: 0,
+          down: false,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(moodChip.hasFocus, isTrue);
+    },
+  );
+
+  testWidgets(
     '↓ pack focusDown to because prefers because-shuffle when mounted',
     (tester) async {
       final moodChip = FocusNode(debugLabel: 'mood-chip');
