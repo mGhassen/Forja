@@ -1909,7 +1909,8 @@ class ShellTvFocusMeta {
   }
 
   /// [containDpad] — overlays / settings panes: ← at the first item traps
-  /// instead of jumping to the shell nav (Back dismisses the pane).
+  /// instead of jumping to the shell nav — **after** an optional pageBack
+  /// ladder ([_pageBackOnRowLeftEdge], e.g. Settings detail → category rail).
   bool Function()? resolveLeftEdge({bool containDpad = false}) {
     if (rowId == null || itemIndex == null) return null;
     if (zone == ShellTvZone.grid && gridColumns != null) {
@@ -1918,12 +1919,12 @@ class ShellTvFocusMeta {
       final idx = itemIndex!;
       final cols = gridColumns!;
       return () {
-        // Column 0: pack pageBack ladder (e.g. IPTV items → cats).
+        // Column 0: pageBack first (Settings / IPTV panes), then trap or nav.
         if (idx % cols <= 0) {
-          if (containDpad) return true;
           if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
             if (ShellTvFocusCoordinator.tryPageBack(tid)) return true;
           }
+          if (containDpad) return true;
           ShellTvFocusCoordinator.focusActiveNavTab();
           return true;
         }
@@ -1943,21 +1944,28 @@ class ShellTvFocusMeta {
     final idx = itemIndex!;
     final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
     if (handle?.orientation == ShellTvRowOrientation.vertical) {
-      return () => true;
+      // No horizontal neighbors — ← is always an edge. Settings detail rows
+      // (Features / Packs lists) must pageBack to the category rail.
+      return () {
+        if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
+          if (ShellTvFocusCoordinator.tryPageBack(tid)) return true;
+        }
+        return true;
+      };
     }
     return () {
       if (idx <= 0) {
+        // Settings Addons / Packs / Features: ← → category rail (same as Back).
+        // Must run before containDpad trap — detail panes wrap ContainDpad.
+        if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
+          if (ShellTvFocusCoordinator.tryPageBack(tid)) return true;
+        }
         if (containDpad) return true;
         if (rid == MediaDetailsTv.heroRowId) {
           ShellTvFocusCoordinator.focusActiveNavTab();
           return true;
         }
-        // IPTV / My List panes: ← walks pageBack; outermost → nav.
-        if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
-          if (ShellTvFocusCoordinator.tryPageBack(tid)) return true;
-          ShellTvFocusCoordinator.focusActiveNavTab();
-          return true;
-        }
+        // IPTV / My List panes: outermost ← → nav when pageBack is unset/false.
         ShellTvFocusCoordinator.focusActiveNavTab();
         return true;
       }
@@ -2185,6 +2193,26 @@ void shellTvEnsureVisibleItem(
       position.minScrollExtent,
       position.maxScrollExtent,
     ),
+  );
+}
+
+/// TV vertical lists (Sources streams): keep the focused control on-screen
+/// without pinning it to the content top (settings [shellTvEnsureVisibleItem]).
+///
+/// Same keep-visible edge nudge as IPTV category rows / FocusableControl.row.
+void shellTvEnsureVisibleKeepVisible(BuildContext context) {
+  const zero = Duration.zero;
+  Scrollable.ensureVisible(
+    context,
+    alignment: 0.0,
+    duration: zero,
+    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+  );
+  Scrollable.ensureVisible(
+    context,
+    alignment: 1.0,
+    duration: zero,
+    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
   );
 }
 

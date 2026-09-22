@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/components/focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 const int kEpisodeRangeChunkSize = 50;
+
+/// Pack setting `episodeView` — still cards (default).
+const String kEpisodeViewCards = 'cards';
+
+/// Pack setting `episodeView` — numbered chips in a wrap grid.
+const String kEpisodeViewChips = 'chips';
+
+bool episodeViewIsChips(String? raw) =>
+    (raw ?? '').trim().toLowerCase() == kEpisodeViewChips;
+
+/// TV focus rows owned by the episode picker (range → seasons → episodes).
+int detailsEpisodeFocusRowCount({
+  required bool hasEpisodes,
+  required int seasonCount,
+  required bool showRange,
+}) {
+  if (!hasEpisodes) return 0;
+  var n = 1; // episodes always
+  if (seasonCount > 1) n++;
+  if (showRange) n++;
+  return n;
+}
 
 class EpisodeRange {
   const EpisodeRange({
@@ -205,9 +226,12 @@ class EpisodeRangeSelector extends StatelessWidget {
         );
 
         if (!useFocusableChips) return trigger;
-        return FocusableTap(
+        return ShellPaintScope.focusableTap(
+          context: context,
           onTap: toggle,
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: radius,
+          listIndex: 0,
+          showFocusBorder: true,
           child: trigger,
         );
       },

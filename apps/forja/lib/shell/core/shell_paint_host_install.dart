@@ -36,6 +36,27 @@ void installShellPaintHostAdapters() {
         child: child,
       );
     },
+    wrapTvGrid: ({
+      required String tabId,
+      required String rowId,
+      required int sortOrder,
+      required int itemCount,
+      required int columns,
+      VoidCallback? onFocusUp,
+      VoidCallback? onFocusDown,
+      required Widget child,
+    }) {
+      return TvGrid(
+        tabId: tabId,
+        rowId: rowId,
+        sortOrder: sortOrder,
+        itemCount: itemCount,
+        columns: columns,
+        onFocusUp: onFocusUp,
+        onFocusDown: onFocusDown,
+        child: child,
+      );
+    },
     focusableTap: ({
       required BuildContext context,
       required Widget child,

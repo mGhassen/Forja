@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart' show kitPanelTabIcon;
@@ -46,6 +47,7 @@ class SourcesPanelChrome extends StatefulWidget {
     this.listFocusWrap,
     this.tabsFocusWrap,
     this.tabsBuilder,
+    this.onScrollIntoViewChanged,
     this.emptyQueryMessage = 'No matches',
   });
 
@@ -119,6 +121,10 @@ class SourcesPanelChrome extends StatefulWidget {
   /// Optional host wrap for tabs row.
   final Widget Function(BuildContext context, Widget child, {required int itemCount})? tabsFocusWrap;
 
+  /// Host registers TV scroll-into-view (keep-visible jump, IPTV category contract).
+  /// Pass `null` on dispose / rebuild clear.
+  final ValueChanged<void Function(int index)?>? onScrollIntoViewChanged;
+
   /// Host segmented tabs chrome. Null → ChoiceChip row.
   final Widget Function(
     BuildContext context, {
@@ -146,6 +152,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
   int _loadGen = 0;
   String _internalQuery = '';
   String _selectedCategoryKey = kSourcesCategoryAll;
+  bool _scrollIntoViewOffered = false;
 
   bool get _browseActive =>
       widget.browseCategoryTabIds.contains(_tabId);
@@ -165,10 +172,12 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
         if (mounted) unawaited(_ensureLoaded(_tabId));
       });
     }
+    _offerScrollIntoView();
   }
 
   @override
   void dispose() {
+    widget.onScrollIntoViewChanged?.call(null);
     _listScroll.dispose();
     super.dispose();
   }
@@ -176,6 +185,14 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
   @override
   void didUpdateWidget(SourcesPanelChrome oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(
+      oldWidget.onScrollIntoViewChanged,
+      widget.onScrollIntoViewChanged,
+    )) {
+      oldWidget.onScrollIntoViewChanged?.call(null);
+      _scrollIntoViewOffered = false;
+      _offerScrollIntoView();
+    }
     var forceReload = false;
     if (oldWidget.title != widget.title ||
         oldWidget.subtitle != widget.subtitle) {
@@ -272,6 +289,28 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
       if (!mounted) return;
       cb(loading);
     });
+  }
+
+  void _offerScrollIntoView() {
+    final ready = widget.onScrollIntoViewChanged;
+    if (ready == null || _scrollIntoViewOffered) return;
+    _scrollIntoViewOffered = true;
+    ready(_scrollListIndexKeepVisible);
+  }
+
+  /// Keep-visible jump — same contract as IPTV [CatalogCategoryRail] /
+  /// [CatalogDenseList.scrollIndexKeepVisible]. Host prefers measuring a
+  /// mounted tile; this estimate mounts off-screen rows for focus restore.
+  void _scrollListIndexKeepVisible(int index) {
+    if (!_listScroll.hasClients || index < 0 || !mounted) return;
+    final tv = widget.usesTvDensity;
+    CatalogDenseList.scrollIndexKeepVisible(
+      _listScroll,
+      index: index,
+      rowExtent: ShellTokens.sourcesStreamListRowExtentEstimateOf(tv),
+      stride: ShellTokens.sourcesStreamListStrideOf(tv),
+      topPad: 0,
+    );
   }
 
   void _selectTab(String id) {

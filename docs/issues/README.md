@@ -182,7 +182,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [158-[fixed]-…](fixed/158-[fixed]-android-tv-nav-right-loses-page-focus.md) | ATV nav RIGHT loses last page focus | P1 | High | fixed | Complete · 5/5 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [159-[open]-…](159-[open]-android-tv-live-background-audio.md) | ATV live/IPTV audio continues after Home | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 8/8 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 13/13 · A 0/9 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 14/14 · A 0/9 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 28/28 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [164-[open]-…](164-[open]-vsembed-new-player-chain.md) | VSEmbed new JS player (rcp/prorcp dead) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -301,12 +301,14 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [305-[fixed]-…](fixed/305-[fixed]-home-reload-pack-empty-hero-rails.md) | Home empty hero / Popular after Reload packs | P1 | High | fixed | Complete · 3/3 · A 0/1 | [231](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) |
 | [306-[fixed]-…](fixed/306-[fixed]-iptv-player-search-guide-vault-portals.md) | IPTV player Search/Guide missing (vault + catalog gate) | P1 | High | fixed | Complete · 6/6 · A 0/2 | — |
 | [307-[open]-…](307-[open]-web-addons-pack-settings-parity.md) | Web Addons list + pack settings parity | P1 | High | open | 9/9 · A 0/4 | [RFC-089](../rfc/fixed/089-[fixed]-pack-addon-settings.md) |
+| [314-[open]-…](314-[open]-details-episodes-chips-range-dpad.md) | Details episodes range pad, chips view, D-pad grid | P2 | Medium | open | 5/5 · A 0/4 | — |
 | [308-[fixed]-…](fixed/308-[fixed]-iptv-pack-add-never-syncs-web.md) | IPTV pack Add never syncs portals to web | P0 | Critical | fixed | Complete · 4/4 · A 0/2 | [307](307-[open]-web-addons-pack-settings-parity.md) |
 | [309-[fixed]-…](fixed/309-[fixed]-android-tv-home-dpad-dies-on-popular.md) | Android TV Home D-pad ↓ dies on Popular | P0 | High | fixed | Complete · 7/7 · A 1/3 | — |
 | [310-[fixed]-…](fixed/310-[fixed]-cinematic-hero-slide-drops-cta-focus.md) | Cinematic hero slide drops CTA focus | P1 | High | fixed | Complete · 2/2 · A 0/2 | — |
 | [311-[fixed]-…](fixed/311-[fixed]-pack-reload-eager-hub-refetch.md) | Pack reload eagerly refetches every keep-alive hub | P1 | High | fixed | Complete · 2/2 · A 0/1 | [305](fixed/305-[fixed]-home-reload-pack-empty-hero-rails.md) |
 | [312-[fixed]-…](fixed/312-[fixed]-android-tv-details-cast-crew-dpad.md) | Android TV details D-pad jumps Cast / Characters / Crew | P1 | High | fixed | Complete · 3/3 · A 1/3 | — |
 | [313-[fixed]-…](fixed/313-[fixed]-android-tv-live-sports-side-panel-opens-details.md) | ATV Live Sports Side panel opens detail page | P1 | High | fixed | Complete · 2/2 · A 1/2 | [304](fixed/304-[fixed]-live-sports-match-tap-open.md) |
+| [314-[fixed]-…](fixed/314-[fixed]-live-sports-settings-wipes-feed-cache.md) | Live Sports settings wipe schedule feed cache | P1 | High | fixed | Complete · 4/4 · A 0/1 | [311](fixed/311-[fixed]-pack-reload-eager-hub-refetch.md) |
 | [289-[fixed]-…](fixed/289-[fixed]-profile-pack-membership-bleed.md) | New profile inherits other profile packs | P0 | Critical | fixed | Complete · 5/5 · A 0/4 | [217](fixed/217-[fixed]-iptv-portals-bleed-across-profiles.md) · [259](259-[open]-cloud-pack-auto-install-before-profile-splash.md) |
 | [286-[fixed]-…](fixed/286-[fixed]-iptv-channels-hub-pack-restore.md) | Restore IPTV Channels hub (pack curated + portal scan) | P1 | High | fixed | Complete · 4/4 · A 0/3 | [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) |
 | [284-[fixed]-…](fixed/284-[fixed]-macos-27-window-zoom-snap-back.md) | macOS 27 title-bar zoom snaps back / boxed relaunch | P1 | High | fixed | Complete · 5/5 · A 0/2 | — |

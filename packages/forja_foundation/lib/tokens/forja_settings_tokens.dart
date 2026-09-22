@@ -69,10 +69,12 @@ abstract final class SettingsTokens {
 
   /// Settings → Addons master list (Playback / Stremio / …) — roomier than
   /// dense toggle rows so title+subtitle cards do not feel glued together.
+  /// Separator is a hairline only (row pad owns vertical rhythm) so focus /
+  /// hover fill sits flush against the divider.
   static const double addonListRowPadV = 22;
   static const double addonListRowPadVTv = 14;
-  static const double addonListSeparatorHeight = 12;
-  static const double addonListSeparatorHeightTv = 8;
+  static const double addonListSeparatorHeight = 1;
+  static const double addonListSeparatorHeightTv = 1;
 
   /// Category tab chips under Forja Packs / Addons (Movie & TV, Anime, …).
   static const EdgeInsets categoryChipPad =

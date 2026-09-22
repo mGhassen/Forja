@@ -18,6 +18,8 @@ import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja/shared/player/sources/resolve/stream_play_hooks.dart';
 import 'package:forja/shared/player/sources/kit/panel_source_flags.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
@@ -136,12 +138,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   Set<String> _watchedEpisodes = {};
   bool _autoPlayConsumed = false;
   StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
+  String _episodeView = kEpisodeViewCards;
 
   @override
   void initState() {
     super.initState();
     WatchHistory.revision.addListener(_onWatchHistoryChanged);
     PackFiltersRegistry.revision.addListener(_onPackFiltersChanged);
+    packSettingsRevisionListenable.addListener(_onPackSettingsChanged);
     if (hubMetaUsesHomeWatchHistory(widget.item)) {
       _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
         unawaited(_loadWatchProgress());
@@ -151,6 +155,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     unawaited(_ensurePackFilters());
     unawaited(_loadWatchProgress());
     unawaited(_loadWatchedEpisodes());
+    unawaited(_loadEpisodeView());
     _loading = !hubMetaTmdbEnriched(widget.item);
     _load();
   }
@@ -159,6 +164,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   void dispose() {
     WatchHistory.revision.removeListener(_onWatchHistoryChanged);
     PackFiltersRegistry.revision.removeListener(_onPackFiltersChanged);
+    packSettingsRevisionListenable.removeListener(_onPackSettingsChanged);
     unawaited(_homeHistorySub?.cancel());
     _scrollController.dispose();
     _heroPlayFocus.dispose();
@@ -184,6 +190,22 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     if (!mounted) return;
     _seedPlayFilterDefaults();
     setState(() {});
+  }
+
+  void _onPackSettingsChanged() {
+    unawaited(_loadEpisodeView());
+  }
+
+  Future<void> _loadEpisodeView() async {
+    final raw = await PackSettingsStore.getString(
+      widget.pluginId,
+      'episodeView',
+      defaultValue: kEpisodeViewCards,
+    );
+    final next =
+        episodeViewIsChips(raw) ? kEpisodeViewChips : kEpisodeViewCards;
+    if (!mounted || next == _episodeView) return;
+    setState(() => _episodeView = next);
   }
 
   Future<void> _ensurePackFilters() async {
@@ -689,23 +711,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     _scrollDetailsToTop();
   }
 
-  /// Characters / Cast ↑ on series → episodes (then seasons → Play → back).
+  /// Characters / Cast ↑ on series → episodes (then seasons → range → Play → back).
   void _focusDetailsEpisodesFromMeta() {
-    final handle = ShellTvFocusCoordinator.rowHandle(
-      MediaDetailsTv.tabId,
-      'episodes',
-    );
+    final tab = MediaDetailsTv.tabId;
+    final handle = ShellTvFocusCoordinator.rowHandle(tab, 'episodes');
     final idx = handle?.lastFocusedIndex ?? 0;
-    final landed = ShellTvFocusCoordinator.focusRowItem(
-          MediaDetailsTv.tabId,
-          'episodes',
-          idx,
-        ) ||
-        ShellTvFocusCoordinator.focusRowItem(
-          MediaDetailsTv.tabId,
-          'seasons',
-          0,
-        );
+    final landed = ShellTvFocusCoordinator.focusRowItem(tab, 'episodes', idx) ||
+        ShellTvFocusCoordinator.focusRowItem(tab, 'seasons', 0) ||
+        ShellTvFocusCoordinator.focusRowItem(tab, 'episode-range', 0);
     if (!landed && _heroPlayFocus.canRequestFocus) {
       _heroPlayFocus.requestFocus();
     }
@@ -925,6 +938,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             },
             tvRowOrderBase: 0,
             tvFocusUp: heroFocusUp,
+            episodeView: _episodeView,
           );
       episodePicker = tvFocus
           ? ShellPaintTvTabScope(
@@ -957,11 +971,17 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             ? _focusDetailsEpisodesFromMeta
             : _revealedDetailsHeroPlayFocus);
 
-    // Episodes own 0..(multi-season ? 1 : 0). Then protocol cast / crew /
+    // Episodes own range / seasons / episode rows. Then protocol cast / crew /
     // trailers, then pack rails (Related / More Like This / …).
-    final metaRowBase = !hasEpisodes
-        ? 0
-        : (seasons.length > 1 ? 2 : 1);
+    final selectedSeasonEps = hubVideosForSeason(videos, _selectedSeason);
+    final selectedEpNums = [
+      for (final v in selectedSeasonEps) v.episode ?? 1,
+    ];
+    final metaRowBase = detailsEpisodeFocusRowCount(
+      hasEpisodes: hasEpisodes,
+      seasonCount: seasons.length,
+      showRange: showEpisodeRangeBar(selectedEpNums),
+    );
     final isAnime = (show.open?.surface ?? '').trim() == 'anime';
     final castMaps = show.cast;
     final crewMaps = [

@@ -84,4 +84,76 @@ void main() {
       scroll.dispose();
     },
   );
+
+  testWidgets(
+    'sources stream list estimate uses keep-visible not top pin',
+    (tester) async {
+      final scroll = ScrollController();
+      const count = 40;
+      final rowExtent = ShellTokens.sourcesStreamListRowExtentEstimateOf(false);
+      final stride = ShellTokens.sourcesStreamListStrideOf(false);
+      const viewportH = 240.0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              height: viewportH,
+              child: ListView.separated(
+                controller: scroll,
+                itemCount: count,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: ShellTokens.sourcesStreamListSeparator),
+                itemBuilder: (context, i) => SizedBox(
+                  height: rowExtent,
+                  child: Text('stream-$i'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final mid = 12;
+      scroll.jumpTo(
+        (mid * stride).clamp(0.0, scroll.position.maxScrollExtent),
+      );
+      await tester.pumpAndSettle();
+      final offsetBefore = scroll.offset;
+
+      CatalogDenseList.scrollIndexKeepVisible(
+        scroll,
+        index: mid + 1,
+        rowExtent: rowExtent,
+        stride: stride,
+        topPad: 0,
+      );
+      await tester.pump();
+      expect(
+        scroll.offset,
+        offsetBefore,
+        reason: 'visible next stream must not pin-scroll',
+      );
+
+      final beforeClip = scroll.offset;
+      CatalogDenseList.scrollIndexKeepVisible(
+        scroll,
+        index: mid + 8,
+        rowExtent: rowExtent,
+        stride: stride,
+        topPad: 0,
+      );
+      await tester.pump();
+      expect(scroll.offset > beforeClip, isTrue);
+      final pinnedTop = (mid + 8) * stride;
+      expect(
+        (scroll.offset - pinnedTop).abs() > 1.0,
+        isTrue,
+        reason: 'keep-visible must not pin stream to content top',
+      );
+
+      scroll.dispose();
+    },
+  );
 }

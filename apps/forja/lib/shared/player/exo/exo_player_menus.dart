@@ -7,10 +7,8 @@ import 'package:forja/shared/player/controls/menus/player_menus.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/screens/utils.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:rust/rust.dart';
-import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 
 /// Exo track / settings menus — same popup chrome as MediaKit.
@@ -643,63 +641,20 @@ class _ExoSubtitleHeaderTrailingState extends State<_ExoSubtitleHeaderTrailing> 
         ],
         if (hasTune) ...[
           const SizedBox(width: 6),
-          _SubtitleTuneChip(
-            tv: widget.tv,
+          PlayerPopupChromeButton(
+            icon: Icons.tune_rounded,
+            tooltip: 'Subtitle settings',
             focusNode: _tuneFocus,
             onTap: () {
               PlayerPopupPanel.dismiss();
               widget.onSubtitleSettings!();
             },
+            onRightEdge: widget.tv
+                ? () => PlayerPopupCloseFocus.request(context)
+                : null,
           ),
         ],
       ],
-    );
-  }
-}
-
-/// Tune icon — desktop [Button] plainIcon; TV uses [FocusableControl] → Close.
-class _SubtitleTuneChip extends StatelessWidget {
-  const _SubtitleTuneChip({
-    required this.tv,
-    required this.onTap,
-    this.focusNode,
-  });
-
-  final bool tv;
-  final VoidCallback onTap;
-  final FocusNode? focusNode;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!tv) {
-      return Button(
-        variant: ButtonVariant.plainIcon,
-        size: ButtonSize.icon,
-        icon: Icons.tune_rounded,
-        iconSize: 18,
-        hoverColor: PlayerPopupTokens.accent,
-        onPressed: onTap,
-      );
-    }
-    final faceSize = PlayerPopupTokens.chromeBtnSizeOf(context);
-    final face = SizedBox(
-      width: faceSize,
-      height: faceSize,
-      child: Icon(
-        Icons.tune_rounded,
-        size: PlayerPopupTokens.chromeIconSizeOf(context),
-        color: PlayerPopupTokens.muted,
-      ),
-    );
-    return FocusableControl(
-      focusNode: focusNode,
-      onTap: onTap,
-      borderRadius: PlayerPopupTokens.chipRadiusOf(context),
-      scaleOnFocus: 1.0,
-      showFocusBorder: false,
-      showFocusFill: false,
-      onRightEdge: () => PlayerPopupCloseFocus.request(context),
-      child: face,
     );
   }
 }

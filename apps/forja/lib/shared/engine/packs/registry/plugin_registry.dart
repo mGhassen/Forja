@@ -66,6 +66,10 @@ class PluginRegistry {
   /// Plugin ids last wiped into [hubFeedEpoch]. Empty = all hubs.
   static Set<String> _hubFeedEpochPlugins = {};
 
+  /// Whether the current [hubFeedEpoch] must force-network (wipe live feed cache).
+  /// Pack wipe / Reload packs → true. Pack settings soft rebind → false (issue 314).
+  static bool _hubFeedEpochForceNetwork = true;
+
   /// Whether the current [hubFeedEpoch] should invalidate [pluginId]'s rails.
   static bool hubFeedEpochTouches(String pluginId) {
     final id = pluginId.trim();
@@ -73,9 +77,13 @@ class PluginRegistry {
     return _hubFeedEpochPlugins.isEmpty || _hubFeedEpochPlugins.contains(id);
   }
 
+  /// Last [bumpHubFeedEpoch] asked for a network scrape (vs re-reduce from cache).
+  static bool get hubFeedEpochForceNetwork => _hubFeedEpochForceNetwork;
+
   static void bumpHubFeedEpoch({
     Iterable<String>? pluginIds,
     bool all = false,
+    bool forceNetwork = true,
   }) {
     if (all) {
       _hubFeedEpochPlugins = {};
@@ -87,6 +95,7 @@ class PluginRegistry {
       if (next.isEmpty) return;
       _hubFeedEpochPlugins = next;
     }
+    _hubFeedEpochForceNetwork = forceNetwork;
     hubFeedEpoch.value++;
   }
 

@@ -16,7 +16,6 @@ import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/player/sources/torrent/torrent_sources_panel.dart';
-import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Two-column Subtitles dialog — left languages, right tracks in the group.
@@ -252,47 +251,19 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     );
   }
 
-  /// Tune control — desktop [Button] plainIcon; TV uses [FocusableControl].
+  /// Tune control — same bordered green chrome as panel Close.
   Widget _settingsChip() {
     final onSettings = widget.onSubtitleSettings;
     if (onSettings == null) return const SizedBox.shrink();
-    final faceSize = PlayerPopupTokens.chromeBtnSizeOf(context);
-    final face = SizedBox(
-      width: faceSize,
-      height: faceSize,
-      child: Icon(
-        Icons.tune_rounded,
-        size: PlayerPopupTokens.chromeIconSizeOf(context),
-        color: ForjaShellColors.cinematic.textSecondary,
-      ),
-    );
-    if (!_tvFocus) {
-      return Button(
-        variant: ButtonVariant.plainIcon,
-        size: ButtonSize.icon,
-        icon: Icons.tune_rounded,
-        iconSize: 18,
-        height: 32,
-        hoverColor: PlayerPopupTokens.accent,
-        tooltip: 'Subtitle settings',
-        onPressed: () {
-          PlayerSubtitleDialog.dismiss();
-          onSettings();
-        },
-      );
-    }
-    return FocusableControl(
+    return PlayerPopupChromeButton(
+      icon: Icons.tune_rounded,
+      tooltip: 'Subtitle settings',
       focusNode: _settingsFocus,
       onTap: () {
         PlayerSubtitleDialog.dismiss();
         onSettings();
       },
-      borderRadius: PlayerPopupTokens.chipRadiusOf(context),
-      scaleOnFocus: 1.0,
-      showFocusBorder: false,
-      showFocusFill: false,
-      onRightEdge: _focusClose,
-      child: face,
+      onRightEdge: _tvFocus ? _focusClose : null,
     );
   }
 

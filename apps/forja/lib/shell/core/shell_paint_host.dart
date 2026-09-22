@@ -7,6 +7,7 @@ import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 ShellPaintFocusableTap? _registeredFocusableTap;
 ShellPaintTvRowWrap? _registeredTvRow;
+ShellPaintTvGridWrap? _registeredTvGrid;
 Widget Function(Widget child)? _registeredHorizontalWrap;
 bool Function(ScrollNotification notification)? _registeredAbsorbHorizontal;
 bool Function(KeyEvent event)? _registeredIsActivateKey;
@@ -16,12 +17,14 @@ bool Function(KeyEvent event)? _registeredIsActivateKey;
 void registerShellPaintHostAdapters({
   required ShellPaintFocusableTap focusableTap,
   required ShellPaintTvRowWrap wrapTvRow,
+  ShellPaintTvGridWrap? wrapTvGrid,
   required Widget Function(Widget child) wrapHorizontalScroller,
   required bool Function(ScrollNotification notification) absorbHorizontalScroll,
   required bool Function(KeyEvent event) isActivateKey,
 }) {
   _registeredFocusableTap = focusableTap;
   _registeredTvRow = wrapTvRow;
+  _registeredTvGrid = wrapTvGrid;
   _registeredHorizontalWrap = wrapHorizontalScroller;
   _registeredAbsorbHorizontal = absorbHorizontalScroll;
   _registeredIsActivateKey = isActivateKey;
@@ -43,6 +46,7 @@ Widget shellPaintHostScope({
     absorbHorizontalScroll: _registeredAbsorbHorizontal,
     wrapHorizontalScroller: _registeredHorizontalWrap,
     wrapTvRow: _registeredTvRow,
+    wrapTvGrid: _registeredTvGrid,
     focusableTapBuilder: _registeredFocusableTap,
     child: metrics.usesTvDensity
         ? _TvDialogTheme(child: child)

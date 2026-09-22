@@ -126,7 +126,8 @@ class SettingsCategoryTile extends StatefulWidget {
   final VoidCallback? onFocusSelect;
   final FocusNode? focusNode;
 
-  /// Hub list index - `0` sends Left D-pad to the nav rail.
+  /// Hub list index — compact list: `0` sends Left D-pad to the nav rail.
+  /// Split sidebar uses [navLeftAlways] via `tvRowId` (any category → nav).
   final int? listIndex;
 
   /// Split-layout TV: vertical category rail row id.
@@ -244,6 +245,9 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
       showFocusBorder: false,
       showFocusFill: false,
       listIndex: widget.listIndex,
+      // Split sidebar: ← from any category → shell nav (same as IPTV cats).
+      // listIndex: 0 alone used to trap ← on Playback / Addons / …
+      navLeftAlways: rail,
       tvTabId: 'settings',
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex ?? widget.listIndex,

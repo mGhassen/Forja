@@ -246,41 +246,46 @@ class _CatalogSearchScoreArcState extends State<CatalogSearchScoreArc> {
 
   @override
   Widget build(BuildContext context) {
-    final tv = widget.tvLeanback;
+    final leanback = widget.tvLeanback;
+    final density = ShellPaintScope.usesTvDensityOf(context);
     final t = _tFromValue(widget.value);
     final label = widget.value == null
         ? 'Any score'
         : '≥ ${widget.value == widget.value!.roundToDouble() ? widget.value!.toInt() : widget.value!.toStringAsFixed(1)}';
     final warm = widget.value != null && widget.value! >= 8;
     final focused = _focus.hasFocus;
+    final trackH = ShellTokens.searchFilterScoreTrackHeightOf(density);
+    final trackPadV = ShellTokens.searchFilterTrackPadVOf(density);
+    final trackPadH = ShellTokens.searchFilterTrackPadHOf(density);
+    final trackR = ShellTokens.searchFilterTrackRadiusOf(density);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Text(
+            Text(
               'Score',
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: 11,
+                fontSize: ShellTokens.searchFilterSectionLabelFontSizeOf(density),
                 fontWeight: FontWeight.w500,
               ),
             ),
             const Spacer(),
             Text(
-              tv && focused && !_armed
+              leanback && focused && !_armed
                   ? '$label · OK to adjust'
-                  : (tv && _armed ? '$label · ← → · OK done' : label),
-              style: const TextStyle(
+                  : (leanback && _armed ? '$label · ← → · OK done' : label),
+              style: TextStyle(
                 color: ForjaShellColors.textPrimary,
-                fontSize: 12,
+                fontSize: ShellTokens.searchFilterValueFontSizeOf(density),
                 fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: ShellTokens.searchFilterSectionGapOf(density)),
         Focus(
           focusNode: _focus,
           onKeyEvent: _onKey,
@@ -298,25 +303,26 @@ class _CatalogSearchScoreArcState extends State<CatalogSearchScoreArc> {
 
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: tv
+                onTap: leanback
                     ? () {
                         _focus.requestFocus();
                         setState(() => _armed = !_armed);
                       }
                     : null,
-                onTapDown: tv ? null : (d) => setFromDx(d.localPosition.dx),
-                onHorizontalDragUpdate: tv
+                onTapDown:
+                    leanback ? null : (d) => setFromDx(d.localPosition.dx),
+                onHorizontalDragUpdate: leanback
                     ? null
                     : (d) => setFromDx(d.localPosition.dx),
                 onDoubleTap: () => widget.onChanged(null),
                 child: AnimatedContainer(
                   duration: ForjaMotionTheme.of(context).filterChrome.duration,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 6,
-                    horizontal: 4,
+                  padding: EdgeInsets.symmetric(
+                    vertical: trackPadV,
+                    horizontal: trackPadH,
                   ),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(trackR),
                     border: Border.all(
                       color: _armed
                           ? ForjaShellColors.textPrimary.withValues(alpha: 0.55)
@@ -327,9 +333,9 @@ class _CatalogSearchScoreArcState extends State<CatalogSearchScoreArc> {
                     ),
                   ),
                   child: SizedBox(
-                    height: 28,
+                    height: trackH,
                     child: CustomPaint(
-                      size: Size(w, 28),
+                      size: Size(w, trackH),
                       painter: CatalogScoreArcPainter(t: t, warm: warm),
                     ),
                   ),
@@ -351,28 +357,35 @@ class CatalogScoreArcPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Scale stroke / thumbs from desktop baseline so TV track height densifies.
+    final k = size.height / ShellTokens.searchFilterScoreTrackHeight;
+    final inset = 4 * k;
     final track = Paint()
       ..color = ForjaShellColors.borderSubtle
-      ..strokeWidth = 2
+      ..strokeWidth = 2 * k
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
     final fill = Paint()
       ..color = warm
           ? const Color(0xFFE8C07A).withValues(alpha: 0.85)
           : ForjaShellColors.textPrimary.withValues(alpha: 0.7)
-      ..strokeWidth = 2.5
+      ..strokeWidth = 2.5 * k
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final y = size.height / 2;
-    final start = Offset(4, y);
-    final end = Offset(size.width - 4, y);
+    final start = Offset(inset, y);
+    final end = Offset(size.width - inset, y);
     canvas.drawLine(start, end, track);
     if (t > 0) {
-      final mid = Offset(4 + (size.width - 8) * t, y);
+      final mid = Offset(inset + (size.width - inset * 2) * t, y);
       canvas.drawLine(start, mid, fill);
-      canvas.drawCircle(mid, 6, Paint()..color = ForjaShellColors.textPrimary);
-      canvas.drawCircle(mid, 4, Paint()..color = const Color(0xFF141414));
+      canvas.drawCircle(
+        mid,
+        6 * k,
+        Paint()..color = ForjaShellColors.textPrimary,
+      );
+      canvas.drawCircle(mid, 4 * k, Paint()..color = const Color(0xFF141414));
     }
   }
 
@@ -513,7 +526,8 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
 
   @override
   Widget build(BuildContext context) {
-    final tv = widget.tvLeanback;
+    final leanback = widget.tvLeanback;
+    final density = ShellPaintScope.usesTvDensityOf(context);
     final active = widget.start != null && widget.end != null;
     final label = !active
         ? 'Any year'
@@ -521,22 +535,26 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
         ? '${widget.start}'
         : '${widget.start}–${widget.end}';
     final focused = _focus.hasFocus;
-    final hint = tv && focused && !_armed
+    final hint = leanback && focused && !_armed
         ? '$label · OK to adjust'
-        : (tv && _armed
+        : (leanback && _armed
               ? '$label · ${_editStart ? 'start' : 'end'} · ↑↓ thumb · ←→ · OK done'
               : label);
+    final trackH = ShellTokens.searchFilterYearTrackHeightOf(density);
+    final trackPadV = ShellTokens.searchFilterTrackPadVOf(density);
+    final trackPadH = ShellTokens.searchFilterTrackPadHOf(density);
+    final trackR = ShellTokens.searchFilterTrackRadiusOf(density);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Text(
+            Text(
               'Year',
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: 11,
+                fontSize: ShellTokens.searchFilterSectionLabelFontSizeOf(density),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -547,16 +565,16 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
                 textAlign: TextAlign.right,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: ForjaShellColors.textPrimary,
-                  fontSize: 12,
+                  fontSize: ShellTokens.searchFilterValueFontSizeOf(density),
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: ShellTokens.searchFilterSectionGapOf(density)),
         Focus(
           focusNode: _focus,
           onKeyEvent: _onKey,
@@ -569,7 +587,7 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
               final w = c.maxWidth;
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: tv
+                onTap: leanback
                     ? () {
                         _focus.requestFocus();
                         setState(() => _armed = !_armed);
@@ -582,7 +600,7 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
                   });
                   widget.onChanged(null, null);
                 },
-                onHorizontalDragStart: tv
+                onHorizontalDragStart: leanback
                     ? null
                     : (d) {
                         _dragging = true;
@@ -597,7 +615,7 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
                         });
                         _emit();
                       },
-                onHorizontalDragUpdate: tv
+                onHorizontalDragUpdate: leanback
                     ? null
                     : (d) {
                         final t = (d.localPosition.dx / w).clamp(0.0, 1.0);
@@ -610,15 +628,15 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
                         });
                         _emit();
                       },
-                onHorizontalDragEnd: tv ? null : (_) => _dragging = false,
+                onHorizontalDragEnd: leanback ? null : (_) => _dragging = false,
                 child: AnimatedContainer(
                   duration: ForjaMotionTheme.of(context).filterChrome.duration,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 6,
-                    horizontal: 4,
+                  padding: EdgeInsets.symmetric(
+                    vertical: trackPadV,
+                    horizontal: trackPadH,
                   ),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(trackR),
                     border: Border.all(
                       color: _armed
                           ? ForjaShellColors.textPrimary.withValues(alpha: 0.55)
@@ -629,9 +647,9 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
                     ),
                   ),
                   child: SizedBox(
-                    height: 32,
+                    height: trackH,
                     child: CustomPaint(
-                      size: Size(w, 32),
+                      size: Size(w, trackH),
                       painter: CatalogYearTimelinePainter(
                         a: _a,
                         b: _b,
@@ -646,22 +664,22 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
             },
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: ShellTokens.searchFilterAxisGapOf(density)),
         Row(
           children: [
             Text(
               '$_lo',
-              style: const TextStyle(
+              style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: 10,
+                fontSize: ShellTokens.searchFilterAxisFontSizeOf(density),
               ),
             ),
             const Spacer(),
             Text(
               '$_hi',
-              style: const TextStyle(
+              style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: 10,
+                fontSize: ShellTokens.searchFilterAxisFontSizeOf(density),
               ),
             ),
           ],
@@ -688,25 +706,31 @@ class CatalogYearTimelinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final k = size.height / ShellTokens.searchFilterYearTrackHeight;
+    final inset = 4 * k;
     final y = size.height / 2;
     final track = Paint()
       ..color = ForjaShellColors.borderSubtle
-      ..strokeWidth = 2
+      ..strokeWidth = 2 * k
       ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(4, y), Offset(size.width - 4, y), track);
+    canvas.drawLine(
+      Offset(inset, y),
+      Offset(size.width - inset, y),
+      track,
+    );
 
-    final x0 = 4 + (size.width - 8) * a;
-    final x1 = 4 + (size.width - 8) * b;
+    final x0 = inset + (size.width - inset * 2) * a;
+    final x1 = inset + (size.width - inset * 2) * b;
     final fill = Paint()
       ..color = ForjaShellColors.textPrimary.withValues(
         alpha: active ? 0.75 : 0.25,
       )
-      ..strokeWidth = 2.5
+      ..strokeWidth = 2.5 * k
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(x0, y), Offset(x1, y), fill);
 
     void drawThumb(double x, {required bool highlight}) {
-      final r = highlight ? 8.0 : 6.0;
+      final r = (highlight ? 8.0 : 6.0) * k;
       canvas.drawCircle(
         Offset(x, y),
         r,
@@ -714,7 +738,7 @@ class CatalogYearTimelinePainter extends CustomPainter {
       );
       canvas.drawCircle(
         Offset(x, y),
-        highlight ? 5.0 : 4.0,
+        (highlight ? 5.0 : 4.0) * k,
         Paint()..color = const Color(0xFF141414),
       );
     }
@@ -750,21 +774,23 @@ class CatalogSearchFilterChipSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final density = ShellPaintScope.usesTvDensityOf(context);
+    final wrapGap = ShellTokens.searchFilterChipWrapGapOf(density);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: ForjaShellColors.textSecondary,
-            fontSize: 11,
+            fontSize: ShellTokens.searchFilterSectionLabelFontSizeOf(density),
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: ShellTokens.searchFilterSectionGapOf(density)),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: wrapGap,
+          runSpacing: wrapGap,
           children: [
             for (var i = 0; i < options.length; i++)
               CatalogSearchFilterGhostChip(
@@ -799,6 +825,7 @@ class CatalogSearchFilterGhostChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final density = ShellPaintScope.usesTvDensityOf(context);
     final border = selected
         ? ForjaShellColors.textPrimary.withValues(alpha: 0.4)
         : ForjaShellColors.borderSubtle;
@@ -808,19 +835,24 @@ class CatalogSearchFilterGhostChip extends StatelessWidget {
     final paint = AnimatedContainer(
       duration: ForjaMotionTheme.of(context).filterChrome.duration,
       curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: ShellTokens.searchFilterGhostChipPadHOf(density),
+        vertical: ShellTokens.searchFilterGhostChipPadVOf(density),
+      ),
       decoration: BoxDecoration(
         color: selected
             ? Colors.white.withValues(alpha: 0.07)
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(
+          ShellTokens.searchFilterGhostChipRadiusOf(density),
+        ),
         border: Border.all(color: border),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: fg,
-          fontSize: 12,
+          fontSize: ShellTokens.searchFilterGhostChipFontSizeOf(density),
           fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
         ),
       ),
@@ -900,13 +932,19 @@ class CatalogSearchFilterLens extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final density = ShellPaintScope.usesTvDensityOf(context);
+    final blockGap = ShellTokens.searchFilterBlockGapOf(density);
+    final chipBlockGap = ShellTokens.searchFilterChipBlockGapOf(density);
+    final submitGap = ShellTokens.searchFilterSubmitGapOf(density);
+    final topPad = ShellTokens.searchFilterTopPadOf(density);
+    final slide = ShellTokens.searchFilterSectionGapOf(density);
     return AnimatedSize(
       duration: ForjaMotionTheme.of(context).filterPanel.duration,
       curve: Curves.easeOutCubic,
       alignment: Alignment.topCenter,
       child: open
           ? Padding(
-              padding: const EdgeInsets.only(top: 12),
+              padding: EdgeInsets.only(top: topPad),
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),
                 duration: ForjaMotionTheme.of(context).filterPanel.duration,
@@ -914,7 +952,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                 builder: (context, t, child) => Opacity(
                   opacity: t,
                   child: Transform.translate(
-                    offset: Offset(0, 8 * (1 - t)),
+                    offset: Offset(0, slide * (1 - t)),
                     child: child,
                   ),
                 ),
@@ -965,7 +1003,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                                 onFiltersChanged(filters.copyWith(media: m)),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        SizedBox(height: blockGap),
                         FocusTraversalOrder(
                           order: const NumericFocusOrder(2),
                           child: CatalogSearchScoreArc(
@@ -979,7 +1017,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        SizedBox(height: blockGap),
                         FocusTraversalOrder(
                           order: const NumericFocusOrder(3),
                           child: CatalogSearchYearTimeline(
@@ -995,7 +1033,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: chipBlockGap),
                         FocusTraversalOrder(
                           order: const NumericFocusOrder(4),
                           child: _maybeTvRow(
@@ -1015,7 +1053,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        SizedBox(height: blockGap),
                         FocusTraversalOrder(
                           order: const NumericFocusOrder(5),
                           child: _maybeTvRow(
@@ -1035,7 +1073,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        SizedBox(height: blockGap),
                         FocusTraversalOrder(
                           order: const NumericFocusOrder(6),
                           child: _maybeTvRow(
@@ -1055,7 +1093,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: submitGap),
                         FocusTraversalOrder(
                           order: const NumericFocusOrder(7),
                           child: Align(
@@ -1074,11 +1112,19 @@ class CatalogSearchFilterLens extends StatelessWidget {
   }
 
   Widget _submitButton(BuildContext context) {
+    final density = ShellPaintScope.usesTvDensityOf(context);
     final paint = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: ShellTokens.searchFilterSubmitPadHOf(density),
+        vertical: ShellTokens.searchFilterSubmitPadVOf(density),
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(ShellTokens.shellChipRadiusPill),
+        borderRadius: BorderRadius.circular(
+          density
+              ? ShellTokens.shellChipRadiusPillTv
+              : ShellTokens.shellChipRadiusPill,
+        ),
         border: Border.all(
           color: ForjaShellColors.textPrimary.withValues(alpha: 0.35),
         ),
@@ -1087,7 +1133,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
         'Search',
         style: TextStyle(
           color: ForjaShellColors.textPrimary,
-          fontSize: ShellPaintScope.usesTvDensityOf(context)
+          fontSize: density
               ? ShellTokens.eventSearchFontSizeTv
               : ShellTokens.eventSearchFontSize,
           fontWeight: FontWeight.w600,

@@ -130,6 +130,18 @@ abstract final class DetailsTokens {
   static const int episodeRangeMenuMaxRows = 8;
   static const double episodeRangeMenuRadius = 20;
 
+  /// Number-chip episode grid (details Episode list → Number chips).
+  static const double episodeChipMinWidth = 48;
+  static const double episodeChipMinWidthTv = episodeChipMinWidth * _s;
+  static const double episodeChipHeight = 40;
+  static const double episodeChipHeightTv = episodeChipHeight * _s;
+  static const double episodeChipGap = 8;
+  static const double episodeChipGapTv = episodeChipGap * _s;
+  static const double episodeChipRadius = 10;
+  static const double episodeChipRadiusTv = episodeChipRadius * _s;
+  static const int episodeChipColumnsMin = 4;
+  static const int episodeChipColumnsMax = 12;
+
   /// Right-column production facts card on the details hero.
   static const double factsMaxWidth = 300;
   static const double factsMaxWidthTv = factsMaxWidth * _s;

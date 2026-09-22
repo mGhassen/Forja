@@ -972,7 +972,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       tvTabId: tv ? tabId : null,
       tvRowId: tv ? rowId : null,
       tvItemIndex: tv ? widget.tvItemIndex : null,
-      ensureVisibleMode: ShellPaintEnsureVisible.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.off,
       onUpEdge: widget.onUpEdge,
       onDownEdge: widget.onDownEdge,
       onLeftEdge: widget.onLeftEdge,

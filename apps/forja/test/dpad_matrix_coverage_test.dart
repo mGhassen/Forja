@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/engine/runtime/kit/hub_page_focus.dart';
+import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
@@ -489,6 +491,72 @@ void main() {
       expect(scrolled, [1], reason: 'scroll-into-view for off-screen index');
     });
 
+    testWidgets('Sources stream list scroll registry on vertical step',
+        (tester) async {
+      const tab = 'sources-panel';
+      ShellTvFocus.currentNavTabId = tab;
+      final scrolled = <int>[];
+      ShellTvFocusCoordinator.setRowScrollIntoView(
+        tab,
+        SourcesPanelTv.listRowId,
+        scrolled.add,
+      );
+      addTearDown(() {
+        ShellTvFocusCoordinator.setRowScrollIntoView(
+          tab,
+          SourcesPanelTv.listRowId,
+          null,
+        );
+      });
+
+      final a = FocusNode();
+      final b = FocusNode();
+      addTearDown(a.dispose);
+      addTearDown(b.dispose);
+
+      await tester.pumpWidget(
+        _wrapTv(
+          tab,
+          TvKitRow(
+            tabId: tab,
+            rowId: SourcesPanelTv.listRowId,
+            sortOrder: SourcesPanelTv.listSort,
+            itemCount: 2,
+            orientation: ShellTvRowOrientation.vertical,
+            child: Column(
+              children: [
+                _rowItem(
+                  tabId: tab,
+                  rowId: SourcesPanelTv.listRowId,
+                  index: 0,
+                  node: a,
+                  autoFocus: true,
+                ),
+                _rowItem(
+                  tabId: tab,
+                  rowId: SourcesPanelTv.listRowId,
+                  index: 1,
+                  node: b,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(a.hasFocus, isTrue);
+
+      scrolled.clear();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(b.hasFocus, isTrue);
+      expect(
+        scrolled,
+        [1],
+        reason: 'vertical sources list must parent-scroll like IPTV cats',
+      );
+    });
+
     testWidgets('My List kind↓status↓grid + pageBack ladder', (tester) async {
       const tab = 'my_list';
       ShellTvFocus.currentNavTabId = tab;
@@ -787,6 +855,149 @@ void main() {
       await tester.pump();
       expect(exited, isTrue);
       expect(category.hasFocus, isTrue);
+    });
+
+    testWidgets(
+        'A05 row: ← from ContainDpad TvKitRow col-0 pageBacks to category',
+        (tester) async {
+      // Regression: containDpad used to swallow ← before pageBackOnRowLeftEdge,
+      // so Addons / Packs / Features rows never reached the category rail.
+      const tab = 'settings';
+      ShellTvFocus.currentNavTabId = tab;
+      final category = FocusNode(debugLabel: 'cat');
+      final addonRow = FocusNode(debugLabel: 'addon-0');
+      addTearDown(() {
+        category.dispose();
+        addonRow.dispose();
+        ShellTvFocusCoordinator.setPageBackOnRowLeftEdge(tab, false);
+      });
+
+      TvHeroActions.bind(
+        tab,
+        pageBack: () {
+          if (addonRow.hasFocus) {
+            category.requestFocus();
+            return true;
+          }
+          return false;
+        },
+      );
+      ShellTvFocusCoordinator.setPageBackOnRowLeftEdge(tab, true);
+
+      await tester.pumpWidget(
+        _wrapTv(
+          tab,
+          Row(
+            children: [
+              TvKitRow(
+                tabId: tab,
+                rowId: 'settings-categories',
+                sortOrder: 0,
+                itemCount: 1,
+                orientation: ShellTvRowOrientation.vertical,
+                child: _rowItem(
+                  tabId: tab,
+                  rowId: 'settings-categories',
+                  index: 0,
+                  node: category,
+                ),
+              ),
+              Expanded(
+                child: ShellTvContainDpad(
+                  child: TvKitRow(
+                    tabId: tab,
+                    rowId: 'addon-playback',
+                    sortOrder: 100,
+                    itemCount: 1,
+                    child: _rowItem(
+                      tabId: tab,
+                      rowId: 'addon-playback',
+                      index: 0,
+                      node: addonRow,
+                      autoFocus: true,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(addonRow.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        category.hasFocus,
+        isTrue,
+        reason: '← from detail TvKitRow col-0 must pageBack to category rail',
+      );
+    });
+
+    testWidgets(
+        '← from any settings category (not only index 0) focuses nav',
+        (tester) async {
+      const tab = 'settings';
+      ShellTvFocus.currentNavTabId = tab;
+      ShellTvFocusCoordinator.setNavOrder(['home', tab]);
+      final nav = FocusNode(debugLabel: 'nav-settings');
+      final cat1 = FocusNode(debugLabel: 'cat-addons');
+      ShellTvFocus.registerNav(tab, nav);
+      addTearDown(() {
+        nav.dispose();
+        cat1.dispose();
+      });
+
+      await tester.pumpWidget(
+        _wrapTv(
+          tab,
+          Row(
+            children: [
+              Focus(
+                focusNode: nav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Expanded(
+                child: TvKitRow(
+                  tabId: tab,
+                  rowId: 'settings-categories',
+                  sortOrder: 0,
+                  itemCount: 2,
+                  orientation: ShellTvRowOrientation.vertical,
+                  child: Column(
+                    children: [
+                      // Index 0 would already nav-left via listIndex alone.
+                      SettingsCategoryTile(
+                        icon: Icons.extension_outlined,
+                        title: 'Addons',
+                        selected: true,
+                        listIndex: 1,
+                        tvRowId: 'settings-categories',
+                        tvItemIndex: 1,
+                        focusNode: cat1,
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      cat1.requestFocus();
+      await tester.pump();
+      expect(cat1.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        nav.hasFocus,
+        isTrue,
+        reason: '← from non-first settings category must land on navbar',
+      );
     });
 
     testWidgets('A04: ↑ from addon IPTV lands Playback, not categories',

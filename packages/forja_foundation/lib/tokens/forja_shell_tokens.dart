@@ -770,6 +770,18 @@ abstract final class ShellTokens {
   static const double torrentPanelFilterButtonHeightTv =
       torrentPanelFilterButtonHeight * tvChromeScale;
 
+  /// Sources / Providers stream list — estimated row for lazy scroll-into-view
+  /// when the tile is not mounted yet (same keep-visible contract as IPTV cats).
+  /// Mounted tiles measure themselves; this is only the off-screen jump stride.
+  static const double sourcesStreamListSeparator = 6;
+  static const double sourcesStreamListRowExtentEstimate = 92;
+  static const double sourcesStreamListRowExtentEstimateTv = 78;
+  static double sourcesStreamListRowExtentEstimateOf(bool tv) => tv
+      ? sourcesStreamListRowExtentEstimateTv
+      : sourcesStreamListRowExtentEstimate;
+  static double sourcesStreamListStrideOf(bool tv) =>
+      sourcesStreamListRowExtentEstimateOf(tv) + sourcesStreamListSeparator;
+
   // --- Pack chrome defaults (overridable via layout props) ---
   static const double portalsChipHeight = controlHeight;
   static const double portalsChipHeightTv = controlHeightTv;
@@ -1211,6 +1223,138 @@ abstract final class ShellTokens {
   static const double searchHelperIconSizeSelected = 15;
   static const double searchHelperIconSizeTv = tvMetaFontSize;
   static const double searchHelperIconSizeSelectedTv = tvBodyFontSize;
+
+  /// Hub search filter lens (type / score / year / chips / submit).
+  /// Chrome pads × [tvChromeScale]; labels use the type ladder on TV.
+  static const double searchFilterSectionLabelFontSize = 11;
+  static const double searchFilterSectionLabelFontSizeTv = tvMetaFontSize;
+  static const double searchFilterValueFontSize = 12;
+  static const double searchFilterValueFontSizeTv = tvBodyFontSize;
+  static const double searchFilterAxisFontSize = 10;
+  static const double searchFilterAxisFontSizeTv = tvMetaFontSize;
+  static const double searchFilterSectionGap = 8;
+  static const double searchFilterSectionGapTv =
+      searchFilterSectionGap * tvChromeScale;
+  static const double searchFilterBlockGap = 14;
+  static const double searchFilterBlockGapTv =
+      searchFilterBlockGap * tvChromeScale;
+  static const double searchFilterChipBlockGap = 16;
+  static const double searchFilterChipBlockGapTv =
+      searchFilterChipBlockGap * tvChromeScale;
+  static const double searchFilterSubmitGap = 20;
+  static const double searchFilterSubmitGapTv =
+      searchFilterSubmitGap * tvChromeScale;
+  static const double searchFilterTopPad = 12;
+  static const double searchFilterTopPadTv =
+      searchFilterTopPad * tvChromeScale;
+  static const double searchFilterScoreTrackHeight = 28;
+  static const double searchFilterScoreTrackHeightTv =
+      searchFilterScoreTrackHeight * tvChromeScale;
+  static const double searchFilterYearTrackHeight = 32;
+  static const double searchFilterYearTrackHeightTv =
+      searchFilterYearTrackHeight * tvChromeScale;
+  static const double searchFilterTrackPadV = 6;
+  static const double searchFilterTrackPadVTv =
+      searchFilterTrackPadV * tvChromeScale;
+  static const double searchFilterTrackPadH = 4;
+  static const double searchFilterTrackPadHTv =
+      searchFilterTrackPadH * tvChromeScale;
+  static const double searchFilterTrackRadius = 10;
+  static const double searchFilterTrackRadiusTv =
+      searchFilterTrackRadius * tvChromeScale;
+  static const double searchFilterAxisGap = 4;
+  static const double searchFilterAxisGapTv =
+      searchFilterAxisGap * tvChromeScale;
+  static const double searchFilterGhostChipPadH = 11;
+  static const double searchFilterGhostChipPadHTv =
+      searchFilterGhostChipPadH * tvChromeScale;
+  static const double searchFilterGhostChipPadV = 6;
+  static const double searchFilterGhostChipPadVTv =
+      searchFilterGhostChipPadV * tvChromeScale;
+  static const double searchFilterGhostChipRadius = 16;
+  static const double searchFilterGhostChipRadiusTv =
+      searchFilterGhostChipRadius * tvChromeScale;
+  static const double searchFilterGhostChipFontSize = 12;
+  static const double searchFilterGhostChipFontSizeTv = tvBodyFontSize;
+  static const double searchFilterChipWrapGap = 8;
+  static const double searchFilterChipWrapGapTv =
+      searchFilterChipWrapGap * tvChromeScale;
+  static const double searchFilterSubmitPadH = 18;
+  static const double searchFilterSubmitPadHTv =
+      searchFilterSubmitPadH * tvChromeScale;
+  static const double searchFilterSubmitPadV = 12;
+  static const double searchFilterSubmitPadVTv =
+      searchFilterSubmitPadV * tvChromeScale;
+  static const double searchFilterTokenPadLead = 10;
+  static const double searchFilterTokenPadLeadTv =
+      searchFilterTokenPadLead * tvChromeScale;
+  static const double searchFilterTokenPadTrail = 6;
+  static const double searchFilterTokenPadTrailTv =
+      searchFilterTokenPadTrail * tvChromeScale;
+  static const double searchFilterTokenPadV = 4;
+  static const double searchFilterTokenPadVTv =
+      searchFilterTokenPadV * tvChromeScale;
+  static const double searchFilterTokenRadius = 16;
+  static const double searchFilterTokenRadiusTv =
+      searchFilterTokenRadius * tvChromeScale;
+  static const double searchFilterTokenFontSize = 12;
+  static const double searchFilterTokenFontSizeTv = tvBodyFontSize;
+  static const double searchFilterTokenIconSize = 14;
+  static const double searchFilterTokenIconSizeTv =
+      searchFilterTokenIconSize * tvChromeScale;
+  static const double searchFilterTokenIconGap = 2;
+  static const double searchFilterTokenIconGapTv =
+      searchFilterTokenIconGap * tvChromeScale;
+  static const double searchFilterTuneIconSize = 24;
+  static const double searchFilterTuneIconSizeTv =
+      searchFilterTuneIconSize * tvChromeScale;
+
+  static double searchFilterSectionLabelFontSizeOf(bool tv) => tv
+      ? searchFilterSectionLabelFontSizeTv
+      : searchFilterSectionLabelFontSize;
+  static double searchFilterValueFontSizeOf(bool tv) =>
+      tv ? searchFilterValueFontSizeTv : searchFilterValueFontSize;
+  static double searchFilterAxisFontSizeOf(bool tv) =>
+      tv ? searchFilterAxisFontSizeTv : searchFilterAxisFontSize;
+  static double searchFilterSectionGapOf(bool tv) =>
+      tv ? searchFilterSectionGapTv : searchFilterSectionGap;
+  static double searchFilterBlockGapOf(bool tv) =>
+      tv ? searchFilterBlockGapTv : searchFilterBlockGap;
+  static double searchFilterChipBlockGapOf(bool tv) =>
+      tv ? searchFilterChipBlockGapTv : searchFilterChipBlockGap;
+  static double searchFilterSubmitGapOf(bool tv) =>
+      tv ? searchFilterSubmitGapTv : searchFilterSubmitGap;
+  static double searchFilterTopPadOf(bool tv) =>
+      tv ? searchFilterTopPadTv : searchFilterTopPad;
+  static double searchFilterScoreTrackHeightOf(bool tv) =>
+      tv ? searchFilterScoreTrackHeightTv : searchFilterScoreTrackHeight;
+  static double searchFilterYearTrackHeightOf(bool tv) =>
+      tv ? searchFilterYearTrackHeightTv : searchFilterYearTrackHeight;
+  static double searchFilterTrackPadVOf(bool tv) =>
+      tv ? searchFilterTrackPadVTv : searchFilterTrackPadV;
+  static double searchFilterTrackPadHOf(bool tv) =>
+      tv ? searchFilterTrackPadHTv : searchFilterTrackPadH;
+  static double searchFilterTrackRadiusOf(bool tv) =>
+      tv ? searchFilterTrackRadiusTv : searchFilterTrackRadius;
+  static double searchFilterAxisGapOf(bool tv) =>
+      tv ? searchFilterAxisGapTv : searchFilterAxisGap;
+  static double searchFilterGhostChipPadHOf(bool tv) =>
+      tv ? searchFilterGhostChipPadHTv : searchFilterGhostChipPadH;
+  static double searchFilterGhostChipPadVOf(bool tv) =>
+      tv ? searchFilterGhostChipPadVTv : searchFilterGhostChipPadV;
+  static double searchFilterGhostChipRadiusOf(bool tv) =>
+      tv ? searchFilterGhostChipRadiusTv : searchFilterGhostChipRadius;
+  static double searchFilterGhostChipFontSizeOf(bool tv) =>
+      tv ? searchFilterGhostChipFontSizeTv : searchFilterGhostChipFontSize;
+  static double searchFilterChipWrapGapOf(bool tv) =>
+      tv ? searchFilterChipWrapGapTv : searchFilterChipWrapGap;
+  static double searchFilterSubmitPadHOf(bool tv) =>
+      tv ? searchFilterSubmitPadHTv : searchFilterSubmitPadH;
+  static double searchFilterSubmitPadVOf(bool tv) =>
+      tv ? searchFilterSubmitPadVTv : searchFilterSubmitPadV;
+  static double searchFilterTuneIconSizeOf(bool tv) =>
+      tv ? searchFilterTuneIconSizeTv : searchFilterTuneIconSize;
+
   static const double searchProviderRowHeight = 52;
   static const double searchProviderCardWidth = 88;
   static const double searchProviderCardHeight = 48;

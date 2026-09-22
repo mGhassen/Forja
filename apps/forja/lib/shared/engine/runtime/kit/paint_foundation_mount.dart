@@ -1123,6 +1123,7 @@ Widget? paintFoundationType(
         onSeasonSelected: (_) {},
         onEpisodeSelected: (_) {},
         onToggleWatched: (_, _) {},
+        episodeView: propsStringOr(props, 'episodeView', kEpisodeViewCards),
       );
     case 'episodeRangeSelector':
       final ranges = _episodeRanges(props);

@@ -116,6 +116,18 @@ typedef ShellPaintTvRowWrap = Widget Function({
   required Widget child,
 });
 
+/// Host TV grid registration (typically wraps app `TvGrid`).
+typedef ShellPaintTvGridWrap = Widget Function({
+  required String tabId,
+  required String rowId,
+  required int sortOrder,
+  required int itemCount,
+  required int columns,
+  VoidCallback? onFocusUp,
+  VoidCallback? onFocusDown,
+  required Widget child,
+});
+
 /// Host policy + focus injection so foundation paint never imports `package:forja`.
 ///
 /// Mount under the app [ShellScope] (or equivalent) and pass [focusableTap] that
@@ -129,6 +141,7 @@ class ShellPaintScope extends InheritedWidget {
     required this.usesTvDensity,
     this.focusableTapBuilder,
     this.wrapTvRow,
+    this.wrapTvGrid,
     this.wrapHorizontalScroller,
     this.absorbHorizontalScroll,
     this.isActivateKey,
@@ -141,6 +154,7 @@ class ShellPaintScope extends InheritedWidget {
   final bool usesTvDensity;
   final ShellPaintFocusableTap? focusableTapBuilder;
   final ShellPaintTvRowWrap? wrapTvRow;
+  final ShellPaintTvGridWrap? wrapTvGrid;
 
   /// Optional host wrap (e.g. desktop swipe-back ignore).
   final Widget Function(Widget child)? wrapHorizontalScroller;
@@ -332,11 +346,43 @@ class ShellPaintScope extends InheritedWidget {
     );
   }
 
+  /// Multi-column TV focus (episode number chips, search results).
+  static Widget tvGrid({
+    required BuildContext context,
+    required String tabId,
+    required String rowId,
+    required int sortOrder,
+    required int itemCount,
+    required int columns,
+    VoidCallback? onFocusUp,
+    VoidCallback? onFocusDown,
+    required Widget child,
+  }) {
+    final scoped = ShellPaintTvRowScope(
+      tabId: tabId,
+      rowId: rowId,
+      child: child,
+    );
+    final wrap = maybeOf(context)?.wrapTvGrid;
+    if (wrap == null) return scoped;
+    return wrap(
+      tabId: tabId,
+      rowId: rowId,
+      sortOrder: sortOrder,
+      itemCount: itemCount,
+      columns: columns,
+      onFocusUp: onFocusUp,
+      onFocusDown: onFocusDown,
+      child: scoped,
+    );
+  }
+
   @override
   bool updateShouldNotify(ShellPaintScope oldWidget) =>
       useTvFocus != oldWidget.useTvFocus ||
       scaleOnHover != oldWidget.scaleOnHover ||
       usesTvDensity != oldWidget.usesTvDensity ||
       focusableTapBuilder != oldWidget.focusableTapBuilder ||
-      wrapTvRow != oldWidget.wrapTvRow;
+      wrapTvRow != oldWidget.wrapTvRow ||
+      wrapTvGrid != oldWidget.wrapTvGrid;
 }

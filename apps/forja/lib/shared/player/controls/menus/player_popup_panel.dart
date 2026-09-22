@@ -757,7 +757,7 @@ class _PanelShellState extends State<_PanelShell> {
                                       widget.trailing!,
                                       const SizedBox(width: 4),
                                     ],
-                                    _PopupChromeButton(
+                                    PlayerPopupChromeButton(
                                       icon: Icons.close_rounded,
                                       tooltip: 'Close',
                                       onTap: widget.onClose,
@@ -817,13 +817,18 @@ class _PanelShellState extends State<_PanelShell> {
   }
 }
 
-class _PopupChromeButton extends StatefulWidget {
-  const _PopupChromeButton({
+/// Bordered square icon chrome (Close, subtitle tune) — green border + glyph;
+/// hover / focus brightens fill + border (same as panel Close).
+class PlayerPopupChromeButton extends StatefulWidget {
+  const PlayerPopupChromeButton({
+    super.key,
     required this.icon,
     required this.onTap,
     this.tooltip,
     this.autoFocus = false,
     this.focusNode,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final IconData icon;
@@ -831,12 +836,15 @@ class _PopupChromeButton extends StatefulWidget {
   final String? tooltip;
   final bool autoFocus;
   final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
-  State<_PopupChromeButton> createState() => _PopupChromeButtonState();
+  State<PlayerPopupChromeButton> createState() =>
+      _PlayerPopupChromeButtonState();
 }
 
-class _PopupChromeButtonState extends State<_PopupChromeButton> {
+class _PlayerPopupChromeButtonState extends State<PlayerPopupChromeButton> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
@@ -908,6 +916,8 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
                 showFocusFill: false,
                 onFocusChange: (f) => setState(() => _focused = f),
                 onHoverChange: mouseHover ? _setHovered : null,
+                onLeftEdge: widget.onLeftEdge,
+                onRightEdge: widget.onRightEdge,
                 child: painted,
               )
             : InkWell(

@@ -4,7 +4,11 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Kit primitive — underline text tab (My List–style kind menus).
+/// Kit primitive — underline text tab (My List kind menus).
+///
+/// Paint matches hub top-bar category tabs (Home Films / TV Shows): idle muted,
+/// hover/focus bright white + short underline, selected white + slightly longer
+/// underline — never brand green on the label.
 class ForjaUnderlineTab extends StatefulWidget {
   const ForjaUnderlineTab({
     super.key,
@@ -38,7 +42,8 @@ class ForjaUnderlineTab extends StatefulWidget {
 }
 
 class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
-  static const _animDuration = Duration(milliseconds: 280);
+  static const _animDuration = ShellTokens.kitTopBarTabAnimation;
+  static const _animCurve = Curves.easeInOutCubic;
   static const _hoverT = 0.62;
   static const _selectedT = 1.0;
 
@@ -72,20 +77,43 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
     }
   }
 
-  double get _visualTarget {
+  double _visualTargetFor(bool hovered) {
     if (widget.isActive) return _selectedT;
     if (_suppressHighlightUntilLeave) return 0;
-    if (_hoveredN.value ||
+    if (hovered ||
         ShellPaintScope.focusStyledOf(context, focused: _focused)) {
       return _hoverT;
     }
     return 0;
   }
 
-  bool get _lit =>
-      !_suppressHighlightUntilLeave &&
-      (_hoveredN.value ||
-          ShellPaintScope.focusStyledOf(context, focused: _focused));
+  Color _lerpTabColor(double t) {
+    final idle = ForjaShellColors.cinematic.textSecondary;
+    const white = Colors.white;
+    final hoverWhite = Colors.white.withValues(alpha: 0.92);
+    if (t <= 0) return idle;
+    if (t < _hoverT) {
+      return Color.lerp(idle, hoverWhite, t / _hoverT)!;
+    }
+    return Color.lerp(
+      hoverWhite,
+      white,
+      (t - _hoverT) / (_selectedT - _hoverT),
+    )!;
+  }
+
+  double _underlineWidth(double t, bool tv) {
+    final hoverW = tv
+        ? ShellTokens.kitTopBarUnderlineHoverWidth * ShellTokens.tvChromeScale
+        : ShellTokens.kitTopBarUnderlineHoverWidth;
+    final selectedExtra = tv
+        ? ShellTokens.kitTopBarUnderlineSelectedExtra * ShellTokens.tvChromeScale
+        : ShellTokens.kitTopBarUnderlineSelectedExtra;
+    if (t <= 0) return 0;
+    if (t < _hoverT) return hoverW * (t / _hoverT);
+    return hoverW +
+        selectedExtra * ((t - _hoverT) / (_selectedT - _hoverT));
+  }
 
   void _onFocusChange(bool focused) {
     setState(() {
@@ -94,27 +122,22 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final child = TweenAnimationBuilder<double>(
-      tween: Tween<double>(end: _visualTarget),
+  Widget _buildContent(bool hovered) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: _visualTargetFor(hovered)),
       duration: _animDuration,
-      curve: Curves.easeInOutCubic,
+      curve: _animCurve,
       builder: (context, t, _) {
-        // Selected: white. Hover / focus: brand green. Idle: muted.
-        final Color color;
-        if (_lit) {
-          color = ForjaShellColors.brandGreen;
-        } else if (widget.isActive) {
-          color = Colors.white;
-        } else {
-          color = ForjaShellColors.cinematic.textSecondary;
-        }
-        final underlineColor = t > 0
-            ? (_lit || widget.isActive
-                ? ForjaShellColors.brandGreen
-                : color)
-            : Colors.transparent;
+        final textColor = _lerpTabColor(t);
+        final fontWeight = FontWeight.lerp(
+          FontWeight.w500,
+          FontWeight.w700,
+          t,
+        )!;
+        final underlineWidth = _underlineWidth(
+          t,
+          ShellPaintScope.usesTvDensityOf(context),
+        );
         final tv = ShellPaintScope.usesTvDensityOf(context);
         final tabHeight = tv
             ? ShellTokens.homeMenuRowHeightTv
@@ -122,19 +145,6 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
         final tabFont = tv
             ? ShellTokens.kitTopBarTabFontSizeTv
             : ShellTokens.kitTopBarTabFontSize;
-        final hoverW = tv
-            ? ShellTokens.kitTopBarUnderlineHoverWidth * ShellTokens.tvChromeScale
-            : ShellTokens.kitTopBarUnderlineHoverWidth;
-        final underlineExtra = tv
-            ? ShellTokens.kitTopBarUnderlineSelectedExtra *
-                ShellTokens.tvChromeScale
-            : ShellTokens.kitTopBarUnderlineSelectedExtra;
-        final underline = t <= 0
-            ? 0.0
-            : t < _hoverT
-                ? hoverW * (t / _hoverT)
-                : hoverW +
-                    underlineExtra * ((t - _hoverT) / (_selectedT - _hoverT));
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,12 +157,8 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
                   widget.label,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: tabFont,
-                    fontWeight: FontWeight.lerp(
-                      FontWeight.w500,
-                      FontWeight.w700,
-                      t > 0 || _lit ? 1.0 : 0.0,
-                    ),
-                    color: color,
+                    fontWeight: fontWeight,
+                    color: textColor,
                     letterSpacing: 0.1,
                   ),
                 ),
@@ -160,27 +166,37 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
             ),
             SizedBox(
               height: tv
-                  ? ShellTokens.shellCategoryUnderlineGap * ShellTokens.tvChromeScale
+                  ? ShellTokens.shellCategoryUnderlineGap *
+                      ShellTokens.tvChromeScale
                   : ShellTokens.shellCategoryUnderlineGap,
             ),
-            Container(
-              height: ShellTokens.shellNavUnderlineHeight,
-              width: underline,
-              decoration: BoxDecoration(
-                color: underline > 0 ? underlineColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                height: ShellTokens.shellNavUnderlineHeight,
+                width: underlineWidth,
+                decoration: BoxDecoration(
+                  color:
+                      underlineWidth > 0 ? textColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(
+                    ShellTokens.shellNavUnderlineRadius,
+                  ),
+                ),
               ),
             ),
           ],
         );
       },
     );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     if (widget.tvFocus) {
       return ShellPaintScope.focusableTap(
         context: context,
         onTap: widget.onTap,
-        borderRadius: 4,
+        borderRadius: ShellTokens.kitTopBarFocusRadius,
         scaleOnFocus: 1.0,
         listIndex: widget.listIndex,
         tvTabId: widget.tabId,
@@ -195,7 +211,7 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
         onHoverChange: _setHovered,
         child: ListenableBuilder(
           listenable: _hoveredN,
-          builder: (context, _) => child,
+          builder: (context, _) => _buildContent(_hoveredN.value),
         ),
       );
     }
@@ -209,7 +225,7 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
         behavior: HitTestBehavior.opaque,
         child: ListenableBuilder(
           listenable: _hoveredN,
-          builder: (context, _) => child,
+          builder: (context, _) => _buildContent(_hoveredN.value),
         ),
       ),
     );

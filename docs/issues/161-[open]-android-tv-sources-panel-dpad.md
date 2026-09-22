@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 13** fix · **0 / 9** acceptance |
+| **Progress** | **14 / 14** fix · **0 / 9** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -32,6 +32,7 @@
 | 11 | I161-T11 | Search → right → Filters button; OK opens Filters with D-pad claim; Back restores Filters button then Sources → Play | ✅ |
 | 12 | I161-T12 | Player Sources open / search ↓: scroll playing row into view then claim list (not kind tabs); empty/error list focusable | ✅ |
 | 13 | I161-T13 | List ↑ lands on search (then providers); `listOnly` claim avoids dumping onto kind while ListView mounts | ✅ |
+| 14 | I161-T14 | Stream list keep-visible scroll (parent jump + `ensureVisible` off) — same as IPTV categories | ✅ |
 
 ---
 
@@ -68,6 +69,8 @@ On **Android TV**, opening the torrent **Sources** panel left D-pad on the page 
 **I161-T11:** search had ↑/↓ only — → never reached the Filters tune control. Opening Filters also left D-pad on the Sources chrome. Search → now focuses Filters; Filters overlay uses `TvOverlayScope` + autofocus; dismiss restores the Filters button (Sources Back still restores Play).
 
 **I161-T12 / T13:** after a failed stream, reopening player Sources claimed kind tabs while the playing row was still off-screen (ListView). Search ↓ called `focusListItem` which fell through to kind and swallowed the key — felt stuck. Open + search ↓ now scroll the selected row into view and claim the list (`listOnly`); empty/error states register a focusable list row; list ↑ returns to Search.
+
+**I161-T14:** stream list used settings-style `ensureVisible.item` (pin near top) with no parent keep-visible jump — ↑/↓ felt unlike IPTV categories. Parent registers `setRowScrollIntoView` (measure when mounted, estimate when lazy); tiles use `ensureVisible` off.
 
 ---
 

@@ -19,12 +19,14 @@ abstract final class PackSettingsStore {
 
   /// Bump prefs revision and optionally invalidate that plugin’s hub mount.
   /// Settings UI must not remount — hubs listen via [PluginRegistry.hubFeedEpoch].
+  /// Hub soft-reload keeps live feed cache (forceNetwork: false) — pack wipe /
+  /// Reload packs still pass forceNetwork: true (issue 314).
   static void _bump(String pluginId, {bool reloadHub = true}) {
     revision.value++;
     if (!reloadHub) return;
     final id = pluginId.trim();
     if (id.isEmpty) return;
-    PluginRegistry.bumpHubFeedEpoch(pluginIds: [id]);
+    PluginRegistry.bumpHubFeedEpoch(pluginIds: [id], forceNetwork: false);
   }
 
   /// User-facing non-secret write: bump + optional cloud push hook.

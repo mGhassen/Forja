@@ -178,9 +178,12 @@ class KitSearchFilterToken extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tabId = TvFocusGraph.tabIdOf(context, fallback: 'search');
+    final density = ShellScope.metricsOf(context).usesTvDensity;
     return shellFocusableTap(
       context: context,
-      borderRadius: 16,
+      borderRadius: density
+          ? ShellTokens.searchFilterTokenRadiusTv
+          : ShellTokens.searchFilterTokenRadius,
       scaleOnFocus: 1.0,
       showFocusFill: true,
       onTap: onClear,
@@ -190,9 +193,26 @@ class KitSearchFilterToken extends StatelessWidget {
       tvZone: ShellTvZone.row,
       tvItemIndex: listIndex,
       child: Container(
-        padding: const EdgeInsets.only(left: 10, right: 6, top: 4, bottom: 4),
+        padding: EdgeInsets.only(
+          left: density
+              ? ShellTokens.searchFilterTokenPadLeadTv
+              : ShellTokens.searchFilterTokenPadLead,
+          right: density
+              ? ShellTokens.searchFilterTokenPadTrailTv
+              : ShellTokens.searchFilterTokenPadTrail,
+          top: density
+              ? ShellTokens.searchFilterTokenPadVTv
+              : ShellTokens.searchFilterTokenPadV,
+          bottom: density
+              ? ShellTokens.searchFilterTokenPadVTv
+              : ShellTokens.searchFilterTokenPadV,
+        ),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(
+            density
+                ? ShellTokens.searchFilterTokenRadiusTv
+                : ShellTokens.searchFilterTokenRadius,
+          ),
           border: Border.all(
             color: ForjaShellColors.textPrimary.withValues(alpha: 0.28),
           ),
@@ -202,16 +222,24 @@ class KitSearchFilterToken extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: ForjaShellColors.textPrimary,
-                fontSize: 12,
+                fontSize: density
+                    ? ShellTokens.searchFilterTokenFontSizeTv
+                    : ShellTokens.searchFilterTokenFontSize,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 2),
-            const Icon(
+            SizedBox(
+              width: density
+                  ? ShellTokens.searchFilterTokenIconGapTv
+                  : ShellTokens.searchFilterTokenIconGap,
+            ),
+            Icon(
               Icons.close,
-              size: 14,
+              size: density
+                  ? ShellTokens.searchFilterTokenIconSizeTv
+                  : ShellTokens.searchFilterTokenIconSize,
               color: ForjaShellColors.textSecondary,
             ),
           ],
@@ -1456,7 +1484,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
           variant: ButtonVariant.plainIcon,
           size: ButtonSize.icon,
           icon: Icons.tune_rounded,
-          iconSize: 24,
+          iconSize: ShellTokens.searchFilterTuneIconSizeOf(tv),
           focusNode: _filterFocusNode,
           color: (_filtersOpen || _filters.isActive)
               ? ForjaShellColors.textPrimary
@@ -1472,15 +1500,18 @@ class _KitSearchPageState extends State<KitSearchPage> {
   Widget _buildFilterChrome(BuildContext context) {
     if (!widget.structuredSearch) return const SizedBox.shrink();
     final tokens = _filters.tokenActions(_onFiltersChanged);
+    final density = _tvDensity(context);
+    final gap = ShellTokens.searchFilterChipWrapGapOf(density);
+    final top = ShellTokens.searchFilterSectionGapOf(density);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!_filtersOpen && _filters.isActive)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: EdgeInsets.only(top: top),
             child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: gap,
+              runSpacing: gap,
               children: [
                 for (var i = 0; i < tokens.length; i++)
                   KitSearchFilterToken(
@@ -1507,11 +1538,14 @@ class _KitSearchPageState extends State<KitSearchPage> {
     if (!widget.structuredSearch) return const SizedBox.shrink();
     if (_filtersOpen || !_filters.isActive) return const SizedBox.shrink();
     final tokens = _filters.tokenActions(_onFiltersChanged);
+    final density = _tvDensity(context);
+    final gap = ShellTokens.searchFilterChipWrapGapOf(density);
+    final top = ShellTokens.searchFilterSectionGapOf(density);
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: EdgeInsets.only(top: top),
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: gap,
+        runSpacing: gap,
         children: [
           for (var i = 0; i < tokens.length; i++)
             KitSearchFilterToken(

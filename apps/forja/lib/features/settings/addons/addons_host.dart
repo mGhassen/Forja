@@ -297,17 +297,12 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: addons.length,
-      separatorBuilder: (_, _) => SizedBox(
-        height: SettingsTokens.addonListSeparatorHeightOf(context),
-        child: Padding(
-          padding: const EdgeInsets.only(left: 2),
-          child: Center(
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
-            ),
-          ),
+      separatorBuilder: (_, _) => Padding(
+        padding: const EdgeInsets.only(left: 2),
+        child: Divider(
+          height: SettingsTokens.addonListSeparatorHeightOf(context),
+          thickness: 1,
+          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
         ),
       ),
       itemBuilder: (context, index) {

@@ -51,8 +51,8 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   **←** or **Back** leaves the page: nested drills first (e.g. **Addons →
   Stremio** returns to the Addons list), then the selected category on the left
   rail, then the nav rail — selection stays on that category (no hop to the
-  first item). **←** on the first category
-  also returns to the nav rail. **OK** in the page flips a toggle or
+  first item). **←** from **any** category on the left rail returns to the
+  nav rail. **OK** in the page flips a toggle or
   opens a select’s option list (current choice highlighted; **Back** dismisses).
   Nested switches on ordinary toggle rows do not steal focus (**OK** flips the
   row). **Addons** and **Forja Packs**: **OK** on the row activates; **→** then

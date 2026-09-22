@@ -280,37 +280,40 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   void _onHubFeedEpoch() {
     if (!mounted) return;
     if (!PluginRegistry.hubFeedEpochTouches(widget.pluginId)) return;
+    final forceNet = PluginRegistry.hubFeedEpochForceNetwork;
     // Off-screen keep-alive: flag only. MainScreen.refreshIfStale on tab show
     // runs the soft reload — Reload packs must not re-fetch every hub now.
     if (!shellTabVisible) {
       _pendingHubFeedSoftReload = true;
-      _refreshForceNetwork = true;
+      _refreshForceNetwork = forceNet;
       markShellTabStale();
       return;
     }
-    unawaited(_applyHubFeedSoftReload());
+    unawaited(_applyHubFeedSoftReload(forceNetwork: forceNet));
   }
 
-  /// Soft reload after pack script wipe (issue 305 / 311).
-  Future<void> _applyHubFeedSoftReload() async {
+  /// Soft reload after pack script wipe (issue 305 / 311) or pack settings
+  /// (issue 314 — settings keep [live_sports.feed] when [forceNetwork] is false).
+  Future<void> _applyHubFeedSoftReload({bool? forceNetwork}) async {
     if (!mounted) return;
     _pendingHubFeedSoftReload = false;
+    final force = forceNetwork ?? _refreshForceNetwork;
     // Soft: keep painted rails while scripts refresh. Must bump refreshEpoch
     // so PackLoadedPaint rebinds — layout-only soft reload left Home on a
     // stale/empty page-feed slice (Popular title, no hero) after Reload packs.
     PackLoadedPaint.clearMemosForPlugin(widget.pluginId);
     setState(() {
       _refreshEpoch++;
-      _refreshForceNetwork = true;
+      _refreshForceNetwork = force;
       _refreshKeepPainted = true;
       if (_pageFeedRailIds.isNotEmpty) {
         _pageFeedGen++;
         _pageFeedRails = null;
         _pageFeedError = null;
-        _pageFeedFuture = _bindPageFeed(forceRefresh: true);
+        _pageFeedFuture = _bindPageFeed(forceRefresh: force);
       }
     });
-    await _loadPage(force: true, keepPainted: true);
+    await _loadPage(force: force, keepPainted: true);
   }
 
   /// Bookmark / Simkl list write — only hubs with a status-tab list (My List).

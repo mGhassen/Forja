@@ -32,10 +32,8 @@ void main() {
       SettingsTokens.addonListRowPadVTv,
       greaterThan(SettingsTokens.rowPadVTv),
     );
-    expect(SettingsTokens.addonListSeparatorHeight, greaterThan(1));
-    expect(
-      SettingsTokens.addonListSeparatorHeightTv,
-      lessThan(SettingsTokens.addonListSeparatorHeight),
-    );
+    // Hairline divider only — vertical rhythm is row pad, not separator slot.
+    expect(SettingsTokens.addonListSeparatorHeight, 1);
+    expect(SettingsTokens.addonListSeparatorHeightTv, 1);
   });
 }

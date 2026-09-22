@@ -130,7 +130,7 @@ class KitSourcesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
     final metrics = ShellScope.metricsOf(context);
-    final effectiveTv = _effectiveTvTabId(context);
+    final tvTab = _effectiveTvTabId(context);
 
     return SourcesPanelChrome(
       title: title,
@@ -156,16 +156,39 @@ class KitSourcesPanel extends StatelessWidget {
       reloadNonce: reloadNonce,
       useFocusableChips: policy.useFocusableMoodChips,
       usesTvDensity: metrics.usesTvDensity,
+      onScrollIntoViewChanged: tvTab == null
+          ? null
+          : (scroll) {
+              ShellTvFocusCoordinator.setRowScrollIntoView(
+                tvTab,
+                listRowId,
+                scroll == null
+                    ? null
+                    : (index) {
+                        final node = ShellTvFocusCoordinator.itemNode(
+                          tvTab,
+                          listRowId,
+                          index,
+                        );
+                        final ctx = node?.context;
+                        if (ctx != null && ctx.mounted) {
+                          shellTvEnsureVisibleKeepVisible(ctx);
+                          return;
+                        }
+                        scroll(index);
+                      },
+              );
+            },
       tabsBuilder: (context, {required selected, required onSelected, required tabs}) {
         return HeroPillSegmentedChoice<String>(
           selected: selected,
           onSelected: onSelected,
-          tvTabId: effectiveTv,
+          tvTabId: tvTab,
           tvRowId: tabsRowId,
           tvItemIndexStart: 0,
           onLeftEdge: onTabsLeftEdge,
-          onDownEdge: effectiveTv != null
-              ? () => _focusListItem(effectiveTv, index: 0)
+          onDownEdge: tvTab != null
+              ? () => _focusListItem(tvTab, index: 0)
               : null,
           segments: [
             for (final tab in tabs)
@@ -177,28 +200,28 @@ class KitSourcesPanel extends StatelessWidget {
           ],
         );
       },
-      tabsFocusWrap: effectiveTv == null
+      tabsFocusWrap: tvTab == null
           ? null
           : (context, child, {required itemCount}) {
               return TvKitRow(
-                tabId: effectiveTv,
+                tabId: tvTab,
                 rowId: tabsRowId,
                 sortOrder: SourcesPanelTv.kindSort,
                 itemCount: itemCount,
-                onFocusDown: () => _focusListItem(effectiveTv, index: 0),
+                onFocusDown: () => _focusListItem(tvTab, index: 0),
                 child: child,
               );
             },
-      listFocusWrap: effectiveTv == null
+      listFocusWrap: tvTab == null
           ? null
           : (context, child, {required itemCount}) {
               return TvKitRow(
-                tabId: effectiveTv,
+                tabId: tvTab,
                 rowId: listRowId,
                 sortOrder: SourcesPanelTv.listSort,
                 itemCount: itemCount,
                 orientation: ShellTvRowOrientation.vertical,
-                onFocusUp: _listFocusUp(effectiveTv),
+                onFocusUp: _listFocusUp(tvTab),
                 child: child,
               );
             },
@@ -218,13 +241,13 @@ class KitSourcesPanel extends StatelessWidget {
           badges: row.badges,
           viewerCount: row.viewerCount,
           footerLabel: footer.isEmpty ? null : footer,
-          tvTabId: effectiveTv,
+          tvTabId: tvTab,
           tvRowId: listRowId,
           tvItemIndex: index,
           onHoverProbe: row.onHoverProbe,
           probeHealthCache: row.probeHealthCache,
-          onUpEdge: effectiveTv != null && (upToTabs || index == 0)
-              ? _listFocusUp(effectiveTv)
+          onUpEdge: tvTab != null && (upToTabs || index == 0)
+              ? _listFocusUp(tvTab)
               : null,
           onLeftEdge: onTabsLeftEdge,
           onPlay: onPlay,

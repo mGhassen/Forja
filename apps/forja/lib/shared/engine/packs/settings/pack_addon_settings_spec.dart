@@ -31,6 +31,7 @@ class PackAddonSettingsField {
     this.options = const [],
     this.hubTypes = const [],
     this.listOpenDefault = false,
+    this.reloadHub = true,
   });
 
   final String id;
@@ -49,6 +50,10 @@ class PackAddonSettingsField {
 
   /// When true, value also writes [ListOpenPrefs] for each [hubTypes] token.
   final bool listOpenDefault;
+
+  /// When false, only bump [PackSettingsStore.revision] (open-mode UI) — do not
+  /// soft-reload the hub feed (e.g. Live Sports `matchOpen`).
+  final bool reloadHub;
 
   static PackAddonSettingsField? fromJson(Map<String, dynamic> j) {
     final id = (j['id'] ?? '').toString().trim();
@@ -100,6 +105,8 @@ class PackAddonSettingsField {
 
     final listOpenDefault = j['listOpenDefault'] == true ||
         j['list_open_default'] == true;
+    // Default true (feed-affecting). Packs opt out for paint-only fields.
+    final reloadHub = j['reloadHub'] != false && j['reload_hub'] != false;
 
     final subtitle = (j['subtitle'] ?? '').toString();
     var defaultBool = false;
@@ -128,6 +135,7 @@ class PackAddonSettingsField {
       options: options,
       hubTypes: hubTypes,
       listOpenDefault: listOpenDefault,
+      reloadHub: reloadHub,
     );
   }
 }

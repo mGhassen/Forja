@@ -35,6 +35,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 /// Right-side Sources panel in the player - same shell/chrome/tiles as
 /// media-details Sources (torrent search list), not in-torrent file picker.
@@ -503,6 +504,40 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     PluginRegistry.changeNotifier.addListener(_onTorrentPackChanged);
     _seedOptimisticChrome();
     unawaited(_bootstrap());
+    _offerListScrollIntoView();
+  }
+
+  void _offerListScrollIntoView() {
+    ShellTvFocusCoordinator.setRowScrollIntoView(
+      SourcesPanelTv.tabId,
+      SourcesPanelTv.listRowId,
+      _scrollListIndexKeepVisible,
+    );
+  }
+
+  /// Keep-visible — same as IPTV categories / kit Sources. Measure when the
+  /// tile is mounted; estimate jump mounts off-screen ListView rows.
+  void _scrollListIndexKeepVisible(int index) {
+    if (index < 0) return;
+    final node = ShellTvFocusCoordinator.itemNode(
+      SourcesPanelTv.tabId,
+      SourcesPanelTv.listRowId,
+      index,
+    );
+    final ctx = node?.context;
+    if (ctx != null && ctx.mounted) {
+      shellTvEnsureVisibleKeepVisible(ctx);
+      return;
+    }
+    if (!_listScrollController.hasClients) return;
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    CatalogDenseList.scrollIndexKeepVisible(
+      _listScrollController,
+      index: index,
+      rowExtent: ShellTokens.sourcesStreamListRowExtentEstimateOf(tv),
+      stride: ShellTokens.sourcesStreamListStrideOf(tv),
+      topPad: 0,
+    );
   }
 
   void _onTorrentPackChanged() {
@@ -641,6 +676,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       EngineService.instance.cancelPending();
     }
     PlayerSourcesPanel._preserveEngineOnDispose = false;
+    ShellTvFocusCoordinator.setRowScrollIntoView(
+      SourcesPanelTv.tabId,
+      SourcesPanelTv.listRowId,
+      null,
+    );
     _listScrollController.dispose();
     super.dispose();
   }
@@ -928,12 +968,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         claimTvIfNeeded();
         return;
       }
-      const stride = 98.0; // ~tile height + separator
+      final tv = ShellScope.metricsOf(context).usesTvDensity;
+      final stride = ShellTokens.sourcesStreamListStrideOf(tv);
       final maxExtent = _listScrollController.position.maxScrollExtent;
       final target = (index * stride).clamp(0.0, maxExtent);
       if ((_listScrollController.offset - target).abs() < 1.0) {
         // Estimate put us here but the tile still is not built - nudge once.
-        final nudged = (target + 160.0).clamp(0.0, maxExtent);
+        final nudged = (target + stride * 1.5).clamp(0.0, maxExtent);
         if ((nudged - target).abs() < 1.0) {
           _pendingScrollToCurrent = false;
           claimTvIfNeeded();
@@ -975,12 +1016,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
     // Off-screen ListView tile — jump then retry without dumping onto kind tabs.
-    if (_listScrollController.hasClients) {
-      const stride = 98.0;
-      final maxExtent = _listScrollController.position.maxScrollExtent;
-      final target = (index * stride).clamp(0.0, maxExtent);
-      _listScrollController.jumpTo(target);
-    }
+    _scrollListIndexKeepVisible(index);
     _tvListClaimPending = false;
     SourcesPanelTv.focusListItem(index: index, listOnly: true);
   }

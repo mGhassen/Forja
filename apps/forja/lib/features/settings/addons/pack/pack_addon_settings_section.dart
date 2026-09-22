@@ -180,7 +180,10 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
             _hubDebounce[debounceKey]?.cancel();
             _hubDebounce[debounceKey] = Timer(
               const Duration(milliseconds: 400),
-              () => PluginRegistry.bumpHubFeedEpoch(pluginIds: [pluginId]),
+              () => PluginRegistry.bumpHubFeedEpoch(
+                pluginIds: [pluginId],
+                forceNetwork: false,
+              ),
             );
           });
           _textControllers[k] = c;
@@ -221,7 +224,12 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     PackAddonSettingsField field,
     bool value,
   ) async {
-    await PackSettingsStore.setBool(spec.pluginId, field.id, value);
+    await PackSettingsStore.setBool(
+      spec.pluginId,
+      field.id,
+      value,
+      reloadHub: field.reloadHub,
+    );
     if (!mounted) return;
     setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
   }
@@ -231,7 +239,12 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     PackAddonSettingsField field,
     String value,
   ) async {
-    await PackSettingsStore.setString(spec.pluginId, field.id, value);
+    await PackSettingsStore.setString(
+      spec.pluginId,
+      field.id,
+      value,
+      reloadHub: field.reloadHub,
+    );
     if (field.type == PackAddonSettingsFieldType.hubSelect &&
         field.listOpenDefault) {
       final id = value.trim();
@@ -251,7 +264,12 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     PackAddonSettingsField field,
     List<String> value,
   ) async {
-    await PackSettingsStore.setStringList(spec.pluginId, field.id, value);
+    await PackSettingsStore.setStringList(
+      spec.pluginId,
+      field.id,
+      value,
+      reloadHub: field.reloadHub,
+    );
     if (!mounted) return;
     setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
   }

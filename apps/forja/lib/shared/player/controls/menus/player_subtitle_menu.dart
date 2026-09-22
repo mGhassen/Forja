@@ -5,10 +5,8 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/screens/utils.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 
 /// Fired when the user picks Off, an embedded track, or an external file.
@@ -440,59 +438,19 @@ class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
           ),
         ],
         const SizedBox(width: 6),
-        _SubtitleTuneChip(
-          tv: widget.tv,
+        PlayerPopupChromeButton(
+          icon: Icons.tune_rounded,
+          tooltip: 'Subtitle settings',
           focusNode: _tuneFocus,
           onTap: () {
             PlayerPopupPanel.dismiss();
             widget.onSubtitleSettings();
           },
+          onRightEdge: widget.tv
+              ? () => PlayerPopupCloseFocus.request(context)
+              : null,
         ),
       ],
-    );
-  }
-}
-
-class _SubtitleTuneChip extends StatelessWidget {
-  const _SubtitleTuneChip({
-    required this.tv,
-    required this.onTap,
-    this.focusNode,
-  });
-
-  final bool tv;
-  final VoidCallback onTap;
-  final FocusNode? focusNode;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!tv) {
-      return Button(
-        variant: ButtonVariant.plainIcon,
-        size: ButtonSize.icon,
-        icon: Icons.tune_rounded,
-        iconSize: 18,
-        hoverColor: PlayerPopupTokens.accent,
-        onPressed: onTap,
-      );
-    }
-    return FocusableControl(
-      focusNode: focusNode,
-      onTap: onTap,
-      borderRadius: PlayerPopupTokens.chipRadiusOf(context),
-      scaleOnFocus: 1.0,
-      showFocusBorder: false,
-      showFocusFill: false,
-      onRightEdge: () => PlayerPopupCloseFocus.request(context),
-      child: SizedBox(
-        width: PlayerPopupTokens.chromeBtnSizeOf(context),
-        height: PlayerPopupTokens.chromeBtnSizeOf(context),
-        child: Icon(
-          Icons.tune_rounded,
-          size: PlayerPopupTokens.chromeIconSizeOf(context),
-          color: PlayerPopupTokens.muted,
-        ),
-      ),
     );
   }
 }
