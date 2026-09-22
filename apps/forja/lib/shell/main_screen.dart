@@ -363,7 +363,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
       return;
     }
     final run = () async {
-      final tabId = _currentTabId;
+      // Name the toast after the held rail item — not the selected tab.
+      final tabId = ShellBus.takeCompleteNavbarReloadTabId() ?? _currentTabId;
       final tabName =
           (tabId != null ? navDestinationFor(tabId)?.label : null)?.trim();
       final name = (tabName != null && tabName.isNotEmpty) ? tabName : 'Navbar';

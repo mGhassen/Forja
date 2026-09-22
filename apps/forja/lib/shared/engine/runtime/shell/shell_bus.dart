@@ -54,8 +54,20 @@ class ShellBus {
   static final ValueNotifier<int> completeNavbarReloadRevision =
       ValueNotifier(0);
 
-  static void requestCompleteNavbarReload() {
+  /// Tab id of the rail item that was held (not necessarily the selected tab).
+  static String? pendingCompleteNavbarReloadTabId;
+
+  static void requestCompleteNavbarReload({String? tabId}) {
+    final id = tabId?.trim();
+    pendingCompleteNavbarReloadTabId =
+        (id != null && id.isNotEmpty) ? id : null;
     completeNavbarReloadRevision.value++;
+  }
+
+  static String? takeCompleteNavbarReloadTabId() {
+    final id = pendingCompleteNavbarReloadTabId;
+    pendingCompleteNavbarReloadTabId = null;
+    return id;
   }
 
   /// Settings hub category to select on the next Settings show (`lan`, `playback`, …).

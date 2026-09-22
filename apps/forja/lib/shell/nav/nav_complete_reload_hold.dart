@@ -106,7 +106,7 @@ class NavCompleteReloadHold {
         VerticalFiltersRegistry.hideMenu(hideMenuTabId);
       }
       HapticFeedback.mediumImpact();
-      ShellBus.requestCompleteNavbarReload();
+      ShellBus.requestCompleteNavbarReload(tabId: hideMenuTabId);
     });
   }
 
