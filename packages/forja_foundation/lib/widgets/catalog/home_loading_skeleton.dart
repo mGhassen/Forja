@@ -754,6 +754,16 @@ Widget homeHubHeroShimmer({
           : 24.0;
       final radius = BorderRadius.circular(8);
       final pill = BorderRadius.circular(btnH / 2);
+      // Match live hero CTA row; clamp so narrow viewports never overflow.
+      const ctaGap = 10.0;
+      const playMax = 132.0;
+      final circleW = btnH;
+      final playW = math.min(
+        playMax,
+        math.max(0.0, textW - ctaGap - circleW),
+      );
+      final showCircle = textW >= circleW;
+      final showPlay = playW >= 24;
 
       return SizedBox(
         height: height,
@@ -802,17 +812,20 @@ Widget homeHubHeroShimmer({
                     const SizedBox(height: 20),
                     Row(
                       children: [
-                        Skeleton(
-                          width: 132,
-                          height: btnH,
-                          borderRadius: pill,
-                        ),
-                        const SizedBox(width: 10),
-                        Skeleton(
-                          width: btnH,
-                          height: btnH,
-                          borderRadius: BorderRadius.circular(btnH / 2),
-                        ),
+                        if (showPlay) ...[
+                          Skeleton(
+                            width: playW,
+                            height: btnH,
+                            borderRadius: pill,
+                          ),
+                          if (showCircle) const SizedBox(width: ctaGap),
+                        ],
+                        if (showCircle)
+                          Skeleton(
+                            width: circleW,
+                            height: btnH,
+                            borderRadius: BorderRadius.circular(btnH / 2),
+                          ),
                       ],
                     ),
                   ],

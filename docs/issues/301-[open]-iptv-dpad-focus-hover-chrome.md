@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **16 / 16** code · **0 / 12** acceptance |
+| **Progress** | **17 / 17** code · **0 / 12** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -35,6 +35,7 @@
 | 14 | I301-T14 | Category → : last selected channel if still in list, else first (replace spatial in-front) | ✅ |
 | 15 | I301-T15 | Hold OK pin: `allowNestedFocus` + focusable pin under `useTvFocus` so → lands on pin | ✅ |
 | 16 | I301-T16 | Floating reorder: parent `HardwareKeyboard` ↑/↓ by id + re-stick focus (no neighbor jump) | ✅ |
+| 17 | I301-T17 | Favorites / Watched OK: first channel if any, else keep category focus (no shelf steal); category flip paints empty grid in place (no cover ticker flash) | ✅ |
 
 ---
 
@@ -56,7 +57,7 @@
 | 12 | Search OK → first channel or keep search | ⬜ retest |
 | 13 | Search → × at end | ✅ (user) |
 | 14–18 | Green chrome; Portals chip green **only** hover/focus | ⬜ retest chip |
-| 19 | Favorites / Watched panel | ⬜ retest |
+| 19 | Favorites / Watched OK → first channel or stay on category | ⬜ retest |
 
 **#11 (share-code):** the nine cells in **Add portal → paste share code**. Typing should paint each letter in its box (not a blank row). That path uses browse-until-OK on leanback only.
 

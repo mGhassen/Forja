@@ -36,6 +36,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
 
 /// Hub tab mount — validate pack page JSON and paint. No product field mappers.
@@ -1032,10 +1033,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     });
     var index = 0;
     final compact = ShellTokens.usesCompactNavDrawer(context);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     for (final a in actions) {
       final id = (a['id'] ?? '').toString().trim();
       if (id.isEmpty) continue;
       if (a['hideWhenCompact'] == true && compact) continue;
+      if (a['hideWhenTv'] == true && tv) continue;
       if (a['compactOnly'] == true && !compact) continue;
       final when = a['showWhen'];
       if (when is Map) {

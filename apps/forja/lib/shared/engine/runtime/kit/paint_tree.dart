@@ -1133,6 +1133,10 @@ class PackPaintTree extends StatelessWidget {
         ShellTokens.usesCompactNavDrawer(context)) {
       return false;
     }
+    if (action['hideWhenTv'] == true &&
+        ShellPaintScope.usesTvDensityOf(context)) {
+      return false;
+    }
     if (action['compactOnly'] == true &&
         !ShellTokens.usesCompactNavDrawer(context)) {
       return false;
@@ -1744,8 +1748,9 @@ class PackPaintTree extends StatelessWidget {
               style = viewOverride;
             }
           }
-          // Live catalog EPG grid — same ≥760 width rule on TV and desktop.
-          final wantGuide = (style == 'epg' || style == 'guide') &&
+          // Live catalog EPG grid — desktop Live only (≥760); TV stays cards.
+          final wantGuide = !ShellPaintScope.usesTvDensityOf(context) &&
+              (style == 'epg' || style == 'guide') &&
               _itemsLookLikeLiveChannels(filtered) &&
               constraints.maxWidth >= 760;
           if ((style == 'epg' || style == 'guide') && !wantGuide) {

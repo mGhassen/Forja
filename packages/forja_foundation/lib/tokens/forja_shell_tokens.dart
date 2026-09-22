@@ -357,7 +357,11 @@ abstract final class ShellTokens {
 
   static const double heroImageStartFraction = 0.12;
   static const double heroImageWidthFraction = 0.88;
-  static const double heroTextWidthFraction = heroImageStartFraction;
+
+  /// Desktop hero text column width as a fraction of screen width (capped by
+  /// [heroTextColumnWidthDesktop]). Not [heroImageStartFraction] — that is
+  /// only where the backdrop image strip begins.
+  static const double heroTextWidthFraction = 0.34;
 
   /// Opaque overlay band after the image starts (fraction of image-strip width).
   /// Prefer [heroImageStartFraction] to widen the text column; non-zero values

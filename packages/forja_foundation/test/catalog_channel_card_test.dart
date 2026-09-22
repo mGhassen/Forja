@@ -1,9 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/tokens/channel_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+/// Host wires KeyDown-only activate (shellTvIsActivateKey). Hold-OK must still
+/// fire onTap on KeyUp — do not gate KeyUp with that predicate.
+bool _hostActivateKeyDownOnly(KeyEvent event) {
+  if (event is! KeyDownEvent) return false;
+  final key = event.logicalKey;
+  return key == LogicalKeyboardKey.select ||
+      key == LogicalKeyboardKey.enter ||
+      key == LogicalKeyboardKey.space;
+}
+
+/// Mirrors app FocusableControl: custom onKeyEvent first, then KeyDown activate.
+Widget _tvTap({
+  required BuildContext context,
+  required Widget child,
+  VoidCallback? onTap,
+  double borderRadius = 12,
+  double scaleOnFocus = 1,
+  VoidCallback? onLeftEdge,
+  VoidCallback? onUpEdge,
+  VoidCallback? onDownEdge,
+  VoidCallback? onRightEdge,
+  ValueChanged<bool>? onFocusChange,
+  ValueChanged<bool>? onHoverChange,
+  FocusNode? focusNode,
+  bool autoFocus = false,
+  int? listIndex,
+  bool navLeftAlways = false,
+  int? gridIndex,
+  int? gridColumns,
+  String? tvTabId,
+  String? tvRowId,
+  int? tvItemIndex,
+  ShellPaintTvZone? tvZone,
+  ShellPaintEnsureVisible ensureVisibleMode = ShellPaintEnsureVisible.row,
+  bool showFocusBorder = false,
+  bool showFocusFill = true,
+  bool showFocusRail = false,
+  bool suppressInkHover = false,
+  bool allowNestedFocus = false,
+  FocusOnKeyEventCallback? onKeyEvent,
+}) {
+  return Focus(
+    focusNode: focusNode,
+    autofocus: autoFocus,
+    descendantsAreFocusable: allowNestedFocus,
+    descendantsAreTraversable: allowNestedFocus,
+    onFocusChange: onFocusChange,
+    onKeyEvent: (node, event) {
+      final custom = onKeyEvent?.call(node, event);
+      if (custom != null && custom != KeyEventResult.ignored) return custom;
+      if (onTap == null) return KeyEventResult.ignored;
+      if (!ShellPaintScope.isActivateKeyOf(context, event)) {
+        return KeyEventResult.ignored;
+      }
+      onTap();
+      return KeyEventResult.handled;
+    },
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: child,
+    ),
+  );
+}
 
 Widget _wrap(Widget child) {
   return MaterialApp(
@@ -14,6 +80,23 @@ Widget _wrap(Widget child) {
         scaleOnHover: true,
         focusStyled: (_, {required focused}) => focused,
         usesTvDensity: false,
+        child: Center(child: child),
+      ),
+    ),
+  );
+}
+
+Widget _wrapLeanback(Widget child) {
+  return MaterialApp(
+    theme: forjaThemeData(),
+    home: Scaffold(
+      body: ShellPaintScope(
+        useTvFocus: true,
+        scaleOnHover: false,
+        focusStyled: (_, {required focused}) => focused,
+        usesTvDensity: true,
+        isActivateKey: _hostActivateKeyDownOnly,
+        focusableTapBuilder: _tvTap,
         child: Center(child: child),
       ),
     ),
@@ -144,6 +227,78 @@ void main() {
     await tester.pump();
     expect(calls, 0);
   });
+
+  testWidgets(
+    'leanback Favorites/Already watched: short OK plays (KeyUp), not KeyDown-only gate',
+    (tester) async {
+      var taps = 0;
+      var jumps = 0;
+      await tester.pumpWidget(
+        _wrapLeanback(
+          CatalogChannelCard(
+            title: 'VIP - NO EVENT',
+            imageUrl: '',
+            width: 110,
+            height: 122,
+            onTap: () => taps++,
+            onHoldJumpToCategory: () => jumps++,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final cardFocus = Focus.of(tester.element(find.text('VIP - NO EVENT')));
+      cardFocus.requestFocus();
+      await tester.pump();
+      expect(cardFocus.hasFocus, isTrue);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(taps, 0);
+      expect(jumps, 0);
+
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(taps, 1);
+      expect(jumps, 0);
+    },
+  );
+
+  testWidgets(
+    'leanback Favorites/Already watched: hold OK ~1s jumps without playing',
+    (tester) async {
+      var taps = 0;
+      var jumps = 0;
+      await tester.pumpWidget(
+        _wrapLeanback(
+          CatalogChannelCard(
+            title: 'VIP - NO EVENT',
+            imageUrl: '',
+            width: 110,
+            height: 122,
+            onTap: () => taps++,
+            onHoldJumpToCategory: () => jumps++,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final cardFocus = Focus.of(tester.element(find.text('VIP - NO EVENT')));
+      cardFocus.requestFocus();
+      await tester.pump();
+      expect(cardFocus.hasFocus, isTrue);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pump(const Duration(seconds: 1));
+      expect(jumps, 1);
+      expect(taps, 0);
+
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(taps, 0);
+      expect(jumps, 1);
+    },
+  );
 
   testWidgets(
     'parent setState from onInteractiveActive during emphasize rebuild is safe',

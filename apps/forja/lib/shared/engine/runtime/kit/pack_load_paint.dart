@@ -417,6 +417,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       // Live/Movies/Series category flip — drop prior page so Favorites /
       // Watched do not keep showing the previous group's channels.
       // Shelf section flips already restored [_sectionResolved] or cleared above.
+      //
+      // Do NOT null the envelope → composition cover + CatalogLoadingTicker
+      // (that hides the category rail and flashes a full-page reload). Paint an
+      // empty grid in place; cats stay visible until the new page lands.
       if (!shelfSectionFlipped &&
           packChromeVodPagedFeed(
             widget.fallbackSpec,
@@ -424,11 +428,13 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           )) {
         _progressiveSub?.cancel();
         _progressiveSub = null;
-        _envelope = null;
-        _lastPaintedWidget = null;
         _inFlight = null;
         _bindGen++;
         _skipWarmRestore = true;
+        _lastPaintedWidget = null;
+        _envelope = _categoryFlipPlaceholderEnvelope(
+          LayoutScope.maybeOf(context),
+        );
       } else if (shelfSectionFlipped && _envelope == null) {
         _skipWarmRestore = true;
       }
@@ -437,6 +443,30 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     } else if (_envelope == null && _inFlight == null && !held) {
       _bind();
     }
+  }
+
+  /// Empty grid while a Live category / Favorites page loads — no cover ticker.
+  MetaEnvelope _categoryFlipPlaceholderEnvelope(LayoutScope? scope) {
+    final kindMenu =
+        (widget.fallbackSpec['kindMenu'] ?? '').toString().trim();
+    final kind =
+        kindMenu.isEmpty ? '' : (scope?.selectedId(kindMenu) ?? '').trim();
+    final data = <String, dynamic>{
+      'items': <dynamic>[],
+    };
+    if (kind == PortalLiveCatalog.favoritesId || kind == 'favorites') {
+      data['emptyTitle'] = 'No favorites';
+      data['emptyDescription'] = 'Star a live channel to keep it here.';
+    } else if (kind == PortalLiveCatalog.watchedId || kind == 'watched') {
+      data['emptyTitle'] = 'Nothing watched yet';
+      data['emptyDescription'] =
+          'Channels you play on Live land here (last 30).';
+    } else {
+      // Portal group — blank body, not "Choose a portal" / loading cover.
+      data['emptyTitle'] = '';
+      data['emptyDescription'] = '';
+    }
+    return MetaEnvelope(ok: true, action: widget.action, data: data);
   }
 
   @override
@@ -636,9 +666,18 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final needsLiveLists = widget.action == 'feed' || widget.action == 'rail';
     final syntheticKind = PortalLiveCatalog.isSyntheticId(kind);
 
-    // Favorites / Watched pages need stream_ids in params — await prefs when
-    // selecting those rows. Other feeds warm lists in the background.
+    // Favorites / Watched need stream_ids in params. Prefer the warm host
+    // cache (rail already loaded prefs) so `_bind` can sync-hit memo and skip
+    // the async prefs gate that flashed a full-page reload.
     if (needsLiveLists && syntheticKind) {
+      final cached = CategoryBarActionHost.cachedLiveListParams;
+      final portalKey = (cached['portalStoreKey'] ?? '').toString().trim();
+      final listsWarm = portalKey.isNotEmpty &&
+          cached['favorites'] is List &&
+          cached['watched'] is List;
+      if (listsWarm) {
+        return _runWithParams(chrome: chrome);
+      }
       final gen = _bindGen;
       // Hold the slot so didChangeDependencies does not re-_bind while prefs load.
       final completer = Completer<MetaEnvelope>();

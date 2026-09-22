@@ -539,11 +539,29 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   }
 
   void _onSelectCategory(String id) {
+    // Drop stale channel ids before the page reloads — → / OK must not focus a
+    // dying tile from the previous group (Favorites empty remount → shelf).
+    IptvCatalogLand.clearVisibleStreamIds();
     widget.onSelect(id);
     _armCatsFocusMemory(id);
     if (_isLive) {
       unawaited(IptvCatalogLand.rememberCategory(id));
     }
+    if (!ShellPaintScope.useTvFocusOf(context)) return;
+    if (!PortalLiveCatalog.isSyntheticId(id)) {
+      IptvCatalogLand.cancelSyntheticFocusSchedule();
+      return;
+    }
+    final tab = (widget.tabId ?? '').trim().isNotEmpty
+        ? widget.tabId!.trim()
+        : 'iptv';
+    final index = _items.indexWhere((e) => e.id == id);
+    if (index < 0) return;
+    IptvCatalogLand.scheduleFocusFirstOrKeepCategory(
+      tabId: tab,
+      categoryId: id,
+      categoryIndex: index,
+    );
   }
 
   /// Nav enter/restore remembered land → selected category (not a browse-only row).
@@ -725,14 +743,19 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       );
       void enterItems() {
         // Last selected channel if still in this list; else first tile.
+        // Favorites / Already watched: always the first channel.
+        // Empty list (or mid-reload after clearVisibleStreamIds): stay on the
+        // category — never fall through to items/shelf.
         if (tvTab.isEmpty) {
           enterChannels?.call();
           return;
         }
-        if (IptvCatalogLand.focusItemsFromCategory(tabId: tvTab)) {
-          return;
-        }
-        enterChannels?.call();
+        final synthetic =
+            PortalLiveCatalog.isSyntheticId(widget.selectedId.trim());
+        IptvCatalogLand.focusItemsFromCategory(
+          tabId: tvTab,
+          preferFirst: synthetic,
+        );
       }
 
       final child = CatalogCategoryRail(

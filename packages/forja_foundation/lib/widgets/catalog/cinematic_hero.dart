@@ -456,7 +456,7 @@ class CinematicHeroState extends State<CinematicHero> {
         : textBottom;
     final textLeft = layout.scaledChrome(layout.sectionHorizontalPadding);
     final desktopTextWidth = math.min(
-      MediaQuery.sizeOf(context).width * 0.34,
+      MediaQuery.sizeOf(context).width * ShellTokens.heroTextWidthFraction,
       layout.scaledChrome(layout.resolvedTextColumnWidth),
     );
     final shellBg = Theme.of(context).scaffoldBackgroundColor;

@@ -219,9 +219,10 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
   static bool _expandOnHover(Map<String, dynamic> action) =>
       action['expandOnHover'] == true || action['collapse'] == true;
 
-  /// Pack `hideWhenCompact` / `compactOnly` / `showWhen` — host compact =
-  /// nav drawer width; `showWhen: { menuId: 'value' | ['a','b'] }` gates on
-  /// [selections] for sibling chrome menus (e.g. catalog shelf).
+  /// Pack `hideWhenCompact` / `hideWhenTv` / `compactOnly` / `showWhen` —
+  /// host compact = nav drawer width; TV = [ShellPaintScope.usesTvDensityOf];
+  /// `showWhen: { menuId: 'value' | ['a','b'] }` gates on [selections] for
+  /// sibling chrome menus (e.g. catalog shelf).
   static bool _actionVisible(
     BuildContext context,
     Map<String, dynamic> action,
@@ -229,6 +230,10 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
   ) {
     final compact = ShellTokens.usesCompactNavDrawer(context);
     if (action['hideWhenCompact'] == true && compact) return false;
+    if (action['hideWhenTv'] == true &&
+        ShellPaintScope.usesTvDensityOf(context)) {
+      return false;
+    }
     if (action['compactOnly'] == true && !compact) return false;
     final when = action['showWhen'];
     if (when is Map) {

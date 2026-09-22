@@ -150,6 +150,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   Future<List<GuideEpgProgramme>>? _epgFuture;
   Timer? _okHoldTimer;
   bool _okHoldFired = false;
+  LogicalKeyboardKey? _holdActivateKey;
   static const _okHoldDelay = Duration(seconds: 1);
 
   bool _activeFor({required bool hovered, required bool focused}) =>
@@ -223,13 +224,30 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   void _setFocused(bool v) {
     if (_focusedN.value == v) return;
     if (!v) {
-      _okHoldTimer?.cancel();
-      _okHoldTimer = null;
+      _cancelOkHold();
       _okHoldFired = false;
     }
     _focusedN.value = v;
     widget.onInteractiveActive?.call(v || _hoveredN.value);
     if (v) widget.onTvFocusGained?.call();
+  }
+
+  void _cancelOkHold() {
+    _okHoldTimer?.cancel();
+    _okHoldTimer = null;
+    _holdActivateKey = null;
+  }
+
+  static bool _isActivateLogical(KeyEvent event) {
+    final key = event.logicalKey;
+    // Match shell chip / category rail — do NOT use ShellPaintScope.isActivateKey
+    // (host wires KeyDown-only). Hold-OK plays on KeyUp; KeyDown-only gates
+    // made Favorites / Already watched short-OK a no-op on Android TV.
+    return key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.space ||
+        key == LogicalKeyboardKey.gameButtonA;
   }
 
   @override
@@ -247,28 +265,26 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     final jump = widget.onHoldJumpToCategory;
     if (jump == null || !_leanbackOnly) return KeyEventResult.ignored;
-    final activate = ShellPaintScope.maybeOf(context)?.isActivateKey;
-    final isActivate = activate != null
-        ? activate(event)
-        : (event.logicalKey == LogicalKeyboardKey.select ||
-            event.logicalKey == LogicalKeyboardKey.enter ||
-            event.logicalKey == LogicalKeyboardKey.numpadEnter ||
-            event.logicalKey == LogicalKeyboardKey.space);
-    if (!isActivate) return KeyEventResult.ignored;
+    if (!_isActivateLogical(event)) return KeyEventResult.ignored;
     if (event is KeyDownEvent) {
       _okHoldFired = false;
+      _holdActivateKey = event.logicalKey;
       _okHoldTimer?.cancel();
       _okHoldTimer = Timer(_okHoldDelay, () {
         if (!mounted) return;
         _okHoldFired = true;
         jump();
       });
+      // Swallow activate — short press fires on KeyUp so hold can win.
       return KeyEventResult.handled;
     }
-    if (event is KeyUpEvent) {
-      _okHoldTimer?.cancel();
-      _okHoldTimer = null;
-      if (_okHoldFired) {
+    if (event is KeyRepeatEvent && _holdActivateKey == event.logicalKey) {
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent && _holdActivateKey == event.logicalKey) {
+      final fired = _okHoldFired;
+      _cancelOkHold();
+      if (fired) {
         _okHoldFired = false;
         return KeyEventResult.handled;
       }

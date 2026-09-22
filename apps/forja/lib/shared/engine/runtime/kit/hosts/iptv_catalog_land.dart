@@ -54,6 +54,14 @@ abstract final class IptvCatalogLand {
     _visibleStreamIds = _visibleStreamIdsOrdered.toSet();
   }
 
+  /// Drop painted ids immediately on category select so → / OK cannot focus a
+  /// stale tile from the previous group (that then remounts empty → shelf).
+  static void clearVisibleStreamIds() {
+    _visibleStreamIdsOrdered = const [];
+    _visibleStreamIds = const {};
+    _lastFocusedStreamId = null;
+  }
+
   static bool streamVisibleInFilter(String streamId) {
     final id = streamId.trim();
     if (id.isEmpty) return false;
@@ -205,31 +213,100 @@ abstract final class IptvCatalogLand {
   ///
   /// Prefers last D-pad/land focus, then [highlightedStreamId] (last played).
   /// Never uses spatial "in front of category" geometry.
-  static bool focusItemsFromCategory({String? tabId}) {
+  ///
+  /// [preferFirst]: Favorites / Already watched — always the first tile.
+  static bool focusItemsFromCategory({
+    String? tabId,
+    bool preferFirst = false,
+  }) {
     final tab = (tabId ?? '').trim().isNotEmpty
         ? tabId!.trim()
         : (ShellTvFocus.currentNavTabId ?? 'iptv');
-    final candidates = <String>[
-      if ((_lastFocusedStreamId ?? '').trim().isNotEmpty)
-        _lastFocusedStreamId!.trim(),
-      if ((highlightedStreamId.value ?? '').trim().isNotEmpty)
-        highlightedStreamId.value!.trim(),
-    ];
-    for (final sid in candidates) {
-      final idx = indexOfVisibleStream(sid);
-      if (idx == null) continue;
-      if (focusItemsAt(idx)) return true;
-      // Lazy grid may not have the node yet — arm memory + soft focus.
-      ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, itemsRowId, idx);
-      if (ShellTvFocusCoordinator.focusRowItem(tab, itemsRowId, idx)) {
-        return true;
+    if (_visibleStreamIdsOrdered.isEmpty) return false;
+    if (!preferFirst) {
+      final candidates = <String>[
+        if ((_lastFocusedStreamId ?? '').trim().isNotEmpty)
+          _lastFocusedStreamId!.trim(),
+        if ((highlightedStreamId.value ?? '').trim().isNotEmpty)
+          highlightedStreamId.value!.trim(),
+      ];
+      for (final sid in candidates) {
+        final idx = indexOfVisibleStream(sid);
+        if (idx == null) continue;
+        if (focusItemsAt(idx)) return true;
+        // Lazy grid may not have the node yet — arm memory + soft focus.
+        ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, itemsRowId, idx);
+        if (ShellTvFocusCoordinator.focusRowItem(tab, itemsRowId, idx)) {
+          return true;
+        }
       }
     }
-    if (_visibleStreamIdsOrdered.isEmpty) return false;
     noteFocusedStreamAt(0);
     ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, itemsRowId, 0);
     return ShellTvFocusCoordinator.focusRowItem(tab, itemsRowId, 0) ||
         ShellTvFocusCoordinator.focusRowItemExact(tab, itemsRowId, 0);
+  }
+
+  /// TV: keep / restore focus on the category rail at [categoryId].
+  static bool focusCategory({
+    required String tabId,
+    required String categoryId,
+    required int categoryIndex,
+  }) {
+    final tab = tabId.trim();
+    if (tab.isEmpty || categoryIndex < 0) return false;
+    ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, catsRowId, categoryIndex);
+    return ShellTvFocusCoordinator.focusRowItem(tab, catsRowId, categoryIndex) ||
+        ShellTvFocusCoordinator.focusRowItemExact(tab, catsRowId, categoryIndex);
+  }
+
+  static int? _syntheticFocusGen;
+
+  /// Cancel an in-flight Favorites / Watched focus schedule (other category OK).
+  static void cancelSyntheticFocusSchedule() {
+    _syntheticFocusGen = (_syntheticFocusGen ?? 0) + 1;
+  }
+
+  /// After OK on Favorites / Already watched: first channel when the page
+  /// paints channels; otherwise keep focus on that category (never the shelf).
+  static void scheduleFocusFirstOrKeepCategory({
+    required String tabId,
+    required String categoryId,
+    required int categoryIndex,
+  }) {
+    final tab = tabId.trim();
+    final cat = categoryId.trim();
+    if (tab.isEmpty || cat.isEmpty || categoryIndex < 0) return;
+    final gen = (_syntheticFocusGen ?? 0) + 1;
+    _syntheticFocusGen = gen;
+    preferCategoryFocusOnLand = true;
+    var frames = 0;
+    var reclaimed = false;
+    void attempt() {
+      if (_syntheticFocusGen != gen) return;
+      if (_visibleStreamIdsOrdered.isNotEmpty) {
+        preferCategoryFocusOnLand = false;
+        if (focusItemsFromCategory(tabId: tab, preferFirst: true)) {
+          _armResetPreferCategoryFocus();
+          return;
+        }
+      }
+      // Reclaim once early + once if still empty after paint — do not hammer
+      // requestFocus every frame (that blinked the category chrome).
+      if (!reclaimed || frames == 8) {
+        reclaimed = true;
+        focusCategory(
+          tabId: tab,
+          categoryId: cat,
+          categoryIndex: categoryIndex,
+        );
+      }
+      if (frames++ < 24) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
   static void _scheduleFocusChannel(String streamId) {
