@@ -1,5 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
 
 void main() {
@@ -68,5 +70,242 @@ void main() {
     expect(focus.hasFocus, isTrue, reason: 'carousel advance must not drop CTA focus');
     expect(find.text('CTA b'), findsOneWidget);
     expect(focus.context, isNotNull);
+  });
+
+  testWidgets('hero step indicator fills toward auto-advance', (tester) async {
+    final key = GlobalKey<CinematicHeroState>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 420,
+            width: 900,
+            child: CinematicHero(
+              key: key,
+              slides: const [
+                CinematicHeroSlide(
+                  id: 'a',
+                  title: 'Alpha',
+                  backdropUrl: 'https://example.com/a.jpg',
+                  overview: 'First',
+                ),
+                CinematicHeroSlide(
+                  id: 'b',
+                  title: 'Beta',
+                  backdropUrl: 'https://example.com/b.jpg',
+                  overview: 'Second',
+                ),
+              ],
+              layout: const CinematicHeroLayout(
+                kenBurns: false,
+                compact: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(key.currentState!.heroIndex, 0);
+    expect(key.currentState!.heroAdvanceProgress, 0);
+
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.5);
+    expect(
+      key.currentState!.heroAdvanceProgress,
+      closeTo(0.5, 0.05),
+    );
+    expect(key.currentState!.heroIndex, 0);
+
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.5);
+    expect(key.currentState!.heroAdvanceProgress, closeTo(1.0, 0.01));
+
+    // PageView needs stepped pumps — a single large duration pump may not settle.
+    var advanced = false;
+    for (var i = 0; i < 40; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      if (key.currentState!.heroIndex == 1) {
+        advanced = true;
+        break;
+      }
+    }
+    expect(advanced, isTrue, reason: 'auto-advance should move to the next slide');
+    expect(key.currentState!.heroAdvanceProgress, lessThan(0.25));
+  });
+
+  testWidgets('manual stepFilm resets hero advance progress', (tester) async {
+    final key = GlobalKey<CinematicHeroState>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 420,
+            width: 900,
+            child: CinematicHero(
+              key: key,
+              slides: const [
+                CinematicHeroSlide(
+                  id: 'a',
+                  title: 'Alpha',
+                  backdropUrl: 'https://example.com/a.jpg',
+                  overview: 'First',
+                ),
+                CinematicHeroSlide(
+                  id: 'b',
+                  title: 'Beta',
+                  backdropUrl: 'https://example.com/b.jpg',
+                  overview: 'Second',
+                ),
+              ],
+              layout: const CinematicHeroLayout(
+                kenBurns: false,
+                compact: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.4);
+    expect(key.currentState!.heroAdvanceProgress, greaterThan(0.2));
+
+    key.currentState!.stepFilm(1, instant: true);
+    await tester.pump();
+
+    expect(key.currentState!.heroIndex, 1);
+    expect(key.currentState!.heroAdvanceProgress, lessThan(0.05));
+  });
+
+  testWidgets('hero CTA focus pauses auto-advance for 10s', (tester) async {
+    final key = GlobalKey<CinematicHeroState>();
+    final ctaFocus = FocusNode(debugLabel: 'hero-cta');
+    addTearDown(ctaFocus.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 420,
+            width: 900,
+            child: CinematicHero(
+              key: key,
+              slides: const [
+                CinematicHeroSlide(
+                  id: 'a',
+                  title: 'Alpha',
+                  backdropUrl: 'https://example.com/a.jpg',
+                  overview: 'First',
+                ),
+                CinematicHeroSlide(
+                  id: 'b',
+                  title: 'Beta',
+                  backdropUrl: 'https://example.com/b.jpg',
+                  overview: 'Second',
+                ),
+              ],
+              layout: const CinematicHeroLayout(
+                kenBurns: false,
+                compact: true,
+              ),
+              actionRowBuilder: (context, slide, {required isActive}) {
+                if (!isActive) return const SizedBox.shrink();
+                return Focus(
+                  focusNode: ctaFocus,
+                  child: const Text('View details'),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.25);
+    final pausedAt = key.currentState!.heroAdvanceProgress;
+    expect(pausedAt, greaterThan(0.1));
+
+    ctaFocus.requestFocus();
+    await tester.pump();
+    expect(key.currentState!.heroAdvancePaused, isTrue);
+
+    await tester.pump(const Duration(seconds: 3));
+    expect(key.currentState!.heroAdvanceProgress, closeTo(pausedAt, 0.02));
+    expect(key.currentState!.heroIndex, 0);
+
+    // Leave CTA before the 10s hold ends — remaining hold should keep pause.
+    ctaFocus.unfocus();
+    await tester.pump();
+    expect(key.currentState!.heroAdvancePaused, isTrue);
+
+    await tester.pump(ShellTokens.heroCtaPauseDuration);
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(key.currentState!.heroAdvancePaused, isFalse);
+    final resumed = key.currentState!.heroAdvanceProgress;
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
+    expect(key.currentState!.heroAdvanceProgress, greaterThan(resumed));
+  });
+
+  testWidgets('hero CTA hover pauses auto-advance', (tester) async {
+    final key = GlobalKey<CinematicHeroState>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 420,
+            width: 900,
+            child: CinematicHero(
+              key: key,
+              slides: const [
+                CinematicHeroSlide(
+                  id: 'a',
+                  title: 'Alpha',
+                  backdropUrl: 'https://example.com/a.jpg',
+                  overview: 'First',
+                ),
+                CinematicHeroSlide(
+                  id: 'b',
+                  title: 'Beta',
+                  backdropUrl: 'https://example.com/b.jpg',
+                  overview: 'Second',
+                ),
+              ],
+              layout: const CinematicHeroLayout(
+                kenBurns: false,
+                compact: true,
+              ),
+              actionRowBuilder: (context, slide, {required isActive}) {
+                if (!isActive) return const SizedBox.shrink();
+                return const Text('View details');
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(find.text('View details')));
+    await tester.pump();
+
+    expect(key.currentState!.heroAdvancePaused, isTrue);
+    final pausedAt = key.currentState!.heroAdvanceProgress;
+    await tester.pump(const Duration(seconds: 3));
+    expect(key.currentState!.heroAdvanceProgress, closeTo(pausedAt, 0.02));
+
+    await gesture.moveTo(const Offset(1, 1));
+    await tester.pump();
+    expect(key.currentState!.heroAdvancePaused, isTrue);
+    await tester.pump(ShellTokens.heroCtaPauseDuration);
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(key.currentState!.heroAdvancePaused, isFalse);
   });
 }

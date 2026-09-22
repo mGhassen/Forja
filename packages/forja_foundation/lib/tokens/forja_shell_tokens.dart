@@ -414,6 +414,23 @@ abstract final class ShellTokens {
 
   static const double heroTextColumnWidthDesktop = 480;
 
+  /// Spotlight auto-advance dwell before the next slide.
+  static const Duration heroAutoAdvanceDuration = Duration(seconds: 8);
+
+  /// Pause auto-advance this long after View details / pin hover or focus.
+  static const Duration heroCtaPauseDuration = Duration(seconds: 10);
+
+  /// PageView transition when auto-advance / stepFilm animates.
+  static const Duration heroAutoAdvancePageDuration = Duration(milliseconds: 1000);
+
+  /// Vertical step-indicator stadium (active pill width × height).
+  static const double heroStepIndicatorActiveWidth = 18;
+  static const double heroStepIndicatorSize = 6;
+  static const double heroStepIndicatorRadius = 3;
+  static const double heroStepIndicatorGap = 4;
+  static const double heroStepIndicatorTrackAlpha = 0.35;
+  static const double heroStepIndicatorFillAlpha = 0.95;
+
   /// Top inset for hero text: clears [homeTopBarHeight] plus breathing room.
   static double get heroTextColumnTopInsetDesktop => homeTopBarHeight + 16;
 

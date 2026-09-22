@@ -261,7 +261,8 @@ class CinematicHero extends StatefulWidget {
   State<CinematicHero> createState() => CinematicHeroState();
 }
 
-class CinematicHeroState extends State<CinematicHero> {
+class CinematicHeroState extends State<CinematicHero>
+    with SingleTickerProviderStateMixin {
   static const int _heroLoopLength = 10000;
   static const int _heroLoopStart = 5000;
   static const double _heroGradientSolidEndFraction = 0.02;
@@ -275,15 +276,26 @@ class CinematicHeroState extends State<CinematicHero> {
 
   late final PageController _heroController;
   late final bool _ownsController;
+  late final AnimationController _heroProgress;
   /// Keeps the [PageView] element across compact/bleed parent shape changes so
   /// the controller never briefly has two scroll positions.
   final GlobalKey _heroPageViewKey = GlobalKey(debugLabel: 'cinematic-hero-page');
-  Timer? _heroTimer;
   int _heroIndex = 0;
   double? _heroPageViewportWidth;
+  bool _ctaHover = false;
+  bool _ctaFocus = false;
+  bool _heroAdvancePaused = false;
+  Timer? _ctaResumeTimer;
+  late final FocusScopeNode _ctaFocusScope;
 
   PageController get pageController => _heroController;
   int get heroIndex => _heroIndex;
+
+  /// Auto-advance fill 0…1 for the active step indicator (tests / gallery).
+  double get heroAdvanceProgress => _heroProgress.value;
+
+  /// True while View details / pin hover·focus holds auto-advance.
+  bool get heroAdvancePaused => _heroAdvancePaused;
 
   /// [PageController.page] asserts exactly one attached [PageView].
   /// [hasClients] is only "≥1" — remount / reparent can briefly attach two.
@@ -306,20 +318,30 @@ class CinematicHeroState extends State<CinematicHero> {
     _ownsController = widget.pageController == null;
     _heroController =
         widget.pageController ?? PageController(initialPage: _heroLoopStart);
-    _startHeroTimer();
+    _ctaFocusScope = FocusScopeNode(debugLabel: 'cinematic-hero-cta');
+    _ctaFocusScope.addListener(_onCtaFocusScope);
+    _heroProgress = AnimationController(
+      vsync: this,
+      duration: ShellTokens.heroAutoAdvanceDuration,
+    )..addStatusListener(_onHeroProgressStatus);
+    _restartHeroProgress();
   }
 
   @override
   void didUpdateWidget(covariant CinematicHero oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.slides.length != widget.slides.length) {
-      _startHeroTimer();
+      _restartHeroProgress();
     }
   }
 
   @override
   void dispose() {
-    _heroTimer?.cancel();
+    _ctaResumeTimer?.cancel();
+    _ctaFocusScope.removeListener(_onCtaFocusScope);
+    _ctaFocusScope.dispose();
+    _heroProgress.removeStatusListener(_onHeroProgressStatus);
+    _heroProgress.dispose();
     if (_ownsController) _heroController.dispose();
     super.dispose();
   }
@@ -333,16 +355,121 @@ class CinematicHeroState extends State<CinematicHero> {
     _goToHeroStep(next, instant: instant);
   }
 
-  void _startHeroTimer() {
-    _heroTimer?.cancel();
+  void _onHeroProgressStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    if (_heroAdvancePaused) return;
+    if (!_heroHasSingleClient || widget.slides.length < 2) return;
+    _heroController.nextPage(
+      duration: ShellTokens.heroAutoAdvancePageDuration,
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  void _restartHeroProgress() {
+    _heroProgress.stop();
+    _heroProgress.value = 0;
     if (widget.slides.length < 2) return;
-    _heroTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (!_heroHasSingleClient) return;
-      _heroController.nextPage(
-        duration: const Duration(milliseconds: 1000),
-        curve: Curves.easeInOutCubic,
-      );
-    });
+    if (_heroAdvancePaused) return;
+    _heroProgress.forward();
+  }
+
+  void _pauseHeroAdvance() {
+    _heroAdvancePaused = true;
+    if (_heroProgress.isAnimating) {
+      _heroProgress.stop(canceled: false);
+    }
+    _ctaResumeTimer?.cancel();
+    _ctaResumeTimer = Timer(
+      ShellTokens.heroCtaPauseDuration,
+      _onCtaPauseElapsed,
+    );
+  }
+
+  void _onCtaPauseElapsed() {
+    _ctaResumeTimer = null;
+    if (_ctaHover || _ctaFocus) {
+      // Still on View details / pin — stay paused until they leave, then
+      // [_setCtaHover] / [_setCtaFocus] arms a fresh hold.
+      return;
+    }
+    _resumeHeroAdvance();
+  }
+
+  void _resumeHeroAdvance() {
+    if (_ctaHover || _ctaFocus) return;
+    _heroAdvancePaused = false;
+    if (widget.slides.length < 2) return;
+    if (_heroProgress.value >= 1.0 - 0.001 ||
+        _heroProgress.status == AnimationStatus.completed) {
+      _restartHeroProgress();
+    } else {
+      _heroProgress.forward();
+    }
+  }
+
+  void _onCtaFocusScope() {
+    // Scope itself can become primary when a child unfocuses — only a real
+    // CTA child (View details / pin) counts as engaged.
+    final childFocused = _ctaFocusScope.focusedChild != null;
+    _setCtaFocus(childFocused);
+    if (!childFocused && _ctaFocusScope.hasPrimaryFocus) {
+      scheduleMicrotask(() {
+        if (!mounted) return;
+        if (_ctaFocusScope.focusedChild != null) return;
+        if (_ctaFocusScope.hasPrimaryFocus) {
+          _ctaFocusScope.unfocus();
+        }
+      });
+    }
+  }
+
+  void _onCtaEngagementChanged({
+    required bool wasEngaged,
+    required bool nowEngaged,
+  }) {
+    if (nowEngaged && !wasEngaged) {
+      _pauseHeroAdvance();
+      return;
+    }
+    if (!nowEngaged && wasEngaged) {
+      // Left the CTA. Keep an in-flight hold; if the 10s already elapsed
+      // while focused, arm a fresh hold before resume.
+      if (_heroAdvancePaused && _ctaResumeTimer == null) {
+        _pauseHeroAdvance();
+      }
+    }
+  }
+
+  void _setCtaHover(bool hovering) {
+    if (_ctaHover == hovering) return;
+    final wasEngaged = _ctaHover || _ctaFocus;
+    _ctaHover = hovering;
+    _onCtaEngagementChanged(
+      wasEngaged: wasEngaged,
+      nowEngaged: _ctaHover || _ctaFocus,
+    );
+  }
+
+  void _setCtaFocus(bool focused) {
+    if (_ctaFocus == focused) return;
+    final wasEngaged = _ctaHover || _ctaFocus;
+    _ctaFocus = focused;
+    _onCtaEngagementChanged(
+      wasEngaged: wasEngaged,
+      nowEngaged: _ctaHover || _ctaFocus,
+    );
+  }
+
+  /// Pause auto-advance while View details / pin is hovered or focused.
+  Widget _wrapHeroActionRow(Widget row) {
+    return FocusScope(
+      node: _ctaFocusScope,
+      child: MouseRegion(
+        onEnter: (_) => _setCtaHover(true),
+        onExit: (_) => _setCtaHover(false),
+        child: row,
+      ),
+    );
   }
 
   void _goToHeroStep(int realIndex, {required bool instant}) {
@@ -371,9 +498,15 @@ class CinematicHeroState extends State<CinematicHero> {
     final items = widget.slides;
     if (items.isEmpty) return;
     final realIndex = pageIndex % items.length;
-    if (_heroIndex != realIndex) {
+    final changed = _heroIndex != realIndex;
+    if (changed) {
       setState(() => _heroIndex = realIndex);
       widget.onIndexChanged?.call(realIndex);
+    }
+    // Restart dwell fill on a real slide change (auto-advance, swipe, stepFilm).
+    // Skip same-index loop wraps so the pill does not snap empty mid-dwell.
+    if (changed || _heroProgress.status == AnimationStatus.completed) {
+      _restartHeroProgress();
     }
     final target = _heroLoopStart + realIndex;
     if (pageIndex < _heroLoopStart ~/ 2 ||
@@ -958,9 +1091,11 @@ class CinematicHeroState extends State<CinematicHero> {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: widget.actionRowBuilder
-                        ?.call(context, slide, isActive: isActive) ??
-                    const SizedBox.shrink(),
+                child: _wrapHeroActionRow(
+                  widget.actionRowBuilder
+                          ?.call(context, slide, isActive: isActive) ??
+                      const SizedBox.shrink(),
+                ),
               ),
             ),
           ),
@@ -1066,8 +1201,10 @@ class CinematicHeroState extends State<CinematicHero> {
           SizedBox(height: actionGap),
           widget.upcomingNoticeBuilder?.call(context, slide) ??
               const SizedBox.shrink(),
-          widget.actionRowBuilder?.call(context, slide, isActive: isActive) ??
-              const SizedBox.shrink(),
+          _wrapHeroActionRow(
+            widget.actionRowBuilder?.call(context, slide, isActive: isActive) ??
+                const SizedBox.shrink(),
+          ),
         ],
       ),
     );
@@ -1269,21 +1406,52 @@ class CinematicHeroState extends State<CinematicHero> {
   Widget _buildStepIndicators({Axis axis = Axis.vertical}) {
     final count = widget.slides.length;
     if (count < 2) return const SizedBox.shrink();
+    final gap = ShellTokens.heroStepIndicatorGap;
+    final size = ShellTokens.heroStepIndicatorSize;
+    final activeW = ShellTokens.heroStepIndicatorActiveWidth;
+    final radius = BorderRadius.circular(ShellTokens.heroStepIndicatorRadius);
+    final track = Colors.white.withValues(
+      alpha: ShellTokens.heroStepIndicatorTrackAlpha,
+    );
+    final fill = Colors.white.withValues(
+      alpha: ShellTokens.heroStepIndicatorFillAlpha,
+    );
     final dots = List<Widget>.generate(count, (i) {
       final active = i == _heroIndex % count;
       return Padding(
         padding: EdgeInsets.symmetric(
-          vertical: axis == Axis.vertical ? 4 : 0,
-          horizontal: axis == Axis.horizontal ? 4 : 0,
+          vertical: axis == Axis.vertical ? gap : 0,
+          horizontal: axis == Axis.horizontal ? gap : 0,
         ),
         child: AnimatedContainer(
           duration: ForjaMotionTheme.of(context).playButtonLift.duration,
-          width: active ? 18 : 6,
-          height: 6,
+          width: active ? activeW : size,
+          height: size,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(3),
-            color: Colors.white.withValues(alpha: active ? 0.95 : 0.35),
+            borderRadius: radius,
+            color: track,
           ),
+          child: active
+              ? AnimatedBuilder(
+                  animation: _heroProgress,
+                  builder: (context, _) {
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: _heroProgress.value.clamp(0.0, 1.0),
+                        heightFactor: 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: radius,
+                            color: fill,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                )
+              : null,
         ),
       );
     });
