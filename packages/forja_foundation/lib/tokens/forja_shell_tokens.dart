@@ -852,19 +852,16 @@ abstract final class ShellTokens {
   static const double shellChipGapTight = 4;
   static const double shellChipGapTightTv = shellChipGapTight * tvChromeScale;
 
-  static const double denseListRowExtent = 52;
-  static const double denseListRowExtentTv = denseListRowExtent * tvChromeScale;
   static const double denseListTopPad = 4;
   static const double denseListSeparator = 1;
-  static double denseListRowExtentOf(bool tv) =>
-      tv ? denseListRowExtentTv : denseListRowExtent;
-  /// Row + separator stride for scroll-index math ([ListView.separated]).
-  static double denseListStrideOf(bool tv) =>
-      denseListRowExtentOf(tv) + denseListSeparator;
   static const double eventDenseFontSize = 14;
   static const double eventDenseFontSizeTv = tvTitleFontSize;
   static const double eventDenseMetaFontSize = 12;
   static const double eventDenseMetaFontSizeTv = tvBodyFontSize;
+  /// Tight line box so title+meta fit [denseListRowExtent] (font metrics alone overflow).
+  static const double eventDenseLineHeight = 1.15;
+  static const double eventDenseMetaGap = 2;
+  static const double eventDenseMetaGapTv = eventDenseMetaGap * tvChromeScale;
   static const double eventDenseIconSize = 20;
   static const double eventDenseIconSizeTv = actionChipIconSizeTv;
   static const double eventDensePadH = 12;
@@ -873,6 +870,26 @@ abstract final class ShellTokens {
   static const double eventDensePadVTv = eventDensePadV * tvChromeScale;
   static const double eventDenseLiveDot = 8;
   static const double eventDenseLiveDotTv = eventDenseLiveDot * tvChromeScale;
+
+  /// Fixed dense-list row height — derived from [EventDenseTile] pad + text stack.
+  /// Do **not** chrome-scale desktop → TV: leanback type uses [tvTitleFontSize] /
+  /// [tvBodyFontSize], not [tvChromeScale].
+  /// +1 slack covers subpixel TextPainter rounding on exact-fit math.
+  static const double denseListRowExtent = eventDensePadV * 2 +
+      eventDenseFontSize * eventDenseLineHeight +
+      eventDenseMetaGap +
+      eventDenseMetaFontSize * eventDenseLineHeight +
+      1;
+  static const double denseListRowExtentTv = eventDensePadVTv * 2 +
+      eventDenseFontSizeTv * eventDenseLineHeight +
+      eventDenseMetaGapTv +
+      eventDenseMetaFontSizeTv * eventDenseLineHeight +
+      1;
+  static double denseListRowExtentOf(bool tv) =>
+      tv ? denseListRowExtentTv : denseListRowExtent;
+  /// Row + separator stride for scroll-index math ([ListView.separated]).
+  static double denseListStrideOf(bool tv) =>
+      denseListRowExtentOf(tv) + denseListSeparator;
 
   static const double widgetShelfHeight = 36;
   static const double widgetShelfHeightTv = 28;

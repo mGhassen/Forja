@@ -126,6 +126,7 @@ class EventDenseTile extends StatelessWidget {
               SizedBox(width: idleLead),
             Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   CrossfadeSwap(
@@ -137,6 +138,7 @@ class EventDenseTile extends StatelessWidget {
                       style: TextStyle(
                         color: titleColor,
                         fontSize: titleFs,
+                        height: ShellTokens.eventDenseLineHeight,
                         fontWeight: titleWeight,
                       ),
                     ),
@@ -144,7 +146,9 @@ class EventDenseTile extends StatelessWidget {
                   if (meta.isNotEmpty)
                     Padding(
                       padding: EdgeInsets.only(
-                        top: ShellTokens.chromeScale(2, tv: tv),
+                        top: tv
+                            ? ShellTokens.eventDenseMetaGapTv
+                            : ShellTokens.eventDenseMetaGap,
                       ),
                       child: CrossfadeSwap(
                         child: Text(
@@ -155,6 +159,7 @@ class EventDenseTile extends StatelessWidget {
                           style: TextStyle(
                             color: ForjaShellColors.textSecondary,
                             fontSize: metaFs,
+                            height: ShellTokens.eventDenseLineHeight,
                           ),
                         ),
                       ),
@@ -175,6 +180,7 @@ class EventDenseTile extends StatelessWidget {
                           : ForjaShellColors.textSecondary
                               .withValues(alpha: 0.85),
                       fontSize: metaFs,
+                      height: ShellTokens.eventDenseLineHeight,
                     ),
                   ),
                 ),
