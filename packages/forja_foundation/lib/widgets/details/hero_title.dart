@@ -211,6 +211,7 @@ class HeroTitle extends StatelessWidget {
         title: title,
         logoUrl: logoUrl,
         slotHeight: slotHeight,
+        logoMaxHeight: logoMaxHeight,
         tvDensity: tvDensity,
         plainTitle: plainTitle,
         selectable: selectable,
@@ -236,6 +237,7 @@ class _DetailsHeroTitle extends StatefulWidget {
     required this.title,
     this.logoUrl,
     this.slotHeight,
+    this.logoMaxHeight,
     required this.tvDensity,
     required this.plainTitle,
     required this.selectable,
@@ -244,6 +246,7 @@ class _DetailsHeroTitle extends StatefulWidget {
   final String title;
   final String? logoUrl;
   final double? slotHeight;
+  final double? logoMaxHeight;
   final bool tvDensity;
   final bool plainTitle;
   final bool selectable;
@@ -271,11 +274,15 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
   @override
   Widget build(BuildContext context) {
     final logoUrl = paintableNetworkImageUrl(widget.logoUrl?.trim() ?? '');
-    final defaultHeight = widget.tvDensity ? ShellTokens.heroLogoMaxHeightTv : 96.0;
+    final defaultHeight = widget.logoMaxHeight ??
+        (widget.tvDensity ? ShellTokens.heroLogoMaxHeightTv : 96.0);
     final logoHeight = widget.slotHeight == null
         ? defaultHeight
         : widget.tvDensity
-            ? widget.slotHeight!.clamp(0.0, ShellTokens.heroLogoMaxHeightTv)
+            ? widget.slotHeight!.clamp(
+                0.0,
+                widget.logoMaxHeight ?? ShellTokens.heroLogoMaxHeightTv,
+              )
             : widget.slotHeight!;
     final fallback = _fallbackTitle(widget.title, logoHeight);
     if (logoUrl.isEmpty) return fallback;

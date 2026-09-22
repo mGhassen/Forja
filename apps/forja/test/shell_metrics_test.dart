@@ -95,6 +95,13 @@ void main() {
       ),
     );
     expect(
+      ShellTokens.playerPausedHeroLogoMaxHeightTv,
+      closeTo(
+        ShellTokens.playerPausedHeroLogoMaxHeight * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
       ShellTokens.playerStatusLabelFontSizeTv,
       ShellTokens.tvTitleFontSize,
     );

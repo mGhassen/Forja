@@ -570,6 +570,18 @@ abstract final class ShellTokens {
   static const double playerChromeProgressLogoSizeCompactTv =
       playerChromeProgressLogoSizeCompact * tvChromeScale;
 
+  /// Paused VOD hero title logo (left of player chrome).
+  static const double playerPausedHeroLogoMaxHeight = 96;
+  static const double playerPausedHeroLogoMaxHeightTv =
+      playerPausedHeroLogoMaxHeight * tvChromeScale;
+  static const double playerPausedHeroMaxWidth = 520;
+  static const double playerPausedHeroMaxWidthTv =
+      playerPausedHeroMaxWidth * tvChromeScale;
+  static const EdgeInsets playerPausedHeroPadding =
+      EdgeInsets.fromLTRB(20, 0, 20, 0);
+  static const EdgeInsets playerPausedHeroPaddingTv =
+      EdgeInsets.fromLTRB(12, 0, 12, 0);
+
   /// In-player CHECKING SOURCES / buffering status (right-center, no card).
   static const double playerStatusEdgeInset = 20;
   static const double playerStatusEdgeInsetTv =

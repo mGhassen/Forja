@@ -4,11 +4,11 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Fraction at which a title/episode counts as finished.
 const double kWatchFinishedThreshold = 0.85;
 
-/// Shared continue-watching / in-progress resume rules (2–85% watched).
+/// Shared continue-watching / in-progress resume rules (5–85% watched).
 bool watchProgressIsResumable(int positionMs, int durationMs) {
   if (durationMs <= 0) return false;
   final progress = positionMs / durationMs;
-  return progress >= 0.02 && progress < kWatchFinishedThreshold;
+  return progress >= 0.05 && progress < kWatchFinishedThreshold;
 }
 
 bool watchProgressIsFinished(int positionMs, int durationMs) {

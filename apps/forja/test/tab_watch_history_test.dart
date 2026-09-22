@@ -68,9 +68,11 @@ void main() {
   });
 
   group('isContinueWatchingRowEntry', () {
-    test('lists short saves on long runtimes once past player gate', () {
-      expect(isContinueWatchingRowEntry(15_000, 3_600_000), isTrue);
+    test('lists only inside 5–85% window', () {
+      expect(isContinueWatchingRowEntry(15_000, 3_600_000), isFalse);
       expect(isInProgressResume(15_000, 3_600_000), isFalse);
+      expect(isContinueWatchingRowEntry(180_000, 3_600_000), isTrue);
+      expect(isInProgressResume(180_000, 3_600_000), isTrue);
     });
 
     test('still hides finished and unsaved rows', () {

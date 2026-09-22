@@ -101,11 +101,21 @@ class PlayerPausedHero extends StatelessWidget {
             rawOverview.trim().toLowerCase() == episode.trim().toLowerCase())
         ? ''
         : rawOverview;
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final padding = tv
+        ? ShellTokens.playerPausedHeroPaddingTv
+        : ShellTokens.playerPausedHeroPadding;
+    final maxWidth = tv
+        ? ShellTokens.playerPausedHeroMaxWidthTv
+        : ShellTokens.playerPausedHeroMaxWidth;
+    final logoMaxHeight = tv
+        ? ShellTokens.playerPausedHeroLogoMaxHeightTv
+        : ShellTokens.playerPausedHeroLogoMaxHeight;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+      padding: padding,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
+        constraints: BoxConstraints(maxWidth: maxWidth),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -114,7 +124,8 @@ class PlayerPausedHero extends StatelessWidget {
               title: movie.title,
               logoUrl: tmdbLogoImageUrlFromPath(movie.logoPath),
               style: HeroTitleStyle.details,
-              tvDensity: ShellScope.metricsOf(context).usesTvDensity,
+              logoMaxHeight: logoMaxHeight,
+              tvDensity: tv,
               plainTitle:
                   ShellScope.inputPolicyOf(context).useFocusableMoodChips,
               selectable: shellDesktopTextSelect(context),
@@ -133,7 +144,7 @@ class PlayerPausedHero extends StatelessWidget {
                 episode,
                 style: TextStyle(
                   color: ForjaShellColors.cinematic.textSecondary,
-                  fontSize: ShellScope.metricsOf(context).usesTvDensity
+                  fontSize: tv
                       ? ShellTokens.playerChromeMetaFontSizeTv
                       : ShellTokens.playerChromeStatusFontSize,
                 ),
@@ -145,7 +156,7 @@ class PlayerPausedHero extends StatelessWidget {
                 overview: overview,
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize: ShellScope.metricsOf(context).usesTvDensity
+                  fontSize: tv
                       ? ShellTokens.playerChromeMetaFontSizeTv
                       : ShellTokens.playerChromeStatusFontSize,
                   height: 1.45,

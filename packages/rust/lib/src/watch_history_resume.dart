@@ -1,20 +1,18 @@
 /// Fraction at which a title/episode counts as finished (auto-watched + restart).
 const double watchFinishedThreshold = 0.85;
 
-/// Shared continue-watching / in-progress resume rules (2–85% watched).
+/// Shared continue-watching / in-progress resume rules (5–85% watched).
 bool isInProgressResume(int position, int duration) {
   if (duration <= 0) return false;
   final progress = position / duration;
-  return progress >= 0.02 && progress < watchFinishedThreshold;
+  return progress >= 0.05 && progress < watchFinishedThreshold;
 }
 
-/// Continue Watching row — show once the player would persist (~10s), not only
-/// after 2% of a long runtime (45m episode ≈ 54s at 2%).
+/// Continue Watching row — same 5–85% window as [isInProgressResume].
 bool isContinueWatchingRowEntry(int position, int duration) {
   if (duration <= 0 || position <= 0) return false;
   if (isWatchFinished(position, duration)) return false;
-  if (isInProgressResume(position, duration)) return true;
-  return position > 10000;
+  return isInProgressResume(position, duration);
 }
 
 /// Resume from saved progress when CW would list the title (matches save gate).

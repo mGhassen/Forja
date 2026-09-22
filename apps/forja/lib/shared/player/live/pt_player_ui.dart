@@ -145,6 +145,18 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       (_s.widget.seriesEpisodes?.isNotEmpty ?? false) &&
       _s.widget.seriesPortal != null;
 
+  /// Catalog IPTV Movies/Series only — not live channels or Live Sports.
+  bool get _showVodSkipButtons => widget.vodPlayback;
+
+  void _seekRelativeSeconds(int seconds) {
+    var target = _s._position + Duration(seconds: seconds);
+    if (target < Duration.zero) target = Duration.zero;
+    if (_s._duration > Duration.zero && target > _s._duration) {
+      target = _s._duration;
+    }
+    unawaited(_s._engineSeek(target));
+  }
+
   double _floatingEpgBottomInset(BuildContext context, bool compact) {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     final tv = ShellPaintScope.usesTvDensityOf(context);
@@ -1188,9 +1200,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               _revealControlsAndFocus(back: false);
               return;
             }
-            var target = _s._position - const Duration(seconds: 10);
-            if (target < Duration.zero) target = Duration.zero;
-            unawaited(_s._engineSeek(target));
+            _seekRelativeSeconds(-10);
             _scheduleHideControls();
           },
           onSeekForward: () {
@@ -1198,9 +1208,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               _revealControlsAndFocus(back: false);
               return;
             }
-            var target = _s._position + const Duration(seconds: 10);
-            if (target > _s._duration) target = _s._duration;
-            unawaited(_s._engineSeek(target));
+            _seekRelativeSeconds(10);
             _scheduleHideControls();
           },
           onToggleControls: _toggleControls,
@@ -2469,11 +2477,29 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     final hasSources = _s._sources.length > 1;
     final showTracks = _showTrackButtons;
     final showEpisodes = _showEpisodesButton;
+    final showSkip = _showVodSkipButtons;
 
     // Explicit ←/→ chain (issue 131) — Spacer / title-gap geometry fails on ATV.
     FocusNode? rightOfPlay() {
       if (!tvFocus) return null;
+      if (showSkip) return _s._rewind10Focus;
       return _s._replayFocus;
+    }
+
+    FocusNode? rightOfRewind10() {
+      if (!tvFocus || !showSkip) return null;
+      return _s._forward10Focus;
+    }
+
+    FocusNode? rightOfForward10() {
+      if (!tvFocus || !showSkip) return null;
+      return _s._replayFocus;
+    }
+
+    FocusNode? leftOfReplay() {
+      if (!tvFocus) return null;
+      if (showSkip) return _s._forward10Focus;
+      return _s._playFocus;
     }
 
     FocusNode? rightOfReplay() {
@@ -2593,12 +2619,44 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               _scheduleHideControls();
             },
           ),
+          if (showSkip) ...[
+            SizedBox(width: controlGap),
+            nextIcon(
+              icon: Icons.replay_10_rounded,
+              focusNode: _s._rewind10Focus,
+              onUpEdge: tvFocus ? upFromLeftControls : null,
+              onLeftEdge: tvFocus ? () => claim(_s._playFocus) : null,
+              onRightEdge: rightOfRewind10() == null
+                  ? null
+                  : () => claim(rightOfRewind10()!),
+              onTap: () {
+                _seekRelativeSeconds(-10);
+                _scheduleHideControls();
+              },
+            ),
+            SizedBox(width: controlGap),
+            nextIcon(
+              icon: Icons.forward_10_rounded,
+              focusNode: _s._forward10Focus,
+              onUpEdge: tvFocus ? upFromLeftControls : null,
+              onLeftEdge: tvFocus ? () => claim(_s._rewind10Focus) : null,
+              onRightEdge: rightOfForward10() == null
+                  ? null
+                  : () => claim(rightOfForward10()!),
+              onTap: () {
+                _seekRelativeSeconds(10);
+                _scheduleHideControls();
+              },
+            ),
+          ],
           SizedBox(width: controlGap),
           nextIcon(
             icon: Icons.replay_rounded,
             focusNode: _s._replayFocus,
             onUpEdge: tvFocus ? upFromLeftControls : null,
-            onLeftEdge: tvFocus ? () => claim(_s._playFocus) : null,
+            onLeftEdge: leftOfReplay() == null
+                ? null
+                : () => claim(leftOfReplay()!),
             onRightEdge: rightOfReplay() == null
                 ? null
                 : () => claim(rightOfReplay()!),

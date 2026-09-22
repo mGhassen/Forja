@@ -779,6 +779,9 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   final FocusNode _backFocus = FocusNode(debugLabel: 'iptv-player-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'iptv-player-play');
+  final FocusNode _rewind10Focus = FocusNode(debugLabel: 'iptv-player-rewind10');
+  final FocusNode _forward10Focus =
+      FocusNode(debugLabel: 'iptv-player-forward10');
   final FocusNode _replayFocus = FocusNode(debugLabel: 'iptv-player-replay');
   final FocusNode _seekFocus = FocusNode(debugLabel: 'iptv-player-seek');
 
@@ -1804,6 +1807,8 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);
     _backFocus.dispose();
     _playFocus.dispose();
+    _rewind10Focus.dispose();
+    _forward10Focus.dispose();
     _replayFocus.dispose();
     _playerMenuFocus.dispose();
     _statsFocus.dispose();
