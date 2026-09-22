@@ -121,6 +121,9 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   /// Type-to-jump highlight only — never commits [selectedId] / onSelect.
   String? _jumpHighlightId;
 
+  /// After pin/unpin, follow the row to its new list index (scroll + focus).
+  String? _pendingFocusId;
+
   double _listPadV(BuildContext context) => catalogUsesTvDensity(context)
       ? catalogCategoryRailListPadV(context)
       : widget.listPadV;
@@ -168,6 +171,18 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
         widget.canReorder && widget.onReorder != null && _movable.length > 1;
     if (_tvFloatingReorder && !canReorder) {
       _setFloating(null);
+    }
+    final pending = _pendingFocusId;
+    if (pending != null) {
+      final oldIdx = oldWidget.items.indexWhere((e) => e.id == pending);
+      final newIdx = widget.items.indexWhere((e) => e.id == pending);
+      final oldPinned =
+          oldIdx >= 0 ? oldWidget.items[oldIdx].pinned : null;
+      final newPinned =
+          newIdx >= 0 ? widget.items[newIdx].pinned : null;
+      if (newIdx >= 0 && (oldIdx != newIdx || oldPinned != newPinned)) {
+        _scheduleScrollAndFocus(pending);
+      }
     }
   }
 
@@ -332,6 +347,50 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
     _scroll.jumpTo(target);
   }
 
+  void _handleTogglePin(String id) {
+    // Drop float / pin-reveal chrome so focus lands on the category row.
+    if (_floatingId == id) _setFloating(null);
+    final owner = _CatalogCategoryRowState._chromeOwner;
+    if (owner != null && owner.mounted && owner.widget.item.id == id) {
+      if (owner._tvPinRevealed) {
+        owner.setState(() => owner._tvPinRevealed = false);
+      }
+      owner._releaseChrome();
+    }
+    // Wait for host items rebuild ([didUpdateWidget]) before scroll+focus —
+    // scheduling here would still see the pre-pin order.
+    _pendingFocusId = id;
+    widget.onTogglePin?.call(id);
+  }
+
+  void _scheduleScrollAndFocus(String id) {
+    void go({required bool clear}) {
+      if (!mounted || _pendingFocusId != id) return;
+      _scrollAndFocusId(id);
+      if (clear) _pendingFocusId = null;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      go(clear: false);
+      // Second frame: row must be mounted after lazy sliver jump.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        go(clear: true);
+      });
+    });
+  }
+
+  void _scrollAndFocusId(String id) {
+    final idx = widget.items.indexWhere((e) => e.id == id);
+    if (idx < 0) return;
+    // Keep Favorites / Already watched above when the pin sits under them.
+    final keepAbove = idx.clamp(0, math.max(_fixed.length, 1)).toInt();
+    _scrollToIndex(idx, keepAbove: keepAbove);
+    final row = _CatalogCategoryRowState._byId[id];
+    if (row == null || !row.mounted) return;
+    row._clearPinReveal();
+    row._focusRow();
+  }
+
   @override
   Widget build(BuildContext context) {
     final railW = widget.width ?? catalogSideRailWidth(context);
@@ -412,7 +471,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
                 widget.onSelect!(item.id);
               },
         onTogglePin: item.pinnable && widget.onTogglePin != null
-            ? () => widget.onTogglePin!(item.id)
+            ? () => _handleTogglePin(item.id)
             : null,
         onEnterFloating: canReorder && reorderIndex != null
             ? () => _setFloating(item.id)
@@ -691,6 +750,9 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     with SingleTickerProviderStateMixin {
   static _CatalogCategoryRowState? _chromeOwner;
 
+  /// Mounted rows by category id — pin/unpin scroll+focus after list rebuild.
+  static final Map<String, _CatalogCategoryRowState> _byId = {};
+
   /// Only one row paints hover — MouseRegion onExit is often skipped when a
   /// sibling enters, a Tooltip overlays, or the list scrolls under the cursor.
   static _CatalogCategoryRowState? _hoverOwner;
@@ -778,12 +840,19 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     _holdSunrise = AnimationController(vsync: this);
     _rowFocus = FocusNode(debugLabel: 'catalog-cat-${widget.listIndex}');
     _pinFocus = FocusNode(debugLabel: 'catalog-cat-pin-${widget.listIndex}');
+    _byId[widget.item.id] = this;
     if (widget.floating) _claimChrome();
   }
 
   @override
   void didUpdateWidget(covariant _CatalogCategoryRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.id != widget.item.id) {
+      if (_byId[oldWidget.item.id] == this) {
+        _byId.remove(oldWidget.item.id);
+      }
+      _byId[widget.item.id] = this;
+    }
     if (widget.floating != oldWidget.floating && widget.floating) {
       _claimChrome();
     }
@@ -812,6 +881,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
   void dispose() {
     _okHoldTimer?.cancel();
     if (_hoverOwner == this) _hoverOwner = null;
+    if (_byId[widget.item.id] == this) _byId.remove(widget.item.id);
     _holdOriginN.dispose();
     _hoveredN.dispose();
     _holdSunrise.dispose();

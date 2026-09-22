@@ -390,18 +390,20 @@ class CatalogCardsGrid extends StatelessWidget {
   Widget _denseList(BuildContext context) {
     final inset = pad ?? ShellTokens.compactChromeLeadingInset(context);
     final trail = pad ?? ShellTokens.bodyHorizontalPadding;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final rowExtent = ShellTokens.denseListRowExtentOf(tv);
+    final stride = ShellTokens.denseListStrideOf(tv);
     return _OwnedScrollHost(
       onScrollIntoViewChanged: onScrollIntoViewChanged,
       scrollToIndex: (scroll, index) {
-        if (!scroll.hasClients || index < 0) return;
-        const rowH = 56.0;
-        const topPad = 4.0;
-        final target = (topPad + index * rowH).clamp(
-          0.0,
-          scroll.position.maxScrollExtent,
+        // Keep-visible — same as IPTV categories. Always-pin-to-top made the
+        // schedule jump under a sticky focus highlight on every ↓.
+        CatalogDenseList.scrollIndexKeepVisible(
+          scroll,
+          index: index,
+          rowExtent: rowExtent,
+          stride: stride,
         );
-        if ((scroll.offset - target).abs() < 0.5) return;
-        scroll.jumpTo(target);
       },
       builder: (context, controller) => CatalogDenseList(
         controller: controller,
@@ -1390,6 +1392,9 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
       motion: ForjaMotionPreset.fillOnly,
       showFocusFill: false,
       showFocusBorder: false,
+      // Coordinator + [CatalogDenseList.scrollIndexKeepVisible] own scroll —
+      // same as IPTV category rows (avoid double ensureVisible pin).
+      ensureVisibleMode: ShellPaintEnsureVisible.off,
       listIndex: widget.listIndex,
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,

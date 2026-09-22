@@ -15,7 +15,7 @@ class CatalogDenseList extends StatelessWidget {
     required this.itemBuilder,
     this.controller,
     this.leading,
-    this.topPadding = 4,
+    this.topPadding = ShellTokens.denseListTopPad,
     this.trailing,
     this.bottomPadding = 0,
     this.separatorColor,
@@ -31,6 +31,44 @@ class CatalogDenseList extends StatelessWidget {
   final double bottomPadding;
   final Color? separatorColor;
   final Widget Function(Widget child)? wrapScroll;
+
+  /// TV D-pad: nudge scroll only when [index] is clipped — same contract as
+  /// IPTV [CatalogCategoryRail]. Always-pin-to-top jumps the list under a
+  /// sticky focus highlight.
+  static void scrollIndexKeepVisible(
+    ScrollController scroll, {
+    required int index,
+    required double rowExtent,
+    double topPad = ShellTokens.denseListTopPad,
+    double stride = 0,
+    int keepAbove = 1,
+  }) {
+    if (!scroll.hasClients || index < 0) return;
+    final position = scroll.position;
+    final viewport = position.viewportDimension;
+    if (viewport <= 0 || rowExtent <= 0) return;
+    final step = stride > 0 ? stride : rowExtent;
+    final itemTop = topPad + index * step;
+    final itemBottom = itemTop + rowExtent;
+    final viewTop = position.pixels;
+    final viewBottom = viewTop + viewport;
+    double? target;
+    if (itemTop < viewTop + keepAbove * rowExtent) {
+      target = (itemTop - keepAbove * rowExtent).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
+    } else if (itemBottom > viewBottom - rowExtent * 0.5) {
+      target = (itemBottom - viewport + rowExtent * 0.5).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
+    } else {
+      return;
+    }
+    if ((position.pixels - target).abs() < 0.5) return;
+    scroll.jumpTo(target);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,12 +105,14 @@ class CatalogDenseList extends StatelessWidget {
     required int itemCount,
     required IndexedWidgetBuilder itemBuilder,
     double? leading,
-    double topPadding = 4,
+    double topPadding = ShellTokens.denseListTopPad,
     double? trailing,
     double bottomPadding = 0,
     Color? separatorColor,
     Widget Function(Widget child)? wrapScroll,
   }) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final rowExtent = ShellTokens.denseListRowExtentOf(tv);
     final list = ListView.separated(
       controller: scroll,
       padding: EdgeInsets.fromLTRB(
@@ -83,11 +123,15 @@ class CatalogDenseList extends StatelessWidget {
       ),
       itemCount: itemCount,
       separatorBuilder: (_, _) => Divider(
-        height: 1,
+        height: ShellTokens.denseListSeparator,
         color: (separatorColor ?? ForjaShellColors.borderSubtle)
             .withValues(alpha: 0.6),
       ),
-      itemBuilder: itemBuilder,
+      // Fixed extent so TV keep-visible scroll math matches paint.
+      itemBuilder: (context, i) => SizedBox(
+        height: rowExtent,
+        child: itemBuilder(context, i),
+      ),
     );
     final wrap = wrapScroll;
     final child = wrap == null ? list : wrap(list);
@@ -221,7 +265,7 @@ class CatalogScheduleDenseSkeleton extends StatelessWidget {
   const CatalogScheduleDenseSkeleton({
     super.key,
     this.leading,
-    this.topPadding = 4,
+    this.topPadding = ShellTokens.denseListTopPad,
     this.trailing,
     this.bottomPadding = 0,
     this.shimmer,
@@ -255,7 +299,7 @@ class CatalogScheduleDenseSkeleton extends StatelessWidget {
           ),
           itemCount: count,
           separatorBuilder: (_, _) => Divider(
-            height: 1,
+            height: ShellTokens.denseListSeparator,
             color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
           ),
           itemBuilder: (context, i) => CatalogDenseRowSkeleton(index: i),

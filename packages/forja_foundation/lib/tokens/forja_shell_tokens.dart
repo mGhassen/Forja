@@ -831,6 +831,13 @@ abstract final class ShellTokens {
 
   static const double denseListRowExtent = 52;
   static const double denseListRowExtentTv = denseListRowExtent * tvChromeScale;
+  static const double denseListTopPad = 4;
+  static const double denseListSeparator = 1;
+  static double denseListRowExtentOf(bool tv) =>
+      tv ? denseListRowExtentTv : denseListRowExtent;
+  /// Row + separator stride for scroll-index math ([ListView.separated]).
+  static double denseListStrideOf(bool tv) =>
+      denseListRowExtentOf(tv) + denseListSeparator;
   static const double eventDenseFontSize = 14;
   static const double eventDenseFontSizeTv = tvTitleFontSize;
   static const double eventDenseMetaFontSize = 12;

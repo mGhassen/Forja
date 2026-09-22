@@ -187,6 +187,69 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'OK on pin scrolls to new index and focuses the category',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          child: const SizedBox(
+            height: 280,
+            child: _PinRailHost(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final scrollState = tester.state<ScrollableState>(find.byType(Scrollable));
+      final offsetBefore = scrollState.position.maxScrollExtent;
+      expect(offsetBefore, greaterThan(0), reason: 'list must be taller than rail');
+      scrollState.position.jumpTo(offsetBefore);
+      await tester.pumpAndSettle();
+
+      final zFinder = find.text('Z');
+      expect(zFinder, findsOneWidget);
+
+      Focus.of(tester.element(zFinder)).requestFocus();
+      await tester.pump();
+
+      // Hold OK reveals pin (pin-only rail — no floating reorder).
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pump(const Duration(seconds: 2, milliseconds: 50));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      expect(find.byIcon(Icons.push_pin_outlined), findsWidgets);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      // OK on pin.
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      // Z is first under Favorites.
+      final labels = tester
+          .widgetList<Text>(find.byType(Text))
+          .map((t) => t.data)
+          .whereType<String>()
+          .where((s) => s == 'Favorites' || s == 'A' || s == 'Z')
+          .toList();
+      expect(labels.take(3).toList(), ['Favorites', 'Z', 'A']);
+
+      final zFocus = Focus.of(tester.element(find.text('Z')));
+      expect(zFocus.hasFocus, isTrue, reason: 'pin must focus the category');
+
+      final offsetAfter = tester
+          .state<ScrollableState>(find.byType(Scrollable))
+          .position
+          .pixels;
+      expect(
+        offsetAfter,
+        lessThan(offsetBefore),
+        reason: 'rail must scroll up to the pinned row',
+      );
+    },
+  );
 }
 
 class _ReorderRailHost extends StatefulWidget {
@@ -218,6 +281,68 @@ class _ReorderRailHostState extends State<_ReorderRailHost> {
           _items = next;
         });
       },
+    );
+  }
+}
+
+class _PinRailHost extends StatefulWidget {
+  const _PinRailHost();
+
+  @override
+  State<_PinRailHost> createState() => _PinRailHostState();
+}
+
+class _PinRailHostState extends State<_PinRailHost> {
+  late List<CatalogCategoryItem> _items;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = [
+      const CatalogCategoryItem(
+        id: 'fav',
+        label: 'Favorites',
+        fixed: true,
+        icon: Icons.star_rounded,
+      ),
+      for (var i = 0; i < 26; i++)
+        CatalogCategoryItem(
+          id: String.fromCharCode(97 + i),
+          label: String.fromCharCode(65 + i),
+          pinnable: true,
+        ),
+    ];
+  }
+
+  void _togglePin(String id) {
+    setState(() {
+      final idx = _items.indexWhere((e) => e.id == id);
+      if (idx < 0) return;
+      final item = _items[idx];
+      final pinning = !item.pinned;
+      final next = [..._items]..removeAt(idx);
+      final updated = CatalogCategoryItem(
+        id: item.id,
+        label: item.label,
+        pinnable: true,
+        pinned: pinning,
+      );
+      if (pinning) {
+        final insertAt = next.indexWhere((e) => !e.fixed);
+        next.insert(insertAt < 0 ? next.length : insertAt, updated);
+      } else {
+        next.insert(idx.clamp(0, next.length), updated);
+      }
+      _items = next;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CatalogCategoryRail(
+      selectedId: 'z',
+      items: _items,
+      onTogglePin: _togglePin,
     );
   }
 }

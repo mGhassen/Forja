@@ -585,11 +585,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       order.remove(id);
       order.insert(0, id);
     }
-    await PortalLiveChannelListsStore.savePinnedCategories(key, next);
-    if (order != null) {
-      await PortalLiveChannelListsStore.saveCategoryOrder(key, order);
-    }
-    await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
+    // Optimistic paint so the rail can scroll+focus the new index this frame.
     if (!mounted) return;
     setState(() {
       _pinned = next;
@@ -602,6 +598,11 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     });
     _publishBar(chromeItems: _items);
     _bumpEpoch();
+    await PortalLiveChannelListsStore.savePinnedCategories(key, next);
+    if (order != null) {
+      await PortalLiveChannelListsStore.saveCategoryOrder(key, order);
+    }
+    await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
   }
 
   Future<void> _reorder(int oldIndex, int newIndex) async {

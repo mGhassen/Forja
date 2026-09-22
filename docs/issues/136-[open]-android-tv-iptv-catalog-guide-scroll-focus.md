@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **18 / 18** fix · **0 / 7** acceptance · **1** deferred (A05) |
+| **Progress** | **19 / 19** fix · **0 / 7** acceptance · **1** deferred (A05) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -37,6 +37,7 @@
 | 16 | I136-T16 | Channel grid last-row ↓ traps (no spatial wrap back to category rail); `moveInGrid` last-row down returns handled | ✅ |
 | 17 | I136-T17 | Leanback skim: mute open-category selected mark while pending-commit; quieter selected-only chrome (no brand-green icon) | ✅ |
 | 18 | I136-T18 | Category rail HoldAccel: `ensureVisibleMode.off` (parent jump owns scroll); paint chrome from `FocusNode.hasFocus`; focus-before-jump when mounted | ✅ |
+| 19 | I136-T19 | Restore pin/unpin scroll+focus on `CatalogCategoryRail` (kit host regression after T14 wipe) | ✅ |
 
 ---
 
@@ -78,6 +79,8 @@ D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-pla
 **Follow-up (I136-T13):** Enter float set `_tvCategoryPinFocused` (ExcludeFocus channels); HW OK/← cleared float without clearing that flag — OK/→ after pin/reorder stayed on the category rail. Clear the flag when float drops (and on row dispose).
 
 **Follow-up (I136-T14):** T07 froze rail scroll on pin so the old viewport slot kept focus while the row jumped to the top of the movable list — focus looked lost. Pin/unpin now scrolls to the row’s new index and focuses it (`I136-A06`; `I136-A05` freeze-scroll deferred).
+
+**Follow-up (I136-T19):** Kit `CatalogCategoryRail` + category-bar host lost T14 after the pack-product wipe — pin only reordered the list. Restored optimistic host update + rail scroll/focus on the new index (widget test covers OK-on-pin).
 
 **Follow-up (I136-T15):** ↑/↓ left a ghost focus fill for one frame (deferred `_focused=false`) plus selected `inkHover` — looked like 2–3 hovers. Blur clears focus chrome sync; on TV selected-only keeps the green left bar without a second fill (`I136-A07`).
 
