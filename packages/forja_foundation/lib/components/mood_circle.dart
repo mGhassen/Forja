@@ -108,7 +108,7 @@ class MoodCircle extends StatelessWidget {
         icon: icon!,
         accent: accent!,
         selected: selected,
-        // Hover/focus only — selected paints via [selected] (green label + border).
+        // Hover/focus only — selected paints via [selected] (accent label).
         active: active,
         scaleOnActive: scaleOnActive,
         onTap: onTap,
@@ -288,12 +288,12 @@ class _AccentMoodCircle extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
-              // Focus / hover / selected → brand green (not mood accent).
-              color: lit
-                  ? ForjaShellColors.brandGreen
-                  : Colors.white.withValues(alpha: 0.72),
+              // Selected → mood accent. Hover/focus → bright white. Idle → muted.
+              color: selected
+                  ? accent
+                  : Colors.white.withValues(alpha: active ? 1.0 : 0.72),
               fontSize: layout.labelFontSize,
-              fontWeight: lit ? FontWeight.w700 : FontWeight.w600,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w600,
               height: layout.labelLineHeight,
             ),
           ),

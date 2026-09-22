@@ -103,11 +103,15 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
     );
 
     if (useTv) {
+      // Accent circle already paints hover/focus (glow + bright label).
+      // Suppress host ink/fill — gray pill over the chip was a regression.
       return ShellPaintScope.focusableTap(
         context: context,
         onTap: widget.onTap,
         borderRadius: layout.circleSize / 2,
         motion: ForjaMotionPreset.fillOnly,
+        showFocusFill: false,
+        suppressInkHover: true,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange: scaleOnHover ? _setHovered : null,
         listIndex: widget.listIndex,

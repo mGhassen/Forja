@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/shell_mood_circle.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -82,5 +83,55 @@ void main() {
       ),
     );
     expect(layout.circleSize, ShellTokens.moodCircleSizeTv);
+  });
+
+  testWidgets('accent mood label: selected=accent, hover=white, never brand green', (
+    tester,
+  ) async {
+    const accent = Color(0xFFE91E63);
+
+    TextStyle labelStyle(String label) {
+      return tester.widget<Text>(find.text(label)).style!;
+    }
+
+    await tester.pumpWidget(
+      _wrap(
+        tv: false,
+        child: Row(
+          children: [
+            MoodCircle(
+              label: 'Idle',
+              icon: Icons.favorite,
+              accent: accent,
+              layout: MoodCircleLayout.desktop,
+              selected: false,
+              active: false,
+            ),
+            MoodCircle(
+              label: 'Hover',
+              icon: Icons.favorite,
+              accent: accent,
+              layout: MoodCircleLayout.desktop,
+              selected: false,
+              active: true,
+            ),
+            MoodCircle(
+              label: 'Selected',
+              icon: Icons.favorite,
+              accent: accent,
+              layout: MoodCircleLayout.desktop,
+              selected: true,
+              active: false,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(labelStyle('Idle').color, Colors.white.withValues(alpha: 0.72));
+    expect(labelStyle('Hover').color, Colors.white);
+    expect(labelStyle('Selected').color, accent);
+    expect(labelStyle('Hover').color, isNot(ForjaShellColors.brandGreen));
+    expect(labelStyle('Selected').color, isNot(ForjaShellColors.brandGreen));
   });
 }
