@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 12** code · **0 / 12** acceptance |
+| **Progress** | **13 / 13** code · **0 / 12** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,7 +23,7 @@
 | 2 | I301-T02 | Channel top-row ↑ halves — **viewport** left shelf / right Portals (`focusUpLeft`/`focusUpRight` + spatial half) | ✅ |
 | 3 | I301-T03 | → last channel column → remembered portal when panel open (`focusRight: portals`) | ✅ |
 | 4 | I301-T04 | Hold OK ~2s pin/reorder — clear pin on blur; single chrome owner (no dual green) | ✅ |
-| 5 | I301-T05 | Hub land focuses last channel (`hydrateHighlightFromStore`; live `preferCategoryFocusNow`) | ✅ |
+| 5 | I301-T05 | Hub land focuses last **category**; scrolls last channel into view (`hydrateHighlightFromStore` keeps `preferCategoryFocusOnLand`) | ✅ |
 | 6 | I301-T06 | Portals chip open scrolls then focuses selected portal | ✅ |
 | 7 | I301-T07 | Portal search: `TvBrowseTextField` via `searchFieldBuilder` | ✅ |
 | 8 | I301-T08 | Search → at caret end → × (panel + top bar) | ✅ |
@@ -31,6 +31,7 @@
 | 10 | I301-T10 | Empty Favorites/Watched — stamp empty `stream_ids` in **live** `_prelude.js` | ✅ |
 | 11 | I301-T11 | Hover→keyboard focus via shared `ShellHoverFocus` (nav + top bar + settings + lists) | ✅ |
 | 12 | I301-T12 | Category → focuses **in-front** channel (spatial); search OK → first hit or keep field | ✅ |
+| 13 | I301-T13 | Pack `focus.enter/restore: cats` + arm cats memory on select (nav OK lands last selected category) | ✅ |
 
 ---
 
@@ -42,7 +43,7 @@
 | 2 | ↑ top channels: left half → shelf, right → Portals | ⬜ retest |
 | 3 | Hold OK pin / no dual green / no jump to selected | ⬜ retest |
 | 4 | Category → in-front channel | ⬜ retest |
-| 5 | Open hub → last category + channel | ✅ (user) |
+| 5 | Open hub → last category focused; channel scrolled | ⬜ retest |
 | 6 | Back from player → channel (not category) | ⬜ retest |
 | 7 | → last channel → selected portal | ✅ (user) |
 | 8 | Hover→key top bar / nav / settings | ⬜ retest |

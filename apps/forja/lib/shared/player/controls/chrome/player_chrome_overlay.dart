@@ -21,6 +21,7 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 part 'player_chrome_overlay_hero.dart';
 
 /// D-pad / hover highlight for player chrome - works even without [ShellScope].
@@ -396,7 +397,7 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
                 ),
                 Icon(
                   Icons.expand_more_rounded,
-                  size: 16,
+                  size: ShellPaintScope.iconOf(context, 16),
                   color: _tvFocused
                       ? ForjaShellColors.brandGreen
                       : Colors.white.withValues(
@@ -771,7 +772,11 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
               ),
             if (!widget.loading) ...[
               const SizedBox(width: 6),
-              Icon(widget.trailingIcon, color: fg, size: 18),
+              Icon(
+                widget.trailingIcon,
+                color: fg,
+                size: ShellPaintScope.iconOf(context, 18),
+              ),
             ],
           ],
         ),

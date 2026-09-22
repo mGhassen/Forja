@@ -10,6 +10,7 @@ import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 /// Fired when the user picks Off, an embedded track, or an external file.
 typedef PlayerSubtitleSelectionCallback = void Function({
   required bool off,
@@ -488,7 +489,7 @@ class _SubtitleTuneChip extends StatelessWidget {
         height: 32,
         child: Icon(
           Icons.tune_rounded,
-          size: 18,
+          size: ShellPaintScope.iconOf(context, 18),
           color: PlayerPopupTokens.muted,
         ),
       ),

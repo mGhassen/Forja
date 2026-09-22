@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 
 class ShellBody extends StatelessWidget {
   const ShellBody({
@@ -51,9 +52,11 @@ class ShellBody extends StatelessWidget {
                         // player, must not keep tickers alive — wastes CPU on
                         // ATV while decode needs the SoC.
                         enabled: i == selectedIndex && !playerActive,
-                        child: mountedTabIds.contains(visibleIds[i])
-                            ? tabFor(visibleIds[i])
-                            : const SizedBox.shrink(),
+                        child: _tabSlot(
+                          context,
+                          index: i,
+                          tabId: visibleIds[i],
+                        ),
                       ),
                     ),
                 ],
@@ -63,5 +66,21 @@ class ShellBody extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Selected + not yet mounted used to paint [SizedBox.shrink] — blank hub
+  /// (no loading ticker, no pack structure) after pack reload / remount races.
+  Widget _tabSlot(
+    BuildContext context, {
+    required int index,
+    required String tabId,
+  }) {
+    if (mountedTabIds.contains(tabId)) {
+      return tabFor(tabId);
+    }
+    if (index == selectedIndex) {
+      return hubNeutralLoadingSkeleton(context, tabId: tabId);
+    }
+    return const SizedBox.shrink();
   }
 }

@@ -353,66 +353,78 @@ class _PortalListViewState extends State<PortalListView> {
 
   /// Desktop/TV get the host's browse/edit field (D-pad land = highlight only,
   /// OK opens the IME). Phone keeps the plain type-on-focus field.
+  ///
+  /// Chrome matches [EventListSearch] top-bar pill — fixed subtle border, no
+  /// green Material focus ring when selected.
   Widget _searchField({
     required double searchFontSize,
     required String hint,
   }) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final radius = PortalListTokens.searchFieldRadiusOf(tv);
-    final prefixSlot = PortalListTokens.searchPrefixSlotOf(tv);
-    final padH = PortalListTokens.searchFieldPadHOf(tv);
-    final padV = PortalListTokens.searchFieldPadVOf(tv);
+    final height = PortalListTokens.searchFieldHeightOf(tv);
+    final fieldPadV = PortalListTokens.searchFieldPadVOf(tv);
+    final pad = PortalListTokens.searchChromePadOf(tv);
+    final lead = PortalListTokens.searchChromeLeadOf(tv);
+    final mid = PortalListTokens.searchChromeMidOf(tv);
     final decoration = InputDecoration(
       hintText: hint,
       hintStyle: GoogleFonts.plusJakartaSans(
-        color: Colors.white38,
+        color: Colors.white.withValues(alpha: 0.38),
         fontSize: searchFontSize,
       ),
-      prefixIcon: Icon(
-        Icons.search_rounded,
-        color: ForjaShellColors.iconMuted,
-        size: PortalListTokens.searchPrefixIconSizeOf(tv),
-      ),
-      prefixIconConstraints: BoxConstraints.tightFor(
-        width: prefixSlot,
-        height: prefixSlot,
-      ),
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.05),
       isDense: true,
-      contentPadding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-      ),
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: InputBorder.none,
+      disabledBorder: InputBorder.none,
+      errorBorder: InputBorder.none,
+      focusedErrorBorder: InputBorder.none,
+      contentPadding: EdgeInsets.symmetric(vertical: fieldPadV),
     );
     final style = GoogleFonts.plusJakartaSans(
       color: Colors.white,
       fontSize: searchFontSize,
     );
     final build = widget.searchFieldBuilder;
-    if (build != null) {
-      return build(
-        context,
-        controller: _searchCtrl,
-        focusNode: _searchFocus,
-        onChanged: (v) => setState(() => _query = v),
-        onEscape: _closeSearch,
-        decoration: decoration,
-        style: style,
-        placeholder: hint,
-      );
-    }
-    return TextField(
-      controller: _searchCtrl,
-      focusNode: _searchFocus,
-      style: style,
-      decoration: decoration,
-      onChanged: (v) => setState(() => _query = v),
+    final field = build != null
+        ? build(
+            context,
+            controller: _searchCtrl,
+            focusNode: _searchFocus,
+            onChanged: (v) => setState(() => _query = v),
+            onEscape: _closeSearch,
+            decoration: decoration,
+            style: style,
+            placeholder: hint,
+          )
+        : TextField(
+            controller: _searchCtrl,
+            focusNode: _searchFocus,
+            style: style,
+            cursorColor: ForjaShellColors.brandGreen,
+            decoration: decoration,
+            onChanged: (v) => setState(() => _query = v),
+          );
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(height / 2),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: pad),
+      child: Row(
+        children: [
+          SizedBox(width: lead),
+          Icon(
+            Icons.search_rounded,
+            color: Colors.white70,
+            size: PortalListTokens.searchPrefixIconSizeOf(tv),
+          ),
+          SizedBox(width: mid),
+          Expanded(child: field),
+        ],
+      ),
     );
   }
 

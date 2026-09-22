@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 class MediaDetailsTrackerState {
   int? userSimklRating;
@@ -108,7 +109,7 @@ class MediaDetailsTrackerHandlers {
                             ? Icons.star_rounded
                             : Icons.star_outline_rounded,
                         color: const Color(0xFF0BF5E5),
-                        size: 28,
+                        size: ShellPaintScope.iconOf(ctx, 28),
                       ),
                     ),
                   );

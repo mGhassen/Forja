@@ -10,6 +10,8 @@ import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
@@ -600,17 +602,17 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         ),
       StreamProviderProbeStatus.failed => Icon(
           Icons.cancel_rounded,
-          size: 16,
+          size: ShellPaintScope.iconOf(context, 16),
           color: color,
         ),
       StreamProviderProbeStatus.success => Icon(
           Icons.check_circle_rounded,
-          size: 16,
+          size: ShellPaintScope.iconOf(context, 16),
           color: color,
         ),
       StreamProviderProbeStatus.skippedOnTv => Icon(
           Icons.remove_circle_outline_rounded,
-          size: 16,
+          size: ShellPaintScope.iconOf(context, 16),
           color: color,
         ),
       StreamProviderProbeStatus.pending => Container(
@@ -657,7 +659,10 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: widget.onReload,
-            icon: const Icon(Icons.refresh_rounded, size: 16),
+            icon: Icon(
+              Icons.refresh_rounded,
+              size: ShellPaintScope.iconOf(context, 16),
+            ),
             label: Text(widget.reloadLabel),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
@@ -803,7 +808,10 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       ),
       child: Icon(
         open ? Icons.layers : Icons.layers_outlined,
-        size: 20,
+        size: ShellPaintScope.iconOf(
+          context,
+          ShellTokens.playerChromeIconSize,
+        ),
         color: Colors.white.withValues(alpha: open ? 0.95 : 0.7),
       ),
     );
@@ -898,7 +906,10 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             ),
             icon: Icon(
               _providerListOpen ? Icons.layers : Icons.layers_outlined,
-              size: 20,
+              size: ShellPaintScope.iconOf(
+                context,
+                ShellTokens.playerChromeIconSize,
+              ),
             ),
           );
 

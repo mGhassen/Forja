@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 enum ForjaToastKind { success, error, warning, info }
 
@@ -648,7 +649,11 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
             ),
       child: Row(
         children: [
-          Icon(style.icon, size: 18, color: style.accent),
+          Icon(
+            style.icon,
+            size: ShellPaintScope.iconOf(context, 18),
+            color: style.accent,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

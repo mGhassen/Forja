@@ -33,6 +33,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
@@ -112,16 +113,18 @@ class _MainScreenState extends ConsumerState<MainScreen>
           : _visibleIds[_selectedIndex];
 
   Widget _tabFor(String id) {
+    final builder = navTabBuilders[id];
+    if (builder == null) {
+      // Ghost / mid-refresh — do NOT cache shrink (would blank the hub forever).
+      if (kDebugMode) {
+        debugPrint('[MainScreen] No tab builder for $id — neutral wait');
+      }
+      return Builder(
+        builder: (ctx) => hubNeutralLoadingSkeleton(ctx, tabId: id),
+      );
+    }
     final isNew = !_tabCache.containsKey(id);
     final tab = _tabCache.putIfAbsent(id, () {
-      final builder = navTabBuilders[id];
-      if (builder == null) {
-        // Ghost rail id (stale KV / pack mid-refresh) — never assert-crash.
-        if (kDebugMode) {
-          debugPrint('[MainScreen] No tab builder for $id — empty placeholder');
-        }
-        return const SizedBox.shrink();
-      }
       final key = _keyForTab(id);
       final child = builder();
       // PackLayoutHost keyed mount — keyed mount for ShellTabRefresh.
@@ -370,8 +373,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
         // Invalidate drops hubs from [_mountedTabIds]; navbar reload may early-return
         // when ids are unchanged (post-install promote already painted). Without
         // remounting the selected hub, the rail stays on it but the body is empty
-        // until the user taps the tab again.
-        _ensureSelectedKitTabMounted();
+        // until the user taps the tab again. forceRefresh when we wiped cache.
+        _ensureSelectedKitTabMounted(forceRefresh: changed);
       }();
       _hubNavReloadInFlight = run;
       try {
@@ -387,6 +390,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
   void _invalidateHubTabsAfterPackChange({required bool remountBuilders}) {
     // Contributed hubs only — seed + last refresh; no frozen official-id list.
     final hubIds = PluginNavRegistry.destinations.keys.toSet();
+    final selected = _currentTabId;
     for (final id in hubIds) {
       _refreshStateFor(id)?.markShellTabStale();
       if (!remountBuilders) continue;
@@ -397,22 +401,34 @@ class _MainScreenState extends ConsumerState<MainScreen>
       // reparent and keep the old memoized rails).
       _tabKeys.remove(id);
     }
-    // Selected hub remount runs after [_loadNavbarConfig] via
-    // [_ensureSelectedKitTabMounted] (promote / index must settle first).
+    // Keep the open hub in [_mountedTabIds] so [ShellBody] never paints
+    // SizedBox.shrink for the selected slot (blank — no loading, no structure)
+    // between this wipe and [_ensureSelectedKitTabMounted].
+    if (selected != null && hubIds.contains(selected)) {
+      _mountedTabIds.add(selected);
+      _touchTab(selected);
+    }
+    // Selected hub remount / show notify still runs after [_loadNavbarConfig]
+    // via [_ensureSelectedKitTabMounted] (promote / index must settle first).
   }
 
   /// Keep the selected hub body mounted after pack-nav invalidate.
   ///
   /// [ShellBody] only builds tabs in [_mountedTabIds]. Invalidate clears that
   /// set; a no-op navbar reload must not leave the rail on an empty slot.
-  void _ensureSelectedKitTabMounted() {
+  /// When [forceRefresh] is true (cache wiped), notify + force-refresh even if
+  /// the selected hub stayed mounted to avoid a blank shrink frame.
+  void _ensureSelectedKitTabMounted({bool forceRefresh = false}) {
     final current = _currentTabId;
     if (current == null || !PluginNavRegistry.isKitTab(current)) return;
-    if (_mountedTabIds.contains(current)) return;
-    setState(() {
-      _mountedTabIds.add(current);
-      _touchTab(current);
-    });
+    final alreadyMounted = _mountedTabIds.contains(current);
+    if (alreadyMounted && !forceRefresh) return;
+    if (!alreadyMounted) {
+      setState(() {
+        _mountedTabIds.add(current);
+        _touchTab(current);
+      });
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _currentTabId != current) return;
       _notifyTabShown(current);

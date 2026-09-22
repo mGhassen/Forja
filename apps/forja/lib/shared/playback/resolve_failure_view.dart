@@ -7,6 +7,7 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Tone for resolve / loading-page failures.
 enum ResolveFailureTone {
@@ -188,7 +189,10 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                   )
                 : FilledButton.icon(
                     onPressed: failure.onPrimary,
-                    icon: Icon(failure.primaryIcon, size: 18),
+                    icon: Icon(
+                      failure.primaryIcon,
+                      size: ShellPaintScope.iconOf(context, 18),
+                    ),
                     label: Text(failure.primaryLabel),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
@@ -275,7 +279,11 @@ class _PrimaryFailureButtonFace extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: Colors.black),
+            Icon(
+              icon,
+              size: ShellPaintScope.iconOf(context, 18),
+              color: Colors.black,
+            ),
             const SizedBox(width: 8),
             Text(
               label,

@@ -17,6 +17,8 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 class PlayerSubtitleSettingsValues {
   const PlayerSubtitleSettingsValues({
     required this.size,
@@ -750,7 +752,7 @@ class _SubColorSwatchState extends State<_SubColorSwatch> {
       child: widget.selected
           ? Icon(
               Icons.check,
-              size: 16,
+              size: ShellPaintScope.iconOf(context, 16),
               color: ForjaShellColors.brandGreen,
             )
           : null,
@@ -890,7 +892,14 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
         !(ShellScope.maybeOf(context)?.inputPolicy.scaleOnHover ?? true);
     if (!leanback) {
       return IconButton(
-        icon: Icon(widget.icon, color: Colors.white70, size: 20),
+        icon: Icon(
+          widget.icon,
+          color: Colors.white70,
+          size: ShellPaintScope.iconOf(
+            context,
+            ShellTokens.playerChromeIconSize,
+          ),
+        ),
         visualDensity: VisualDensity.compact,
         tooltip: widget.icon == Icons.add ? 'Increase delay' : 'Decrease delay',
         onPressed: () => widget.onStep(1),
@@ -919,7 +928,14 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
               ]
             : null,
       ),
-      child: Icon(widget.icon, color: Colors.white70, size: 20),
+      child: Icon(
+        widget.icon,
+        color: Colors.white70,
+        size: ShellPaintScope.iconOf(
+          context,
+          ShellTokens.playerChromeIconSize,
+        ),
+      ),
     );
 
     return shellFocusableTap(

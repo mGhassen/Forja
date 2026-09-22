@@ -79,6 +79,7 @@ import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 part 'mobile_player_glass.dart';
 part 'mobile_player_lifecycle.dart';

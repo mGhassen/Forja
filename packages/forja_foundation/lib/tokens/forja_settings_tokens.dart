@@ -59,6 +59,36 @@ abstract final class SettingsTokens {
   static const double rowSubtitleSize = 12.5;
   static const double rowSubtitleSizeTv = ShellTokens.tvMetaFontSize;
 
+  /// Toggle / action / select row content inset (title+subtitle column).
+  static const double rowPadH = 2;
+  static const double rowPadV = 16;
+  /// Hand-tuned — ×chrome (~10) still reads as desktop next to the type ladder.
+  static const double rowPadVTv = 6;
+  static const double rowTitleSubtitleGap = 4;
+  static const double rowTitleSubtitleGapTv = 1;
+
+  /// Category tab chips under Forja Packs / Addons (Movie & TV, Anime, …).
+  static const EdgeInsets categoryChipPad =
+      EdgeInsets.symmetric(horizontal: 12, vertical: 6);
+  static const EdgeInsets categoryChipPadTv =
+      EdgeInsets.symmetric(horizontal: 8, vertical: 3);
+  static const EdgeInsets categoryChipStripPad =
+      EdgeInsets.fromLTRB(4, 8, 4, 8);
+  static const EdgeInsets categoryChipStripPadTv =
+      EdgeInsets.fromLTRB(2, 2, 2, 2);
+  static const double categoryChipGap = 8;
+  static const double categoryChipGapTv = 4;
+
+  /// Expandable pack / addon header + nested children inset.
+  static const double expandHeaderLeadingTop = 12;
+  static const double expandHeaderLeadingTopTv = 6;
+  static const double expandHeaderPadV = 8;
+  static const double expandHeaderPadVTv = 4;
+  static const EdgeInsets expandChildrenPad =
+      EdgeInsets.fromLTRB(8, 0, 2, 8);
+  static const EdgeInsets expandChildrenPadTv =
+      EdgeInsets.fromLTRB(4, 0, 2, 4);
+
   /// Flat switch geometry — thumb is always a circle (never non-uniform scaled).
   static const double switchTrackWidth = 34;
   static const double switchTrackWidthTv = switchTrackWidth * _s;
@@ -251,6 +281,32 @@ abstract final class SettingsTokens {
 
   static double rowSubtitleSizeOf(BuildContext context) =>
       _tv(context) ? rowSubtitleSizeTv : rowSubtitleSize;
+
+  static EdgeInsets rowPaddingOf(BuildContext context) => EdgeInsets.symmetric(
+        horizontal: rowPadH,
+        vertical: _tv(context) ? rowPadVTv : rowPadV,
+      );
+
+  static double rowTitleSubtitleGapOf(BuildContext context) =>
+      _tv(context) ? rowTitleSubtitleGapTv : rowTitleSubtitleGap;
+
+  static EdgeInsets categoryChipPadOf(BuildContext context) =>
+      _tv(context) ? categoryChipPadTv : categoryChipPad;
+
+  static EdgeInsets categoryChipStripPadOf(BuildContext context) =>
+      _tv(context) ? categoryChipStripPadTv : categoryChipStripPad;
+
+  static double categoryChipGapOf(BuildContext context) =>
+      _tv(context) ? categoryChipGapTv : categoryChipGap;
+
+  static double expandHeaderLeadingTopOf(BuildContext context) =>
+      _tv(context) ? expandHeaderLeadingTopTv : expandHeaderLeadingTop;
+
+  static double expandHeaderPadVOf(BuildContext context) =>
+      _tv(context) ? expandHeaderPadVTv : expandHeaderPadV;
+
+  static EdgeInsets expandChildrenPadOf(BuildContext context) =>
+      _tv(context) ? expandChildrenPadTv : expandChildrenPad;
 
   static double switchTrackWidthOf(BuildContext context) =>
       _tv(context) ? switchTrackWidthTv : switchTrackWidth;

@@ -468,6 +468,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     if (items.isEmpty) return;
     final sel = widget.selectedId.trim();
     if (sel.isNotEmpty && sel != 'all' && items.any((e) => e.id == sel)) {
+      _armCatsFocusMemory(sel, items: items);
       return;
     }
     // Live only: restore last-played category when still in the rail.
@@ -479,6 +480,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           widget.onSelect(prefer);
+          _armCatsFocusMemory(prefer, items: items);
         });
         return;
       }
@@ -490,20 +492,42 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         widget.onSelect(e.id);
+        _armCatsFocusMemory(e.id, items: items);
       });
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       widget.onSelect(items.first.id);
+      _armCatsFocusMemory(items.first.id, items: items);
     });
   }
 
   void _onSelectCategory(String id) {
     widget.onSelect(id);
+    _armCatsFocusMemory(id);
     if (_isLive) {
       unawaited(IptvCatalogLand.rememberCategory(id));
     }
+  }
+
+  /// Nav enter/restore remembered land → selected category (not a browse-only row).
+  void _armCatsFocusMemory(
+    String categoryId, {
+    List<CatalogCategoryItem>? items,
+  }) {
+    final id = categoryId.trim();
+    if (id.isEmpty) return;
+    final tab = (widget.tabId ?? '').trim();
+    if (tab.isEmpty) return;
+    final list = items ?? _items;
+    final index = list.indexWhere((e) => e.id == id);
+    if (index < 0) return;
+    ShellTvFocusCoordinator.setRowLastFocusedIndex(
+      tab,
+      IptvCatalogLand.catsRowId,
+      index,
+    );
   }
 
   void _publishBar({required List<CatalogCategoryItem> chromeItems}) {

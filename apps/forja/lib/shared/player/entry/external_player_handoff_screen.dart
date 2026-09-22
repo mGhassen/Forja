@@ -13,7 +13,9 @@ import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/focus/forja_interactive.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 /// Handoff screen while playback runs in an external app.
 class ExternalPlayerHandoffScreen extends StatefulWidget {
   const ExternalPlayerHandoffScreen({
@@ -488,7 +490,10 @@ class _HandoffActionRow extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                size: 20,
+                size: ShellPaintScope.iconOf(
+                  context,
+                  ShellTokens.playerChromeIconSize,
+                ),
                 color: highlight
                     ? ForjaShellColors.iconHover
                     : ForjaShellColors.iconActive,
@@ -507,7 +512,10 @@ class _HandoffActionRow extends StatelessWidget {
               if (showChevron)
                 Icon(
                   Icons.chevron_right_rounded,
-                  size: 20,
+                  size: ShellPaintScope.iconOf(
+                    context,
+                    ShellTokens.playerChromeIconSize,
+                  ),
                   color: highlight
                       ? ForjaShellColors.iconHover
                       : ForjaShellColors.iconMuted,

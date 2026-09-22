@@ -12,6 +12,7 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:forja_foundation/widgets/guide/guide_focus_paint.dart';
 
@@ -592,7 +593,11 @@ class _FocusTextActionState extends State<FocusTextAction> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(widget.icon, color: fg, size: 18),
+                  Icon(
+                    widget.icon,
+                    color: fg,
+                    size: ShellPaintScope.iconOf(context, 18),
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     widget.label,
@@ -607,7 +612,11 @@ class _FocusTextActionState extends State<FocusTextAction> {
     }
     return TextButton.icon(
       onPressed: widget.onPressed,
-      icon: Icon(widget.icon, color: idle, size: 18),
+      icon: Icon(
+        widget.icon,
+        color: idle,
+        size: ShellPaintScope.iconOf(context, 18),
+      ),
       label: Text(widget.label, style: GoogleFonts.plusJakartaSans(color: idle)),
     );
   }
@@ -728,7 +737,11 @@ class _FocusPrimaryButtonState extends State<FocusPrimaryButton> {
                         ),
                       )
                     else
-                      Icon(widget.icon, color: fg, size: 18),
+                      Icon(
+                        widget.icon,
+                        color: fg,
+                        size: ShellPaintScope.iconOf(context, 18),
+                      ),
                     const SizedBox(width: 8),
                     Text(
                       widget.label,
@@ -843,7 +856,14 @@ class _FocusRoundIconState extends State<FocusRoundIcon> {
               child: SizedBox(
                 width: size,
                 height: size,
-                child: Icon(widget.icon, color: fg, size: widget.big ? 32 : 22),
+                child: Icon(
+                  widget.icon,
+                  color: fg,
+                  size: ShellPaintScope.iconOf(
+                    context,
+                    widget.big ? 32 : 22,
+                  ),
+                ),
               ),
             ),
           );
@@ -853,7 +873,11 @@ class _FocusRoundIconState extends State<FocusRoundIcon> {
     final child = SizedBox(
       width: size,
       height: size,
-      child: Icon(widget.icon, color: Colors.white, size: widget.big ? 32 : 22),
+      child: Icon(
+        widget.icon,
+        color: Colors.white,
+        size: ShellPaintScope.iconOf(context, widget.big ? 32 : 22),
+      ),
     );
     return Material(
       color: Colors.white.withValues(alpha: 0.12),

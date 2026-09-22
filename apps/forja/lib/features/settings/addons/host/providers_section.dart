@@ -968,7 +968,7 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: SettingsTokens.rowTitleSubtitleGapOf(context)),
               Text(
                 widget.subtitle,
                 style: TextStyle(
@@ -997,7 +997,7 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
           context: context,
         );
         final rowBody = Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+          padding: SettingsTokens.rowPaddingOf(context),
           child: Row(
             children: [
               widget.leading,
@@ -1170,7 +1170,7 @@ class _AddonFeatureChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         canRequestFocus: !tv,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: SettingsTokens.categoryChipPadOf(context),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(

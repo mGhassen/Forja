@@ -154,7 +154,7 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
     final icon = Center(
       child: Icon(
         Icons.refresh_rounded,
-        size: 16,
+        size: ShellPaintScope.iconOf(context, 16),
         color: Colors.white.withValues(
           alpha: widget.isReloading ? 0.28 : (_reloadFocused ? 0.95 : 0.55),
         ),
@@ -440,11 +440,12 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     final trailingGlyph = showPlayOnUp
         ? Icon(
             Icons.play_arrow_rounded,
-            size: 22,
+            size: ShellPaintScope.iconOf(context, 22),
             color: PlayerPopupTokens.accent,
           )
         : widget.isPlaying
             ? PlayerStreamMenu._streamTrailingGlyph(
+                context: context,
                 status: widget.status,
                 isPlaying: true,
                 mediaPlaying: widget.mediaPlaying,

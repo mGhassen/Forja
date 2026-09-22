@@ -91,14 +91,14 @@ abstract final class IptvCatalogLand {
     return PortalLiveChannelListsStore.loadLastChannel(key);
   }
 
-  /// After feed / portal ready: highlight last channel and focus it.
+  /// After feed / portal ready: highlight + scroll last channel; leave focus on
+  /// cats (nav enter lands the selected category). Player restore still focuses.
   static Future<void> hydrateHighlightFromStore() async {
     final ch = await loadLastChannel();
     if (ch == null || ch.isEmpty) return;
-    preferCategoryFocusOnLand = false;
+    preferCategoryFocusOnLand = true;
     highlightedStreamId.value = ch;
     landEpoch.value++;
-    _armResetPreferCategoryFocus();
   }
 
   /// Arm restore before/while player is up; consume on catalog land.

@@ -77,7 +77,20 @@ class ForjaStatusTabs extends StatelessWidget {
               children: [
                 for (var i = 0; i < statusTabs.length; i++)
                   Expanded(
-                    child: _tab(context, i, useTv, statusTabs, tvRowId),
+                    child: _StatusTab(
+                      label: statusTabs[i].title,
+                      fontSize: tvDensity ? ShellTokens.tvBodyFontSize : 13.0,
+                      selected: statusTabs[i].id == selected,
+                      listIndex: i,
+                      tabId: tabId,
+                      rowId: tvRowId,
+                      useTv: useTv,
+                      onTap: () => onSelect(statusTabs[i].id),
+                      onUp: onUp,
+                      onDown: onDown,
+                      onLeft: i == 0 ? onLeft : null,
+                      onRight: i == statusTabs.length - 1 ? onRight : null,
+                    ),
                   ),
               ],
             ),
@@ -86,71 +99,17 @@ class ForjaStatusTabs extends StatelessWidget {
       ),
     );
   }
-
-  Widget _tab(
-    BuildContext context,
-    int i,
-    bool useTv,
-    List<({String id, String title})> statusTabs,
-    String tvRowId,
-  ) {
-    final tab = statusTabs[i];
-    final on = tab.id == selected;
-    final tabFontSize = ShellPaintScope.usesTvDensityOf(context)
-        ? ShellTokens.tvBodyFontSize
-        : 13.0;
-    if (!useTv) {
-      final label = Text(
-        tab.title,
-        textAlign: TextAlign.center,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: on
-              ? ForjaShellColors.textPrimary
-              : ForjaShellColors.textSecondary,
-          fontWeight: on ? FontWeight.w600 : FontWeight.w500,
-          fontSize: tabFontSize,
-        ),
-      );
-      return InkWell(
-        onTap: () => onSelect(tab.id),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Expanded(child: Center(child: label)),
-            Container(
-              height: 2,
-              color: on ? ForjaShellColors.brandGreen : Colors.transparent,
-            ),
-          ],
-        ),
-      );
-    }
-    return _StatusTabFocus(
-      label: tab.title,
-      fontSize: tabFontSize,
-      selected: on,
-      listIndex: i,
-      tabId: tabId,
-      rowId: tvRowId,
-      onTap: () => onSelect(tab.id),
-      onUp: onUp,
-      onDown: onDown,
-      onLeft: i == 0 ? onLeft : null,
-      onRight: i == statusTabs.length - 1 ? onRight : null,
-    );
-  }
 }
 
-class _StatusTabFocus extends StatefulWidget {
-  const _StatusTabFocus({
+class _StatusTab extends StatefulWidget {
+  const _StatusTab({
     required this.label,
     required this.fontSize,
     required this.selected,
     required this.listIndex,
     required this.tabId,
     required this.rowId,
+    required this.useTv,
     required this.onTap,
     this.onUp,
     this.onDown,
@@ -164,6 +123,7 @@ class _StatusTabFocus extends StatefulWidget {
   final int listIndex;
   final String tabId;
   final String rowId;
+  final bool useTv;
   final VoidCallback onTap;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
@@ -171,17 +131,31 @@ class _StatusTabFocus extends StatefulWidget {
   final VoidCallback? onRight;
 
   @override
-  State<_StatusTabFocus> createState() => _StatusTabFocusState();
+  State<_StatusTab> createState() => _StatusTabState();
 }
 
-class _StatusTabFocusState extends State<_StatusTabFocus> {
+class _StatusTabState extends State<_StatusTab> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
-    final emphasize =
-        widget.selected || ShellPaintScope.focusStyledOf(context, focused: _focused);
-    final label = Text(
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _label(bool hovered) {
+    // White / primary on hover+focus — never brand green (Material InkWell used
+    // theme primary and tinted the label). Green stays on the selected underline.
+    final emphasize = widget.selected ||
+        hovered ||
+        ShellPaintScope.focusStyledOf(context, focused: _focused);
+    return Text(
       widget.label,
       textAlign: TextAlign.center,
       maxLines: 1,
@@ -194,32 +168,62 @@ class _StatusTabFocusState extends State<_StatusTabFocus> {
         fontSize: widget.fontSize,
       ),
     );
-    return ShellPaintScope.focusableTap(
-      context: context,
-      onTap: widget.onTap,
-      borderRadius: 0,
-      scaleOnFocus: 1.0,
-      listIndex: widget.listIndex,
-      tvTabId: widget.tabId,
-      tvRowId: widget.rowId,
-      tvZone: ShellPaintTvZone.chipStrip,
-      tvItemIndex: widget.listIndex,
-      onUpEdge: widget.onUp,
-      onDownEdge: widget.onDown,
-      onLeftEdge: widget.onLeft,
-      onRightEdge: widget.onRight,
-      onFocusChange: (f) => setState(() => _focused = f),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(child: Center(child: label)),
-          Container(
-            height: 2,
-            color: widget.selected
-                ? ForjaShellColors.brandGreen
-                : Colors.transparent,
-          ),
-        ],
+  }
+
+  Widget _column(bool hovered) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Expanded(child: Center(child: _label(hovered))),
+        Container(
+          height: 2,
+          color: widget.selected
+              ? ForjaShellColors.brandGreen
+              : Colors.transparent,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final body = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _column(_hoveredN.value),
+    );
+
+    if (widget.useTv) {
+      return ShellPaintScope.focusableTap(
+        context: context,
+        onTap: widget.onTap,
+        borderRadius: 0,
+        scaleOnFocus: 1.0,
+        listIndex: widget.listIndex,
+        tvTabId: widget.tabId,
+        tvRowId: widget.rowId,
+        tvZone: ShellPaintTvZone.chipStrip,
+        tvItemIndex: widget.listIndex,
+        onUpEdge: widget.onUp,
+        onDownEdge: widget.onDown,
+        onLeftEdge: widget.onLeft,
+        onRightEdge: widget.onRight,
+        onFocusChange: (f) => setState(() => _focused = f),
+        onHoverChange: _setHovered,
+        suppressInkHover: true,
+        showFocusFill: false,
+        child: body,
+      );
+    }
+
+    // No Material InkWell — theme primary is brand green and tinted the text.
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: body,
       ),
     );
   }

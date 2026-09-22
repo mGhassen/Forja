@@ -683,7 +683,7 @@ class _AuthIconButton extends StatelessWidget {
               borderRadius: BorderRadius.zero,
             ),
           ),
-          child: Icon(icon, size: 22),
+          child: Icon(icon, size: ShellPaintScope.iconOf(context, 22)),
         ),
       ),
     );

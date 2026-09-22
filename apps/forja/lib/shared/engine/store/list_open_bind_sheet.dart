@@ -12,6 +12,7 @@ import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Result of the single Open-in bind sheet.
@@ -362,7 +363,7 @@ class _PosterThumb extends StatelessWidget {
                 child: Icon(
                   Icons.movie_outlined,
                   color: ForjaShellColors.iconMuted,
-                  size: 22,
+                  size: ShellPaintScope.iconOf(context, 22),
                 ),
               )
             : CachedNetworkImage(
@@ -373,7 +374,7 @@ class _PosterThumb extends StatelessWidget {
                   child: Icon(
                     Icons.broken_image_outlined,
                     color: ForjaShellColors.iconMuted,
-                    size: 20,
+                    size: ShellPaintScope.iconOf(context, 20),
                   ),
                 ),
               ),
@@ -404,7 +405,11 @@ class _CompatibleOpenBody extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.check_circle_rounded, color: ForjaShellColors.brandGreen, size: 20),
+          Icon(
+            Icons.check_circle_rounded,
+            color: ForjaShellColors.brandGreen,
+            size: ShellPaintScope.iconOf(context, 20),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

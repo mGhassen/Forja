@@ -268,7 +268,11 @@ class _SideIndicator extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Icon(icon, color: Colors.white, size: 18),
+            Icon(
+              icon,
+              color: Colors.white,
+              size: ShellPaintScope.iconOf(context, 18),
+            ),
             const SizedBox(height: 6),
             Expanded(
               child: Padding(

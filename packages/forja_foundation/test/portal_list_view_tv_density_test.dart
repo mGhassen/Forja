@@ -55,7 +55,7 @@ void main() {
     expect(title.style?.fontSize, ShellTokens.tvTitleFontSize);
   });
 
-  testWidgets('PortalListView search field uses TV prefix slot + pad', (
+  testWidgets('PortalListView search field uses top-bar pill chrome on TV', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -80,26 +80,34 @@ void main() {
 
     final field = tester.widget<TextField>(find.byType(TextField));
     final decoration = field.decoration!;
-    expect(
-      decoration.prefixIconConstraints?.minWidth,
-      PortalListTokens.searchPrefixSlotTv,
-    );
-    expect(
-      decoration.prefixIconConstraints?.minHeight,
-      PortalListTokens.searchPrefixSlotTv,
-    );
-    expect(
-      decoration.prefixIconConstraints?.minHeight,
-      lessThan(48),
-      reason: 'Material default 48 keeps the field desktop-tall on TV',
-    );
+    expect(decoration.border, InputBorder.none);
+    expect(decoration.focusedBorder, InputBorder.none);
+    expect(decoration.prefixIcon, isNull);
     final pad = decoration.contentPadding!.resolve(TextDirection.ltr);
     expect(pad.vertical, PortalListTokens.searchFieldPadVTv * 2);
-    expect(pad.horizontal, PortalListTokens.searchFieldPadHTv * 2);
+
+    final pill = tester.widget<Container>(
+      find
+          .ancestor(
+            of: find.byType(TextField),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    final box = pill.decoration! as BoxDecoration;
+    expect(pill.constraints?.maxHeight, PortalListTokens.searchFieldHeightTv);
+    expect(
+      (box.border as Border).top.color,
+      Colors.white.withValues(alpha: 0.18),
+    );
+    expect(
+      box.borderRadius,
+      BorderRadius.circular(PortalListTokens.searchFieldHeightTv / 2),
+    );
 
     final prefixIcon = tester.widget<Icon>(
       find.descendant(
-        of: find.byType(TextField),
+        of: find.byType(Row),
         matching: find.byIcon(Icons.search_rounded),
       ),
     );

@@ -825,17 +825,22 @@ class PlayerStreamMenu {
   /// up ✓ · unchecked ○ · failed ✕ · checking spinner ·
   /// playing→ green play · media playing→ blue pause.
   static Widget _streamTrailingGlyph({
+    required BuildContext context,
     required PlayerSourceStatus? status,
     required bool isPlaying,
     required bool mediaPlaying,
   }) {
     if (isPlaying) {
       if (mediaPlaying) {
-        return Icon(Icons.pause_rounded, size: 22, color: _streamPauseBlue);
+        return Icon(
+          Icons.pause_rounded,
+          size: ShellPaintScope.iconOf(context, 22),
+          color: _streamPauseBlue,
+        );
       }
       return Icon(
         Icons.play_arrow_rounded,
-        size: 22,
+        size: ShellPaintScope.iconOf(context, 22),
         color: playerSourceStatusColor(PlayerSourceStatus.ready),
       );
     }
@@ -844,14 +849,14 @@ class PlayerStreamMenu {
     if (status == PlayerSourceStatus.failed) {
       return Icon(
         Icons.close_rounded,
-        size: 16,
+        size: ShellPaintScope.iconOf(context, 16),
         color: playerSourceStatusColor(PlayerSourceStatus.failed),
       );
     }
     if (status == PlayerSourceStatus.unchecked) {
       return _streamHollowRing(_uncheckedGray);
     }
-    return _streamUpCheck();
+    return _streamUpCheck(context);
   }
 
   static const Color _uncheckedGray = Color(0x3DFFFFFF); // white24
@@ -888,10 +893,10 @@ class PlayerStreamMenu {
     );
   }
 
-  static Widget _streamUpCheck() {
+  static Widget _streamUpCheck(BuildContext context) {
     return Icon(
       Icons.check_rounded,
-      size: 18,
+      size: ShellPaintScope.iconOf(context, 18),
       color: playerSourceStatusColor(PlayerSourceStatus.ready),
     );
   }

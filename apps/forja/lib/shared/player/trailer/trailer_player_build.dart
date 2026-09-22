@@ -1213,7 +1213,14 @@ class _ChevronButton extends StatelessWidget {
             child: SizedBox(
               width: 28,
               height: 28,
-              child: Icon(icon, color: Colors.white, size: 20),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: ShellPaintScope.iconOf(
+                  context,
+                  ShellTokens.playerChromeIconSize,
+                ),
+              ),
             ),
           ),
         ),

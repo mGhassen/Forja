@@ -556,7 +556,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
               },
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+                    SettingsTokens.rowPaddingOf(context),
                 child: Row(
                   children: [
                     leading,
@@ -607,7 +607,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
             Expanded(
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+                    SettingsTokens.rowPaddingOf(context),
                 child: Row(
                   children: [
                     leading,

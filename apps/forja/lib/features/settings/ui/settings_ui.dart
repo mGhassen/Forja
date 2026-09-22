@@ -351,8 +351,10 @@ Widget settingsExpandableWithSideActions({
   VoidCallback? onHeaderActivate,
   String? storageId,
   EdgeInsetsGeometry tilePadding = const EdgeInsets.symmetric(horizontal: 2),
-  EdgeInsetsGeometry childrenPadding = const EdgeInsets.fromLTRB(8, 0, 2, 8),
+  EdgeInsetsGeometry? childrenPadding,
 }) {
+  final resolvedChildrenPad =
+      childrenPadding ?? SettingsTokens.expandChildrenPadOf(context);
   final storageKey = storageId == null
       ? null
       : PageStorageKey<String>('settings-expand-$storageId');
@@ -366,7 +368,7 @@ Widget settingsExpandableWithSideActions({
         shape: settingsExpansionShape,
         collapsedShape: settingsExpansionShape,
         tilePadding: tilePadding,
-        childrenPadding: childrenPadding,
+        childrenPadding: resolvedChildrenPad,
         leading: leading,
         title: title,
         subtitle: subtitle,
@@ -387,7 +389,7 @@ Widget settingsExpandableWithSideActions({
     trailing: trailing,
     onHeaderActivate: onHeaderActivate,
     tilePadding: tilePadding,
-    childrenPadding: childrenPadding,
+    childrenPadding: resolvedChildrenPad,
     children: children,
   );
 }
@@ -485,13 +487,17 @@ class _SettingsTvExpandableSideRowState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 12),
+            padding: EdgeInsets.only(
+              top: SettingsTokens.expandHeaderLeadingTopOf(context),
+            ),
             child: widget.leading,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: EdgeInsets.symmetric(
+                vertical: SettingsTokens.expandHeaderPadVOf(context),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -736,7 +742,10 @@ class SettingsGroup extends StatelessWidget {
         children: [
           if (label != null) ...[
             Padding(
-              padding: const EdgeInsets.only(left: 2, bottom: 6),
+              padding: EdgeInsets.only(
+                left: 2,
+                bottom: SettingsTokens.rowTitleSubtitleGapOf(context) + 2,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -1227,7 +1236,7 @@ class _SettingsToggleRowState extends State<SettingsToggleRow> {
         final content = Opacity(
           opacity: enabled ? 1 : 0.55,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+            padding: SettingsTokens.rowPaddingOf(context),
             child: Row(
               children: [
                 Expanded(
@@ -1244,13 +1253,15 @@ class _SettingsToggleRowState extends State<SettingsToggleRow> {
                         adminOnly: widget.adminOnly,
                         sparkSize: 13,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: SettingsTokens.rowTitleSubtitleGapOf(context)),
                       Text(
                         widget.subtitle,
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary,
                           fontSize: _tvMeta(context),
-                          height: 1.35,
+                          height: ShellPaintScope.usesTvDensityOf(context)
+                              ? 1.2
+                              : 1.35,
                         ),
                       ),
                     ],
@@ -1392,7 +1403,7 @@ class SettingsSelectRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+      padding: SettingsTokens.rowPaddingOf(context),
       child: Row(
         children: [
           Expanded(
@@ -1409,7 +1420,7 @@ class SettingsSelectRow extends StatelessWidget {
                   adminOnly: adminOnly,
                   sparkSize: 13,
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: SettingsTokens.rowTitleSubtitleGapOf(context)),
                 Text(
                   subtitle,
                   style: TextStyle(
@@ -1739,7 +1750,7 @@ class SettingsActionRow extends StatelessWidget {
         : ForjaShellColors.textPrimary;
 
     final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+      padding: SettingsTokens.rowPaddingOf(context),
       child: Row(
         children: [
           if (leading != null) ...[leading!, const SizedBox(width: 12)],
@@ -1758,7 +1769,9 @@ class SettingsActionRow extends StatelessWidget {
                   sparkSize: 13,
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(
+                    height: SettingsTokens.rowTitleSubtitleGapOf(context),
+                  ),
                   Text(
                     subtitle!,
                     style: TextStyle(
@@ -1884,7 +1897,7 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
             ),
           ),
           if (widget.subtitle != null) ...[
-            const SizedBox(height: 4),
+            SizedBox(height: SettingsTokens.rowTitleSubtitleGapOf(context)),
             Text(
               widget.subtitle!,
               style: TextStyle(
@@ -2627,7 +2640,7 @@ class SettingsStatusRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 14),
+      padding: SettingsTokens.rowPaddingOf(context),
       child: Row(
         children: [
           Icon(

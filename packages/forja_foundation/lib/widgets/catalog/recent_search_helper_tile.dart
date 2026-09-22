@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Recent search row paint — select title to run query; X deletes (Zone A).
 ///
@@ -83,18 +84,20 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
     widget.onFocusChange?.call(focused);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final highlighted = widget.selected || _removeFocused;
-    final showHoverFill = widget.scaleOnHover && _hoveredN.value;
-    final color = highlighted
-        ? ForjaShellColors.textPrimary
-        : ForjaShellColors.textSecondary;
-    final iconSize = highlighted ? 16.0 : 14.0;
-    final fontSize =
-        highlighted ? widget.titleFontSizeSelected : widget.titleFontSize;
+  /// Desktop: hover and focus are exclusive — hover wins under the pointer.
+  bool _focusLit(BuildContext context, bool hovered) {
+    if (widget.scaleOnHover && hovered) return false;
+    return widget.selected ||
+        ShellPaintScope.focusStyledOf(context, focused: _removeFocused);
+  }
 
-    Widget titleChild = Align(
+  Widget _titleFace({
+    required bool highlighted,
+    required Color color,
+    required double iconSize,
+    required double fontSize,
+  }) {
+    return Align(
       alignment: Alignment.centerLeft,
       child: Row(
         children: [
@@ -120,27 +123,92 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
         ],
       ),
     );
+  }
 
-    Widget removeChild = SizedBox(
+  Widget _removeFace({
+    required bool highlighted,
+    required bool removeLit,
+  }) {
+    return SizedBox(
       width: 36,
       height: 32,
       child: Center(
         child: Icon(
           Icons.close_rounded,
           size: highlighted ? 18 : 16,
-          color: _removeFocused
+          color: removeLit
               ? ForjaShellColors.textPrimary
               : ForjaShellColors.iconMuted,
         ),
       ),
     );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     final titleWrap = widget.titleInteractiveBuilder;
     final removeWrap = widget.removeInteractiveBuilder;
 
-    titleChild = titleWrap != null
+    // Faces rebuild on hover via ListenableBuilder; focus wraps stay stable.
+    Widget titleFace;
+    Widget removeFace;
+    if (widget.scaleOnHover) {
+      titleFace = ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final focusLit = _focusLit(context, _hoveredN.value);
+          final highlighted = focusLit;
+          final color = highlighted
+              ? ForjaShellColors.textPrimary
+              : ForjaShellColors.textSecondary;
+          return _titleFace(
+            highlighted: highlighted,
+            color: color,
+            iconSize: highlighted ? 16.0 : 14.0,
+            fontSize: highlighted
+                ? widget.titleFontSizeSelected
+                : widget.titleFontSize,
+          );
+        },
+      );
+      removeFace = ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final focusLit = _focusLit(context, _hoveredN.value);
+          return _removeFace(
+            highlighted: focusLit,
+            removeLit: focusLit &&
+                ShellPaintScope.focusStyledOf(
+                  context,
+                  focused: _removeFocused,
+                ),
+          );
+        },
+      );
+    } else {
+      final focusLit = _focusLit(context, false);
+      final highlighted = focusLit;
+      final color = highlighted
+          ? ForjaShellColors.textPrimary
+          : ForjaShellColors.textSecondary;
+      titleFace = _titleFace(
+        highlighted: highlighted,
+        color: color,
+        iconSize: highlighted ? 16.0 : 14.0,
+        fontSize: highlighted
+            ? widget.titleFontSizeSelected
+            : widget.titleFontSize,
+      );
+      removeFace = _removeFace(
+        highlighted: highlighted,
+        removeLit: focusLit &&
+            ShellPaintScope.focusStyledOf(context, focused: _removeFocused),
+      );
+    }
+
+    final titleChild = titleWrap != null
         ? titleWrap(
-            child: titleChild,
+            child: titleFace,
             onTap: widget.onSelect,
             focusNode: widget.titleFocusNode,
             onFocusChange: widget.onFocusChange,
@@ -148,12 +216,12 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
         : FocusableTap(
             onTap: widget.onSelect,
             focusNode: widget.titleFocusNode,
-            child: titleChild,
+            child: titleFace,
           );
 
-    removeChild = removeWrap != null
+    final removeChild = removeWrap != null
         ? removeWrap(
-            child: removeChild,
+            child: removeFace,
             onTap: widget.onRemove,
             focusNode: _removeFocus,
             onFocusChange: (f) {
@@ -164,7 +232,7 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
         : FocusableTap(
             onTap: widget.onRemove,
             focusNode: _removeFocus,
-            child: removeChild,
+            child: removeFace,
           );
 
     final innerRow = Row(
@@ -174,7 +242,7 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
       ],
     );
 
-    Widget row;
+    final Widget row;
     if (widget.scaleOnHover) {
       row = MouseRegion(
         onEnter: (_) => _setHovered(true),
@@ -193,8 +261,9 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
         ),
       );
     } else {
+      final highlighted = _focusLit(context, false);
       row = Material(
-        color: showHoverFill ? ForjaShellColors.inkHover : Colors.transparent,
+        color: highlighted ? ForjaShellColors.inkHover : Colors.transparent,
         borderRadius: BorderRadius.circular(4),
         clipBehavior: Clip.antiAlias,
         child: innerRow,

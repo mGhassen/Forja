@@ -29,6 +29,29 @@ void main() {
     expect(themeSize, ShellTokens.iconSizeTv);
   });
 
+  testWidgets('ShellPaintScope.iconOf densifies desktop baselines on TV', (
+    tester,
+  ) async {
+    late double sized;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShellPaintScope(
+          useTvFocus: true,
+          scaleOnHover: false,
+          usesTvDensity: true,
+          focusStyled: (_, {required focused}) => focused,
+          child: Builder(
+            builder: (context) {
+              sized = ShellPaintScope.iconOf(context, 22);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+    expect(sized, closeTo(22 * ShellTokens.tvChromeScale, 0.001));
+  });
+
   testWidgets('propsIconSizeOr scales desktop fallback on TV', (tester) async {
     late double sized;
     await tester.pumpWidget(

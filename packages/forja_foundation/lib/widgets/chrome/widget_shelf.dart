@@ -419,17 +419,11 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
   Widget build(BuildContext context) {
     final shelfRow = ShellPaintTvRowScope.maybeOf(context)?.rowId;
     final accent = _gradient.first;
-    final invert = widget.selected && _paintActive;
-    final showGradient = !invert && (widget.selected || _paintActive);
-
-    final Color ink;
-    if (invert) {
-      ink = accent;
-    } else if (showGradient) {
-      ink = Colors.white;
-    } else {
-      ink = Colors.white60;
-    }
+    // Selected + hover/focus used to invert to white fill + accent ink — Series
+    // (#1CE783) and other green shelves made the label look brand-green. Keep
+    // white ink on the gradient for every lit state.
+    final showGradient = widget.selected || _paintActive;
+    final ink = showGradient ? Colors.white : Colors.white60;
 
     final tabBody = SizedBox(
       height: widget.height,
@@ -448,8 +442,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
               style: GoogleFonts.plusJakartaSans(
                 color: ink,
                 fontSize: widget.fontSize,
-                fontWeight:
-                    invert || showGradient ? FontWeight.w800 : FontWeight.w500,
+                fontWeight: showGradient ? FontWeight.w800 : FontWeight.w500,
               ),
             ),
           ],
@@ -495,9 +488,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                   colors: _gradient,
                 )
               : null,
-          color: invert
-              ? Colors.white
-              : (showGradient ? null : Colors.transparent),
+          color: showGradient ? null : Colors.transparent,
           borderRadius: _radius,
           boxShadow: showGradient
               ? [
@@ -544,11 +535,9 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                             child: Icon(
                               Icons.refresh_rounded,
                               size: widget.iconSize,
-                              color: invert
-                                  ? accent
-                                  : (showGradient || _revealReload
-                                      ? Colors.white.withValues(alpha: 0.95)
-                                      : Colors.white60),
+                              color: showGradient || _revealReload
+                                  ? Colors.white.withValues(alpha: 0.95)
+                                  : Colors.white60,
                             ),
                           ),
                         ),

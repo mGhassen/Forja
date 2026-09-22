@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Corner chrome for in-Forja mini player: Play/Pause, Expand, Close.
 ///
@@ -344,7 +345,11 @@ class _MiniFocusButton extends StatelessWidget {
           child: SizedBox(
             width: 36,
             height: 36,
-            child: Icon(icon, color: Colors.white, size: 22),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: ShellPaintScope.iconOf(context, 22),
+            ),
           ),
         ),
       ),

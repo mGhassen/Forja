@@ -115,6 +115,8 @@ class RecentSearchHelperTile extends StatelessWidget {
             onTap: onTap,
             borderRadius: 4,
             scaleOnFocus: 1.0,
+            // Row Material in foundation paints inkHover — avoid double fill.
+            showFocusFill: false,
             navLeftAlways: true,
             listIndex: listIndex,
             tvTabId: tvTabId,
@@ -147,6 +149,7 @@ class RecentSearchHelperTile extends StatelessWidget {
             onTap: onTap,
             borderRadius: 4,
             scaleOnFocus: 1.0,
+            showFocusFill: false,
             tvTabId: tvTabId,
             tvRowId: _removeRowId,
             tvZone: ShellTvZone.chipStrip,
@@ -1625,7 +1628,13 @@ class _KitSearchPageState extends State<KitSearchPage> {
           itemBuilder: (context, index) {
             final entry = entries[index];
             final count = entries.length;
-            final selected = _helperFocusedIndex == index;
+            final policy = ShellScope.inputPolicyOf(context);
+            // Desktop: focus highlight only while keyboard/D-pad chrome is
+            // visible — mouse hover must not keep the prior focus style.
+            final selected = policy.focusChromeVisible(
+              context,
+              focused: _helperFocusedIndex == index,
+            );
             void onFocusChange(bool focused) {
               setState(() {
                 if (focused) {
@@ -1762,6 +1771,13 @@ class _KitSearchPageState extends State<KitSearchPage> {
             final item = _results[index];
             final firstColumn = index % gridColumns == 0;
             final firstRow = index ~/ gridColumns == 0;
+            final policy = ShellScope.inputPolicyOf(context);
+            // White selected border = keyboard/D-pad focus only. Desktop mouse
+            // hover must not keep (or default to) the focus ring on card 0.
+            final selected = policy.focusChromeVisible(
+              context,
+              focused: index == _gridFocusedIndex,
+            );
             return Padding(
               padding: const EdgeInsets.all(4),
               child: CatalogSearchResultCard.film(
@@ -1769,7 +1785,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
                 posterUrl: item.posterUrl,
                 subtitle: item.subtitle,
                 rating: item.rating,
-                selected: index == _gridFocusedIndex,
+                selected: selected,
                 titleFontSize: shellHubCardTitleFontSize(context),
                 onTap: () => widget.onOpen(item),
                 interactiveBuilder: ({required child, required onTap}) {

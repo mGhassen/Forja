@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/catalog/server_grid.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_theme.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 class ForjaPlayerOverlayPanel extends StatelessWidget {
   const ForjaPlayerOverlayPanel({
@@ -158,7 +159,10 @@ class _ChipBtn extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: 6)],
+                if (icon != null) ...[
+                  Icon(icon, size: ShellPaintScope.iconOf(context, 18)),
+                  const SizedBox(width: 6),
+                ],
                 Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
               ],
             ),

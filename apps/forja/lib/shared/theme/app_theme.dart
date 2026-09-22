@@ -648,9 +648,12 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     final railFocus = widget.showFocusRail;
     final flatMenuFocus =
         !railFocus && widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
+    // Desktop: hover OR focus — hover wins (no focus ring under the pointer).
+    final hoverOwnsChrome = _isHovered && policy.scaleOnHover;
     final showFocusRing = widget.showFocusBorder &&
-        ((flatMenuFocus && _isHovered && policy.scaleOnHover) ||
-            policy.focusChromeVisible(context, focused: _isFocused));
+        ((flatMenuFocus && hoverOwnsChrome) ||
+            (!hoverOwnsChrome &&
+                policy.focusChromeVisible(context, focused: _isFocused)));
     // Horizontal bleed is for leanback TV so focus scale stays in layout.
     // Desktop hover must not inset idle cards — scale overlaps neighbors instead.
     // 0 = caller already reserved scale room (e.g. a grid cell).
@@ -731,6 +734,17 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
               ],
             );
           }
+        } else if (widget.showFocusFill &&
+            widget.scaleOnFocus <= 1.0 &&
+            chromeActive) {
+          // Flat rows (search helpers, …): same inkHover the old InkWell path used.
+          content = DecoratedBox(
+            decoration: BoxDecoration(
+              color: ForjaShellColors.inkHover,
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+            ),
+            child: content,
+          );
         }
         if (flatMenuFocus || railFocus) return content;
         return Transform.scale(

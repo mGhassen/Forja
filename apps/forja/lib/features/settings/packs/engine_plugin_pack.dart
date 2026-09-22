@@ -239,7 +239,7 @@ class _SettingsEnginePluginGroupListState
       children: [
         if (widget.orderedGroups.length > 1)
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+            padding: SettingsTokens.categoryChipStripPadOf(context),
             child: _SettingsEngineCategoryTabStrip(
               groups: widget.orderedGroups,
               selected: _group,
@@ -528,7 +528,7 @@ class _SettingsLiveSportCapabilityTabsState
       children: [
         if (showTabs)
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+            padding: SettingsTokens.categoryChipStripPadOf(context),
             child: _SettingsEngineCategoryTabStrip(
               groups: tabs,
               selected: _tab,
@@ -606,9 +606,10 @@ class _SettingsEngineCategoryTabStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (!tv) {
+      final gap = SettingsTokens.categoryChipGapOf(context);
       return Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: gap,
+        runSpacing: gap,
         children: [
           for (var i = 0; i < groups.length; i++)
             ForjaShellChip(
@@ -630,9 +631,10 @@ class _SettingsEngineCategoryTabStrip extends StatelessWidget {
       resultsRowId: 'engine-pack-row',
       onFocusUp: () {},
       builder: (context, edgesFor) {
+        final gap = SettingsTokens.categoryChipGapOf(context);
         return Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: gap,
+          runSpacing: gap,
           children: [
             for (var i = 0; i < groups.length; i++)
               ForjaShellChip(

@@ -679,7 +679,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
           leading: Icon(
             Icons.layers_outlined,
             color: ForjaShellColors.cinematic.textSecondary,
-            size: 18,
+            size: ShellPaintScope.iconOf(context, 18),
           ),
           titleTrailing: _buildAudioFilterGroup(),
         ),

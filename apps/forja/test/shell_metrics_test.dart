@@ -68,13 +68,14 @@ void main() {
       ),
     );
     expect(
-      PortalListTokens.searchPrefixSlotTv,
-      closeTo(
-        PortalListTokens.searchPrefixSlot * ShellTokens.tvChromeScale,
-        0.001,
-      ),
+      PortalListTokens.searchFieldHeightTv,
+      ShellTokens.eventSearchCollapsedTv,
     );
-    expect(PortalListTokens.searchPrefixSlotTv, lessThan(48));
+    expect(
+      PortalListTokens.searchPrefixIconSizeTv,
+      ShellTokens.eventSearchClearIconSizeTv,
+    );
+    expect(PortalListTokens.searchFieldHeightTv, lessThan(48));
     expect(
       PortalListTokens.resolvePanelWidth(true, ShellTokens.sidePanelWidth),
       ShellTokens.sidePanelWidthTv,

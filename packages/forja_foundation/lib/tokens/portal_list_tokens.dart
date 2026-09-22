@@ -52,22 +52,26 @@ abstract final class PortalListTokens {
   static const double headerIconHitPad = 20;
   static const double headerIconHitPadTv =
       headerIconHitPad * ShellTokens.tvChromeScale;
-  static const double searchPrefixIconSize = 20;
+  /// Same pill chrome as top-bar [ShellTokens.eventSearchCollapsed].
+  static const double searchFieldHeight = ShellTokens.eventSearchCollapsed;
+  static const double searchFieldHeightTv = ShellTokens.eventSearchCollapsedTv;
+  static const double searchPrefixIconSize = ShellTokens.eventSearchClearIconSize;
   static const double searchPrefixIconSizeTv =
-      searchPrefixIconSize * ShellTokens.tvChromeScale;
-  /// Material defaults prefix slot to 48 — shrink with chrome on TV.
-  static const double searchPrefixSlot = 40;
-  static const double searchPrefixSlotTv =
-      searchPrefixSlot * ShellTokens.tvChromeScale;
-  static const double searchFieldPadH = 12;
-  static const double searchFieldPadHTv =
-      searchFieldPadH * ShellTokens.tvChromeScale;
+      ShellTokens.eventSearchClearIconSizeTv;
+  /// Outer horizontal pad inside the pill (matches EventListSearch).
+  static const double searchChromePad = 4;
+  static const double searchChromePadTv =
+      searchChromePad * ShellTokens.tvChromeScale;
+  static const double searchChromeLead = 8;
+  static const double searchChromeLeadTv =
+      searchChromeLead * ShellTokens.tvChromeScale;
+  static const double searchChromeMid = 6;
+  static const double searchChromeMidTv =
+      searchChromeMid * ShellTokens.tvChromeScale;
+  /// Vertical padding on the inner borderless field.
   static const double searchFieldPadV = 10;
   static const double searchFieldPadVTv =
       searchFieldPadV * ShellTokens.tvChromeScale;
-  static const double searchFieldRadius = 10;
-  static const double searchFieldRadiusTv =
-      searchFieldRadius * ShellTokens.tvChromeScale;
   static const double rowLineGap = 6;
   static const double rowLineGapTv = rowLineGap * ShellTokens.tvChromeScale;
   static const double rowMetaGap = 3;
@@ -110,16 +114,18 @@ abstract final class PortalListTokens {
       tv ? headerIconSizeTv : headerIconSize;
   static double headerIconHitOf(bool tv) =>
       headerIconSizeOf(tv) + (tv ? headerIconHitPadTv : headerIconHitPad);
+  static double searchFieldHeightOf(bool tv) =>
+      tv ? searchFieldHeightTv : searchFieldHeight;
   static double searchPrefixIconSizeOf(bool tv) =>
       tv ? searchPrefixIconSizeTv : searchPrefixIconSize;
-  static double searchPrefixSlotOf(bool tv) =>
-      tv ? searchPrefixSlotTv : searchPrefixSlot;
-  static double searchFieldPadHOf(bool tv) =>
-      tv ? searchFieldPadHTv : searchFieldPadH;
+  static double searchChromePadOf(bool tv) =>
+      tv ? searchChromePadTv : searchChromePad;
+  static double searchChromeLeadOf(bool tv) =>
+      tv ? searchChromeLeadTv : searchChromeLead;
+  static double searchChromeMidOf(bool tv) =>
+      tv ? searchChromeMidTv : searchChromeMid;
   static double searchFieldPadVOf(bool tv) =>
       tv ? searchFieldPadVTv : searchFieldPadV;
-  static double searchFieldRadiusOf(bool tv) =>
-      tv ? searchFieldRadiusTv : searchFieldRadius;
   static double panelPadOf(bool tv) => tv ? panelPadTv : panelPad;
   static double sectionGapOf(bool tv) => tv ? sectionGapTv : sectionGap;
   static double itemSpacingOf(bool tv) => tv ? itemSpacingTv : itemSpacing;

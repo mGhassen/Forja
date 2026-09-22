@@ -1350,12 +1350,12 @@ class _EpisodeRow extends StatelessWidget {
                           ),
                         ),
                         if (selected)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 6),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
                             child: Icon(
                               Icons.play_circle_filled_rounded,
                               color: Colors.white,
-                              size: 18,
+                              size: ShellPaintScope.iconOf(context, 18),
                             ),
                           ),
                       ],
@@ -1748,7 +1748,11 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
               padding: const EdgeInsets.only(left: 12),
               child: Row(
                 children: [
-                  Icon(Icons.search_rounded, size: 18, color: secondary),
+                  Icon(
+                    Icons.search_rounded,
+                    size: ShellPaintScope.iconOf(context, 18),
+                    color: secondary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(child: searchField),
                   if (widget.searchQuery.isNotEmpty)
@@ -1792,7 +1796,10 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
                       message: 'Auto next episode',
                       child: Icon(
                         Icons.skip_next_rounded,
-                        size: 20,
+                        size: ShellPaintScope.iconOf(
+                          context,
+                          ShellTokens.playerChromeIconSize,
+                        ),
                         color: secondary,
                       ),
                     ),
@@ -1854,7 +1861,14 @@ class _EpisodeAutoNextFocus extends StatelessWidget {
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.skip_next_rounded, size: 20, color: accent),
+              Icon(
+                Icons.skip_next_rounded,
+                size: ShellPaintScope.iconOf(
+                  context,
+                  ShellTokens.playerChromeIconSize,
+                ),
+                color: accent,
+              ),
               const SizedBox(width: 4),
               ExcludeFocus(
                 child: IgnorePointer(
@@ -1893,7 +1907,10 @@ class _EpisodePanelCloseButton extends StatelessWidget {
       height: 40,
       child: Icon(
         Icons.close_rounded,
-        size: 20,
+        size: ShellPaintScope.iconOf(
+          context,
+          ShellTokens.playerChromeIconSize,
+        ),
         color: ForjaShellColors.cinematic.textSecondary,
       ),
     );

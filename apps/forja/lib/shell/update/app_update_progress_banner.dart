@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 
 /// Sticky progress card for background desktop update downloads.
@@ -87,7 +88,7 @@ class _UpdateProgressBanner extends StatelessWidget {
             children: [
               Icon(
                 Icons.system_update_alt_rounded,
-                size: 18,
+                size: ShellPaintScope.iconOf(context, 18),
                 color: style.accent,
               ),
               const SizedBox(width: 10),
@@ -114,7 +115,7 @@ class _UpdateProgressBanner extends StatelessWidget {
                 onPressed: onClose,
                 icon: Icon(
                   Icons.close_rounded,
-                  size: 16,
+                  size: ShellPaintScope.iconOf(context, 16),
                   color: ForjaShellColors.textSecondary.withValues(
                     alpha: 0.8,
                   ),

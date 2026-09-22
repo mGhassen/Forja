@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Desktop PiP chrome — Safari/system-style controls on hover:
@@ -210,7 +211,11 @@ class _PipIconChip extends StatelessWidget {
           height: 34,
           decoration: _pipChromeDecoration(radius: 10),
           alignment: Alignment.center,
-          child: Icon(icon, color: Colors.white, size: 16),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: ShellPaintScope.iconOf(context, 16),
+          ),
         ),
       ),
     );
@@ -275,10 +280,10 @@ class _SkipGlyph extends StatelessWidget {
         children: [
           Transform.flip(
             flipX: forward,
-            child: const Icon(
+            child: Icon(
               Icons.replay_rounded,
               color: Colors.white,
-              size: 40,
+              size: ShellPaintScope.iconOf(context, 40),
             ),
           ),
           const Text(
