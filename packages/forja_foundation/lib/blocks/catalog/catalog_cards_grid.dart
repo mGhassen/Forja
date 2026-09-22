@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/blocks/catalog/catalog_channel_grid_focus.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
@@ -747,7 +747,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     super.initState();
     _scroll.addListener(_onScroll);
     widget.landEpoch?.addListener(_onLandEpoch);
-    CatalogChannelGridFocus.register(_focusInFront);
     _offerScrollIntoView();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -762,7 +761,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
 
   @override
   void dispose() {
-    CatalogChannelGridFocus.unregister(_focusInFront);
     widget.onScrollIntoViewChanged?.call(null);
     widget.landEpoch?.removeListener(_onLandEpoch);
     _logoSettleTimer?.cancel();
@@ -773,56 +771,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
 
   bool get _preferCategoryFocusLive =>
       widget.preferCategoryFocusNow?.call() ?? widget.preferCategoryFocusOnLand;
-
-  bool _focusInFront({double? categoryGlobalY}) {
-    if (!mounted || widget.items.isEmpty) return false;
-    final idx = _indexInFront(categoryGlobalY: categoryGlobalY);
-    if (idx < 0) return false;
-    setState(() => _selectedIndex = idx);
-    _scrollAndMaybeFocus(idx, focus: true);
-    return true;
-  }
-
-  /// Channel whose vertical center is closest to [categoryGlobalY], else the
-  /// first tile visible in the viewport (left column of that row).
-  int _indexInFront({double? categoryGlobalY}) {
-    if (widget.items.isEmpty) return -1;
-    if (categoryGlobalY != null) {
-      var best = -1;
-      var bestDist = double.infinity;
-      for (final e in _itemKeys.entries) {
-        final ctx = e.value.currentContext;
-        if (ctx == null) continue;
-        final box = ctx.findRenderObject();
-        if (box is! RenderBox || !box.hasSize) continue;
-        final centerY = box.localToGlobal(Offset(0, box.size.height / 2)).dy;
-        final dist = (centerY - categoryGlobalY).abs();
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = e.key;
-        }
-      }
-      if (best >= 0) return best;
-    }
-    return _firstVisibleIndex();
-  }
-
-  int _firstVisibleIndex() {
-    if (!_scroll.hasClients || widget.items.isEmpty) return 0;
-    if (_compactList) {
-      const rowH = 56.0;
-      const topPad = 4.0;
-      final row = ((_scroll.offset - topPad) / rowH).floor();
-      return row.clamp(0, widget.items.length - 1);
-    }
-    final layout = _layout;
-    if (layout == null) return 0;
-    final cols = layout.columns.clamp(1, 999);
-    final rowExtent = layout.cardH + layout.gap;
-    final row = ((_scroll.offset - layout.topPad) / rowExtent).floor();
-    final index = (row.clamp(0, 999999) * cols).clamp(0, widget.items.length - 1);
-    return index;
-  }
 
   void _offerScrollIntoView() {
     widget.onScrollIntoViewChanged?.call(_scrollToIndex);
@@ -920,6 +868,40 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     if (index < 0 || index >= widget.items.length) return;
     setState(() => _selectedIndex = index);
     _scrollAndMaybeFocus(index, focus: false);
+  }
+
+  /// Focus / hover may fire while the grid is still building (e.g. after tap
+  /// rebuild). Selection setState must not run in that window.
+  void _onChannelInteractiveActive(
+    int i,
+    Map<String, dynamic> item, {
+    required bool active,
+  }) {
+    // Host health probe is setState-free — keep it synchronous.
+    widget.onItemInteractiveActive?.call(item, active: active);
+
+    void applySelection() {
+      if (!mounted) return;
+      if (active) {
+        if (_selectedIndex != i) {
+          setState(() => _selectedIndex = i);
+        }
+        // Keep category → landing on this tile (not a stale play highlight).
+        widget.onArmFocusMemory?.call(i);
+      } else if (_selectedIndex == i) {
+        // TV: leaving the tile (e.g. → Portals) must drop play chrome;
+        // letter-jump still sets _selectedIndex without focus.
+        setState(() => _selectedIndex = -1);
+      }
+    }
+
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      applySelection();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => applySelection());
+    }
   }
 
   void _landSelected({required bool preferCategoryFocus}) {
@@ -1117,16 +1099,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
                 widget.onItemTap!(item);
               },
         onInteractiveActive: (active) {
-          if (active) {
-            if (_selectedIndex != i) {
-              setState(() => _selectedIndex = i);
-            }
-          } else if (_selectedIndex == i) {
-            // TV: leaving the tile (e.g. → Portals) must drop play chrome;
-            // letter-jump still sets _selectedIndex without focus.
-            setState(() => _selectedIndex = -1);
-          }
-          widget.onItemInteractiveActive?.call(item, active: active);
+          _onChannelInteractiveActive(i, item, active: active);
         },
         onTvFocusGained: _leanbackOnly
             ? () {

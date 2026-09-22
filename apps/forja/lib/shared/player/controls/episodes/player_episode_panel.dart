@@ -639,19 +639,33 @@ class _SeasonDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     const radius = 20.0;
     final borderRadius = BorderRadius.circular(radius);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final triggerFs = tv ? ShellTokens.tvTitleFontSize : 15.0;
+    final menuFs = tv ? ShellTokens.tvTitleFontSize : 15.0;
+    final padH = ShellTokens.chromeScale(18, tv: tv);
+    final padV = ShellTokens.chromeScale(11, tv: tv);
 
     return MenuAnchor(
-      alignmentOffset: const Offset(0, 4),
+      alignmentOffset: Offset(0, ShellTokens.chromeScale(4, tv: tv)),
       style: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(
           ForjaShellColors.cinematic.menuSurface,
         ),
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+        padding: WidgetStatePropertyAll(
+          EdgeInsets.symmetric(
+            vertical: ShellTokens.chromeScale(4, tv: tv),
+            horizontal: ShellTokens.chromeScale(6, tv: tv),
+          ),
         ),
-        minimumSize: const WidgetStatePropertyAll(Size(168, 0)),
+        minimumSize: WidgetStatePropertyAll(
+          Size(ShellTokens.chromeScale(168, tv: tv), 0),
+        ),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              ShellTokens.chromeScale(10, tv: tv),
+            ),
+          ),
         ),
       ),
       menuChildren: List.generate(seasonCount, (i) {
@@ -660,9 +674,17 @@ class _SeasonDropdown extends StatelessWidget {
         return MenuItemButton(
           onPressed: () => onSelected(n),
           style: shellMenuItemStyle(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: ShellTokens.chromeScale(16, tv: tv),
+              vertical: ShellTokens.chromeScale(12, tv: tv),
+            ),
           ).merge(ButtonStyle(
-            minimumSize: const WidgetStatePropertyAll(Size(156, 52)),
+            minimumSize: WidgetStatePropertyAll(
+              Size(
+                ShellTokens.chromeScale(156, tv: tv),
+                ShellTokens.chromeScale(52, tv: tv),
+              ),
+            ),
             foregroundColor: WidgetStatePropertyAll(
               isSelected
                   ? ForjaShellColors.cinematic.textPrimary
@@ -670,7 +692,7 @@ class _SeasonDropdown extends StatelessWidget {
             ),
             textStyle: WidgetStatePropertyAll(
               TextStyle(
-                fontSize: 15,
+                fontSize: menuFs,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -703,13 +725,12 @@ class _SeasonDropdown extends StatelessWidget {
                   ? null
                   : toggle,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
                 child: Text(
                   'Season $selectedSeason',
                   style: TextStyle(
                     color: ForjaShellColors.brandGreen,
-                    fontSize: 15,
+                    fontSize: triggerFs,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1244,8 +1265,7 @@ class _EpisodeRow extends StatelessWidget {
   final VoidCallback? onDownEdge;
 
   static const _thumbRadius = 6.0;
-  static const _thumbWidth = 184.0;
-  static const _thumbHeight = _thumbWidth * 9 / 16;
+  static const _thumbWidthDesktop = 184.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1254,35 +1274,46 @@ class _EpisodeRow extends StatelessWidget {
         WatchProgressBar.isResumable(positionMs, durationMs);
 
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final thumbW = ShellTokens.chromeScale(_thumbWidthDesktop, tv: tv);
+    final thumbH = thumbW * 9 / 16;
+    final thumbRadius = ShellTokens.chromeScale(_thumbRadius, tv: tv);
+    final tileRadius = ShellTokens.chromeScale(10, tv: tv);
     final tile = Material(
       color: selected
           ? Colors.white.withValues(alpha: 0.1)
           : Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(tileRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
         onTap: tvFocus ? null : onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(tileRadius),
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+          padding: EdgeInsets.symmetric(
+            horizontal: ShellTokens.chromeScale(2, tv: tv),
+            vertical: ShellTokens.chromeScale(6, tv: tv),
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: _thumbWidth,
-                height: _thumbHeight,
+                width: thumbW,
+                height: thumbH,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(_thumbRadius),
+                    borderRadius: BorderRadius.circular(thumbRadius),
                     border: selected
-                        ? Border.all(color: Colors.white, width: 2)
+                        ? Border.all(
+                            color: Colors.white,
+                            width: ShellTokens.chromeScale(2, tv: tv),
+                          )
                         : null,
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(_thumbRadius),
+                    borderRadius: BorderRadius.circular(thumbRadius),
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
@@ -1691,11 +1722,12 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
   Widget build(BuildContext context) {
     const radius = 22.0;
     final secondary = ForjaShellColors.cinematic.textSecondary;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final fontSize = tv
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final fontSize = tvDensity
         ? ShellTokens.torrentPanelSearchFontSizeTv
         : ShellTokens.torrentPanelSearchFontSize;
-    final padV = tv
+    final padV = tvDensity
         ? ShellTokens.torrentPanelSearchPadVTv
         : ShellTokens.torrentPanelSearchPadV;
     final fieldDecoration = InputDecoration(
@@ -1713,7 +1745,7 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
       fontSize: fontSize,
     );
 
-    final searchField = tv
+    final searchField = tvFocus
         ? TvBrowseTextField(
             controller: _controller,
             focusNode: _searchFocus,
@@ -1735,17 +1767,21 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
           );
 
     return Container(
-      height: 40,
+      height: ShellTokens.chromeScale(40, tv: tvDensity),
       decoration: BoxDecoration(
         color: ForjaShellColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(
+          ShellTokens.chromeScale(radius, tv: tvDensity),
+        ),
         border: Border.all(color: ForjaShellColors.borderSubtle),
       ),
       child: Row(
         children: [
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(left: 12),
+              padding: EdgeInsets.only(
+                left: ShellTokens.chromeScale(12, tv: tvDensity),
+              ),
               child: Row(
                 children: [
                   Icon(
@@ -1753,7 +1789,7 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
                     size: ShellPaintScope.iconOf(context, 18),
                     color: secondary,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: ShellTokens.chromeScale(8, tv: tvDensity)),
                   Expanded(child: searchField),
                   if (widget.searchQuery.isNotEmpty)
                     ExcludeFocus(
@@ -1772,15 +1808,18 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
           ),
           Container(
             width: 1,
-            height: 22,
+            height: ShellTokens.chromeScale(22, tv: tvDensity),
             color: ForjaShellColors.borderSubtle,
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 10, right: 8),
+            padding: EdgeInsets.only(
+              left: ShellTokens.chromeScale(10, tv: tvDensity),
+              right: ShellTokens.chromeScale(8, tv: tvDensity),
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (tv)
+                if (tvFocus)
                   _EpisodeAutoNextFocus(
                     focusNode: widget.autoNextFocusNode!,
                     autoNext: widget.autoNext,
@@ -1804,7 +1843,7 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: ShellTokens.chromeScale(4, tv: tvDensity)),
                   Switch(
                     value: widget.autoNext,
                     onChanged: widget.onAutoNextChanged,

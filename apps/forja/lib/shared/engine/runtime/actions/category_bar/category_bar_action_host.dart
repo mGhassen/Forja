@@ -386,7 +386,13 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       _loading = false;
     });
     _publishBar(chromeItems: _items);
-    _ensureValidSelection(_items, preferCategoryId: lastCat);
+    // Store-backed Live land: last category, else first portal group in
+    // pin / drag / playlist order (overrides painter API-first snap).
+    _ensureValidSelection(
+      _items,
+      preferCategoryId: lastCat,
+      landOrderedFirst: true,
+    );
     unawaited(IptvCatalogLand.hydrateHighlightFromStore());
   }
 
@@ -463,42 +469,54 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   void _ensureValidSelection(
     List<CatalogCategoryItem> items, {
     String? preferCategoryId,
+    bool landOrderedFirst = false,
   }) {
     if (items.isEmpty) return;
+
+    // Live store reload: last category wins; else first portal group in the
+    // ordered rail (pinned / dragged-to-top / playlist first) — not Favorites.
+    if (_isLive && landOrderedFirst) {
+      final prefer = (preferCategoryId ?? '').trim();
+      if (prefer.isNotEmpty &&
+          !PortalLiveCatalog.isSyntheticId(prefer) &&
+          items.any((e) => e.id == prefer)) {
+        _applyLandSelection(prefer, items);
+        return;
+      }
+      for (final e in items) {
+        if (PortalLiveCatalog.isSyntheticId(e.id) || e.id == 'all') continue;
+        _applyLandSelection(e.id, items);
+        return;
+      }
+      _applyLandSelection(items.first.id, items);
+      return;
+    }
+
     final sel = widget.selectedId.trim();
     if (sel.isNotEmpty && sel != 'all' && items.any((e) => e.id == sel)) {
       _armCatsFocusMemory(sel, items: items);
       return;
     }
-    // Live only: restore last-played category when still in the rail.
-    if (_isLive) {
-      final prefer = (preferCategoryId ?? '').trim();
-      if (prefer.isNotEmpty &&
-          !PortalLiveCatalog.isSyntheticId(prefer) &&
-          items.any((e) => e.id == prefer)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          widget.onSelect(prefer);
-          _armCatsFocusMemory(prefer, items: items);
-        });
-        return;
-      }
-    }
-    // Live + Movies/Series: no All row — land on first portal group
-    // (skip Favorites / Already watched on Live).
+    // Movies/Series (or Live without store land): first portal group.
     for (final e in items) {
       if (PortalLiveCatalog.isSyntheticId(e.id) || e.id == 'all') continue;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        widget.onSelect(e.id);
-        _armCatsFocusMemory(e.id, items: items);
-      });
+      _applyLandSelection(e.id, items);
+      return;
+    }
+    _applyLandSelection(items.first.id, items);
+  }
+
+  void _applyLandSelection(String id, List<CatalogCategoryItem> items) {
+    final want = id.trim();
+    if (want.isEmpty) return;
+    if (widget.selectedId.trim() == want) {
+      _armCatsFocusMemory(want, items: items);
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      widget.onSelect(items.first.id);
-      _armCatsFocusMemory(items.first.id, items: items);
+      widget.onSelect(want);
+      _armCatsFocusMemory(want, items: items);
     });
   }
 

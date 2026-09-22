@@ -102,9 +102,11 @@ abstract final class PortalCatalogPage {
       pageSize = maxPageSize;
     }
 
-    // Explicit stream_ids list (even empty Favorites/Watched) must not fall
-    // through to the first category page.
-    if (hasStreamIdsKey) {
+    // Favorites / Already watched pages: stream_ids is the page (even when
+    // empty). Never fall through to first category or the whole shelf.
+    // Synthetic `__favorites__` / `__watched__` without stream_ids → empty.
+    final syntheticCat = categoryId.startsWith('__');
+    if (hasStreamIdsKey || syntheticCat) {
       categoryId = '';
     } else if (streamIds.isEmpty && q.isEmpty && categoryId.isEmpty) {
       // Search / id lookup: scan whole shelf. Else default to first category
@@ -117,6 +119,7 @@ abstract final class PortalCatalogPage {
       categoryId: categoryId,
       q: q,
       streamIds: streamIds,
+      streamIdsSet: hasStreamIdsKey || syntheticCat,
       sort: sort,
     );
 
@@ -225,11 +228,15 @@ abstract final class PortalCatalogPage {
     String categoryId = '',
     String q = '',
     List<String> streamIds = const [],
+    /// When true, [streamIds] is the page filter — empty list → empty page
+    /// (Favorites / Already watched), not “no filter / whole shelf”.
+    bool streamIdsSet = false,
     String sort = 'playlist',
   }) {
     Iterable<Map<String, dynamic>> rows = streams;
 
-    if (streamIds.isNotEmpty) {
+    if (streamIdsSet || streamIds.isNotEmpty) {
+      if (streamIds.isEmpty) return const [];
       final want = {for (final id in streamIds) id};
       final byId = <String, Map<String, dynamic>>{};
       for (final s in streams) {

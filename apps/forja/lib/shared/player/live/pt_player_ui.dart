@@ -1562,13 +1562,16 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   double _topBarTopPadding(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final base = ShellTokens.chromeScale(8, tv: tv);
     if (DesktopWindowChrome.isDesktop) {
-      return DesktopWindowChrome.topInset(context) + 8;
+      return DesktopWindowChrome.topInset(context) + base;
     }
-    return 8;
+    return base;
   }
 
-  double _topBarLeftPadding(BuildContext context) => 16;
+  double _topBarLeftPadding(BuildContext context) =>
+      ShellTokens.chromeScale(16, tv: ShellPaintScope.usesTvDensityOf(context));
 
   /// System-style PiP chrome — expand / Minimize / Close · ±15 · scrubber.
   Widget _buildPipRevertOverlay() {
@@ -1684,7 +1687,8 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     final button = PlayerFlatIconButton(
       icon: icon,
       tooltip: tooltip,
-      size: 44,
+      size: ShellTokens.playerChromeTopBtnSize,
+      iconSize: ShellTokens.playerChromeRoundIconSize,
       tvFocusable: tv,
       focusNode: focusNode,
       onPressed: onPressed,
@@ -1770,11 +1774,13 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       padding: EdgeInsets.fromLTRB(
         _topBarLeftPadding(context),
         _topBarTopPadding(context),
-        8,
+        ShellTokens.chromeScale(8, tv: ShellPaintScope.usesTvDensityOf(context)),
         0,
       ),
       child: SizedBox(
-        height: 44,
+        height: ShellPaintScope.usesTvDensityOf(context)
+            ? ShellTokens.playerChromeTopBtnSizeTv
+            : ShellTokens.playerChromeTopBtnSize,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -1793,11 +1799,20 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 },
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(
+              width: ShellTokens.chromeScale(
+                8,
+                tv: ShellPaintScope.usesTvDensityOf(context),
+              ),
+            ),
             if ((_s._logoUrl ?? '').trim().isNotEmpty) ...[
               SizedBox(
-                width: 36,
-                height: 36,
+                width: ShellPaintScope.usesTvDensityOf(context)
+                    ? ShellTokens.playerChromeLogoSizeTv
+                    : ShellTokens.playerChromeLogoSize,
+                height: ShellPaintScope.usesTvDensityOf(context)
+                    ? ShellTokens.playerChromeLogoSizeTv
+                    : ShellTokens.playerChromeLogoSize,
                 child: ForjaNetworkImage(
                   key: ValueKey(_s._logoUrl!.trim()),
                   url: _s._logoUrl!.trim(),
@@ -1806,7 +1821,12 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                   error: const SizedBox.shrink(),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(
+                width: ShellTokens.chromeScale(
+                  10,
+                  tv: ShellPaintScope.usesTvDensityOf(context),
+                ),
+              ),
             ],
             Expanded(
               child: Column(
@@ -1891,9 +1911,18 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   // ───────────────────────────────────────────────────────────────────────
   Widget _buildChannelLogo(bool compact) {
     if ((_s._logoUrl ?? '').isEmpty) return const SizedBox.shrink();
-    final size = compact ? 56.0 : 72.0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final size = compact
+        ? (tv
+            ? ShellTokens.playerChromeProgressLogoSizeCompactTv
+            : ShellTokens.playerChromeProgressLogoSizeCompact)
+        : (tv
+            ? ShellTokens.playerChromeProgressLogoSizeTv
+            : ShellTokens.playerChromeProgressLogoSize);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(
+        ShellTokens.chromeScale(8, tv: tv),
+      ),
       child: ForjaNetworkImage(
         key: ValueKey(_s._logoUrl!),
         url: _s._logoUrl!,
@@ -1929,21 +1958,26 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     } else {
       dot = const Color(0xFFE25555); // red
     }
-    final fontSize = compact ? 12.0 : 13.0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final fontSize = tv
+        ? ShellTokens.playerChromeStatusFontSizeTv
+        : (compact ? 12.0 : 13.0);
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 16 : 24,
-        vertical: compact ? 6 : 8,
+        horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: tv),
+        vertical: ShellTokens.chromeScale(compact ? 6 : 8, tv: tv),
       ),
       child: Row(
         children: [
           if ((_s._logoUrl ?? '').isNotEmpty) ...[
             _buildChannelLogo(compact),
-            SizedBox(width: compact ? 10 : 16),
+            SizedBox(
+              width: ShellTokens.chromeScale(compact ? 10 : 16, tv: tv),
+            ),
           ],
           Container(
-            width: 8,
-            height: 8,
+            width: ShellTokens.chromeScale(8, tv: tv),
+            height: ShellTokens.chromeScale(8, tv: tv),
             decoration: BoxDecoration(
               color: dot,
               shape: BoxShape.circle,
@@ -1955,7 +1989,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: ShellTokens.chromeScale(8, tv: tv)),
           Text(
             'LIVE',
             style: GoogleFonts.plusJakartaSans(
@@ -1977,16 +2011,19 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   /// Not used on Android TV Exo ([_showProgressChrome] is false there).
   Widget _buildLiveProgressBar(bool compact) {
     final future = _floatingEpgFuture();
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 16 : 24,
-        vertical: compact ? 2 : 4,
+        horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: tv),
+        vertical: ShellTokens.chromeScale(compact ? 2 : 4, tv: tv),
       ),
       child: Row(
         children: [
           if ((_s._logoUrl ?? '').isNotEmpty) ...[
             _buildChannelLogo(compact),
-            SizedBox(width: compact ? 10 : 16),
+            SizedBox(
+              width: ShellTokens.chromeScale(compact ? 10 : 16, tv: tv),
+            ),
           ],
           Expanded(
             child: future == null
@@ -2010,7 +2047,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                   ),
           ),
           SizedBox(
-            width: compact ? 84 : 100,
+            width: ShellTokens.chromeScale(compact ? 84 : 100, tv: tv),
             child: future == null
                 ? _liveProgressTimeLabel('LIVE', compact)
                 : FutureBuilder<List<EpgEntry>>(
@@ -2042,12 +2079,15 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   Widget _liveProgressTimeLabel(String text, bool compact) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Text(
       text,
       textAlign: TextAlign.right,
       style: GoogleFonts.spaceMono(
         color: Colors.white,
-        fontSize: compact ? 12 : 13,
+        fontSize: tv
+            ? ShellTokens.playerChromeTimeFontSizeTv
+            : (compact ? 12.0 : 13.0),
         fontFeatures: const [FontFeature.tabularFigures()],
         shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
       ),
@@ -2055,14 +2095,15 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   Widget _liveProgressTrack({required double value, required bool compact}) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return SizedBox(
-      height: compact ? 28 : 32,
+      height: ShellTokens.chromeScale(compact ? 28 : 32, tv: tv),
       child: Center(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(2),
           child: LinearProgressIndicator(
             value: value.clamp(0.0, 1.0),
-            minHeight: 3.5,
+            minHeight: ShellTokens.chromeScale(3.5, tv: tv),
             backgroundColor: Colors.white24,
             color: ForjaShellColors.brandGreen,
           ),
@@ -2135,24 +2176,40 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
           );
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 16 : 24,
-        vertical: compact ? 2 : 4,
+        horizontal: ShellTokens.chromeScale(
+          compact ? 16 : 24,
+          tv: ShellPaintScope.usesTvDensityOf(context),
+        ),
+        vertical: ShellTokens.chromeScale(
+          compact ? 2 : 4,
+          tv: ShellPaintScope.usesTvDensityOf(context),
+        ),
       ),
       child: Row(
         children: [
           if ((_s._logoUrl ?? '').isNotEmpty) ...[
             _buildChannelLogo(compact),
-            SizedBox(width: compact ? 10 : 16),
+            SizedBox(
+              width: ShellTokens.chromeScale(
+                compact ? 10 : 16,
+                tv: ShellPaintScope.usesTvDensityOf(context),
+              ),
+            ),
           ],
           Expanded(child: track),
           SizedBox(
-            width: compact ? 100 : 120,
+            width: ShellTokens.chromeScale(
+              compact ? 100 : 120,
+              tv: ShellPaintScope.usesTvDensityOf(context),
+            ),
             child: Text(
               '${_PtPlayerScreenState._fmtDur(pos)} / --:--',
               textAlign: TextAlign.right,
               style: GoogleFonts.spaceMono(
                 color: Colors.white,
-                fontSize: compact ? 12 : 13,
+                fontSize: ShellPaintScope.usesTvDensityOf(context)
+                    ? ShellTokens.playerChromeTimeFontSizeTv
+                    : (compact ? 12.0 : 13.0),
                 fontFeatures: const [FontFeature.tabularFigures()],
                 shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
               ),
@@ -2260,25 +2317,41 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 16 : 24,
-        vertical: compact ? 2 : 4,
+        horizontal: ShellTokens.chromeScale(
+          compact ? 16 : 24,
+          tv: ShellPaintScope.usesTvDensityOf(context),
+        ),
+        vertical: ShellTokens.chromeScale(
+          compact ? 2 : 4,
+          tv: ShellPaintScope.usesTvDensityOf(context),
+        ),
       ),
       child: Row(
         children: [
           if ((_s._logoUrl ?? '').isNotEmpty) ...[
             _buildChannelLogo(compact),
-            SizedBox(width: compact ? 10 : 16),
+            SizedBox(
+              width: ShellTokens.chromeScale(
+                compact ? 10 : 16,
+                tv: ShellPaintScope.usesTvDensityOf(context),
+              ),
+            ),
           ],
           Expanded(child: slider),
           SizedBox(
-            width: compact ? 100 : 120,
+            width: ShellTokens.chromeScale(
+              compact ? 100 : 120,
+              tv: ShellPaintScope.usesTvDensityOf(context),
+            ),
             child: Text(
               '${_PtPlayerScreenState._fmtDur(shownPos)} / '
               '${_PtPlayerScreenState._fmtDur(_s._duration)}',
               textAlign: TextAlign.right,
               style: GoogleFonts.spaceMono(
                 color: Colors.white,
-                fontSize: compact ? 12 : 13,
+                fontSize: ShellPaintScope.usesTvDensityOf(context)
+                    ? ShellTokens.playerChromeTimeFontSizeTv
+                    : (compact ? 12.0 : 13.0),
                 fontFeatures: const [FontFeature.tabularFigures()],
                 shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
               ),
@@ -2292,6 +2365,8 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   Widget _buildBottomBar(bool compact) {
     final tvFocus = liveUseTvFocus(context);
     final showPointerChrome = liveShowPointerChrome(context);
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final controlGap = ShellTokens.chromeScale(14, tv: tvDensity);
 
     /// Left transport (Play / Replay) → seekbar when present, else Back.
     void upFromLeftControls() {
@@ -2449,8 +2524,8 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 16 : 24,
-        vertical: compact ? 12 : 18,
+        horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: tvDensity),
+        vertical: ShellTokens.chromeScale(compact ? 12 : 18, tv: tvDensity),
       ),
       child: Row(
         children: [
@@ -2467,7 +2542,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               _scheduleHideControls();
             },
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: controlGap),
           nextIcon(
             icon: Icons.replay_rounded,
             focusNode: _s._replayFocus,
@@ -2482,7 +2557,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             },
           ),
           if (showPointerChrome) ...[
-            const SizedBox(width: 14),
+            SizedBox(width: controlGap),
             MouseRegion(
               onEnter: (_) {
                 setState(() => _s._volumeHovering = true);
@@ -2573,7 +2648,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 onTap: () => unawaited(_showSubtitleMenu(btnCtx)),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: controlGap),
             Builder(
               builder: (btnCtx) => nextIcon(
                 icon: Icons.audiotrack_rounded,
@@ -2588,7 +2663,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 onTap: () => unawaited(_showAudioMenu(btnCtx)),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: controlGap),
           ],
           if (showEpisodes) ...[
             Builder(
@@ -2605,7 +2680,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 onTap: () => unawaited(_showEpisodesPanel(btnCtx)),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: controlGap),
           ],
           if (hasGuide) ...[
             nextIcon(
@@ -2620,7 +2695,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                   : () => claim(rightOfSearch()!),
               onTap: _toggleSearch,
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: controlGap),
             nextIcon(
               icon: Icons.grid_view_rounded,
               focusNode: _s._guideFocus,
@@ -2633,7 +2708,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                   : () => claim(rightOfGuide()!),
               onTap: _toggleGuide,
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: controlGap),
           ],
           if (hasSources)
             Builder(
@@ -2647,7 +2722,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 onTap: () => _showSourcePicker(anchorContext: anchorContext),
               ),
             ),
-          if (hasSources) const SizedBox(width: 14),
+          if (hasSources) SizedBox(width: controlGap),
           if (showPointerChrome)
             FocusRoundIcon(
               icon: _s._isFullscreen

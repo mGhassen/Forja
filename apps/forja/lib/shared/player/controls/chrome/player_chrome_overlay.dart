@@ -24,6 +24,19 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 part 'player_chrome_overlay_hero.dart';
 
+/// Scale a desktop chrome length when leanback density is on.
+double playerChromeScale(BuildContext context, double desktop) =>
+    ShellTokens.chromeScale(
+      desktop,
+      tv: ShellPaintScope.usesTvDensityOf(context),
+    );
+
+/// Desktop type → leanback ladder (never × [playerChromeScale]).
+double playerChromeTypeSize(BuildContext context, double desktop) =>
+    ShellPaintScope.usesTvDensityOf(context)
+        ? ShellTokens.tvTypeSize(desktop)
+        : desktop;
+
 /// D-pad / hover highlight for player chrome - works even without [ShellScope].
 /// Desktop: mouse → hover only; keyboard/D-pad → focus chrome.
 bool playerChromeFocusActive(
@@ -170,9 +183,17 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
       highlight: highlight,
       tvFocused: _tvFocused,
     );
+    final size = playerChromeScale(context, widget.size);
+    final iconSize = playerChromeScale(context, widget.iconSize);
+    final labelFs = playerChromeTypeSize(context, 12);
+    final padH = playerChromeScale(context, 8);
+    final maxW = playerChromeScale(context, 148);
+    final labelMaxW = playerChromeScale(context, 110);
+    final radius = widget.label == null ? size / 2 : playerChromeScale(context, 8);
     final shape = playerChromeButtonShape(
       isCircle: widget.label == null,
       tvFocused: _tvFocused,
+      borderRadius: radius,
     );
     final onTap = widget.onPressedWithContext != null
         ? () => widget.onPressedWithContext!(context)
@@ -192,32 +213,32 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
         splashColor: Colors.white.withValues(alpha: 0.08),
         customBorder: shape,
         child: SizedBox(
-          width: widget.label == null ? widget.size : null,
-          height: widget.size,
+          width: widget.label == null ? size : null,
+          height: size,
           child: widget.label == null
-              ? Icon(widget.icon, color: iconColor, size: widget.iconSize)
+              ? Icon(widget.icon, color: iconColor, size: iconSize)
               : ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 148),
+                  constraints: BoxConstraints(maxWidth: maxW),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: EdgeInsets.symmetric(horizontal: padH),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           widget.icon,
                           color: iconColor,
-                          size: widget.iconSize - 2,
+                          size: iconSize - 2,
                         ),
-                        const SizedBox(width: 5),
+                        SizedBox(width: playerChromeScale(context, 5)),
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 110),
+                          constraints: BoxConstraints(maxWidth: labelMaxW),
                           child: Text(
                             widget.label!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: iconColor,
-                              fontSize: 12,
+                              fontSize: labelFs,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -236,7 +257,10 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
     final onTap = widget.onPressedWithContext != null
         ? () => widget.onPressedWithContext!(context)
         : widget.onPressed;
-    final borderRadius = widget.label == null ? widget.size / 2 : 8.0;
+    final size = playerChromeScale(context, widget.size);
+    final borderRadius = widget.label == null
+        ? size / 2
+        : playerChromeScale(context, 8);
     final painted = ListenableBuilder(
       listenable: _hoveredN,
       builder: (context, _) => _buildChild(_hoveredN.value),
@@ -355,10 +379,16 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
     final shape = playerChromeButtonShape(
       isCircle: false,
       tvFocused: _tvFocused,
+      borderRadius: playerChromeScale(context, 8),
     );
     final onTap = widget.enabled && widget.onPressedWithContext != null
         ? () => widget.onPressedWithContext!(context)
         : null;
+    final size = playerChromeScale(context, widget.size);
+    final iconSize = playerChromeScale(context, widget.iconSize);
+    final radius = playerChromeScale(context, 8);
+    final padH = playerChromeScale(context, 6);
+    final maxW = playerChromeScale(context, 148);
     return Material(
       color: playerChromeBackgroundColor(
         active: false,
@@ -370,22 +400,22 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
         canRequestFocus: false,
         onTap: widget.tvFocusable ? null : onTap,
         customBorder: shape,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(radius),
         hoverColor: Colors.transparent,
         splashColor: Colors.white.withValues(alpha: 0.08),
         child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: widget.size, maxWidth: 148),
+          constraints: BoxConstraints(minHeight: size, maxWidth: maxW),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
+            padding: EdgeInsets.symmetric(horizontal: padH),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.layers_outlined,
                   color: iconColor,
-                  size: widget.iconSize,
+                  size: iconSize,
                 ),
-                const SizedBox(width: 5),
+                SizedBox(width: playerChromeScale(context, 5)),
                 _PlayerSourceButtonText(
                   label: widget.label,
                   server: widget.server,
@@ -393,7 +423,7 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
                       ? ForjaShellColors.brandGreen
                       : Colors.white.withValues(alpha: fgAlpha),
                   tvFocused: _tvFocused,
-                  maxWidth: 88,
+                  maxWidth: playerChromeScale(context, 88),
                 ),
                 Icon(
                   Icons.expand_more_rounded,
@@ -425,7 +455,7 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
         ? FocusableControl(
             focusNode: widget.focusNode,
             onTap: onTap,
-            borderRadius: 8,
+            borderRadius: playerChromeScale(context, 8),
             scaleOnFocus: 1.0,
             onLeftEdge: widget.onLeftEdge,
             onRightEdge: widget.onRightEdge,
@@ -534,10 +564,16 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
     final shape = playerChromeButtonShape(
       isCircle: false,
       tvFocused: _tvFocused,
+      borderRadius: playerChromeScale(context, 8),
     );
     final onTap = widget.onPressedWithContext != null
         ? () => widget.onPressedWithContext!(context)
         : widget.onPressed;
+    final size = playerChromeScale(context, widget.size);
+    final iconSize = playerChromeScale(context, widget.iconSize);
+    final radius = playerChromeScale(context, 8);
+    final padH = playerChromeScale(context, 8);
+    final maxW = playerChromeScale(context, 148);
     return Material(
       color: playerChromeBackgroundColor(
         active: false,
@@ -549,13 +585,13 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
         canRequestFocus: false,
         onTap: widget.tvFocusable ? null : onTap,
         customBorder: shape,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(radius),
         hoverColor: Colors.transparent,
         splashColor: Colors.white.withValues(alpha: 0.08),
         child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: widget.size, maxWidth: 148),
+          constraints: BoxConstraints(minHeight: size, maxWidth: maxW),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: EdgeInsets.symmetric(horizontal: padH),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -565,16 +601,16 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
                   Icon(
                     Icons.link_rounded,
                     color: fg,
-                    size: widget.iconSize,
+                    size: iconSize,
                   ),
-                  const SizedBox(width: 5),
+                  SizedBox(width: playerChromeScale(context, 5)),
                 ],
                 _PlayerSourceButtonText(
                   label: widget.label,
                   server: widget.server,
                   color: fg,
                   tvFocused: _tvFocused,
-                  maxWidth: 100,
+                  maxWidth: playerChromeScale(context, 100),
                 ),
               ],
             ),
@@ -597,7 +633,7 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
         ? FocusableControl(
             focusNode: widget.focusNode,
             onTap: onTap,
-            borderRadius: 8,
+            borderRadius: playerChromeScale(context, 8),
             scaleOnFocus: 1.0,
             onLeftEdge: widget.onLeftEdge,
             onRightEdge: widget.onRightEdge,
@@ -659,7 +695,10 @@ class _PlayerSourceButtonText extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: color,
-              fontSize: hasServer ? 11 : 12,
+              fontSize: playerChromeTypeSize(
+                context,
+                hasServer ? 11.0 : 12.0,
+              ),
               height: 1.1,
               fontWeight: tvFocused ? FontWeight.w600 : FontWeight.w500,
             ),
@@ -671,7 +710,7 @@ class _PlayerSourceButtonText extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: color.withValues(alpha: 0.72),
-                fontSize: 10,
+                fontSize: playerChromeTypeSize(context, 10),
                 height: 1.1,
                 fontWeight: FontWeight.w500,
               ),
@@ -872,9 +911,11 @@ class PlayerTopBar extends StatelessWidget {
     bool hasStatusMessage = false,
     bool hasStatusActions = false,
   }) {
-    var height = topPadding(context) + 44 + 6;
-    if (hasStatusMessage) height += 20;
-    if (hasStatusActions) height += 30;
+    final topBtn =
+        playerChromeScale(context, ShellTokens.playerChromeTopBtnSize);
+    var height = topPadding(context) + topBtn + playerChromeScale(context, 6);
+    if (hasStatusMessage) height += playerChromeScale(context, 20);
+    if (hasStatusActions) height += playerChromeScale(context, 30);
     return height;
   }
 
@@ -885,20 +926,21 @@ class PlayerTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tv = ShellScope.metricsOf(context).usesTvDensity;
+        final tv = ShellPaintScope.usesTvDensityOf(context);
         final titleInset = constraints.maxWidth >= 600
             ? (tv ? 96.0 : 152.0)
             : (tv ? 64.0 : 96.0);
-        final topBtn = tv
-            ? ShellTokens.playerChromeTopBtnSizeTv
-            : ShellTokens.playerChromeTopBtnSize;
+        // Desktop baseline — [PlayerFlatIconButton] densifies via playerChromeScale.
+        const topBtnDesktop = ShellTokens.playerChromeTopBtnSize;
+        final topBtn = playerChromeScale(context, topBtnDesktop);
         final titleFs = tv
             ? ShellTokens.playerChromeTitleFontSizeTv
             : ShellTokens.playerChromeTitleFontSize;
         final metaFs = tv
             ? ShellTokens.playerChromeMetaFontSizeTv
             : ShellTokens.playerChromeMetaFontSize;
-        final padH = tv ? 10.0 : 16.0;
+        final padH = playerChromeScale(context, 16);
+        final padBottom = playerChromeScale(context, 6);
         // opaque:false — default MouseRegion eats the mac title-inset zone and
         // blocks [DragToMoveArea] / overlay drag strip underneath.
         return DesktopWindowChrome.wrapDragMove(
@@ -906,7 +948,12 @@ class PlayerTopBar extends StatelessWidget {
           opaque: false,
           onEnter: (_) => playerChromeCancelSeekScrubs(),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(padH, topPadding(context), padH, 6),
+            padding: EdgeInsets.fromLTRB(
+              padH,
+              topPadding(context),
+              padH,
+              padBottom,
+            ),
             child: SizedBox(
               width: double.infinity,
               child: ConstrainedBox(
@@ -931,7 +978,7 @@ class PlayerTopBar extends StatelessWidget {
                             ),
                           ),
                           if (_episodeLine != null) ...[
-                            const SizedBox(height: 2),
+                            SizedBox(height: playerChromeScale(context, 2)),
                             Text(
                               _episodeLine!,
                               textAlign: TextAlign.center,
@@ -944,7 +991,7 @@ class PlayerTopBar extends StatelessWidget {
                             ),
                           ],
                           if (_hasStatusMessage) ...[
-                            const SizedBox(height: 6),
+                            SizedBox(height: playerChromeScale(context, 6)),
                             Text(
                               statusMessage!,
                               textAlign: TextAlign.center,
@@ -958,7 +1005,7 @@ class PlayerTopBar extends StatelessWidget {
                             ),
                           ],
                           if (statusActions != null) ...[
-                            const SizedBox(height: 8),
+                            SizedBox(height: playerChromeScale(context, 8)),
                             statusActions!,
                           ],
                         ],
@@ -970,7 +1017,8 @@ class PlayerTopBar extends StatelessWidget {
                       child: PlayerFlatIconButton(
                         icon: Icons.arrow_back_rounded,
                         onPressed: onBack,
-                        size: topBtn,
+                        size: topBtnDesktop,
+                        iconSize: ShellTokens.playerChromeRoundIconSize,
                         tvFocusable: tvFocusable,
                         focusNode: backFocusNode,
                         onRightEdge: backOnRightEdge,
@@ -1054,29 +1102,35 @@ class PlayerTopStatusActions extends StatelessWidget {
     VoidCallback? onLeftEdge,
     VoidCallback? onRightEdge,
   }) {
-    final button = TextButton(
-      onPressed: tvFocusable ? null : onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: Colors.white.withValues(alpha: 0.75),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-      ),
-      child: Text(label),
-    );
-    if (!tvFocusable) return button;
     return Builder(
-      builder: (context) => shellFocusableTap(
-        context: context,
-        onTap: onTap,
-        borderRadius: 8,
-        showFocusBorder: true,
-        focusNode: focusNode,
-        onLeftEdge: onLeftEdge,
-        onRightEdge: onRightEdge,
-        child: button,
-      ),
+      builder: (context) {
+        final padH = playerChromeScale(context, 8);
+        final padV = playerChromeScale(context, 2);
+        final fs = playerChromeTypeSize(context, 12);
+        final radius = playerChromeScale(context, 8);
+        final button = TextButton(
+          onPressed: tvFocusable ? null : onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white.withValues(alpha: 0.75),
+            padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: TextStyle(fontSize: fs, fontWeight: FontWeight.w600),
+          ),
+          child: Text(label),
+        );
+        if (!tvFocusable) return button;
+        return shellFocusableTap(
+          context: context,
+          onTap: onTap,
+          borderRadius: radius,
+          showFocusBorder: true,
+          focusNode: focusNode,
+          onLeftEdge: onLeftEdge,
+          onRightEdge: onRightEdge,
+          child: button,
+        );
+      },
     );
   }
 }
@@ -1116,6 +1170,9 @@ class PlayerTopBarActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Desktop baselines — [PlayerFlatIconButton] densifies for leanback.
+    const size = ShellTokens.playerChromeTopBtnSize;
+    const iconSize = ShellTokens.playerChromeRoundIconSize;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1124,7 +1181,8 @@ class PlayerTopBarActions extends StatelessWidget {
             icon: Icons.smart_display_outlined,
             tooltip: 'Player',
             onPressedWithContext: onPlayer!,
-            size: 44,
+            size: size,
+            iconSize: iconSize,
             tvFocusable: tvFocusable,
             focusNode: playerFocusNode,
             onLeftEdge: playerOnLeftEdge,
@@ -1135,7 +1193,8 @@ class PlayerTopBarActions extends StatelessWidget {
             icon: Icons.cast_rounded,
             tooltip: 'Cast',
             onPressed: onCast!,
-            size: 44,
+            size: size,
+            iconSize: iconSize,
             tvFocusable: tvFocusable,
           ),
         if (showInAppMini && onInAppMini != null)
@@ -1143,7 +1202,8 @@ class PlayerTopBarActions extends StatelessWidget {
             icon: Icons.branding_watermark_outlined,
             tooltip: 'In-app mini player',
             onPressed: onInAppMini!,
-            size: 44,
+            size: size,
+            iconSize: iconSize,
             tvFocusable: tvFocusable,
           ),
         if (showPip && onPip != null)
@@ -1153,7 +1213,8 @@ class PlayerTopBarActions extends StatelessWidget {
                 : Icons.picture_in_picture_rounded,
             tooltip: 'Picture in Picture',
             onPressed: onPip!,
-            size: 44,
+            size: size,
+            iconSize: iconSize,
             tvFocusable: tvFocusable,
           ),
       ],

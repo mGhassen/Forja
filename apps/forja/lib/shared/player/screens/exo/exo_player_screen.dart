@@ -2017,12 +2017,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Widget _buildControlsOverlay() {
     final tv = _isTv;
-    final btnSize = tv
-        ? ShellTokens.playerChromeBtnSizeTv
-        : ShellTokens.playerChromeBtnSize;
-    final iconSz = tv
-        ? ShellTokens.playerChromeIconSizeTv
-        : ShellTokens.playerChromeIconSize;
+    final btnSize = ShellTokens.playerChromeBtnSize;
+    final iconSz = ShellTokens.playerChromeIconSize;
     final timeFs = tv
         ? ShellTokens.playerChromeTimeFontSizeTv
         : ShellTokens.playerChromeTimeFontSize;

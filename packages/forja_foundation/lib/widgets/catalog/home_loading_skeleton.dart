@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
@@ -374,12 +377,87 @@ double catalogContinueRowSkeletonHeight({
   );
 }
 
-/// Full-page wait while pack layout or a nav tab mounts — matches details open.
+/// Full-page wait while pack layout resolves — solid fill + ticker.
 ///
 /// No invented rails and no elevated band / shimmer (those read as the page
 /// background flashing on cold hub remount).
+///
+/// [tabId] flavors the copy when known; otherwise cycles a short cinematic pool.
 Widget hubNeutralLoadingSkeleton(BuildContext context, {String? tabId}) {
-  return forjaShellPageLoading();
+  return ColoredBox(
+    color: ForjaShellColors.bgDark,
+    child: _HubLoadingTicker(tabId: tabId?.trim() ?? ''),
+  );
+}
+
+class _HubLoadingTicker extends StatefulWidget {
+  const _HubLoadingTicker({required this.tabId});
+
+  final String tabId;
+
+  @override
+  State<_HubLoadingTicker> createState() => _HubLoadingTickerState();
+}
+
+class _HubLoadingTickerState extends State<_HubLoadingTicker> {
+  static const _pool = <(String, String)>[
+    ('Cueing the reel', 'Rolling the opening titles…'),
+    ('Dim the house lights', 'Bringing this hub into focus…'),
+    ('Warming the projector', 'Lining up the shelves…'),
+    ('Hold for curtain', 'The next screen is almost ready…'),
+    ('Setting the stage', "Gathering what's on tonight…"),
+    ("Marquee's warming up", 'Finding something worth the seat…'),
+  ];
+
+  late List<(String, String)> _lines;
+  late int _index;
+  Timer? _rotate;
+
+  @override
+  void initState() {
+    super.initState();
+    final flavored = _flavoredForTab(widget.tabId);
+    _lines = flavored == null ? _pool : [flavored, ..._pool];
+    _index = 0;
+    _rotate = Timer.periodic(const Duration(milliseconds: 3200), (_) {
+      if (!mounted || _lines.length < 2) return;
+      setState(() => _index = (_index + 1) % _lines.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _rotate?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pair = _lines[_index];
+    return CatalogLoadingTicker(title: pair.$1, detail: pair.$2);
+  }
+}
+
+(String, String)? _flavoredForTab(String tabId) {
+  switch (tabId) {
+    case 'home':
+      return ('Home', 'Lining up your shelves…');
+    case 'anime':
+      return ('Anime', 'Queuing the next binge…');
+    case 'asian_drama':
+      return ('Asian Drama', "Cueing tonight's episode…");
+    case 'iptv':
+      return ('Live TV', 'Tuning your portals…');
+    case 'live_sports':
+    case 'live_sports_cards':
+      return ('Live Sports', "Checking today's fixtures…");
+    case 'my_list':
+      return ('My List', 'Opening your list…');
+    case 'kids':
+      return ('Kids', 'Finding something fun…');
+    default:
+      return null;
+  }
 }
 
 /// Matches [BecauseSection] header: 36×50 seed poster + two title lines.
@@ -550,14 +628,115 @@ double homeCinematicHeroBodyHeight({
 
 Widget homeCinematicHeroShimmer({
   required double height,
+  bool pageBottomBleed = false,
+  bool pulse = true,
 }) {
-  return homeHubHeroShimmer(height: height);
+  return homeHubHeroShimmer(
+    height: height,
+    pageBottomBleed: pageBottomBleed,
+    pulse: pulse,
+  );
 }
 
-Widget homeHubHeroShimmer({required double height}) {
-  return homeLoadingShimmer(
-    Container(height: height, color: ForjaShellColors.surfaceElevated),
+/// Hero loading slot — darker than rail card skeletons so Featured bleed and
+/// logo / title / CTA bars read on top of the backdrop.
+Widget homeHubHeroShimmer({
+  required double height,
+  bool pageBottomBleed = false,
+  bool pulse = true,
+}) {
+  final body = Builder(
+    builder: (context) {
+      final size = MediaQuery.sizeOf(context);
+      final pad = ShellTokens.homeSectionHorizontalPadding;
+      final topInset = ShellTokens.heroTextColumnTopInsetDesktop;
+      final textW = math.min(
+        size.width * ShellTokens.heroTextWidthFraction,
+        ShellTokens.heroTextColumnWidthDesktop,
+      );
+      final logoH = math.min(
+        ShellTokens.heroLogoMaxHeightDesktop * 0.55,
+        height * 0.22,
+      );
+      final btnH = ShellTokens.shellButtonHeight;
+      final bottomInset = pageBottomBleed
+          ? ShellTokens.homePageBottomSectionDownOffset +
+              ShellTokens.homePageBottomSectionTopPadding +
+              ShellTokens.shellContinueWatchingCardHeightDesktop * 0.55
+          : 24.0;
+      final radius = BorderRadius.circular(8);
+      final pill = BorderRadius.circular(btnH / 2);
+
+      return SizedBox(
+        height: height,
+        width: double.infinity,
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            // Page fill — not [surfaceElevated] (same tone as poster skeletons).
+            const Positioned.fill(
+              child: ColoredBox(color: ForjaShellColors.bgDark),
+            ),
+            Positioned(
+              left: pad,
+              top: topInset,
+              bottom: bottomInset,
+              width: textW,
+              child: Align(
+                alignment: const Alignment(-1, -0.82),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Skeleton(
+                      width: textW * 0.72,
+                      height: logoH,
+                      borderRadius: radius,
+                    ),
+                    const SizedBox(height: 14),
+                    Skeleton(
+                      width: math.min(200, textW * 0.45),
+                      height: 12,
+                      borderRadius: radius,
+                    ),
+                    const SizedBox(height: 16),
+                    Skeleton(
+                      width: textW * 0.92,
+                      height: 11,
+                      borderRadius: radius,
+                    ),
+                    const SizedBox(height: 8),
+                    Skeleton(
+                      width: textW * 0.78,
+                      height: 11,
+                      borderRadius: radius,
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Skeleton(
+                          width: 132,
+                          height: btnH,
+                          borderRadius: pill,
+                        ),
+                        const SizedBox(width: 10),
+                        Skeleton(
+                          width: btnH,
+                          height: btnH,
+                          borderRadius: BorderRadius.circular(btnH / 2),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
   );
+  return pulse ? homeLoadingShimmer(body) : body;
 }
 
 typedef HomeHubLoadingRowSpec = ({double width, bool showSubtitle});

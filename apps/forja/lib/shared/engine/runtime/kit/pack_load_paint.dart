@@ -39,12 +39,13 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
       pageBottomBleed: pageBottomBleed,
     );
     return (
-      placeholder: shimmer
-          ? homeCinematicHeroShimmer(height: heroH)
-          : ColoredBox(
-              color: ForjaShellColors.surfaceElevated,
-              child: SizedBox(height: heroH, width: double.infinity),
-            ),
+      // Always paint logo / text / CTA bars on a darker backdrop — even when
+      // [shimmer] is false (static structure; no pulse on tab show).
+      placeholder: homeCinematicHeroShimmer(
+        height: heroH,
+        pageBottomBleed: pageBottomBleed,
+        pulse: shimmer,
+      ),
       height: heroH,
     );
   }
@@ -231,6 +232,7 @@ class PackLoadedPaint extends StatefulWidget {
     required this.builder,
     this.packSourceUrl,
     this.tabId,
+    this.loadingBottomChild,
   });
 
   final String pluginId;
@@ -241,6 +243,9 @@ class PackLoadedPaint extends StatefulWidget {
   final Map<String, dynamic> fallbackSpec;
   final Widget Function(BuildContext context, Map<String, dynamic> merged)
       builder;
+  /// Hero bleed rail (Featured) — keep mounted over the hero skeleton while
+  /// spotlight loads so the first-row skeleton sits on the darker backdrop.
+  final Widget? loadingBottomChild;
 
   /// Soft memo — in-flight futures + resolved envelopes (sync paint on remount).
   static final Map<String, Future<MetaEnvelope>> _memo = {};
@@ -818,7 +823,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         return _lastPaintedWidget!;
       }
       _syncCompositionCover(true);
-      return _sectionLoadingSkeleton();
+      return _loadingSlot();
     }
     if (!env.ok) {
       if (_lastPaintedWidget != null) {
@@ -1046,5 +1051,24 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       shimmer: false,
     );
     return slot.placeholder;
+  }
+
+  /// Hero skeleton + optional bleed rail (Featured) while spotlight resolves.
+  Widget _loadingSlot() {
+    final skeleton = _sectionLoadingSkeleton();
+    final bottom = widget.loadingBottomChild;
+    if (bottom == null) return skeleton;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        skeleton,
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: bottom,
+        ),
+      ],
+    );
   }
 }

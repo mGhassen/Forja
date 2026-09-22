@@ -185,11 +185,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
             widget.programmes.isNotEmpty)) {
       _epgFuture = _resolveEpg();
     }
-    if (previous.emphasize != widget.emphasize) {
-      widget.onInteractiveActive?.call(
-        widget.emphasize || _hoveredN.value || _focusedN.value,
-      );
-    }
+    // Do not notify onInteractiveActive when [emphasize] flips — parent owns
+    // that flag (letter-jump / select). Syncing back during didUpdateWidget
+    // setStates the grid mid-build (red error tile / child assert).
   }
 
   Future<List<GuideEpgProgramme>> _resolveEpg() async {
@@ -238,7 +236,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   void dispose() {
     _okHoldTimer?.cancel();
     if (_hoverOwner == this) _hoverOwner = null;
-    widget.onInteractiveActive?.call(false);
+    // Do not call onInteractiveActive here — parent setState / Inherited
+    // lookups during deactivate tear the tree (red error tile / asserts).
+    // Focus/hover leave still notifies; health TTL + host dispose clear probes.
     _hoveredN.dispose();
     _focusedN.dispose();
     super.dispose();

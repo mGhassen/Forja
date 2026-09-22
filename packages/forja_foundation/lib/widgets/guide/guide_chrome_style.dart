@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -44,6 +45,13 @@ abstract final class GuideChromeStyle {
     fontWeight: FontWeight.w700,
     letterSpacing: 0.2,
   );
+
+  /// Overlay title densified for leanback (player channel guide header).
+  static TextStyle overlayTitleOf(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    if (!tv) return overlayTitle;
+    return overlayTitle.copyWith(fontSize: ShellTokens.tvTitleFontSize);
+  }
 
   static BoxDecoration chipDecoration({required bool selected}) => BoxDecoration(
         color: selected ? chipSelectedBg : surfaceMuted,

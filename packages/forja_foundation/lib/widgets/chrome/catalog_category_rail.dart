@@ -113,6 +113,10 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   String? _floatingId;
   final ScrollController _scroll = ScrollController();
   bool _scrollJumpRegistered = false;
+  bool _floatingKeysBound = false;
+
+  /// Swallow the OK KeyUp that ends hold-to-enter (must not drop float).
+  bool _swallowFloatingActivateUp = false;
 
   /// Type-to-jump highlight only — never commits [selectedId] / onSelect.
   String? _jumpHighlightId;
@@ -145,6 +149,8 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   bool get _letterJumpEnabled =>
       !_leanbackOnly && _floatingId == null && _jumpItems.isNotEmpty;
 
+  bool get _tvFloatingReorder => _floatingId != null;
+
   @override
   void initState() {
     super.initState();
@@ -158,6 +164,17 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
       _scrollJumpRegistered = false;
       _offerScrollJump();
     }
+    final canReorder =
+        widget.canReorder && widget.onReorder != null && _movable.length > 1;
+    if (_tvFloatingReorder && !canReorder) {
+      _setFloating(null);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncFloatingKeys();
   }
 
   void _offerScrollJump() {
@@ -169,8 +186,88 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
 
   @override
   void dispose() {
+    _unbindFloatingKeys();
     _scroll.dispose();
     super.dispose();
+  }
+
+  void _setFloating(String? categoryId) {
+    if (_floatingId == categoryId) return;
+    if (categoryId != null) {
+      _swallowFloatingActivateUp = true;
+    } else {
+      _swallowFloatingActivateUp = false;
+    }
+    setState(() => _floatingId = categoryId);
+    _syncFloatingKeys();
+  }
+
+  void _bindFloatingKeys() {
+    if (_floatingKeysBound) return;
+    HardwareKeyboard.instance.addHandler(_onFloatingReorderKey);
+    _floatingKeysBound = true;
+  }
+
+  void _unbindFloatingKeys() {
+    if (!_floatingKeysBound) return;
+    HardwareKeyboard.instance.removeHandler(_onFloatingReorderKey);
+    _floatingKeysBound = false;
+  }
+
+  void _syncFloatingKeys() {
+    final want =
+        _tvFloatingReorder && ShellPaintScope.useTvFocusOf(context);
+    if (want) {
+      _bindFloatingKeys();
+    } else {
+      _unbindFloatingKeys();
+    }
+  }
+
+  /// Parent owns ↑/↓ while floating — survives focus flicker to neighbors.
+  bool _onFloatingReorderKey(KeyEvent event) {
+    if (!mounted || !_tvFloatingReorder) return false;
+    if (!ShellPaintScope.useTvFocusOf(context)) return false;
+
+    final key = event.logicalKey;
+    final up = key == LogicalKeyboardKey.arrowUp;
+    final down = key == LogicalKeyboardKey.arrowDown;
+    final left = key == LogicalKeyboardKey.arrowLeft;
+    final right = key == LogicalKeyboardKey.arrowRight;
+    final activate = key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.space ||
+        key == LogicalKeyboardKey.numpadEnter;
+    if (!up && !down && !left && !right && !activate) return false;
+
+    if (activate) {
+      if (event is KeyUpEvent) {
+        if (_swallowFloatingActivateUp) {
+          _swallowFloatingActivateUp = false;
+        }
+        return true;
+      }
+      if (event is KeyDownEvent && !_swallowFloatingActivateUp) {
+        _setFloating(null);
+      }
+      return true;
+    }
+    if (left) {
+      if (event is KeyDownEvent) _setFloating(null);
+      return true;
+    }
+    if (right) {
+      // Focused row handles → (pin).
+      return false;
+    }
+
+    // One category per KeyDown / KeyRepeat — never HoldAccel strides.
+    if (event is KeyUpEvent) return true;
+    if (event is KeyDownEvent || event is KeyRepeatEvent) {
+      _moveFloating(up ? -1 : 1);
+      return true;
+    }
+    return true;
   }
 
   int _letterJumpAnchor() {
@@ -318,10 +415,10 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
             ? () => widget.onTogglePin!(item.id)
             : null,
         onEnterFloating: canReorder && reorderIndex != null
-            ? () => setState(() => _floatingId = item.id)
+            ? () => _setFloating(item.id)
             : null,
         onExitFloating: () {
-          if (_floatingId == item.id) setState(() => _floatingId = null);
+          if (_floatingId == item.id) _setFloating(null);
         },
         onTvReorderUp: canReorder && reorderIndex != null
             ? () => _moveFloating(-1)
@@ -446,7 +543,68 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
     if (oldIndex < 0) return;
     final newIndex = (oldIndex + delta).clamp(0, movable.length - 1);
     if (newIndex == oldIndex) return;
+
+    // Predict list index + scroll *before* notify paints — post-frame jump
+    // flashes the row at the wrong viewport slot.
+    final listIdx = widget.items.indexWhere((e) => e.id == id);
+    final predictedListIdx =
+        listIdx < 0 ? -1 : listIdx + (newIndex - oldIndex);
+    final scrollTarget = predictedListIdx < 0
+        ? null
+        : _floatingMoveScrollTarget(
+            listIndex: predictedListIdx,
+            delta: delta,
+          );
+
     widget.onReorder!(oldIndex, newIndex);
+    if (scrollTarget != null && _scroll.hasClients) {
+      final max = _scroll.position.maxScrollExtent;
+      final target = scrollTarget.clamp(0.0, max);
+      if ((_scroll.offset - target).abs() > 0.5) {
+        _scroll.jumpTo(target);
+      }
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _floatingId != id) return;
+      if (scrollTarget != null && _scroll.hasClients) {
+        final max = _scroll.position.maxScrollExtent;
+        final target = scrollTarget.clamp(0.0, max);
+        if ((_scroll.offset - target).abs() > 0.5) {
+          _scroll.jumpTo(target);
+        }
+      }
+      // Rebuild can drop primary focus onto a neighbor — re-stick to float.
+      final row = _CatalogCategoryRowState._chromeOwner;
+      if (row != null && row.mounted && row.widget.item.id == id) {
+        row._focusRow();
+      }
+    });
+  }
+
+  /// Scroll offset to pin [listIndex] at the edge band, or null if in band.
+  ///
+  /// Dragging up — **2nd** visible row. Dragging down — 2nd-from-bottom.
+  double? _floatingMoveScrollTarget({
+    required int listIndex,
+    required int delta,
+  }) {
+    if (!_scroll.hasClients || listIndex < 0 || !mounted) return null;
+    final rowH = _rowExtent(context);
+    final pos = _scroll.position;
+    final max = pos.maxScrollExtent;
+    final viewH = pos.viewportDimension;
+    final current = pos.pixels;
+    final itemTop = _listPadV(context) + listIndex * rowH;
+
+    late final double target;
+    if (delta < 0) {
+      target = (itemTop - rowH).clamp(0.0, max);
+      if (current <= target + 0.5) return null;
+    } else {
+      target = (itemTop - viewH + 2 * rowH).clamp(0.0, max);
+      if (current >= target - 0.5) return null;
+    }
+    return target;
   }
 
   static Widget _reorderProxy(
@@ -458,15 +616,21 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   }
 }
 
-class _CategoryDragProxyScope extends InheritedWidget {
-  const _CategoryDragProxyScope({required super.child});
+/// Marks the SliverReorderableList drag overlay so the row paints lift chrome.
+///
+/// Must **not** be an [InheritedWidget]. The overlay reparents / tears down the
+/// proxy subtree; `dependOnInheritedWidgetOfExactType` leaves stale dependents
+/// and trips `'_dependents.isEmpty'` in [InheritedElement.debugDeactivated].
+class _CategoryDragProxyScope extends StatelessWidget {
+  const _CategoryDragProxyScope({required this.child});
+
+  final Widget child;
 
   static bool isProxy(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_CategoryDragProxyScope>() !=
-      null;
+      context.findAncestorWidgetOfExactType<_CategoryDragProxyScope>() != null;
 
   @override
-  bool updateShouldNotify(covariant _CategoryDragProxyScope oldWidget) => false;
+  Widget build(BuildContext context) => child;
 }
 
 class _CatalogCategoryRow extends StatefulWidget {
@@ -614,6 +778,34 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     _holdSunrise = AnimationController(vsync: this);
     _rowFocus = FocusNode(debugLabel: 'catalog-cat-${widget.listIndex}');
     _pinFocus = FocusNode(debugLabel: 'catalog-cat-pin-${widget.listIndex}');
+    if (widget.floating) _claimChrome();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CatalogCategoryRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.floating != oldWidget.floating && widget.floating) {
+      _claimChrome();
+    }
+    // Sticky float: after ↑/↓ reorder the row moves — keep focus on it.
+    if (widget.floating &&
+        (widget.listIndex != oldWidget.listIndex ||
+            widget.reorderIndex != oldWidget.reorderIndex)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !widget.floating) return;
+        _focusRow();
+      });
+    }
+  }
+
+  void _focusRow() {
+    if (!_rowFocus.canRequestFocus) return;
+    _rowFocus.requestFocus();
+    if (!_rowFocus.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _rowFocus.requestFocus();
+      });
+    }
   }
 
   @override
@@ -684,14 +876,12 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     final activateUp = event is KeyUpEvent && _isActivateLogical(event);
 
     if (widget.floating) {
+      // Parent HardwareKeyboard owns ↑/↓ / OK drop. Trap here if a KeyEvent
+      // still reaches the row — do NOT call onTvReorder* (would double-step).
       if (event is KeyDownEvent || event is KeyRepeatEvent) {
         final key = event.logicalKey;
-        if (key == LogicalKeyboardKey.arrowUp) {
-          widget.onTvReorderUp?.call();
-          return KeyEventResult.handled;
-        }
-        if (key == LogicalKeyboardKey.arrowDown) {
-          widget.onTvReorderDown?.call();
+        if (key == LogicalKeyboardKey.arrowUp ||
+            key == LogicalKeyboardKey.arrowDown) {
           return KeyEventResult.handled;
         }
         if (key == LogicalKeyboardKey.arrowLeft) {
@@ -706,6 +896,10 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
           widget.onExitFloating?.call();
           return KeyEventResult.handled;
         }
+      }
+      if (activateUp && _okHoldFired) {
+        _okHoldFired = false;
+        return KeyEventResult.handled;
       }
       return KeyEventResult.handled;
     }
@@ -941,6 +1135,9 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
 
     // Flat rail: no FocusableControl scale, no Material ink fade — row paints
     // snap hover/selection itself (pre-wipe category sidebar contract).
+    // allowNestedFocus: pin is a nested focusableTap — without this,
+    // descendantsAreFocusable:false makes → after hold-OK a silent no-op.
+    final tvFocus = ShellPaintScope.useTvFocusOf(context);
     Widget row = ShellPaintScope.focusableTap(
       context: context,
       onTap: () {
@@ -960,7 +1157,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       tvItemIndex: widget.listIndex,
       focusNode: _rowFocus,
       ensureVisibleMode: ShellPaintEnsureVisible.off,
-      onKeyEvent: ShellPaintScope.useTvFocusOf(context) ? _onRowKey : null,
+      allowNestedFocus: _canTvPin && tvFocus,
+      onKeyEvent: tvFocus ? _onRowKey : null,
       onUpEdge: widget.onTvFocusUp,
       onFocusChange: (focused) {
         if (focused) return;
@@ -1006,7 +1204,10 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
   }
 
   Widget _buildPin(bool leanback) {
-    final pinFocused = leanback && _pinFocus.hasFocus;
+    // Desktop hybrid (useTvFocus + hover) also needs a focusable pin so
+    // hold-OK → can land on it — InkWell alone leaves _pinFocus detached.
+    final tvFocus = ShellPaintScope.useTvFocusOf(context);
+    final pinFocused = tvFocus && _pinFocus.hasFocus;
     final pinHovered = !leanback && _hoveredN.value;
     final icon = Icon(
       widget.item.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
@@ -1015,7 +1216,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
           ? ForjaShellColors.brandGreen
           : ForjaShellColors.iconMuted,
     );
-    if (!leanback) {
+    if (!tvFocus) {
       // No Tooltip — hover-triggered overlay steals MouseRegion and sticks hover.
       return Material(
         type: MaterialType.transparency,

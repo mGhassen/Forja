@@ -36,7 +36,13 @@ class TorrentSourcesPanel extends StatelessWidget {
 
   static double panelWidthOf(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    return screenWidth < 700 ? screenWidth * 0.92 : 480.0;
+    if (screenWidth < ShellTokens.playerSidePanelNarrowMaxWidth) {
+      return screenWidth * 0.92;
+    }
+    return ShellTokens.chromeScale(
+      ShellTokens.playerSidePanelWidth,
+      tv: ShellPaintScope.usesTvDensityOf(context),
+    );
   }
 
   static double filterPanelWidthOf(BuildContext context) {
@@ -197,18 +203,24 @@ class PlayerSidePanelHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final titleFs = tv ? ShellTokens.tvTitleFontSize : 15.0;
+    final badgeFs = tv ? ShellTokens.tvBodyFontSize : 12.0;
+    final gap = ShellTokens.chromeScale(8, tv: tv);
+    final padH = ShellTokens.chromeScale(4, tv: tv);
+    final padTop = ShellTokens.chromeScale(2, tv: tv);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Small inset so title / close sit inside the panel edge (not flush).
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+          padding: EdgeInsets.fromLTRB(padH, padTop, padH, 0),
           child: Row(
             children: [
               if (leading != null) ...[
                 leading!,
-                const SizedBox(width: 8),
+                SizedBox(width: gap),
               ],
               if (title.isNotEmpty || badge != null || titleTrailing != null)
                 Expanded(
@@ -224,24 +236,24 @@ class PlayerSidePanelHeader extends StatelessWidget {
                             style: TextStyle(
                               color: cinematic.textPrimary,
                               fontWeight: FontWeight.w700,
-                              fontSize: 15,
+                              fontSize: titleFs,
                               letterSpacing: -0.2,
                             ),
                           ),
                         ),
                       if (badge != null) ...[
-                        const SizedBox(width: 6),
+                        SizedBox(width: ShellTokens.chromeScale(6, tv: tv)),
                         Text(
                           badge!,
                           style: TextStyle(
                             color: cinematic.textSecondary,
                             fontWeight: FontWeight.w600,
-                            fontSize: 12,
+                            fontSize: badgeFs,
                           ),
                         ),
                       ],
                       if (titleTrailing != null) ...[
-                        const SizedBox(width: 12),
+                        SizedBox(width: ShellTokens.chromeScale(12, tv: tv)),
                         titleTrailing!,
                       ],
                     ],
@@ -251,7 +263,8 @@ class PlayerSidePanelHeader extends StatelessWidget {
                 const Spacer(),
               if (trailing != null) ...[
                 trailing!,
-                if (showClose) const SizedBox(width: 2),
+                if (showClose)
+                  SizedBox(width: ShellTokens.chromeScale(2, tv: tv)),
               ],
               if (showClose)
                 Button(
@@ -267,7 +280,7 @@ class PlayerSidePanelHeader extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: ShellTokens.chromeScale(6, tv: tv)),
         Divider(height: 1, color: cinematic.borderSubtle),
       ],
     );
@@ -291,15 +304,22 @@ class SourcesPanelMetaFooter extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final cinematic = ForjaShellColors.cinematic;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final metaFs = tv ? ShellTokens.tvBodyFontSize : 12.0;
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: EdgeInsets.only(top: ShellTokens.chromeScale(8, tv: tv)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Divider(height: 1, color: cinematic.borderSubtle),
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 10, 4, 2),
+            padding: EdgeInsets.fromLTRB(
+              ShellTokens.chromeScale(4, tv: tv),
+              ShellTokens.chromeScale(10, tv: tv),
+              ShellTokens.chromeScale(4, tv: tv),
+              ShellTokens.chromeScale(2, tv: tv),
+            ),
             child: Row(
               children: [
                 if (episodeLabel != null)
@@ -307,7 +327,7 @@ class SourcesPanelMetaFooter extends StatelessWidget {
                     episodeLabel!,
                     style: TextStyle(
                       color: cinematic.textSecondary.withValues(alpha: 0.85),
-                      fontSize: 12,
+                      fontSize: metaFs,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.2,
                     ),
@@ -315,9 +335,9 @@ class SourcesPanelMetaFooter extends StatelessWidget {
                 const Spacer(),
                 if (resultCount != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: ShellTokens.chromeScale(8, tv: tv),
+                      vertical: ShellTokens.chromeScale(3, tv: tv),
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.08),
@@ -327,7 +347,7 @@ class SourcesPanelMetaFooter extends StatelessWidget {
                       '$resultCount',
                       style: TextStyle(
                         color: cinematic.textSecondary,
-                        fontSize: 12,
+                        fontSize: metaFs,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

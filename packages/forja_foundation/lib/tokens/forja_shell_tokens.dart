@@ -465,6 +465,14 @@ abstract final class ShellTokens {
     6,
   );
 
+  /// Player overlay Sources / Episodes / torrent file panel width (wide screens).
+  static const double playerSidePanelWidth = 480;
+  static const double playerSidePanelWidthTv =
+      playerSidePanelWidth * tvChromeScale;
+
+  /// Below this width the player side panel goes nearly full-bleed.
+  static const double playerSidePanelNarrowMaxWidth = 700;
+
   /// Player transport / top chrome (Exo + MediaKit TV row).
   static const double playerChromeBtnSize = 38;
   static const double playerChromeBtnSizeTv = playerChromeBtnSize * tvChromeScale;
@@ -474,6 +482,19 @@ abstract final class ShellTokens {
   static const double playerChromeTopBtnSize = 44;
   static const double playerChromeTopBtnSizeTv =
       playerChromeTopBtnSize * tvChromeScale;
+  /// IPTV / live transport round icons (non-play).
+  static const double playerChromeRoundBtnSize = playerChromeTopBtnSize;
+  static const double playerChromeRoundBtnSizeTv = playerChromeTopBtnSizeTv;
+  static const double playerChromeRoundIconSize = 22;
+  static const double playerChromeRoundIconSizeTv =
+      playerChromeRoundIconSize * tvChromeScale;
+  /// IPTV / live primary play/pause circle (larger than round peers).
+  static const double playerChromePlayBtnSize = 56;
+  static const double playerChromePlayBtnSizeTv =
+      playerChromePlayBtnSize * tvChromeScale;
+  static const double playerChromePlayIconSize = 32;
+  static const double playerChromePlayIconSizeTv =
+      playerChromePlayIconSize * tvChromeScale;
   static const double playerChromeTitleFontSize = 16;
   static const double playerChromeTitleFontSizeTv = tvTitleFontSize;
   static const double playerChromeHeroTitleFontSize = 18;
@@ -484,6 +505,16 @@ abstract final class ShellTokens {
   static const double playerChromeTimeFontSizeTv = tvMetaFontSize;
   static const double playerChromeStatusFontSize = 13;
   static const double playerChromeStatusFontSizeTv = tvBodyFontSize;
+  /// IPTV live top-bar channel mark + progress-row logo.
+  static const double playerChromeLogoSize = 36;
+  static const double playerChromeLogoSizeTv =
+      playerChromeLogoSize * tvChromeScale;
+  static const double playerChromeProgressLogoSize = 72;
+  static const double playerChromeProgressLogoSizeTv =
+      playerChromeProgressLogoSize * tvChromeScale;
+  static const double playerChromeProgressLogoSizeCompact = 56;
+  static const double playerChromeProgressLogoSizeCompactTv =
+      playerChromeProgressLogoSizeCompact * tvChromeScale;
 
   static const double tabHeaderTopPadding = 16;
   static const double tabHeaderBottomPadding = 12;

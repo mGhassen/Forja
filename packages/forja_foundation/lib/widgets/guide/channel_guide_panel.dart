@@ -7,6 +7,7 @@ import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
@@ -80,10 +81,18 @@ class ChannelGuidePanel extends StatefulWidget {
   static const double panelVerticalGap = 28;
   /// Fixed channel row height (padding + logo) — dense for TV D-pad lists.
   static const double channelRowExtent = 52;
+  static const double channelRowExtentTv =
+      channelRowExtent * ShellTokens.tvChromeScale;
   static const double channelListPaddingV = 10;
   /// Fixed group row height for reliable jump-to-index scrolling.
   static const double groupRowExtent = 40;
+  static const double groupRowExtentTv =
+      groupRowExtent * ShellTokens.tvChromeScale;
   static const double groupListPaddingV = 10;
+
+  static double groupExtentFor(bool tv) => tv ? groupRowExtentTv : groupRowExtent;
+  static double channelExtentFor(bool tv) =>
+      tv ? channelRowExtentTv : channelRowExtent;
   /// Keep focused row fully inside the viewport (focus bar not clipped).
   static const double listFocusMargin = 8;
   static const double epgPeekWidth = 480;
@@ -219,7 +228,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     _jumpListToIndex(
       _groupScroll,
       index: _focusedGroupIndex,
-      itemExtent: ChannelGuidePanel.groupRowExtent,
+      itemExtent: ChannelGuidePanel.groupExtentFor(widget.isTv),
       paddingV: ChannelGuidePanel.groupListPaddingV,
       alignment: 0.45,
       animate: animate,
@@ -229,7 +238,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
       _jumpListToIndex(
         _channelScroll,
         index: _focusedChannelIndex,
-        itemExtent: ChannelGuidePanel.channelRowExtent,
+        itemExtent: ChannelGuidePanel.channelExtentFor(widget.isTv),
         paddingV: ChannelGuidePanel.channelListPaddingV,
         alignment: 0.35,
         animate: animate,
@@ -337,7 +346,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
       return const Iterable.empty();
     }
     final pos = _channelScroll.position;
-    final extent = ChannelGuidePanel.channelRowExtent;
+    final extent = ChannelGuidePanel.channelExtentFor(widget.isTv);
     if (extent <= 0 || pos.viewportDimension <= 0) {
       return const Iterable.empty();
     }
@@ -466,7 +475,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     _jumpListToIndex(
       _groupScroll,
       index: _focusedGroupIndex,
-      itemExtent: ChannelGuidePanel.groupRowExtent,
+      itemExtent: ChannelGuidePanel.groupExtentFor(widget.isTv),
       paddingV: ChannelGuidePanel.groupListPaddingV,
       alignment: 0,
       animate: animate,
@@ -666,7 +675,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     return _jumpListToIndex(
       _channelScroll,
       index: _focusedChannelIndex,
-      itemExtent: ChannelGuidePanel.channelRowExtent,
+      itemExtent: ChannelGuidePanel.channelExtentFor(widget.isTv),
       paddingV: ChannelGuidePanel.channelListPaddingV,
       alignment: 0,
       animate: animate,
@@ -1039,16 +1048,26 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     final playing = _currentChannel;
     final showChannelMeta = wide || _step == _GuideStep.channels;
     final tv = widget.isTv;
+    final densify = ShellPaintScope.usesTvDensityOf(context);
+    final headerH = ShellTokens.chromeScale(36, tv: densify);
+    final logo = densify
+        ? ShellTokens.playerChromeLogoSizeTv
+        : ShellTokens.playerChromeLogoSize;
 
     Widget headerBack() {
-      if (!showBack) return const SizedBox(width: 40, height: 36);
+      if (!showBack) {
+        return SizedBox(
+          width: ShellTokens.chromeScale(40, tv: densify),
+          height: headerH,
+        );
+      }
       final back = Button(
         variant: ButtonVariant.plainIcon,
         size: ButtonSize.icon,
         icon: Icons.arrow_back_rounded,
         onPressed: () => setState(() => _step = _GuideStep.groups),
         color: Colors.white,
-        iconSize: 22,
+        iconSize: ShellTokens.chromeScale(22, tv: densify),
       );
       return tv ? ExcludeFocus(child: back) : back;
     }
@@ -1060,15 +1079,20 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
         icon: Icons.close_rounded,
         compact: true,
         color: Colors.white70,
-        iconSize: 18,
-        height: 32,
+        iconSize: ShellTokens.chromeScale(18, tv: densify),
+        height: ShellTokens.chromeScale(32, tv: densify),
         onPressed: _close,
       );
       return tv ? ExcludeFocus(child: close) : close;
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+      padding: EdgeInsets.fromLTRB(
+        ShellTokens.chromeScale(8, tv: densify),
+        ShellTokens.chromeScale(4, tv: densify),
+        ShellTokens.chromeScale(8, tv: densify),
+        ShellTokens.chromeScale(8, tv: densify),
+      ),
       decoration: BoxDecoration(
         color: _channelsTint,
         border: Border(
@@ -1079,7 +1103,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 36,
+            height: headerH,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
@@ -1089,13 +1113,15 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
                   child: headerBack(),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 44),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ShellTokens.chromeScale(44, tv: densify),
+                  ),
                   child: Text(
                     title,
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GuideChromeStyle.overlayTitle.copyWith(
+                    style: GuideChromeStyle.overlayTitleOf(context).copyWith(
                       color: wide ? _accent : Colors.white,
                     ),
                   ),
@@ -1109,15 +1135,20 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
           ),
           if (playing != null && showChannelMeta)
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
+              padding: EdgeInsets.fromLTRB(
+                ShellTokens.chromeScale(12, tv: densify),
+                0,
+                ShellTokens.chromeScale(12, tv: densify),
+                ShellTokens.chromeScale(2, tv: densify),
+              ),
               child: Row(
                 children: [
                   _ChannelLogo(
                     url: playing.logoUrl ?? '',
-                    width: 36,
-                    height: 36,
+                    width: logo,
+                    height: logo,
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: ShellTokens.chromeScale(10, tv: densify)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1126,7 +1157,9 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
                           'Now playing',
                           style: GoogleFonts.plusJakartaSans(
                             color: _accent.withValues(alpha: 0.85),
-                            fontSize: 10,
+                            fontSize: densify
+                                ? ShellTokens.tvMetaFontSize
+                                : 10,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.4,
                           ),
@@ -1137,7 +1170,9 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: densify
+                                ? ShellTokens.tvBodyFontSize
+                                : 12,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1264,7 +1299,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
           vertical: ChannelGuidePanel.groupListPaddingV,
         ),
         itemCount: widget.guide.groups.length,
-        itemExtent: ChannelGuidePanel.groupRowExtent,
+        itemExtent: ChannelGuidePanel.groupExtentFor(widget.isTv),
         addAutomaticKeepAlives: false,
         itemBuilder: (_, i) {
           final g = widget.guide.groups[i];
@@ -1327,7 +1362,9 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
                               : selected
                                   ? Colors.white
                                   : Colors.white60,
-                          fontSize: 13,
+                          fontSize: ShellPaintScope.usesTvDensityOf(context)
+                              ? ShellTokens.tvBodyFontSize
+                              : 13,
                           fontWeight: selected || lit
                               ? FontWeight.w700
                               : FontWeight.w400,
@@ -1368,7 +1405,12 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
       return Center(
         child: Text(
           'No channels',
-          style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white54,
+            fontSize: ShellPaintScope.usesTvDensityOf(context)
+                ? ShellTokens.tvBodyFontSize
+                : 13,
+          ),
         ),
       );
     }
@@ -1390,7 +1432,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
           vertical: ChannelGuidePanel.channelListPaddingV,
         ),
         itemCount: channels.length,
-        itemExtent: ChannelGuidePanel.channelRowExtent,
+        itemExtent: ChannelGuidePanel.channelExtentFor(widget.isTv),
         addAutomaticKeepAlives: false,
         itemBuilder: (_, i) {
           final ch = channels[i];
@@ -1525,67 +1567,77 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
-          decoration: BoxDecoration(
-            color: fill,
-            border: Border(
-              left: BorderSide(color: barColor, width: 3),
-            ),
-          ),
-          child: Row(
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
+        child: Builder(
+          builder: (context) {
+            final tv = ShellPaintScope.usesTvDensityOf(context);
+            final logo = ShellTokens.chromeScale(40, tv: tv);
+            final padH = ShellTokens.chromeScale(8, tv: tv);
+            final padV = ShellTokens.chromeScale(4, tv: tv);
+            final padR = ShellTokens.chromeScale(12, tv: tv);
+            return Container(
+              padding: EdgeInsets.fromLTRB(padH, padV, padR, padV),
+              decoration: BoxDecoration(
+                color: fill,
+                border: Border(
+                  left: BorderSide(color: barColor, width: 3),
+                ),
+              ),
+              child: Row(
                 children: [
-                  _ChannelLogo(
-                    url: widget.showLogo
-                        ? (widget.channel.logoUrl ?? '')
-                        : '',
-                    width: 40,
-                    height: 40,
-                  ),
-                  if (widget.health != null)
-                    Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: widget.health! ? _alive : _dead,
-                        ),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _ChannelLogo(
+                        url: widget.showLogo
+                            ? (widget.channel.logoUrl ?? '')
+                            : '',
+                        width: logo,
+                        height: logo,
                       ),
+                      if (widget.health != null)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            width: ShellTokens.chromeScale(8, tv: tv),
+                            height: ShellTokens.chromeScale(8, tv: tv),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: widget.health! ? _alive : _dead,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(width: ShellTokens.chromeScale(10, tv: tv)),
+                  Expanded(
+                    child: Text(
+                      widget.channel.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: focused
+                            ? _accent
+                            : active
+                                ? Colors.white
+                                : Colors.white70,
+                        fontSize: tv ? ShellTokens.tvBodyFontSize : 13,
+                        fontWeight: active || focused
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (active)
+                    Icon(
+                      Icons.play_arrow_rounded,
+                      color: _accent,
+                      size: ShellPaintScope.iconOf(context, 20),
                     ),
                 ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  widget.channel.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: focused
-                        ? _accent
-                        : active
-                            ? Colors.white
-                            : Colors.white70,
-                    fontSize: 13,
-                    fontWeight:
-                        active || focused ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ),
-              if (active)
-                Icon(
-                  Icons.play_arrow_rounded,
-                  color: _accent,
-                  size: ShellPaintScope.iconOf(context, 20),
-                ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

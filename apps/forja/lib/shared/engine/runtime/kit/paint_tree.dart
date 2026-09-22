@@ -160,6 +160,8 @@ class PackPaintTree extends StatelessWidget {
         action: load.action,
         params: load.params,
         fallbackSpec: spec,
+        loadingBottomChild:
+            type == LayoutTypes.hero ? pageBottomChild : null,
         builder: (ctx2, merged) => PackPaintTree(
           spec: merged,
           pluginId: pluginId,
@@ -1908,6 +1910,7 @@ class PackPaintTree extends StatelessWidget {
             final streamId = _itemStreamId(item);
             if (streamId.isNotEmpty) {
               IptvCatalogLand.highlightedStreamId.value = streamId;
+              IptvCatalogLand.noteFocusedStreamId(streamId);
             }
             PackPaintArtifact.openTap(
               context,
@@ -2558,6 +2561,36 @@ class PackPaintTree extends StatelessWidget {
     return items.first.id;
   }
 
+  /// Live rail with pin/reorder: first portal group after Favorites / watched
+  /// using cached pin + drag order (not raw API kinds order).
+  String _firstOrderedLiveCategoryId(
+    List<({String id, String label, String? icon})> items,
+  ) {
+    final cache = CategoryBarActionHost.cachedLiveListParams;
+    final pinned = <String>[
+      for (final e in (cache['pinnedCats'] as List? ?? const []))
+        if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+    ];
+    final order = <String>[
+      for (final e in (cache['categoryOrder'] as List? ?? const []))
+        if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+    ];
+    final cats = <PortalCategory>[
+      for (final e in items)
+        if (e.id.trim().isNotEmpty &&
+            e.id != 'all' &&
+            !PortalLiveCatalog.isSyntheticId(e.id))
+          PortalCategory(id: e.id, name: e.label),
+    ];
+    final id = PortalLiveCatalog.firstPortalCategoryId(
+      PortalLiveCatalog.withPins(cats),
+      userPinnedIds: pinned,
+      customOrderIds: order,
+    );
+    if (id != null && id.isNotEmpty) return id;
+    return _firstPortalCategoryId(items);
+  }
+
   Widget _chromeCategoryBar(BuildContext context, Map<String, dynamic> spec) {
     final chrome = PackChromeScope.maybeOf(context);
     final id = (spec['id'] ?? '').toString();
@@ -2608,11 +2641,14 @@ class PackPaintTree extends StatelessWidget {
     // Search clears category for global hits — do not snap back to first/all.
     final searching = (chrome?.eventQuery ?? '').trim().isNotEmpty;
     // Live + Movies/Series: land on first portal group (skip All / synthetics).
+    // Live pin/reorder: use cached pin/drag order, not API kinds order.
     final String selected;
     if (selectedInItems) {
       selected = selectedRaw;
     } else if (searching) {
       selected = '';
+    } else if (!vodSection && CategoryBarActionHost.featuresEnabled(spec)) {
+      selected = _firstOrderedLiveCategoryId(items);
     } else {
       selected = _firstPortalCategoryId(items);
     }

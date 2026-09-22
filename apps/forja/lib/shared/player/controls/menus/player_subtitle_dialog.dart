@@ -256,12 +256,13 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
   Widget _settingsChip() {
     final onSettings = widget.onSubtitleSettings;
     if (onSettings == null) return const SizedBox.shrink();
+    final faceSize = PlayerPopupTokens.chromeBtnSizeOf(context);
     final face = SizedBox(
-      width: 32,
-      height: 32,
+      width: faceSize,
+      height: faceSize,
       child: Icon(
         Icons.tune_rounded,
-        size: 18,
+        size: PlayerPopupTokens.chromeIconSizeOf(context),
         color: ForjaShellColors.cinematic.textSecondary,
       ),
     );
@@ -272,7 +273,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
         icon: Icons.tune_rounded,
         iconSize: 18,
         height: 32,
-        color: ForjaShellColors.cinematic.textSecondary,
+        hoverColor: PlayerPopupTokens.accent,
         tooltip: 'Subtitle settings',
         onPressed: () {
           PlayerSubtitleDialog.dismiss();
@@ -286,7 +287,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
         PlayerSubtitleDialog.dismiss();
         onSettings();
       },
-      borderRadius: PlayerPopupTokens.chipRadius,
+      borderRadius: PlayerPopupTokens.chipRadiusOf(context),
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,

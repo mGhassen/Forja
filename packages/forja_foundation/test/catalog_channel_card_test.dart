@@ -111,4 +111,107 @@ void main() {
       ChannelCardTokens.cardTitleFontSizeTv,
     );
   });
+
+  testWidgets('emphasize flip does not call onInteractiveActive', (tester) async {
+    var calls = 0;
+    await tester.pumpWidget(
+      _wrap(
+        CatalogChannelCard(
+          title: 'A',
+          imageUrl: '',
+          width: 160,
+          height: 180,
+          emphasize: false,
+          onInteractiveActive: (_) => calls++,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(calls, 0);
+
+    await tester.pumpWidget(
+      _wrap(
+        CatalogChannelCard(
+          title: 'A',
+          imageUrl: '',
+          width: 160,
+          height: 180,
+          emphasize: true,
+          onInteractiveActive: (_) => calls++,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(calls, 0);
+  });
+
+  testWidgets(
+    'parent setState from onInteractiveActive during emphasize rebuild is safe',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: forjaThemeData(),
+          home: Scaffold(
+            body: ShellPaintScope(
+              useTvFocus: false,
+              scaleOnHover: true,
+              focusStyled: (_, {required focused}) => focused,
+              usesTvDensity: false,
+              child: const Center(child: _EmphasizeSelectHarness()),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Play'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('VIP EVENTS'), findsOneWidget);
+    },
+  );
+}
+
+class _EmphasizeSelectHarness extends StatefulWidget {
+  const _EmphasizeSelectHarness();
+
+  @override
+  State<_EmphasizeSelectHarness> createState() =>
+      _EmphasizeSelectHarnessState();
+}
+
+class _EmphasizeSelectHarnessState extends State<_EmphasizeSelectHarness> {
+  int _selected = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextButton(
+          onPressed: () => setState(() => _selected = 0),
+          child: const Text('Play'),
+        ),
+        CatalogChannelCard(
+          title: 'VIP EVENTS',
+          imageUrl: '',
+          width: 160,
+          height: 180,
+          emphasize: _selected == 0,
+          onInteractiveActive: (active) {
+            // Old bug: card notified parent from didUpdateWidget(emphasize),
+            // and parent setState mid-build → red error tile.
+            if (!mounted) return;
+            if (active && _selected != 0) {
+              setState(() => _selected = 0);
+            } else if (!active && _selected == 0) {
+              setState(() => _selected = -1);
+            }
+          },
+        ),
+      ],
+    );
+  }
 }

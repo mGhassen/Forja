@@ -469,6 +469,28 @@ abstract final class PortalLiveCatalog {
         ...apiCategories,
       ];
 
+  /// First real portal group after Favorites / Already watched — playlist first,
+  /// or the category pinned / dragged to the top of the movable rail.
+  static String? firstPortalCategoryId(
+    List<PortalCategory> input, {
+    PortalCatalogSort sort = PortalCatalogSort.playlist,
+    List<String> userPinnedIds = const [],
+    List<String> customOrderIds = const [],
+  }) {
+    final ordered = sortCategories(
+      input,
+      sort: sort,
+      userPinnedIds: userPinnedIds,
+      customOrderIds: customOrderIds,
+    );
+    for (final c in ordered) {
+      final id = c.id.trim();
+      if (id.isEmpty || id == 'all' || isSyntheticId(id)) continue;
+      return id;
+    }
+    return null;
+  }
+
   /// Order: Favorites · Already watched · custom order / pins · remaining.
   /// [input] may already include synthetics; they stay first.
   /// Name sort applies to unpinned rows; playlist + [customOrderIds] is full manual order.

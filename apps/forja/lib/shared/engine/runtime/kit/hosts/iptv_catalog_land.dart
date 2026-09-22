@@ -73,6 +73,12 @@ abstract final class IptvCatalogLand {
     _lastFocusedStreamId = _visibleStreamIdsOrdered[index];
   }
 
+  static void noteFocusedStreamId(String streamId) {
+    final id = streamId.trim();
+    if (id.isEmpty) return;
+    _lastFocusedStreamId = id;
+  }
+
   static void bindPortalKey(String? portalStoreKey) {
     final k = (portalStoreKey ?? '').trim();
     _activePortalKey = k.isEmpty ? null : k;
@@ -118,6 +124,7 @@ abstract final class IptvCatalogLand {
     final ch = await loadLastChannel();
     if (ch == null || ch.isEmpty) return;
     preferCategoryFocusOnLand = true;
+    _lastFocusedStreamId = ch;
     highlightedStreamId.value = ch;
     landEpoch.value++;
   }

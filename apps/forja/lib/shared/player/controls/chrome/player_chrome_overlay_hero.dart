@@ -174,11 +174,14 @@ class PlayerTimeRange extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fs = playerChromeScale(context, fontSize);
     return Text(
       '${_fmt(position)} / ${_fmt(duration)}',
       style: TextStyle(
         color: Colors.white.withValues(alpha: 0.9),
-        fontSize: fontSize,
+        fontSize: ShellPaintScope.usesTvDensityOf(context)
+            ? ShellTokens.playerChromeTimeFontSizeTv
+            : fs,
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
@@ -242,6 +245,8 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         : Colors.white.withValues(alpha: highlight ? 0.35 : 0.2);
     final fillAlpha = tvFocused ? 0.16 : (highlight ? 0.22 : 0.14);
     final iconColor = tvFocused ? ForjaShellColors.brandGreen : Colors.white;
+    final size = playerChromeScale(context, widget.size);
+    final iconSize = playerChromeScale(context, widget.iconSize);
     return GestureDetector(
       onTap: widget.onPressed,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -251,8 +256,8 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         scale: _pressed ? 0.9 : (highlight ? 1.06 : 1.0),
         duration: const Duration(milliseconds: 100),
         child: Container(
-          width: widget.size,
-          height: widget.size,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white.withValues(alpha: fillAlpha),
@@ -261,8 +266,8 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
           child: widget.showSpinner
               ? Center(
                   child: SizedBox(
-                    width: widget.iconSize,
-                    height: widget.iconSize,
+                    width: iconSize,
+                    height: iconSize,
                     child: const CircularProgressIndicator(
                       color: Colors.white,
                       strokeWidth: 2.5,
@@ -272,7 +277,7 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
               : Icon(
                   widget.icon,
                   color: iconColor,
-                  size: widget.iconSize,
+                  size: iconSize,
                 ),
         ),
       ),
@@ -296,7 +301,7 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
       return FocusableControl(
         focusNode: widget.focusNode,
         onTap: widget.onPressed,
-        borderRadius: widget.size / 2,
+        borderRadius: playerChromeScale(context, widget.size) / 2,
         scaleOnFocus: 1.0,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange: (hovered) {
@@ -384,7 +389,8 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
     _hoveringN.value = hovering;
   }
 
-  double get _sliderWidth => widget.compact ? 110.0 : 160.0;
+  double get _sliderWidth =>
+      playerChromeScale(context, widget.compact ? 110.0 : 160.0);
 
   IconData _iconFor(double vol) {
     if (vol == 0) return Icons.volume_off_rounded;

@@ -48,4 +48,22 @@ void main() {
     );
     expect(out.map((e) => e['id']), ['3', '1']);
   });
+
+  test('filterSort empty stream_ids with streamIdsSet is Favorites page', () {
+    final out = PortalCatalogPage.filterSort(
+      streams: streams,
+      streamIds: const [],
+      streamIdsSet: true,
+    );
+    expect(out, isEmpty);
+  });
+
+  test('filterSort empty stream_ids without streamIdsSet is no id filter', () {
+    final out = PortalCatalogPage.filterSort(
+      streams: streams,
+      streamIds: const [],
+      categoryId: '',
+    );
+    expect(out.map((e) => e['id']), ['1', '2', '3', '4']);
+  });
 }

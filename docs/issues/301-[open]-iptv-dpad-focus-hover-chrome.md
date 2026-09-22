@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 13** code · **0 / 12** acceptance |
+| **Progress** | **16 / 16** code · **0 / 12** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -32,6 +32,9 @@
 | 11 | I301-T11 | Hover→keyboard focus via shared `ShellHoverFocus` (nav + top bar + settings + lists) | ✅ |
 | 12 | I301-T12 | Category → focuses **in-front** channel (spatial); search OK → first hit or keep field | ✅ |
 | 13 | I301-T13 | Pack `focus.enter/restore: cats` + arm cats memory on select (nav OK lands last selected category) | ✅ |
+| 14 | I301-T14 | Category → : last selected channel if still in list, else first (replace spatial in-front) | ✅ |
+| 15 | I301-T15 | Hold OK pin: `allowNestedFocus` + focusable pin under `useTvFocus` so → lands on pin | ✅ |
+| 16 | I301-T16 | Floating reorder: parent `HardwareKeyboard` ↑/↓ by id + re-stick focus (no neighbor jump) | ✅ |
 
 ---
 
@@ -42,7 +45,7 @@
 | 1 | Category ↓ scrolls with focus | ✅ (user) |
 | 2 | ↑ top channels: left half → shelf, right → Portals | ⬜ retest |
 | 3 | Hold OK pin / no dual green / no jump to selected | ⬜ retest |
-| 4 | Category → in-front channel | ⬜ retest |
+| 4 | Category → last selected if in list, else first | ⬜ retest |
 | 5 | Open hub → last category focused; channel scrolled | ⬜ retest |
 | 6 | Back from player → channel (not category) | ⬜ retest |
 | 7 | → last channel → selected portal | ✅ (user) |

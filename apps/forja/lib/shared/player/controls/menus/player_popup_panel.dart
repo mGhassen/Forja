@@ -700,100 +700,110 @@ class _PanelShellState extends State<_PanelShell> {
                 ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final headerBlockHeight =
-                        PlayerPopupTokens.headerBlockHeightOf(context);
-                    final headerHeight =
-                        widget.showHeader ? headerBlockHeight : 0.0;
-                    final scrollMax = constraints.maxHeight.isFinite
-                        ? (constraints.maxHeight - headerHeight)
-                            .clamp(0.0, double.infinity)
-                        : double.infinity;
-                    final body = scrollMax.isFinite && scrollMax > 0
-                        ? ConstrainedBox(
-                            constraints: BoxConstraints(maxHeight: scrollMax),
-                            child: widget.child,
-                          )
-                        : widget.child;
-                    final shell = Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (widget.showHeader) ...[
-                          Padding(
-                            padding: PlayerPopupTokens.headerPaddingOf(context),
-                            child: Row(
-                              children: [
-                                if (widget.onBack != null)
-                                  ShellBackIconButton(
-                                    icon: Icons.arrow_back_rounded,
-                                    size: PlayerPopupTokens.chromeIconSizeOf(
-                                      context,
-                                    ),
-                                    tooltip: 'Back',
-                                    onTap: widget.onBack,
-                                  )
-                                else if (widget.leadingIcon != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 4,
-                                      right: 6,
-                                    ),
-                                    child: Icon(
-                                      widget.leadingIcon,
-                                      color: PlayerPopupTokens.muted,
-                                      size: PlayerPopupTokens.chromeIconSizeOf(
-                                        context,
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  const SizedBox(width: 4),
-                                if (widget.title.isNotEmpty)
-                                  Expanded(
-                                    child: Text(
-                                      widget.title,
-                                      maxLines: 1,
-                                      softWrap: false,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize:
-                                            PlayerPopupTokens.titleFontSizeOf(
+                    final bounded = constraints.maxHeight.isFinite;
+                    final header = widget.showHeader
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding:
+                                    PlayerPopupTokens.headerPaddingOf(context),
+                                child: Row(
+                                  children: [
+                                    if (widget.onBack != null)
+                                      ShellBackIconButton(
+                                        icon: Icons.arrow_back_rounded,
+                                        size:
+                                            PlayerPopupTokens.chromeIconSizeOf(
                                           context,
                                         ),
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: -0.15,
-                                      ),
+                                        tooltip: 'Back',
+                                        onTap: widget.onBack,
+                                      )
+                                    else if (widget.leadingIcon != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 4,
+                                          right: 6,
+                                        ),
+                                        child: Icon(
+                                          widget.leadingIcon,
+                                          color: PlayerPopupTokens.muted,
+                                          size: PlayerPopupTokens
+                                              .chromeIconSizeOf(context),
+                                        ),
+                                      )
+                                    else
+                                      const SizedBox(width: 4),
+                                    if (widget.title.isNotEmpty)
+                                      Expanded(
+                                        child: Text(
+                                          widget.title,
+                                          maxLines: 1,
+                                          softWrap: false,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: PlayerPopupTokens
+                                                .titleFontSizeOf(context),
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -0.15,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      const Spacer(),
+                                    if (widget.trailing != null) ...[
+                                      widget.trailing!,
+                                      const SizedBox(width: 4),
+                                    ],
+                                    _PopupChromeButton(
+                                      icon: Icons.close_rounded,
+                                      tooltip: 'Close',
+                                      onTap: widget.onClose,
+                                      focusNode: _closeFocus,
+                                      autoFocus: closeAutoFocus,
                                     ),
-                                  )
-                                else
-                                  const Spacer(),
-                                if (widget.trailing != null) ...[
-                                  widget.trailing!,
-                                  const SizedBox(width: 4),
-                                ],
-                                _PopupChromeButton(
-                                  icon: Icons.close_rounded,
-                                  tooltip: 'Close',
-                                  onTap: widget.onClose,
-                                  focusNode: _closeFocus,
-                                  autoFocus: closeAutoFocus,
+                                  ],
                                 ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                child: Divider(
+                                  height: 1,
+                                  thickness: 0.5,
+                                  color: PlayerPopupTokens.border,
+                                ),
+                              ),
+                            ],
+                          )
+                        : null;
+                    // Bounded height: Expanded body — never guess header px
+                    // (tune chip / densify mismatches used to overflow by 8).
+                    final shell = bounded
+                        ? SizedBox(
+                            height: constraints.maxHeight,
+                            width: constraints.maxWidth.isFinite
+                                ? constraints.maxWidth
+                                : null,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                ?header,
+                                Expanded(child: widget.child),
                               ],
                             ),
-                          ),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 10),
-                            child: Divider(
-                              height: 1,
-                              thickness: 0.5,
-                              color: PlayerPopupTokens.border,
-                            ),
-                          ),
-                        ],
-                        body,
-                      ],
-                    );
+                          )
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ?header,
+                              widget.child,
+                            ],
+                          );
                     if (!tvFocus) return shell;
                     return FocusTraversalGroup(child: shell);
                   },
@@ -1240,6 +1250,9 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
         : PlayerPopupTokens.selectCardPaddingOf(context);
     final subtitle = widget.subtitle?.trim();
     final hasSubtitle = subtitle != null && subtitle.isNotEmpty;
+    // Check slot must fit TV-dense padding without stretching selected rows
+    // taller than idle ones (desktop 18 was hard-coded and blew past leanback).
+    final checkSize = PlayerPopupTokens.checkIconSizeOf(context);
 
     Widget labelColumn() {
       final title = Text(
@@ -1292,29 +1305,35 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
           width: widget.expanded ? double.infinity : null,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color: chrome.border,
-              width: chrome.borderWidth,
-            ),
+            // Fixed width — selected/focus used to bump 1→1.5 and stretch the
+            // card; color + fill already mark the active choice.
+            border: Border.all(color: chrome.border, width: 1),
           ),
           padding: padding,
-          child: Row(
-            mainAxisSize:
-                widget.expanded ? MainAxisSize.max : MainAxisSize.min,
-            children: [
-              if (widget.expanded)
-                Expanded(child: labelColumn())
-              else
-                labelColumn(),
-              if (selected && !widget.disabled) ...[
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.check_rounded,
-                  color: PlayerPopupTokens.accent,
-                  size: 18,
-                ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: checkSize),
+            child: Row(
+              mainAxisSize:
+                  widget.expanded ? MainAxisSize.max : MainAxisSize.min,
+              children: [
+                if (widget.expanded)
+                  Expanded(child: labelColumn())
+                else
+                  labelColumn(),
+                if (selected && !widget.disabled) ...[
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: checkSize,
+                    height: checkSize,
+                    child: Icon(
+                      Icons.check_rounded,
+                      color: PlayerPopupTokens.accent,
+                      size: checkSize,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

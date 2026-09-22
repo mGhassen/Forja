@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -221,14 +222,17 @@ Widget liveBackButton(
   ValueChanged<bool>? onFocusChange,
 }) {
   if (onTap == null) return const SizedBox.shrink();
+  final tv = ShellPaintScope.usesTvDensityOf(context);
+  final iconSize = ShellTokens.chromeScale(size, tv: tv);
+  final hitSize = ShellTokens.chromeScale(size + 12, tv: tv);
   if (liveUseTvFocus(context)) {
     return _FocusIconTap(
       icon: Icons.arrow_back_rounded,
       onTap: onTap,
       idleColor: color,
-      size: size,
-      hitSize: size + 12,
-      borderRadius: 22,
+      size: iconSize,
+      hitSize: hitSize,
+      borderRadius: hitSize / 2,
       tooltip: tooltip,
       focusNode: focusNode,
       tvRowId: tvRowId,
@@ -246,7 +250,7 @@ Widget liveBackButton(
     icon: Icons.arrow_back_rounded,
     onPressed: onTap,
     color: color,
-    iconSize: size,
+    iconSize: iconSize,
     tooltip: tooltip,
   );
 }
@@ -818,7 +822,21 @@ class _FocusRoundIconState extends State<FocusRoundIcon> {
 
   @override
   Widget build(BuildContext context) {
-    final size = widget.big ? 56.0 : 44.0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final size = widget.big
+        ? (tv
+            ? ShellTokens.playerChromePlayBtnSizeTv
+            : ShellTokens.playerChromePlayBtnSize)
+        : (tv
+            ? ShellTokens.playerChromeRoundBtnSizeTv
+            : ShellTokens.playerChromeRoundBtnSize);
+    final iconSize = widget.big
+        ? (tv
+            ? ShellTokens.playerChromePlayIconSizeTv
+            : ShellTokens.playerChromePlayIconSize)
+        : (tv
+            ? ShellTokens.playerChromeRoundIconSizeTv
+            : ShellTokens.playerChromeRoundIconSize);
     if (liveUseTvFocus(context)) {
       return ListenableBuilder(
         listenable: _hoveredN,
@@ -861,10 +879,7 @@ class _FocusRoundIconState extends State<FocusRoundIcon> {
                 child: Icon(
                   widget.icon,
                   color: fg,
-                  size: ShellPaintScope.iconOf(
-                    context,
-                    widget.big ? 32 : 22,
-                  ),
+                  size: iconSize,
                 ),
               ),
             ),
@@ -878,7 +893,7 @@ class _FocusRoundIconState extends State<FocusRoundIcon> {
       child: Icon(
         widget.icon,
         color: Colors.white,
-        size: ShellPaintScope.iconOf(context, widget.big ? 32 : 22),
+        size: iconSize,
       ),
     );
     return Material(

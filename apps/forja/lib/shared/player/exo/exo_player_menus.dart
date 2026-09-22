@@ -12,7 +12,7 @@ import 'package:forja/shared/utils/language_display.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
 /// Exo track / settings menus — same popup chrome as MediaKit.
 abstract final class ExoPlayerMenus {
   static Future<void> showAudio({
@@ -677,23 +677,24 @@ class _SubtitleTuneChip extends StatelessWidget {
         size: ButtonSize.icon,
         icon: Icons.tune_rounded,
         iconSize: 18,
-        color: Colors.white54,
+        hoverColor: PlayerPopupTokens.accent,
         onPressed: onTap,
       );
     }
+    final faceSize = PlayerPopupTokens.chromeBtnSizeOf(context);
     final face = SizedBox(
-      width: 32,
-      height: 32,
+      width: faceSize,
+      height: faceSize,
       child: Icon(
         Icons.tune_rounded,
-        size: ShellPaintScope.iconOf(context, 18),
+        size: PlayerPopupTokens.chromeIconSizeOf(context),
         color: PlayerPopupTokens.muted,
       ),
     );
     return FocusableControl(
       focusNode: focusNode,
       onTap: onTap,
-      borderRadius: PlayerPopupTokens.chipRadius,
+      borderRadius: PlayerPopupTokens.chipRadiusOf(context),
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,

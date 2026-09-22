@@ -222,7 +222,10 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       enableBlur: false,
       contentPadding: detailsHost
           ? null
-          : const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          : TorrentSourcesPanel.contentPaddingOf(
+              context,
+              playerOverlay: true,
+            ),
       child: SourcesPanelTv.wrapBody(
         context: context,
         onClose: widget.onClose,
