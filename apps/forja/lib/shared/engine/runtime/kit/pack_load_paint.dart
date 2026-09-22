@@ -1250,6 +1250,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   }
 
   /// Finite-height light skeleton — CatalogBody mounts this in a sliver.
+  ///
+  /// Pulse while this rail is actually waiting on a fetch. Off-screen
+  /// [LazyViewportGate] placeholders stay static (`shimmer: false`) so
+  /// TickerMode on tab show does not look like a reload.
   Widget _sectionLoadingSkeleton() {
     final compact = widget.fallbackSpec['compactTop'] == true;
     final bleed = (widget.fallbackSpec['bleed'] ?? '').toString().trim();
@@ -1258,9 +1262,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       widget.fallbackSpec,
       compact: compact,
       pageBottomBleed: bleed.isNotEmpty,
-      // Static structure — pulsing shimmer on cold miss only reads as a reload
-      // when TickerMode resumes on tab show with a cached hub.
-      shimmer: false,
+      shimmer: true,
     );
     return slot.placeholder;
   }
