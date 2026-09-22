@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
@@ -376,87 +374,12 @@ double catalogContinueRowSkeletonHeight({
   );
 }
 
-/// Full-page wait while pack layout resolves — solid fill + ticker.
+/// Full-page wait while pack layout or a nav tab mounts — matches details open.
 ///
 /// No invented rails and no elevated band / shimmer (those read as the page
 /// background flashing on cold hub remount).
-///
-/// [tabId] flavors the copy when known; otherwise cycles a short cinematic pool.
 Widget hubNeutralLoadingSkeleton(BuildContext context, {String? tabId}) {
-  return ColoredBox(
-    color: ForjaShellColors.bgDark,
-    child: _HubLoadingTicker(tabId: tabId?.trim() ?? ''),
-  );
-}
-
-class _HubLoadingTicker extends StatefulWidget {
-  const _HubLoadingTicker({required this.tabId});
-
-  final String tabId;
-
-  @override
-  State<_HubLoadingTicker> createState() => _HubLoadingTickerState();
-}
-
-class _HubLoadingTickerState extends State<_HubLoadingTicker> {
-  static const _pool = <(String, String)>[
-    ('Cueing the reel', 'Rolling the opening titles…'),
-    ('Dim the house lights', 'Bringing this hub into focus…'),
-    ('Warming the projector', 'Lining up the shelves…'),
-    ('Hold for curtain', 'The next screen is almost ready…'),
-    ('Setting the stage', "Gathering what's on tonight…"),
-    ("Marquee's warming up", 'Finding something worth the seat…'),
-  ];
-
-  late List<(String, String)> _lines;
-  late int _index;
-  Timer? _rotate;
-
-  @override
-  void initState() {
-    super.initState();
-    final flavored = _flavoredForTab(widget.tabId);
-    _lines = flavored == null ? _pool : [flavored, ..._pool];
-    _index = 0;
-    _rotate = Timer.periodic(const Duration(milliseconds: 3200), (_) {
-      if (!mounted || _lines.length < 2) return;
-      setState(() => _index = (_index + 1) % _lines.length);
-    });
-  }
-
-  @override
-  void dispose() {
-    _rotate?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pair = _lines[_index];
-    return CatalogLoadingTicker(title: pair.$1, detail: pair.$2);
-  }
-}
-
-(String, String)? _flavoredForTab(String tabId) {
-  switch (tabId) {
-    case 'home':
-      return ('Home', 'Lining up your shelves…');
-    case 'anime':
-      return ('Anime', 'Queuing the next binge…');
-    case 'asian_drama':
-      return ('Asian Drama', "Cueing tonight's episode…");
-    case 'iptv':
-      return ('Live TV', 'Tuning your portals…');
-    case 'live_sports':
-    case 'live_sports_cards':
-      return ('Live Sports', "Checking today's fixtures…");
-    case 'my_list':
-      return ('My List', 'Opening your list…');
-    case 'kids':
-      return ('Kids', 'Finding something fun…');
-    default:
-      return null;
-  }
+  return forjaShellPageLoading();
 }
 
 /// Matches [BecauseSection] header: 36×50 seed poster + two title lines.

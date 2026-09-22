@@ -15,7 +15,6 @@ import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/player/sources/resolve/stream_play_hooks.dart';
 import 'package:forja/shared/player/sources/kit/panel_source_flags.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
@@ -37,6 +36,7 @@ import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play_row.dart'
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_hero.dart';
 import 'package:forja/shared/engine/details/media_details.dart';
 import 'package:forja/shell/desktop/desktop_selectable_title.dart';
+import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 import 'package:forja_foundation/widgets/details/details_hero.dart';
 import 'package:forja_foundation/blocks/details/details_block.dart';
 import 'package:forja/shell/routing/app_router.dart';
@@ -810,10 +810,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             loading: _loading,
             errorMessage: _error,
             onRetry: _load,
-            loadingChild: Center(
-              child: CircularProgressIndicator(
-                color: ForjaShellColors.sectionAccent,
-              ),
+            loadingChild: forjaShellPageLoading(
+              backgroundColor: AppTheme.bgDark,
             ),
             errorChild: _error == null
                 ? null

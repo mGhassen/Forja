@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
+import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_tv.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_view.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
+import 'package:forja/shared/sync/api/sync_service.dart';
+import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
@@ -81,6 +84,67 @@ abstract final class PortalsActionHost {
       shellTabVisible: shellTabVisible,
       child: child,
     );
+  }
+
+  /// Portals chip ↓ — panel open → selected portal (or header when empty);
+  /// panel closed → pack `focusDown` (category rail).
+  static void invokeChipDownEdge(
+    WidgetRef ref, {
+    required String tabId,
+    required VoidCallback? toCatalog,
+  }) {
+    if (!ref.read(portalsPanelOpenProvider(tabId))) {
+      toCatalog?.call();
+      return;
+    }
+    focusPanelFromChipDown(ref, tabId: tabId);
+  }
+
+  static void focusPanelFromChipDown(WidgetRef ref, {required String tabId}) {
+    final inv = ref.read(portalsInventoryProvider(tabId)).asData?.value;
+    final portals = inv?.portals ?? const <PortalListItem>[];
+    final activeKey = (inv?.activeKey ?? '').trim();
+    var activeIdx = -1;
+    if (activeKey.isNotEmpty && portals.isNotEmpty) {
+      activeIdx = portals.indexWhere(
+        (p) => PortalsHost.samePortalKey(p.id, activeKey),
+      );
+    }
+    final tv = PortalsPanelTvFocus(tabId: tabId);
+    if (portals.isEmpty) {
+      tv.focusHeaderAdd(
+        headerActionCount: _visibleHeaderActionCount(inv?.actions),
+      );
+      return;
+    }
+    tv.focusPortalsFromHeader(
+      filteredLength: portals.length,
+      activeIndex: activeIdx,
+      mounted: true,
+    );
+  }
+
+  static int _visibleHeaderActionCount(List<PortalsPanelAction>? actions) {
+    if (actions == null || actions.isEmpty) return 0;
+    final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
+        SyncService.instance.isSignedIn;
+    final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
+    var count = 0;
+    for (final a in actions) {
+      final id = a.id.trim().toLowerCase();
+      final verb = a.action.trim().toLowerCase();
+      if (id == 'import' ||
+          id == 'refresh' ||
+          verb == 'importportal' ||
+          verb == 'listportals' ||
+          verb == 'refresh') {
+        continue;
+      }
+      if ((id == 'deal' || verb == 'dealportals') && !canDeal) continue;
+      if ((id == 'scrape' || verb == 'scrape') && !canScrape) continue;
+      count++;
+    }
+    return count;
   }
 }
 
@@ -304,7 +368,11 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
             tvItemIndex: widget.itemIndex,
             onLeftEdge: widget.onLeftEdge,
             onRightEdge: widget.onRightEdge,
-            onDownEdge: widget.onDownEdge,
+            onDownEdge: () => PortalsActionHost.invokeChipDownEdge(
+              ref,
+              tabId: widget.tabId,
+              toCatalog: widget.onDownEdge,
+            ),
             onFocusChange: onFocusChange,
             onHoverChange: onHoverChange,
             child: child,

@@ -5,6 +5,18 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Full-page wait while a shell route resolves — same spinner as [DetailsScreen].
+Widget forjaShellPageLoading({Color? backgroundColor}) {
+  return ColoredBox(
+    color: backgroundColor ?? ForjaShellColors.bgDark,
+    child: Center(
+      child: CircularProgressIndicator(
+        color: ForjaShellColors.sectionAccent,
+      ),
+    ),
+  );
+}
+
 /// Centered catalog load ticker — spinner + title + step detail.
 ///
 /// Pre-wipe IPTV shelf load (not a card skeleton grid).

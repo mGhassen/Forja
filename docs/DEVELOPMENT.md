@@ -93,6 +93,21 @@ Dev secrets live in a **gitignored** repo-root `.env` (see `.env.example`). Rust
 | `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | **CI only** — Release workflow uploads installers to R2 bucket `forja-releases` and prunes to the newest 3 versions |
 | `FORJA_WEB_URL` | Deployed web portal origin for desktop **Web login** / signup links. Local default `http://127.0.0.1:3000`. **Required** as a GitHub secret for release/build CI (must not be localhost). |
 
+### Portal URL vs Vercel Deployment Protection
+
+Device-link QR codes and **Web login** open `{FORJA_WEB_URL}/connect` or `/login` in the user’s browser. Forja only redirects to **Forja** sign-in after the request reaches the web app.
+
+If the portal host uses [Vercel Deployment Protection](https://vercel.com/docs/deployment-protection) (Vercel Authentication, password, etc.), Vercel intercepts first and sends users to **vercel.com/login** — that is not fixable in Flutter or `/connect` code.
+
+| Goal | Action |
+|------|--------|
+| End-user auth (QR, Web login, `/connect`) | Portal origin must be **public**: use `https://www.forjahq.xyz`, local `http://127.0.0.1:3000`, or disable protection on the custom domain you use |
+| Lock a staging site for the team only | Keep Vercel Authentication on `dev.forjahq.xyz` — **do not** set `FORJA_WEB_URL` to that host for builds or `.env` used for QR login |
+
+**Fix `dev.forjahq.xyz` (Vercel dashboard):** Project → **Settings** → **Deployment Protection** → set **Vercel Authentication** to **None** for that deployment, or use **Standard Protection** and assign `dev.forjahq.xyz` only as a **Production** domain (production custom domains stay public under Standard). Preview-only custom domains stay behind Vercel login.
+
+After changing protection, open an incognito window to `https://dev.forjahq.xyz/connect` — you should see Forja’s connect page, not Vercel.
+
 **Desktop reality:** anything baked into the binary can be extracted. `.env` keeps keys out of git; it does **not** hide them from someone who reverse-engineers a shipped build. Real options for production: a small backend proxy that holds the key, or user-supplied keys (WebStreamr already has a Settings TMDB token). TMDB’s v3 key is rate-limited per key — rotate if it leaks; prefer the read token only where Bearer is needed.
 
 CI / release: repo secrets `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, `WYZIE_API_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (falls back to legacy `SUPABASE_ANON_KEY`), **`R2_ACCOUNT_ID`**, **`R2_ACCESS_KEY_ID`**, **`R2_SECRET_ACCESS_KEY`**, **`RELEASE_CDN_URL`**, **`FORJA_WEB_URL`**, and optional **`R2_BUCKET`** / **`R2_ENDPOINT`** are injected by `.github/workflows/{build,release}.yml`. On **forjahq**, optional **`ORIGIN_SYNC_TOKEN`** (fine-grained PAT with Contents write on `mGhassen/Forja`) makes **Release Forja → New version** push the release commit + tag back to origin; optional variable **`ORIGIN_SYNC_REPO`** overrides the default `mGhassen/Forja`. Flutter builds receive Supabase + release CDN + portal URL **and `TMDB_API_KEY`** through `--dart-define`; use the hosted project values in GitHub, never the local `127.0.0.1` URL. Never put R2 access keys in `--dart-define` or Vite env. Web portal captcha uses `VITE_TURNSTILE_SITE_KEY` only (not a Flutter dart-define).
