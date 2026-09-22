@@ -460,7 +460,7 @@ abstract final class ShellTokens {
   );
   static const EdgeInsets playerSidePanelPaddingTv = EdgeInsets.fromLTRB(
     8,
-    10,
+    4,
     8,
     6,
   );
@@ -469,6 +469,26 @@ abstract final class ShellTokens {
   static const double playerSidePanelWidth = 480;
   static const double playerSidePanelWidthTv =
       playerSidePanelWidth * tvChromeScale;
+
+  /// Filters dock left of Sources — desktop preferred max; TV chrome-scaled.
+  static const double sourcesFilterPanelWidth = 420;
+  static const double sourcesFilterPanelWidthTv =
+      sourcesFilterPanelWidth * tvChromeScale;
+  static const double sourcesFilterPanelSoftMin = 280;
+  static const double sourcesFilterPanelSoftMinTv =
+      sourcesFilterPanelSoftMin * tvChromeScale;
+  static const EdgeInsets sourcesFilterPanelPadding = EdgeInsets.fromLTRB(
+    20,
+    8,
+    12,
+    16,
+  );
+  static const EdgeInsets sourcesFilterPanelPaddingTv = EdgeInsets.fromLTRB(
+    12,
+    4,
+    8,
+    10,
+  );
 
   /// Below this width the player side panel goes nearly full-bleed.
   static const double playerSidePanelNarrowMaxWidth = 700;
@@ -516,7 +536,8 @@ abstract final class ShellTokens {
   static const double playerChromeProgressLogoSizeCompactTv =
       playerChromeProgressLogoSizeCompact * tvChromeScale;
 
-  static const double tabHeaderTopPadding = 16;
+  /// Catalog / IPTV top chrome — tight under the window / title strip.
+  static const double tabHeaderTopPadding = 8;
   static const double tabHeaderBottomPadding = 12;
   static const double tabHeaderFontSize = 32;
 
@@ -689,9 +710,11 @@ abstract final class ShellTokens {
   static const double torrentPanelRowBadgeRadiusDesktop = 6;
   static const double torrentPanelRowBadgeRadiusTv = 4;
   static const double torrentPanelChipPadHDesktop = 12;
-  static const double torrentPanelChipPadHTv = 10;
+  static const double torrentPanelChipPadHTv =
+      torrentPanelChipPadHDesktop * tvChromeScale;
   static const double torrentPanelChipPadVDesktop = 8;
-  static const double torrentPanelChipPadVTv = 6;
+  static const double torrentPanelChipPadVTv =
+      torrentPanelChipPadVDesktop * tvChromeScale;
   static const double torrentPanelChipFontSizeDesktop = 12;
   static const double torrentPanelChipFontSizeTv = tvBodyFontSize;
   static const double torrentPanelMetaIconSizeDesktop = 14;

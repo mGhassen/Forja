@@ -9,16 +9,43 @@ import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 abstract final class GuideChromeStyle {
   static const cinematic = ForjaShellColors.cinematic;
 
+  /// Leanback spatial densify for guide / EPG / search chrome lengths.
+  static bool densifyOf(BuildContext context) =>
+      ShellPaintScope.usesTvDensityOf(context);
+
+  static double len(BuildContext context, double desktop) =>
+      ShellTokens.chromeScale(desktop, tv: densifyOf(context));
+
+  /// Desktop type → leanback ladder (never × [ShellTokens.tvChromeScale]).
+  static double type(BuildContext context, double desktop) =>
+      densifyOf(context) ? ShellTokens.tvTypeSize(desktop) : desktop;
+
   static Color get accent => cinematic.navUnderline;
   static Color get accentMuted => cinematic.textSecondary;
   static Color get textPrimary => cinematic.textPrimary;
   static Color get textSecondary => cinematic.textSecondary;
   static Color get border => cinematic.borderSubtle;
   static Color get surface => cinematic.menuSurface;
-  /// Translucent dark glass over live video (floating EPG, channel guide shell).
-  /// Matches [ForjaFrostedPanel] without blur — no BackdropFilter on the player.
+  /// Flat translucent dark fill for full-height player guide / search shells.
+  /// Floating EPG uses [ForjaFrostedPanel] blur instead — see [GuideFloatingEpg].
   static Color get surfaceGlass =>
       cinematic.menuSurface.withValues(alpha: 0.82);
+
+  /// Desktop floating programme card max width (player chrome).
+  static const double floatingEpgMaxWidth = 540;
+
+  /// Compact / phone floating programme card max width.
+  static const double floatingEpgMaxWidthCompact = 440;
+
+  /// Densified floating EPG max width for the active paint scope.
+  static double floatingEpgMaxWidthOf(
+    BuildContext context, {
+    required bool compact,
+  }) =>
+      len(
+        context,
+        compact ? floatingEpgMaxWidthCompact : floatingEpgMaxWidth,
+      );
   static Color get surfaceMuted => Colors.white.withValues(alpha: 0.04);
   static Color get chipSelectedBg => ForjaShellColors.chipSelectedBg;
   static Color get chipSelectedBorder => ForjaShellColors.chipSelectedBorder;

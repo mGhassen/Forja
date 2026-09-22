@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 4** acceptance |
+| **Progress** | **11 / 11** fix · **0 / 4** acceptance |
 | **Current slice** | Host `catalog_page` + file shelf + pack feed — manual QA open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
@@ -28,6 +28,9 @@
 | 6 | I290-T06 | Changelog + unit test for page filter/sort | ✅ |
 | 7 | I290-T07 | Live category flips re-query `catalog_page` (was paint-filter on first-cat page → empty + jank) | ✅ |
 | 8 | I290-T08 | Favorites / Already watched pages: empty `stream_ids` returns empty page (not whole shelf) | ✅ |
+| 9 | I290-T09 | Favorites / Watched select: keep synthetic selection (no feed-kinds snap-back) + clear prior page | ✅ |
+| 10 | I290-T10 | Live/Movies/Series shelf flip: loading on first visit; restore last paint when that shelf is warm | ✅ |
+| 11 | I290-T11 | CategoryBar `_reload` must not re-land away from Favorites; skip feed kinds overwrite of rich rail | ✅ |
 
 ---
 

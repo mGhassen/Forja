@@ -383,7 +383,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
     final idx = widget.items.indexWhere((e) => e.id == id);
     if (idx < 0) return;
     // Keep Favorites / Already watched above when the pin sits under them.
-    final keepAbove = idx.clamp(0, math.max(_fixed.length, 1)).toInt();
+    final keepAbove = math.min(idx, math.max(_fixed.length, 1));
     _scrollToIndex(idx, keepAbove: keepAbove);
     final row = _CatalogCategoryRowState._byId[id];
     if (row == null || !row.mounted) return;

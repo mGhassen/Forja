@@ -280,6 +280,8 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     const gap = 8.0;
     widget.onProvideListFocusUp?.call(_focusSearchOrProvidersFromList);
 
+    // No extra top inset — panel padding owns the edge; a TV-only pad left a
+    // dead band above Forja / kind tabs.
     Widget kind = _KindTabs(
       selected: widget.kindFilter,
       showTorrents: widget.showTorrents,
@@ -290,11 +292,6 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
       isFetching: widget.isFetching,
       onReloadKind: widget.isFetching ? null : widget.onReloadKind,
       onCancelFetch: widget.isFetching ? widget.onCancelFetch : null,
-    );
-
-    kind = Padding(
-      padding: EdgeInsets.only(top: _tv ? 16 : 0),
-      child: kind,
     );
 
     if (_tv && _kindCount > 0) {
@@ -603,7 +600,6 @@ class _KindTabState extends State<_KindTab> {
         : (hovered || tabFocusStyled || _reloadFocused
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
               : Colors.transparent);
-    final topPad = tv ? metrics.torrentPanelRowPadV : 0.0;
     final tabFont = metrics.torrentPanelRowTitleFontSize;
     final tabIcon = metrics.torrentPanelMetaIconSize;
     final bottomPad = tv ? 6.0 : 9.0;
@@ -654,7 +650,7 @@ class _KindTabState extends State<_KindTab> {
       curve: Curves.easeOutCubic,
       padding: EdgeInsets.fromLTRB(
         tv ? 10 : 14,
-        topPad,
+        0,
         showReload ? 6 : (tv ? 10 : 14),
         0,
       ),
@@ -693,7 +689,6 @@ class _KindTabState extends State<_KindTab> {
         : (hovered || _focused || _reloadFocused
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
               : Colors.transparent);
-    final topPad = tv ? ShellScope.metricsOf(context).torrentPanelRowPadV : 0.0;
     // Reload greens only when it owns focus/hover — idle next to a focused tab
     // stays muted so the label alone reads as the focus target.
     final reloadColor = (_reloadFocused || reloadHovered)
@@ -705,7 +700,7 @@ class _KindTabState extends State<_KindTab> {
     final reloadIcon = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      padding: EdgeInsets.fromLTRB(2, topPad, tv ? 8 : 12, 0),
+      padding: EdgeInsets.fromLTRB(2, 0, tv ? 8 : 12, 0),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(

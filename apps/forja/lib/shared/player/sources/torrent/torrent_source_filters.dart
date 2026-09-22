@@ -19,6 +19,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -610,11 +611,19 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
     final showArrows = widget.options.length > 3;
     final tab = (widget.tvTabId ?? '').trim();
     final row = (widget.tvRowId ?? '').trim();
+    final metrics = ShellScope.metricsOf(context);
+    final chipGap = metrics.usesTvDensity
+        ? ShellTokens.shellChipGapTv
+        : ShellTokens.shellChipGap;
+    final dividerH = metrics.torrentPanelChipFontSize +
+        metrics.torrentPanelChipVerticalPadding * 2;
 
     // Vertical pad + Clip.none so dense chip rows don't clip on hover/focus.
     Widget body = DesktopSwipeBackIgnore(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: EdgeInsets.symmetric(
+          vertical: metrics.usesTvDensity ? 4 * ShellTokens.tvChromeScale : 4,
+        ),
         child: Row(
           children: [
             if (showArrows)
@@ -631,15 +640,15 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                     for (var i = 0; i < widget.options.length; i++) ...[
                       if (i == 1 && sourcesPanelOptionIsAllChip(widget.options[0].id))
                         Padding(
-                          padding: const EdgeInsets.only(right: 6),
+                          padding: EdgeInsets.only(right: chipGap),
                           child: Container(
                             width: 1,
-                            height: 22,
+                            height: dividerH,
                             color: ForjaShellColors.cinematic.borderSubtle,
                           ),
                         ),
                       Padding(
-                        padding: const EdgeInsets.only(right: 6),
+                        padding: EdgeInsets.only(right: chipGap),
                         child: Builder(
                           builder: (context) {
                             final option = widget.options[i];
@@ -668,12 +677,16 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                                   ? () => widget.onChipReload!(option.id)
                                   : null,
                               accentHover: true,
-                              radius: 999,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
+                              radius: metrics.usesTvDensity
+                                  ? ShellTokens.shellChipRadiusPillTv
+                                  : 999,
+                              padding: EdgeInsets.symmetric(
+                                horizontal:
+                                    metrics.torrentPanelChipHorizontalPadding,
+                                vertical:
+                                    metrics.torrentPanelChipVerticalPadding,
                               ),
-                              fontSize: 12,
+                              fontSize: metrics.torrentPanelChipFontSize,
                               listIndex: widget.tvRowId != null ? i : null,
                             );
                           },
@@ -961,12 +974,13 @@ class _ScrollArrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
     return Button(
       variant: ButtonVariant.plainIcon,
       size: ButtonSize.icon,
       icon: icon,
-      iconSize: 16,
-      height: 28,
+      iconSize: ShellTokens.iconSizeFor(16, tv: tv),
+      height: tv ? 28 * ShellTokens.tvChromeScale : 28,
       color: ForjaShellColors.cinematic.textSecondary,
       onPressed: onTap,
     );
@@ -1781,12 +1795,12 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
         listIndex: tv ? 0 : null,
       ),
       if (widget.onRequestClose != null) ...[
-        const SizedBox(width: 4),
+        SizedBox(width: ShellTokens.chromeScale(4, tv: tv)),
         if (tv)
           shellFocusableTap(
             context: context,
             onTap: widget.onRequestClose,
-            borderRadius: 18,
+            borderRadius: ShellTokens.chromeScale(18, tv: tv),
             scaleOnFocus: 1.0,
             showFocusBorder: true,
             listIndex: 1,
@@ -1795,11 +1809,11 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
             tvItemIndex: 1,
             tvZone: ShellTvZone.chipStrip,
             child: SizedBox(
-              width: 36,
-              height: 36,
+              width: ShellTokens.chromeScale(36, tv: tv),
+              height: ShellTokens.chromeScale(36, tv: tv),
               child: Icon(
                 Icons.close_rounded,
-                size: 20,
+                size: ShellTokens.iconSizeFor(20, tv: tv),
                 color: cinematic.textSecondary,
               ),
             ),
@@ -2018,17 +2032,20 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       );
     }
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(pad, 12, pad, pad),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            header,
-            const SizedBox(height: 8),
-            ...sections,
-          ],
-        ),
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        pad,
+        ShellTokens.chromeScale(8, tv: tv),
+        pad,
+        pad,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          SizedBox(height: ShellTokens.chromeScale(8, tv: tv)),
+          ...sections,
+        ],
       ),
     );
   }
@@ -2041,7 +2058,12 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
   }) {
     if (chips.isEmpty) return const SizedBox.shrink();
     final tv = SourcesPanelTv.isTv(context);
-    Widget chipRow = Wrap(spacing: 8, runSpacing: 8, children: chips);
+    final sectionGap = ShellTokens.chromeScale(8, tv: tv);
+    Widget chipRow = Wrap(
+      spacing: sectionGap,
+      runSpacing: sectionGap,
+      children: chips,
+    );
     if (tv) {
       chipRow = TvKitRow(
         tabId: SourcesPanelTv.filtersTabId,
@@ -2052,7 +2074,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       );
     }
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: ShellTokens.chromeScale(12, tv: tv)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2060,11 +2082,13 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
             title,
             style: TextStyle(
               color: ForjaShellColors.cinematic.textSecondary,
-              fontSize: 12,
+              fontSize: tv
+                  ? ShellTokens.filterSheetMetaFontSizeTv
+                  : ShellTokens.filterSheetMetaFontSize,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: sectionGap),
           chipRow,
         ],
       ),
@@ -2084,12 +2108,14 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       label: label,
       selected: selected,
       onTap: onTap,
-      // TV: green focus chrome (chips otherwise paint no focus ring).
-      accentHover: tv,
+      // Green hover (desktop) + green focus chrome (TV).
+      accentHover: true,
       ensureVisibleMode: tv
           ? ShellPaintEnsureVisible.item
           : ShellPaintEnsureVisible.row,
-      radius: 16,
+      radius: tv
+          ? ShellTokens.shellChipRadiusPillTv
+          : ShellTokens.shellChipRadiusPill,
       padding: EdgeInsets.symmetric(
         horizontal: metrics.torrentPanelChipHorizontalPadding,
         vertical: metrics.torrentPanelChipVerticalPadding,
@@ -2117,17 +2143,25 @@ class _FilterClearButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = SourcesPanelTv.isTv(context);
+    final clearFs = tv
+        ? ShellTokens.tvBodyFontSize
+        : ShellTokens.filterSheetMetaFontSize;
     final label = Text(
       'Clear',
-      style: TextStyle(color: ForjaShellColors.cinematic.textSecondary),
+      style: TextStyle(
+        color: ForjaShellColors.cinematic.textSecondary,
+        fontSize: clearFs,
+        fontWeight: FontWeight.w600,
+      ),
     );
-    if (!SourcesPanelTv.isTv(context)) {
+    if (!tv) {
       return TextButton(onPressed: onPressed, child: label);
     }
     return shellFocusableTap(
       context: context,
       onTap: onPressed,
-      borderRadius: 8,
+      borderRadius: ShellTokens.chromeScale(8, tv: tv),
       scaleOnFocus: 1.0,
       showFocusBorder: true,
       listIndex: listIndex,
@@ -2136,7 +2170,10 @@ class _FilterClearButton extends StatelessWidget {
       tvItemIndex: listIndex,
       tvZone: ShellTvZone.chipStrip,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: ShellTokens.chromeScale(12, tv: tv),
+          vertical: ShellTokens.chromeScale(8, tv: tv),
+        ),
         child: label,
       ),
     );
@@ -2169,7 +2206,12 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _open = true);
+      if (!mounted) return;
+      setState(() => _open = true);
+      if (widget.claimTvFocus) {
+        // After slide-in starts — chips need a frame to register in the graph.
+        SourcesPanelTv.claimFiltersFocus();
+      }
     });
   }
 
@@ -2177,7 +2219,10 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
   Widget build(BuildContext context) {
     final sourcesW = TorrentSourcesPanel.panelWidthOf(context);
     final filterW = TorrentSourcesPanel.filterPanelWidthOf(context);
-    const padding = EdgeInsets.fromLTRB(20, 8, 12, 16);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final padding = tv
+        ? ShellTokens.sourcesFilterPanelPaddingTv
+        : ShellTokens.sourcesFilterPanelPadding;
 
     Widget panel = ForjaFrostedPanel(
       // Details: BackdropFilter. Player: translucent shell (no frame).
@@ -2193,6 +2238,9 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
       child: SafeArea(
         left: false,
         right: false,
+        // Wide TV/desktop: no top SafeArea — same as Sources (avoids a dead
+        // band above Filters / Clear). Phone still needs the inset.
+        top: MediaQuery.sizeOf(context).width < 700,
         child: Padding(padding: padding, child: widget.child),
       ),
     );
@@ -2200,9 +2248,11 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
     if (widget.claimTvFocus) {
       // Per-section TvKitRows: ←/→ stay in the section; → on last chip traps;
       // ↓/↑ move between Category / Quality / Size / … (not reading-order wrap).
+      // ShellTvDisableLinearFocus skips TvOverlayScope's nextFocus — claim the
+      // first filter chip ourselves (otherwise Close near the tune button wins).
       panel = TvOverlayScope(
         onDismiss: widget.onClose,
-        autofocusFirst: true,
+        autofocusFirst: false,
         debugLabel: 'sources-filters-tv',
         child: ShellTvDisableLinearFocus(
           child: TvFocusGraph(

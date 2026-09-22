@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/live_schedule_progressive.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
@@ -235,6 +236,11 @@ class PackLoadedPaint extends StatefulWidget {
   static final Map<String, Future<MetaEnvelope>> _memo = {};
   static final Map<String, MetaEnvelope> _resolved = {};
 
+  /// Last successful paint per IPTV Live / Movies / Series shelf (portal-scoped).
+  /// Exact [_resolved] keys include kind/sort/query — too narrow for shelf flips.
+  static final Map<String, ({MetaEnvelope env, Map<String, dynamic> feedParams})>
+      _sectionResolved = {};
+
   /// Drop soft feed memos so portal switch cannot sync-paint a stale grid.
   static void clearMemosForPlugin(String pluginId) {
     final id = pluginId.trim();
@@ -242,6 +248,7 @@ class PackLoadedPaint extends StatefulWidget {
     final prefix = '$id|';
     _memo.removeWhere((k, _) => k.startsWith(prefix));
     _resolved.removeWhere((k, _) => k.startsWith(prefix));
+    _sectionResolved.removeWhere((k, _) => k.startsWith(prefix));
   }
 
   @override
@@ -259,6 +266,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   int? _holdAtRefreshEpoch;
   int _bindGen = 0;
   StreamSubscription<MetaEnvelope>? _progressiveSub;
+  /// Skip warmPaintKey restore on the next [_bind] (Live category / Favorites flip).
+  bool _skipWarmRestore = false;
 
   /// Last successful paint for this rail — remount / tab-return warm only.
   ///
@@ -294,6 +303,39 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     return (LayoutScope.maybeOf(context)?.selectedId(menu) ?? '').trim();
   }
 
+  /// Portal + Live/Movies/Series shelf key for [_sectionResolved].
+  String? _catalogSectionCacheKey(String section) {
+    final sec = section.trim().toLowerCase();
+    if (sec.isEmpty) return null;
+    final menu = (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    if (menu.isEmpty) return null;
+    final portal =
+        (CategoryBarActionHost.cachedLiveListParams['portalStoreKey'] ?? '')
+            .toString()
+            .trim();
+    return [
+      widget.pluginId,
+      widget.action,
+      widget.packSourceUrl ?? '',
+      portal,
+      sec,
+    ].join('|');
+  }
+
+  void _rememberSectionEnvelope(MetaEnvelope env) {
+    if (!env.ok) return;
+    final key = _catalogSectionCacheKey(_catalogSectionOf());
+    if (key == null) return;
+    PackLoadedPaint._sectionResolved[key] = (
+      env: env,
+      feedParams: Map<String, dynamic>.from(_lastFeedParams),
+    );
+    if (PackLoadedPaint._sectionResolved.length > 24) {
+      PackLoadedPaint._sectionResolved
+          .remove(PackLoadedPaint._sectionResolved.keys.first);
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -304,12 +346,31 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final holdEpoch = chrome?.catalogHoldEpoch ?? 0;
     final refreshBumped = refreshEpoch > _appliedRefreshEpoch;
 
-    // Soft-keep Live paint under Movies/Series selection looks like a dead shelf.
+    // Live ↔ Movies ↔ Series: restore that shelf's last paint when warm;
+    // otherwise clear so CatalogLoadingTicker shows (first visit).
+    var shelfSectionFlipped = false;
     if (_catalogSection.isNotEmpty && section != _catalogSection) {
-      _envelope = null;
+      shelfSectionFlipped = true;
+      _progressiveSub?.cancel();
+      _progressiveSub = null;
+      _inFlight = null;
       _lastPaintedWidget = null;
       // Invalidate post-frame Live kind publishes scheduled before this flip.
       _bindGen++;
+      final cacheKey = _catalogSectionCacheKey(section);
+      final cached = cacheKey == null
+          ? null
+          : PackLoadedPaint._sectionResolved[cacheKey];
+      if (cached != null) {
+        _envelope = cached.env;
+        if (cached.feedParams.isNotEmpty) {
+          _lastFeedParams = Map<String, dynamic>.from(cached.feedParams);
+        }
+        _skipWarmRestore = false;
+      } else {
+        _envelope = null;
+        _skipWarmRestore = true;
+      }
     }
 
     // Portal click — wipe grid immediately; do not fetch until refresh bumps.
@@ -322,6 +383,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       _inFlight = null;
       _bindGen++;
       _holdAtRefreshEpoch = refreshEpoch;
+      PackLoadedPaint._sectionResolved.removeWhere(
+        (k, _) => k.startsWith('${widget.pluginId}|'),
+      );
     }
 
     // Portal switch / Refresh — drop old grid so CatalogLoadingTicker shows.
@@ -334,6 +398,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       if (!(chrome?.refreshKeepPainted ?? false)) {
         _envelope = null;
         _lastPaintedWidget = null;
+        if (chrome?.refreshForceNetwork ?? true) {
+          PackLoadedPaint._sectionResolved.removeWhere(
+            (k, _) => k.startsWith('${widget.pluginId}|'),
+          );
+        }
       }
     }
     _catalogSection = section;
@@ -345,6 +414,24 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // in-flight Movies/Series feed when clearing the category bar notified
     // PackChromeScope — duplicate flutter_js → timeout → "did not answer".
     if (epoch != _scopeEpoch) {
+      // Live/Movies/Series category flip — drop prior page so Favorites /
+      // Watched do not keep showing the previous group's channels.
+      // Shelf section flips already restored [_sectionResolved] or cleared above.
+      if (!shelfSectionFlipped &&
+          packChromeVodPagedFeed(
+            widget.fallbackSpec,
+            LayoutScope.maybeOf(context),
+          )) {
+        _progressiveSub?.cancel();
+        _progressiveSub = null;
+        _envelope = null;
+        _lastPaintedWidget = null;
+        _inFlight = null;
+        _bindGen++;
+        _skipWarmRestore = true;
+      } else if (shelfSectionFlipped && _envelope == null) {
+        _skipWarmRestore = true;
+      }
       _scopeEpoch = epoch;
       if (!held) _bind();
     } else if (_envelope == null && _inFlight == null && !held) {
@@ -400,7 +487,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     _progressiveSub?.cancel();
     _progressiveSub = null;
     final future = _run();
-    if (future == null) return;
+    if (future == null) {
+      // Favorites / Watched: prefs load then `_runWithParams` paints.
+      _skipWarmRestore = false;
+      return;
+    }
     final key = _lastRunKey;
     if (key != null) {
       // Exact epoch+params key only — never warmPaintKey (wrong cat/section).
@@ -409,19 +500,24 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         // Sync hit — paint this frame. FutureBuilder would flash waiting.
         _envelope = cached;
         PackLoadedPaint._resolved[_warmPaintKey] = cached;
+        _rememberSectionEnvelope(cached);
         _inFlight = null;
+        _skipWarmRestore = false;
         return;
       }
     }
-    // Keep last / initState paint visible while the future settles.
-    if (_envelope == null) {
+    // Keep last / initState paint visible while the future settles — except
+    // after an IPTV category / Favorites flip (_skipWarmRestore).
+    if (_envelope == null && !_skipWarmRestore) {
       final warm = PackLoadedPaint._resolved[_warmPaintKey];
       if (warm != null) _envelope = warm;
     }
+    _skipWarmRestore = false;
     _inFlight = future;
     future.then((env) {
       if (!mounted || gen != _bindGen) return;
       PackLoadedPaint._resolved[_warmPaintKey] = env;
+      _rememberSectionEnvelope(env);
       setState(() {
         _envelope = env;
         _inFlight = null;
@@ -526,18 +622,91 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   /// Null when a progressive stream was started instead.
   Future<MetaEnvelope>? _run() {
     _lastRunKey = null;
-    // Warm Live lists in background — never block catalog paint on SharedPrefs.
-    if (widget.action == 'feed' || widget.action == 'rail') {
-      unawaited(
-        CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId),
-      );
-    }
     if (!mounted) {
       return Future.value(
         const MetaEnvelope(ok: false, action: 'feed', data: {}),
       );
     }
     final chrome = PackChromeScope.maybeOf(context);
+    final scope = LayoutScope.maybeOf(context);
+    final kindMenu =
+        (widget.fallbackSpec['kindMenu'] ?? '').toString().trim();
+    final kind =
+        kindMenu.isEmpty ? '' : (scope?.selectedId(kindMenu) ?? '').trim();
+    final needsLiveLists = widget.action == 'feed' || widget.action == 'rail';
+    final syntheticKind = PortalLiveCatalog.isSyntheticId(kind);
+
+    // Favorites / Watched pages need stream_ids in params — await prefs when
+    // selecting those rows. Other feeds warm lists in the background.
+    if (needsLiveLists && syntheticKind) {
+      final gen = _bindGen;
+      // Hold the slot so didChangeDependencies does not re-_bind while prefs load.
+      final completer = Completer<MetaEnvelope>();
+      _inFlight = completer.future;
+      unawaited(() async {
+        await CategoryBarActionHost.liveListFeedParams(
+          preferTabId: widget.tabId,
+        );
+        if (!mounted || gen != _bindGen) {
+          if (!completer.isCompleted) {
+            completer.complete(
+              const MetaEnvelope(ok: true, action: 'feed', data: {'items': []}),
+            );
+          }
+          return;
+        }
+        final future = _runWithParams(
+          chrome: PackChromeScope.maybeOf(context),
+        );
+        if (future == null) {
+          if (!completer.isCompleted) {
+            completer.complete(
+              const MetaEnvelope(ok: true, action: 'feed', data: {'items': []}),
+            );
+          }
+          if (mounted && gen == _bindGen) {
+            setState(() => _inFlight = null);
+          }
+          return;
+        }
+        try {
+          final env = await future;
+          if (!completer.isCompleted) completer.complete(env);
+          if (!mounted || gen != _bindGen) return;
+          PackLoadedPaint._resolved[_warmPaintKey] = env;
+          _rememberSectionEnvelope(env);
+          setState(() {
+            _envelope = env;
+            _inFlight = null;
+          });
+        } catch (e, st) {
+          debugPrint('[PackLoadedPaint] favorites feed: $e\n$st');
+          final fail = MetaEnvelope.failure(
+            MetaErrorCode.upstream,
+            message: '${widget.pluginId} feed failed',
+            action: widget.action,
+          );
+          if (!completer.isCompleted) completer.complete(fail);
+          if (!mounted || gen != _bindGen) return;
+          setState(() => _inFlight = null);
+        }
+      }());
+      return null;
+    }
+    if (needsLiveLists) {
+      unawaited(
+        CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId),
+      );
+    }
+    return _runWithParams(chrome: chrome);
+  }
+
+  Future<MetaEnvelope>? _runWithParams({required PackChromeScope? chrome}) {
+    if (!mounted) {
+      return Future.value(
+        const MetaEnvelope(ok: false, action: 'feed', data: {}),
+      );
+    }
     final params = packChromeFeedParams(
       context,
       baseParams: widget.params,
@@ -922,6 +1091,26 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (chrome == null) return;
     final barId = (merged['kindMenu'] ?? '').toString().trim();
     if (barId.isEmpty) return;
+
+    // Live IPTV rich rail owns Favorites / Watched + pin order via
+    // CategoryBarActionHost. Overwriting barItems with feed `kinds` (portal
+    // groups only) dropped synthetics and triggered seed-churn reloads.
+    final catalogMenu =
+        (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    final section = catalogMenu.isEmpty
+        ? ''
+        : (LayoutScope.maybeOf(context)?.selectedId(catalogMenu) ?? '')
+            .trim()
+            .toLowerCase();
+    final liveShelf = section.isEmpty || section == 'live';
+    if (liveShelf) {
+      final prev = chrome.barItems(barId);
+      if (prev != null &&
+          prev.any((e) =>
+              PortalLiveCatalog.isSyntheticId((e['id'] ?? '').toString()))) {
+        return;
+      }
+    }
 
     // Prefer pack-declared kinds (IPTV portal groups, Live Sports moods).
     // Do not invent an "All" row — packs that want it declare it in layout

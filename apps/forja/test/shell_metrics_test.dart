@@ -44,6 +44,25 @@ void main() {
       ShellTokens.controlHeightTv,
       closeTo(ShellTokens.controlHeight * ShellTokens.tvChromeScale, 0.001),
     );
+    // Sources provider chips — chrome pads + type ladder (not desktop hardcodes).
+    expect(
+      ShellTokens.torrentPanelChipPadHTv,
+      closeTo(
+        ShellTokens.torrentPanelChipPadHDesktop * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      ShellTokens.torrentPanelChipPadVTv,
+      closeTo(
+        ShellTokens.torrentPanelChipPadVDesktop * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      ShellTokens.torrentPanelChipFontSizeTv,
+      ShellTokens.tvBodyFontSize,
+    );
     // Nav profile — same boost as desktop (TV icons already chrome-scaled).
     expect(
       ShellTokens.navRailProfileAvatarScaleTv,

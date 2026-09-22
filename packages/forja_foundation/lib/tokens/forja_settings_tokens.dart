@@ -62,10 +62,17 @@ abstract final class SettingsTokens {
   /// Toggle / action / select row content inset (title+subtitle column).
   static const double rowPadH = 2;
   static const double rowPadV = 16;
-  /// Hand-tuned — ×chrome (~10) still reads as desktop next to the type ladder.
-  static const double rowPadVTv = 6;
+  /// Hand-tuned — denser than desktop, roomier than chrome ×scale (~10).
+  static const double rowPadVTv = 10;
   static const double rowTitleSubtitleGap = 4;
   static const double rowTitleSubtitleGapTv = 1;
+
+  /// Settings → Addons master list (Playback / Stremio / …) — roomier than
+  /// dense toggle rows so title+subtitle cards do not feel glued together.
+  static const double addonListRowPadV = 22;
+  static const double addonListRowPadVTv = 14;
+  static const double addonListSeparatorHeight = 12;
+  static const double addonListSeparatorHeightTv = 8;
 
   /// Category tab chips under Forja Packs / Addons (Movie & TV, Anime, …).
   static const EdgeInsets categoryChipPad =
@@ -288,6 +295,15 @@ abstract final class SettingsTokens {
         horizontal: rowPadH,
         vertical: _tv(context) ? rowPadVTv : rowPadV,
       );
+
+  static EdgeInsets addonListRowPaddingOf(BuildContext context) =>
+      EdgeInsets.symmetric(
+        horizontal: rowPadH,
+        vertical: _tv(context) ? addonListRowPadVTv : addonListRowPadV,
+      );
+
+  static double addonListSeparatorHeightOf(BuildContext context) =>
+      _tv(context) ? addonListSeparatorHeightTv : addonListSeparatorHeight;
 
   static double rowTitleSubtitleGapOf(BuildContext context) =>
       _tv(context) ? rowTitleSubtitleGapTv : rowTitleSubtitleGap;

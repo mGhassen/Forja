@@ -9,6 +9,7 @@ import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
@@ -90,14 +91,37 @@ class ChannelGuidePanel extends StatefulWidget {
       groupRowExtent * ShellTokens.tvChromeScale;
   static const double groupListPaddingV = 10;
 
-  static double groupExtentFor(bool tv) => tv ? groupRowExtentTv : groupRowExtent;
+  static double groupExtentFor(bool tv) =>
+      tv ? groupRowExtentTv : groupRowExtent;
   static double channelExtentFor(bool tv) =>
       tv ? channelRowExtentTv : channelRowExtent;
+
+  /// Prefer over [groupExtentFor] — follows [ShellPaintScope] densify.
+  static double groupExtentOf(BuildContext context) =>
+      GuideChromeStyle.len(context, groupRowExtent);
+
+  static double channelExtentOf(BuildContext context) =>
+      GuideChromeStyle.len(context, channelRowExtent);
+
+  static double listPaddingVOf(BuildContext context, double desktop) =>
+      GuideChromeStyle.len(context, desktop);
   /// Keep focused row fully inside the viewport (focus bar not clipped).
   static const double listFocusMargin = 8;
   static const double epgPeekWidth = 480;
   static const double epgPeekGap = 12;
   static const Duration epgHoverDelay = Duration(seconds: 1);
+
+  static double panelWidthFor(BuildContext context, {required bool wide}) =>
+      GuideChromeStyle.len(
+        context,
+        wide ? panelWidthWide : panelWidthNarrow,
+      );
+
+  static double epgPeekWidthOf(BuildContext context) =>
+      GuideChromeStyle.len(context, epgPeekWidth);
+
+  static double epgPeekGapOf(BuildContext context) =>
+      GuideChromeStyle.len(context, epgPeekGap);
 
   @override
   State<ChannelGuidePanel> createState() => _ChannelGuidePanelState();
@@ -146,7 +170,6 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
   /// Subtle column split only — keep the shell translucent like floating EPG.
   static Color get _groupsTint => Colors.black.withValues(alpha: 0.18);
   static Color get _channelsTint => Colors.transparent;
-  static Color get _panelSurface => GuideChromeStyle.surfaceGlass;
 
   @override
   void initState() {
@@ -228,8 +251,11 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     _jumpListToIndex(
       _groupScroll,
       index: _focusedGroupIndex,
-      itemExtent: ChannelGuidePanel.groupExtentFor(widget.isTv),
-      paddingV: ChannelGuidePanel.groupListPaddingV,
+      itemExtent: ChannelGuidePanel.groupExtentOf(context),
+      paddingV: ChannelGuidePanel.listPaddingVOf(
+        context,
+        ChannelGuidePanel.groupListPaddingV,
+      ),
       alignment: 0.45,
       animate: animate,
     );
@@ -238,8 +264,11 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
       _jumpListToIndex(
         _channelScroll,
         index: _focusedChannelIndex,
-        itemExtent: ChannelGuidePanel.channelExtentFor(widget.isTv),
-        paddingV: ChannelGuidePanel.channelListPaddingV,
+        itemExtent: ChannelGuidePanel.channelExtentOf(context),
+        paddingV: ChannelGuidePanel.listPaddingVOf(
+          context,
+          ChannelGuidePanel.channelListPaddingV,
+        ),
         alignment: 0.35,
         animate: animate,
       );
@@ -346,11 +375,14 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
       return const Iterable.empty();
     }
     final pos = _channelScroll.position;
-    final extent = ChannelGuidePanel.channelExtentFor(widget.isTv);
+    final extent = ChannelGuidePanel.channelExtentOf(context);
     if (extent <= 0 || pos.viewportDimension <= 0) {
       return const Iterable.empty();
     }
-    const pad = ChannelGuidePanel.channelListPaddingV;
+    final pad = ChannelGuidePanel.listPaddingVOf(
+      context,
+      ChannelGuidePanel.channelListPaddingV,
+    );
     const padRows = 1;
     final first = (((pos.pixels - pad) / extent).floor() - padRows)
         .clamp(0, channels.length);
@@ -475,8 +507,11 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     _jumpListToIndex(
       _groupScroll,
       index: _focusedGroupIndex,
-      itemExtent: ChannelGuidePanel.groupExtentFor(widget.isTv),
-      paddingV: ChannelGuidePanel.groupListPaddingV,
+      itemExtent: ChannelGuidePanel.groupExtentOf(context),
+      paddingV: ChannelGuidePanel.listPaddingVOf(
+        context,
+        ChannelGuidePanel.groupListPaddingV,
+      ),
       alignment: 0,
       animate: animate,
     );
@@ -675,8 +710,11 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
     return _jumpListToIndex(
       _channelScroll,
       index: _focusedChannelIndex,
-      itemExtent: ChannelGuidePanel.channelExtentFor(widget.isTv),
-      paddingV: ChannelGuidePanel.channelListPaddingV,
+      itemExtent: ChannelGuidePanel.channelExtentOf(context),
+      paddingV: ChannelGuidePanel.listPaddingVOf(
+        context,
+        ChannelGuidePanel.channelListPaddingV,
+      ),
       alignment: 0,
       animate: animate,
     );
@@ -967,9 +1005,9 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
       children: [
         _buildPanelShell(wide: wide, tvRail: tvRail),
         if (_showEpgPeek) ...[
-          const SizedBox(width: ChannelGuidePanel.epgPeekGap),
+          SizedBox(width: ChannelGuidePanel.epgPeekGapOf(context)),
           SizedBox(
-            width: ChannelGuidePanel.epgPeekWidth,
+            width: ChannelGuidePanel.epgPeekWidthOf(context),
             child: Align(
               alignment: Alignment.centerLeft,
               child: _buildEpgPeekCard(),
@@ -983,62 +1021,61 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
   Widget _buildEpgPeekCard() {
     final ch = _epgPeekChannel!;
     final future = _epgPeekFuture!;
-    // Same shell as player floating EPG (border + translucent fill + shadow).
+    // Same frosted shell as player floating EPG (blur + soft edge, no stroke).
     return IgnorePointer(
       child: GuideFloatingEpg(
         key: ValueKey(ch.id),
         future: future,
-        maxWidth: ChannelGuidePanel.epgPeekWidth,
+        maxWidth: ChannelGuidePanel.epgPeekWidthOf(context),
       ),
     );
   }
 
-  /// Flat translucent shell — no [BackdropFilter] over live video (ATV GPU cost).
+  /// Frosted dark glass — blur + light tint, soft outer feather, no stroke
+  /// (historical IPTV guide shell). Small temporary overlays only; keep
+  /// full-screen Immersive chrome flat.
   Widget _buildPanelShell({required bool wide, required bool tvRail}) {
-    final panelWidth = wide
-        ? ChannelGuidePanel.panelWidthWide
-        : ChannelGuidePanel.panelWidthNarrow;
+    final panelWidth = ChannelGuidePanel.panelWidthFor(context, wide: wide);
+    final r = GuideChromeStyle.len(context, ChannelGuidePanel.panelRadius);
     // TV: square full-height rail flush to the left edge.
     final radius = tvRail
         ? BorderRadius.zero
-        : const BorderRadius.only(
-            topRight: Radius.circular(ChannelGuidePanel.panelRadius),
-            bottomRight: Radius.circular(ChannelGuidePanel.panelRadius),
+        : BorderRadius.only(
+            topRight: Radius.circular(r),
+            bottomRight: Radius.circular(r),
           );
 
-    return ClipRRect(
+    final body = ForjaFrostedPanel(
+      enableBlur: true,
+      blurSigma: 22,
       borderRadius: radius,
-      child: Material(
-        color: Colors.transparent,
-        elevation: 0,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: _panelSurface,
-            borderRadius: radius,
-            border: Border(
-              top: tvRail
-                  ? BorderSide.none
-                  : BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-              right: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-              bottom: tvRail
-                  ? BorderSide.none
-                  : BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+      child: SizedBox(
+        width: panelWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildHeader(wide: wide),
+            Expanded(
+              child: wide ? _buildWideBody() : _buildNarrowBody(),
             ),
-          ),
-          child: SizedBox(
-            width: panelWidth,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(wide: wide),
-                Expanded(
-                  child: wide ? _buildWideBody() : _buildNarrowBody(),
-                ),
-              ],
-            ),
-          ),
+          ],
         ),
       ),
+    );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.55),
+            blurRadius: GuideChromeStyle.len(context, 28),
+            spreadRadius: GuideChromeStyle.len(context, -2),
+            offset: Offset(GuideChromeStyle.len(context, 6), 0),
+          ),
+        ],
+      ),
+      child: body,
     );
   }
 
@@ -1295,11 +1332,14 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
         controller: _groupScroll,
         child: ListView.builder(
         controller: _groupScroll,
-        padding: const EdgeInsets.symmetric(
-          vertical: ChannelGuidePanel.groupListPaddingV,
+        padding: EdgeInsets.symmetric(
+          vertical: ChannelGuidePanel.listPaddingVOf(
+            context,
+            ChannelGuidePanel.groupListPaddingV,
+          ),
         ),
         itemCount: widget.guide.groups.length,
-        itemExtent: ChannelGuidePanel.groupExtentFor(widget.isTv),
+        itemExtent: ChannelGuidePanel.groupExtentOf(context),
         addAutomaticKeepAlives: false,
         itemBuilder: (_, i) {
           final g = widget.guide.groups[i];
@@ -1332,7 +1372,9 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
                 onPick?.call(g.id);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(
+                  horizontal: GuideChromeStyle.len(context, 12),
+                ),
                 alignment: Alignment.centerLeft,
                 decoration: BoxDecoration(
                   color: selected
@@ -1345,7 +1387,7 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
                       color: selected || lit
                           ? _accent
                           : Colors.transparent,
-                      width: 3,
+                      width: GuideChromeStyle.len(context, 3),
                     ),
                   ),
                 ),
@@ -1428,11 +1470,14 @@ class _ChannelGuidePanelState extends State<ChannelGuidePanel> {
         controller: _channelScroll,
         child: ListView.builder(
         controller: _channelScroll,
-        padding: const EdgeInsets.symmetric(
-          vertical: ChannelGuidePanel.channelListPaddingV,
+        padding: EdgeInsets.symmetric(
+          vertical: ChannelGuidePanel.listPaddingVOf(
+            context,
+            ChannelGuidePanel.channelListPaddingV,
+          ),
         ),
         itemCount: channels.length,
-        itemExtent: ChannelGuidePanel.channelExtentFor(widget.isTv),
+        itemExtent: ChannelGuidePanel.channelExtentOf(context),
         addAutomaticKeepAlives: false,
         itemBuilder: (_, i) {
           final ch = channels[i];
@@ -1579,7 +1624,10 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
               decoration: BoxDecoration(
                 color: fill,
                 border: Border(
-                  left: BorderSide(color: barColor, width: 3),
+                  left: BorderSide(
+                    color: barColor,
+                    width: GuideChromeStyle.len(context, 3),
+                  ),
                 ),
               ),
               child: Row(

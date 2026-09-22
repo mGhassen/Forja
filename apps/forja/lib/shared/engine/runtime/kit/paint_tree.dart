@@ -2638,12 +2638,18 @@ class PackPaintTree extends StatelessWidget {
         .trim();
     final selectedInItems =
         selectedRaw.isNotEmpty && items.any((e) => e.id == selectedRaw);
+    // Favorites / Already watched live in CategoryBarActionHost (withPins), not
+    // feed `kinds`. PackLoadedPaint overwrites barItems without them — must not
+    // snap selection back to the first portal group (grid never switched).
+    final keepSyntheticLive = !vodSection &&
+        CategoryBarActionHost.featuresEnabled(spec) &&
+        PortalLiveCatalog.isSyntheticId(selectedRaw);
     // Search clears category for global hits — do not snap back to first/all.
     final searching = (chrome?.eventQuery ?? '').trim().isNotEmpty;
     // Live + Movies/Series: land on first portal group (skip All / synthetics).
     // Live pin/reorder: use cached pin/drag order, not API kinds order.
     final String selected;
-    if (selectedInItems) {
+    if (selectedInItems || keepSyntheticLive) {
       selected = selectedRaw;
     } else if (searching) {
       selected = '';

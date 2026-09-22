@@ -57,4 +57,32 @@ void main() {
     expect(width, ShellTokens.playerSidePanelWidthTv);
     expect(width, lessThan(ShellTokens.playerSidePanelWidth));
   });
+
+  testWidgets('filter panel width densifies under TV ShellPaintScope', (
+    tester,
+  ) async {
+    late double filterW;
+    late double sourcesW;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(1280, 800)),
+          child: shellPaintHostScope(
+            inputPolicy: ShellInputPolicy.tv,
+            metrics: ShellMetrics.tv,
+            child: Builder(
+              builder: (context) {
+                sourcesW = TorrentSourcesPanel.panelWidthOf(context);
+                filterW = TorrentSourcesPanel.filterPanelWidthOf(context);
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(filterW, ShellTokens.sourcesFilterPanelWidthTv);
+    expect(filterW, lessThan(ShellTokens.sourcesFilterPanelWidth));
+    expect(filterW, lessThanOrEqualTo(1280 - sourcesW));
+  });
 }

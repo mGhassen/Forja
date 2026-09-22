@@ -147,10 +147,17 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
 
   double _floatingEpgBottomInset(BuildContext context, bool compact) {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
-    final barPad = compact ? 12.0 : 18.0;
-    const barHeight = 56.0;
-    final seekbar = _showProgressChrome ? (compact ? 48.0 : 56.0) : 0.0;
-    return safeBottom + barPad + barHeight + seekbar + 12;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final barPad = ShellTokens.chromeScale(compact ? 12.0 : 18.0, tv: tv);
+    final barHeight = ShellTokens.chromeScale(56.0, tv: tv);
+    final seekbar = _showProgressChrome
+        ? ShellTokens.chromeScale(compact ? 48.0 : 56.0, tv: tv)
+        : 0.0;
+    return safeBottom +
+        barPad +
+        barHeight +
+        seekbar +
+        ShellTokens.chromeScale(12, tv: tv);
   }
 
   void _showStatsMenu(BuildContext anchorContext) {
@@ -1055,7 +1062,12 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               const SizedBox(height: 16),
               Text(
                 banner,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: ShellPaintScope.usesTvDensityOf(context)
+                      ? ShellTokens.tvBodyFontSize
+                      : 14,
+                ),
               ),
             ],
           ],
@@ -1078,7 +1090,12 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               const SizedBox(height: 16),
               Text(
                 banner,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: ShellPaintScope.usesTvDensityOf(context)
+                      ? ShellTokens.tvBodyFontSize
+                      : 14,
+                ),
               ),
             ],
           ],
@@ -1325,6 +1342,14 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                             _scheduleHideControls();
                           }),
                           isTv: liveUseTvFocus(context),
+                          resolvePlayUrl: (ch) => PortalGuideWire.resolvePlayUrl(
+                            widget.channelGuide!,
+                            ch,
+                          ),
+                          probeHealth: (ch) => PortalGuideWire.probeHealth(
+                            widget.channelGuide!,
+                            ch,
+                          ),
                         ),
                       ),
                     ),
@@ -1338,7 +1363,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                     ),
                   if (!hideFullChrome && epgFuture != null)
                     Positioned(
-                      right: 16,
+                      right: GuideChromeStyle.len(context, 16),
                       bottom: _floatingEpgBottomInset(context, compact),
                       child: AnimatedOpacity(
                         duration: const Duration(milliseconds: 220),
@@ -1348,7 +1373,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                           child: PortalFloatingEpg(
                             key: ValueKey(_s._floatingEpgKey),
                             future: epgFuture,
-                            maxWidth: compact ? 440 : 540,
+                            maxWidth: GuideChromeStyle.floatingEpgMaxWidthOf(
+                              context,
+                              compact: compact,
+                            ),
                           ),
                         ),
                       ),
@@ -1476,16 +1504,22 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   Widget _buildBanner() {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Positioned(
-      top: 80,
+      top: ShellTokens.chromeScale(80, tv: tv),
       left: 0,
       right: 0,
       child: Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: ShellTokens.chromeScale(20, tv: tv),
+            vertical: ShellTokens.chromeScale(12, tv: tv),
+          ),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(
+              ShellTokens.chromeScale(24, tv: tv),
+            ),
             border: Border.all(
               color: GuideChromeStyle.accent.withValues(alpha: 0.4),
             ),
@@ -1494,19 +1528,19 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 18,
-                height: 18,
+                width: ShellTokens.chromeScale(18, tv: tv),
+                height: ShellTokens.chromeScale(18, tv: tv),
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
+                  strokeWidth: ShellTokens.chromeScale(2, tv: tv),
                   color: GuideChromeStyle.accent,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: ShellTokens.chromeScale(12, tv: tv)),
               Text(
                 _s._statusBanner ?? 'Buffering…',
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontSize: ShellPaintScope.usesTvDensityOf(context)
+                  fontSize: tv
                       ? ShellTokens.playerChromeStatusFontSizeTv
                       : 14,
                   fontWeight: FontWeight.w500,
@@ -2116,13 +2150,14 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   Widget _buildVodSeekbarWaiting(bool compact) {
     final pos = _s._position;
     final tv = liveUseTvFocus(context);
+    final densify = ShellPaintScope.usesTvDensityOf(context);
     final bar = SizedBox(
-      height: compact ? 28 : 32,
+      height: ShellTokens.chromeScale(compact ? 28 : 32, tv: densify),
       child: Center(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(2),
-          child: const LinearProgressIndicator(
-            minHeight: 3.5,
+          child: LinearProgressIndicator(
+            minHeight: ShellTokens.chromeScale(3.5, tv: densify),
             backgroundColor: Colors.white24,
             color: ForjaShellColors.brandGreen,
           ),

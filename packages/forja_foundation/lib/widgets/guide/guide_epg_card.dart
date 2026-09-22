@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
+import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 
@@ -12,6 +13,12 @@ const double kGuideEpgCardHeight = 132;
 
 /// Taller shell when the NEXT programme row is shown below the current entry.
 const double kGuideEpgCardHeightWithNext = 156;
+
+double _guideEpgCardHeightOf(BuildContext context, {required bool withNext}) =>
+    GuideChromeStyle.len(
+      context,
+      withNext ? kGuideEpgCardHeightWithNext : kGuideEpgCardHeight,
+    );
 
 class GuideEpgCard extends StatefulWidget {
   const GuideEpgCard({
@@ -62,16 +69,27 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
 
   Widget _fullCardShell({
     required Widget child,
-    double height = kGuideEpgCardHeight,
+    double? height,
   }) {
+    final h = height ?? _guideEpgCardHeightOf(context, withNext: false);
     return SizedBox(
-      height: height,
+      height: h,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        margin: EdgeInsets.fromLTRB(
+          GuideChromeStyle.len(context, 10),
+          GuideChromeStyle.len(context, 4),
+          GuideChromeStyle.len(context, 10),
+          GuideChromeStyle.len(context, 8),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          GuideChromeStyle.len(context, 12),
+          GuideChromeStyle.len(context, 10),
+          GuideChromeStyle.len(context, 12),
+          GuideChromeStyle.len(context, 10),
+        ),
         decoration: BoxDecoration(
           color: GuideChromeStyle.surfaceGlass,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(GuideChromeStyle.len(context, 12)),
           border: Border.all(color: GuideChromeStyle.border),
         ),
         child: ClipRect(
@@ -89,7 +107,7 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
           message,
           style: GoogleFonts.plusJakartaSans(
             color: Colors.white38,
-            fontSize: 11,
+            fontSize: GuideChromeStyle.type(context, 11),
           ),
         ),
       ),
@@ -153,9 +171,7 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
         }
 
         return _fullCardShell(
-          height: nextEntry != null
-              ? kGuideEpgCardHeightWithNext
-              : kGuideEpgCardHeight,
+          height: _guideEpgCardHeightOf(context, withNext: nextEntry != null),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -165,18 +181,18 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
                     label: nowEntry.isNow ? 'LIVE' : 'NEXT',
                     color: nowEntry.isNow ? _live : _accent,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: GuideChromeStyle.len(context, 8)),
                   Text(
                     '${_fmtTime(nowEntry.start)} – ${_fmtTime(nowEntry.stop)}',
                     style: GoogleFonts.spaceMono(
                       color: Colors.white60,
-                      fontSize: 11,
+                      fontSize: GuideChromeStyle.type(context, 11),
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: GuideChromeStyle.len(context, 6)),
               CrossfadeSwap(
                 child: Text(
                   nowEntry.title.isEmpty ? '-' : nowEntry.title,
@@ -185,46 +201,48 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: GuideChromeStyle.type(context, 13),
                     fontWeight: FontWeight.w600,
                     height: 1.25,
                   ),
                 ),
               ),
               if (nowEntry.isNow) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: GuideChromeStyle.len(context, 8)),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(
+                    GuideChromeStyle.len(context, 3),
+                  ),
                   child: LinearProgressIndicator(
                     value: _progress(nowEntry).clamp(0.0, 1.0),
-                    minHeight: 3,
+                    minHeight: GuideChromeStyle.len(context, 3),
                     backgroundColor: Colors.white.withValues(alpha: 0.12),
                     color: _accent,
                   ),
                 ),
               ],
               if (nowEntry.description.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: GuideChromeStyle.len(context, 6)),
                 Text(
                   nowEntry.description,
                   maxLines: nextEntry != null ? 1 : 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white54,
-                    fontSize: 11,
+                    fontSize: GuideChromeStyle.type(context, 11),
                     height: 1.35,
                   ),
                 ),
               ],
               if (nextEntry != null) ...[
-                const SizedBox(height: 10),
+                SizedBox(height: GuideChromeStyle.len(context, 10)),
                 Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
-                const SizedBox(height: 8),
+                SizedBox(height: GuideChromeStyle.len(context, 8)),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _Badge(label: 'NEXT', color: Colors.white38, small: true),
-                    const SizedBox(width: 8),
+                    SizedBox(width: GuideChromeStyle.len(context, 8)),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,7 +251,7 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
                             _fmtTime(nextEntry.start),
                             style: GoogleFonts.spaceMono(
                               color: Colors.white.withValues(alpha: 0.45),
-                              fontSize: 10,
+                              fontSize: GuideChromeStyle.type(context, 10),
                               fontFeatures: const [
                                 FontFeature.tabularFigures(),
                               ],
@@ -245,7 +263,7 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.plusJakartaSans(
                               color: Colors.white70,
-                              fontSize: 11,
+                              fontSize: GuideChromeStyle.type(context, 11),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -267,14 +285,13 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
     required GuideEpgProgramme? nextEntry,
     required GuideEpgProgramme? laterEntry,
   }) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(0, 8, 0, 10),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        // Same translucent dark glass as player side panels / channel guide shell.
-        color: GuideChromeStyle.surfaceGlass,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: GuideChromeStyle.border),
+    // Fill + soft edge live on [GuideFloatingEpg] — content only here.
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        GuideChromeStyle.len(context, 14),
+        GuideChromeStyle.len(context, 12),
+        GuideChromeStyle.len(context, 14),
+        GuideChromeStyle.len(context, 12),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -287,18 +304,18 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
                 color: nowEntry.isNow ? _live : _accent,
                 large: true,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: GuideChromeStyle.len(context, 10)),
               Text(
                 '${_fmtTime(nowEntry.start)} – ${_fmtTime(nowEntry.stop)}',
                 style: GoogleFonts.spaceMono(
                   color: Colors.white60,
-                  fontSize: 13,
+                  fontSize: GuideChromeStyle.type(context, 13),
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: GuideChromeStyle.len(context, 8)),
           CrossfadeSwap(
             child: Text(
               nowEntry.title.isEmpty ? '-' : nowEntry.title,
@@ -307,44 +324,46 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: GuideChromeStyle.type(context, 16),
                 fontWeight: FontWeight.w600,
                 height: 1.25,
               ),
             ),
           ),
           if (nowEntry.isNow) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: GuideChromeStyle.len(context, 10)),
             ClipRRect(
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(
+                GuideChromeStyle.len(context, 3),
+              ),
               child: LinearProgressIndicator(
                 value: _progress(nowEntry).clamp(0.0, 1.0),
-                minHeight: 4,
+                minHeight: GuideChromeStyle.len(context, 4),
                 backgroundColor: Colors.white.withValues(alpha: 0.12),
                 color: _accent,
               ),
             ),
           ],
           if (nowEntry.description.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: GuideChromeStyle.len(context, 8)),
             HeroOverviewText(
               overview: nowEntry.description,
               maxLines: 2,
               style: GoogleFonts.plusJakartaSans(
                 color: Colors.white54,
-                fontSize: 12,
+                fontSize: GuideChromeStyle.type(context, 12),
                 height: 1.35,
               ),
             ),
           ],
           if (nextEntry != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: GuideChromeStyle.len(context, 12)),
             Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
-            const SizedBox(height: 10),
+            SizedBox(height: GuideChromeStyle.len(context, 10)),
             _floatingUpcomingRow(label: 'NEXT', entry: nextEntry),
           ],
           if (laterEntry != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: GuideChromeStyle.len(context, 8)),
             _floatingUpcomingRow(label: 'LATER', entry: laterEntry),
           ],
         ],
@@ -360,7 +379,7 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _Badge(label: label, color: Colors.white38, medium: true),
-        const SizedBox(width: 10),
+        SizedBox(width: GuideChromeStyle.len(context, 10)),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,11 +388,11 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
                 '${_fmtTime(entry.start)} – ${_fmtTime(entry.stop)}',
                 style: GoogleFonts.spaceMono(
                   color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 12,
+                  fontSize: GuideChromeStyle.type(context, 12),
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
-              const SizedBox(height: 2),
+              SizedBox(height: GuideChromeStyle.len(context, 2)),
               CrossfadeSwap(
                 child: Text(
                   entry.title.isEmpty ? '-' : entry.title,
@@ -382,7 +401,7 @@ class _GuideEpgCardState extends State<GuideEpgCard> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white70,
-                    fontSize: 13,
+                    fontSize: GuideChromeStyle.type(context, 13),
                     fontWeight: FontWeight.w500,
                     height: 1.25,
                   ),
@@ -405,7 +424,7 @@ class _CompactEpgRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 3),
+      padding: EdgeInsets.only(top: GuideChromeStyle.len(context, 3)),
       child: Row(
         children: [
           _Badge(
@@ -413,7 +432,7 @@ class _CompactEpgRow extends StatelessWidget {
             color: isLive ? const Color(0xFFEF4444) : GuideChromeStyle.accent,
             small: true,
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: GuideChromeStyle.len(context, 6)),
           Expanded(
             child: CrossfadeSwap(
               child: Text(
@@ -423,7 +442,7 @@ class _CompactEpgRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white54,
-                  fontSize: 10,
+                  fontSize: GuideChromeStyle.type(context, 10),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -436,6 +455,14 @@ class _CompactEpgRow extends StatelessWidget {
 }
 
 /// Bottom-right programme guide overlay for the IPTV player.
+///
+/// Dark frosted glass (blur + light tint), soft outer feather, no stroke —
+/// same family as portal probe / Sources glass. Small temporary card only;
+/// full-height channel guide stays flat translucent (no blur over video).
+///
+/// [maxWidth] must already be densified by the caller ([GuideChromeStyle.len] /
+/// [GuideChromeStyle.floatingEpgMaxWidthOf] / peek [epgPeekWidthOf]) — do not
+/// scale again here.
 class GuideFloatingEpg extends StatelessWidget {
   const GuideFloatingEpg({
     super.key,
@@ -446,22 +473,37 @@ class GuideFloatingEpg extends StatelessWidget {
   final Future<List<GuideEpgProgramme>> future;
   final double maxWidth;
 
+  /// Matches the historical floating EPG frost strength.
+  static const double _blurSigma = 22;
+
   @override
   Widget build(BuildContext context) {
+    final radius = GuideChromeStyle.len(context, 12);
+    final r = BorderRadius.circular(radius);
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: r,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.55),
+              blurRadius: GuideChromeStyle.len(context, 28),
+              spreadRadius: GuideChromeStyle.len(context, -2),
+              offset: Offset(0, GuideChromeStyle.len(context, 6)),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.28),
+              blurRadius: GuideChromeStyle.len(context, 14),
             ),
           ],
         ),
-        child: GuideEpgCard(future: future, floating: true),
+        child: ForjaFrostedPanel(
+          enableBlur: true,
+          blurSigma: _blurSigma,
+          borderRadius: r,
+          child: GuideEpgCard(future: future, floating: true),
+        ),
       ),
     );
   }
@@ -484,15 +526,24 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontSize = large ? 10.0 : (medium ? 9.0 : (small ? 8.0 : 9.0));
-    final hPad = large ? 7.0 : (medium ? 6.0 : (small ? 5.0 : 6.0));
-    final vPad = large ? 3.0 : (medium ? 2.0 : (small ? 1.0 : 2.0));
+    final fontSize = GuideChromeStyle.type(
+      context,
+      large ? 10.0 : (medium ? 9.0 : (small ? 8.0 : 9.0)),
+    );
+    final hPad = GuideChromeStyle.len(
+      context,
+      large ? 7.0 : (medium ? 6.0 : (small ? 5.0 : 6.0)),
+    );
+    final vPad = GuideChromeStyle.len(
+      context,
+      large ? 3.0 : (medium ? 2.0 : (small ? 1.0 : 2.0)),
+    );
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
       decoration: BoxDecoration(
         color: color.withValues(alpha: small || medium ? 0.35 : 0.85),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(GuideChromeStyle.len(context, 4)),
       ),
       child: Text(
         label,

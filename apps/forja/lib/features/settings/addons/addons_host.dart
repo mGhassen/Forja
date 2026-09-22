@@ -297,12 +297,17 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: addons.length,
-      separatorBuilder: (_, _) => Padding(
-        padding: const EdgeInsets.only(left: 2),
-        child: Divider(
-          height: 1,
-          thickness: 1,
-          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+      separatorBuilder: (_, _) => SizedBox(
+        height: SettingsTokens.addonListSeparatorHeightOf(context),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 2),
+          child: Center(
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+            ),
+          ),
         ),
       ),
       itemBuilder: (context, index) {
@@ -470,7 +475,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
           adminOnly: meta.adminOnly,
           sparkSize: 14,
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: SettingsTokens.rowTitleSubtitleGapOf(context)),
         Text(
           meta.subtitle,
           style: TextStyle(
@@ -555,8 +560,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
                 setState(() => _rowFocused = f);
               },
               child: Padding(
-                padding:
-                    SettingsTokens.rowPaddingOf(context),
+                padding: SettingsTokens.addonListRowPaddingOf(context),
                 child: Row(
                   children: [
                     leading,
@@ -606,8 +610,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
           children: [
             Expanded(
               child: Padding(
-                padding:
-                    SettingsTokens.rowPaddingOf(context),
+                padding: SettingsTokens.addonListRowPaddingOf(context),
                 child: Row(
                   children: [
                     leading,

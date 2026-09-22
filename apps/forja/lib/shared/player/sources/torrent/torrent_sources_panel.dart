@@ -50,10 +50,17 @@ class TorrentSourcesPanel extends StatelessWidget {
     final sources = panelWidthOf(context);
     final remaining = screenWidth - sources;
     if (remaining <= 0) return 0;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final softMin = tv
+        ? ShellTokens.sourcesFilterPanelSoftMinTv
+        : ShellTokens.sourcesFilterPanelSoftMin;
+    final maxW = tv
+        ? ShellTokens.sourcesFilterPanelWidthTv
+        : ShellTokens.sourcesFilterPanelWidth;
     // Never wider than the space left of Sources - a wider Filters overlay
     // sits on top of the Sources list and steals every row tap.
-    if (remaining < 280) return remaining;
-    return remaining.clamp(300.0, 420.0);
+    if (remaining < softMin) return remaining;
+    return remaining < maxW ? remaining : maxW;
   }
 
   static EdgeInsets defaultContentPadding({required bool playerOverlay}) {

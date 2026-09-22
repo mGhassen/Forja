@@ -264,14 +264,17 @@ Widget liveCloseButton(
 }) {
   if (onTap == null) return const SizedBox.shrink();
   final idle = color ?? Colors.white54;
+  final tv = ShellPaintScope.usesTvDensityOf(context);
+  final iconSize = ShellTokens.chromeScale(size, tv: tv);
+  final hit = ShellTokens.chromeScale(hitSize, tv: tv);
   if (liveUseTvFocus(context)) {
     return _FocusIconTap(
       icon: Icons.close_rounded,
       onTap: onTap,
       idleColor: idle,
-      size: size,
-      hitSize: hitSize,
-      borderRadius: hitSize / 2,
+      size: iconSize,
+      hitSize: hit,
+      borderRadius: hit / 2,
     );
   }
   return Button(
@@ -280,8 +283,8 @@ Widget liveCloseButton(
     icon: Icons.close_rounded,
     compact: true,
     color: idle,
-    iconSize: size,
-    height: hitSize,
+    iconSize: iconSize,
+    height: hit,
     onPressed: onTap,
   );
 }
@@ -486,10 +489,15 @@ class _FocusIconActionState extends State<FocusIconAction> {
     return _idleColor;
   }
 
-  Widget _icon(Color fg) => Padding(
-        padding: const EdgeInsets.all(10),
-        child: Icon(widget.icon, color: fg, size: widget.iconSize),
-      );
+  Widget _icon(Color fg) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final pad = ShellTokens.chromeScale(10, tv: tv);
+    final iconSize = ShellTokens.chromeScale(widget.iconSize, tv: tv);
+    return Padding(
+      padding: EdgeInsets.all(pad),
+      child: Icon(widget.icon, color: fg, size: iconSize),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -595,7 +603,16 @@ class _FocusTextActionState extends State<FocusTextAction> {
               tvFocused: _tvFocused,
             );
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: ShellTokens.chromeScale(
+                  12,
+                  tv: ShellPaintScope.usesTvDensityOf(context),
+                ),
+                vertical: ShellTokens.chromeScale(
+                  8,
+                  tv: ShellPaintScope.usesTvDensityOf(context),
+                ),
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -604,10 +621,20 @@ class _FocusTextActionState extends State<FocusTextAction> {
                     color: fg,
                     size: ShellPaintScope.iconOf(context, 18),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: ShellTokens.chromeScale(
+                      6,
+                      tv: ShellPaintScope.usesTvDensityOf(context),
+                    ),
+                  ),
                   Text(
                     widget.label,
-                    style: GoogleFonts.plusJakartaSans(color: fg),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: fg,
+                      fontSize: ShellPaintScope.usesTvDensityOf(context)
+                          ? ShellTokens.tvBodyFontSize
+                          : null,
+                    ),
                   ),
                 ],
               ),
@@ -709,11 +736,13 @@ class _FocusPrimaryButtonState extends State<FocusPrimaryButton> {
           listenable: _hoveredN,
           builder: (context, _) {
             final active = _activeFor(_hoveredN.value);
+            final densify = ShellPaintScope.usesTvDensityOf(context);
+            final radius = ShellTokens.chromeScale(14, tv: densify);
             final decoration = tv
                 ? guideFocusButtonDecoration(
                     active: active,
                     tvFocused: _tvFocused,
-                    borderRadius: 14,
+                    borderRadius: radius,
                     subtle: widget.subtle,
                   )
                 : GuideChromeStyle.primaryButtonDecoration(
@@ -726,8 +755,11 @@ class _FocusPrimaryButtonState extends State<FocusPrimaryButton> {
               decoration: decoration,
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: widget.dense ? 10 : 14,
+                  horizontal: ShellTokens.chromeScale(18, tv: densify),
+                  vertical: ShellTokens.chromeScale(
+                    widget.dense ? 10 : 14,
+                    tv: densify,
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -735,10 +767,10 @@ class _FocusPrimaryButtonState extends State<FocusPrimaryButton> {
                   children: [
                     if (widget.busy)
                       SizedBox(
-                        width: 16,
-                        height: 16,
+                        width: ShellTokens.chromeScale(16, tv: densify),
+                        height: ShellTokens.chromeScale(16, tv: densify),
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                          strokeWidth: ShellTokens.chromeScale(2, tv: densify),
                           color: fg,
                         ),
                       )
@@ -748,13 +780,15 @@ class _FocusPrimaryButtonState extends State<FocusPrimaryButton> {
                         color: fg,
                         size: ShellPaintScope.iconOf(context, 18),
                       ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: ShellTokens.chromeScale(8, tv: densify)),
                     Text(
                       widget.label,
                       style: GoogleFonts.plusJakartaSans(
                         color: fg,
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontSize: densify
+                            ? ShellTokens.tvBodyFontSize
+                            : 13,
                       ),
                     ),
                   ],

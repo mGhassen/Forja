@@ -22,6 +22,17 @@ abstract final class SourcesPanelTv {
   static const filtersTabId = 'sources-filters';
   static const filtersHeaderRowId = 'filters-header';
 
+  /// Content rows in paint order — open focuses the first chip here, not Close.
+  static const filtersContentRowIds = <String>[
+    'filters-category',
+    'filters-sort',
+    'filters-quality',
+    'filters-size',
+    'filters-language',
+    'filters-tech',
+    'filters-audio',
+  ];
+
   static bool isTv(BuildContext context) {
     final policy = ShellScope.maybeOf(context)?.inputPolicy;
     return policy?.useFocusableMoodChips ??
@@ -169,6 +180,23 @@ abstract final class SourcesPanelTv {
   static void focusProvidersItem({int index = 0}) {
     if (_tryRow(providersRowId, index)) return;
     focusKindItem();
+  }
+
+  /// Open Filters → first chip in Category / Quality / … (then Clear). Never Close.
+  static void claimFiltersFocus({int maxTries = 16}) {
+    var tries = 0;
+    void attempt() {
+      for (final rowId in filtersContentRowIds) {
+        if (_tryRow(rowId, 0, forTabId: filtersTabId)) return;
+      }
+      // Clear is header index 0; Close is 1 — skip Close on open.
+      if (_tryRow(filtersHeaderRowId, 0, forTabId: filtersTabId)) return;
+      if (tries++ < maxTries) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+    }
+
+    attempt();
   }
 
   /// Wraps panel body: contain D-pad, spatial (not linear), isolated tab graph.

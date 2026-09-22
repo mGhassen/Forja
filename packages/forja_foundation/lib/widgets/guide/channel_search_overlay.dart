@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +10,7 @@ import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:forja_foundation/widgets/guide/guide_browse_text_field.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
@@ -20,6 +24,8 @@ class ChannelSearchOverlay extends StatefulWidget {
     required this.onChannelSelected,
     required this.onClose,
     this.isTv = false,
+    this.resolvePlayUrl,
+    this.probeHealth,
   });
 
   final ChannelGuide guide;
@@ -30,10 +36,19 @@ class ChannelSearchOverlay extends StatefulWidget {
   /// D-pad / focus-graph surface — host wires from shell input policy.
   final bool isTv;
 
+  /// Optional play-URL resolve — used when [probeHealth] is null.
+  final Future<String?> Function(GuideChannel)? resolvePlayUrl;
+
+  /// Optional health probe — host typically resolves URL then checks alive.
+  final Future<bool> Function(GuideChannel)? probeHealth;
+
   static const int maxVisibleResults = 8;
   static const double resultRowHeight = 58;
   static const double panelRadius = 12;
   static const double panelWidth = 400;
+
+  /// Outer margin so the centered panel never kisses the screen edge.
+  static const double panelEdgeMargin = 24;
 
   /// HardwareKeyboard steals Focus onKey for goBack — player overlay gate
   /// calls this. Returns `true` when Back moved from the result list back to
@@ -59,6 +74,14 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
   /// When true, D-pad / OK target the result list (not the search field).
   bool _listFocused = false;
 
+  final Map<String, bool> _health = {};
+  final Set<String> _healthInFlight = {};
+  final List<GuideChannel> _healthQueue = [];
+  final Map<String, Timer> _healthDebounce = {};
+  static const _maxHealthChecks = 2;
+  /// Same dwell as [ChannelGuidePanel] — skimming ↑/↓ must not probe every row.
+  static const _healthCheckDelay = Duration(milliseconds: 350);
+
   static bool tryConsumeBackToField() {
     final s = _active;
     if (s == null || !s.mounted) return false;
@@ -69,12 +92,12 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
 
   static Color get _panelTint => Colors.transparent;
   static Color get _accent => ForjaShellColors.brandGreen;
-  static Color get _panelSurface => GuideChromeStyle.surfaceGlass;
 
   @override
   void initState() {
     super.initState();
     _active = this;
+    _health.addAll(widget.guide.streamHealth);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _queryFocus.requestFocus();
     });
@@ -83,11 +106,98 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
   @override
   void dispose() {
     if (_active == this) _active = null;
+    for (final t in _healthDebounce.values) {
+      t.cancel();
+    }
+    _healthDebounce.clear();
     _queryCtrl.dispose();
     _queryFocus.dispose();
     _overlayFocus.dispose();
     _resultScroll.dispose();
     super.dispose();
+  }
+
+  Future<String?> _playUrlFor(GuideChannel ch) async {
+    final resolve = widget.resolvePlayUrl;
+    if (resolve != null) {
+      return resolve(ch);
+    }
+    final url = ch.playUrl;
+    if (url == null || url.isEmpty) return null;
+    return url;
+  }
+
+  void _scheduleHealthCheck(GuideChannel ch) {
+    if (_healthInFlight.contains(ch.id)) return;
+    // Single dwell target — drop timers/queue for channels you already left.
+    for (final id in _healthDebounce.keys.toList()) {
+      if (id == ch.id) continue;
+      _healthDebounce[id]?.cancel();
+      _healthDebounce.remove(id);
+    }
+    _healthQueue.removeWhere((x) => x.id != ch.id);
+    _healthDebounce[ch.id]?.cancel();
+    _healthDebounce[ch.id] = Timer(_healthCheckDelay, () {
+      _healthDebounce.remove(ch.id);
+      _enqueueHealthCheck(ch);
+    });
+  }
+
+  void _cancelHealthCheck(String channelId) {
+    _healthDebounce[channelId]?.cancel();
+    _healthDebounce.remove(channelId);
+    _healthQueue.removeWhere((x) => x.id == channelId);
+  }
+
+  void _enqueueHealthCheck(GuideChannel ch) {
+    if (_healthInFlight.contains(ch.id)) return;
+    if (_healthInFlight.length >= _maxHealthChecks) {
+      if (!_healthQueue.any((x) => x.id == ch.id)) {
+        _healthQueue.add(ch);
+      }
+      return;
+    }
+    unawaited(_runHealthCheck(ch));
+  }
+
+  Future<void> _runHealthCheck(GuideChannel ch) async {
+    final probe = widget.probeHealth;
+    if (probe == null &&
+        widget.resolvePlayUrl == null &&
+        (ch.playUrl == null || ch.playUrl!.isEmpty)) {
+      return;
+    }
+    _healthInFlight.add(ch.id);
+    try {
+      bool ok;
+      if (probe != null) {
+        ok = await probe(ch);
+      } else {
+        final url = await _playUrlFor(ch);
+        if (url == null || url.isEmpty) return;
+        ok = true;
+      }
+      if (!mounted) return;
+      if (_health[ch.id] == ok) return;
+      setState(() => _health[ch.id] = ok);
+    } catch (_) {
+      if (!mounted) return;
+      if (_health[ch.id] == false) return;
+      setState(() => _health[ch.id] = false);
+    } finally {
+      _healthInFlight.remove(ch.id);
+      _drainHealthQueue();
+    }
+  }
+
+  void _drainHealthQueue() {
+    while (_healthQueue.isNotEmpty &&
+        _healthInFlight.length < _maxHealthChecks) {
+      final next = _healthQueue.removeAt(0);
+      if (!_healthInFlight.contains(next.id)) {
+        unawaited(_runHealthCheck(next));
+      }
+    }
   }
 
   List<GuideChannel> get _results =>
@@ -99,6 +209,9 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
   }
 
   void _onQueryChanged(String _) {
+    for (final id in _healthDebounce.keys.toList()) {
+      _cancelHealthCheck(id);
+    }
     setState(() {
       _listFocused = false;
       _focusedResultIndex = 0;
@@ -145,6 +258,13 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
   }
 
   void _focusSearchField() {
+    final results = _results;
+    if (_listFocused &&
+        results.isNotEmpty &&
+        _focusedResultIndex >= 0 &&
+        _focusedResultIndex < results.length) {
+      _cancelHealthCheck(results[_focusedResultIndex].id);
+    }
     setState(() => _listFocused = false);
     _queryFocus.requestFocus();
   }
@@ -251,13 +371,30 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
   Widget build(BuildContext context) {
     final results = _results;
     final showResults = _queryCtrl.text.trim().isNotEmpty;
-    final listHeight = showResults && results.isNotEmpty
+    final rowH = GuideChromeStyle.len(
+      context,
+      ChannelSearchOverlay.resultRowHeight,
+    );
+    final edge = GuideChromeStyle.len(
+      context,
+      ChannelSearchOverlay.panelEdgeMargin,
+    );
+    final screen = MediaQuery.sizeOf(context);
+    final maxPanelH = math.max(0.0, screen.height - edge * 2);
+    final desiredListH = showResults && results.isNotEmpty
         ? (results.length.clamp(1, ChannelSearchOverlay.maxVisibleResults) *
-            ChannelSearchOverlay.resultRowHeight)
+            rowH)
         : 0.0;
-    final panelWidth = ChannelSearchOverlay.panelWidth
-        .clamp(0.0, MediaQuery.sizeOf(context).width - 32)
+    final panelWidth = GuideChromeStyle.len(
+      context,
+      ChannelSearchOverlay.panelWidth,
+    )
+        .clamp(0.0, screen.width - edge * 2)
         .toDouble();
+    final radius = GuideChromeStyle.len(
+      context,
+      ChannelSearchOverlay.panelRadius,
+    );
 
     // Caller must wrap with Positioned.fill as a direct Stack child.
     return Focus(
@@ -276,23 +413,30 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
               ),
             ),
           ),
-          Center(
-              child: ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(ChannelSearchOverlay.panelRadius),
-                child: Material(
-                  color: Colors.transparent,
-                  elevation: 0,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: _panelSurface,
-                      borderRadius: BorderRadius.circular(
-                        ChannelSearchOverlay.panelRadius,
+          Padding(
+            padding: EdgeInsets.all(edge),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: panelWidth,
+                  maxHeight: maxPanelH,
+                ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(radius),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        blurRadius: GuideChromeStyle.len(context, 28),
+                        spreadRadius: GuideChromeStyle.len(context, -2),
+                        offset: Offset(0, GuideChromeStyle.len(context, 6)),
                       ),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1),
-                      ),
-                    ),
+                    ],
+                  ),
+                  child: ForjaFrostedPanel(
+                    enableBlur: true,
+                    blurSigma: 22,
+                    borderRadius: BorderRadius.circular(radius),
                     child: SizedBox(
                       width: panelWidth,
                       child: Column(
@@ -302,64 +446,95 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
                           _buildHeader(),
                           if (showResults && results.isEmpty)
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                              padding: EdgeInsets.fromLTRB(
+                                GuideChromeStyle.len(context, 16),
+                                GuideChromeStyle.len(context, 8),
+                                GuideChromeStyle.len(context, 16),
+                                GuideChromeStyle.len(context, 20),
+                              ),
                               child: Text(
                                 'No channels found',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.plusJakartaSans(
                                   color: Colors.white54,
-                                  fontSize: 13,
+                                  fontSize:
+                                      GuideChromeStyle.type(context, 13),
                                 ),
                               ),
                             ),
                           if (showResults && results.isNotEmpty)
-                            DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.02),
-                                border: Border(
-                                  top: BorderSide(
-                                    color: Colors.white.withValues(alpha: 0.08),
+                            // Same pattern as Material AlertDialog: Flexible
+                            // yields to the viewport; shrinkWrap keeps the
+                            // panel short when few results fit.
+                            Flexible(
+                              fit: FlexFit.loose,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color:
+                                      Colors.white.withValues(alpha: 0.02),
+                                  border: Border(
+                                    top: BorderSide(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.08),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              child: SizedBox(
-                                height: listHeight,
-                                child: ListView.builder(
-                                  controller: _resultScroll,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4),
-                                  itemCount: results.length,
-                                  itemExtent: ChannelSearchOverlay
-                                      .resultRowHeight,
-                                  itemBuilder: (_, i) => KeyedSubtree(
-                                    key: _resultKey(i),
-                                    child: _SearchResultTile(
-                                      channel: results[i],
-                                      groupName: widget.guide
-                                              .groupById(results[i].groupId)
-                                              ?.name ??
-                                          '',
-                                      active: results[i].id ==
-                                          widget.currentChannelId,
-                                      focused: _listFocused &&
-                                          i == _focusedResultIndex,
-                                      onTap: () {
-                                        setState(() {
-                                          _listFocused = true;
-                                          _focusedResultIndex = i;
-                                        });
-                                        widget.onChannelSelected(results[i]);
-                                      },
-                                      onHover: () {
-                                        if (_focusedResultIndex == i &&
-                                            _listFocused) {
-                                          return;
-                                        }
-                                        setState(() {
-                                          _listFocused = true;
-                                          _focusedResultIndex = i;
-                                        });
-                                      },
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxHeight: desiredListH,
+                                  ),
+                                  child: ListView.builder(
+                                    controller: _resultScroll,
+                                    shrinkWrap: true,
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: GuideChromeStyle.len(
+                                        context,
+                                        4,
+                                      ),
+                                    ),
+                                    itemCount: results.length,
+                                    itemExtent: rowH,
+                                    itemBuilder: (_, i) => KeyedSubtree(
+                                      key: _resultKey(i),
+                                      child: _SearchResultTile(
+                                        channel: results[i],
+                                        groupName: widget.guide
+                                                .groupById(
+                                                    results[i].groupId)
+                                                ?.name ??
+                                            '',
+                                        active: results[i].id ==
+                                            widget.currentChannelId,
+                                        focused: _listFocused &&
+                                            i == _focusedResultIndex,
+                                        health: _health[results[i].id],
+                                        onProbe: () => _scheduleHealthCheck(
+                                          results[i],
+                                        ),
+                                        onCancelProbe: () =>
+                                            _cancelHealthCheck(
+                                          results[i].id,
+                                        ),
+                                        onTap: () {
+                                          setState(() {
+                                            _listFocused = true;
+                                            _focusedResultIndex = i;
+                                          });
+                                          widget.onChannelSelected(
+                                            results[i],
+                                          );
+                                        },
+                                        onHover: () {
+                                          if (_focusedResultIndex == i &&
+                                              _listFocused) {
+                                            return;
+                                          }
+                                          setState(() {
+                                            _listFocused = true;
+                                            _focusedResultIndex = i;
+                                          });
+                                        },
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -372,14 +547,20 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+      padding: EdgeInsets.fromLTRB(
+        GuideChromeStyle.len(context, 8),
+        GuideChromeStyle.len(context, 4),
+        GuideChromeStyle.len(context, 8),
+        GuideChromeStyle.len(context, 10),
+      ),
       decoration: BoxDecoration(
         color: _panelTint,
         border: Border(
@@ -390,15 +571,14 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 36,
+            height: GuideChromeStyle.len(context, 36),
             child: Stack(
               alignment: Alignment.center,
               children: [
                 Text(
                   'Search',
-                  style: GuideChromeStyle.overlayTitle.copyWith(
+                  style: GuideChromeStyle.overlayTitleOf(context).copyWith(
                     color: _accent,
-                    fontSize: 16,
                   ),
                 ),
                 Align(
@@ -411,8 +591,8 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
                         icon: Icons.close_rounded,
                         compact: true,
                         color: Colors.white70,
-                        iconSize: 18,
-                        height: 32,
+                        iconSize: GuideChromeStyle.len(context, 18),
+                        height: GuideChromeStyle.len(context, 32),
                         onPressed: widget.onClose,
                       );
                       return widget.isTv
@@ -425,7 +605,9 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: GuideChromeStyle.len(context, 4),
+            ),
             child: GuideBrowseTextField(
               tvBrowse: widget.isTv,
               controller: _queryCtrl,
@@ -494,19 +676,27 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
                       ),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.05),
-                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: GuideChromeStyle.len(context, 4),
+                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(
+                    GuideChromeStyle.len(context, 12),
+                  ),
                   borderSide:
                       BorderSide(color: Colors.white.withValues(alpha: 0.08)),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(
+                    GuideChromeStyle.len(context, 12),
+                  ),
                   borderSide:
                       BorderSide(color: Colors.white.withValues(alpha: 0.08)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(
+                    GuideChromeStyle.len(context, 12),
+                  ),
                   borderSide: BorderSide(
                     color: _accent.withValues(alpha: 0.55),
                   ),
@@ -528,14 +718,20 @@ class _SearchResultTile extends StatefulWidget {
     required this.focused,
     required this.onTap,
     required this.onHover,
+    required this.onProbe,
+    required this.onCancelProbe,
+    this.health,
   });
 
   final GuideChannel channel;
   final String groupName;
   final bool active;
   final bool focused;
+  final bool? health;
   final VoidCallback onTap;
   final VoidCallback onHover;
+  final VoidCallback onProbe;
+  final VoidCallback onCancelProbe;
 
   @override
   State<_SearchResultTile> createState() => _SearchResultTileState();
@@ -545,9 +741,33 @@ class _SearchResultTileState extends State<_SearchResultTile> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
 
   static Color get _accent => ForjaShellColors.brandGreen;
+  static const Color _alive = Color(0xFF22C55E);
+  static const Color _dead = Color(0xFFEF4444);
+
+  @override
+  void initState() {
+    super.initState();
+    // TV / D-pad focus is paint-only — probe when this row opens focused.
+    if (widget.focused) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.focused) widget.onProbe();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(_SearchResultTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final was = oldWidget.focused;
+    final now = widget.focused;
+    final same = oldWidget.channel.id == widget.channel.id;
+    if (was && (!now || !same)) oldWidget.onCancelProbe();
+    if (now && (!was || !same)) widget.onProbe();
+  }
 
   @override
   void dispose() {
+    if (widget.focused) widget.onCancelProbe();
     _hoveredN.dispose();
     super.dispose();
   }
@@ -563,8 +783,12 @@ class _SearchResultTileState extends State<_SearchResultTile> {
       onEnter: (_) {
         _setHovered(true);
         widget.onHover();
+        widget.onProbe();
       },
-      onExit: (_) => _setHovered(false),
+      onExit: (_) {
+        _setHovered(false);
+        widget.onCancelProbe();
+      },
       // No hover/focus scale — panel ClipRRect would clip the lift into the pad.
       // Green left bar + fill already mark focus.
       child: ListenableBuilder(
@@ -576,7 +800,10 @@ class _SearchResultTileState extends State<_SearchResultTile> {
           return InkWell(
             onTap: widget.onTap,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding: EdgeInsets.symmetric(
+                horizontal: GuideChromeStyle.len(context, 12),
+                vertical: GuideChromeStyle.len(context, 5),
+              ),
               decoration: BoxDecoration(
                 color: active
                     ? _accent.withValues(alpha: 0.18)
@@ -586,14 +813,40 @@ class _SearchResultTileState extends State<_SearchResultTile> {
                 border: Border(
                   left: BorderSide(
                     color: active || focused ? _accent : Colors.transparent,
-                    width: 3,
+                    width: GuideChromeStyle.len(context, 3),
                   ),
                 ),
               ),
               child: Row(
                 children: [
-                  _ChannelLogo(url: widget.channel.logoUrl ?? ''),
-                  const SizedBox(width: 12),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _ChannelLogo(url: widget.channel.logoUrl ?? ''),
+                      if (widget.health != null)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Builder(
+                            builder: (context) {
+                              final tv =
+                                  ShellPaintScope.usesTvDensityOf(context);
+                              final size =
+                                  ShellTokens.chromeScale(8, tv: tv);
+                              return Container(
+                                width: size,
+                                height: size,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: widget.health! ? _alive : _dead,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(width: GuideChromeStyle.len(context, 12)),
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -609,7 +862,7 @@ class _SearchResultTileState extends State<_SearchResultTile> {
                                 : active
                                     ? Colors.white
                                     : Colors.white60,
-                            fontSize: 12,
+                            fontSize: GuideChromeStyle.type(context, 12),
                             fontWeight:
                                 highlighted ? FontWeight.w700 : FontWeight.w400,
                           ),
@@ -621,7 +874,7 @@ class _SearchResultTileState extends State<_SearchResultTile> {
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.plusJakartaSans(
                               color: Colors.white38,
-                              fontSize: 10,
+                              fontSize: GuideChromeStyle.type(context, 10),
                             ),
                           ),
                       ],
@@ -652,37 +905,39 @@ class _ChannelLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (url.isEmpty) return _placeholder();
+    final w = GuideChromeStyle.len(context, width);
+    final h = GuideChromeStyle.len(context, height);
+    if (url.isEmpty) return _placeholder(context, w, h);
     final dpr = MediaQuery.devicePixelRatioOf(context);
     // Only cacheWidth — both dims force a stretched decode.
-    final cacheW = (width * dpr).round().clamp(1, 512);
+    final cacheW = (w * dpr).round().clamp(1, 512);
     return SizedBox(
-      width: width,
-      height: height,
+      width: w,
+      height: h,
       child: ForjaNetworkImage(
         key: ValueKey(url),
         url: url,
-        width: width,
-        height: height,
+        width: w,
+        height: h,
         fit: BoxFit.contain,
         alignment: Alignment.center,
         memCacheWidth: cacheW,
         filterQuality: FilterQuality.medium,
         useOldImageOnUrlChange: false,
-        placeholder: _placeholder(),
-        error: _placeholder(),
+        placeholder: _placeholder(context, w, h),
+        error: _placeholder(context, w, h),
       ),
     );
   }
 
-  Widget _placeholder() {
-    return const SizedBox(
-      width: width,
-      height: height,
+  Widget _placeholder(BuildContext context, double w, double h) {
+    return SizedBox(
+      width: w,
+      height: h,
       child: Icon(
         Icons.live_tv_rounded,
         color: Colors.white38,
-        size: height * 0.5,
+        size: h * 0.5,
       ),
     );
   }

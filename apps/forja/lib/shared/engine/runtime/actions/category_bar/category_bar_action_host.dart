@@ -333,9 +333,22 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   @override
   void didUpdateWidget(covariant _CategoryBarRailHost oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_sameSeed(oldWidget.seedItems, widget.seedItems)) {
-      unawaited(_reload());
+    if (_sameSeed(oldWidget.seedItems, widget.seedItems)) return;
+    // Seed churn from feed `kinds` — rebuild the rail in place. Do not async
+    // `_reload` + landOrderedFirst (that stole Favorites back to first group).
+    if (_isLive && _storeKey != null && !_loading) {
+      setState(() {
+        _items = _buildItems(
+          pinned: _pinned,
+          order: _order,
+          sort: ref.read(iptvLiveCategorySortProvider),
+        );
+      });
+      _publishBar(chromeItems: _items);
+      _ensureValidSelection(_items);
+      return;
     }
+    unawaited(_reload());
   }
 
   static bool _sameSeed(
@@ -473,8 +486,18 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   }) {
     if (items.isEmpty) return;
 
-    // Live store reload: last category wins; else first portal group in the
-    // ordered rail (pinned / dragged-to-top / playlist first) — not Favorites.
+    // Keep the user's current row — including Favorites / Already watched.
+    // Seed churn from feed `kinds` must not re-land on the first portal group
+    // (that flashed Favorites then snapped back).
+    final sel = widget.selectedId.trim();
+    if (sel.isNotEmpty && sel != 'all' && items.any((e) => e.id == sel)) {
+      _armCatsFocusMemory(sel, items: items);
+      return;
+    }
+
+    // Live store reload / first open only: last portal category, else first
+    // portal group in the ordered rail (pinned / dragged / playlist) — not
+    // Favorites. Skipped when selection is already valid (above).
     if (_isLive && landOrderedFirst) {
       final prefer = (preferCategoryId ?? '').trim();
       if (prefer.isNotEmpty &&
@@ -492,11 +515,6 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       return;
     }
 
-    final sel = widget.selectedId.trim();
-    if (sel.isNotEmpty && sel != 'all' && items.any((e) => e.id == sel)) {
-      _armCatsFocusMemory(sel, items: items);
-      return;
-    }
     // Movies/Series (or Live without store land): first portal group.
     for (final e in items) {
       if (PortalLiveCatalog.isSyntheticId(e.id) || e.id == 'all') continue;
