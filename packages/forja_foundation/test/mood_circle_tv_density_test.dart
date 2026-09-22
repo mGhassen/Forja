@@ -86,7 +86,7 @@ void main() {
   });
 
   testWidgets(
-    'accent mood label: selected=accent, hover/focus=brand green',
+    'accent mood label: hover/focus=brand green (incl. selected)',
     (tester) async {
       const accent = Color(0xFFE91E63);
 
@@ -139,7 +139,7 @@ void main() {
       expect(labelStyle('Idle').color, Colors.white.withValues(alpha: 0.72));
       expect(labelStyle('Hover').color, ForjaShellColors.brandGreen);
       expect(labelStyle('Selected').color, accent);
-      expect(labelStyle('SelectedFocus').color, accent);
+      expect(labelStyle('SelectedFocus').color, ForjaShellColors.brandGreen);
     },
   );
 }

@@ -288,11 +288,12 @@ class _AccentMoodCircle extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
-              // Selected → category accent. Hover/focus → brand green. Idle → muted.
-              color: selected
-                  ? accent
-                  : active
-                      ? ForjaShellColors.brandGreen
+              // Hover/focus → brand green (incl. selected). Selected idle →
+              // category accent. Circle keeps selected accent via [selected].
+              color: active
+                  ? ForjaShellColors.brandGreen
+                  : selected
+                      ? accent
                       : Colors.white.withValues(alpha: 0.72),
               fontSize: layout.labelFontSize,
               fontWeight: active || selected
