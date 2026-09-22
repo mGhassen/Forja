@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:forja/shell/focus/forja_interactive.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
@@ -70,30 +69,21 @@ class HeroPillPlayButton extends StatelessWidget {
             itemIndex: tvItemIndex,
           )
         : null;
+    // Miss-aware kit edges — always-handled ↓ swallowed Featured when the bleed
+    // row remounted after Films / Categories (kitFocusEdge miss must fall through).
     final effectiveOnKey = onUpEdge != null ||
             onDownEdge != null ||
             onRightEdge != null ||
             onKeyEvent != null
         ? (FocusNode node, KeyEvent event) {
-            if (onUpEdge != null) {
-              final up = ShellTvFocus.onArrowUp(event, () {
-                onUpEdge!();
-                return true;
-              });
-              if (up == KeyEventResult.handled) return up;
-            }
-            if (onDownEdge != null &&
-                shellTvIsNavigationKey(event) &&
-                event.logicalKey == LogicalKeyboardKey.arrowDown) {
-              onDownEdge!();
-              return KeyEventResult.handled;
-            }
-            if (onRightEdge != null &&
-                shellTvIsNavigationKey(event) &&
-                event.logicalKey == LogicalKeyboardKey.arrowRight) {
-              onRightEdge!();
-              return KeyEventResult.handled;
-            }
+            final arrows = shellTvHandleRowArrows(
+              event: event,
+              tvMeta: tvMeta,
+              onUpEdge: onUpEdge,
+              onDownEdge: onDownEdge,
+              onRightEdge: onRightEdge,
+            );
+            if (arrows == KeyEventResult.handled) return arrows;
             return onKeyEvent?.call(node, event) ?? KeyEventResult.ignored;
           }
         : null;
@@ -348,25 +338,13 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
     final effectiveOnKey =
         (onUpEdge != null || onDownEdge != null || onLeftEdge != null)
         ? (FocusNode node, KeyEvent event) {
-            if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-              return KeyEventResult.ignored;
-            }
-            if (onLeftEdge != null &&
-                event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-              onLeftEdge!();
-              return KeyEventResult.handled;
-            }
-            if (onUpEdge != null &&
-                event.logicalKey == LogicalKeyboardKey.arrowUp) {
-              onUpEdge!();
-              return KeyEventResult.handled;
-            }
-            if (onDownEdge != null &&
-                event.logicalKey == LogicalKeyboardKey.arrowDown) {
-              onDownEdge!();
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
+            return shellTvHandleRowArrows(
+              event: event,
+              tvMeta: tvMeta,
+              onUpEdge: onUpEdge,
+              onDownEdge: onDownEdge,
+              onLeftEdge: onLeftEdge,
+            );
           }
         : null;
 
@@ -453,32 +431,14 @@ class _HeroPillGroupedSlot extends StatelessWidget {
             onLeftEdge != null ||
             onRightEdge != null
         ? (FocusNode node, KeyEvent event) {
-            if (onUpEdge != null) {
-              final up = ShellTvFocus.onArrowUp(event, () {
-                onUpEdge!();
-                return true;
-              });
-              if (up == KeyEventResult.handled) return up;
-            }
-            if (onDownEdge != null &&
-                shellTvIsNavigationKey(event) &&
-                event.logicalKey == LogicalKeyboardKey.arrowDown) {
-              onDownEdge!();
-              return KeyEventResult.handled;
-            }
-            if (onLeftEdge != null &&
-                shellTvIsNavigationKey(event) &&
-                event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-              onLeftEdge!();
-              return KeyEventResult.handled;
-            }
-            if (onRightEdge != null &&
-                shellTvIsNavigationKey(event) &&
-                event.logicalKey == LogicalKeyboardKey.arrowRight) {
-              onRightEdge!();
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
+            return shellTvHandleRowArrows(
+              event: event,
+              tvMeta: tvMeta,
+              onUpEdge: onUpEdge,
+              onDownEdge: onDownEdge,
+              onLeftEdge: onLeftEdge,
+              onRightEdge: onRightEdge,
+            );
           }
         : null;
 

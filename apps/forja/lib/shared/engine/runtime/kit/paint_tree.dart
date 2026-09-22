@@ -3134,6 +3134,9 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   final FocusNode _followFocus = FocusNode(debugLabel: 'hub-hero-follow');
   final FocusNode _galleryFocus = FocusNode(debugLabel: 'hub-hero-gallery');
   final GlobalKey<CinematicHeroState> _heroKey = GlobalKey<CinematicHeroState>();
+  /// One-shot — Spotlight remount after Films / Categories must not steal ↓
+  /// off Featured back onto View details via autofocus.
+  bool _ctaAutofocusConsumed = false;
 
   @override
   void initState() {
@@ -3311,8 +3314,14 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
           Widget? child;
           if (id == 'details') {
             if (details == null) continue;
-            final useAuto = tv && policy.heroPlayAutoFocus && !autofocusUsed;
-            if (useAuto) autofocusUsed = true;
+            final useAuto = tv &&
+                policy.heroPlayAutoFocus &&
+                !autofocusUsed &&
+                !_ctaAutofocusConsumed;
+            if (useAuto) {
+              autofocusUsed = true;
+              _ctaAutofocusConsumed = true;
+            }
             final hasFollow = follow != null;
             child = HeroPillPlayButton(
               label: action.label ?? 'View details',
@@ -3373,13 +3382,21 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
         final row = HeroPillActionRow(children: children);
         final focusDown = widget.focusDown;
         if (!tv || focusDown == null) return row;
+        // Backup when a CTA child ignores ↓ — miss-aware so Featured remount
+        // after Films / Categories does not trap focus on View details.
         return Focus(
           skipTraversal: true,
           onKeyEvent: (node, event) {
-            if (event is! KeyDownEvent) return KeyEventResult.ignored;
+            if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+              return KeyEventResult.ignored;
+            }
             if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              ShellTvFocusCoordinator.beginKitEdgeAttempt();
               focusDown();
-              return KeyEventResult.handled;
+              if (!ShellTvFocusCoordinator.takeKitEdgeMiss()) {
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
             }
             if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
               _focusGallery();

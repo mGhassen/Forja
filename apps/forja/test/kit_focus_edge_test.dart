@@ -115,5 +115,43 @@ void main() {
       // Unregistered row → ignored so spatial / parent can handle.
       expect(result, KeyEventResult.ignored);
     });
+
+    testWidgets('DOWN does not swallow when Featured kit edge misses',
+        (tester) async {
+      final node = FocusNode(debugLabel: 'hero-details');
+      addTearDown(() {
+        node.dispose();
+        ShellTvFocusCoordinator.clearTab('home-miss');
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Focus(
+            focusNode: node,
+            child: const SizedBox(width: 40, height: 40),
+          ),
+        ),
+      );
+      node.requestFocus();
+      await tester.pump();
+
+      // Same path as hero View details → bleed: kitFocusEdge to a missing row.
+      final edge = kitFocusEdge('home-miss', 'featured')!;
+      final result = shellTvHandleRowArrows(
+        event: const KeyDownEvent(
+          physicalKey: PhysicalKeyboardKey.arrowDown,
+          logicalKey: LogicalKeyboardKey.arrowDown,
+          timeStamp: Duration.zero,
+        ),
+        tvMeta: ShellTvFocusMeta(
+          tabId: 'home-miss',
+          zone: ShellTvZone.row,
+          rowId: kHubHeroDetailsFocusId,
+          itemIndex: 0,
+        ),
+        onDownEdge: edge,
+      );
+      expect(result, KeyEventResult.ignored);
+      expect(node.hasPrimaryFocus, isTrue);
+    });
   });
 }

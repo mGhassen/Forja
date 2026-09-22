@@ -73,12 +73,23 @@ VoidCallback? kitFocusEdge(
     } else if (last) {
       ok = ShellTvFocusCoordinator.focusRowItemRemembered(tabId, target);
     } else {
-      var landed = ShellTvFocusCoordinator.focusRowItem(tabId, target, 0);
-      // Item-only registrations (no TvKitRow) — Exact falls back to itemNode.
-      if (!landed) {
-        landed = ShellTvFocusCoordinator.focusRowItemExact(tabId, target, 0);
+      // Remembered+retry: hero ↓ → Featured while posters remount after a
+      // Films / Categories flip (itemCount can lead attached FocusNodes).
+      final remembered = ShellTvFocusCoordinator.focusRowItemRemembered(
+        tabId,
+        target,
+        index: 0,
+      );
+      if (remembered) {
+        ok = true;
+      } else {
+        var landed = ShellTvFocusCoordinator.focusRowItem(tabId, target, 0);
+        // Item-only registrations (no TvKitRow) — Exact falls back to itemNode.
+        if (!landed) {
+          landed = ShellTvFocusCoordinator.focusRowItemExact(tabId, target, 0);
+        }
+        ok = landed;
       }
-      ok = landed;
     }
     if (!ok) ShellTvFocusCoordinator.markKitEdgeMiss();
   };
