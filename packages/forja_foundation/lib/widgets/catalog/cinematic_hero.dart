@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -285,7 +284,6 @@ class CinematicHeroState extends State<CinematicHero>
   bool _ctaHover = false;
   bool _ctaFocus = false;
   bool _heroAdvancePaused = false;
-  Timer? _ctaResumeTimer;
 
   PageController get pageController => _heroController;
   int get heroIndex => _heroIndex;
@@ -334,7 +332,6 @@ class CinematicHeroState extends State<CinematicHero>
 
   @override
   void dispose() {
-    _ctaResumeTimer?.cancel();
     _heroProgress.removeStatusListener(_onHeroProgressStatus);
     _heroProgress.dispose();
     if (_ownsController) _heroController.dispose();
@@ -378,44 +375,34 @@ class CinematicHeroState extends State<CinematicHero>
     _heroProgress.forward();
   }
 
-  void _armCtaResumeTimer() {
-    _ctaResumeTimer?.cancel();
-    _ctaResumeTimer = Timer(
-      ShellTokens.heroCtaPauseDuration,
-      _onCtaPauseElapsed,
-    );
-  }
-
   void _pauseHeroAdvance() {
-    _heroAdvancePaused = true;
+    if (!_heroAdvancePaused) {
+      if (mounted) {
+        setState(() => _heroAdvancePaused = true);
+      } else {
+        _heroAdvancePaused = true;
+      }
+    }
     if (_heroProgress.isAnimating) {
-      _heroProgress.stop(canceled: false);
+      _heroProgress.stop();
     }
-    _armCtaResumeTimer();
-  }
-
-  void _onCtaPauseElapsed() {
-    _ctaResumeTimer = null;
-    if (_ctaHover || _ctaFocus) {
-      // Still on a CTA — keep pausing, but never leave paused with no timer
-      // (stuck hover/focus used to freeze the pin forever).
-      _armCtaResumeTimer();
-      return;
-    }
-    _resumeHeroAdvance();
   }
 
   void _resumeHeroAdvance() {
     if (_ctaHover || _ctaFocus) return;
-    _ctaResumeTimer?.cancel();
-    _ctaResumeTimer = null;
-    _heroAdvancePaused = false;
+    if (_heroAdvancePaused) {
+      if (mounted) {
+        setState(() => _heroAdvancePaused = false);
+      } else {
+        _heroAdvancePaused = false;
+      }
+    }
     if (widget.slides.length < 2) return;
     if (_heroProgress.value >= 1.0 - 0.001 ||
         _heroProgress.status == AnimationStatus.completed) {
       _restartHeroProgress();
     } else {
-      _heroProgress.forward();
+      _heroProgress.forward(from: _heroProgress.value);
     }
   }
 
@@ -428,11 +415,7 @@ class CinematicHeroState extends State<CinematicHero>
       return;
     }
     if (!nowEngaged && wasEngaged) {
-      // Left CTA. Keep an in-flight hold; if the window already elapsed while
-      // engaged, arm a fresh hold so we never sit paused with no timer.
-      if (_heroAdvancePaused && _ctaResumeTimer == null) {
-        _armCtaResumeTimer();
-      }
+      _resumeHeroAdvance();
     }
   }
 
@@ -1402,6 +1385,7 @@ class CinematicHeroState extends State<CinematicHero>
     final gap = ShellTokens.heroStepIndicatorGap;
     final size = ShellTokens.heroStepIndicatorSize;
     final activeW = ShellTokens.heroStepIndicatorActiveWidth;
+    final pauseSize = ShellTokens.heroStepIndicatorPauseSize;
     final radius = BorderRadius.circular(ShellTokens.heroStepIndicatorRadius);
     final track = Colors.white.withValues(
       alpha: ShellTokens.heroStepIndicatorTrackAlpha,
@@ -1409,15 +1393,33 @@ class CinematicHeroState extends State<CinematicHero>
     final fill = Colors.white.withValues(
       alpha: ShellTokens.heroStepIndicatorFillAlpha,
     );
+    final motion = ForjaMotionTheme.of(context).playButtonLift.duration;
     final dots = List<Widget>.generate(count, (i) {
       final active = i == _heroIndex % count;
+      if (active && _heroAdvancePaused) {
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: axis == Axis.vertical ? gap : 0,
+            horizontal: axis == Axis.horizontal ? gap : 0,
+          ),
+          child: SizedBox(
+            width: pauseSize,
+            height: pauseSize,
+            child: Icon(
+              Icons.pause_rounded,
+              size: pauseSize,
+              color: fill,
+            ),
+          ),
+        );
+      }
       return Padding(
         padding: EdgeInsets.symmetric(
           vertical: axis == Axis.vertical ? gap : 0,
           horizontal: axis == Axis.horizontal ? gap : 0,
         ),
         child: AnimatedContainer(
-          duration: ForjaMotionTheme.of(context).playButtonLift.duration,
+          duration: motion,
           width: active ? activeW : size,
           height: size,
           clipBehavior: Clip.antiAlias,

@@ -47,6 +47,12 @@ abstract final class DetailsTokens {
     12,
     12,
   );
+  static const EdgeInsets sourcesPanelPaddingTv = EdgeInsets.fromLTRB(
+    16 * _s,
+    4,
+    8,
+    6,
+  );
 
   static const double contentPaddingDesktop =
       ShellTokens.homeSectionHorizontalPadding;

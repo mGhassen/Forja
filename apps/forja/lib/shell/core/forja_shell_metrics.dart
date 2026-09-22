@@ -15,6 +15,7 @@ class ShellMetrics {
     required this.torrentPanelPadding,
     required this.torrentPanelTitleFontSize,
     required this.torrentPanelRowTitleFontSize,
+    required this.torrentPanelRowPadH,
     required this.torrentPanelRowPadV,
     required this.torrentPanelChipHorizontalPadding,
     required this.torrentPanelChipVerticalPadding,
@@ -42,6 +43,7 @@ class ShellMetrics {
   final double torrentPanelPadding;
   final double torrentPanelTitleFontSize;
   final double torrentPanelRowTitleFontSize;
+  final double torrentPanelRowPadH;
   final double torrentPanelRowPadV;
   final double torrentPanelChipHorizontalPadding;
   final double torrentPanelChipVerticalPadding;
@@ -71,6 +73,7 @@ class ShellMetrics {
     torrentPanelPadding: ShellTokens.torrentPanelPaddingDesktop,
     torrentPanelTitleFontSize: ShellTokens.torrentPanelTitleFontSizeDesktop,
     torrentPanelRowTitleFontSize: ShellTokens.torrentPanelRowTitleFontSizeDesktop,
+    torrentPanelRowPadH: ShellTokens.torrentPanelRowPadHDesktop,
     torrentPanelRowPadV: ShellTokens.torrentPanelRowPadVDesktop,
     torrentPanelChipHorizontalPadding: ShellTokens.torrentPanelChipPadHDesktop,
     torrentPanelChipVerticalPadding: ShellTokens.torrentPanelChipPadVDesktop,
@@ -99,6 +102,7 @@ class ShellMetrics {
     torrentPanelPadding: ShellTokens.torrentPanelPaddingDesktop,
     torrentPanelTitleFontSize: ShellTokens.torrentPanelTitleFontSizeDesktop,
     torrentPanelRowTitleFontSize: ShellTokens.torrentPanelRowTitleFontSizeDesktop,
+    torrentPanelRowPadH: ShellTokens.torrentPanelRowPadHDesktop,
     torrentPanelRowPadV: ShellTokens.torrentPanelRowPadVDesktop,
     torrentPanelChipHorizontalPadding: ShellTokens.torrentPanelChipPadHDesktop,
     torrentPanelChipVerticalPadding: ShellTokens.torrentPanelChipPadVDesktop,
@@ -129,6 +133,7 @@ class ShellMetrics {
     torrentPanelPadding: ShellTokens.torrentPanelPaddingTv,
     torrentPanelTitleFontSize: ShellTokens.torrentPanelTitleFontSizeTv,
     torrentPanelRowTitleFontSize: ShellTokens.torrentPanelRowTitleFontSizeTv,
+    torrentPanelRowPadH: ShellTokens.torrentPanelRowPadHTv,
     torrentPanelRowPadV: ShellTokens.torrentPanelRowPadVTv,
     torrentPanelChipHorizontalPadding: ShellTokens.torrentPanelChipPadHTv,
     torrentPanelChipVerticalPadding: ShellTokens.torrentPanelChipPadVTv,

@@ -417,9 +417,6 @@ abstract final class ShellTokens {
   /// Spotlight auto-advance dwell before the next slide.
   static const Duration heroAutoAdvanceDuration = Duration(seconds: 8);
 
-  /// Pause auto-advance this long after View details / pin hover or focus.
-  static const Duration heroCtaPauseDuration = Duration(seconds: 10);
-
   /// PageView transition when auto-advance / stepFilm animates.
   static const Duration heroAutoAdvancePageDuration = Duration(milliseconds: 1000);
 
@@ -430,6 +427,8 @@ abstract final class ShellTokens {
   static const double heroStepIndicatorGap = 4;
   static const double heroStepIndicatorTrackAlpha = 0.35;
   static const double heroStepIndicatorFillAlpha = 0.95;
+  /// Pause glyph when View details / pin holds auto-advance.
+  static const double heroStepIndicatorPauseSize = 14;
 
   /// Top inset for hero text: clears [homeTopBarHeight] plus breathing room.
   static double get heroTextColumnTopInsetDesktop => homeTopBarHeight + 16;
@@ -716,20 +715,29 @@ abstract final class ShellTokens {
   static const double sectionSubtitleFontSizeMin = tvMetaFontSize;
 
   static const double torrentPanelPaddingDesktop = 16;
-  static const double torrentPanelPaddingTv = 14;
+  /// Chrome family — matches player side-panel inset weight.
+  static const double torrentPanelPaddingTv =
+      torrentPanelPaddingDesktop * tvChromeScale;
   static const double torrentPanelTitleFontSizeDesktop = 16;
   static const double torrentPanelTitleFontSizeTv = tvTitleFontSize;
   /// Stream / provider row card title (smaller than panel section title).
   static const double torrentPanelRowTitleFontSizeDesktop = 13;
   static const double torrentPanelRowTitleFontSizeTv = tvBodyFontSize;
+  static const double torrentPanelRowPadHDesktop = 12;
+  static const double torrentPanelRowPadHTv =
+      torrentPanelRowPadHDesktop * tvChromeScale;
   static const double torrentPanelRowPadVDesktop = 10;
-  static const double torrentPanelRowPadVTv = 6;
+  static const double torrentPanelRowPadVTv =
+      torrentPanelRowPadVDesktop * tvChromeScale;
   static const double torrentPanelRowBadgePadHDesktop = 7;
-  static const double torrentPanelRowBadgePadHTv = 5;
+  static const double torrentPanelRowBadgePadHTv =
+      torrentPanelRowBadgePadHDesktop * tvChromeScale;
   static const double torrentPanelRowBadgePadVDesktop = 3;
-  static const double torrentPanelRowBadgePadVTv = 2;
+  static const double torrentPanelRowBadgePadVTv =
+      torrentPanelRowBadgePadVDesktop * tvChromeScale;
   static const double torrentPanelRowBadgeRadiusDesktop = 6;
-  static const double torrentPanelRowBadgeRadiusTv = 4;
+  static const double torrentPanelRowBadgeRadiusTv =
+      torrentPanelRowBadgeRadiusDesktop * tvChromeScale;
   static const double torrentPanelChipPadHDesktop = 12;
   /// Hand-tuned denser than desktop × chrome — match action chips / search.
   static const double torrentPanelChipPadHTv = actionChipPadHTv;
@@ -740,13 +748,28 @@ abstract final class ShellTokens {
   /// Dense strip type — same ladder rung as action chips (not body).
   static const double torrentPanelChipFontSizeTv = tvMetaFontSize;
   static const double torrentPanelMetaIconSizeDesktop = 14;
-  static const double torrentPanelMetaIconSizeTv = 13;
+  static const double torrentPanelMetaIconSizeTv = actionChipIconSizeTv;
   static const double torrentPanelMetaFontSizeDesktop = 11;
-  static const double torrentPanelMetaFontSizeTv = 10;
+  static const double torrentPanelMetaFontSizeTv = tvMetaFontSize;
   static const double torrentPanelLeadingIconSizeDesktop = 22;
-  static const double torrentPanelLeadingIconSizeTv = 20;
+  static const double torrentPanelLeadingIconSizeTv =
+      torrentPanelLeadingIconSizeDesktop * tvChromeScale;
   static const double torrentPanelSectionFontSizeDesktop = 16;
   static const double torrentPanelSectionFontSizeTv = tvTitleFontSize;
+
+  /// Kind-tab underline pad under Forja / Torrents / … labels.
+  static const double torrentPanelKindTabPadHDesktop = 14;
+  static const double torrentPanelKindTabPadHTv =
+      torrentPanelKindTabPadHDesktop * tvChromeScale;
+  static const double torrentPanelKindTabPadBottomDesktop = 9;
+  static const double torrentPanelKindTabPadBottomTv =
+      torrentPanelKindTabPadBottomDesktop * tvChromeScale;
+  static const double torrentPanelKindTabIconGapDesktop = 7;
+  static const double torrentPanelKindTabIconGapTv =
+      torrentPanelKindTabIconGapDesktop * tvChromeScale;
+  static const double torrentPanelChromeGapDesktop = 8;
+  static const double torrentPanelChromeGapTv =
+      torrentPanelChromeGapDesktop * tvChromeScale;
 
   /// Sources panel search field (details + player) — leanback uses chrome density.
   static const double torrentPanelSearchFontSize = 13;

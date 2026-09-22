@@ -60,6 +60,36 @@ void main() {
       ShellTokens.torrentPanelChipFontSizeTv,
       ShellTokens.tvMetaFontSize,
     );
+    expect(
+      ShellTokens.torrentPanelMetaFontSizeTv,
+      ShellTokens.tvMetaFontSize,
+    );
+    expect(
+      ShellTokens.torrentPanelMetaIconSizeTv,
+      ShellTokens.actionChipIconSizeTv,
+    );
+    expect(
+      ShellTokens.torrentPanelLeadingIconSizeTv,
+      closeTo(
+        ShellTokens.torrentPanelLeadingIconSizeDesktop *
+            ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      ShellTokens.torrentPanelPaddingTv,
+      closeTo(
+        ShellTokens.torrentPanelPaddingDesktop * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
+    expect(
+      DetailsTokens.sourcesPanelPaddingTv.left,
+      closeTo(
+        DetailsTokens.sourcesPanelPadding.left * ShellTokens.tvChromeScale,
+        0.001,
+      ),
+    );
     // Nav profile — same boost as desktop (TV icons already chrome-scaled).
     expect(
       ShellTokens.navRailProfileAvatarScaleTv,

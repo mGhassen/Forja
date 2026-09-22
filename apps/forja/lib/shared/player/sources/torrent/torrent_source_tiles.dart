@@ -734,7 +734,12 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(12, padV, 12, padV),
+                    padding: EdgeInsets.fromLTRB(
+                      metrics.torrentPanelRowPadH,
+                      padV,
+                      metrics.torrentPanelRowPadH,
+                      padV,
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

@@ -9,6 +9,7 @@ import 'package:forja_foundation/widgets/feedback/loading_dots.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// Compact top chrome for the Sources panel:
 /// kind tabs · provider chips · search/filters.
 /// Episode/count live in [SourcesPanelMetaFooter], not here.
@@ -277,7 +278,10 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
 
   @override
   Widget build(BuildContext context) {
-    const gap = 8.0;
+    final metrics = ShellScope.metricsOf(context);
+    final gap = metrics.usesTvDensity
+        ? ShellTokens.torrentPanelChromeGapTv
+        : ShellTokens.torrentPanelChromeGapDesktop;
     widget.onProvideListFocusUp?.call(_focusSearchOrProvidersFromList);
 
     // No extra top inset — panel padding owns the edge; a TV-only pad left a
@@ -403,9 +407,9 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
               : null,
           onFiltersDownEdge: _tv ? _focusList : null,
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: gap * 0.5),
         if (widget.showCacheLine && widget.cacheRefreshToken != null) ...[
-          const SizedBox(height: 4),
+          SizedBox(height: gap * 0.5),
           TorrentCacheStorageLine(refreshToken: widget.cacheRefreshToken!),
         ],
       ],
@@ -439,6 +443,7 @@ class _KindTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
+    final magnetSize = ShellScope.metricsOf(context).torrentPanelMetaIconSize;
     final options =
         <({String id, String label, IconData? iconData, Widget? icon})>[
           if (showEngine)
@@ -453,7 +458,7 @@ class _KindTabs extends StatelessWidget {
               id: 'torrents',
               label: 'Torrents',
               iconData: null,
-              icon: const HeroMagnetIcon(size: 14),
+              icon: HeroMagnetIcon(size: magnetSize),
             ),
           if (showStremio)
             (
@@ -602,7 +607,15 @@ class _KindTabState extends State<_KindTab> {
               : Colors.transparent);
     final tabFont = metrics.torrentPanelRowTitleFontSize;
     final tabIcon = metrics.torrentPanelMetaIconSize;
-    final bottomPad = tv ? 6.0 : 9.0;
+    final bottomPad = tv
+        ? ShellTokens.torrentPanelKindTabPadBottomTv
+        : ShellTokens.torrentPanelKindTabPadBottomDesktop;
+    final tabPadH = tv
+        ? ShellTokens.torrentPanelKindTabPadHTv
+        : ShellTokens.torrentPanelKindTabPadHDesktop;
+    final iconGap = tv
+        ? ShellTokens.torrentPanelKindTabIconGapTv
+        : ShellTokens.torrentPanelKindTabIconGapDesktop;
 
     final label = AnimatedDefaultTextStyle(
       duration: const Duration(milliseconds: 180),
@@ -612,7 +625,7 @@ class _KindTabState extends State<_KindTab> {
         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
         letterSpacing: selected ? -0.1 : 0,
         color: color,
-        height: 1.1,
+        height: 1.0,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -629,7 +642,7 @@ class _KindTabState extends State<_KindTab> {
                     Icon(widget.iconData, size: tabIcon, color: color),
               ),
             ),
-            SizedBox(width: tv ? 5 : 7),
+            SizedBox(width: iconGap),
           ],
           Text(widget.label),
           if (widget.loading) ...[
@@ -650,9 +663,9 @@ class _KindTabState extends State<_KindTab> {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       padding: EdgeInsets.fromLTRB(
-        tv ? 10 : 14,
+        tabPadH,
         0,
-        showReload ? 6 : (tv ? 10 : 14),
+        showReload ? 6 : tabPadH,
         0,
       ),
       transform: Matrix4.translationValues(
@@ -696,7 +709,9 @@ class _KindTabState extends State<_KindTab> {
         ? ForjaShellColors.brandGreen
         : cinematic.textSecondary;
     final reloadIconSize = ShellScope.metricsOf(context).torrentPanelMetaIconSize;
-    final bottomPad = tv ? 6.0 : 9.0;
+    final bottomPad = tv
+        ? ShellTokens.torrentPanelKindTabPadBottomTv
+        : ShellTokens.torrentPanelKindTabPadBottomDesktop;
 
     final reloadIcon = AnimatedContainer(
       duration: const Duration(milliseconds: 180),

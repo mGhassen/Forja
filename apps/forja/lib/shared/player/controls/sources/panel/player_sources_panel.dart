@@ -3914,9 +3914,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       );
     }
     if (_error != null && totalCount == 0) {
+      final tv = ShellScope.metricsOf(context).usesTvDensity;
       final errBody = Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(
+            tv ? ShellTokens.torrentPanelPaddingTv : 24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -3925,10 +3928,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: ForjaShellColors.cinematic.textSecondary,
-                  fontSize: 13,
+                  fontSize: tv
+                      ? ShellTokens.tvBodyFontSize
+                      : 13,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: tv ? ShellTokens.torrentPanelChromeGapTv : 12),
               TextButton(
                 onPressed: () => _reloadKind(_kindFilter),
                 child: const Text('Retry'),
@@ -3983,7 +3988,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           textAlign: TextAlign.center,
           style: TextStyle(
             color: ForjaShellColors.cinematic.textSecondary,
-            fontSize: 13,
+            fontSize: ShellScope.metricsOf(context).usesTvDensity
+                ? ShellTokens.tvBodyFontSize
+                : 13,
           ),
         ),
       );

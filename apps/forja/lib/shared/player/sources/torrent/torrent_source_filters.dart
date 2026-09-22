@@ -741,6 +741,14 @@ class TorrentSourceResultsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ShellScope.metricsOf(context);
+    final tv = metrics.usesTvDensity;
+    final headingFs = tv ? ShellTokens.tvBodyFontSize : 14.0;
+    final metaFs = metrics.torrentPanelMetaFontSize;
+    final iconSize = metrics.torrentPanelMetaIconSize;
+    final gap = tv ? ShellTokens.torrentPanelChromeGapTv * 0.75 : 6.0;
+    final spinner = tv ? metaFs : 12.0;
+
     return Row(
       children: [
         Expanded(
@@ -749,9 +757,9 @@ class TorrentSourceResultsHeader extends StatelessWidget {
               Icon(
                 Icons.download_rounded,
                 color: ForjaShellColors.cinematic.textSecondary,
-                size: 16,
+                size: iconSize,
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: gap),
               Flexible(
                 child: Text(
                   'Available Sources',
@@ -760,23 +768,23 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                   style: TextStyle(
                     color: ForjaShellColors.cinematic.textPrimary,
                     fontWeight: FontWeight.w700,
-                    fontSize: 14,
+                    fontSize: headingFs,
                   ),
                 ),
               ),
               if (resultCount != null) ...[
-                const SizedBox(width: 6),
+                SizedBox(width: gap),
                 Text(
                   '($resultCount)',
                   style: TextStyle(
                     color: ForjaShellColors.cinematic.textSecondary,
-                    fontSize: 12,
+                    fontSize: metaFs,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
               if (episodeLabel != null) ...[
-                const SizedBox(width: 6),
+                SizedBox(width: gap),
                 Flexible(
                   child: Text(
                     '- $episodeLabel',
@@ -785,28 +793,28 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                     style: TextStyle(
                       color: ForjaShellColors.cinematic.textSecondary
                           .withValues(alpha: 0.7),
-                      fontSize: 12,
+                      fontSize: metaFs,
                     ),
                   ),
                 ),
               ],
               if (isFetching) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: gap),
                 SizedBox(
-                  width: 12,
-                  height: 12,
+                  width: spinner,
+                  height: spinner,
                   child: CircularProgressIndicator(
-                    strokeWidth: 2,
+                    strokeWidth: tv ? 1.5 : 2,
                     color: ForjaShellColors.sectionAccent,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: gap),
                 TextButton(
                   onPressed: onCancelFetch,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: gap,
+                      vertical: tv ? 2 : 4,
                     ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -815,7 +823,7 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                     'Cancel',
                     style: TextStyle(
                       color: ForjaShellColors.cinematic.textSecondary,
-                      fontSize: 12,
+                      fontSize: metaFs,
                     ),
                   ),
                 ),
@@ -831,9 +839,9 @@ class TorrentSourceResultsHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: gap,
+                    vertical: tv ? 2 : 4,
                   ),
                   decoration: _torrentPanelControlDecoration(active: false),
                   child: DropdownButton<String>(
@@ -844,11 +852,11 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                     icon: Icon(
                       Icons.keyboard_arrow_down_rounded,
                       color: ForjaShellColors.cinematic.textSecondary,
-                      size: 16,
+                      size: iconSize,
                     ),
                     style: TextStyle(
                       color: ForjaShellColors.cinematic.textPrimary,
-                      fontSize: 11,
+                      fontSize: metaFs,
                     ),
                     items:
                         [
@@ -868,7 +876,7 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                     },
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: gap),
                 _AudioFilterButton(
                   activeFilters: activeAudioFilters,
                   onChanged: onAudioFiltersChanged,
@@ -893,9 +901,15 @@ class _AudioFilterButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = activeFilters.isNotEmpty;
+    final metrics = ShellScope.metricsOf(context);
+    final tv = metrics.usesTvDensity;
+    final iconSize = metrics.torrentPanelMetaIconSize;
+    final metaFs = metrics.torrentPanelMetaFontSize;
+    final padH = tv ? ShellTokens.torrentPanelChromeGapTv : 8.0;
+    final padV = tv ? 3.0 : 6.0;
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(tv ? ShellTokens.shellChipRadiusTv : 8),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTapDown: (details) async {
@@ -915,7 +929,9 @@ class _AudioFilterButton extends StatelessWidget {
             position: position,
             color: ForjaShellColors.cinematic.menuSurface,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(
+                tv ? ShellTokens.shellChipRadiusTv : 8,
+              ),
               side: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
             ),
             items: [
@@ -931,29 +947,29 @@ class _AudioFilterButton extends StatelessWidget {
             ],
           );
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(tv ? ShellTokens.shellChipRadiusTv : 8),
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
           decoration: _torrentPanelControlDecoration(active: active),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.graphic_eq,
-                size: 14,
+                size: iconSize,
                 color: active
                     ? ForjaShellColors.chipSelectedIcon
                     : ForjaShellColors.cinematic.textSecondary,
               ),
               if (active) ...[
-                const SizedBox(width: 4),
+                SizedBox(width: tv ? 3 : 4),
                 Text(
                   '${activeFilters.length}',
                   style: TextStyle(
                     color: ForjaShellColors.cinematic.textPrimary,
-                    fontSize: 11,
+                    fontSize: metaFs,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

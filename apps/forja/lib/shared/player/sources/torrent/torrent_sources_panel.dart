@@ -74,8 +74,13 @@ class TorrentSourcesPanel extends StatelessWidget {
     BuildContext context, {
     required bool playerOverlay,
   }) {
-    if (!playerOverlay) return DetailsTokens.sourcesPanelPadding;
-    return ShellPaintScope.usesTvDensityOf(context)
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    if (!playerOverlay) {
+      return tv
+          ? DetailsTokens.sourcesPanelPaddingTv
+          : DetailsTokens.sourcesPanelPadding;
+    }
+    return tv
         ? ShellTokens.playerSidePanelPaddingTv
         : ShellTokens.playerSidePanelPadding;
   }
@@ -155,6 +160,7 @@ class TorrentSourcesPanelHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Row(
       children: [
         Text(
@@ -162,7 +168,9 @@ class TorrentSourcesPanelHeader extends StatelessWidget {
           style: TextStyle(
             color: ForjaShellColors.cinematic.textPrimary,
             fontWeight: FontWeight.w700,
-            fontSize: 16,
+            fontSize: tv
+                ? ShellTokens.torrentPanelTitleFontSizeTv
+                : ShellTokens.torrentPanelTitleFontSizeDesktop,
           ),
         ),
         const Spacer(),

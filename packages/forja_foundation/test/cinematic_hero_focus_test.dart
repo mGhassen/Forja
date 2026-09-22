@@ -179,7 +179,7 @@ void main() {
     expect(key.currentState!.heroAdvanceProgress, lessThan(0.05));
   });
 
-  testWidgets('hero CTA focus pauses auto-advance for 10s', (tester) async {
+  testWidgets('hero CTA focus pauses auto-advance until leave', (tester) async {
     final key = GlobalKey<CinematicHeroState>();
     final ctaFocus = FocusNode(debugLabel: 'hero-cta');
     addTearDown(ctaFocus.dispose);
@@ -230,6 +230,7 @@ void main() {
     ctaFocus.requestFocus();
     await tester.pump();
     expect(key.currentState!.heroAdvancePaused, isTrue);
+    expect(find.byIcon(Icons.pause_rounded), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
     expect(key.currentState!.heroAdvanceProgress, closeTo(pausedAt, 0.02));
@@ -237,15 +238,15 @@ void main() {
 
     ctaFocus.unfocus();
     await tester.pump();
-    expect(key.currentState!.heroAdvancePaused, isTrue);
-
-    // Hold is from last engage — finish the remaining window.
-    await tester.pump(ShellTokens.heroCtaPauseDuration);
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump();
     expect(key.currentState!.heroAdvancePaused, isFalse);
-    final resumed = key.currentState!.heroAdvanceProgress;
+    expect(find.byIcon(Icons.pause_rounded), findsNothing);
+    await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
-    expect(key.currentState!.heroAdvanceProgress, greaterThan(resumed));
+    expect(
+      key.currentState!.heroAdvanceProgress,
+      greaterThan(pausedAt + 0.05),
+    );
   });
 
   testWidgets('hero CTA hover clears when action row remounts', (tester) async {
@@ -302,6 +303,7 @@ void main() {
     // Leave before remount so the new MouseRegion does not auto-reenter.
     await gesture.moveTo(const Offset(1, 1));
     await tester.pump();
+    expect(key.currentState!.heroAdvancePaused, isFalse);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
@@ -363,15 +365,17 @@ void main() {
     await tester.pump();
 
     expect(key.currentState!.heroAdvancePaused, isTrue);
+    expect(find.byIcon(Icons.pause_rounded), findsOneWidget);
     final pausedAt = key.currentState!.heroAdvanceProgress;
     await tester.pump(const Duration(seconds: 3));
     expect(key.currentState!.heroAdvanceProgress, closeTo(pausedAt, 0.02));
 
     await gesture.moveTo(const Offset(1, 1));
     await tester.pump();
-    expect(key.currentState!.heroAdvancePaused, isTrue);
-    await tester.pump(ShellTokens.heroCtaPauseDuration);
-    await tester.pump(const Duration(milliseconds: 50));
     expect(key.currentState!.heroAdvancePaused, isFalse);
+    expect(find.byIcon(Icons.pause_rounded), findsNothing);
+    final resumed = key.currentState!.heroAdvanceProgress;
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
+    expect(key.currentState!.heroAdvanceProgress, greaterThan(resumed));
   });
 }
