@@ -176,7 +176,9 @@ class FocusableControl extends StatefulWidget {
   final ShellPaintEnsureVisible ensureVisibleMode;
   final bool showFocusBorder;
 
-  /// Flat focus (scale ≤ 1): when false, only the thin border - no gray fill.
+  /// Flat focus (scale ≤ 1): opt-in gray [ForjaShellColors.inkHover] fill.
+  /// Default false — hero gallery, mood chips, and other scale-1.0 CTAs stay
+  /// transparent; search helpers / filter tokens pass true.
   final bool showFocusFill;
 
   /// Settings-style chrome: green left bar + [ForjaShellColors.inkHover] fill
@@ -207,7 +209,7 @@ class FocusableControl extends StatefulWidget {
     this.borderRadius = 12.0,
     this.scaleOnFocus = ShellTokens.focusActiveScale,
     this.showFocusBorder = false,
-    this.showFocusFill = true,
+    this.showFocusFill = false,
     this.showFocusRail = false,
     this.forceRailActive = false,
     this.focusBleedWidth,
@@ -644,7 +646,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
     // Settings rail: green left bar + ink fill (no ring box).
     // Flat menus (scale 1.0 + showFocusBorder): gray fill + thin border.
-    // Flat rows (scale 1.0, no border): inkHover — same as the old InkWell path.
+    // Flat rows (scale 1.0, showFocusFill opt-in): inkHover — search helpers.
     // Catalog cards: white focus ring + lift scale.
     final railFocus = widget.showFocusRail;
     final flatMenuFocus =
@@ -738,7 +740,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         } else if (widget.showFocusFill &&
             widget.scaleOnFocus <= 1.0 &&
             chromeActive) {
-          // Flat rows (search helpers, …): same inkHover the old InkWell path used.
+          // Opt-in flat rows only (search helpers, filter tokens, …).
+          // Default showFocusFill is false — scale-1.0 CTAs / hero gallery /
+          // mood chips must not wash ink over full-bleed paint.
           content = DecoratedBox(
             decoration: BoxDecoration(
               color: ForjaShellColors.inkHover,

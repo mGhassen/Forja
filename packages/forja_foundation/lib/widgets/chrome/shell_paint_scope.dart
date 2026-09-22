@@ -220,7 +220,7 @@ class ShellPaintScope extends InheritedWidget {
     ShellPaintTvZone? tvZone,
     ShellPaintEnsureVisible ensureVisibleMode = ShellPaintEnsureVisible.row,
     bool showFocusBorder = false,
-    bool showFocusFill = true,
+    bool showFocusFill = false,
     bool showFocusRail = false,
     bool suppressInkHover = false,
     bool allowNestedFocus = false,

@@ -9,6 +9,7 @@ import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/tv/shell_tv_app_exit.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
@@ -265,6 +266,54 @@ void main() {
     expect(tapped, isTrue);
     focusNode.dispose();
   });
+
+  testWidgets(
+    'FocusableControl scale-1.0 does not paint ink fill unless opted in',
+    (tester) async {
+      bool hasInkHoverFill() {
+        return tester.widgetList<DecoratedBox>(find.byType(DecoratedBox)).any((
+          d,
+        ) {
+          final deco = d.decoration;
+          return deco is BoxDecoration &&
+              deco.color == ForjaShellColors.inkHover;
+        });
+      }
+
+      final defaultNode = FocusNode(debugLabel: 'scale1-default');
+      await tester.pumpWidget(
+        _wrapTv(
+          FocusableControl(
+            focusNode: defaultNode,
+            scaleOnFocus: 1.0,
+            onTap: () {},
+            child: const SizedBox(width: 200, height: 120),
+          ),
+        ),
+      );
+      defaultNode.requestFocus();
+      await tester.pump();
+      expect(hasInkHoverFill(), isFalse);
+      defaultNode.dispose();
+
+      final optInNode = FocusNode(debugLabel: 'scale1-opt-in');
+      await tester.pumpWidget(
+        _wrapTv(
+          FocusableControl(
+            focusNode: optInNode,
+            scaleOnFocus: 1.0,
+            showFocusFill: true,
+            onTap: () {},
+            child: const SizedBox(width: 200, height: 120),
+          ),
+        ),
+      );
+      optInNode.requestFocus();
+      await tester.pump();
+      expect(hasInkHoverFill(), isTrue);
+      optInNode.dispose();
+    },
+  );
 
   testWidgets('ForjaShellChip is focusable on tv profile', (tester) async {
     await tester.pumpWidget(

@@ -144,7 +144,7 @@ Widget shellFocusableTap({
   ShellTvZone? tvZone,
   ShellPaintEnsureVisible ensureVisibleMode = ShellPaintEnsureVisible.row,
   bool showFocusBorder = false,
-  bool showFocusFill = true,
+  bool showFocusFill = false,
   bool showFocusRail = false,
   bool forceRailActive = false,
   double? focusBleedWidth,

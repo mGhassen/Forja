@@ -3173,6 +3173,9 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
         tvTabId: tab.isEmpty ? null : tab,
         tvZone: ShellTvZone.hero,
         scaleOnFocus: 1,
+        // Invisible D-pad hit target over the backdrop — never paint ink/fill.
+        showFocusFill: false,
+        suppressInkHover: true,
         ensureVisibleMode: ShellPaintEnsureVisible.off,
         onLeftEdge: () => _stepFilm(-1),
         onRightEdge: () => _stepFilm(1),
