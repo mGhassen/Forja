@@ -443,6 +443,42 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     } else if (_envelope == null && _inFlight == null && !held) {
       _bind();
     }
+    // Progressive page feed: paint this rail as soon as chrome.pageFeedRails
+    // gains items (Spotlight must not wait on a hung Popular).
+    _promotePageFeedRailIfReady(chrome);
+  }
+
+  /// Sync-promote a page-feed rail slice while the shared feed future is still
+  /// settling. Assigns [_envelope] for the following [build] (no setState).
+  void _promotePageFeedRailIfReady(PackChromeScope? chrome) {
+    if (chrome == null) return;
+    if (widget.action.trim() != 'rail') return;
+    final rail = (widget.params['rail'] ?? widget.fallbackSpec['rail'] ?? '')
+        .toString()
+        .trim();
+    if (rail.isEmpty || !chrome.isPageFeedRail(rail)) return;
+    final items = chrome.pageFeedRails?[rail];
+    if (items == null || items.isEmpty) return;
+    if (_envelope != null && _envelope!.ok) {
+      final cur = _envelope!.data?['items'];
+      if (cur is List && cur.isNotEmpty) return;
+    }
+    final env = MetaEnvelope(
+      ok: true,
+      action: 'rail',
+      data: {'items': items},
+    );
+    final key = [
+      widget.pluginId,
+      'pageFeed',
+      rail,
+      widget.packSourceUrl ?? '',
+      _scopeEpoch,
+    ].join('|');
+    PackLoadedPaint._resolved[key] = env;
+    PackLoadedPaint._resolved[_warmPaintKey] = env;
+    _envelope = env;
+    _inFlight = null;
   }
 
   /// Empty grid while a Live category / Favorites page loads — no cover ticker.
@@ -801,10 +837,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         PackLoadedPaint._resolved[_warmPaintKey] = env;
         return Future.value(env);
       }
-      // Sync snapshot from layout (EngineCache peek) — do not wait on
-      // feedFuture.then (microtask → shimmer for one+ frames).
-      // Empty slice → fall through to action:'rail' (page feed soft-fails
-      // per-rail via .catch → [] and would paint Popular title-only / no hero).
+      // Sync snapshot from layout (EngineCache peek / progressive publish) —
+      // do not wait on feedFuture.then (microtask → shimmer for one+ frames).
+      // Empty slice after this rail was published → fall through to action:'rail'
+      // (page feed soft-failed the rail). Missing key while feedFuture is live
+      // → still loading progressively; wait (do not stampede a parallel rail).
       if (syncRails != null) {
         final items = syncRails[rail] ?? const <dynamic>[];
         if (items.isNotEmpty) {
@@ -816,6 +853,59 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           PackLoadedPaint._resolved[key] = env;
           PackLoadedPaint._resolved[_warmPaintKey] = env;
           return Future.value(env);
+        }
+        if (!syncRails.containsKey(rail) && feedFuture != null) {
+          final hit = PackLoadedPaint._memo[key];
+          if (hit != null) {
+            return hit.then((env) {
+              PackLoadedPaint._resolved[key] = env;
+              PackLoadedPaint._resolved[_warmPaintKey] = env;
+              return env;
+            });
+          }
+          final future = feedFuture.then<MetaEnvelope>(
+            (rails) async {
+              final slice = rails[rail] ?? const <dynamic>[];
+              if (slice.isNotEmpty) {
+                final env = MetaEnvelope(
+                  ok: true,
+                  action: 'rail',
+                  data: {'items': slice},
+                );
+                PackLoadedPaint._resolved[key] = env;
+                PackLoadedPaint._resolved[_warmPaintKey] = env;
+                return env;
+              }
+              final direct = await packOpaqueRun(
+                pluginId: widget.pluginId,
+                action: widget.action,
+                params: runParams,
+                packSourceUrl: widget.packSourceUrl,
+                forceRefresh: true,
+              );
+              PackLoadedPaint._resolved[key] = direct;
+              PackLoadedPaint._resolved[_warmPaintKey] = direct;
+              return direct;
+            },
+            onError: (Object e, StackTrace _) {
+              final env = e is MetaEnvelope && !e.ok
+                  ? MetaEnvelope(
+                      ok: false,
+                      action: 'rail',
+                      error: e.error,
+                    )
+                  : MetaEnvelope.failure(
+                      MetaErrorCode.upstream,
+                      message: e.toString(),
+                      action: 'rail',
+                    );
+              PackLoadedPaint._resolved[key] = env;
+              PackLoadedPaint._resolved[_warmPaintKey] = env;
+              return env;
+            },
+          );
+          PackLoadedPaint._memo[key] = future;
+          return future;
         }
       } else if (feedFuture != null) {
         final hit = PackLoadedPaint._memo[key];

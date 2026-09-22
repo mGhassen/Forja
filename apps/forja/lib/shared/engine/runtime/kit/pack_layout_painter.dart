@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
@@ -778,33 +779,145 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         return peeked;
       }
     }
-    final envelope = await packOpaqueRun(
+
+    // Progressive first paint: fan out action:`rail` in parallel, publish each
+    // rail in layout `feedRails` order. Spotlight can paint while Popular is
+    // still hung — the old action:`feed` Promise.all blocked the whole batch.
+    final ordered = _pageFeedRailIds.toList(growable: false);
+    if (ordered.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _pageFeedRails = const {};
+          _pageFeedError = null;
+        });
+      }
+      return const {};
+    }
+
+    final chromeFilters = catalogChromeFilters(
+      tabId: widget.tabId,
       pluginId: widget.pluginId,
-      packSourceUrl: widget.packSourceUrl,
+    );
+    final pending = <String, Future<MetaEnvelope>>{
+      for (final railId in ordered)
+        railId: packOpaqueRun(
+          pluginId: widget.pluginId,
+          packSourceUrl: widget.packSourceUrl,
+          action: 'rail',
+          params: catalogParamsWithFilters(
+            {'rail': railId},
+            filters: chromeFilters,
+          ),
+          forceRefresh: forceRefresh,
+        ),
+    };
+
+    final acc = <String, List<dynamic>>{};
+    final claimed = <String>{};
+    MetaError? hardError;
+    var anyOk = false;
+
+    for (final railId in ordered) {
+      var items = const <dynamic>[];
+      try {
+        final envelope = await pending[railId]!;
+        if (!envelope.ok) {
+          hardError ??= envelope.error;
+          debugPrint(
+            '[catalog] ${widget.pluginId} page-feed rail=$railId fail '
+            '${envelope.error?.code.wire} ${envelope.error?.message}',
+          );
+        } else {
+          anyOk = true;
+          final raw = envelope.data?['items'];
+          final list =
+              raw is List ? List<dynamic>.from(raw) : <dynamic>[];
+          items = _pageFeedExclusiveItems(list, claimed);
+        }
+      } catch (e) {
+        debugPrint(
+          '[catalog] ${widget.pluginId} page-feed rail=$railId error $e',
+        );
+      }
+      acc[railId] = items;
+      if (mounted) {
+        setState(() {
+          _pageFeedRails = Map<String, List<dynamic>>.from(acc);
+          _pageFeedError = anyOk ? null : hardError;
+        });
+      }
+    }
+
+    if (!anyOk) {
+      debugPrint(
+        '[catalog] ${widget.pluginId} page-feed fail '
+        '${hardError?.code.wire} ${hardError?.message}',
+      );
+      if (mounted) {
+        setState(() {
+          _pageFeedRails = null;
+          _pageFeedError = hardError;
+        });
+      }
+      throw MetaEnvelope(
+        ok: false,
+        action: 'feed',
+        error: hardError,
+      );
+    }
+
+    _storePageFeedCache(acc);
+    return acc;
+  }
+
+  /// Warm action:`feed` peek cache so the next open can sync-paint all rails.
+  void _storePageFeedCache(Map<String, List<dynamic>> rails) {
+    final key = EngineCache.keyFor(
+      pluginId: widget.pluginId,
       action: 'feed',
       params: _pageFeedParams(),
-      forceRefresh: forceRefresh,
+      packSourceUrl: widget.packSourceUrl,
     );
-    if (!envelope.ok) {
-      debugPrint(
-        '[catalog] ${widget.pluginId} feed fail '
-        '${envelope.error?.code.wire} ${envelope.error?.message}',
-      );
-      _pageFeedRails = null;
-      _pageFeedError = envelope.error;
-      if (mounted) setState(() {});
-      // Failed future — PackLoadedPaint must not treat empty rails as ok.
-      throw envelope;
-    }
-    final out =
-        _railsMapFromEnvelope(envelope) ?? const <String, List<dynamic>>{};
-    if (mounted) {
-      setState(() {
-        _pageFeedRails = out;
-        _pageFeedError = null;
-      });
+    EngineCache.instance.putEntry(
+      key: key,
+      pluginId: widget.pluginId,
+      data: {'rails': rails},
+      hints: const CatalogCacheHints(
+        maxAge: Duration(seconds: 900),
+        swr: Duration(seconds: 3600),
+      ),
+    );
+  }
+
+  /// Same exclusive claim as pack `tmdbClaimRails` — drop `type:tmdbId` already
+  /// shown on a higher page-feed rail (Spotlight → Featured → Popular).
+  static List<dynamic> _pageFeedExclusiveItems(
+    List<dynamic> items,
+    Set<String> claimed,
+  ) {
+    if (items.isEmpty) return const [];
+    final out = <dynamic>[];
+    for (final item in items) {
+      final key = _pageFeedMetaKey(item);
+      if (key == null) {
+        out.add(item);
+        continue;
+      }
+      if (claimed.contains(key)) continue;
+      claimed.add(key);
+      out.add(item);
     }
     return out;
+  }
+
+  static String? _pageFeedMetaKey(dynamic item) {
+    if (item is! Map) return null;
+    final ids = item['ids'];
+    if (ids is! Map) return null;
+    final tmdb = ids['tmdb'];
+    if (tmdb == null || tmdb.toString().trim().isEmpty) return null;
+    final type = (item['type'] ?? '').toString();
+    return '$type:$tmdb';
   }
 
   void _onLayoutSelect(String widgetId, String value, {required bool toggle}) {
