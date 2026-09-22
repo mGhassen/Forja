@@ -133,8 +133,9 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
     final title = count == 1
         ? 'Update plugin pack?'
         : 'Update $count plugin packs?';
-    final tv = _tvFocusActive(context) ||
-        ShellPaintScope.usesTvDensityOf(context);
+    // Density only — desktop hybrid also has focusable mood chips; do not
+    // treat that as TV sizing.
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final maxW = SettingsTokens.dialogMaxWidthOf(
       context,
       MediaQuery.sizeOf(context).width,

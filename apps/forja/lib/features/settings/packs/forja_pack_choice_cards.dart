@@ -167,8 +167,10 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
         SettingsTokens.packChoiceIconTitleGapOf(context, compact: compact);
     final titleSubGap =
         SettingsTokens.packChoiceTitleSubGapOf(context, compact: compact);
-    final titleSize = SettingsTokens.rowTitleSizeOf(context);
-    final subSize = SettingsTokens.rowSubtitleSizeOf(context);
+    final titleSize =
+        SettingsTokens.typeSizeOf(context, compact ? 13 : 16);
+    final subSize =
+        SettingsTokens.typeSizeOf(context, compact ? 11 : 13);
 
     Widget card({required bool active}) {
       final borderColor = widget.accent

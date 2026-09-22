@@ -1188,7 +1188,7 @@ class _PackInstallFailuresBanner extends StatelessWidget {
                       : '${failures.length} packs failed to install',
                   style: TextStyle(
                     color: const Color(0xFFFECACA),
-                    fontSize: SettingsTokens.rowTitleSizeOf(context),
+                    fontSize: SettingsTokens.typeSizeOf(context, 13),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1199,7 +1199,7 @@ class _PackInstallFailuresBanner extends StatelessWidget {
                     failures[i].label,
                     style: TextStyle(
                       color: ForjaShellColors.textPrimary,
-                      fontSize: SettingsTokens.rowTitleSizeOf(context),
+                      fontSize: SettingsTokens.typeSizeOf(context, 13),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1211,7 +1211,7 @@ class _PackInstallFailuresBanner extends StatelessWidget {
                         color: ForjaShellColors.textSecondary.withValues(
                           alpha: 0.9,
                         ),
-                        fontSize: SettingsTokens.groupLabelSizeOf(context),
+                        fontSize: SettingsTokens.typeSizeOf(context, 11),
                         height: 1.3,
                       ),
                     ),
@@ -1221,7 +1221,7 @@ class _PackInstallFailuresBanner extends StatelessWidget {
                     failures[i].message,
                     style: TextStyle(
                       color: const Color(0xFFFECACA),
-                      fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+                      fontSize: SettingsTokens.typeSizeOf(context, 12),
                       height: 1.35,
                     ),
                   ),

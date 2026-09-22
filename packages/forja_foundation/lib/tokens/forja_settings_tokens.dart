@@ -19,7 +19,7 @@ abstract final class SettingsTokens {
   static const double _s = ShellTokens.tvChromeScale;
 
   /// Category rail — wide enough for title + subtitle without heavy ellipsis.
-  static const double sidebarWidth = 340;
+  static const double sidebarWidth = 280;
 
   /// Leanback — hand width so labels stay readable (not × [tvChromeScale]).
   static const double sidebarWidthTv = 240;
@@ -207,7 +207,9 @@ abstract final class SettingsTokens {
   static const double dialogMaxWidthFractionTv = 0.32;
   static const double dialogMaxWidthMin = 320;
   static const double dialogMaxWidthMinTv = 240;
-  static const double dialogMaxWidthCap = 520;
+  /// Desktop confirm / pack-update dialogs were fixed at 420–440 before TV
+  /// density work — keep that cap (do not grow toward a 10-foot sheet).
+  static const double dialogMaxWidthCap = 440;
   static const double dialogMaxWidthCapTv = 360;
   static const double dialogMaxHeightFraction = 0.65;
   static const double dialogMaxHeightFractionTv = 0.55;

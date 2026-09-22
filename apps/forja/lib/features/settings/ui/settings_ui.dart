@@ -17,10 +17,12 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
-double _tvBody(BuildContext context) => SettingsTokens.rowTitleSizeOf(context);
+/// Desktop keeps [desktop]; TV maps onto the shell type ladder.
+double _tvBody(BuildContext context, {double desktop = 15}) =>
+    SettingsTokens.typeSizeOf(context, desktop);
 
-double _tvMeta(BuildContext context) =>
-    SettingsTokens.rowSubtitleSizeOf(context);
+double _tvMeta(BuildContext context, {double desktop = 12.5}) =>
+    SettingsTokens.typeSizeOf(context, desktop);
 
 /// Green sparkles beside admin-only Settings titles (`accounts.is_admin`).
 class SettingsAdminTitle extends StatelessWidget {
@@ -504,7 +506,7 @@ class _SettingsTvExpandableSideRowState
                   DefaultTextStyle.merge(
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: SettingsTokens.rowTitleSizeOf(context),
+                      fontSize: SettingsTokens.typeSizeOf(context, 14),
                       color: ForjaShellColors.textPrimary,
                     ),
                     child: widget.title,
@@ -1455,7 +1457,7 @@ class SettingsSelectRow extends StatelessWidget {
                             style: TextStyle(
                               color: ForjaShellColors.textPrimary,
                               fontWeight: FontWeight.w600,
-                              fontSize: SettingsTokens.rowTitleSizeOf(context),
+                              fontSize: SettingsTokens.typeSizeOf(context, 13),
                             ),
                           ),
                         ),
@@ -1475,7 +1477,7 @@ class SettingsSelectRow extends StatelessWidget {
                           style: TextStyle(
                             color: ForjaShellColors.textPrimary,
                             fontWeight: FontWeight.w600,
-                            fontSize: SettingsTokens.rowTitleSizeOf(context),
+                            fontSize: SettingsTokens.typeSizeOf(context, 13),
                           ),
                         ),
                         dropdownColor: ForjaShellColors.cinematic.menuSurface,
@@ -1487,7 +1489,7 @@ class SettingsSelectRow extends StatelessWidget {
                         style: TextStyle(
                           color: ForjaShellColors.textPrimary,
                           fontWeight: FontWeight.w600,
-                          fontSize: SettingsTokens.rowTitleSizeOf(context),
+                          fontSize: SettingsTokens.typeSizeOf(context, 13),
                         ),
                         items: options
                             .map(
@@ -1892,7 +1894,7 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
             widget.title,
             style: TextStyle(
               color: ForjaShellColors.textPrimary,
-              fontSize: _tvBody(context),
+              fontSize: _tvBody(context, desktop: 14),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1902,7 +1904,7 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
               widget.subtitle!,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
-                fontSize: _tvMeta(context),
+                fontSize: _tvMeta(context, desktop: 11),
               ),
             ),
           ],
@@ -2059,7 +2061,7 @@ class SettingsTextAction extends StatelessWidget {
     final style = TextStyle(
       color: enabled ? color : color.withValues(alpha: 0.4),
       fontWeight: FontWeight.w600,
-      fontSize: SettingsTokens.rowTitleSizeOf(context),
+      fontSize: SettingsTokens.typeSizeOf(context, 13),
     );
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (!tv) {
@@ -2531,8 +2533,9 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   Widget build(BuildContext context) {
     final enabled = widget.enabled;
     final browseHighlight = _browseOnly && _browseFocus.hasFocus;
-    final titleSize = SettingsTokens.rowTitleSizeOf(context);
-    final metaSize = SettingsTokens.rowSubtitleSizeOf(context);
+    // Field input was desktop 14 before TV token remaps — keep that baseline.
+    final titleSize = SettingsTokens.typeSizeOf(context, 14);
+    final metaSize = SettingsTokens.typeSizeOf(context, 12.5);
     final labelColor = browseHighlight
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.textSecondary;
@@ -2657,7 +2660,7 @@ class SettingsStatusRow extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: ForjaShellColors.textPrimary,
-                    fontSize: _tvBody(context),
+                    fontSize: _tvBody(context, desktop: 14),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -2667,7 +2670,7 @@ class SettingsStatusRow extends StatelessWidget {
                     subtitle!,
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: _tvMeta(context),
+                      fontSize: _tvMeta(context, desktop: 12),
                     ),
                   ),
                 ],

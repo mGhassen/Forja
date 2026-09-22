@@ -92,7 +92,7 @@ void main() {
     expect(ShellTokens.tvBodyFontSize, 9);
     expect(ShellTokens.tvTitleFontSize, 11);
     expect(ShellTokens.tvMetaFontSize, 8);
-    expect(SettingsTokens.sidebarWidth, 340);
+    expect(SettingsTokens.sidebarWidth, 280);
     expect(SettingsTokens.sidebarWidthTv, 240);
     expect(SettingsTokens.detailMaxWidthTv, lessThan(SettingsTokens.detailMaxWidth));
     expect(SettingsTokens.detailMaxWidthTv, 480);
@@ -153,6 +153,7 @@ void main() {
       lessThan(SettingsTokens.sliderThumbRadius),
     );
     expect(SettingsTokens.dialogMaxWidthCapTv, 360);
+    expect(SettingsTokens.dialogMaxWidthCap, 440);
     expect(
       SettingsTokens.dialogMaxWidthCapTv,
       lessThan(SettingsTokens.dialogMaxWidthCap),

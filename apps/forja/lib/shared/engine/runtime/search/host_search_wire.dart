@@ -180,7 +180,8 @@ class KitSearchFilterToken extends StatelessWidget {
     return shellFocusableTap(
       context: context,
       borderRadius: 16,
-      scaleOnFocus: 1.04,
+      scaleOnFocus: 1.0,
+      showFocusFill: true,
       onTap: onClear,
       listIndex: listIndex,
       tvTabId: tabId,
@@ -278,12 +279,9 @@ class KitSearchFilterLens extends StatelessWidget {
           onLeftEdge: onLeftEdge,
           listIndex: listIndex,
           borderRadius: isSubmit || isSegment ? 20 : 16,
-          scaleOnFocus: isSegment
-              ? 1.0
-              : isSubmit
-                  ? 1.02
-                  : 1.04,
-          showFocusFill: isSegment,
+          // Flat inkHover (FocusableControl) — same as search helpers.
+          scaleOnFocus: 1.0,
+          showFocusFill: true,
           onTap: onTap,
           tvZone: ShellTvZone.row,
           tvItemIndex: listIndex,
