@@ -151,6 +151,12 @@ abstract final class ShellTokens {
   static const Duration navRailLabelRevealDelay = Duration(milliseconds: 300);
   /// Hold a nav tab this long to remount hubs and reload navbar config.
   static const Duration navCompleteReloadHold = Duration(seconds: 4);
+  /// Show in-icon loading while holding toward [navCompleteReloadHold].
+  static const Duration navCompleteReloadHoldCue = Duration(milliseconds: 600);
+  static const double navCompleteReloadHoldIconDim = 0.35;
+  static const double navCompleteReloadHoldSpinnerScale = 0.72;
+  static const double navCompleteReloadHoldSpinnerMin = 14;
+  static const double navCompleteReloadHoldSpinnerStroke = 2;
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
   static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
   static const Duration navRailLabelRevealAnimation = Duration(

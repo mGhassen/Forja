@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/nav/nav_complete_reload_hold.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 
 import 'package:forja/shared/lan/lan.dart';
@@ -924,11 +925,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   Timer? _revealTimer;
   Timer? _providerRevealTimer;
   Timer? _providerHoldTimer;
-  Timer? _completeReloadHoldTimer;
   bool _providerHoldFired = false;
-  bool _completeReloadHoldFired = false;
   late final FocusNode _focusNode;
   late final void Function() _hoverClaim = _requestHoverFocus;
+  late final NavCompleteReloadHold _reloadHold;
 
   bool get _hasVerticalFilters =>
       VerticalFiltersRegistry.hasFilters(widget.destination.id);
@@ -939,37 +939,14 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     _focusNode.requestFocus();
   }
 
-  void _startCompleteReloadHold() {
-    _completeReloadHoldFired = false;
-    _completeReloadHoldTimer?.cancel();
-    _completeReloadHoldTimer = Timer(ShellTokens.navCompleteReloadHold, () {
-      if (!mounted) return;
-      _completeReloadHoldFired = true;
-      _providerHoldTimer?.cancel();
-      _providerHoldTimer = null;
-      _providerHoldFired = true;
-      VerticalFiltersRegistry.hideMenu(widget.destination.id);
-      HapticFeedback.mediumImpact();
-      ShellBus.requestCompleteNavbarReload();
-    });
-  }
-
-  void _cancelCompleteReloadHold() {
-    _completeReloadHoldTimer?.cancel();
-    _completeReloadHoldTimer = null;
-  }
-
-  /// Returns true when the 4s complete-reload hold already fired (suppress tap).
-  bool _consumeCompleteReloadHold() {
-    _cancelCompleteReloadHold();
-    if (!_completeReloadHoldFired) return false;
-    _completeReloadHoldFired = false;
-    return true;
-  }
-
   @override
   void initState() {
     super.initState();
+    _reloadHold = NavCompleteReloadHold(
+      onChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
     _focusNode = FocusNode(debugLabel: 'nav-${widget.destination.id}');
     ShellTvFocus.registerNav(widget.destination.id, _focusNode);
   }
@@ -993,7 +970,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     ShellTvFocus.unregisterNav(widget.destination.id, _focusNode);
     _focusNode.dispose();
     _revealTimer?.cancel();
-    _cancelCompleteReloadHold();
+    _reloadHold.dispose();
     _cancelProviderReveal();
     super.dispose();
   }
@@ -1229,6 +1206,14 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         child: icon,
       );
     }
+    final iconBox = widget.customIconSize != null
+        ? renderedIconSize * ShellTokens.navRailIconHoverScale
+        : renderedIconSize;
+    icon = NavReloadHoldIcon(
+      icon: icon,
+      loading: _reloadHold.loading,
+      size: iconBox,
+    );
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: widget.itemSpacing / 2),
@@ -1241,14 +1226,14 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         },
         onKeyEvent: (node, event) {
           if (shellTvIsActivateKey(event)) {
-            _startCompleteReloadHold();
+            _reloadHold.activateDown(hideMenuTabId: widget.destination.id);
             if (_hasVerticalFilters) {
               _providerHoldFired = false;
               _providerHoldTimer?.cancel();
               _providerHoldTimer = Timer(
                 VerticalFiltersRegistry.menuHoldDelay,
                 () {
-                  if (!mounted || _completeReloadHoldFired) return;
+                  if (!mounted || _reloadHold.didComplete) return;
                   _providerHoldFired = true;
                   VerticalFiltersRegistry.showMenu(widget.destination.id);
                   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1260,7 +1245,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
             return KeyEventResult.handled;
           }
           if (shellTvIsActivateKeyUp(event)) {
-            if (_consumeCompleteReloadHold()) {
+            final completed = _reloadHold.didComplete;
+            _reloadHold.activateUp();
+            if (completed) {
+              _reloadHold.consumeCompleted();
               _providerHoldTimer?.cancel();
               _providerHoldTimer = null;
               _providerHoldFired = false;
@@ -1316,29 +1304,26 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               onExit: (_) => _onHoverExit(),
               cursor: SystemMouseCursors.click,
               child: Listener(
-                onPointerDown: (_) => _startCompleteReloadHold(),
-                onPointerUp: (_) {
-                  // After GestureDetector [onLongPress], [onTap] does not run —
-                  // cancel the 4s timer here when the hold never completed.
-                  if (!_completeReloadHoldFired) {
-                    _cancelCompleteReloadHold();
-                  }
-                },
-                onPointerCancel: (_) => _cancelCompleteReloadHold(),
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (e) => _reloadHold.pointerDown(
+                  e,
+                  hideMenuTabId: widget.destination.id,
+                ),
+                onPointerUp: _reloadHold.pointerUp,
+                onPointerCancel: _reloadHold.pointerCancel,
                 child: GestureDetector(
                   onTapDown: (_) => setState(() => _pressed = true),
                   onTapUp: (_) => setState(() => _pressed = false),
-                  onTapCancel: () {
-                    setState(() => _pressed = false);
-                    _cancelCompleteReloadHold();
-                  },
+                  // Do not cancel the 4s reload hold here — long-press (Home
+                  // watch services) wins the arena and would abort the hold.
+                  onTapCancel: () => setState(() => _pressed = false),
                   onTap: () {
-                    if (_consumeCompleteReloadHold()) return;
+                    if (_reloadHold.consumeCompleted()) return;
                     _enterPageFromNav();
                   },
                   onLongPress: _hasVerticalFilters
                       ? () {
-                          if (_completeReloadHoldFired) return;
+                          if (_reloadHold.didComplete) return;
                           VerticalFiltersRegistry.showMenu(
                             widget.destination.id,
                           );
@@ -1369,14 +1354,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                               // the focus grow and make pack PNGs look 8-bit.
                               filterQuality: FilterQuality.medium,
                               child: SizedBox(
-                                width: widget.customIconSize != null
-                                    ? renderedIconSize *
-                                        ShellTokens.navRailIconHoverScale
-                                    : renderedIconSize,
-                                height: widget.customIconSize != null
-                                    ? renderedIconSize *
-                                        ShellTokens.navRailIconHoverScale
-                                    : renderedIconSize,
+                                width: iconBox,
+                                height: iconBox,
                                 child: Center(child: icon),
                               ),
                             ),

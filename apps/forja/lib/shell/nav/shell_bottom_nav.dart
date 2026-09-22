@@ -1,8 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/nav/nav_complete_reload_hold.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
@@ -113,38 +110,23 @@ class _BottomNavItem extends StatefulWidget {
 class _BottomNavItemState extends State<_BottomNavItem> {
   bool _hover = false;
   bool _focused = false;
-  Timer? _completeReloadHoldTimer;
-  bool _completeReloadHoldFired = false;
+  late final NavCompleteReloadHold _reloadHold;
 
   bool get _active => _hover || _focused;
 
-  void _startCompleteReloadHold() {
-    _completeReloadHoldFired = false;
-    _completeReloadHoldTimer?.cancel();
-    _completeReloadHoldTimer = Timer(ShellTokens.navCompleteReloadHold, () {
-      if (!mounted) return;
-      _completeReloadHoldFired = true;
-      VerticalFiltersRegistry.hideMenu(widget.destination.id);
-      HapticFeedback.mediumImpact();
-      ShellBus.requestCompleteNavbarReload();
-    });
-  }
-
-  void _cancelCompleteReloadHold() {
-    _completeReloadHoldTimer?.cancel();
-    _completeReloadHoldTimer = null;
-  }
-
-  bool _consumeCompleteReloadHold() {
-    _cancelCompleteReloadHold();
-    if (!_completeReloadHoldFired) return false;
-    _completeReloadHoldFired = false;
-    return true;
+  @override
+  void initState() {
+    super.initState();
+    _reloadHold = NavCompleteReloadHold(
+      onChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
   }
 
   @override
   void dispose() {
-    _cancelCompleteReloadHold();
+    _reloadHold.dispose();
     super.dispose();
   }
 
@@ -165,6 +147,11 @@ class _BottomNavItemState extends State<_BottomNavItem> {
         child: icon,
       );
     }
+    icon = NavReloadHoldIcon(
+      icon: icon,
+      loading: _reloadHold.loading,
+      size: ShellTokens.navRailIconSize,
+    );
 
     Widget item = Focus(
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -172,24 +159,24 @@ class _BottomNavItemState extends State<_BottomNavItem> {
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),
         child: Listener(
-          onPointerDown: (_) => _startCompleteReloadHold(),
-          onPointerUp: (_) {
-            if (!_completeReloadHoldFired) {
-              _cancelCompleteReloadHold();
-            }
-          },
-          onPointerCancel: (_) => _cancelCompleteReloadHold(),
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (e) => _reloadHold.pointerDown(
+            e,
+            hideMenuTabId: widget.destination.id,
+          ),
+          onPointerUp: _reloadHold.pointerUp,
+          onPointerCancel: _reloadHold.pointerCancel,
           child: InkWell(
             hoverColor: ForjaShellColors.inkHover,
             splashColor: ForjaShellColors.inkSplash,
             onTap: () {
-              if (_consumeCompleteReloadHold()) return;
+              if (_reloadHold.consumeCompleted()) return;
               widget.onTap();
             },
             onLongPress: widget.onLongPress == null
                 ? null
                 : () {
-                    if (_completeReloadHoldFired) return;
+                    if (_reloadHold.didComplete) return;
                     widget.onLongPress!();
                   },
             child: SizedBox(
