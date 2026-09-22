@@ -90,16 +90,15 @@ class RecentSearchHelperTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final policy =
-        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-
     return foundation.RecentSearchHelperTile(
       title: title,
       selected: selected,
       onSelect: onSelect,
       onRemove: onRemove,
       titleFocusNode: titleFocusNode,
-      scaleOnHover: policy.scaleOnHover,
+      // Desktop hybrid: FocusableControl paints inkHover (same as recommendations).
+      // Foundation row MouseRegion would double-fill under nested focusables.
+      scaleOnHover: false,
       titleFontSize: titleFontSize,
       titleFontSizeSelected: titleFontSizeSelected,
       verticalPadding: verticalPadding,
@@ -115,8 +114,6 @@ class RecentSearchHelperTile extends StatelessWidget {
             onTap: onTap,
             borderRadius: 4,
             scaleOnFocus: 1.0,
-            // Row Material in foundation paints inkHover — avoid double fill.
-            showFocusFill: false,
             navLeftAlways: true,
             listIndex: listIndex,
             tvTabId: tvTabId,
@@ -135,7 +132,6 @@ class RecentSearchHelperTile extends StatelessWidget {
             },
             ensureVisibleMode: ShellPaintEnsureVisible.row,
             onFocusChange: onFocusChange,
-            suppressInkHover: true,
             child: child,
           ),
       removeInteractiveBuilder: ({
@@ -149,7 +145,6 @@ class RecentSearchHelperTile extends StatelessWidget {
             onTap: onTap,
             borderRadius: 4,
             scaleOnFocus: 1.0,
-            showFocusFill: false,
             tvTabId: tvTabId,
             tvRowId: _removeRowId,
             tvZone: ShellTvZone.chipStrip,
@@ -161,7 +156,6 @@ class RecentSearchHelperTile extends StatelessWidget {
             onRightEdge: onRightPastRemove,
             ensureVisibleMode: ShellPaintEnsureVisible.row,
             onFocusChange: onFocusChange,
-            suppressInkHover: true,
             child: child,
           ),
     );
