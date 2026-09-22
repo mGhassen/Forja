@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
@@ -702,6 +703,11 @@ class SyncService {
       accountId: accountId,
       profileId: profileId,
     );
+    await Engine.rebindLocalStores(
+      accountId: accountId,
+      profileId: profileId,
+    );
+    await PortalStore.migrateLegacyInventoryIfNeeded();
     await ProviderScoreMemory.syncIdentityScope();
   }
 

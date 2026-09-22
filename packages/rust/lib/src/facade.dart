@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'engine.dart';
+import 'local_data_scope.dart';
 import 'engine_jobs.dart';
 import 'engine_worker.dart';
 import 'isolate_runner.dart';
@@ -42,7 +43,16 @@ abstract final class Engine {
           _enabled = true;
           _libraryPath = RustLib.loadedLibraryPath ?? candidate;
           final storePath = storagePath ?? await _defaultStoragePath();
+          if (storagePath == null) {
+            await _migrateLegacyEngineStoreIfNeeded(storePath);
+          }
           _openStorage(storePath);
+          final catalogPath = await catalogDbPathForIdentity(
+            accountId: LocalDataScope.guestAccountId,
+            profileId: LocalDataScope.guestProfileId,
+          );
+          await File(catalogPath).parent.create(recursive: true);
+          _openCatalogDb(catalogPath);
           try {
             await _migrateLegacyPrefsIfNeeded();
           } catch (e) {
@@ -69,9 +79,58 @@ abstract final class Engine {
     }
   }
 
-  static Future<String> _defaultStoragePath() async {
+  /// `{support}/accounts/{a}/profiles/{p}/forja_engine_store.json`
+  static Future<String> storagePathForIdentity({
+    required String accountId,
+    required String profileId,
+  }) async {
     final dir = await getApplicationSupportDirectory();
-    return p.join(dir.path, 'forja_engine_store.json');
+    return p.join(
+      dir.path,
+      'accounts',
+      accountId,
+      'profiles',
+      profileId,
+      'forja_engine_store.json',
+    );
+  }
+
+  /// `{support}/accounts/{a}/profiles/{p}/catalog.sqlite`
+  static Future<String> catalogDbPathForIdentity({
+    required String accountId,
+    required String profileId,
+  }) async {
+    final dir = await getApplicationSupportDirectory();
+    return p.join(
+      dir.path,
+      'accounts',
+      accountId,
+      'profiles',
+      profileId,
+      'catalog.sqlite',
+    );
+  }
+
+  static Future<String> _defaultStoragePath() async {
+    return storagePathForIdentity(
+      accountId: LocalDataScope.guestAccountId,
+      profileId: LocalDataScope.guestProfileId,
+    );
+  }
+
+  static Future<void> _migrateLegacyEngineStoreIfNeeded(String scopedPath) async {
+    final scoped = File(scopedPath);
+    if (await scoped.exists()) return;
+    final support = await getApplicationSupportDirectory();
+    final legacy = File(p.join(support.path, 'forja_engine_store.json'));
+    if (!await legacy.exists()) return;
+    await scoped.parent.create(recursive: true);
+    await legacy.copy(scopedPath);
+    final bak = File('${legacy.path}.bak');
+    if (await bak.exists()) {
+      await bak.copy('$scopedPath.bak');
+    }
+    debugPrint('[Engine] migrated legacy forja_engine_store.json → $scopedPath');
   }
 
   static void _openStorage(String path) {
@@ -81,6 +140,49 @@ abstract final class Engine {
       throw StateError('storage_open failed: ${parsed['error']}');
     }
     debugPrint('[Engine] storage: $path');
+  }
+
+  static void _openCatalogDb(String path) {
+    if (!isReady) return;
+    final raw = RustLib.instance.iptvCatalogJson(
+      jsonEncode({'action': 'open', 'path': path}),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) {
+      debugPrint('[Engine] catalog_db open failed: ${parsed['error']}');
+      return;
+    }
+    debugPrint('[Engine] catalog_db: $path');
+  }
+
+  /// Rebind little KV + IPTV catalog SQLite to the active identity (RFC-116).
+  static Future<void> rebindLocalStores({
+    required String? accountId,
+    required String? profileId,
+  }) async {
+    if (!isReady) return;
+    final account = (accountId ?? LocalDataScope.guestAccountId).trim().isEmpty
+        ? LocalDataScope.guestAccountId
+        : (accountId ?? LocalDataScope.guestAccountId)
+            .trim()
+            .replaceAll(RegExp(r'[^\w\-.]'), '_');
+    final profile = (profileId ?? LocalDataScope.guestProfileId).trim().isEmpty
+        ? LocalDataScope.guestProfileId
+        : (profileId ?? LocalDataScope.guestProfileId)
+            .trim()
+            .replaceAll(RegExp(r'[^\w\-.]'), '_');
+    final storePath = await storagePathForIdentity(
+      accountId: account,
+      profileId: profile,
+    );
+    await _migrateLegacyEngineStoreIfNeeded(storePath);
+    _openStorage(storePath);
+    final catalogPath = await catalogDbPathForIdentity(
+      accountId: account,
+      profileId: profile,
+    );
+    await File(catalogPath).parent.create(recursive: true);
+    _openCatalogDb(catalogPath);
   }
 
   static void _requireReady() {

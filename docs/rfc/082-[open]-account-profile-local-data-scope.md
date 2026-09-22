@@ -2,14 +2,15 @@
 
 **Status:** open  
 **Depends on:** [RFC-036](036-[open]-accounts-iptv-profile-settings.md), issue 213 (plugin disk scope), issue 217 (IPTV wipe-on-switch)  
-**Area:** sync / settings / local storage
+**Area:** sync / settings / local storage  
+**Related:** [RFC-116](fixed/116-[fixed]-local-storage-kv-sqlite.md) (path-scoped KV + portal inventory + SQLite catalog)
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **3 / 5** components · **6 / 10** acceptance |
-| **Current slice** | LocalDataScope + Data & backup clears for watch / scores / extract / IPTV catalog caches |
+| **Progress** | **5 / 5** components · **9 / 10** acceptance |
+| **Current slice** | Path-scoped KV + portal inventory shipped (RFC-116); backup export A10 still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,8 +23,8 @@
 | 1 | R82-C01 | `LocalDataScope` (`base@accountId:profileId`, guest = `local:default`) | ✅ |
 | 2 | R82-C02 | SyncService configures LocalDataScope + plugin disk + IPTV catalog disk + provider scores together | ✅ |
 | 3 | R82-C03 | Settings → Data & backup clears only the active identity for scoped stores | ✅ |
-| 4 | R82-C04 | IPTV portal inventory / favorites / passwords path-or-key scoped (replace wipe-only) | ⬜ |
-| 5 | R82-C05 | Synced settings KV path-scoped (retire wipe+pull as sole isolation) | ⬜ |
+| 4 | R82-C04 | IPTV portal inventory / favorites / passwords path-or-key scoped (replace wipe-only) | ✅ |
+| 5 | R82-C05 | Synced settings KV path-scoped (retire wipe+pull as sole isolation) | ✅ |
 
 ---
 
@@ -38,8 +39,8 @@
 | 5 | R82-A05 | Settings clear continue watching / scores / IPTV catalog cache does not wipe another profile | ✅ |
 | 6 | R82-A06 | One-time migrate bare legacy keys into the first active identity | ✅ |
 | 7 | R82-A07 | Images / WebView / update installers documented as device-shared ephemeral | ✅ |
-| 8 | R82-A08 | IPTV portal list + Keychain passwords isolated without relying only on wipe | ⬜ |
-| 9 | R82-A09 | `forja_engine_store.json` / synced domains path-scoped per identity | ⬜ |
+| 8 | R82-A08 | IPTV portal list + Keychain passwords isolated without relying only on wipe | ✅ |
+| 9 | R82-A09 | `forja_engine_store.json` / synced domains path-scoped per identity | ✅ |
 | 10 | R82-A10 | Backup export/import is active-identity only (no other profile bleed) | ⬜ |
 
 ---

@@ -559,6 +559,11 @@ class RustLib {
     return _readString(_native.ffi_provider_health_json(ptr));
   });
 
+  String iptvCatalogJson(String requestJson) => using((arena) {
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_iptv_catalog_json(ptr));
+  });
+
   String storageOpen(String path) => using((arena) {
     final ptr = path.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     return _readString(_native.ffi_storage_open(ptr));
@@ -1033,6 +1038,9 @@ final class _FfiNative {
             'ffi_provider_health_json',
           )
           .asFunction(),
+      ffi_iptv_catalog_json = lib
+          .lookup<ffi.NativeFunction<_StoragePathNative>>('ffi_iptv_catalog_json')
+          .asFunction(),
       ffi_storage_open = lib
           .lookup<ffi.NativeFunction<_StoragePathNative>>('ffi_storage_open')
           .asFunction(),
@@ -1233,6 +1241,7 @@ final class _FfiNative {
   ffi_seek111477_purge_cache_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_provider_health_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) ffi_iptv_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) ffi_storage_open;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_storage_get_json;

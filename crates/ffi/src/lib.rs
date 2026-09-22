@@ -794,6 +794,11 @@ fn provider_health_json(payload_json: String) -> String {
     engine::handle_health_json(&payload_json)
 }
 
+
+fn iptv_catalog_json(request_json: String) -> String {
+    iptv::catalog_db::handle_json(&request_json)
+}
+
 fn storage_open(path: String) -> String {
     match storage::open(&path) {
         Ok(()) => r#"{"ok":true}"#.into(),

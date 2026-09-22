@@ -119,10 +119,9 @@ class SyncDomainBridge {
 
   /// Fail-closed IPTV cache wipe for profile boundaries (issue 217).
   ///
-  /// [PortalStore] is device-global. On profile switch / active-profile delete we
-  /// must clear portals + passwords **before** cloud pull — never keep the prior
-  /// profile's inventory when pull fails, times out, or continues early.
-  /// Cache-only (`scheduleSync: false`); empty local must not push to cloud.
+  /// Clears the **active identity** portal inventory before cloud pull (scoped
+  /// prefs / vault). Other profiles' rows stay on disk. Cache-only
+  /// (`scheduleSync: false`); empty local must not push to cloud.
   Future<void> wipeLocalIptvInventoryForProfileBoundary({
     bool notify = true,
   }) async {
@@ -137,9 +136,9 @@ class SyncDomainBridge {
 
   /// Wipe synced local domains to platform defaults (no prior-profile bleed).
   ///
-  /// Local KV is a device-global **cache**; every profile switch/create must
-  /// reset before applying that profile's cloud payload. Never schedules a
-  /// cloud push - empty/default cache must not overwrite cloud.
+  /// Local KV is path-scoped per identity; wipe resets the **active** store
+  /// before applying that profile's cloud payload. Never schedules a cloud
+  /// push - empty/default cache must not overwrite cloud.
   ///
   /// When [notify] is false, UI listeners are not bumped mid-wipe (caller
   /// should notify once after the final cloud import so the shell does not

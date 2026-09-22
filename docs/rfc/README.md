@@ -102,7 +102,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [079-[fixed]-…](fixed/079-[fixed]-sources-id-middleware.md) | Sources ID middleware (catalog → providers / torrents / Stremio / Nuvio) | v1.4 | fixed | Complete · 4/4 · 8/8 | — |
 | [080-[fixed]-…](fixed/080-[fixed]-post-login-packs-onboarding.md) | Post-login packs onboarding (`onboarded` + official install) | v1.4 | fixed | Complete · 5/5 · 13/13 | — |
 | [081-[fixed]-…](fixed/081-[fixed]-host-only-platform-nav-defaults.md) | Host-only platform nav defaults (no pack hub ids in `PlatformDefaults`) | v1.4 | fixed | **Complete** · **2 / 2** · **6 / 6** | — |
-| [082-[open]-…](082-[open]-account-profile-local-data-scope.md) | Account / profile / guest local data scope | v1.4 | open | **3 / 5** · **6 / 10** | — |
+| [082-[open]-…](082-[open]-account-profile-local-data-scope.md) | Account / profile / guest local data scope | v1.4 | open | **5 / 5** · **9 / 10** | [116](fixed/116-[fixed]-local-storage-kv-sqlite.md) |
 | [083-[fixed]-…](fixed/083-[fixed]-in-app-mini-player.md) | In-app mini player (inside Forja — not OS PiP) | v1.4 | fixed | Complete · 9/9 · 26/26 | — |
 | [083-[fixed]-…](fixed/083-[fixed]-pack-manifest-bundle-list.md) | Pack manifest `bundle` file list install | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 | [084-[canceled]-…](canceled/084-[canceled]-live-sports-host-feature-kit.md) | Live Sports host feature + kit standard layout | v1.4 | canceled | **Canceled** · superseded by [087](fixed/087-[fixed]-live-sports-pack-only.md) | — |
@@ -137,6 +137,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [113-[open]-…](113-[open]-iptv-mediakit-direct-reconnect.md) | IPTV MediaKit — direct CDN + lavf reconnect | — | open | **12 / 12** · **2 / 9** | — |
 | [114-[open]-…](114-[open]-debrid-magnet-resolve-packs.md) | Debrid magnet-resolve packs (kind: debrid; delete crates/debrid) | — | open | **6 / 6** · **12 / 12** | — |
 | [115-[open]-…](115-[open]-foundation-motion-presets.md) | Foundation motion presets (pack-overridable) | — | open | **6 / 6** · **10 / 10** | — |
+| [116-[fixed]-…](fixed/116-[fixed]-local-storage-kv-sqlite.md) | Local storage — little KV + rusqlite IPTV catalog | — | fixed | **Complete · 5 / 5** · **12 / 12** | [082](082-[open]-account-profile-local-data-scope.md) |
 
 ## Related
 

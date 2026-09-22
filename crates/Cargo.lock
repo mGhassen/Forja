@@ -44,6 +44,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.8.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
+dependencies = [
+ "cfg-if",
+ "once_cell",
+ "version_check",
+ "zerocopy",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -84,7 +96,7 @@ dependencies = [
 
 [[package]]
 name = "anilist"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "serde",
  "serde_json",
@@ -93,7 +105,7 @@ dependencies = [
 
 [[package]]
 name = "anime_extractors"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "aes",
  "base64",
@@ -546,7 +558,7 @@ dependencies = [
 
 [[package]]
 name = "books"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "regex",
  "scraper",
@@ -674,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "catalog"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "regex",
  "scraper",
@@ -1182,7 +1194,7 @@ dependencies = [
 
 [[package]]
 name = "engine"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1245,6 +1257,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fallible-iterator"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
+
+[[package]]
+name = "fallible-streaming-iterator"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
+
+[[package]]
 name = "fastrand"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1252,7 +1276,7 @@ checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 
 [[package]]
 name = "ffi"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "engine",
  "host-http",
@@ -1637,6 +1661,9 @@ name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
+dependencies = [
+ "ahash",
+]
 
 [[package]]
 name = "hashbrown"
@@ -1658,6 +1685,15 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash",
+]
+
+[[package]]
+name = "hashlink"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ba4ff7128dee98c7dc9794b6a411377e1404dba1c97deb8d1a55297bd25d8af"
+dependencies = [
+ "hashbrown 0.14.5",
 ]
 
 [[package]]
@@ -1692,7 +1728,7 @@ dependencies = [
 
 [[package]]
 name = "host-http"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "base64",
  "reqwest",
@@ -1983,7 +2019,7 @@ dependencies = [
 
 [[package]]
 name = "indexer"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "base64",
  "quick-xml 0.37.5",
@@ -2045,7 +2081,7 @@ checksum = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2"
 
 [[package]]
 name = "iptv"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "aes",
  "base64",
@@ -2057,6 +2093,7 @@ dependencies = [
  "pbkdf2",
  "regex",
  "reqwest",
+ "rusqlite",
  "serde",
  "serde_json",
  "sha2",
@@ -2068,7 +2105,7 @@ dependencies = [
 
 [[package]]
 name = "iptv-worker"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "clap",
  "iptv",
@@ -2110,7 +2147,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jellyfin"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "reqwest",
  "serde",
@@ -2142,7 +2179,7 @@ dependencies = [
 
 [[package]]
 name = "lan"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "axum",
  "http",
@@ -2510,6 +2547,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsqlite3-sys"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e99fb7a497b1e3339bc746195567ed8d3e24945ecd636e3619d20b9de9e9149"
+dependencies = [
+ "cc",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2535,7 +2583,7 @@ checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
 name = "live-sports"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "base64",
  "iptv",
@@ -2584,7 +2632,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
 name = "manga"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "regex",
  "scraper",
@@ -2650,7 +2698,7 @@ dependencies = [
 
 [[package]]
 name = "media-extra"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "base64",
  "host-http",
@@ -2663,7 +2711,7 @@ dependencies = [
 
 [[package]]
 name = "media-metadata"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "serde",
  "serde_json",
@@ -2741,7 +2789,7 @@ dependencies = [
 
 [[package]]
 name = "music"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "regex",
  "reqwest",
@@ -3132,7 +3180,7 @@ dependencies = [
 
 [[package]]
 name = "proxy"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "aes",
  "axum",
@@ -3587,6 +3635,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rusqlite"
+version = "0.32.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7753b721174eb8ff87a9a0e799e2d7bc3749323e773db92e0984debb00019d6e"
+dependencies = [
+ "bitflags 2.13.0",
+ "fallible-iterator",
+ "fallible-streaming-iterator",
+ "hashlink",
+ "libsqlite3-sys",
+ "smallvec",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3736,7 +3798,7 @@ dependencies = [
 
 [[package]]
 name = "scrapers"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "regex",
  "serde",
@@ -4055,7 +4117,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "storage"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "serde",
  "serde_json",
@@ -4063,7 +4125,7 @@ dependencies = [
 
 [[package]]
 name = "stream"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "serde",
  "serde_json",
@@ -4072,7 +4134,7 @@ dependencies = [
 
 [[package]]
 name = "stremio"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "reqwest",
  "serde",
@@ -4115,7 +4177,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "subtitles"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "regex",
  "serde",
@@ -4308,7 +4370,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tmdb"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "serde",
  "serde_json",
@@ -4440,7 +4502,7 @@ dependencies = [
 
 [[package]]
 name = "torrent"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "axum",
  "futures-util",
@@ -4535,7 +4597,7 @@ dependencies = [
 
 [[package]]
 name = "trakt"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "reqwest",
  "serde",
@@ -4806,7 +4868,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "1.2.78"
+version = "1.2.79"
 dependencies = [
  "aes",
  "base64",
@@ -4833,6 +4895,12 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "vcpkg"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "version_check"

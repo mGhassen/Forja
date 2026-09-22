@@ -4,6 +4,7 @@ import 'package:rust/rust.dart';
 ///
 /// Keys are pack-chosen; host never interprets IPTV / portal semantics.
 /// Backed by [SecureSettings] (Keychain / Keystore / prefs vault).
+/// Storage keys are identity-scoped (RFC-082 / RFC-116).
 abstract final class EngineVault {
   EngineVault._();
 
@@ -12,10 +13,25 @@ abstract final class EngineVault {
   static String _storageKey(String key) {
     final k = key.trim();
     if (k.isEmpty) return '';
-    return '$_prefix$k';
+    return LocalDataScope.storageKey('$_prefix$k');
+  }
+
+  static Future<void> _ensureMigrated(String key) async {
+    final k = key.trim();
+    if (k.isEmpty) return;
+    final bare = '$_prefix$k';
+    final scoped = LocalDataScope.storageKey(bare);
+    if (scoped == bare) return;
+    final existing = await SecureSettings.read(scoped);
+    if (existing != null && existing.isNotEmpty) return;
+    final legacy = await SecureSettings.read(bare);
+    if (legacy == null || legacy.isEmpty) return;
+    await SecureSettings.write(scoped, legacy);
+    await SecureSettings.delete(bare);
   }
 
   static Future<String?> get(String key) async {
+    await _ensureMigrated(key);
     final sk = _storageKey(key);
     if (sk.isEmpty) return null;
     final raw = await SecureSettings.read(sk);
@@ -24,6 +40,7 @@ abstract final class EngineVault {
   }
 
   static Future<bool> set(String key, String value) async {
+    await _ensureMigrated(key);
     final sk = _storageKey(key);
     if (sk.isEmpty) return false;
     final v = value;
@@ -40,6 +57,7 @@ abstract final class EngineVault {
   }
 
   static Future<bool> remove(String key) async {
+    await _ensureMigrated(key);
     final sk = _storageKey(key);
     if (sk.isEmpty) return false;
     try {

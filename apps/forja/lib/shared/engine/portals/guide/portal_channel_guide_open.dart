@@ -3,6 +3,7 @@ import 'package:forja/shared/engine/portals/guide/channel_guides.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
+import 'package:forja/shared/engine/portals/store/iptv_catalog_db.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
 
 /// Build in-player channel guide for IPTV live open (Search + grid chrome).
@@ -115,6 +116,17 @@ abstract final class PortalChannelGuideOpen {
   ) async {
     final mem = _fetchFromShelf(portalKey, section);
     if (mem != null) return mem;
+    final exported = IptvCatalogDb.exportShelf(portalKey, section);
+    if (exported != null) {
+      final cats = _asMaps(exported['categories']);
+      final streams = _asMaps(exported['streams']);
+      if (cats.isNotEmpty || streams.isNotEmpty) {
+        return PortalCatalogFetch(
+          categories: _categoriesFromShelf(cats),
+          streams: _streamsFromShelf(streams, section),
+        );
+      }
+    }
     final snap = await PortalCatalogShelfStore.load(portalKey, section);
     if (snap == null ||
         (snap.streams.isEmpty && snap.categories.isEmpty)) {
@@ -124,6 +136,14 @@ abstract final class PortalChannelGuideOpen {
       categories: _categoriesFromShelf(snap.categories),
       streams: _streamsFromShelf(snap.streams, section),
     );
+  }
+
+  static List<Map<String, dynamic>> _asMaps(dynamic raw) {
+    if (raw is! List) return const [];
+    return [
+      for (final e in raw)
+        if (e is Map) Map<String, dynamic>.from(e),
+    ];
   }
 
   static List<PortalCategory> _categoriesFromShelf(

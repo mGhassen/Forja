@@ -16,7 +16,7 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 
 - **Stream cache** — saved webstreaming stream URLs and seek buffers for **this profile / Guest** (plus idle torrent downloads on phone/desktop; torrent temp is shared on the device). Next Play re-resolves. Settings and continue watching stay.
 - **Images & WebView**. Poster thumbnails and extractor WebView caches on **this device** (shared; not profile-split). Images download again when needed.
-- **IPTV portal cache** (when the IPTV tab is visible). Saved Live/Movies/Series catalogs, live-channel health checks, and channel scan results for **this profile / Guest**. Saved portals, favorites, and M3U playlists stay. Re-fetches on next IPTV open.
+- **IPTV portal cache** (when the IPTV tab is visible). Clears the local catalog database (Live/Movies/Series shelves), live-channel “alive” marks, and channel-scan results for **this profile / Guest**. Saved portals, favorites, and M3U playlists stay. Re-fetches on next IPTV open.
 - **Downloaded updates** (desktop). Installer files from in-app update (`.dmg`, `.exe`, AppImage) on **this device**. Safe to remove after you install.
 
 ### Learned

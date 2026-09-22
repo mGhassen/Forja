@@ -6,7 +6,9 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 import 'package:forja/shared/services/update/app_update_download_storage.dart';
+import 'package:forja/shared/engine/portals/store/iptv_catalog_db.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/probe/provider_score_probe_sync.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
@@ -36,9 +38,12 @@ abstract final class SettingsDataCleaner {
     } catch (_) {}
   }
 
-  /// Portal catalog shelves (host file cache for `catalog_page`).
+  /// IPTV catalog SQLite + legacy shelf files + alive / channel-scan (active identity).
   static Future<void> clearPortalCaches() async {
+    await IptvCatalogDb.clearAll();
     await PortalCatalogShelfStore.clearAll();
+    await PortalAliveStore.clearAll();
+    await PortalChannelResultsStore.clearAll();
   }
 
   static Future<void> clearImageAndWebViewCaches() async {

@@ -1,15 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/portals/store/iptv_catalog_db.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
 import 'package:rust/rust.dart';
 
-/// Host-owned portal catalog paging (RFC-109 / issue 290).
+/// Host-owned portal catalog paging (RFC-109 / RFC-116).
 ///
-/// Fetches + caches full shelves in Dart (file + Isolate). Returns only one
-/// page of stream maps to pack JS — never the full `streams[]` array.
+/// Fetches shelves into Rust SQLite; returns one page of stream maps to pack JS
+/// — never the full `streams[]` array across the bridge.
 abstract final class PortalCatalogPage {
   PortalCatalogPage._();
 
@@ -51,7 +53,7 @@ abstract final class PortalCatalogPage {
         body['force'] == true ||
         body['skipCache'] == true;
 
-    final snap = await _ensureShelf(
+    final ensured = await _ensureShelf(
       portal: portal,
       portalKey: portalKey,
       sectionWire: sectionWire,
@@ -60,7 +62,7 @@ abstract final class PortalCatalogPage {
           _timeoutSecs(section),
       refresh: refresh,
     );
-    if (snap == null) {
+    if (!ensured) {
       return {
         'ok': false,
         'error': 'catalog_failed',
@@ -70,98 +72,49 @@ abstract final class PortalCatalogPage {
       };
     }
 
-    final categories = snap.categories;
-    final sort = (body['sort'] ?? 'playlist').toString().trim();
-    final q = (body['q'] ?? body['query'] ?? '').toString().trim();
-    var categoryId =
-        (body['category_id'] ?? body['categoryId'] ?? '').toString().trim();
-
-    final hasStreamIdsKey =
-        body.containsKey('stream_ids') || body.containsKey('streamIds');
-    final streamIdsRaw = body['stream_ids'] ?? body['streamIds'];
-    final streamIds = <String>[];
-    if (streamIdsRaw is List) {
-      for (final e in streamIdsRaw) {
-        final id = e.toString().trim();
-        if (id.isNotEmpty) streamIds.add(id);
-      }
-    }
-
-    var page = (body['page'] as num?)?.toInt() ?? 1;
-    if (page < 1) page = 1;
-    var pageSize = (body['page_size'] as num?)?.toInt() ??
-        (body['pageSize'] as num?)?.toInt() ??
-        (body['limit'] as num?)?.toInt() ??
-        defaultPageSize;
-    if (pageSize < 1) pageSize = defaultPageSize;
-    if (streamIds.isNotEmpty) {
-      // Favorites / watched — return requested ids (capped).
-      if (pageSize < streamIds.length) pageSize = streamIds.length;
-      if (pageSize > 256) pageSize = 256;
-    } else if (pageSize > maxPageSize) {
-      pageSize = maxPageSize;
-    }
-
-    // Favorites / Already watched pages: stream_ids is the page (even when
-    // empty). Never fall through to first category or the whole shelf.
-    // Synthetic `__favorites__` / `__watched__` without stream_ids → empty.
-    final syntheticCat = categoryId.startsWith('__');
-    if (hasStreamIdsKey || syntheticCat) {
-      categoryId = '';
-    } else if (streamIds.isEmpty && q.isEmpty && categoryId.isEmpty) {
-      // Search / id lookup: scan whole shelf. Else default to first category
-      // when none selected (rail opens on first group — never ship every stream).
-      categoryId = _firstCategoryId(categories);
-    }
-
-    final filtered = filterSort(
-      streams: snap.streams,
-      categoryId: categoryId,
-      q: q,
-      streamIds: streamIds,
-      streamIdsSet: hasStreamIdsKey || syntheticCat,
-      sort: sort,
-    );
-
-    final start = (page - 1) * pageSize;
-    final slice = start >= filtered.length
-        ? const <Map<String, dynamic>>[]
-        : filtered.sublist(
-            start,
-            start + pageSize > filtered.length
-                ? filtered.length
-                : start + pageSize,
-          );
-    final hasMore = start + slice.length < filtered.length;
-
-    return {
-      'ok': true,
-      'categories': categories,
-      'streams': slice,
-      'page': page,
-      'pageSize': pageSize,
-      'page_size': pageSize,
-      'hasMore': hasMore,
-      'has_more': hasMore,
-      'total': filtered.length,
-      'categoryId': categoryId,
-      'category_id': categoryId,
+    final pageBody = <String, dynamic>{
+      ...body,
+      'portal_hash': IptvCatalogDb.portalHash(portalKey),
+      'section': sectionWire,
     };
+    final page = IptvCatalogDb.page(pageBody);
+    if (page['error'] != null && page['ok'] != true) {
+      return {
+        'ok': false,
+        'error': page['error']?.toString() ?? 'page_failed',
+        'categories': [],
+        'streams': [],
+      };
+    }
+    return page;
   }
 
-  static Future<PortalCatalogShelfSnap?> _ensureShelf({
+  static Future<bool> _ensureShelf({
     required Portal portal,
     required String portalKey,
     required String sectionWire,
     required int timeoutSecs,
     required bool refresh,
   }) async {
+    if (!refresh && IptvCatalogDb.hasShelf(portalKey, sectionWire)) {
+      return true;
+    }
+
+    // One-time import from legacy JSON shelf files when SQLite is empty.
     if (!refresh) {
-      final cached =
-          await PortalCatalogShelfStore.load(portalKey, sectionWire);
-      if (cached != null &&
-          (cached.streams.isNotEmpty || cached.categories.isNotEmpty)) {
-        return cached;
+      final legacy = await PortalCatalogShelfStore.load(portalKey, sectionWire);
+      if (legacy != null &&
+          (legacy.streams.isNotEmpty || legacy.categories.isNotEmpty)) {
+        final ok = await IptvCatalogDb.replaceShelf(
+          portalKey: portalKey,
+          section: sectionWire,
+          categories: legacy.categories,
+          streams: legacy.streams,
+        );
+        if (ok) {
+          unawaited(PortalCatalogShelfStore.deleteShelf(portalKey, sectionWire));
+          return true;
+        }
       }
     }
 
@@ -177,32 +130,31 @@ abstract final class PortalCatalogPage {
         if (portal.userAgent.isNotEmpty) 'user_agent': portal.userAgent,
       };
       final raw = await runIptvXtreamJson(jsonEncode(body));
-      if (raw.trim().isEmpty) return null;
+      if (raw.trim().isEmpty) return false;
       final parsed = await Isolate.run(() {
         final v = jsonDecode(raw);
         if (v is! Map) return null;
         return Map<String, dynamic>.from(v);
       });
-      if (parsed == null) return null;
+      if (parsed == null) return false;
       if (parsed['error'] != null) {
         debugPrint(
           '[PortalCatalogPage] catalog error: ${parsed['error']}',
         );
-        return null;
+        return false;
       }
       final cats = _asMapList(parsed['categories']);
       final streams = _asMapList(parsed['streams']);
-      final snap = PortalCatalogShelfSnap(
+      if (cats.isEmpty && streams.isEmpty) return false;
+      return IptvCatalogDb.replaceShelf(
+        portalKey: portalKey,
+        section: sectionWire,
         categories: cats,
         streams: streams,
       );
-      if (cats.isNotEmpty || streams.isNotEmpty) {
-        await PortalCatalogShelfStore.save(portalKey, sectionWire, snap);
-      }
-      return snap;
     } catch (e, st) {
       debugPrint('[PortalCatalogPage] fetch failed: $e\n$st');
-      return null;
+      return false;
     }
   }
 
@@ -214,22 +166,12 @@ abstract final class PortalCatalogPage {
     ];
   }
 
-  static String _firstCategoryId(List<Map<String, dynamic>> cats) {
-    for (final c in cats) {
-      final id = (c['id'] ?? c['category_id'] ?? '').toString().trim();
-      if (id.isNotEmpty) return id;
-    }
-    return '';
-  }
-
   @visibleForTesting
   static List<Map<String, dynamic>> filterSort({
     required List<Map<String, dynamic>> streams,
     String categoryId = '',
     String q = '',
     List<String> streamIds = const [],
-    /// When true, [streamIds] is the page filter — empty list → empty page
-    /// (Favorites / Already watched), not “no filter / whole shelf”.
     bool streamIdsSet = false,
     String sort = 'playlist',
   }) {

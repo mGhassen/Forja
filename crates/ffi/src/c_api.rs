@@ -654,6 +654,11 @@ pub unsafe extern "C" fn ffi_provider_health_json(payload_json: *const c_char) -
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_iptv_catalog_json(request_json: *const c_char) -> *mut c_char {
+    to_c_string(crate::iptv_catalog_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_storage_open(path: *const c_char) -> *mut c_char {
     to_c_string(crate::storage_open(from_c_str(path)))
 }
