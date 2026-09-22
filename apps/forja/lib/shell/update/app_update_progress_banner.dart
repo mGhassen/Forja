@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 
@@ -43,8 +44,11 @@ class AppUpdateProgressBanner extends StatelessWidget {
         final current = download.state.value;
         final version = current.updateInfo?.latestVersion;
         final percent = (current.progress * 100).clamp(0, 100).round();
+        final tv = ShellPaintScope.usesTvDensityOf(context);
+        final stackGap =
+            ShellTokens.chromeScale(ShellTokens.toastStackGap, tv: tv);
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: EdgeInsets.only(bottom: stackGap),
           child: _UpdateProgressBanner(
             version: version,
             percent: percent,
@@ -76,6 +80,19 @@ class _UpdateProgressBanner extends StatelessWidget {
     final title = version == null
         ? 'Downloading update…'
         : 'Downloading Forja $version…';
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final titleFont = tv
+        ? ShellTokens.tvTypeSize(ShellTokens.toastMessageFontSize)
+        : ShellTokens.toastMessageFontSize;
+    final metaFont = tv
+        ? ShellTokens.tvTypeSize(ShellTokens.toastActionFontSize)
+        : ShellTokens.toastActionFontSize;
+    final iconGap =
+        ShellTokens.chromeScale(ShellTokens.toastMessageIconGap, tv: tv);
+    final closeSize =
+        ShellTokens.chromeScale(ShellTokens.toastCloseSize, tv: tv);
+    final barGap = ShellTokens.chromeScale(ShellTokens.toastStackGap, tv: tv);
+    final barH = ShellTokens.chromeScale(4, tv: tv);
 
     return ForjaToastChrome(
       kind: ForjaToastKind.info,
@@ -88,16 +105,16 @@ class _UpdateProgressBanner extends StatelessWidget {
             children: [
               Icon(
                 Icons.system_update_alt_rounded,
-                size: ShellPaintScope.iconOf(context, 18),
+                size: ShellPaintScope.iconOf(context, ShellTokens.toastIconSize),
                 color: style.accent,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: iconGap),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: ForjaShellColors.textPrimary,
-                    fontSize: 13,
+                    fontSize: titleFont,
                     fontWeight: FontWeight.w600,
                     height: 1.3,
                   ),
@@ -107,7 +124,7 @@ class _UpdateProgressBanner extends StatelessWidget {
                 '$percent%',
                 style: TextStyle(
                   color: style.accent,
-                  fontSize: 12,
+                  fontSize: metaFont,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -115,26 +132,29 @@ class _UpdateProgressBanner extends StatelessWidget {
                 onPressed: onClose,
                 icon: Icon(
                   Icons.close_rounded,
-                  size: ShellPaintScope.iconOf(context, 16),
+                  size: ShellPaintScope.iconOf(
+                    context,
+                    ShellTokens.toastCloseIconSize,
+                  ),
                   color: ForjaShellColors.textSecondary.withValues(
                     alpha: 0.8,
                   ),
                 ),
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 28,
-                  minHeight: 28,
+                constraints: BoxConstraints(
+                  minWidth: closeSize,
+                  minHeight: closeSize,
                 ),
-                splashRadius: 14,
+                splashRadius: closeSize / 2,
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: barGap),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               value: progress > 0 ? progress.clamp(0.0, 1.0) : null,
-              minHeight: 4,
+              minHeight: barH,
               backgroundColor: ForjaShellColors.borderSubtle,
               valueColor: AlwaysStoppedAnimation<Color>(style.accent),
             ),

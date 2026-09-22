@@ -1159,6 +1159,30 @@ abstract final class ShellTokens {
   static const double emptyFeaturesCardGapCompact = 10;
   static const Duration emptyFeaturesCardAnim = Duration(milliseconds: 140);
 
+  /// Top-right status toast column ([ForjaToastHost]).
+  ///
+  /// Chrome (width / pad / icons) × [tvChromeScale]; message type uses
+  /// [tvTypeSize] — do not chrome-scale fonts.
+  static const double toastWidth = 360;
+  static const double toastInset = 16;
+  static const double toastStackGap = 8;
+  static const double toastCardPadL = 12;
+  static const double toastCardPadT = 10;
+  static const double toastCardPadR = 8;
+  static const double toastCardPadB = 10;
+  static const double toastRadius = 10;
+  static const double toastAccentBarWidth = 4;
+  static const double toastIconSize = 18;
+  static const double toastMessageFontSize = 13;
+  static const double toastActionFontSize = 12;
+  static const double toastCloseSize = 28;
+  static const double toastCloseIconSize = 16;
+  static const double toastProgressHeight = 2;
+  static const double toastMessageIconGap = 10;
+  static const double toastActionGap = 8;
+  static const double toastActionPadH = 8;
+  static const double toastActionPadV = 6;
+
   /// Default pack / layout scale — chrome family ([tvChromeScale]).
   /// Posters use this; channels / hero / portals use hand-tuned families.
   static double get tvLayoutScale => posterCardWidthTv / posterCardWidthDesktop;

@@ -5,6 +5,8 @@ import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dar
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Sticky progress card while Engine/Nuvio packs download or update.
 /// Place in [ForjaToastHost.stackAbove] — stacks above timed toast cards.
@@ -32,9 +34,12 @@ class PluginInstallProgressBanner extends StatelessWidget {
         }
         final current = coordinator.progress.value;
         if (current == null) return const SizedBox.shrink();
+        final tv = ShellPaintScope.usesTvDensityOf(context);
+        final stackGap =
+            ShellTokens.chromeScale(ShellTokens.toastStackGap, tv: tv);
         return ExcludeFocus(
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: EdgeInsets.only(bottom: stackGap),
             child: _PluginInstallBanner(progress: current),
           ),
         );
@@ -62,6 +67,12 @@ class _PluginInstallBanner extends StatelessWidget {
     final icon = progress.isUpdate
         ? Icons.system_update_alt_rounded
         : Icons.download_rounded;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final iconGap =
+        ShellTokens.chromeScale(ShellTokens.toastMessageIconGap, tv: tv);
+    final lineGap = ShellTokens.chromeScale(2, tv: tv);
+    final barGap = ShellTokens.chromeScale(ShellTokens.toastStackGap, tv: tv);
+    final barH = ShellTokens.chromeScale(4, tv: tv);
 
     return ForjaToastChrome(
       kind: kind,
@@ -77,7 +88,7 @@ class _PluginInstallBanner extends StatelessWidget {
                 size: SettingsTokens.filledButtonIconSizeOf(context),
                 color: style.accent,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: iconGap),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,7 +102,7 @@ class _PluginInstallBanner extends StatelessWidget {
                         height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: lineGap),
                     Text(
                       progress.label,
                       maxLines: 2,
@@ -104,7 +115,7 @@ class _PluginInstallBanner extends StatelessWidget {
                     ),
                     if (progress.manifestUrl != null &&
                         progress.manifestUrl!.trim().isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      SizedBox(height: lineGap),
                       Text(
                         progress.manifestUrl!,
                         maxLines: 1,
@@ -130,12 +141,12 @@ class _PluginInstallBanner extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: barGap),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               value: progress.totalSteps > 0 ? progress.fraction : null,
-              minHeight: 4,
+              minHeight: barH,
               backgroundColor: ForjaShellColors.borderSubtle,
               valueColor: AlwaysStoppedAnimation<Color>(style.accent),
             ),

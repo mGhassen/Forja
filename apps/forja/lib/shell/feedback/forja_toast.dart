@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -325,15 +326,19 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final tv = policy.useFocusableMoodChips;
+    final tvFocus = policy.useFocusableMoodChips;
     final pointerHover = policy.scaleOnHover;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final inset = ShellTokens.chromeScale(ShellTokens.toastInset, tv: tv);
+    final stackGap = ShellTokens.chromeScale(ShellTokens.toastStackGap, tv: tv);
+    final width = ShellTokens.chromeScale(ShellTokens.toastWidth, tv: tv);
 
     return Stack(
       children: [
         widget.child,
         Positioned(
-          top: 16,
-          right: 16,
+          top: inset,
+          right: inset,
           child: SafeArea(
             child: ListenableBuilder(
               listenable: ForjaToast.controller,
@@ -350,11 +355,11 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
                     ...widget.stackAbove,
                     for (final entry in entries)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.only(bottom: stackGap),
                         child: _ForjaToastCard(
                           key: ValueKey(entry.id),
                           entry: entry,
-                          tvFocus: tv,
+                          tvFocus: tvFocus,
                           pointerHover: pointerHover,
                         ),
                       ),
@@ -362,8 +367,8 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
                 );
 
                 return SizedBox(
-                  width: 360,
-                  child: tv
+                  width: width,
+                  child: tvFocus
                       ? FocusTraversalGroup(
                           policy: ReadingOrderTraversalPolicy(),
                           child: cards,
@@ -508,8 +513,29 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
     final entry = widget.entry;
     final style = forjaToastStyle(entry.kind);
     final progress = _progress;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final hoverFill = ForjaShellColors.textPrimary.withValues(alpha: 0.10);
     final pressFill = ForjaShellColors.textPrimary.withValues(alpha: 0.16);
+    final actionFont = tv
+        ? ShellTokens.tvTypeSize(ShellTokens.toastActionFontSize)
+        : ShellTokens.toastActionFontSize;
+    final messageFont = tv
+        ? ShellTokens.tvTypeSize(ShellTokens.toastMessageFontSize)
+        : ShellTokens.toastMessageFontSize;
+    final iconGap =
+        ShellTokens.chromeScale(ShellTokens.toastMessageIconGap, tv: tv);
+    final actionGap =
+        ShellTokens.chromeScale(ShellTokens.toastActionGap, tv: tv);
+    final actionPadH =
+        ShellTokens.chromeScale(ShellTokens.toastActionPadH, tv: tv);
+    final actionPadV =
+        ShellTokens.chromeScale(ShellTokens.toastActionPadV, tv: tv);
+    final closeSize =
+        ShellTokens.chromeScale(ShellTokens.toastCloseSize, tv: tv);
+    final closeIcon =
+        ShellPaintScope.iconOf(context, ShellTokens.toastCloseIconSize);
+    final progressH =
+        ShellTokens.chromeScale(ShellTokens.toastProgressHeight, tv: tv);
 
     WidgetStateProperty<Color?> buttonOverlay() =>
         WidgetStateProperty.resolveWith((states) {
@@ -525,7 +551,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
       final label = Text(
         entry.actionLabel!,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: actionFont,
           fontWeight: FontWeight.w700,
           color: style.accent,
         ),
@@ -538,8 +564,8 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
           style: ButtonStyle(
             foregroundColor: WidgetStatePropertyAll(style.accent),
             overlayColor: buttonOverlay(),
-            padding: const WidgetStatePropertyAll(
-              EdgeInsets.symmetric(horizontal: 8),
+            padding: WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: actionPadH),
             ),
             minimumSize: const WidgetStatePropertyAll(Size.zero),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -553,7 +579,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
         context: context,
         onTap: onTap,
         focusNode: _actionFocus,
-        borderRadius: 6,
+        borderRadius: ShellTokens.chromeScale(6, tv: tv),
         showFocusBorder: true,
         scaleOnFocus: 1.0,
         // D-pad leave / Back → dismiss + prior control (close is not focusable).
@@ -567,7 +593,10 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
           return KeyEventResult.handled;
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: EdgeInsets.symmetric(
+            horizontal: actionPadH,
+            vertical: actionPadV,
+          ),
           child: label,
         ),
       );
@@ -576,7 +605,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
     Widget closeButton() {
       final icon = Icon(
         Icons.close_rounded,
-        size: 16,
+        size: closeIcon,
         color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
       );
       void onTap() => _runActionSafe(null, dismiss: true);
@@ -591,8 +620,8 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
             ),
             overlayColor: buttonOverlay(),
             padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-            minimumSize: const WidgetStatePropertyAll(Size(28, 28)),
-            maximumSize: const WidgetStatePropertyAll(Size(28, 28)),
+            minimumSize: WidgetStatePropertyAll(Size(closeSize, closeSize)),
+            maximumSize: WidgetStatePropertyAll(Size(closeSize, closeSize)),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             visualDensity: VisualDensity.compact,
           ),
@@ -606,8 +635,8 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
           behavior: HitTestBehavior.opaque,
           child: ExcludeFocus(
             child: SizedBox(
-              width: 28,
-              height: 28,
+              width: closeSize,
+              height: closeSize,
               child: Center(child: icon),
             ),
           ),
@@ -617,12 +646,12 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
       return shellFocusableTap(
         context: context,
         onTap: onTap,
-        borderRadius: 14,
+        borderRadius: closeSize / 2,
         showFocusBorder: true,
         scaleOnFocus: 1.0,
         child: SizedBox(
-          width: 28,
-          height: 28,
+          width: closeSize,
+          height: closeSize,
           child: Center(child: icon),
         ),
       );
@@ -638,7 +667,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
                 return LinearProgressIndicator(
                   // Drain left → right (remaining time).
                   value: 1.0 - progress.value,
-                  minHeight: 2,
+                  minHeight: progressH,
                   backgroundColor: ForjaShellColors.borderSubtle
                       .withValues(alpha: 0.35),
                   valueColor: AlwaysStoppedAnimation<Color>(
@@ -651,25 +680,25 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
         children: [
           Icon(
             style.icon,
-            size: ShellPaintScope.iconOf(context, 18),
+            size: ShellPaintScope.iconOf(context, ShellTokens.toastIconSize),
             color: style.accent,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: iconGap),
           Expanded(
             child: Text(
               entry.message,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: ForjaShellColors.textPrimary,
-                fontSize: 13,
+                fontSize: messageFont,
                 fontWeight: FontWeight.w500,
                 height: 1.3,
               ),
             ),
           ),
           if (_hasAction) ...[
-            const SizedBox(width: 8),
+            SizedBox(width: actionGap),
             actionButton(),
           ],
           closeButton(),
@@ -701,35 +730,63 @@ class ForjaToastChrome extends StatelessWidget {
     super.key,
     required this.kind,
     required this.child,
-    this.padding = const EdgeInsets.fromLTRB(12, 10, 8, 10),
+    this.padding,
     this.bottom,
   });
 
   final ForjaToastKind kind;
   final Widget child;
-  final EdgeInsetsGeometry padding;
+
+  /// Desktop baseline padding — chrome-scaled on leanback.
+  final EdgeInsets? padding;
   final Widget? bottom;
+
+  static EdgeInsets _defaultPadding({required bool tv}) => EdgeInsets.fromLTRB(
+        ShellTokens.chromeScale(ShellTokens.toastCardPadL, tv: tv),
+        ShellTokens.chromeScale(ShellTokens.toastCardPadT, tv: tv),
+        ShellTokens.chromeScale(ShellTokens.toastCardPadR, tv: tv),
+        ShellTokens.chromeScale(ShellTokens.toastCardPadB, tv: tv),
+      );
+
+  static EdgeInsets _scalePadding(EdgeInsets base, {required bool tv}) {
+    if (!tv) return base;
+    return EdgeInsets.fromLTRB(
+      ShellTokens.chromeScale(base.left, tv: true),
+      ShellTokens.chromeScale(base.top, tv: true),
+      ShellTokens.chromeScale(base.right, tv: true),
+      ShellTokens.chromeScale(base.bottom, tv: true),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final style = forjaToastStyle(kind);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final pad = padding == null
+        ? _defaultPadding(tv: tv)
+        : _scalePadding(padding!, tv: tv);
+    final radius = ShellTokens.chromeScale(ShellTokens.toastRadius, tv: tv);
+    final accentW =
+        ShellTokens.chromeScale(ShellTokens.toastAccentBarWidth, tv: tv);
+    final shadowBlur = ShellTokens.chromeScale(16, tv: tv);
+    final shadowY = ShellTokens.chromeScale(6, tv: tv);
     return Material(
       color: Colors.transparent,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: style.background,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(radius),
           border: Border.all(color: style.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+              blurRadius: shadowBlur,
+              offset: Offset(0, shadowY),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(radius),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -738,10 +795,10 @@ class ForjaToastChrome extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(width: 4, color: style.accent),
+                    Container(width: accentW, color: style.accent),
                     Expanded(
                       child: Padding(
-                        padding: padding,
+                        padding: pad,
                         child: child,
                       ),
                     ),
