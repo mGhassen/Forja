@@ -1,5 +1,5 @@
-import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:flutter/foundation.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 
 /// Host-owned hero CTA row id ([HeroPillPlayButton] `tvRowId`) — item node
 /// only, not a [TvKitRow]. Pack `focusUp: 'hero-details'` lands via
@@ -12,11 +12,12 @@ const kHubHeroDetailsFocusId = 'hero-details';
 ///
 /// [last] restores the remembered index on the row.
 /// [lastItem] focuses the final index (`itemCount - 1`) — used for pack
-/// `focusUpRight: portals` → chrome Portals chip without hardcoding the index.
+/// `focusRight: portals` on ↑ from the right half → chrome Portals chip
+/// (not the open portals panel list).
 ///
-/// Pack top-bar action ids that live inside the `chrome` [TvKitRow]:
-/// - `catalog` → selected Live/Movies/Series shelf chip (chrome index 0)
-/// - `portals` + [lastItem] → trailing Portals chip (not the open panel list)
+/// Pack top-bar `portals` + [lastItem] → trailing chrome chip.
+/// Shelf chips (Live / Movies / Series) are focused via
+/// [kitFocusChromeAt] from the layout painter (selected item index).
 ///
 /// [down]: when true, prefer a registered `{rowId}-shuffle` chrome row if it
 /// has items (e.g. pack `focusDown: 'because'` → `because-shuffle` when the
@@ -35,7 +36,6 @@ VoidCallback? kitFocusEdge(
   if (id.isEmpty) return null;
   return () {
     var target = id;
-    var useLast = last;
     var useLastItem = lastItem;
     if (down) {
       final chrome = '$id-shuffle';
@@ -44,12 +44,8 @@ VoidCallback? kitFocusEdge(
         target = chrome;
       }
     }
-    // Shelf / Portals chip sit on the chrome row — pack names the action id.
-    if (target == 'catalog') {
-      target = 'chrome';
-      useLast = false;
-      useLastItem = false;
-    } else if (target == 'portals' && useLastItem) {
+    // Portals chip lives on the chrome row; the open panel is also `portals`.
+    if (target == 'portals' && useLastItem) {
       target = 'chrome';
       useLastItem = true;
     }
@@ -74,7 +70,7 @@ VoidCallback? kitFocusEdge(
           index: index,
         );
       }
-    } else if (useLast) {
+    } else if (last) {
       ok = ShellTvFocusCoordinator.focusRowItemRemembered(tabId, target);
     } else {
       var landed = ShellTvFocusCoordinator.focusRowItem(tabId, target, 0);
@@ -84,6 +80,15 @@ VoidCallback? kitFocusEdge(
       }
       ok = landed;
     }
+    if (!ok) ShellTvFocusCoordinator.markKitEdgeMiss();
+  };
+}
+
+/// Focus chrome slot [index] (e.g. selected Live / Movies / Series chip).
+VoidCallback kitFocusChromeAt(String tabId, int index) {
+  return () {
+    final ok = ShellTvFocusCoordinator.focusRowItem(tabId, 'chrome', index) ||
+        ShellTvFocusCoordinator.focusRowItemExact(tabId, 'chrome', index);
     if (!ok) ShellTvFocusCoordinator.markKitEdgeMiss();
   };
 }

@@ -43,42 +43,54 @@ Finder get _hoverTarget =>
     find.byKey(const ValueKey('shell-card-play-hover-target'));
 
 void main() {
-  testWidgets('active visible play control greens, floats, and heartbeats', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_overlayHarness(active: false, visible: true));
-
-    expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1);
-    expect(
-      tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
-      Offset.zero,
-    );
-
-    await tester.pumpWidget(_overlayHarness(active: true, visible: true));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1.1);
-    expect(
-      tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
-      const Offset(0, -0.1),
-    );
-    expect(
-      tester.widget<AnimatedContainer>(find.byType(AnimatedContainer))
-          .decoration,
-      isA<BoxDecoration>().having(
-        (d) => d.color,
-        'color',
-        ForjaShellColors.brandGreen,
-      ),
-    );
-    final pulse = tester.widget<ScaleTransition>(_playPulse);
-    expect(pulse.scale.value, greaterThan(1));
-    expect(pulse.scale.value, lessThanOrEqualTo(1.12));
-  });
+  final accentFill = ForjaShellColors.brandGreen.withValues(alpha: 0.18);
 
   testWidgets(
-    'inactive visible play accents green and pulses only on button hover',
+    'active visible play control tints green, floats, and heartbeats',
+    (tester) async {
+      await tester.pumpWidget(_overlayHarness(active: false, visible: true));
+
+      expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1);
+      expect(
+        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
+        Offset.zero,
+      );
+
+      await tester.pumpWidget(_overlayHarness(active: true, visible: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale,
+        1.1,
+      );
+      expect(
+        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
+        const Offset(0, -0.1),
+      );
+      expect(
+        tester.widget<AnimatedContainer>(find.byType(AnimatedContainer))
+            .decoration,
+        isA<BoxDecoration>()
+            .having((d) => d.color, 'color', accentFill)
+            .having(
+              (d) => d.border?.top.color,
+              'border',
+              ForjaShellColors.brandGreen,
+            ),
+      );
+      expect(
+        tester.widget<Icon>(find.byIcon(Icons.play_arrow_rounded)).color,
+        ForjaShellColors.brandGreen,
+      );
+      final pulse = tester.widget<ScaleTransition>(_playPulse);
+      expect(pulse.scale.value, greaterThan(1));
+      expect(pulse.scale.value, lessThanOrEqualTo(1.12));
+    },
+  );
+
+  testWidgets(
+    'inactive visible play accents green tint and pulses only on button hover',
     (tester) async {
       await tester.pumpWidget(_overlayHarness(active: false, visible: true));
 
@@ -112,11 +124,13 @@ void main() {
       expect(
         tester.widget<AnimatedContainer>(find.byType(AnimatedContainer))
             .decoration,
-        isA<BoxDecoration>().having(
-          (d) => d.color,
-          'color',
-          ForjaShellColors.brandGreen,
-        ),
+        isA<BoxDecoration>()
+            .having((d) => d.color, 'color', accentFill)
+            .having(
+              (d) => d.border?.top.color,
+              'border',
+              ForjaShellColors.brandGreen,
+            ),
       );
       final pulse = tester.widget<ScaleTransition>(_playPulse);
       expect(pulse.scale.value, greaterThan(1));

@@ -557,7 +557,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                   ),
                 ),
               ShellCardPlayOverlay(
-                // Desktop: neutral until play hover. TV: card focus = green + pulse.
+                // Desktop: neutral until play hover. TV: card focus = green tint + pulse.
                 active: ShellPaintScope.useTvFocusOf(context) && active,
                 visible: active,
                 diameter: EventCardTokens.playOverlaySizeOf(context),

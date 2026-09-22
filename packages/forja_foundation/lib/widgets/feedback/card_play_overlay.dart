@@ -5,8 +5,9 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
 
 /// Centered play control for catalog / continue-watching cards.
-/// Fades in when [visible]; brand green + float + heartbeat while [active]
-/// or while the play control itself is hovered/focused.
+/// Fades in when [visible]; green tint + outline + float + heartbeat while
+/// [active] or while the play control itself is hovered/focused (never a
+/// solid brand-green fill — matches TV / player focus chrome).
 class ShellCardPlayOverlay extends StatefulWidget {
   const ShellCardPlayOverlay({
     super.key,
@@ -19,7 +20,7 @@ class ShellCardPlayOverlay extends StatefulWidget {
     this.iconSize,
   });
 
-  /// When true, forces green + float + heartbeat without a button hover
+  /// When true, forces green tint + float + heartbeat without a button hover
   /// (TV card focus, live cards). Continue-watching on desktop leaves this
   /// false so only play-button hover accents.
   final bool active;
@@ -179,15 +180,17 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
             height: diameter,
             alignment: Alignment.center,
             decoration: BoxDecoration(
+              // Accented = green tint + outline (TV / player focus chrome).
+              // Never solid brandGreen — that reads as a filled CTA blob on leanback.
               color: lifted
-                  ? ForjaShellColors.brandGreen
+                  ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
                   : Colors.black.withValues(alpha: 0.42),
               shape: BoxShape.circle,
               border: Border.all(
                 color: lifted
-                    ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
+                    ? ForjaShellColors.brandGreen
                     : Colors.white.withValues(alpha: 0.24),
-                width: _buttonFocused ? 2 : 1,
+                width: lifted ? 1.5 : 1,
               ),
               boxShadow: lifted
                   ? [
@@ -201,7 +204,7 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
             ),
             child: Icon(
               Icons.play_arrow_rounded,
-              color: lifted ? const Color(0xFF111827) : Colors.white,
+              color: lifted ? ForjaShellColors.brandGreen : Colors.white,
               size: iconSize,
             ),
           ),

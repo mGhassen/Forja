@@ -438,8 +438,10 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
               style == 'toggle' ||
               style == 'buttons' ||
               style.isEmpty);
-      // View List|Cards are two chrome focus slots — not one shared index.
-      final slotSpan = isViewGroup ? nested.length : 1;
+      // Live/Movies/Series shelf = one chrome slot per chip (like View group).
+      final slotSpan = (isViewGroup || (isShelf && nested.isNotEmpty))
+          ? nested.length
+          : 1;
       final chipIndex = tvIndex;
       tvIndex += slotSpan;
       final slot = widget.actionSlots[actionId];

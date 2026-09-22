@@ -59,7 +59,7 @@ class PluginInstallCandidate {
   /// Install: already on disk. Uninstall: already gone from device.
   final bool alreadyInstalled;
   final PluginPackPromptKind kind;
-  /// Cloud lean diff — Not now / skipped rows defer install or purge.
+  /// Cloud lean diff — dismiss / skipped rows defer install or purge.
   final bool fromRemoteProfile;
 }
 

@@ -3,7 +3,6 @@ import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Prebuilt IPTV-style catalog screen: top chrome + side categories + card grid.
 ///
@@ -44,7 +43,9 @@ class ColumnsHeaderBlock extends StatelessWidget {
     this.onActionSelect,
     this.onSideSelect,
     this.onItemTap,
+    this.onDownEdge,
     this.wrapBody,
+    this.wrapChrome,
   });
 
   factory ColumnsHeaderBlock.fromProps(
@@ -57,7 +58,9 @@ class ColumnsHeaderBlock extends StatelessWidget {
     void Function(String actionId, String value)? onActionSelect,
     ValueChanged<String>? onSideSelect,
     void Function(Map<String, dynamic> item)? onItemTap,
+    VoidCallback? onDownEdge,
     Widget Function(Widget body)? wrapBody,
+    Widget Function(Widget child)? wrapChrome,
   }) {
     return ColumnsHeaderBlock(
       actions: propsActionMaps(props),
@@ -80,7 +83,9 @@ class ColumnsHeaderBlock extends StatelessWidget {
       onActionSelect: onActionSelect,
       onSideSelect: onSideSelect,
       onItemTap: onItemTap,
+      onDownEdge: onDownEdge,
       wrapBody: wrapBody,
+      wrapChrome: wrapChrome,
     );
   }
 
@@ -110,8 +115,14 @@ class ColumnsHeaderBlock extends StatelessWidget {
   final ValueChanged<String>? onSideSelect;
   final void Function(Map<String, dynamic> item)? onItemTap;
 
+  /// Pack top-bar `focusDown` (TV).
+  final VoidCallback? onDownEdge;
+
   /// Host wrap below the top bar (e.g. Portals side panel over cats + grid).
   final Widget Function(Widget body)? wrapBody;
+
+  /// Host wraps the top chrome strip in a TV row (Live/Movies/Series + Portals).
+  final Widget Function(Widget child)? wrapChrome;
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +134,8 @@ class ColumnsHeaderBlock extends StatelessWidget {
       actionSlots: actionSlots,
       onSelect: onActionSelect,
       title: title,
+      onDownEdge: onDownEdge,
+      wrapRow: wrapChrome,
     );
     final side = this.side ??
         CatalogSideRail(

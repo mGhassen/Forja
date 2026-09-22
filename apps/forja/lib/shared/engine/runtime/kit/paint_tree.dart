@@ -513,6 +513,7 @@ class PackPaintTree extends StatelessWidget {
     // Start covered when the list has an opaque load — avoids one empty-cats
     // frame before PackLoadedPaint dispatches the loading cover.
     final initialCover = feed != null;
+    final chromeDown = _chromeFocusDown(scope, merged);
     return _CompositionCoverGate(
       initialCover: initialCover,
       builder: (hideSide) => ColumnsHeaderBlock.fromProps(
@@ -530,9 +531,11 @@ class PackPaintTree extends StatelessWidget {
         actionSlots: _portalsActionSlots(
           context,
           actions: actions,
-          onDownEdge: _chromeFocusDown(scope, merged),
+          onDownEdge: chromeDown,
         ),
         wrapBody: _portalsWrapBody(context, actions: actions),
+        onDownEdge: chromeDown,
+        wrapChrome: _chromeTvWrap(context, actions: actions),
         onActionSelect: (actionId, value) {
           _dispatchTopBarAction(
             context,
@@ -1098,7 +1101,7 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  /// Chrome focus slots for one top-bar action (View List|Cards = 2).
+  /// Chrome focus slots for one top-bar action (View / shelf chips = N).
   int _chromeActionSlotSpan(Map<String, dynamic> action) {
     final id = (action['id'] ?? '').toString().trim().toLowerCase();
     final verb =
@@ -1113,7 +1116,11 @@ class PackPaintTree extends StatelessWidget {
             style == 'toggle' ||
             style == 'buttons' ||
             style.isEmpty);
-    return isViewGroup ? nested.length : 1;
+    final isShelf = nested.isNotEmpty &&
+        (style == 'shelf' ||
+            style == 'segment' ||
+            action['expandOnHover'] == true);
+    return (isViewGroup || isShelf) ? nested.length : 1;
   }
 
   bool _chromeActionVisible(
@@ -1957,18 +1964,17 @@ class PackPaintTree extends StatelessWidget {
               (spec['focusRight'] ?? '').toString(),
               last: true,
             );
-            final upEdge = scope?.resolveFocusEdge(
-              (spec['focusUp'] ?? '').toString(),
-              last: true,
+            // Pack names one `focusUp` (selected Live/Movies/Series). Host
+            // splits ↑ by viewport: left half → shelf, right half → Portals.
+            final upShelf = scope?.resolveFocusEdge(
+              (spec['focusUp'] ?? spec['focusUpLeft'] ?? '').toString(),
             );
-            // Pack `focusUpLeft` / `focusUpRight` — half-column ↑ from top row.
-            // Left: selected shelf (`catalog` → chrome slot 0). Right: Portals
-            // chip (`portals` + lastItem → chrome trailing).
-            final upLeft = scope?.resolveFocusEdge(
-              (spec['focusUpLeft'] ?? '').toString(),
-            );
-            final upRight = scope?.resolveFocusEdge(
-              (spec['focusUpRight'] ?? '').toString(),
+            final upPortalsRaw = (spec['focusUpRight'] ?? '').toString().trim();
+            final focusRight = (spec['focusRight'] ?? '').toString().trim();
+            final upPortals = scope?.resolveFocusEdge(
+              upPortalsRaw.isNotEmpty
+                  ? upPortalsRaw
+                  : (focusRight == 'portals' ? 'portals' : ''),
               lastItem: true,
             );
             final rowId =
@@ -2004,9 +2010,9 @@ class PackPaintTree extends StatelessWidget {
               onArmFocusMemory: liveArmBrowserStreamFocusMemory,
               onLeftEdge: leftEdge,
               onRightEdge: rightEdge,
-              onUpEdge: upEdge,
-              onUpEdgeLeftHalf: upLeft,
-              onUpEdgeRightHalf: upRight,
+              onUpEdge: upShelf,
+              onUpEdgeLeftHalf: upShelf,
+              onUpEdgeRightHalf: upPortals ?? upShelf,
               onScrollIntoViewChanged: tab.isEmpty
                   ? null
                   : (scroll) {
@@ -2037,7 +2043,7 @@ class PackPaintTree extends StatelessWidget {
               orientation: verticalList
                   ? ShellTvRowOrientation.vertical
                   : ShellTvRowOrientation.horizontal,
-              onFocusUp: upEdge,
+              onFocusUp: upShelf,
               child: grid,
             );
           }
@@ -2081,11 +2087,18 @@ class PackPaintTree extends StatelessWidget {
                           (spec['focusRight'] ?? '').toString(),
                           last: true,
                         );
-                        final upLeft = scope?.resolveFocusEdge(
-                          (spec['focusUpLeft'] ?? '').toString(),
+                        final upShelf = scope?.resolveFocusEdge(
+                          (spec['focusUp'] ?? spec['focusUpLeft'] ?? '')
+                              .toString(),
                         );
-                        final upRight = scope?.resolveFocusEdge(
-                          (spec['focusUpRight'] ?? '').toString(),
+                        final upPortalsRaw =
+                            (spec['focusUpRight'] ?? '').toString().trim();
+                        final focusRight =
+                            (spec['focusRight'] ?? '').toString().trim();
+                        final upPortals = scope?.resolveFocusEdge(
+                          upPortalsRaw.isNotEmpty
+                              ? upPortalsRaw
+                              : (focusRight == 'portals' ? 'portals' : ''),
                           lastItem: true,
                         );
                         final rowId = listId.isEmpty
@@ -2122,8 +2135,9 @@ class PackPaintTree extends StatelessWidget {
                           onArmFocusMemory: liveArmBrowserStreamFocusMemory,
                           onLeftEdge: leftEdge,
                           onRightEdge: rightEdge,
-                          onUpEdgeLeftHalf: upLeft,
-                          onUpEdgeRightHalf: upRight,
+                          onUpEdge: upShelf,
+                          onUpEdgeLeftHalf: upShelf,
+                          onUpEdgeRightHalf: upPortals ?? upShelf,
                           onScrollIntoViewChanged: tab.isEmpty
                               ? null
                               : (scroll) {

@@ -60,7 +60,7 @@ class SettingsPackPromptDrill {
 
   static bool get isApplying => applying.value;
 
-  /// Back / category change / Not now — close without applying.
+  /// Back / category change — close without applying.
   /// Remote-profile cloud sync no longer uses defer for installs (auto-download).
   /// Unchecked remote uninstall rows still defer purge until next boot/session.
   static Future<void> dismissWithoutApply() async {
@@ -97,7 +97,8 @@ class SettingsPackPromptDrill {
 }
 
 /// Flat checkbox list for batch install/uninstall — fills the Settings detail
-/// pane with a pinned Install footer (list scrolls; same shape as Update Forja).
+/// pane with Select all / Clear + Install on the toolbar and selected count
+/// pinned under the scrolling list.
 class SettingsPackPromptPane extends StatefulWidget {
   const SettingsPackPromptPane({
     super.key,
@@ -310,16 +311,6 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     }
   }
 
-  Future<void> _notNow() async {
-    if (_busy || SettingsPackPromptDrill.isApplying) return;
-    setState(() => _busy = true);
-    try {
-      await SettingsPackPromptDrill.dismissWithoutApply();
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   String get _body {
     if (widget.prompt.hasRemoteProfile) {
       return 'These packs changed on your profile from another device. '
@@ -351,20 +342,13 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final selectAllEnabled = !_busy && !allSelected;
     final clearEnabled = !_busy && _selectedCount > 0;
+    final installEnabled = !_busy && _selectedCount > 0;
 
-    // Header + list + footer pinned — only the pack rows scroll (Update Forja).
+    // Header + list + selected count — only the pack rows scroll.
     // TV: vertical TvKitRow so ↑/↓ walk packs (ListView linear/spatial was
     // snapping every ↑ to Select all when neighbors were off-screen).
     Widget toolbar = Row(
       children: [
-        Text(
-          '$_selectedCount selected',
-          style: TextStyle(
-            color: ForjaShellColors.textSecondary,
-            fontSize: SettingsTokens.rowSubtitleSizeOf(context),
-          ),
-        ),
-        const Spacer(),
         SettingsTextAction(
           label: 'Select all',
           focusNode: tv && selectAllEnabled ? _selectAllFocus : null,
@@ -372,8 +356,14 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
           tvItemIndex: 0,
           tvZone: tv ? ShellTvZone.row : null,
           onLeftEdge: tv ? _pageBackLeft : null,
-          onRightEdge: tv && clearEnabled
-              ? () => _clearFocus.requestFocus()
+          onRightEdge: tv
+              ? () {
+                  if (clearEnabled) {
+                    _clearFocus.requestFocus();
+                  } else if (installEnabled) {
+                    _installFocus.requestFocus();
+                  }
+                }
               : null,
           onDownEdge: tv ? _focusFirstPack : null,
           onPressed: selectAllEnabled ? _selectAllActionable : null,
@@ -393,8 +383,33 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
                   }
                 }
               : null,
+          onRightEdge: tv && installEnabled
+              ? () => _installFocus.requestFocus()
+              : null,
           onDownEdge: tv ? _focusFirstPack : null,
           onPressed: clearEnabled ? _clearActionable : null,
+        ),
+        const Spacer(),
+        SettingsFilledButton(
+          label: _primaryLabel,
+          icon: Icons.download_rounded,
+          busy: _busy,
+          focusNode: tv && installEnabled ? _installFocus : null,
+          onLeftEdge: tv
+              ? () {
+                  if (clearEnabled) {
+                    _clearFocus.requestFocus();
+                  } else if (selectAllEnabled) {
+                    _selectAllFocus.requestFocus();
+                  } else {
+                    _pageBackLeft();
+                  }
+                }
+              : null,
+          onDownEdge: tv ? _focusFirstPack : null,
+          onPressed: installEnabled
+              ? () => unawaited(_applySelected())
+              : null,
         ),
       ],
     );
@@ -447,11 +462,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
         itemCount: candidates.length,
         orientation: ShellTvRowOrientation.vertical,
         onFocusUp: _focusToolbar,
-        onFocusDown: () {
-          if (_installFocus.canRequestFocus) {
-            _installFocus.requestFocus();
-          }
-        },
+        onFocusDown: () {},
         child: list,
       );
     }
@@ -471,31 +482,15 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
         toolbar,
         const SizedBox(height: 4),
         Expanded(child: list),
-        const SizedBox(height: 16),
-        SettingsFilledButton(
-          label: _primaryLabel,
-          icon: Icons.download_rounded,
-          busy: _busy,
-          expand: true,
-          focusNode: tv ? _installFocus : null,
-          onPressed: _busy || _selectedCount == 0
-              ? null
-              : () => unawaited(_applySelected()),
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: SettingsTextAction(
-            label: 'Not now',
-            color: ForjaShellColors.textSecondary,
-            onLeftEdge: tv ? _pageBackLeft : null,
-            onUpEdge: tv
-                ? () {
-                    if (_installFocus.canRequestFocus) {
-                      _installFocus.requestFocus();
-                    }
-                  }
-                : null,
-            onPressed: _busy ? null : () => unawaited(_notNow()),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            '$_selectedCount selected',
+            style: TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+            ),
           ),
         ),
       ],

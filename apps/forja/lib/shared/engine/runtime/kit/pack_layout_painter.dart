@@ -852,7 +852,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     });
   }
 
-  Widget _wrapLayoutScope(Widget child) {
+  Widget _wrapLayoutScope(BuildContext context, Widget child) {
     return PackChromeScope(
       eventQuery: _eventQuery,
       refreshEpoch: _refreshEpoch,
@@ -957,17 +957,137 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         widgetSpecs: layoutWidgetSpecIndex(_widgets),
         tabId: _pageKey,
         onSelect: _onLayoutSelect,
-        focusEdge: (rowId, {last = false, lastItem = false, down = false}) =>
-            kitFocusEdge(
-              _pageKey,
-              rowId,
-              last: last,
-              lastItem: lastItem,
-              down: down,
-            ),
+        focusEdge: (rowId, {last = false, lastItem = false, down = false}) {
+          final shelf = _focusShelfChip(context, rowId);
+          if (shelf != null) return shelf;
+          return kitFocusEdge(
+            _pageKey,
+            rowId,
+            last: last,
+            lastItem: lastItem,
+            down: down,
+          );
+        },
         child: child,
       ),
     );
+  }
+
+  /// Pack `focusUp: 'catalog'` → selected Live / Movies / Series chrome chip.
+  VoidCallback? _focusShelfChip(BuildContext context, String? rowId) {
+    final actionId = (rowId ?? '').trim();
+    if (actionId.isEmpty) return null;
+    final action = _topBarAction(actionId);
+    if (action == null || !_actionIsShelf(action)) return null;
+    final items = layoutItemsFromSpec(action);
+    if (items.isEmpty) return null;
+    final sel = (_layoutSelections[actionId] ??
+            (action['default'] ?? items.first.id).toString())
+        .trim();
+    var itemIdx = 0;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].id == sel) {
+        itemIdx = i;
+        break;
+      }
+    }
+    final base = _chromeShelfBaseIndex(context, actionId);
+    return kitFocusChromeAt(_pageKey, base + itemIdx);
+  }
+
+  Map<String, dynamic>? _topBarAction(String actionId) {
+    Map<String, dynamic>? found;
+    walkLayoutWidgets(_widgets, (spec) {
+      final actions = spec['actions'];
+      if (actions is! List) return;
+      for (final raw in actions) {
+        if (raw is! Map) continue;
+        final id = (raw['id'] ?? '').toString().trim();
+        if (id == actionId) {
+          found = Map<String, dynamic>.from(raw);
+        }
+      }
+    });
+    return found;
+  }
+
+  bool _actionIsShelf(Map<String, dynamic> action) {
+    final style =
+        (action['style'] ?? action['paint'] ?? '').toString().trim().toLowerCase();
+    final nested = layoutItemsFromSpec(action);
+    return nested.isNotEmpty &&
+        (style == 'shelf' ||
+            style == 'segment' ||
+            action['expandOnHover'] == true);
+  }
+
+  int _chromeShelfBaseIndex(BuildContext context, String actionId) {
+    final actions = <Map<String, dynamic>>[];
+    walkLayoutWidgets(_widgets, (spec) {
+      final raw = spec['actions'];
+      if (raw is! List) return;
+      for (final a in raw) {
+        if (a is Map) actions.add(Map<String, dynamic>.from(a));
+      }
+    });
+    var index = 0;
+    final compact = ShellTokens.usesCompactNavDrawer(context);
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty) continue;
+      if (a['hideWhenCompact'] == true && compact) continue;
+      if (a['compactOnly'] == true && !compact) continue;
+      final when = a['showWhen'];
+      if (when is Map) {
+        var gated = false;
+        for (final e in when.entries) {
+          final menuId = e.key.toString().trim();
+          if (menuId.isEmpty) continue;
+          final selected = (_layoutSelections[menuId] ?? '').trim();
+          final want = e.value;
+          if (want is List) {
+            final ids = <String>{
+              for (final raw in want) raw.toString().trim(),
+            }..removeWhere((s) => s.isEmpty);
+            if (ids.isNotEmpty && !ids.contains(selected)) {
+              gated = true;
+              break;
+            }
+          } else {
+            final wantId = want.toString().trim();
+            if (wantId.isNotEmpty && selected != wantId) {
+              gated = true;
+              break;
+            }
+          }
+        }
+        if (gated) continue;
+      }
+      if (id == actionId) return index;
+      index += _chromeShelfSlotSpan(a);
+    }
+    return 0;
+  }
+
+  int _chromeShelfSlotSpan(Map<String, dynamic> action) {
+    final id = (action['id'] ?? '').toString().trim().toLowerCase();
+    final verb =
+        (action['action'] ?? action['id'] ?? '').toString().trim().toLowerCase();
+    final style =
+        (action['style'] ?? action['paint'] ?? '').toString().trim().toLowerCase();
+    final nested = layoutItemsFromSpec(action);
+    final isView = id == 'view' || verb == 'view';
+    final isViewGroup = isView &&
+        nested.isNotEmpty &&
+        (style == 'group' ||
+            style == 'toggle' ||
+            style == 'buttons' ||
+            style.isEmpty);
+    final isShelf = nested.isNotEmpty &&
+        (style == 'shelf' ||
+            style == 'segment' ||
+            action['expandOnHover'] == true);
+    return (isViewGroup || isShelf) ? nested.length : 1;
   }
 
   @override
@@ -988,10 +1108,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
     final listenable = catalogChromeFilterListenable(_pageKey);
     Widget result = listenable == null
-        ? _wrapLayoutScope(_pageBody())
+        ? _wrapLayoutScope(context, _pageBody())
         : ListenableBuilder(
             listenable: listenable,
-            builder: (_, _) => _wrapLayoutScope(_pageBody()),
+            builder: (_, _) => _wrapLayoutScope(context, _pageBody()),
           );
     if (_layoutRtl) {
       result = Directionality(
