@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/portals/models.dart';
@@ -1210,10 +1211,41 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     }
     merged.remove('load');
     _publishDynamicKinds(context, merged);
+    _publishSearchHitKinds(context, data);
     _syncCompositionCover(_specWantsCompositionCover(merged));
     final painted = widget.builder(context, merged);
     _lastPaintedWidget = painted;
     return painted;
+  }
+
+  /// IPTV paged search: category rail filters via [PackChromeScope.searchHitKindIds].
+  /// Shelf-wide ids come from catalog_page `hitCategoryIds` (not just this page).
+  void _publishSearchHitKinds(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
+    final chrome = PackChromeScope.maybeOf(context);
+    final notifier = chrome?.searchHitKindIds;
+    if (notifier == null) return;
+    final q = (chrome?.eventQuery ?? '').trim();
+    if (q.isEmpty) return;
+
+    final hits = <String>{};
+    final raw = data['hitCategoryIds'] ?? data['hit_category_ids'];
+    if (raw is List) {
+      for (final e in raw) {
+        final id = e.toString().trim();
+        if (id.isNotEmpty && id != 'all') hits.add(id);
+      }
+    }
+    if (hits.isEmpty) return;
+    if (setEquals(notifier.value, hits)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!setEquals(notifier.value, hits)) {
+        notifier.value = Set<String>.from(hits);
+      }
+    });
   }
 
   /// Last successful paint — keep on screen while a soft reload runs.

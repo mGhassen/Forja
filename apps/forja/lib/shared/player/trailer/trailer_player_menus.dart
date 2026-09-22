@@ -92,6 +92,7 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
               ),
             )
           : ListView(
+              shrinkWrap: true,
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
               children: [
                 for (final q in qualities)
@@ -125,6 +126,7 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       anchorContext: anchorContext,
       maxHeight: 360,
       child: ListView(
+        shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
         children: [
           for (final rate in _speedRates)

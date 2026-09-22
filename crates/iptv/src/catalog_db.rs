@@ -327,7 +327,7 @@ pub fn page(req: &Value) -> Result<Value, String> {
         }));
     }
 
-    let categories = with_conn(|conn| load_categories(conn, &portal_hash, section))?;
+    let mut categories = with_conn(|conn| load_categories(conn, &portal_hash, section))?;
 
     let has_stream_ids_key = req.get("stream_ids").is_some() || req.get("streamIds").is_some();
     let stream_ids: Vec<String> = req
@@ -391,6 +391,8 @@ pub fn page(req: &Value) -> Result<Value, String> {
                 "ok": true,
                 "categories": categories,
                 "streams": [],
+                "hitCategoryIds": [],
+                "hit_category_ids": [],
                 "page": page,
                 "pageSize": page_size,
                 "page_size": page_size,
@@ -413,6 +415,8 @@ pub fn page(req: &Value) -> Result<Value, String> {
             "ok": true,
             "categories": categories,
             "streams": streams,
+            "hitCategoryIds": [],
+            "hit_category_ids": [],
             "page": page,
             "pageSize": page_size,
             "page_size": page_size,
@@ -426,6 +430,25 @@ pub fn page(req: &Value) -> Result<Value, String> {
 
     if page_size > 128 {
         page_size = 128;
+    }
+
+    let hit_category_ids = if q.is_empty() {
+        Vec::<String>::new()
+    } else {
+        with_conn(|conn| query_hit_category_ids(conn, &portal_hash, section, &q))?
+    };
+    if !q.is_empty() {
+        let want: std::collections::HashSet<&str> =
+            hit_category_ids.iter().map(|s| s.as_str()).collect();
+        categories.retain(|c| {
+            let id = c
+                .get("id")
+                .or_else(|| c.get("category_id"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim();
+            !id.is_empty() && want.contains(id)
+        });
     }
 
     let (total, streams) = with_conn(|conn| {
@@ -447,6 +470,8 @@ pub fn page(req: &Value) -> Result<Value, String> {
         "ok": true,
         "categories": categories,
         "streams": streams,
+        "hitCategoryIds": hit_category_ids.clone(),
+        "hit_category_ids": hit_category_ids,
         "page": page,
         "pageSize": page_size,
         "page_size": page_size,
@@ -460,6 +485,41 @@ pub fn page(req: &Value) -> Result<Value, String> {
 
 fn portal_hash_from_key(key: &str) -> String {
     portal_hash(key)
+}
+
+fn query_hit_category_ids(
+    conn: &Connection,
+    portal_hash: &str,
+    section: &str,
+    q: &str,
+) -> Result<Vec<String>, String> {
+    if q.is_empty() {
+        return Ok(Vec::new());
+    }
+    let needle = format!("%{}%", q.to_lowercase());
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT category_id FROM streams
+             WHERE portal_hash=?1 AND section=?2
+               AND (lower(name) LIKE ?3 OR lower(category_id) LIKE ?3)
+             ORDER BY category_id ASC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![portal_hash, section, needle], |r| {
+            let id: String = r.get(0)?;
+            Ok(id)
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        let id = row.map_err(|e| e.to_string())?;
+        let id = id.trim().to_string();
+        if !id.is_empty() {
+            out.push(id);
+        }
+    }
+    Ok(out)
 }
 
 fn query_page(
@@ -1068,6 +1128,53 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(out["total"], 2);
+        close();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn page_search_q_filters_categories_and_hit_ids() {
+        let _g = TEST_LOCK.lock().unwrap();
+        let path = temp_db();
+        open(&path).unwrap();
+        let ph = portal_hash("search-cats");
+        replace_shelf(
+            &ph,
+            "live",
+            &[
+                json!({"id":"fr","name":"France"}),
+                json!({"id":"vip","name":"VIP"}),
+                json!({"id":"news","name":"News"}),
+            ],
+            &[
+                json!({"id":"1","name":"FR - M6 FHD","category_id":"fr"}),
+                json!({"id":"2","name":"VIP - M6 4K","category_id":"vip"}),
+                json!({"id":"3","name":"News 24","category_id":"news"}),
+            ],
+        )
+        .unwrap();
+        let out = page(&json!({
+            "portal_hash": ph,
+            "section": "live",
+            "q": "m6",
+            "category_id": "",
+            "page": 1,
+            "page_size": 48,
+        }))
+        .unwrap();
+        assert_eq!(out["ok"], true);
+        assert_eq!(out["total"], 2);
+        let cats = out["categories"].as_array().unwrap();
+        assert_eq!(cats.len(), 2);
+        let ids: Vec<&str> = cats
+            .iter()
+            .filter_map(|c| c.get("id").and_then(|v| v.as_str()))
+            .collect();
+        assert!(ids.contains(&"fr"));
+        assert!(ids.contains(&"vip"));
+        assert!(!ids.contains(&"news"));
+        let hits = out["hitCategoryIds"].as_array().unwrap();
+        assert_eq!(hits.len(), 2);
         close();
         let _ = std::fs::remove_file(&path);
     }

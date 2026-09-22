@@ -780,21 +780,21 @@ class _PanelShellState extends State<_PanelShell> {
                             ],
                           )
                         : null;
-                    // Bounded height: Expanded body — never guess header px
-                    // (tune chip / densify mismatches used to overflow by 8).
+                    // Cap at maxHeight but hug short content. Expanded + fixed
+                    // height left empty shell below short menus (IPTV Sort).
+                    // Flexible(loose) still bounds scrollables so they can scroll
+                    // when content exceeds the cap — never guess header px.
                     final shell = bounded
-                        ? SizedBox(
-                            height: constraints.maxHeight,
-                            width: constraints.maxWidth.isFinite
-                                ? constraints.maxWidth
-                                : null,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                ?header,
-                                Expanded(child: widget.child),
-                              ],
-                            ),
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ?header,
+                              Flexible(
+                                fit: FlexFit.loose,
+                                child: widget.child,
+                              ),
+                            ],
                           )
                         : Column(
                             mainAxisSize: MainAxisSize.min,

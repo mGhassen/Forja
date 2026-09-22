@@ -540,6 +540,7 @@ abstract final class ExoPlayerMenus {
       );
     }
     return ListView(
+      shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
       children: [
         for (var i = 0; i < tracks.length; i++)

@@ -28,12 +28,12 @@ void main() {
         ShellTokens.eventDenseFontSize * ShellTokens.eventDenseLineHeight +
         ShellTokens.eventDenseMetaGap +
         ShellTokens.eventDenseMetaFontSize * ShellTokens.eventDenseLineHeight +
-        1;
+        2;
     const tv = ShellTokens.eventDensePadVTv * 2 +
         ShellTokens.eventDenseFontSizeTv * ShellTokens.eventDenseLineHeight +
         ShellTokens.eventDenseMetaGapTv +
         ShellTokens.eventDenseMetaFontSizeTv * ShellTokens.eventDenseLineHeight +
-        1;
+        2;
 
     expect(ShellTokens.denseListRowExtent, desktop);
     expect(ShellTokens.denseListRowExtentTv, tv);

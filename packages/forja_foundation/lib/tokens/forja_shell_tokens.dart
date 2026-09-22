@@ -1023,17 +1023,18 @@ abstract final class ShellTokens {
   /// Fixed dense-list row height — derived from [EventDenseTile] pad + text stack.
   /// Do **not** chrome-scale desktop → TV: leanback type uses [tvTitleFontSize] /
   /// [tvBodyFontSize], not [tvChromeScale].
-  /// +1 slack covers subpixel TextPainter rounding on exact-fit math.
+  /// +2 slack covers TextPainter / platform font metrics beyond fontSize×height
+  /// (Android Roboto overflowed by 1px with +1).
   static const double denseListRowExtent = eventDensePadV * 2 +
       eventDenseFontSize * eventDenseLineHeight +
       eventDenseMetaGap +
       eventDenseMetaFontSize * eventDenseLineHeight +
-      1;
+      2;
   static const double denseListRowExtentTv = eventDensePadVTv * 2 +
       eventDenseFontSizeTv * eventDenseLineHeight +
       eventDenseMetaGapTv +
       eventDenseMetaFontSizeTv * eventDenseLineHeight +
-      1;
+      2;
   static double denseListRowExtentOf(bool tv) =>
       tv ? denseListRowExtentTv : denseListRowExtent;
   /// Row + separator stride for scroll-index math ([ListView.separated]).

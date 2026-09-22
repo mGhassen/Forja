@@ -1696,13 +1696,39 @@ class PackPaintTree extends StatelessWidget {
             }
           } else if (vodPaged) {
             filtered = items;
+            // IPTV Live/Movies/Series re-query catalog_page with `q` (issue 290).
+            // Category rail still filters via searchHitKindIds — paint-only search
+            // used to fill that set; clearing it here left "No categories" while
+            // the grid showed hits. Prefer shelf-wide ids from the feed envelope
+            // (pack_load_paint); merge this page's kinds as a fallback.
             final notifier = chrome?.searchHitKindIds;
-            if (notifier != null && notifier.value.isNotEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
+            final eventQ = (chrome?.eventQuery ?? '').trim();
+            if (notifier != null) {
+              if (eventQ.isEmpty) {
                 if (notifier.value.isNotEmpty) {
-                  notifier.value = const {};
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (notifier.value.isNotEmpty) {
+                      notifier.value = const {};
+                    }
+                  });
                 }
-              });
+              } else {
+                final hitKinds = <String>{
+                  for (final e in items)
+                    if (_itemKind(e).isNotEmpty) _itemKind(e),
+                };
+                if (hitKinds.isNotEmpty) {
+                  final merged = <String>{...notifier.value, ...hitKinds};
+                  if (!setEquals(notifier.value, merged)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final next = <String>{...notifier.value, ...hitKinds};
+                      if (!setEquals(notifier.value, next)) {
+                        notifier.value = next;
+                      }
+                    });
+                  }
+                }
+              }
             }
           } else {
             filtered = [
