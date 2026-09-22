@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 10** acceptance |
+| **Progress** | **11 / 11** fix · **0 / 10** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -29,6 +29,7 @@
 | 8 | I288-T08 | Category rail `tvRowId: 'cats'` + tabId for focus graph | ✅ |
 | 9 | I288-T09 | Changelog + feature doc glance | ✅ |
 | 10 | I288-T10 | Letter-jump hover `requestFocus` ISO with v1.5.36 | ✅ |
+| 11 | I288-T11 | Hub open: last Live category beats painter first-group snap ([I301-T18](301-[open]-iptv-dpad-focus-hover-chrome.md)) | ✅ |
 
 ---
 

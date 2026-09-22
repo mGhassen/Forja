@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 17** code · **0 / 12** acceptance |
+| **Progress** | **18 / 18** code · **0 / 12** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -36,6 +36,7 @@
 | 15 | I301-T15 | Hold OK pin: `allowNestedFocus` + focusable pin under `useTvFocus` so → lands on pin | ✅ |
 | 16 | I301-T16 | Floating reorder: parent `HardwareKeyboard` ↑/↓ by id + re-stick focus (no neighbor jump) | ✅ |
 | 17 | I301-T17 | Favorites / Watched OK: first channel if any, else keep category focus (no shelf steal); category flip paints empty grid in place (no cover ticker flash) | ✅ |
+| 18 | I301-T18 | Hub open store land: last Live category beats painter first-group snap; TV reclaim focus on landed cats row | ✅ |
 
 ---
 
@@ -47,7 +48,7 @@
 | 2 | ↑ top channels: left half → shelf, right → Portals | ⬜ retest |
 | 3 | Hold OK pin / no dual green / no jump to selected | ⬜ retest |
 | 4 | Category → last selected if in list, else first | ⬜ retest |
-| 5 | Open hub → last category focused; channel scrolled | ⬜ retest |
+| 5 | Open hub → last category focused; channel scrolled | ⬜ retest (T18) |
 | 6 | Back from player → channel (not category) | ⬜ retest |
 | 7 | → last channel → selected portal | ✅ (user) |
 | 8 | Hover→key top bar / nav / settings | ⬜ retest |

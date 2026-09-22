@@ -135,6 +135,44 @@ abstract final class CategoryBarActionHost {
     );
   }
 
+  /// Live store hydrate land — which category id to select.
+  ///
+  /// Returns null when the current selection should stay (Favorites / Watched).
+  /// Otherwise last portal category when present in [itemIds], else the first
+  /// non-synthetic / non-`all` id (painter may already have snapped to first —
+  /// that must not beat [preferCategoryId]).
+  static String? resolveLiveStoreCategoryLand({
+    required String selectedId,
+    required String? preferCategoryId,
+    required Iterable<String> itemIds,
+  }) {
+    final ids = [
+      for (final raw in itemIds)
+        if (raw.trim().isNotEmpty) raw.trim(),
+    ];
+    if (ids.isEmpty) return null;
+
+    final sel = selectedId.trim();
+    if (sel.isNotEmpty &&
+        PortalLiveCatalog.isSyntheticId(sel) &&
+        ids.contains(sel)) {
+      return null;
+    }
+
+    final prefer = (preferCategoryId ?? '').trim();
+    if (prefer.isNotEmpty &&
+        !PortalLiveCatalog.isSyntheticId(prefer) &&
+        ids.contains(prefer)) {
+      return prefer;
+    }
+
+    for (final id in ids) {
+      if (PortalLiveCatalog.isSyntheticId(id) || id == 'all') continue;
+      return id;
+    }
+    return ids.first;
+  }
+
   /// Vault `iptv.active` only — never invent the first inventory row.
   ///
   /// Feed params stamp `portalStoreKey` into [EngineCache]. Falling back to the
@@ -486,32 +524,29 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   }) {
     if (items.isEmpty) return;
 
+    // Live store reload / hub open: last category wins over painter auto-snap
+    // to the first portal group. Keep Favorites / Already watched mid-session.
+    if (_isLive && landOrderedFirst) {
+      final land = CategoryBarActionHost.resolveLiveStoreCategoryLand(
+        selectedId: widget.selectedId,
+        preferCategoryId: preferCategoryId,
+        itemIds: [for (final e in items) e.id],
+      );
+      if (land == null) {
+        final sel = widget.selectedId.trim();
+        if (sel.isNotEmpty) _armCatsFocusMemory(sel, items: items);
+        return;
+      }
+      _applyLandSelection(land, items, reclaimTvFocus: true);
+      return;
+    }
+
     // Keep the user's current row — including Favorites / Already watched.
     // Seed churn from feed `kinds` must not re-land on the first portal group
     // (that flashed Favorites then snapped back).
     final sel = widget.selectedId.trim();
     if (sel.isNotEmpty && sel != 'all' && items.any((e) => e.id == sel)) {
       _armCatsFocusMemory(sel, items: items);
-      return;
-    }
-
-    // Live store reload / first open only: last portal category, else first
-    // portal group in the ordered rail (pinned / dragged / playlist) — not
-    // Favorites. Skipped when selection is already valid (above).
-    if (_isLive && landOrderedFirst) {
-      final prefer = (preferCategoryId ?? '').trim();
-      if (prefer.isNotEmpty &&
-          !PortalLiveCatalog.isSyntheticId(prefer) &&
-          items.any((e) => e.id == prefer)) {
-        _applyLandSelection(prefer, items);
-        return;
-      }
-      for (final e in items) {
-        if (PortalLiveCatalog.isSyntheticId(e.id) || e.id == 'all') continue;
-        _applyLandSelection(e.id, items);
-        return;
-      }
-      _applyLandSelection(items.first.id, items);
       return;
     }
 
@@ -524,24 +559,45 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     _applyLandSelection(items.first.id, items);
   }
 
-  void _applyLandSelection(String id, List<CatalogCategoryItem> items) {
+  void _applyLandSelection(
+    String id,
+    List<CatalogCategoryItem> items, {
+    bool reclaimTvFocus = false,
+  }) {
     final want = id.trim();
     if (want.isEmpty) return;
-    if (widget.selectedId.trim() == want) {
+    void commit() {
+      if (!mounted) return;
+      if (widget.selectedId.trim() != want) {
+        widget.onSelect(want);
+      }
       _armCatsFocusMemory(want, items: items);
+      if (!reclaimTvFocus) return;
+      if (!ShellPaintScope.useTvFocusOf(context)) return;
+      final tab = (widget.tabId ?? '').trim().isNotEmpty
+          ? widget.tabId!.trim()
+          : 'iptv';
+      final index = items.indexWhere((e) => e.id == want);
+      if (index < 0) return;
+      IptvCatalogLand.scheduleFocusCategory(
+        tabId: tab,
+        categoryId: want,
+        categoryIndex: index,
+      );
+    }
+
+    if (widget.selectedId.trim() == want) {
+      commit();
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      widget.onSelect(want);
-      _armCatsFocusMemory(want, items: items);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => commit());
   }
 
   void _onSelectCategory(String id) {
     // Drop stale channel ids before the page reloads — → / OK must not focus a
     // dying tile from the previous group (Favorites empty remount → shelf).
     IptvCatalogLand.clearVisibleStreamIds();
+    IptvCatalogLand.cancelCategoryFocusSchedule();
     widget.onSelect(id);
     _armCatsFocusMemory(id);
     if (_isLive) {

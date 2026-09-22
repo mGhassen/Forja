@@ -260,6 +260,45 @@ abstract final class IptvCatalogLand {
         ShellTvFocusCoordinator.focusRowItemExact(tab, catsRowId, categoryIndex);
   }
 
+  static int? _categoryFocusGen;
+
+  /// Cancel an in-flight hub-open category focus schedule (user moved away).
+  static void cancelCategoryFocusSchedule() {
+    _categoryFocusGen = (_categoryFocusGen ?? 0) + 1;
+  }
+
+  /// Hub open / store land: focus the landed category after remount + nav enter
+  /// may have already hit index 0. Sparse retries — avoid chrome blink.
+  static void scheduleFocusCategory({
+    required String tabId,
+    required String categoryId,
+    required int categoryIndex,
+  }) {
+    final tab = tabId.trim();
+    final cat = categoryId.trim();
+    if (tab.isEmpty || cat.isEmpty || categoryIndex < 0) return;
+    final gen = (_categoryFocusGen ?? 0) + 1;
+    _categoryFocusGen = gen;
+    preferCategoryFocusOnLand = true;
+    var frames = 0;
+    void attempt() {
+      if (_categoryFocusGen != gen) return;
+      // Early + mid + late — rail / nav enter may remount between frames.
+      if (frames == 0 || frames == 4 || frames == 10) {
+        focusCategory(
+          tabId: tab,
+          categoryId: cat,
+          categoryIndex: categoryIndex,
+        );
+      }
+      if (frames++ < 16) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
   static int? _syntheticFocusGen;
 
   /// Cancel an in-flight Favorites / Watched focus schedule (other category OK).
