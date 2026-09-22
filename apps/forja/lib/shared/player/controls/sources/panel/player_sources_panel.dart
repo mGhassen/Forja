@@ -642,10 +642,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   void setState(VoidCallback fn) {
     super.setState(fn);
     if (!mounted) return;
-    // Panel fetch busy stays in-panel (_isFetching / chip spinners) and on
-    // [playerSourcesSessionProvider]. Do not drive [playerResolveStatusProvider]
-    // — that paints the player center "Loading sources…" overlay for stream
-    // resolve (_loadServer / source switch), not Sources list fetches.
     ref.read(playerSourcesSessionProvider.notifier).mutate((s) {
       s.isSearchingTorrents = _searching;
       s.isFetchingStremio = _stremioFetching;
@@ -654,6 +650,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       s.stremioStreams = List<dynamic>.from(_stremioStreams);
       s.nuvioStreams = List<Map<String, dynamic>>.from(_nuvioStreams);
     });
+    final resolve = ref.read(playerResolveStatusProvider.notifier);
+    if (_searching || _stremioFetching || _nuvioFetching || _engineFetching) {
+      resolve.setLoading('sources');
+    } else if (_results.isNotEmpty ||
+        _stremioStreams.isNotEmpty ||
+        _nuvioStreams.isNotEmpty ||
+        _engineStreams.isNotEmpty) {
+      resolve.setReady();
+    }
   }
 
   @override
@@ -3683,6 +3688,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   @override
   Widget build(BuildContext context) {
     ref.watch(playerSourcesSessionProvider);
+    ref.watch(playerResolveStatusProvider);
     final torrents = _showsTorrents ? _filteredTorrents : <TorrentResult>[];
     final stremio = _showsStremio
         ? _visibleStremioStreams

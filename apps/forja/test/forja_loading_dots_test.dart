@@ -69,4 +69,35 @@ void main() {
 
     expect(loading.height, idle.height);
   });
+
+  testWidgets('ForjaShellChip label is vertically centered', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShellPaintScope(
+          useTvFocus: false,
+          scaleOnHover: true,
+          usesTvDensity: false,
+          focusStyled: (_, {required focused}) => focused,
+          child: const Scaffold(
+            body: Center(
+              child: ForjaShellChip(
+                label: 'Videasy',
+                accentHover: true,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final chip = tester.getRect(find.byType(ForjaShellChip));
+    final label = tester.getRect(find.text('Videasy'));
+    expect(
+      (label.center.dy - chip.center.dy).abs(),
+      lessThan(1.0),
+      reason: 'provider chip label should sit on the chip vertical center',
+    );
+  });
 }

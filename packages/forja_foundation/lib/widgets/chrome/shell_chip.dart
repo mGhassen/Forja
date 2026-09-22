@@ -139,7 +139,7 @@ class ForjaShellChip extends StatefulWidget {
     this.trailing,
     this.onTap,
     this.onLongPress,
-    this.longPressDuration = const Duration(seconds: 2),
+    this.longPressDuration = const Duration(milliseconds: 1500),
     this.radius = ShellTokens.shellChipRadiusPill,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     this.fontSize = ShellTokens.shellChipFontSize,
@@ -295,7 +295,8 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         ShellPaintScope.focusStyledOf(context, focused: _focused);
     final accent = widget.accentHover && (hovered || focusStyled);
     final showReload = widget.onReload != null &&
-        (!scaleOnHover || hovered || focusStyled);
+        scaleOnHover &&
+        (hovered || focusStyled);
     final cinematic = ForjaShellColors.cinematic;
     final fg = accent
         ? ForjaShellColors.brandGreen
@@ -349,6 +350,9 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         radius: radius,
       ),
       padding: padding,
+      // Fixed face height keeps idle / loading / reload the same pill size.
+      // Even leading + no tight TextHeightBehavior so the label sits centered
+      // in the face (tight ascent/descent was parking glyphs high in the chip).
       child: SizedBox(
         height: labelFontSize,
         child: Row(
@@ -367,15 +371,14 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
                 height: 1.0,
                 fontWeight:
                     selected || accent ? FontWeight.w600 : FontWeight.w500,
+              ).copyWith(
+                leadingDistribution: TextLeadingDistribution.even,
               ),
               strutStyle: StrutStyle(
                 fontSize: labelFontSize,
                 height: 1.0,
                 forceStrutHeight: true,
-              ),
-              textHeightBehavior: const TextHeightBehavior(
-                applyHeightToFirstAscent: false,
-                applyHeightToLastDescent: false,
+                leadingDistribution: TextLeadingDistribution.even,
               ),
             ),
             if (widget.loading) ...[

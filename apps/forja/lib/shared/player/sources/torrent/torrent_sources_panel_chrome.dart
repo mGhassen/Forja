@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -552,6 +555,8 @@ class _KindTab extends StatefulWidget {
 }
 
 class _KindTabState extends State<_KindTab> {
+  static const _reloadHold = Duration(milliseconds: 1500);
+
   final _tabFocus = FocusNode(debugLabel: 'sources-kind-tab');
   final _reloadFocus = FocusNode(debugLabel: 'sources-kind-reload');
 
@@ -560,9 +565,13 @@ class _KindTabState extends State<_KindTab> {
   final ValueNotifier<bool> _busyHoveredN = ValueNotifier(false);
   bool _focused = false;
   bool _reloadFocused = false;
+  Timer? _holdTimer;
+  bool _longPressFired = false;
+  LogicalKeyboardKey? _holdActivateKey;
 
   @override
   void dispose() {
+    _holdTimer?.cancel();
     _hoveredN.dispose();
     _reloadHoveredN.dispose();
     _busyHoveredN.dispose();
@@ -588,6 +597,58 @@ class _KindTabState extends State<_KindTab> {
   void _setBusyHovered(bool hovered) {
     if (_busyHoveredN.value == hovered) return;
     _busyHoveredN.value = hovered;
+  }
+
+  void _startHold() {
+    if (widget.onReload == null) return;
+    _holdTimer?.cancel();
+    _longPressFired = false;
+    _holdTimer = Timer(_reloadHold, () {
+      if (!mounted) return;
+      _longPressFired = true;
+      widget.onReload!();
+    });
+  }
+
+  void _cancelHold() {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    _holdActivateKey = null;
+  }
+
+  void _onTap() {
+    if (_longPressFired) {
+      _longPressFired = false;
+      return;
+    }
+    widget.onTap();
+  }
+
+  KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
+    if (widget.onReload == null) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final isActivate = key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.space ||
+        key == LogicalKeyboardKey.gameButtonA;
+    if (!isActivate) return KeyEventResult.ignored;
+    if (event is KeyDownEvent) {
+      _holdActivateKey = event.logicalKey;
+      _startHold();
+      return KeyEventResult.handled;
+    }
+    if (event is KeyRepeatEvent && _holdActivateKey == event.logicalKey) {
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent && _holdActivateKey == event.logicalKey) {
+      final fired = _longPressFired;
+      _cancelHold();
+      if (!fired) _onTap();
+      _longPressFired = false;
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   Widget _buildTabFace(
@@ -782,6 +843,7 @@ class _KindTabState extends State<_KindTab> {
   @override
   Widget build(BuildContext context) {
     final tv = SourcesPanelTv.isTv(context);
+    final holdReload = tv && widget.onReload != null;
     return MouseRegion(
       onEnter: (_) => _setHovered(true),
       onExit: (_) => _setHovered(false),
@@ -796,33 +858,57 @@ class _KindTabState extends State<_KindTab> {
           final hovered = _hoveredN.value;
           final reloadHovered = _reloadHoveredN.value;
           final busyHovered = _busyHoveredN.value;
-          final showReload = widget.onReload != null &&
+          // Desktop: hover/focus reload affordance. TV: no icon — hold OK 1.5s
+          // reloads so ←/→ stays on Forja → Torrents → Stremio → Nuvio.
+          final showReload = !tv &&
+              widget.onReload != null &&
               (hovered || _focused || _reloadFocused || reloadHovered);
+          Widget tab = shellFocusableTap(
+            context: context,
+            focusNode: _tabFocus,
+            onTap: holdReload ? null : _onTap,
+            borderRadius: 0,
+            scaleOnFocus: 1.0,
+            suppressInkHover: true,
+            listIndex: widget.tvItemIndex,
+            tvTabId: SourcesPanelTv.tabId,
+            tvRowId: SourcesPanelTv.kindRowId,
+            tvItemIndex: widget.tvItemIndex,
+            onRightEdge: !tv || !showReload
+                ? null
+                : () => _reloadFocus.requestFocus(),
+            onKeyEvent: holdReload ? _onTvKey : null,
+            onFocusChange: (focused) {
+              setState(() => _focused = focused);
+              if (!focused) _cancelHold();
+            },
+            child: _buildTabFace(
+              hovered,
+              reloadHovered,
+              busyHovered,
+              showReload: showReload,
+            ),
+          );
+          if (holdReload) {
+            tab = Listener(
+              onPointerDown: (_) => _startHold(),
+              onPointerUp: (_) {
+                final fired = _longPressFired;
+                _cancelHold();
+                if (fired) {
+                  _longPressFired = false;
+                } else {
+                  _onTap();
+                }
+              },
+              onPointerCancel: (_) => _cancelHold(),
+              child: tab,
+            );
+          }
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              shellFocusableTap(
-                context: context,
-                focusNode: _tabFocus,
-                onTap: widget.onTap,
-                borderRadius: 0,
-                scaleOnFocus: 1.0,
-                suppressInkHover: true,
-                listIndex: widget.tvItemIndex,
-                tvTabId: SourcesPanelTv.tabId,
-                tvRowId: SourcesPanelTv.kindRowId,
-                tvItemIndex: widget.tvItemIndex,
-                onRightEdge: !tv || !showReload
-                    ? null
-                    : () => _reloadFocus.requestFocus(),
-                onFocusChange: (focused) => setState(() => _focused = focused),
-                child: _buildTabFace(
-                  hovered,
-                  reloadHovered,
-                  busyHovered,
-                  showReload: showReload,
-                ),
-              ),
+              tab,
               _buildReloadBtn(
                 hovered,
                 reloadHovered,

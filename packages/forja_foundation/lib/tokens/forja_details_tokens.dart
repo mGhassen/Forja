@@ -43,13 +43,13 @@ abstract final class DetailsTokens {
   /// [ShellTokens.playerSidePanelPadding]).
   static const EdgeInsets sourcesPanelPadding = EdgeInsets.fromLTRB(
     16,
-    8,
+    16,
     12,
     12,
   );
   static const EdgeInsets sourcesPanelPaddingTv = EdgeInsets.fromLTRB(
     16 * _s,
-    4,
+    8,
     8,
     6,
   );
