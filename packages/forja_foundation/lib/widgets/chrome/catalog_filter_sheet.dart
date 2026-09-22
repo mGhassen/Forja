@@ -128,6 +128,8 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
                 : ShellTokens.filterSheetPadBottom,
           );
 
+      // Shrink-wrap to options; cap at [maxHeight] and scroll only when needed.
+      // SingleChildScrollView expands to the max and leaves empty TV chrome.
       return SafeArea(
         child: Padding(
           padding: padding,
@@ -136,73 +138,71 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
               maxHeight: maxHeight,
               maxWidth: tv ? ShellTokens.filterSheetMaxWidthTv : double.infinity,
             ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: tv
-                          ? ShellTokens.filterSheetHandleWidthTv
-                          : ShellTokens.filterSheetHandleWidth,
-                      height: tv
-                          ? ShellTokens.filterSheetHandleHeightTv
-                          : ShellTokens.filterSheetHandleHeight,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
+            child: ListView(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              children: [
+                Center(
+                  child: Container(
+                    width: tv
+                        ? ShellTokens.filterSheetHandleWidthTv
+                        : ShellTokens.filterSheetHandleWidth,
                     height: tv
-                        ? ShellTokens.filterSheetTitleGapTv
-                        : ShellTokens.filterSheetTitleGap,
-                  ),
-                  Text(
-                    'Catalog',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: titleSize,
-                      fontWeight: FontWeight.bold,
+                        ? ShellTokens.filterSheetHandleHeightTv
+                        : ShellTokens.filterSheetHandleHeight,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  SizedBox(
-                    height: tv
-                        ? ShellTokens.filterSheetSubtitleGapTv
-                        : ShellTokens.filterSheetSubtitleGap,
+                ),
+                SizedBox(
+                  height: tv
+                      ? ShellTokens.filterSheetTitleGapTv
+                      : ShellTokens.filterSheetTitleGap,
+                ),
+                Text(
+                  'Catalog',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.bold,
                   ),
-                  Text(
-                    'Filter the schedule by catalog:',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: subtitleSize,
-                    ),
+                ),
+                SizedBox(
+                  height: tv
+                      ? ShellTokens.filterSheetSubtitleGapTv
+                      : ShellTokens.filterSheetSubtitleGap,
+                ),
+                Text(
+                  'Filter the schedule by catalog:',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: subtitleSize,
                   ),
-                  SizedBox(
-                    height: tv
-                        ? ShellTokens.filterSheetListGapTv
-                        : ShellTokens.filterSheetListGap,
+                ),
+                SizedBox(
+                  height: tv
+                      ? ShellTokens.filterSheetListGapTv
+                      : ShellTokens.filterSheetListGap,
+                ),
+                for (var i = 0; i < widget.options.length; i++)
+                  FilterSheetOption(
+                    label: widget.options[i].label,
+                    subtitle: widget.options[i].subtitle,
+                    selected: widget.options[i].id == selectedId,
+                    icon: widget.options[i].id == 'all'
+                        ? Icons.grid_view_rounded
+                        : Icons.video_library_rounded,
+                    onSelected: () =>
+                        Navigator.pop(context, widget.options[i].id),
+                    tvFocus: widget.tvFocus,
+                    focusNode: i == 0 ? _firstFocus : null,
+                    interactiveBuilder: widget.optionInteractiveBuilder,
+                    radius: radius,
+                    fontSize: optionSize,
                   ),
-                  for (var i = 0; i < widget.options.length; i++)
-                    FilterSheetOption(
-                      label: widget.options[i].label,
-                      subtitle: widget.options[i].subtitle,
-                      selected: widget.options[i].id == selectedId,
-                      icon: widget.options[i].id == 'all'
-                          ? Icons.grid_view_rounded
-                          : Icons.video_library_rounded,
-                      onSelected: () =>
-                          Navigator.pop(context, widget.options[i].id),
-                      tvFocus: widget.tvFocus,
-                      focusNode: i == 0 ? _firstFocus : null,
-                      interactiveBuilder: widget.optionInteractiveBuilder,
-                      radius: radius,
-                      fontSize: optionSize,
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
         ),

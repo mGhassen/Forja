@@ -235,6 +235,9 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
       }
     }
 
+    // ListView(shrinkWrap) sizes to children up to [maxHeight]. A plain
+    // SingleChildScrollView expands to the max and leaves a tall empty panel
+    // on TV when Status-only content is short.
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
@@ -245,54 +248,65 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
                 ? ShellTokens.filterSheetMaxWidthTv
                 : double.infinity,
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: tvDensity
-                        ? ShellTokens.filterSheetHandleWidthTv
-                        : ShellTokens.filterSheetHandleWidth,
-                    height: tvDensity
-                        ? ShellTokens.filterSheetHandleHeightTv
-                        : ShellTokens.filterSheetHandleHeight,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+          child: ListView(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            children: [
+              Center(
+                child: Container(
+                  width: tvDensity
+                      ? ShellTokens.filterSheetHandleWidthTv
+                      : ShellTokens.filterSheetHandleWidth,
+                  height: tvDensity
+                      ? ShellTokens.filterSheetHandleHeightTv
+                      : ShellTokens.filterSheetHandleHeight,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                SizedBox(
-                  height: tvDensity
-                      ? ShellTokens.filterSheetTitleGapTv
-                      : ShellTokens.filterSheetTitleGap,
+              ),
+              SizedBox(
+                height: tvDensity
+                    ? ShellTokens.filterSheetTitleGapTv
+                    : ShellTokens.filterSheetTitleGap,
+              ),
+              Text(
+                'Schedule',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
+              SizedBox(
+                height: tvDensity
+                    ? ShellTokens.filterSheetSubtitleGapTv
+                    : ShellTokens.filterSheetSubtitleGap,
+              ),
+              Text(
+                'What to show, and how far ahead to load upcoming:',
+                style: TextStyle(color: Colors.white54, fontSize: subtitleSize),
+              ),
+              SizedBox(
+                height: tvDensity
+                    ? ShellTokens.filterSheetListGapTv
+                    : 18,
+              ),
+              Text(
+                'Status',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: sectionSize,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: tvDensity ? 6 : 8),
+              statusSection,
+              if (horizonSection != null) ...[
+                SizedBox(height: tvDensity ? 10 : 16),
                 Text(
-                  'Schedule',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: titleSize,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(
-                  height: tvDensity
-                      ? ShellTokens.filterSheetSubtitleGapTv
-                      : ShellTokens.filterSheetSubtitleGap,
-                ),
-                Text(
-                  'What to show, and how far ahead to load upcoming:',
-                  style: TextStyle(color: Colors.white54, fontSize: subtitleSize),
-                ),
-                SizedBox(
-                  height: tvDensity
-                      ? ShellTokens.filterSheetListGapTv
-                      : 18,
-                ),
-                Text(
-                  'Status',
+                  'Horizon',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: sectionSize,
@@ -300,22 +314,9 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
                   ),
                 ),
                 SizedBox(height: tvDensity ? 6 : 8),
-                statusSection,
-                if (horizonSection != null) ...[
-                  SizedBox(height: tvDensity ? 10 : 16),
-                  Text(
-                    'Horizon',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: sectionSize,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: tvDensity ? 6 : 8),
-                  horizonSection,
-                ],
+                horizonSection,
               ],
-            ),
+            ],
           ),
         ),
       ),
