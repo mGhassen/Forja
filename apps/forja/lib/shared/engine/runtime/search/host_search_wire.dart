@@ -11,7 +11,6 @@ import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/search/search_recent_queries.dart';
-import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';

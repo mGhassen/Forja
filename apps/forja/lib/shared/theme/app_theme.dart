@@ -643,7 +643,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         );
 
     // Settings rail: green left bar + ink fill (no ring box).
-    // Flat menus (scale 1.0): gray fill + thin border.
+    // Flat menus (scale 1.0 + showFocusBorder): gray fill + thin border.
+    // Flat rows (scale 1.0, no border): inkHover — same as the old InkWell path.
     // Catalog cards: white focus ring + lift scale.
     final railFocus = widget.showFocusRail;
     final flatMenuFocus =
