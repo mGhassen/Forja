@@ -286,7 +286,6 @@ class CinematicHeroState extends State<CinematicHero>
   bool _ctaFocus = false;
   bool _heroAdvancePaused = false;
   Timer? _ctaResumeTimer;
-  late final FocusScopeNode _ctaFocusScope;
 
   PageController get pageController => _heroController;
   int get heroIndex => _heroIndex;
@@ -318,8 +317,6 @@ class CinematicHeroState extends State<CinematicHero>
     _ownsController = widget.pageController == null;
     _heroController =
         widget.pageController ?? PageController(initialPage: _heroLoopStart);
-    _ctaFocusScope = FocusScopeNode(debugLabel: 'cinematic-hero-cta');
-    _ctaFocusScope.addListener(_onCtaFocusScope);
     _heroProgress = AnimationController(
       vsync: this,
       duration: ShellTokens.heroAutoAdvanceDuration,
@@ -338,8 +335,6 @@ class CinematicHeroState extends State<CinematicHero>
   @override
   void dispose() {
     _ctaResumeTimer?.cancel();
-    _ctaFocusScope.removeListener(_onCtaFocusScope);
-    _ctaFocusScope.dispose();
     _heroProgress.removeStatusListener(_onHeroProgressStatus);
     _heroProgress.dispose();
     if (_ownsController) _heroController.dispose();
@@ -358,7 +353,17 @@ class CinematicHeroState extends State<CinematicHero>
   void _onHeroProgressStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed) return;
     if (_heroAdvancePaused) return;
-    if (!_heroHasSingleClient || widget.slides.length < 2) return;
+    if (widget.slides.length < 2) return;
+    if (!_heroHasSingleClient) {
+      // Remount race — retry next frame instead of sitting on a full pin.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _heroAdvancePaused) return;
+        if (_heroProgress.status == AnimationStatus.completed) {
+          _onHeroProgressStatus(AnimationStatus.completed);
+        }
+      });
+      return;
+    }
     _heroController.nextPage(
       duration: ShellTokens.heroAutoAdvancePageDuration,
       curve: Curves.easeInOutCubic,
@@ -373,11 +378,7 @@ class CinematicHeroState extends State<CinematicHero>
     _heroProgress.forward();
   }
 
-  void _pauseHeroAdvance() {
-    _heroAdvancePaused = true;
-    if (_heroProgress.isAnimating) {
-      _heroProgress.stop(canceled: false);
-    }
+  void _armCtaResumeTimer() {
     _ctaResumeTimer?.cancel();
     _ctaResumeTimer = Timer(
       ShellTokens.heroCtaPauseDuration,
@@ -385,11 +386,20 @@ class CinematicHeroState extends State<CinematicHero>
     );
   }
 
+  void _pauseHeroAdvance() {
+    _heroAdvancePaused = true;
+    if (_heroProgress.isAnimating) {
+      _heroProgress.stop(canceled: false);
+    }
+    _armCtaResumeTimer();
+  }
+
   void _onCtaPauseElapsed() {
     _ctaResumeTimer = null;
     if (_ctaHover || _ctaFocus) {
-      // Still on View details / pin — stay paused until they leave, then
-      // [_setCtaHover] / [_setCtaFocus] arms a fresh hold.
+      // Still on a CTA — keep pausing, but never leave paused with no timer
+      // (stuck hover/focus used to freeze the pin forever).
+      _armCtaResumeTimer();
       return;
     }
     _resumeHeroAdvance();
@@ -397,6 +407,8 @@ class CinematicHeroState extends State<CinematicHero>
 
   void _resumeHeroAdvance() {
     if (_ctaHover || _ctaFocus) return;
+    _ctaResumeTimer?.cancel();
+    _ctaResumeTimer = null;
     _heroAdvancePaused = false;
     if (widget.slides.length < 2) return;
     if (_heroProgress.value >= 1.0 - 0.001 ||
@@ -404,22 +416,6 @@ class CinematicHeroState extends State<CinematicHero>
       _restartHeroProgress();
     } else {
       _heroProgress.forward();
-    }
-  }
-
-  void _onCtaFocusScope() {
-    // Scope itself can become primary when a child unfocuses — only a real
-    // CTA child (View details / pin) counts as engaged.
-    final childFocused = _ctaFocusScope.focusedChild != null;
-    _setCtaFocus(childFocused);
-    if (!childFocused && _ctaFocusScope.hasPrimaryFocus) {
-      scheduleMicrotask(() {
-        if (!mounted) return;
-        if (_ctaFocusScope.focusedChild != null) return;
-        if (_ctaFocusScope.hasPrimaryFocus) {
-          _ctaFocusScope.unfocus();
-        }
-      });
     }
   }
 
@@ -432,10 +428,10 @@ class CinematicHeroState extends State<CinematicHero>
       return;
     }
     if (!nowEngaged && wasEngaged) {
-      // Left the CTA. Keep an in-flight hold; if the 10s already elapsed
-      // while focused, arm a fresh hold before resume.
+      // Left CTA. Keep an in-flight hold; if the window already elapsed while
+      // engaged, arm a fresh hold so we never sit paused with no timer.
       if (_heroAdvancePaused && _ctaResumeTimer == null) {
-        _pauseHeroAdvance();
+        _armCtaResumeTimer();
       }
     }
   }
@@ -462,13 +458,10 @@ class CinematicHeroState extends State<CinematicHero>
 
   /// Pause auto-advance while View details / pin is hovered or focused.
   Widget _wrapHeroActionRow(Widget row) {
-    return FocusScope(
-      node: _ctaFocusScope,
-      child: MouseRegion(
-        onEnter: (_) => _setCtaHover(true),
-        onExit: (_) => _setCtaHover(false),
-        child: row,
-      ),
+    return _HeroCtaPauseSensor(
+      onHoverChanged: _setCtaHover,
+      onFocusChanged: _setCtaFocus,
+      child: row,
     );
   }
 
@@ -1459,6 +1452,84 @@ class CinematicHeroState extends State<CinematicHero>
       return Column(mainAxisSize: MainAxisSize.min, children: dots);
     }
     return Row(mainAxisAlignment: MainAxisAlignment.center, children: dots);
+  }
+}
+
+/// Clears stale hover when the action row remounts (Crossfade / slide swap)
+/// and tracks descendant focus without a nested [FocusScope] (which could
+/// steal primary focus and look like a permanent pause).
+class _HeroCtaPauseSensor extends StatefulWidget {
+  const _HeroCtaPauseSensor({
+    required this.onHoverChanged,
+    required this.onFocusChanged,
+    required this.child,
+  });
+
+  final ValueChanged<bool> onHoverChanged;
+  final ValueChanged<bool> onFocusChanged;
+  final Widget child;
+
+  @override
+  State<_HeroCtaPauseSensor> createState() => _HeroCtaPauseSensorState();
+}
+
+class _HeroCtaPauseSensorState extends State<_HeroCtaPauseSensor> {
+  bool _hovering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    FocusManager.instance.addListener(_onFocusManager);
+  }
+
+  @override
+  void deactivate() {
+    // MouseRegion skips onExit when disposed mid-hover — clear so pause
+    // cannot stick after a hero chrome remount.
+    if (_hovering) {
+      _hovering = false;
+      widget.onHoverChanged(false);
+    }
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    FocusManager.instance.removeListener(_onFocusManager);
+    if (_hovering) {
+      _hovering = false;
+      widget.onHoverChanged(false);
+    }
+    widget.onFocusChanged(false);
+    super.dispose();
+  }
+
+  void _onFocusManager() {
+    if (!mounted) return;
+    widget.onFocusChanged(_focusIsInside(FocusManager.instance.primaryFocus));
+  }
+
+  bool _focusIsInside(FocusNode? node) {
+    if (node == null) return false;
+    final focusedContext = node.context;
+    if (focusedContext == null) return false;
+    return focusedContext.findAncestorStateOfType<_HeroCtaPauseSensorState>() ==
+        this;
+  }
+
+  void _setHovering(bool hovering) {
+    if (_hovering == hovering) return;
+    _hovering = hovering;
+    widget.onHoverChanged(hovering);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _setHovering(true),
+      onExit: (_) => _setHovering(false),
+      child: widget.child,
+    );
   }
 }
 

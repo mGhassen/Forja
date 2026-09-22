@@ -133,28 +133,25 @@ class ContinueWatchingCard extends StatelessWidget {
                           iconSize: 14,
                           height: 28,
                           color: Colors.white70,
+                          hoverColor: ForjaShellColors.brandGreen,
                           onPressed: onRemove,
                         ),
                       if (onInfo != null) ...[
                         const SizedBox(height: 4),
-                        Material(
-                          color: Colors.transparent,
-                          shape: const CircleBorder(),
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            onTap: onInfo,
-                            child: Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.info_outline_rounded,
-                                color: Colors.white70,
-                                size: ShellPaintScope.iconOf(context, 14),
-                              ),
-                            ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Button(
+                            variant: ButtonVariant.plainIcon,
+                            size: ButtonSize.icon,
+                            icon: Icons.info_outline_rounded,
+                            iconSize: 14,
+                            height: 28,
+                            color: Colors.white70,
+                            hoverColor: ForjaShellColors.brandGreen,
+                            onPressed: onInfo,
                           ),
                         ),
                       ],

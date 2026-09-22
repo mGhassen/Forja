@@ -235,17 +235,83 @@ void main() {
     expect(key.currentState!.heroAdvanceProgress, closeTo(pausedAt, 0.02));
     expect(key.currentState!.heroIndex, 0);
 
-    // Leave CTA before the 10s hold ends — remaining hold should keep pause.
     ctaFocus.unfocus();
     await tester.pump();
     expect(key.currentState!.heroAdvancePaused, isTrue);
 
+    // Hold is from last engage — finish the remaining window.
     await tester.pump(ShellTokens.heroCtaPauseDuration);
     await tester.pump(const Duration(milliseconds: 50));
     expect(key.currentState!.heroAdvancePaused, isFalse);
     final resumed = key.currentState!.heroAdvanceProgress;
     await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
     expect(key.currentState!.heroAdvanceProgress, greaterThan(resumed));
+  });
+
+  testWidgets('hero CTA hover clears when action row remounts', (tester) async {
+    final key = GlobalKey<CinematicHeroState>();
+
+    Widget buildHero() {
+      return MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 420,
+            width: 900,
+            child: CinematicHero(
+              key: key,
+              slides: const [
+                CinematicHeroSlide(
+                  id: 'a',
+                  title: 'Alpha',
+                  backdropUrl: 'https://example.com/a.jpg',
+                  overview: 'First',
+                ),
+                CinematicHeroSlide(
+                  id: 'b',
+                  title: 'Beta',
+                  backdropUrl: 'https://example.com/b.jpg',
+                  overview: 'Second',
+                ),
+              ],
+              layout: const CinematicHeroLayout(
+                kenBurns: false,
+                compact: true,
+              ),
+              actionRowBuilder: (context, slide, {required isActive}) {
+                if (!isActive) return const SizedBox.shrink();
+                return const Text('View details');
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildHero());
+    await tester.pump();
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(find.text('View details')));
+    await tester.pump();
+    expect(key.currentState!.heroAdvancePaused, isTrue);
+
+    // Leave before remount so the new MouseRegion does not auto-reenter.
+    await gesture.moveTo(const Offset(1, 1));
+    await tester.pump();
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await tester.pumpWidget(buildHero());
+    await tester.pump();
+
+    expect(key.currentState!.heroAdvancePaused, isFalse);
+    final moving = key.currentState!.heroAdvanceProgress;
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
+    expect(key.currentState!.heroAdvanceProgress, greaterThan(moving));
   });
 
   testWidgets('hero CTA hover pauses auto-advance', (tester) async {

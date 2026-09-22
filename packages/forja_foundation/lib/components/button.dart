@@ -301,6 +301,15 @@ class _ButtonState extends State<Button> {
     }
     final engaged = _engaged(states);
     if (color != null) {
+      // plainIcon: rest [color], hover/focus → brand green (or hoverColor).
+      // No fill/border — keeps overlay glyphs (continue-watching X / i) clean.
+      if (engaged && variant == ButtonVariant.plainIcon) {
+        return _ButtonColors(
+          foreground: hoverColor ?? theme.brandGreen,
+          background: Colors.transparent,
+          border: null,
+        );
+      }
       if (engaged && hoverColor != null) {
         return _ButtonColors(
           foreground: hoverColor,

@@ -93,6 +93,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   /// Sync rails for [PackChromeScope.pageFeedRails] — avoids microtask skeleton.
   Map<String, List<dynamic>>? _pageFeedRails;
   MetaError? _pageFeedError;
+  /// Bumped on chrome filter flip / forced page-feed reload — drop late
+  /// progressive publishes from a superseded All/Films/TV fetch.
+  int _pageFeedGen = 0;
   String _sectionStructureSig = '';
   Listenable? _filterListenable;
   final KitRowPrefetchLane _rowPrefetch = KitRowPrefetchLane();
@@ -262,12 +265,15 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   void _onChromeFiltersChanged() {
     if (!mounted || _pageFeedRailIds.isEmpty) return;
+    // Films / TV Shows / Categories must refetch — never peek-or-promote over
+    // the previously painted mixed rails (progressive promote skipped non-empty
+    // envelopes and soft peek could poison the filtered feed cache).
+    _pageFeedGen++;
+    PackLoadedPaint.clearMemosForPlugin(widget.pluginId);
     setState(() {
       _pageFeedError = null;
-      _pageFeedRails = _peekPageFeedRails();
-      _pageFeedFuture = _pageFeedRails != null
-          ? Future<Map<String, List<dynamic>>>.value(_pageFeedRails!)
-          : _bindPageFeed(forceRefresh: false);
+      _pageFeedRails = null;
+      _pageFeedFuture = _bindPageFeed(forceRefresh: true);
     });
   }
 
@@ -298,6 +304,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _refreshForceNetwork = true;
       _refreshKeepPainted = true;
       if (_pageFeedRailIds.isNotEmpty) {
+        _pageFeedGen++;
         _pageFeedRails = null;
         _pageFeedError = null;
         _pageFeedFuture = _bindPageFeed(forceRefresh: true);
@@ -315,6 +322,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _refreshForceNetwork = true;
       _refreshKeepPainted = true;
       if (_pageFeedRailIds.isNotEmpty) {
+        _pageFeedGen++;
         _pageFeedRails = null;
         _pageFeedError = null;
         _pageFeedFuture = _bindPageFeed(forceRefresh: true);
@@ -769,10 +777,26 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Future<Map<String, List<dynamic>>> _fetchPageFeed({
     required bool forceRefresh,
   }) async {
+    final gen = _pageFeedGen;
+    // Capture chrome filters at fetch start — a mid-flight Films flip must not
+    // store this All batch under the Films feed cache key.
+    final feedParams = _pageFeedParams();
+    final chromeFilters = catalogChromeFilters(
+      tabId: widget.tabId,
+      pluginId: widget.pluginId,
+    );
+
     if (!forceRefresh) {
-      final peeked = _peekPageFeedRails();
+      final peeked = _railsMapFromEnvelope(
+        MetaRuntime.instance.peekCached(
+          pluginId: widget.pluginId,
+          action: 'feed',
+          params: feedParams,
+          packSourceUrl: widget.packSourceUrl,
+        ),
+      );
       if (peeked != null) {
-        if (mounted) {
+        if (mounted && gen == _pageFeedGen) {
           _pageFeedRails = peeked;
           _pageFeedError = null;
         }
@@ -785,7 +809,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     // still hung — the old action:`feed` Promise.all blocked the whole batch.
     final ordered = _pageFeedRailIds.toList(growable: false);
     if (ordered.isEmpty) {
-      if (mounted) {
+      if (mounted && gen == _pageFeedGen) {
         setState(() {
           _pageFeedRails = const {};
           _pageFeedError = null;
@@ -794,10 +818,6 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       return const {};
     }
 
-    final chromeFilters = catalogChromeFilters(
-      tabId: widget.tabId,
-      pluginId: widget.pluginId,
-    );
     final pending = <String, Future<MetaEnvelope>>{
       for (final railId in ordered)
         railId: packOpaqueRun(
@@ -818,6 +838,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     var anyOk = false;
 
     for (final railId in ordered) {
+      if (gen != _pageFeedGen) {
+        return const <String, List<dynamic>>{};
+      }
       var items = const <dynamic>[];
       try {
         final envelope = await pending[railId]!;
@@ -840,12 +863,16 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         );
       }
       acc[railId] = items;
-      if (mounted) {
+      if (mounted && gen == _pageFeedGen) {
         setState(() {
           _pageFeedRails = Map<String, List<dynamic>>.from(acc);
           _pageFeedError = anyOk ? null : hardError;
         });
       }
+    }
+
+    if (gen != _pageFeedGen) {
+      return const <String, List<dynamic>>{};
     }
 
     if (!anyOk) {
@@ -866,16 +893,19 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       );
     }
 
-    _storePageFeedCache(acc);
+    _storePageFeedCache(acc, params: feedParams);
     return acc;
   }
 
   /// Warm action:`feed` peek cache so the next open can sync-paint all rails.
-  void _storePageFeedCache(Map<String, List<dynamic>> rails) {
+  void _storePageFeedCache(
+    Map<String, List<dynamic>> rails, {
+    required Map<String, dynamic> params,
+  }) {
     final key = EngineCache.keyFor(
       pluginId: widget.pluginId,
       action: 'feed',
-      params: _pageFeedParams(),
+      params: params,
       packSourceUrl: widget.packSourceUrl,
     );
     EngineCache.instance.putEntry(
@@ -1031,6 +1061,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
           }
           if (_pageFeedRailIds.isNotEmpty) {
             if (forceNetwork) {
+              _pageFeedGen++;
               _pageFeedRails = null;
               _pageFeedError = null;
               _pageFeedFuture = _bindPageFeed(forceRefresh: true);

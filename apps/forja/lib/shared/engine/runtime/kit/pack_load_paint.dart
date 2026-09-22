@@ -268,6 +268,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   StreamSubscription<MetaEnvelope>? _progressiveSub;
   /// Skip warmPaintKey restore on the next [_bind] (Live category / Favorites flip).
   bool _skipWarmRestore = false;
+  /// Page-feed epoch last painted via [_promotePageFeedRailIfReady] — when the
+  /// chrome filter epoch advances, promote must replace non-empty envelopes.
+  String _promotedPageFeedEpoch = '';
 
   /// Last successful paint for this rail — remount / tab-return warm only.
   ///
@@ -275,6 +278,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   /// [widget.params] omit chrome `categoryId` / kind, so falling back here
   /// after an IPTV Live cat click reused the first page forever (issue 290
   /// paint no longer filters Live in-tree).
+  ///
+  /// Includes [catalogChromeFilterEpoch] so Films / TV / Categories cannot
+  /// warm-restore the previous mixed page-feed slice.
   String get _warmPaintKey {
     final rail =
         (widget.params['rail'] ?? widget.fallbackSpec['rail'] ?? '').toString();
@@ -284,6 +290,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       widget.action,
       widget.packSourceUrl ?? '',
       rail.isNotEmpty ? rail : id,
+      catalogChromeFilterEpoch(widget.tabId),
       _stableParamsKey(widget.params),
     ].join('|');
   }
@@ -437,6 +444,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         );
       } else if (shelfSectionFlipped && _envelope == null) {
         _skipWarmRestore = true;
+      } else if (_isPageFeedRail()) {
+        // Home Films / TV / Categories — keep last paint visible, but do not
+        // warm-restore the previous filter's page-feed slice while rebinding.
+        _skipWarmRestore = true;
+        _promotedPageFeedEpoch = '';
       }
       _scopeEpoch = epoch;
       if (!held) _bind();
@@ -446,6 +458,15 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // Progressive page feed: paint this rail as soon as chrome.pageFeedRails
     // gains items (Spotlight must not wait on a hung Popular).
     _promotePageFeedRailIfReady(chrome);
+  }
+
+  bool _isPageFeedRail() {
+    final chrome = PackChromeScope.maybeOf(context);
+    if (chrome == null || widget.action.trim() != 'rail') return false;
+    final rail = (widget.params['rail'] ?? widget.fallbackSpec['rail'] ?? '')
+        .toString()
+        .trim();
+    return rail.isNotEmpty && chrome.isPageFeedRail(rail);
   }
 
   /// Sync-promote a page-feed rail slice while the shared feed future is still
@@ -459,7 +480,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (rail.isEmpty || !chrome.isPageFeedRail(rail)) return;
     final items = chrome.pageFeedRails?[rail];
     if (items == null || items.isEmpty) return;
-    if (_envelope != null && _envelope!.ok) {
+    // After Films / TV / Categories, replace the previous filter's cards even
+    // when the envelope is already non-empty (progressive first-paint skip).
+    final filterFlip = _promotedPageFeedEpoch != _scopeEpoch;
+    if (!filterFlip && _envelope != null && _envelope!.ok) {
       final cur = _envelope!.data?['items'];
       if (cur is List && cur.isNotEmpty) return;
     }
@@ -477,6 +501,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     ].join('|');
     PackLoadedPaint._resolved[key] = env;
     PackLoadedPaint._resolved[_warmPaintKey] = env;
+    _promotedPageFeedEpoch = _scopeEpoch;
     _envelope = env;
     _inFlight = null;
   }
