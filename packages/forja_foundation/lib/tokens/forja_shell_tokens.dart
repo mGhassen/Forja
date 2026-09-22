@@ -785,6 +785,11 @@ abstract final class ShellTokens {
   static const double torrentPanelChromeGapTv =
       torrentPanelChromeGapDesktop * tvChromeScale;
 
+  /// Air between kind-tab underline and provider chips (All / Videasy / …).
+  static const double torrentPanelProvidersTopGapDesktop = 12;
+  static const double torrentPanelProvidersTopGapTv =
+      torrentPanelProvidersTopGapDesktop * tvChromeScale;
+
   /// Sources panel search field (details + player) — leanback uses chrome density.
   static const double torrentPanelSearchFontSize = 13;
   static const double torrentPanelSearchFontSizeTv = tvBodyFontSize;

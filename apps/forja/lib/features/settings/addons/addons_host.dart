@@ -209,12 +209,8 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
 
   Future<void> _reloadPackAddons() async {
     final packs = await EngineService.instance.listPacks();
-    final plugins = <EnginePlugin>[
-      for (final pack in packs)
-        if (pack.enabled)
-          for (final p in pack.plugins) p,
-    ];
-    final contributed = packContributedAddonMetas(plugins);
+    final contributed =
+        packContributedAddonMetas(activePluginsFromPacks(packs));
     if (!mounted) return;
     setState(() => _packContributed = contributed);
   }

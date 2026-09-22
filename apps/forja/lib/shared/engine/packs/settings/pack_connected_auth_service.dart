@@ -246,7 +246,6 @@ abstract final class PackConnectedAuthService {
 
   static Future<List<PackConnectedAuthSpec>> listEnabled() async {
     final packs = await PluginRegistry.instance.listPacksRaw();
-    final plugins = [for (final p in packs) ...p.plugins];
-    return PackConnectedAuthSpec.listEnabled(plugins);
+    return PackConnectedAuthSpec.listEnabled(activePluginsFromPacks(packs));
   }
 }

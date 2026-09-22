@@ -3,8 +3,10 @@ import 'package:forja/features/settings/addons/catalog.dart';
 
 /// Pack-declared Connected Services auth (RFC-102).
 ///
-/// Host discovers enabled plugins with `settings.addon: connected_services`
-/// and a non-empty `settings.auth` block. No pack-id branches.
+/// Host discovers plugins from **enabled packs** with
+/// `settings.addon: connected_services` and a non-empty `settings.auth` block.
+/// Callers must pass only plugins from enabled packs (see
+/// [PackConnectedAuthService.listEnabled]). No pack-id branches.
 class PackConnectedAuthSpec {
   const PackConnectedAuthSpec({
     required this.pluginId,

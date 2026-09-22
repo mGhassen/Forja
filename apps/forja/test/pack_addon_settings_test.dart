@@ -188,6 +188,48 @@ void main() {
       expect(list.map((s) => s.pluginId), ['hub-a']);
     });
 
+    test('packContributedAddonMetas omits plugins from disabled packs', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'live-hub',
+        'name': 'Live Hub',
+        'entry': 'l.js',
+        'kind': 'catalog',
+        'enabled': true,
+        'settings': {
+          'addon': 'live_sports',
+          'fields': [
+            {'id': 'x', 'type': 'toggle', 'label': 'X', 'default': false},
+          ],
+        },
+      });
+      final off = EnginePack.fromJson(
+        {
+          'id': 'pack-off',
+          'name': 'Off',
+          'version': '1.0.0',
+          'enabled': false,
+          'plugins': [plugin.toJson()],
+        },
+        sourceUrl: 'https://example.com/off/manifest.json',
+      );
+      final on = EnginePack.fromJson(
+        {
+          'id': 'pack-on',
+          'name': 'On',
+          'version': '1.0.0',
+          'enabled': true,
+          'plugins': [plugin.toJson()],
+        },
+        sourceUrl: 'https://example.com/on/manifest.json',
+      );
+      expect(
+        packContributedAddonMetas(activePluginsFromPacks([off])),
+        isEmpty,
+      );
+      final metas = packContributedAddonMetas(activePluginsFromPacks([on]));
+      expect(metas.map((m) => m.id).toList(), ['live_sports']);
+    });
+
     test('listForPlugins returns specs without host addon filter', () {
       final a = EnginePlugin.fromJson({
         'id': 'hub-a',

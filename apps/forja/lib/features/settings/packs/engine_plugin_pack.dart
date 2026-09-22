@@ -174,7 +174,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
             ],
           ),
           children: [
-            PackAddonSettingsSection(plugins: plugins),
+            if (pack.enabled) PackAddonSettingsSection(plugins: plugins),
             SettingsEnginePluginGroupList(
               sourceUrl: pack.sourceUrl,
               byGroup: grouped.byGroup,
@@ -389,7 +389,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
         ],
       ),
       children: [
-        PackAddonSettingsSection(plugins: plugins),
+        if (pack.enabled) PackAddonSettingsSection(plugins: plugins),
         SettingsLiveSportCapabilityTabs(
           sourceUrl: pack.sourceUrl,
           plugins: plugins,

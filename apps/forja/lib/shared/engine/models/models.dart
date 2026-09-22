@@ -661,6 +661,15 @@ class EngineExtractResult {
   final List<Map<String, dynamic>> streams;
 }
 
+/// Plugins that contribute to Settings / runtime because **pack and plugin**
+/// are both on. Use for Addon discovery, Connected services auth, and field
+/// injection — never flatten [EnginePack.plugins] without this gate.
+List<EnginePlugin> activePluginsFromPacks(Iterable<EnginePack> packs) => [
+      for (final pack in packs)
+        for (final p in pack.plugins)
+          if (pack.isPluginActive(p)) p,
+    ];
+
 Set<String> enabledEnginePluginIds(List<EnginePack> packs) => {
   for (final pack in packs)
     if (pack.enabled)

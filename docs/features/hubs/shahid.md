@@ -8,7 +8,7 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 ## How to open it
 
-1. Enable **ForjaHQ Shahid** under **Settings → Forja Packs → Hubs**.
+1. Enable **ForjaHQ Shahid** under **Settings → Forja Packs → Hubs** (Login with Shahid appears under Connected services only while this pack is on).
 2. Turn **Shahid** on in **Settings → Features** if needed.
 3. Open **Settings → Addons → Connected services** and tap **Login with Shahid**.
    - **Phone / tablet / desktop:** Forja opens Shahid in your browser. Tap **Copy connect script**, on the Shahid tab open the browser console, paste, Enter — Forja imports the session (already signed in is fine). Or use **email/password** in the same dialog.
@@ -24,7 +24,7 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 ## Setup
 
-- Shahid account via **Settings → Addons → Connected services → Shahid** (Login / Logout)
+- Shahid account via **Settings → Addons → Connected services → Shahid** (Login / Logout) — only while the Shahid pack is enabled
 
 ## Tips
 

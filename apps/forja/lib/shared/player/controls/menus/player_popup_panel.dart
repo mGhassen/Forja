@@ -817,8 +817,8 @@ class _PanelShellState extends State<_PanelShell> {
   }
 }
 
-/// Bordered square icon chrome (Close, subtitle tune) — green border + glyph;
-/// hover / focus brightens fill + border (same as panel Close).
+/// Plain header icon (Close, subtitle tune) — no card border; glyph turns
+/// brand-green on hover / focus.
 class PlayerPopupChromeButton extends StatefulWidget {
   const PlayerPopupChromeButton({
     super.key,
@@ -865,22 +865,16 @@ class _PlayerPopupChromeButtonState extends State<PlayerPopupChromeButton> {
       hovered: hovered,
       focused: _focused,
     );
-    final borderColor = highlight
-        ? PlayerPopupTokens.accent
-        : PlayerPopupTokens.accentBorder;
     final btn = PlayerPopupTokens.chromeBtnSizeOf(context);
     final icon = PlayerPopupTokens.chromeIconSizeOf(context);
-    final radius = PlayerPopupTokens.chipRadiusOf(context);
-    return Container(
+    return SizedBox(
       width: btn,
       height: btn,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: highlight ? PlayerPopupTokens.accentFill : Colors.transparent,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: borderColor, width: highlight ? 1.5 : 1),
+      child: Icon(
+        widget.icon,
+        size: icon,
+        color: highlight ? PlayerPopupTokens.accent : PlayerPopupTokens.muted,
       ),
-      child: Icon(widget.icon, size: icon, color: PlayerPopupTokens.accent),
     );
   }
 
@@ -922,7 +916,7 @@ class _PlayerPopupChromeButtonState extends State<PlayerPopupChromeButton> {
               )
             : InkWell(
                 onTap: widget.onTap,
-                hoverColor: PlayerPopupTokens.accentFill,
+                hoverColor: Colors.transparent,
                 child: painted,
               ),
       ),

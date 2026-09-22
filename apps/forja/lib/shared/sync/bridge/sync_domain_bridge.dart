@@ -1119,53 +1119,49 @@ class SyncDomainBridge {
   Future<Map<String, dynamic>> _exportPackSettingsCompact() async {
     final packs = await EngineService.instance.listPacks();
     final out = <String, Map<String, dynamic>>{};
-    for (final pack in packs) {
-      if (!pack.enabled) continue;
-      for (final plugin in pack.plugins) {
-        if (!plugin.enabled) continue;
-        final spec = PackAddonSettingsSpec.fromPlugin(plugin);
-        if (spec == null || spec.fields.isEmpty) continue;
-        final fields = <String, dynamic>{};
-        for (final field in spec.fields) {
-          if (field.type == PackAddonSettingsFieldType.password) continue;
-          switch (field.type) {
-            case PackAddonSettingsFieldType.toggle:
-              fields[field.id] = await PackSettingsStore.getBool(
-                spec.pluginId,
-                field.id,
-                defaultValue: field.defaultBool,
+    for (final plugin in activePluginsFromPacks(packs)) {
+      final spec = PackAddonSettingsSpec.fromPlugin(plugin);
+      if (spec == null || spec.fields.isEmpty) continue;
+      final fields = <String, dynamic>{};
+      for (final field in spec.fields) {
+        if (field.type == PackAddonSettingsFieldType.password) continue;
+        switch (field.type) {
+          case PackAddonSettingsFieldType.toggle:
+            fields[field.id] = await PackSettingsStore.getBool(
+              spec.pluginId,
+              field.id,
+              defaultValue: field.defaultBool,
+            );
+          case PackAddonSettingsFieldType.multiSelect:
+            fields[field.id] = await PackSettingsStore.getStringList(
+              spec.pluginId,
+              field.id,
+              defaultValue: field.defaultStringList,
+            );
+          case PackAddonSettingsFieldType.select:
+          case PackAddonSettingsFieldType.text:
+          case PackAddonSettingsFieldType.hubSelect:
+            var value = await PackSettingsStore.getString(
+              spec.pluginId,
+              field.id,
+              defaultValue: field.defaultString,
+            );
+            if (field.type == PackAddonSettingsFieldType.hubSelect &&
+                field.listOpenDefault &&
+                field.hubTypes.isNotEmpty) {
+              final fromPrefs = await ListOpenPrefs.defaultPluginId(
+                field.hubTypes.first,
               );
-            case PackAddonSettingsFieldType.multiSelect:
-              fields[field.id] = await PackSettingsStore.getStringList(
-                spec.pluginId,
-                field.id,
-                defaultValue: field.defaultStringList,
-              );
-            case PackAddonSettingsFieldType.select:
-            case PackAddonSettingsFieldType.text:
-            case PackAddonSettingsFieldType.hubSelect:
-              var value = await PackSettingsStore.getString(
-                spec.pluginId,
-                field.id,
-                defaultValue: field.defaultString,
-              );
-              if (field.type == PackAddonSettingsFieldType.hubSelect &&
-                  field.listOpenDefault &&
-                  field.hubTypes.isNotEmpty) {
-                final fromPrefs = await ListOpenPrefs.defaultPluginId(
-                  field.hubTypes.first,
-                );
-                if (fromPrefs != null && fromPrefs.isNotEmpty) {
-                  value = fromPrefs;
-                }
+              if (fromPrefs != null && fromPrefs.isNotEmpty) {
+                value = fromPrefs;
               }
-              fields[field.id] = value;
-            case PackAddonSettingsFieldType.password:
-              break;
-          }
+            }
+            fields[field.id] = value;
+          case PackAddonSettingsFieldType.password:
+            break;
         }
-        if (fields.isNotEmpty) out[spec.pluginId] = fields;
       }
+      if (fields.isNotEmpty) out[spec.pluginId] = fields;
     }
     return out;
   }

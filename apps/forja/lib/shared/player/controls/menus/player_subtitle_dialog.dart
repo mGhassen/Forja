@@ -11,7 +11,6 @@ import 'package:forja/shared/player/controls/sources/stream/player_stream_menu.d
 import 'package:forja/shared/player/controls/sources/torrent/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/screens/utils.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/utils/language_display.dart';
@@ -267,9 +266,11 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     );
   }
 
-  /// Bordered X — same chrome as Off; [ForjaPlainIcon] was not in the D-pad chain.
+  /// Close X — plain icon (same as panel Close).
   Widget _closeChip({required bool autoFocus}) {
-    return _SubtitleCloseChip(
+    return PlayerPopupChromeButton(
+      icon: Icons.close_rounded,
+      tooltip: 'Close',
       focusNode: _closeFocus,
       autoFocus: autoFocus,
       onTap: widget.onClose,
@@ -425,7 +426,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PlayerSidePanelHeader(
-          title: '',
+          title: 'Subtitles',
           onClose: widget.onClose,
           showClose: !tv,
           trailing: Row(
@@ -590,58 +591,6 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SubtitleCloseChip extends StatefulWidget {
-  const _SubtitleCloseChip({
-    required this.focusNode,
-    required this.autoFocus,
-    required this.onTap,
-    this.onLeftEdge,
-  });
-
-  final FocusNode focusNode;
-  final bool autoFocus;
-  final VoidCallback onTap;
-  final VoidCallback? onLeftEdge;
-
-  @override
-  State<_SubtitleCloseChip> createState() => _SubtitleCloseChipState();
-}
-
-class _SubtitleCloseChipState extends State<_SubtitleCloseChip> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final border = _focused
-        ? PlayerPopupTokens.accentBorder
-        : PlayerPopupTokens.border;
-    final iconColor =
-        _focused ? PlayerPopupTokens.accent : PlayerPopupTokens.muted;
-    final face = Container(
-      width: 28,
-      height: 28,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        border: Border.all(color: border),
-      ),
-      child: Icon(Icons.close_rounded, size: 14, color: iconColor),
-    );
-    return FocusableControl(
-      focusNode: widget.focusNode,
-      autoFocus: widget.autoFocus,
-      onTap: widget.onTap,
-      borderRadius: PlayerPopupTokens.chipRadius,
-      scaleOnFocus: 1.0,
-      showFocusBorder: false,
-      showFocusFill: false,
-      onFocusChange: (f) => setState(() => _focused = f),
-      onLeftEdge: widget.onLeftEdge,
-      child: face,
     );
   }
 }

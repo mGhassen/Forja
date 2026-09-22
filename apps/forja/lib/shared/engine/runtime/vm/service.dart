@@ -747,11 +747,7 @@ class EngineService {
     var config = mergeEngineConfig(plugin.config, overlay);
     final packSettings = await PackAddonSettingsSpec.loadExtractConfigOverlay(
       extractPluginId: plugin.id,
-      plugins: [
-        for (final pack in packs)
-          if (pack.enabled)
-            for (final p in pack.plugins) p,
-      ],
+      plugins: activePluginsFromPacks(packs),
     );
     if (packSettings.isNotEmpty) {
       config = mergeEngineConfig(config, packSettings);
@@ -1014,11 +1010,7 @@ class EngineService {
     );
     final packSettings = await PackAddonSettingsSpec.loadExtractConfigOverlay(
       extractPluginId: active.id,
-      plugins: [
-        for (final pack in packs)
-          if (pack.enabled)
-            for (final p in pack.plugins) p,
-      ],
+      plugins: activePluginsFromPacks(packs),
     );
     if (packSettings.isNotEmpty) {
       config = mergeEngineConfig(config, packSettings);
@@ -1708,11 +1700,7 @@ class EngineService {
     );
     final packSettings = await PackAddonSettingsSpec.loadExtractConfigOverlay(
       extractPluginId: plugin.id,
-      plugins: [
-        for (final pack in packs)
-          if (pack.enabled)
-            for (final p in pack.plugins) p,
-      ],
+      plugins: activePluginsFromPacks(packs),
     );
     if (packSettings.isNotEmpty) {
       config = mergeEngineConfig(config, packSettings);

@@ -115,7 +115,8 @@ abstract final class ExoPlayerMenus {
 
     await PlayerPopupPanel.show(
       context: context,
-      title: '',
+      title: 'Subtitles',
+      leadingIcon: Icons.subtitles_outlined,
       alignment: Alignment.bottomLeft,
       margin: margin,
       anchorContext: anchorContext,

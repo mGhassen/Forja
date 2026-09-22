@@ -264,8 +264,9 @@ class PackAddonSettingsSpec {
     return out;
   }
 
-  /// Specs for [addonId] from enabled plugins (sorted by [order] then name).
+  /// Specs for [addonId] from **active** plugins (pack + plugin on).
   ///
+  /// Pass [activePluginsFromPacks] — never raw plugins from a disabled pack.
   /// Matches `settings.addon` or, when addon is omitted, [pluginId] == [addonId].
   static List<PackAddonSettingsSpec> listForAddon(
     Iterable<EnginePlugin> plugins, {
@@ -286,7 +287,8 @@ class PackAddonSettingsSpec {
     return _sorted(out);
   }
 
-  /// Specs for plugins in a pack expand (enabled or not — pack row owns gate).
+  /// Specs for plugins in a pack expand. Caller must only pass this when the
+  /// pack is enabled (Settings → Forja Packs hides fields while the pack is off).
   static List<PackAddonSettingsSpec> listForPlugins(
     Iterable<EnginePlugin> plugins,
   ) {
@@ -299,9 +301,10 @@ class PackAddonSettingsSpec {
     return _sorted(out);
   }
 
-  /// Distinct non-empty `settings.addon` ids from enabled plugins (RFC-089).
+  /// Distinct non-empty `settings.addon` ids from **active** plugins (RFC-089).
   ///
   /// Used to invent Addons rows for pack-only buckets (not in the host catalog).
+  /// Callers must pass [activePluginsFromPacks].
   static List<PackAddonSettingsSpec> listContributingEnabled(
     Iterable<EnginePlugin> plugins,
   ) {

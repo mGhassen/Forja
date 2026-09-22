@@ -111,9 +111,10 @@ String _titleFromAddonId(String id) {
       .join(' ');
 }
 
-/// Pack-only Addons rows from enabled plugins that declare `settings.addon`
-/// for an id that is **not** already a host built-in (those still get fields
-/// injected into the host detail via [PackAddonSettingsSection]).
+/// Pack-only Addons rows from **active** plugins (pack + plugin on) that
+/// declare `settings.addon` for an id that is **not** already a host built-in
+/// (those still get fields injected into the host detail via
+/// [PackAddonSettingsSection]). Pass [activePluginsFromPacks].
 List<SettingsAddonMeta> packContributedAddonMetas(
   Iterable<EnginePlugin> plugins,
 ) {

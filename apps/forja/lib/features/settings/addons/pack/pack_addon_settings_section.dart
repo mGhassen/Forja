@@ -86,16 +86,12 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     final List<PackAddonSettingsSpec> specs;
     final plugins = widget.plugins;
     if (plugins != null) {
+      // Caller owns the pack gate (Forja Packs expand only when pack.enabled).
       specs = PackAddonSettingsSpec.listForPlugins(plugins);
     } else {
       final packs = await EngineService.instance.listPacks();
-      final all = <EnginePlugin>[
-        for (final pack in packs)
-          if (pack.enabled)
-            for (final p in pack.plugins) p,
-      ];
       specs = PackAddonSettingsSpec.listForAddon(
-        all,
+        activePluginsFromPacks(packs),
         addonId: widget.addonId!,
       );
     }
