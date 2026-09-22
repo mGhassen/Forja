@@ -685,11 +685,14 @@ class _PortalListRowState extends State<PortalListRow> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.plusJakartaSans(
-                                    color: _hoverChrome
-                                        ? ForjaShellColors.brandGreen
-                                            .withValues(alpha: 0.75)
-                                        : isActive
-                                            ? Colors.white54
+                                    // Selected URL stays muted — never brand
+                                    // green (name already stays white when
+                                    // selected; URL should not light up).
+                                    color: isActive
+                                        ? Colors.white54
+                                        : _hoverChrome
+                                            ? ForjaShellColors.brandGreen
+                                                .withValues(alpha: 0.75)
                                             : _showNewChrome
                                                 ? Colors.white54
                                                 : Colors.white38,

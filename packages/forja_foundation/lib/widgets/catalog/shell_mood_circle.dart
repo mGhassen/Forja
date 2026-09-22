@@ -103,7 +103,7 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
     );
 
     if (useTv) {
-      // Accent circle already paints hover/focus (glow + bright label).
+      // Accent circle already paints hover/focus (glow + green label).
       // Suppress host ink/fill — gray pill over the chip was a regression.
       return ShellPaintScope.focusableTap(
         context: context,

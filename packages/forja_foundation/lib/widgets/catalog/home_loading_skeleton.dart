@@ -7,6 +7,9 @@ import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 
@@ -61,6 +64,91 @@ Widget homeTitleBarSkeleton({
     height: height,
     borderRadius: BorderRadius.circular(6),
   );
+}
+
+/// Poster list/grid loading chrome — same packing as live [CatalogCardsGrid].
+///
+/// Used by My List / VOD `kit.list` when pack omits ticker `loading` copy.
+Widget catalogPosterListSkeleton({
+  required BuildContext context,
+  double? cardWidth,
+  double? gap,
+  double? pad,
+  bool shimmer = true,
+}) {
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final tv = ShellPaintScope.usesTvDensityOf(context);
+      final minW = cardWidth ?? InteractivePosterCard.cardWidth(context);
+      final minH =
+          (minW * ShellTokens.posterCardAspectRatio).roundToDouble();
+      final g = gap ??
+          (tv ? ShellTokens.tvPosterCardRowGap : ShellTokens.posterCardRowGap);
+      final lead = pad ?? ShellTokens.catalogSplitGridLeadingPad;
+      final trail = pad ?? ShellTokens.catalogSplitGridTrailingPad;
+      final maxW = constraints.maxWidth.isFinite && constraints.maxWidth > 0
+          ? constraints.maxWidth
+          : MediaQuery.sizeOf(context).width;
+      final layout = CatalogPosterGridLayout.poster(
+        maxWidth: maxW,
+        cardW: minW,
+        cardH: minH,
+        gap: g,
+        leading: lead,
+        trailing: trail,
+      );
+      final bottom = ShellTokens.bodyHorizontalPadding;
+      final availH = constraints.maxHeight.isFinite && constraints.maxHeight > 0
+          ? constraints.maxHeight
+          : MediaQuery.sizeOf(context).height * 0.6;
+      final stride = layout.cardH + layout.gap;
+      final rows = math
+          .max(
+            2,
+            ((availH - layout.topPad - bottom + layout.gap) / stride).floor(),
+          )
+          .clamp(2, 8);
+      final radius = InteractivePosterCard.cardBorderRadius(context);
+      final grid = CatalogPosterLoadingGrid(
+        layout: layout,
+        rowCount: rows,
+        bottomPadding: bottom,
+        placeholder: Skeleton(
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      );
+      return shimmer ? homeLoadingShimmer(grid) : grid;
+    },
+  );
+}
+
+/// Reserved height for [catalogPosterListSkeleton] when the parent sizes by
+/// height (lazy rail gate) rather than expand.
+double catalogPosterListSkeletonHeight({
+  required BuildContext context,
+  double? cardWidth,
+  double? gap,
+  int rows = 3,
+}) {
+  final tv = ShellPaintScope.usesTvDensityOf(context);
+  final minW = cardWidth ?? InteractivePosterCard.cardWidth(context);
+  final minH = (minW * ShellTokens.posterCardAspectRatio).roundToDouble();
+  final g = gap ??
+      (tv ? ShellTokens.tvPosterCardRowGap : ShellTokens.posterCardRowGap);
+  final screenW = MediaQuery.sizeOf(context).width;
+  final layout = CatalogPosterGridLayout.poster(
+    maxWidth: screenW,
+    cardW: minW,
+    cardH: minH,
+    gap: g,
+    leading: ShellTokens.catalogSplitGridLeadingPad,
+    trailing: ShellTokens.catalogSplitGridTrailingPad,
+  );
+  final bottom = ShellTokens.bodyHorizontalPadding;
+  return layout.topPad +
+      rows * layout.cardH +
+      (rows - 1) * layout.gap +
+      bottom;
 }
 
 Widget homeCardSkeleton({

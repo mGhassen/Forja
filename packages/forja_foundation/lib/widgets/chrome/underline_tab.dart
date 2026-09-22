@@ -82,6 +82,11 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
     return 0;
   }
 
+  bool get _lit =>
+      !_suppressHighlightUntilLeave &&
+      (_hoveredN.value ||
+          ShellPaintScope.focusStyledOf(context, focused: _focused));
+
   void _onFocusChange(bool focused) {
     setState(() {
       _focused = focused;
@@ -96,17 +101,20 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
       duration: _animDuration,
       curve: Curves.easeInOutCubic,
       builder: (context, t, _) {
-        final idle = ForjaShellColors.cinematic.textSecondary;
-        final hoverWhite = Colors.white.withValues(alpha: 0.92);
-        final color = t <= 0
-            ? idle
-            : t < _hoverT
-                ? Color.lerp(idle, hoverWhite, t / _hoverT)!
-                : Color.lerp(
-                    hoverWhite,
-                    Colors.white,
-                    (t - _hoverT) / (_selectedT - _hoverT),
-                  )!;
+        // Selected: white. Hover / focus: brand green. Idle: muted.
+        final Color color;
+        if (_lit) {
+          color = ForjaShellColors.brandGreen;
+        } else if (widget.isActive) {
+          color = Colors.white;
+        } else {
+          color = ForjaShellColors.cinematic.textSecondary;
+        }
+        final underlineColor = t > 0
+            ? (_lit || widget.isActive
+                ? ForjaShellColors.brandGreen
+                : color)
+            : Colors.transparent;
         final tv = ShellPaintScope.usesTvDensityOf(context);
         final tabHeight = tv
             ? ShellTokens.homeMenuRowHeightTv
@@ -142,7 +150,7 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
                     fontWeight: FontWeight.lerp(
                       FontWeight.w500,
                       FontWeight.w700,
-                      t,
+                      t > 0 || _lit ? 1.0 : 0.0,
                     ),
                     color: color,
                     letterSpacing: 0.1,
@@ -159,7 +167,7 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
               height: ShellTokens.shellNavUnderlineHeight,
               width: underline,
               decoration: BoxDecoration(
-                color: underline > 0 ? color : Colors.transparent,
+                color: underline > 0 ? underlineColor : Colors.transparent,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

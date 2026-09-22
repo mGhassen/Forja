@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/runtime/actions/schedule/live_schedule_progr
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
+import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
@@ -61,40 +62,23 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
             : ShellTokens.catalogLoadingTickerSlotHeight,
       );
     }
-    final tv = ShellPaintScope.usesTvDensityOf(context);
-    final cardW = tv
-        ? ShellTokens.catalogLoadingListCardWidthTv
-        : ShellTokens.catalogLoadingListCardWidth;
-    final cardH = tv
-        ? ShellTokens.catalogLoadingListCardHeightTv
-        : ShellTokens.catalogLoadingListCardHeight;
-    final gap = tv
-        ? ShellTokens.catalogLoadingListGapTv
-        : ShellTokens.catalogLoadingListGap;
-    final padH = tv
-        ? ShellTokens.catalogLoadingListPadHTv
-        : ShellTokens.catalogLoadingListPadH;
-    final grid = Padding(
-      padding: EdgeInsets.fromLTRB(padH, 8, padH, 24),
-      child: Column(
-        children: [
-          for (var r = 0; r < 3; r++) ...[
-            if (r > 0) SizedBox(height: gap),
-            Row(
-              children: [
-                for (var c = 0; c < 4; c++) ...[
-                  if (c > 0) SizedBox(width: gap),
-                  homeCardSkeleton(width: cardW, height: cardH),
-                ],
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
+    // Match live CatalogCardsGrid packing (My List / VOD poster grids).
+    final cardW = PackPaintArtifact.packLength(context, spec['cardWidth']);
+    final gap = PackPaintArtifact.packLength(context, spec['gap']);
+    final pad = PackPaintArtifact.packLength(context, spec['pad']);
     return (
-      placeholder: shimmer ? homeLoadingShimmer(grid) : grid,
-      height: 8 + 3 * cardH + 2 * gap + 24,
+      placeholder: catalogPosterListSkeleton(
+        context: context,
+        cardWidth: cardW,
+        gap: gap,
+        pad: pad,
+        shimmer: shimmer,
+      ),
+      height: catalogPosterListSkeletonHeight(
+        context: context,
+        cardWidth: cardW,
+        gap: gap,
+      ),
     );
   }
 

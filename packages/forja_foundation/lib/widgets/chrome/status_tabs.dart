@@ -150,21 +150,30 @@ class _StatusTabState extends State<_StatusTab> {
   }
 
   Widget _label(bool hovered) {
-    // White / primary on hover+focus — never brand green (Material InkWell used
-    // theme primary and tinted the label). Green stays on the selected underline.
-    final emphasize = widget.selected ||
-        hovered ||
+    // Hover / focus → brand green (including over the selected tab).
+    // Selected idle → white; underline stays green when selected.
+    final focusHover = hovered ||
         ShellPaintScope.focusStyledOf(context, focused: _focused);
+    final Color color;
+    final FontWeight weight;
+    if (focusHover) {
+      color = ForjaShellColors.brandGreen;
+      weight = FontWeight.w700;
+    } else if (widget.selected) {
+      color = ForjaShellColors.textPrimary;
+      weight = FontWeight.w700;
+    } else {
+      color = ForjaShellColors.textSecondary;
+      weight = FontWeight.w500;
+    }
     return Text(
       widget.label,
       textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
-        color: emphasize
-            ? ForjaShellColors.textPrimary
-            : ForjaShellColors.textSecondary,
-        fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
+        color: color,
+        fontWeight: weight,
         fontSize: widget.fontSize,
       ),
     );
@@ -215,7 +224,7 @@ class _StatusTabState extends State<_StatusTab> {
       );
     }
 
-    // No Material InkWell — theme primary is brand green and tinted the text.
+    // No Material InkWell — theme primary must not tint selected labels.
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => _setHovered(true),

@@ -36,7 +36,7 @@ abstract final class ShellTokens {
   /// | **Empty / loading** | type ladder + mild pad scale |
   ///
   /// Sniff: if × scale looks correct but ugly, add a hand `*Tv` token for that family.
-  static const double tvChromeScale = 0.72;
+  static const double tvChromeScale = 0.62;
 
   /// Softer than [tvChromeScale] — hero band / title reserve stay readable at 10ft.
   static const double tvHeroScale = 0.80;
@@ -916,18 +916,6 @@ abstract final class ShellTokens {
   static const double catalogLoadingTickerStroke = 3;
   static const double catalogLoadingTickerStrokeTv =
       catalogLoadingTickerStroke * tvChromeScale;
-  static const double catalogLoadingListCardWidth = 160;
-  static const double catalogLoadingListCardWidthTv =
-      catalogLoadingListCardWidth * tvChromeScale;
-  static const double catalogLoadingListCardHeight = 100;
-  static const double catalogLoadingListCardHeightTv =
-      catalogLoadingListCardHeight * tvChromeScale;
-  static const double catalogLoadingListGap = 12;
-  static const double catalogLoadingListGapTv =
-      catalogLoadingListGap * tvChromeScale;
-  static const double catalogLoadingListPadH = 16;
-  static const double catalogLoadingListPadHTv =
-      catalogLoadingListPadH * tvChromeScale;
   static const double catalogLoadingTickerSlotHeight = 160;
   static const double catalogLoadingTickerSlotHeightTv =
       catalogLoadingTickerSlotHeight * tvChromeScale;

@@ -16,7 +16,7 @@ import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 
 void main() {
   test('tv density families: chrome scale + hand-tuned cards/hero/portals', () {
-    expect(ShellTokens.tvChromeScale, 0.72);
+    expect(ShellTokens.tvChromeScale, 0.62);
     expect(ShellTokens.tvHeroScale, 0.80);
     expect(
       ShellTokens.posterCardWidthTv,
