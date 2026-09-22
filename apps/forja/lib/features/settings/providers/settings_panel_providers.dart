@@ -52,7 +52,6 @@ class SettingsPlaybackSnapshot {
     required this.iptvMatchDisplayRefresh,
     required this.iptvLiveBufferSecsLabel,
     required this.maxPlaybackHeightLabel,
-    required this.animeTitleLanguageLabel,
   });
 
   final bool playSourceTorrent;
@@ -87,7 +86,6 @@ class SettingsPlaybackSnapshot {
   final bool iptvMatchDisplayRefresh;
   final String iptvLiveBufferSecsLabel;
   final String maxPlaybackHeightLabel;
-  final String animeTitleLanguageLabel;
 
   SettingsPlaybackSnapshot copyWith({
     bool? playSourceTorrent,
@@ -122,7 +120,6 @@ class SettingsPlaybackSnapshot {
     bool? iptvMatchDisplayRefresh,
     String? iptvLiveBufferSecsLabel,
     String? maxPlaybackHeightLabel,
-    String? animeTitleLanguageLabel,
   }) {
     return SettingsPlaybackSnapshot(
       playSourceTorrent: playSourceTorrent ?? this.playSourceTorrent,
@@ -172,8 +169,6 @@ class SettingsPlaybackSnapshot {
           iptvLiveBufferSecsLabel ?? this.iptvLiveBufferSecsLabel,
       maxPlaybackHeightLabel:
           maxPlaybackHeightLabel ?? this.maxPlaybackHeightLabel,
-      animeTitleLanguageLabel:
-          animeTitleLanguageLabel ?? this.animeTitleLanguageLabel,
     );
   }
 }
@@ -250,9 +245,6 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
       ),
       maxPlaybackHeightLabel: SettingsService.maxPlaybackHeightLabel(
         await s.getMaxPlaybackHeight(),
-      ),
-      animeTitleLanguageLabel: SettingsService.animeTitleLanguageLabel(
-        await s.getAnimeTitleLanguage(),
       ),
     );
   }

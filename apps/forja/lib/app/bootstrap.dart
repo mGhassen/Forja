@@ -34,7 +34,9 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/engine/packs/install/forja_plugin_deeplink.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 import 'package:forja/shell/update/app_update_progress_banner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt_host.dart';
 import 'package:forja/shared/engine/packs/install/plugin_pack_update_prompt_host.dart';
 import 'package:forja/features/settings/packs/plugin_install_progress_banner.dart';
@@ -160,7 +162,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // gotrue discard can leave a locally "valid" AT that PostgREST rejects.
   await SyncService.instance.refreshSession(force: true);
   unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
-  unawaited(SettingsService().getAnimeTitleLanguage());
+  unawaited(_migrateAnimeTitleLanguageToPack());
   if (Platform.isAndroid) {
     TvRemoteDebug.install();
   }
@@ -920,4 +922,27 @@ void _warnIfRustMissing() {
   if (Platform.environment['RUST_STRICT'] == '1') {
     throw StateError(full);
   }
+}
+
+/// Host Playback → Anime pack (`anilist` / `titleLanguage`). One-shot.
+Future<void> _migrateAnimeTitleLanguageToPack() async {
+  const legacyKey = 'anime_title_language';
+  final prefs = await SharedPreferences.getInstance();
+  if (!prefs.containsKey(legacyKey)) return;
+  final raw = (prefs.getString(legacyKey) ?? 'romaji').trim().toLowerCase();
+  final v = switch (raw) {
+    'english' || 'native' || 'romaji' => raw,
+    _ => 'romaji',
+  };
+  final migrated = await PackSettingsStore.migrateStringIfAbsent(
+    'anilist',
+    'titleLanguage',
+    v,
+  );
+  await prefs.remove(legacyKey);
+  if (migrated) {
+    schedulePackSettingsSyncPush();
+  }
+  // Drop retired Playback key from cloud when signed in.
+  schedulePreferencesSyncPush();
 }

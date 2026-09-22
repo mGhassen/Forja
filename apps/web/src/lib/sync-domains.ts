@@ -112,8 +112,6 @@ export type PreferencesPayload = {
   auto_pip_on_desktop_switch?: boolean
   iptv_epg_enabled?: boolean
   max_playback_height?: number
-  /** Stored: romaji | english | native */
-  anime_title_language?: string
   /** Host Addons → IPTV unlocked (RFC-086). Rail default-on via navigation. */
   addon_feature_iptv?: boolean
   /** @deprecated RFC-093 — Live Sports is pack-only; stripped on write. */
@@ -347,13 +345,6 @@ export const AUDIO_LANGUAGE_OPTIONS = [
 /** Same list as preferred audio — subtitle “None” starts with subs off. */
 export const SUBTITLE_LANGUAGE_OPTIONS = AUDIO_LANGUAGE_OPTIONS
 
-/** Flutter `SettingsService.animeTitleLanguageOptions` labels → stored values. */
-export const ANIME_TITLE_LANGUAGE_OPTIONS = [
-  { label: 'Romaji', value: 'romaji' },
-  { label: 'English', value: 'english' },
-  { label: 'Native', value: 'native' },
-] as const
-
 export type RemoteSettingSection = {
   key: keyof ProfileSettingsPayload | 'stremio' | 'nuvio' | 'forja' | 'iptv' | 'addons'
   title: string
@@ -380,7 +371,7 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
     key: 'playback',
     title: 'Playback',
     description:
-      'Player prefs — audio, subtitles, auto next/skip, quality, anime titles. Play sources live on the Addons hub.',
+      'Player prefs — audio, subtitles, auto next/skip, quality. Play sources live on the Addons hub.',
     href: '/account/settings/playback',
   },
   {
@@ -619,7 +610,6 @@ export function emptyPreferencesPayload(): PreferencesPayload {
     auto_pip_on_desktop_switch: false,
     iptv_epg_enabled: true,
     max_playback_height: 2160,
-    anime_title_language: 'romaji',
   }
 }
 
@@ -646,7 +636,56 @@ function compactPlayback(p: PreferencesPayload | undefined): PreferencesPayload 
     out.addon_feature_iptv = p.addon_feature_iptv
   }
   delete out.addon_feature_live_sports
+  // Host Playback → Anime pack (`anilist` / `titleLanguage`).
+  delete (out as Record<string, unknown>).anime_title_language
   return out
+}
+
+/** Normalize legacy `playback.anime_title_language` into packSettings. */
+export function migrateAnimeTitleLanguagePayload(
+  full: ProfileSettingsPayload,
+): ProfileSettingsPayload {
+  const pb = full.playback as Record<string, unknown> | undefined
+  const raw =
+    typeof pb?.anime_title_language === 'string'
+      ? pb.anime_title_language.trim().toLowerCase()
+      : ''
+  const legacy =
+    raw === 'english' || raw === 'native' || raw === 'romaji' ? raw : ''
+
+  const packSettings: PackSettingsPayload = {
+    ...(full.connectedServices?.packSettings ?? {}),
+  }
+  const anilist = { ...(packSettings.anilist ?? {}) }
+  let changed = false
+
+  if (legacy && anilist.titleLanguage === undefined) {
+    anilist.titleLanguage = legacy
+    packSettings.anilist = anilist
+    changed = true
+  }
+
+  if (pb && 'anime_title_language' in pb) {
+    const { anime_title_language: _drop, ...rest } = pb
+    void _drop
+    return {
+      ...full,
+      playback: rest as PreferencesPayload,
+      connectedServices: {
+        ...full.connectedServices,
+        packSettings,
+      },
+    }
+  }
+
+  if (!changed) return full
+  return {
+    ...full,
+    connectedServices: {
+      ...full.connectedServices,
+      packSettings,
+    },
+  }
 }
 
 function compactStremio(s: StremioPayload | undefined): StremioPayload | undefined {
@@ -749,12 +788,15 @@ export function compactPackSettings(
 export function compactProfileSettingsPayload(
   full: ProfileSettingsPayload,
 ): ProfileSettingsPayload {
-  const playback = compactPlayback(full.playback)
-  const stremio = compactStremio(full.connectedServices?.stremio)
-  const nuvio = compactNuvio(full.connectedServices?.nuvio)
-  const forja = compactForja(full.connectedServices?.forja)
-  const packSettings = compactPackSettings(full.connectedServices?.packSettings)
-  const navigation = compactNavigation(full.navigation)
+  const migrated = migrateAnimeTitleLanguagePayload(full)
+  const playback = compactPlayback(migrated.playback)
+  const stremio = compactStremio(migrated.connectedServices?.stremio)
+  const nuvio = compactNuvio(migrated.connectedServices?.nuvio)
+  const forja = compactForja(migrated.connectedServices?.forja)
+  const packSettings = compactPackSettings(
+    migrated.connectedServices?.packSettings,
+  )
+  const navigation = compactNavigation(migrated.navigation)
 
   const connectedServices: ConnectedServicesPayload = {}
   if (stremio) connectedServices.stremio = stremio
@@ -797,11 +839,11 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
 
   void p.films
 
-  return {
+  return migrateAnimeTitleLanguagePayload({
     playback: { ...base.playback, ...p.playback },
     connectedServices: { stremio, nuvio, forja, packSettings },
     navigation: normalizeNavigationPayload(p.navigation),
-  }
+  })
 }
 
 /** @deprecated films no longer synced */

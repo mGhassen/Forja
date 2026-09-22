@@ -333,6 +333,11 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         ? ShellTokens.shellChipRadiusPillTv
         : widget.radius;
 
+    // Cap trailing glyphs to the label size so reload / loading … never grow
+    // the pill above idle height (especially on leanback type ladder).
+    final trailingSize =
+        iconSize > labelFontSize ? labelFontSize : iconSize;
+
     return AnimatedContainer(
       duration: tv
           ? Duration.zero
@@ -344,58 +349,73 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         radius: radius,
       ),
       padding: padding,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (widget.icon != null) ...[
-            Icon(widget.icon, size: iconSize, color: fg),
-            SizedBox(width: gap),
-          ],
-          Text(
-            widget.label,
-            style: GoogleFonts.plusJakartaSans(
-              color: fg,
-              fontSize: labelFontSize,
-              fontWeight:
-                  selected || accent ? FontWeight.w600 : FontWeight.w500,
+      child: SizedBox(
+        height: labelFontSize,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (widget.icon != null) ...[
+              Icon(widget.icon, size: trailingSize, color: fg),
+              SizedBox(width: gap),
+            ],
+            Text(
+              widget.label,
+              style: GoogleFonts.plusJakartaSans(
+                color: fg,
+                fontSize: labelFontSize,
+                height: 1.0,
+                fontWeight:
+                    selected || accent ? FontWeight.w600 : FontWeight.w500,
+              ),
+              strutStyle: StrutStyle(
+                fontSize: labelFontSize,
+                height: 1.0,
+                forceStrutHeight: true,
+              ),
+              textHeightBehavior: const TextHeightBehavior(
+                applyHeightToFirstAscent: false,
+                applyHeightToLastDescent: false,
+              ),
             ),
-          ),
-          if (widget.loading) ...[
-            SizedBox(width: gapTight),
-            ForjaBusyCancelGlyph(
-              color: fg,
-              hovered: busyHovered,
-              onHover: _setBusyHovered,
-              onCancel: widget.onCancel,
-            ),
-          ] else if (showReload) ...[
-            SizedBox(width: gap),
-            ExcludeFocus(
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                onEnter: (_) => _setReloadHovered(true),
-                onExit: (_) => _setReloadHovered(false),
-                child: GestureDetector(
-                  onTap: widget.onReload,
-                  behavior: HitTestBehavior.opaque,
-                  child: AnimatedRotation(
-                    turns: reloadHovered ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 320),
-                    curve: Curves.easeOutCubic,
-                    child: Icon(
-                      Icons.refresh_rounded,
-                      size: iconSize,
-                      color: reloadColor,
+            if (widget.loading) ...[
+              SizedBox(width: gapTight),
+              ForjaBusyCancelGlyph(
+                color: fg,
+                size: trailingSize,
+                hovered: busyHovered,
+                onHover: _setBusyHovered,
+                onCancel: widget.onCancel,
+              ),
+            ] else if (showReload) ...[
+              SizedBox(width: gap),
+              ExcludeFocus(
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  onEnter: (_) => _setReloadHovered(true),
+                  onExit: (_) => _setReloadHovered(false),
+                  child: GestureDetector(
+                    onTap: widget.onReload,
+                    behavior: HitTestBehavior.opaque,
+                    child: AnimatedRotation(
+                      turns: reloadHovered ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        Icons.refresh_rounded,
+                        size: trailingSize,
+                        color: reloadColor,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ] else if (widget.trailing != null) ...[
-            SizedBox(width: gapTight),
-            widget.trailing!,
+            ] else if (widget.trailing != null) ...[
+              SizedBox(width: gapTight),
+              widget.trailing!,
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

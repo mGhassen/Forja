@@ -46,6 +46,9 @@ function mergeProfilePatch(
         patch.connectedServices?.nuvio ?? current.connectedServices?.nuvio,
       forja:
         patch.connectedServices?.forja ?? current.connectedServices?.forja,
+      packSettings:
+        patch.connectedServices?.packSettings ??
+        current.connectedServices?.packSettings,
     },
     // Replace Features wholesale — shallow merge kept stale visibleIds when
     // clearing tabs (empty array must win; issue 221).
@@ -78,8 +81,38 @@ export function useProfileSettings() {
         .eq('profile_id', activeProfile!.id)
         .maybeSingle()
       if (error) throw error
+      const raw = data?.payload
+      const expanded = expandProfileSettingsPayload(raw)
+      // Rewrite once when legacy Playback anime title key is still in the row.
+      const rawObj =
+        raw && typeof raw === 'object'
+          ? (raw as Record<string, unknown>)
+          : null
+      const rawPlayback =
+        rawObj?.playback && typeof rawObj.playback === 'object'
+          ? (rawObj.playback as Record<string, unknown>)
+          : null
+      if (rawPlayback && 'anime_title_language' in rawPlayback) {
+        const lean = compactProfileSettingsPayload(expanded)
+        const now = new Date().toISOString()
+        const { error: upsertError } = await supabase
+          .from('profile_settings')
+          .upsert({
+            profile_id: activeProfile!.id,
+            account_id: user!.id,
+            payload: lean as Json,
+            updated_at: now,
+            updated_by: user!.id,
+          })
+        if (!upsertError) {
+          return {
+            payload: expandProfileSettingsPayload(lean),
+            updated_at: now,
+          }
+        }
+      }
       return {
-        payload: expandProfileSettingsPayload(data?.payload),
+        payload: expanded,
         updated_at: data?.updated_at ?? null,
       }
     },

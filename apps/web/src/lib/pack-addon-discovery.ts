@@ -104,6 +104,9 @@ function heuristicAddonFromUrl(manifestUrl: string): {
   if (hub === 'my_list') {
     return { addonId: 'my_list', title: 'My List', pluginId: 'my-list-hub' }
   }
+  if (hub === 'anime') {
+    return { addonId: 'anime', title: 'Anime', pluginId: 'anilist' }
+  }
   const lower = manifestUrl.toLowerCase()
   if (
     lower.includes('/debrid/') ||
@@ -224,6 +227,25 @@ const OFFICIAL_FIELD_FALLBACKS: Record<string, PackSettingsField[]> = {
       order: 10,
       pluginId: 'my-list-hub',
       pluginName: 'My List',
+    },
+  ],
+  anilist: [
+    {
+      id: 'titleLanguage',
+      type: 'select',
+      label: 'Anime title language',
+      subtitle:
+        'Title language in the Anime hub, details, and player. Default is Romaji. Stream matching still tries romaji, then English, native, and synonyms.',
+      default: 'romaji',
+      options: [
+        { id: 'romaji', label: 'Romaji' },
+        { id: 'english', label: 'English' },
+        { id: 'native', label: 'Native' },
+      ],
+      group: 'Display',
+      order: 10,
+      pluginId: 'anilist',
+      pluginName: 'Anime',
     },
   ],
 }

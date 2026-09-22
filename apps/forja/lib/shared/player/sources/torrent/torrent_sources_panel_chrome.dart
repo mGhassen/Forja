@@ -636,6 +636,7 @@ class _KindTabState extends State<_KindTab> {
             const SizedBox(width: 4),
             ForjaBusyCancelGlyph(
               color: color,
+              size: tabFont,
               hovered: busyHovered,
               onHover: _setBusyHovered,
               onCancel: widget.onCancel,

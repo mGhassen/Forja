@@ -177,6 +177,17 @@ abstract final class PackSettingsStore {
     return true;
   }
 
+  /// One-shot: copy [legacyValue] into the pack key when unset.
+  static Future<bool> migrateStringIfAbsent(
+    String pluginId,
+    String fieldId,
+    String legacyValue,
+  ) async {
+    if (await has(pluginId, fieldId)) return false;
+    await setString(pluginId, fieldId, legacyValue, reloadHub: false);
+    return true;
+  }
+
   static Future<bool> migrateStringListIfAbsent(
     String pluginId,
     String fieldId,

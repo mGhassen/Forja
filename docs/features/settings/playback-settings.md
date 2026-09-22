@@ -1,10 +1,10 @@
 # Playback settings
 
-> Play sources, external player, audio, and anime title language.
+> Play sources, external player, and audio.
 
 ## What it is
 
-Core playback preferences: which backends **Play** tries on the TMDB details screen, external player, preferred audio and subtitle languages, unsupported codec avoidance, and anime title language.
+Core playback preferences: which backends **Play** tries on the TMDB details screen, external player, preferred audio and subtitle languages, and unsupported codec avoidance.
 
 ## How to open it
 
@@ -32,12 +32,12 @@ Core playback preferences: which backends **Play** tries on the TMDB details scr
 - On **Android TV**, **IPTV live buffer** is shown only to **admin** accounts under **Addons → IPTV**. MediaKit only; **Auto** uses a **30s** demuxer window (same on phone/desktop and TV), or pick **15 / 20 / 30 seconds**. Helps underruns, not frame judder. Applies the next time you open the IPTV player
 - Portal URL / username / password for the active Xtream portal are pack settings on the same **Addons → IPTV** page
 - Set **Max stream quality** to limit Auto ranking and HLS start bitrate (**4K** by default; Auto, 1440p, 1080p, 720p, …)
-- Choose **Anime title language**. **Romaji** (default), **English**, or **Native** for Anime hub / details / player titles. Stream matching still tries romaji, then English, native, and synonyms
 
 Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URLs, images, scores, continue watching).
 
 ## Tips
 
+- Anime title language lives under **Settings → Addons → Anime** when the Anime pack is installed — see [Anime](../hubs/anime.md)
 - Turning a play source **on** starts its engine for this session (Direct torrent → torrent engine; Nuvio → scraper refresh; Forja → plugins). **Sources** and **Forja Packs** categories are always visible in Settings regardless of nav tabs.
 - Play source toggles: white link **Play** / **Sources** use **Direct torrent**, **Stremio**, and **Nuvio** when each is enabled; **Forja** is always on when your platform supports it. The **Sources** panel uses **Forja / Torrents / Stremio / Nuvio** (left to right) for the play sources that apply.
 - **Max stream quality** caps which sources the engine prefers when ranking (device probe still applies under Auto). Defaults to **4K** (top ladder rung). HLS Auto also uses that cap for start bitrate — Auto is a mid-high soft ceiling for a faster first frame. Lock a Quality chip in the player to force a specific variant.

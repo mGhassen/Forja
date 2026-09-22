@@ -258,24 +258,6 @@ class _SettingsPlaybackSectionState
                   schedulePreferencesSyncPush();
                 },
               ),
-            if (widget.visibility.showVodPlayerExtras)
-              settingsFocusableDropdown(
-                context,
-                'Anime title language',
-                'Title language in the Anime hub, details, and player. Default is Romaji. Stream matching still tries romaji, then English, native, and synonyms.',
-                snap.animeTitleLanguageLabel,
-                SettingsService.animeTitleLanguageOptions,
-                (val) async {
-                  if (val == null) return;
-                  await _settings.setAnimeTitleLanguage(
-                    SettingsService.animeTitleLanguageStored(val),
-                  );
-                  await _playback.patch(
-                    (s) => s.copyWith(animeTitleLanguageLabel: val),
-                  );
-                  schedulePreferencesSyncPush();
-                },
-              ),
           ],
         ),
       ],

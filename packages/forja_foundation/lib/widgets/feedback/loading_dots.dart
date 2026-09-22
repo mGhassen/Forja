@@ -36,6 +36,8 @@ class _ForjaLoadingDotsState extends State<ForjaLoadingDots>
       animation: _c,
       builder: (context, _) {
         final lit = (_c.value * 3).floor() % 3;
+        // height 1.0 + tight strut keeps layout size == [fontSize] so chips /
+        // kind tabs do not grow when loading dots appear.
         return Text.rich(
           TextSpan(
             children: [
@@ -51,8 +53,17 @@ class _ForjaLoadingDotsState extends State<ForjaLoadingDots>
           style: TextStyle(
             fontSize: widget.fontSize,
             fontWeight: FontWeight.w700,
-            height: 1.1,
+            height: 1.0,
             letterSpacing: 0.4,
+          ),
+          strutStyle: StrutStyle(
+            fontSize: widget.fontSize,
+            height: 1.0,
+            forceStrutHeight: true,
+          ),
+          textHeightBehavior: const TextHeightBehavior(
+            applyHeightToFirstAscent: false,
+            applyHeightToLastDescent: false,
           ),
         );
       },
@@ -62,6 +73,9 @@ class _ForjaLoadingDotsState extends State<ForjaLoadingDots>
 
 /// Loading `...` that turns into ✕ on hover when [onCancel] is set (kind tabs
 /// + provider chips).
+///
+/// [size] must match the surrounding label font so idle → loading does not
+/// change chip / tab height.
 class ForjaBusyCancelGlyph extends StatelessWidget {
   const ForjaBusyCancelGlyph({
     super.key,
@@ -69,6 +83,7 @@ class ForjaBusyCancelGlyph extends StatelessWidget {
     required this.hovered,
     required this.onHover,
     this.onCancel,
+    this.size = 13,
   });
 
   final Color color;
@@ -76,9 +91,13 @@ class ForjaBusyCancelGlyph extends StatelessWidget {
   final ValueChanged<bool> onHover;
   final VoidCallback? onCancel;
 
+  /// Box + glyph size — keep equal to the chip / tab label font size.
+  final double size;
+
   @override
   Widget build(BuildContext context) {
     final showCancel = hovered && onCancel != null;
+    final box = size;
     return ExcludeFocus(
       child: MouseRegion(
         cursor: onCancel == null
@@ -90,12 +109,12 @@ class ForjaBusyCancelGlyph extends StatelessWidget {
           onTap: onCancel,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
-            width: 18,
-            height: 16,
+            width: box + 2,
+            height: box,
             child: Center(
               child: showCancel
-                  ? Icon(Icons.close_rounded, size: 14, color: color)
-                  : ForjaLoadingDots(color: color),
+                  ? Icon(Icons.close_rounded, size: box, color: color)
+                  : ForjaLoadingDots(color: color, fontSize: box),
             ),
           ),
         ),

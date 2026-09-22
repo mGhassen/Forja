@@ -147,7 +147,6 @@ class SettingsService {
   /// @deprecated RFC-093 — Live Sports is pack-only; not an Addons feature id.
   static const String liveSportsAddonFeatureId = 'live_sports';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
-  static const String _animeTitleLanguageKey = 'anime_title_language';
 
   /// Opt-in ceiling for IPTV **live** Exo adaptive variants. Default Auto = no cap.
   static const Map<String, int> iptvLiveMaxHeightOptions = {
@@ -303,17 +302,6 @@ class SettingsService {
         return iptvLiveRecoveryBuffered;
     }
   }
-
-  /// Anime catalog display language (AniList). Default romaji.
-  static const List<String> animeTitleLanguageOptions = [
-    'Romaji',
-    'English',
-    'Native',
-  ];
-
-  /// Live value for [AnimeCard.displayTitle] (romaji / english / native).
-  static final ValueNotifier<String> animeTitleLanguageNotifier =
-      ValueNotifier<String>('romaji');
 
   /// Headless WebView sniff: iframe-wrap embed URLs vs load them directly.
   /// Always on — Source panel toggle removed; providers may still force direct.
@@ -610,47 +598,6 @@ class SettingsService {
 
   Future<void> setMaxPlaybackHeight(int height) async =>
       kvSetInt(_maxPlaybackHeightKey, height);
-
-  /// AniList title language for anime hub / details / player chrome.
-  /// Stored as `romaji` | `english` | `native`. Default romaji.
-  Future<String> getAnimeTitleLanguage() async {
-    final raw = (await kvGetString(_animeTitleLanguageKey) ?? 'romaji')
-        .trim()
-        .toLowerCase();
-    final v = switch (raw) {
-      'english' || 'native' || 'romaji' => raw,
-      _ => 'romaji',
-    };
-    if (animeTitleLanguageNotifier.value != v) {
-      animeTitleLanguageNotifier.value = v;
-    }
-    return v;
-  }
-
-  Future<void> setAnimeTitleLanguage(String language) async {
-    final v = switch (language.trim().toLowerCase()) {
-      'english' || 'native' || 'romaji' => language.trim().toLowerCase(),
-      _ => 'romaji',
-    };
-    await kvSetString(_animeTitleLanguageKey, v);
-    animeTitleLanguageNotifier.value = v;
-  }
-
-  static String animeTitleLanguageLabel(String stored) {
-    return switch (stored.trim().toLowerCase()) {
-      'english' => 'English',
-      'native' => 'Native',
-      _ => 'Romaji',
-    };
-  }
-
-  static String animeTitleLanguageStored(String label) {
-    return switch (label.trim().toLowerCase()) {
-      'english' => 'english',
-      'native' => 'native',
-      _ => 'romaji',
-    };
-  }
 
   Future<double> getSubSize({bool isDesktop = false}) async =>
       kvGetDouble(_subSizeKey, fallback: isDesktop ? 44.0 : _defaults.subSize);

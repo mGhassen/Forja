@@ -731,13 +731,14 @@ abstract final class ShellTokens {
   static const double torrentPanelRowBadgeRadiusDesktop = 6;
   static const double torrentPanelRowBadgeRadiusTv = 4;
   static const double torrentPanelChipPadHDesktop = 12;
-  static const double torrentPanelChipPadHTv =
-      torrentPanelChipPadHDesktop * tvChromeScale;
+  /// Hand-tuned denser than desktop × chrome — match action chips / search.
+  static const double torrentPanelChipPadHTv = actionChipPadHTv;
   static const double torrentPanelChipPadVDesktop = 8;
-  static const double torrentPanelChipPadVTv =
-      torrentPanelChipPadVDesktop * tvChromeScale;
+  /// Hand-tuned denser than desktop × chrome — avoids oversized Sources pills.
+  static const double torrentPanelChipPadVTv = 3;
   static const double torrentPanelChipFontSizeDesktop = 12;
-  static const double torrentPanelChipFontSizeTv = tvBodyFontSize;
+  /// Dense strip type — same ladder rung as action chips (not body).
+  static const double torrentPanelChipFontSizeTv = tvMetaFontSize;
   static const double torrentPanelMetaIconSizeDesktop = 14;
   static const double torrentPanelMetaIconSizeTv = 13;
   static const double torrentPanelMetaFontSizeDesktop = 11;

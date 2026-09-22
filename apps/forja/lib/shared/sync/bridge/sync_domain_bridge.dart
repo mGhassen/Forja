@@ -766,6 +766,9 @@ class SyncDomainBridge {
         final remotePb = remote['playback'] is Map
             ? Map<String, dynamic>.from(remote['playback'] as Map)
             : <String, dynamic>{};
+        // Host Playback → Anime pack setting (packSettings is SoT).
+        remotePb.remove('anime_title_language');
+        localPb.remove('anime_title_language');
         next['playback'] = {...remotePb, ...localPb};
       }
     }
@@ -1490,7 +1493,6 @@ class SyncDomainBridge {
       // tv_nav_sound is Android TV-only / device-local.
       'iptv_epg_enabled': await _settings.isIptvEpgEnabled(),
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
-      'anime_title_language': await _settings.getAnimeTitleLanguage(),
       // Pack-only — always false in cloud payload (legacy key).
       'addon_feature_iptv': false,
     };
@@ -1565,10 +1567,26 @@ class SyncDomainBridge {
         (payload['max_playback_height'] as num).toInt(),
       );
     }
+    // Legacy host Playback key → Anime pack setting (packSettings is SoT now).
     if (payload.containsKey('anime_title_language')) {
-      await _settings.setAnimeTitleLanguage(
-        payload['anime_title_language'] as String,
+      final raw =
+          (payload['anime_title_language'] as String? ?? 'romaji')
+              .trim()
+              .toLowerCase();
+      final v = switch (raw) {
+        'english' || 'native' || 'romaji' => raw,
+        _ => 'romaji',
+      };
+      final migrated = await PackSettingsStore.migrateStringIfAbsent(
+        'anilist',
+        'titleLanguage',
+        v,
       );
+      if (migrated) {
+        schedulePackSettingsSyncPush();
+      }
+      // Always strip the retired Playback key from cloud on next prefs push.
+      schedulePreferencesSyncPush();
     }
     // RFC-109: IPTV / Live Sports are pack-only — ignore retired addon feature keys.
   }

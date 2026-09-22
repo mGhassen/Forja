@@ -6,7 +6,6 @@ import { SettingsToggle } from '@/components/settings-toggle'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
 import { usePlaybackSetting } from '@/hooks/use-user-setting'
 import {
-  ANIME_TITLE_LANGUAGE_OPTIONS,
   AUDIO_LANGUAGE_OPTIONS,
   emptyPreferencesPayload,
   MAX_PLAYBACK_HEIGHT_OPTIONS,
@@ -157,35 +156,6 @@ export function AccountSettingsPlaybackPage() {
             }
           >
             {MAX_PLAYBACK_HEIGHT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex min-h-16.5 items-center justify-between gap-5 px-0.5 py-3">
-          <div className="min-w-0">
-            <Label htmlFor="anime-title-lang" className="text-sm font-medium">
-              Anime title language
-            </Label>
-            <p className="mt-0.5 text-xs text-forja-muted">
-              Anime hub, details, and player. Default Romaji.
-            </p>
-          </div>
-          <select
-            id="anime-title-lang"
-            className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"
-            value={draft.anime_title_language ?? 'romaji'}
-            disabled={controlsLocked || isSaving}
-            onChange={(e) =>
-              void commit((prev) => ({
-                ...prev,
-                anime_title_language: e.target.value,
-              }))
-            }
-          >
-            {ANIME_TITLE_LANGUAGE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
