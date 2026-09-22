@@ -22,10 +22,13 @@ import 'package:forja/shell/platform/macos_shell_channel.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
 
+import 'package:forja/shared/engine/cache/engine_cache.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
@@ -336,6 +339,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     MacOsShellChannel.listen(onFind: _onFindShortcut);
     EngineService.changeNotifier.addListener(_onEnginePackChanged);
     SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
+    ShellBus.completeNavbarReloadRevision.addListener(_onCompleteNavbarReload);
 
     unawaited(_refreshHubNavThenLoad());
     _syncCurrentNavTab();
@@ -344,6 +348,46 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   void _onEnginePackChanged() {
     unawaited(_refreshHubNavThenLoad());
+  }
+
+  void _onCompleteNavbarReload() {
+    unawaited(_forceCompleteNavbarReload());
+  }
+
+  Future<void>? _completeNavbarReloadInFlight;
+
+  /// Hold-nav gesture: remount every hub, re-read Features rail, wipe pack caches.
+  Future<void> _forceCompleteNavbarReload() async {
+    if (_completeNavbarReloadInFlight != null) {
+      await _completeNavbarReloadInFlight;
+      return;
+    }
+    final run = () async {
+      ForjaToast.info('Reloading navbar…');
+      for (final tabId in PluginNavRegistry.destinations.keys) {
+        final id = PluginNavRegistry.pluginIdForTabSync(tabId);
+        if (id != null && id.isNotEmpty) {
+          EngineCache.instance.wipePlugin(id);
+        }
+      }
+      _invalidateHubTabsAfterPackChange(remountBuilders: true);
+      await PluginNavRegistry.refresh();
+      if (!mounted) return;
+      await _loadNavbarConfig(force: true);
+      if (!mounted) return;
+      _ensureSelectedKitTabMounted(forceRefresh: true);
+      PluginRegistry.bumpHubFeedEpoch(all: true);
+      if (!mounted) return;
+      ForjaToast.success('Navbar reloaded');
+    }();
+    _completeNavbarReloadInFlight = run;
+    try {
+      await run;
+    } finally {
+      if (identical(_completeNavbarReloadInFlight, run)) {
+        _completeNavbarReloadInFlight = null;
+      }
+    }
   }
 
   Future<void>? _hubNavReloadInFlight;
@@ -436,7 +480,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     });
   }
 
-  Future<void> _loadNavbarConfig() async {
+  Future<void> _loadNavbarConfig({bool force = false}) async {
     final gen = ++_navbarLoadGen;
     var visible = await SettingsService().getNavbarConfig();
     final defaultTab = await SettingsService().getDefaultNavTab();
@@ -466,7 +510,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final nextIds = [...visible, 'settings'];
     // Skip no-op reloads — notifier storms were reprinting visible=[] forever.
     // Compare against what we would paint (post-filter), not raw KV.
-    if (_initialNavResolved &&
+    if (!force &&
+        _initialNavResolved &&
         listEquals(_visibleIds, nextIds) &&
         !ShellBus.selectDefaultTabOnNextNavLoad) {
       if (kDebugMode && !listEquals(beforeFilter, visible)) {
@@ -771,6 +816,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
+    ShellBus.completeNavbarReloadRevision.removeListener(_onCompleteNavbarReload);
     ShellBus.clearOverlayShellTabId();
     ShellBus.activeShellTabId = null;
     ShellBus.clearHideGlobalNav();

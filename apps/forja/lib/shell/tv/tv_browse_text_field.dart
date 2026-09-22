@@ -6,7 +6,8 @@ import 'package:forja_foundation/widgets/tv/tv_search_browse_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 
-/// Desktop hybrid + leanback TV — focus highlights only until Enter / OK / tap.
+/// Leanback TV — focus highlights only until Enter / OK / tap.
+/// Desktop and phone type on focus ([ShellInputPolicy.browseTextUntilActivate]).
 bool shellTvBrowseSearch(BuildContext context) {
   final policy = ShellScope.maybeOf(context)?.inputPolicy;
   if (policy != null) return policy.browseTextUntilActivate;

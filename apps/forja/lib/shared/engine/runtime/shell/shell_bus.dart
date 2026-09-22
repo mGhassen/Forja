@@ -50,6 +50,14 @@ class ShellBus {
     shellLogoTapRevision.value++;
   }
 
+  /// Hold a nav tab ~4s — [MainScreen] remounts hubs and reloads navbar config.
+  static final ValueNotifier<int> completeNavbarReloadRevision =
+      ValueNotifier(0);
+
+  static void requestCompleteNavbarReload() {
+    completeNavbarReloadRevision.value++;
+  }
+
   /// Settings hub category to select on the next Settings show (`lan`, `playback`, …).
   static final ValueNotifier<String?> requestSettingsCategory =
       ValueNotifier<String?>(null);

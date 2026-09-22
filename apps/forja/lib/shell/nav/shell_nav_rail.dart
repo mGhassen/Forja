@@ -924,7 +924,9 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   Timer? _revealTimer;
   Timer? _providerRevealTimer;
   Timer? _providerHoldTimer;
+  Timer? _completeReloadHoldTimer;
   bool _providerHoldFired = false;
+  bool _completeReloadHoldFired = false;
   late final FocusNode _focusNode;
   late final void Function() _hoverClaim = _requestHoverFocus;
 
@@ -935,6 +937,34 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     if (!mounted) return;
     if (_focusNode.hasFocus || !_focusNode.canRequestFocus) return;
     _focusNode.requestFocus();
+  }
+
+  void _startCompleteReloadHold() {
+    _completeReloadHoldFired = false;
+    _completeReloadHoldTimer?.cancel();
+    _completeReloadHoldTimer = Timer(ShellTokens.navCompleteReloadHold, () {
+      if (!mounted) return;
+      _completeReloadHoldFired = true;
+      _providerHoldTimer?.cancel();
+      _providerHoldTimer = null;
+      _providerHoldFired = true;
+      VerticalFiltersRegistry.hideMenu(widget.destination.id);
+      HapticFeedback.mediumImpact();
+      ShellBus.requestCompleteNavbarReload();
+    });
+  }
+
+  void _cancelCompleteReloadHold() {
+    _completeReloadHoldTimer?.cancel();
+    _completeReloadHoldTimer = null;
+  }
+
+  /// Returns true when the 4s complete-reload hold already fired (suppress tap).
+  bool _consumeCompleteReloadHold() {
+    _cancelCompleteReloadHold();
+    if (!_completeReloadHoldFired) return false;
+    _completeReloadHoldFired = false;
+    return true;
   }
 
   @override
@@ -963,6 +993,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     ShellTvFocus.unregisterNav(widget.destination.id, _focusNode);
     _focusNode.dispose();
     _revealTimer?.cancel();
+    _cancelCompleteReloadHold();
     _cancelProviderReveal();
     super.dispose();
   }
@@ -1209,14 +1240,15 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
           widget.onFocusChanged();
         },
         onKeyEvent: (node, event) {
-          if (_hasVerticalFilters) {
-            if (shellTvIsActivateKey(event)) {
+          if (shellTvIsActivateKey(event)) {
+            _startCompleteReloadHold();
+            if (_hasVerticalFilters) {
               _providerHoldFired = false;
               _providerHoldTimer?.cancel();
               _providerHoldTimer = Timer(
                 VerticalFiltersRegistry.menuHoldDelay,
                 () {
-                  if (!mounted) return;
+                  if (!mounted || _completeReloadHoldFired) return;
                   _providerHoldFired = true;
                   VerticalFiltersRegistry.showMenu(widget.destination.id);
                   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1224,9 +1256,17 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                   });
                 },
               );
+            }
+            return KeyEventResult.handled;
+          }
+          if (shellTvIsActivateKeyUp(event)) {
+            if (_consumeCompleteReloadHold()) {
+              _providerHoldTimer?.cancel();
+              _providerHoldTimer = null;
+              _providerHoldFired = false;
               return KeyEventResult.handled;
             }
-            if (shellTvIsActivateKeyUp(event)) {
+            if (_hasVerticalFilters) {
               _providerHoldTimer?.cancel();
               _providerHoldTimer = null;
               if (!_providerHoldFired) {
@@ -1235,12 +1275,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               _providerHoldFired = false;
               return KeyEventResult.handled;
             }
-          }
-          if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-          if (shellTvIsActivateKey(event)) {
             _enterPageFromNav();
             return KeyEventResult.handled;
           }
+          if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
           if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
             final arrow = event.logicalKey;
             if (arrow == LogicalKeyboardKey.arrowRight) {
@@ -1277,103 +1315,121 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               onEnter: (_) => _onHoverEnter(),
               onExit: (_) => _onHoverExit(),
               cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTapDown: (_) => setState(() => _pressed = true),
-                onTapUp: (_) => setState(() => _pressed = false),
-                onTapCancel: () => setState(() => _pressed = false),
-                onTap: _enterPageFromNav,
-                onLongPress: _hasVerticalFilters
-                    ? () {
-                        VerticalFiltersRegistry.showMenu(
-                          widget.destination.id,
-                        );
-                      }
-                    : null,
-                behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  width: railW,
-                  height: contentHeight,
-                  // Top-pin icon stack so focus scale + label never shift the
-                  // icon baseline relative to unlabeled neighbors.
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: railW,
-                        height: renderedIconSize *
-                            ShellTokens.navRailIconHoverScale,
-                        child: Align(
-                          alignment: Alignment.bottomCenter,
-                          child: AnimatedScale(
+              child: Listener(
+                onPointerDown: (_) => _startCompleteReloadHold(),
+                onPointerUp: (_) {
+                  // After GestureDetector [onLongPress], [onTap] does not run —
+                  // cancel the 4s timer here when the hold never completed.
+                  if (!_completeReloadHoldFired) {
+                    _cancelCompleteReloadHold();
+                  }
+                },
+                onPointerCancel: (_) => _cancelCompleteReloadHold(),
+                child: GestureDetector(
+                  onTapDown: (_) => setState(() => _pressed = true),
+                  onTapUp: (_) => setState(() => _pressed = false),
+                  onTapCancel: () {
+                    setState(() => _pressed = false);
+                    _cancelCompleteReloadHold();
+                  },
+                  onTap: () {
+                    if (_consumeCompleteReloadHold()) return;
+                    _enterPageFromNav();
+                  },
+                  onLongPress: _hasVerticalFilters
+                      ? () {
+                          if (_completeReloadHoldFired) return;
+                          VerticalFiltersRegistry.showMenu(
+                            widget.destination.id,
+                          );
+                        }
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: SizedBox(
+                    width: railW,
+                    height: contentHeight,
+                    // Top-pin icon stack so focus scale + label never shift the
+                    // icon baseline relative to unlabeled neighbors.
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: railW,
+                          height: renderedIconSize *
+                              ShellTokens.navRailIconHoverScale,
+                          child: Align(
                             alignment: Alignment.bottomCenter,
-                            scale: _scaleFor(policy),
-                            duration: chromeAnim,
-                            curve: Curves.easeOutCubic,
-                            // Bilinear — Impeller defaults can nearest-neighbor
-                            // the focus grow and make pack PNGs look 8-bit.
-                            filterQuality: FilterQuality.medium,
-                            child: SizedBox(
-                              width: widget.customIconSize != null
-                                  ? renderedIconSize *
-                                      ShellTokens.navRailIconHoverScale
-                                  : renderedIconSize,
-                              height: widget.customIconSize != null
-                                  ? renderedIconSize *
-                                      ShellTokens.navRailIconHoverScale
-                                  : renderedIconSize,
-                              child: Center(child: icon),
+                            child: AnimatedScale(
+                              alignment: Alignment.bottomCenter,
+                              scale: _scaleFor(policy),
+                              duration: chromeAnim,
+                              curve: Curves.easeOutCubic,
+                              // Bilinear — Impeller defaults can nearest-neighbor
+                              // the focus grow and make pack PNGs look 8-bit.
+                              filterQuality: FilterQuality.medium,
+                              child: SizedBox(
+                                width: widget.customIconSize != null
+                                    ? renderedIconSize *
+                                        ShellTokens.navRailIconHoverScale
+                                    : renderedIconSize,
+                                height: widget.customIconSize != null
+                                    ? renderedIconSize *
+                                        ShellTokens.navRailIconHoverScale
+                                    : renderedIconSize,
+                                child: Center(child: icon),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(
-                        height: ShellTokens.navRailIconUnderlineGap,
-                      ),
-                      AnimatedContainer(
-                        key: ValueKey(
-                          'nav-${widget.destination.id}-underline',
+                        const SizedBox(
+                          height: ShellTokens.navRailIconUnderlineGap,
                         ),
-                        duration: chromeAnim,
-                        curve: Curves.easeOutCubic,
-                        height: ShellTokens.shellNavUnderlineHeight,
-                        width: widget.selected ? underlineWidth : 0,
-                        decoration: BoxDecoration(
-                          color: widget.selected
-                              ? (useDestinationAccent
-                                    ? destinationAccent
-                                    : selectedFocused
-                                    ? Colors.white
-                                    : ForjaShellColors.navUnderline)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(
-                            ShellTokens.shellNavUnderlineRadius,
+                        AnimatedContainer(
+                          key: ValueKey(
+                            'nav-${widget.destination.id}-underline',
+                          ),
+                          duration: chromeAnim,
+                          curve: Curves.easeOutCubic,
+                          height: ShellTokens.shellNavUnderlineHeight,
+                          width: widget.selected ? underlineWidth : 0,
+                          decoration: BoxDecoration(
+                            color: widget.selected
+                                ? (useDestinationAccent
+                                      ? destinationAccent
+                                      : selectedFocused
+                                      ? Colors.white
+                                      : ForjaShellColors.navUnderline)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(
+                              ShellTokens.shellNavUnderlineRadius,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(
-                        height: ShellTokens.navRailIconLabelGap,
-                      ),
-                      SizedBox(
-                        height: labelSlotHeight,
-                        width: railW,
-                        child: Center(
-                          child: showLabel
-                              ? _NavRailLabel(
-                                  text: label,
-                                  style: labelStyle,
-                                  presence: widget.labelPresence,
-                                  markSize: lanMarkSize,
-                                  showBar: lanShowBar,
-                                )
-                              : _TypewriterLabel(
-                                  text: label,
-                                  active: _typing,
-                                  style: labelStyle,
-                                ),
+                        const SizedBox(
+                          height: ShellTokens.navRailIconLabelGap,
                         ),
-                      ),
-                    ],
+                        SizedBox(
+                          height: labelSlotHeight,
+                          width: railW,
+                          child: Center(
+                            child: showLabel
+                                ? _NavRailLabel(
+                                    text: label,
+                                    style: labelStyle,
+                                    presence: widget.labelPresence,
+                                    markSize: lanMarkSize,
+                                    showBar: lanShowBar,
+                                  )
+                                : _TypewriterLabel(
+                                    text: label,
+                                    active: _typing,
+                                    style: labelStyle,
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

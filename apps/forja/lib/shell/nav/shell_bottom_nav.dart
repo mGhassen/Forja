@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
@@ -109,8 +113,40 @@ class _BottomNavItem extends StatefulWidget {
 class _BottomNavItemState extends State<_BottomNavItem> {
   bool _hover = false;
   bool _focused = false;
+  Timer? _completeReloadHoldTimer;
+  bool _completeReloadHoldFired = false;
 
   bool get _active => _hover || _focused;
+
+  void _startCompleteReloadHold() {
+    _completeReloadHoldFired = false;
+    _completeReloadHoldTimer?.cancel();
+    _completeReloadHoldTimer = Timer(ShellTokens.navCompleteReloadHold, () {
+      if (!mounted) return;
+      _completeReloadHoldFired = true;
+      VerticalFiltersRegistry.hideMenu(widget.destination.id);
+      HapticFeedback.mediumImpact();
+      ShellBus.requestCompleteNavbarReload();
+    });
+  }
+
+  void _cancelCompleteReloadHold() {
+    _completeReloadHoldTimer?.cancel();
+    _completeReloadHoldTimer = null;
+  }
+
+  bool _consumeCompleteReloadHold() {
+    _cancelCompleteReloadHold();
+    if (!_completeReloadHoldFired) return false;
+    _completeReloadHoldFired = false;
+    return true;
+  }
+
+  @override
+  void dispose() {
+    _cancelCompleteReloadHold();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,47 +171,64 @@ class _BottomNavItemState extends State<_BottomNavItem> {
       child: MouseRegion(
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),
-        child: InkWell(
-          hoverColor: ForjaShellColors.inkHover,
-          splashColor: ForjaShellColors.inkSplash,
-          onTap: widget.onTap,
-          onLongPress: widget.onLongPress,
-          child: SizedBox(
-            width: ShellTokens.bottomNavItemWidth,
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedContainer(
-                    duration: ShellTokens.navSelectionAnimation,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: ShellTokens.bottomNavIconPaddingH,
-                      vertical: ShellTokens.bottomNavIconPaddingV,
+        child: Listener(
+          onPointerDown: (_) => _startCompleteReloadHold(),
+          onPointerUp: (_) {
+            if (!_completeReloadHoldFired) {
+              _cancelCompleteReloadHold();
+            }
+          },
+          onPointerCancel: (_) => _cancelCompleteReloadHold(),
+          child: InkWell(
+            hoverColor: ForjaShellColors.inkHover,
+            splashColor: ForjaShellColors.inkSplash,
+            onTap: () {
+              if (_consumeCompleteReloadHold()) return;
+              widget.onTap();
+            },
+            onLongPress: widget.onLongPress == null
+                ? null
+                : () {
+                    if (_completeReloadHoldFired) return;
+                    widget.onLongPress!();
+                  },
+            child: SizedBox(
+              width: ShellTokens.bottomNavItemWidth,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedContainer(
+                      duration: ShellTokens.navSelectionAnimation,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: ShellTokens.bottomNavIconPaddingH,
+                        vertical: ShellTokens.bottomNavIconPaddingV,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? ForjaShellColors.chipSelectedBg
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(
+                          ShellTokens.navSelectionBorderRadius,
+                        ),
+                      ),
+                      child: icon,
                     ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? ForjaShellColors.chipSelectedBg
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(
-                        ShellTokens.navSelectionBorderRadius,
+                    const SizedBox(height: ShellTokens.bottomNavIconLabelGap),
+                    Text(
+                      widget.destination.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white54,
+                        fontSize: ShellTokens.bottomNavLabelSize,
+                        height: 1,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
-                    child: icon,
-                  ),
-                  const SizedBox(height: ShellTokens.bottomNavIconLabelGap),
-                  Text(
-                    widget.destination.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.white54,
-                      fontSize: ShellTokens.bottomNavLabelSize,
-                      height: 1,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

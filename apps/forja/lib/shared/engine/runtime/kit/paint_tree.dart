@@ -3151,6 +3151,8 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   void dispose() {
     // Do not TvHeroActions.unbind — PackLayoutPainter owns tab teardown and
     // may still need enterFromNav / restore for list hubs after hero unmount.
+    // defaultFocus below returns null once unmounted so restore cannot use
+    // disposed FocusNodes; heroReveal stays PackLayoutPainter's scroll.
     _playFocus.dispose();
     _followFocus.dispose();
     _galleryFocus.dispose();
@@ -3161,23 +3163,11 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     final tab = widget.tabId;
     if (tab.isEmpty) return;
     // defaultFocus only — pack page `focus.enter/restore` owns nav land.
+    // Do not bind heroReveal here: PackLayoutPainter registers a ScrollController
+    // reveal that survives hero remounts (rail reload during nav enter).
     TvHeroActions.bind(
       tab,
-      defaultFocus: () => _playFocus,
-      heroReveal: _scrollHeroIntoView,
-    );
-  }
-
-  void _scrollHeroIntoView() {
-    final scrollable = Scrollable.maybeOf(context);
-    final position = scrollable?.position;
-    if (position == null || !position.hasPixels) return;
-    unawaited(
-      position.animateTo(
-        0,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-      ),
+      defaultFocus: () => mounted ? _playFocus : null,
     );
   }
 

@@ -69,7 +69,7 @@ Cursor auto-loads these by glob. Here, load them yourself.
 
 ### Two that bite hardest
 
-**Text inputs (desktop + TV).** Keyboard / D-pad focus on a text field **only highlights**. It must never open the IME, enter edit mode, expand search, or submit. Activate on OK / Enter / click only. A raw `TextField` that takes focus on desktop or TV is forbidden — use `TvBrowseTextField` / `SettingsTextField`, or give the design-system widget a field-builder prop and let the host pass one.
+**Text inputs.** Leanback TV: D-pad focus on a text field **only highlights** — activate on OK / Enter / click. Desktop and phone: type on focus. Use `TvBrowseTextField` / `SettingsTextField` (gate via `browseTextUntilActivate`), or give the design-system widget a field-builder prop and let the host pass one.
 
 **No magic numbers in foundation paint.** Reused sizes, clamps, radii, and density go in `packages/forja_foundation/lib/tokens/*`. Prefer `ForjaShellColors` tokens over raw `Colors.white54`.
 

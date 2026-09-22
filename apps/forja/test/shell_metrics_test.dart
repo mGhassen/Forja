@@ -370,8 +370,7 @@ void main() {
     },
   );
 
-  testWidgets('browse-only search fields cover desktop + leanback TV',
-      (tester) async {
+  testWidgets('browse-only text fields are leanback TV only', (tester) async {
     late bool desktopBrowse;
     late bool tvBrowse;
 
@@ -404,9 +403,9 @@ void main() {
       ),
     );
 
-    expect(desktopBrowse, isTrue);
+    expect(desktopBrowse, isFalse);
     expect(tvBrowse, isTrue);
-    expect(ShellInputPolicy.desktop.browseTextUntilActivate, isTrue);
+    expect(ShellInputPolicy.desktop.browseTextUntilActivate, isFalse);
     expect(ShellInputPolicy.tv.browseTextUntilActivate, isTrue);
     expect(ShellInputPolicy.mobile.browseTextUntilActivate, isFalse);
   });

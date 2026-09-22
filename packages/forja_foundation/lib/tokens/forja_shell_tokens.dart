@@ -149,6 +149,8 @@ abstract final class ShellTokens {
   static const double shellNavMenuButtonHitSize = 34;
   static const double navRailLanMarkGap = 5;
   static const Duration navRailLabelRevealDelay = Duration(milliseconds: 300);
+  /// Hold a nav tab this long to remount hubs and reload navbar config.
+  static const Duration navCompleteReloadHold = Duration(seconds: 4);
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);
   static const Duration navRailLabelLetterInterval = Duration(milliseconds: 72);
   static const Duration navRailLabelRevealAnimation = Duration(

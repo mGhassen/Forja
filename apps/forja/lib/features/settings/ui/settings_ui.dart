@@ -2308,8 +2308,9 @@ class SettingsTextField extends StatefulWidget {
   final bool obscureText;
   final bool enabled;
 
-  /// Desktop: focuses the editable field. TV: focuses browse highlight only
-  /// (OK still opens the keyboard — never autofocus-into-edit).
+  /// Desktop / phone: focuses the editable field (type on focus).
+  /// Leanback TV: focuses browse highlight only (OK opens the keyboard —
+  /// never autofocus-into-edit).
   final bool autofocus;
   final ValueChanged<String>? onSubmitted;
   final TextInputType? keyboardType;

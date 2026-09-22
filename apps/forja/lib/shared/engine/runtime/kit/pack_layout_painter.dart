@@ -219,12 +219,14 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   void _bindHubTvDefaults(String tab) {
     if (tab.isEmpty) return;
     final key = '$tab|${_pageFocus.signature}';
-    if (_tvBoundKey == key) return;
-    _tvBoundKey = key;
-    bindHubPageFocus(tab, _pageFocus);
-    // Hero CTA merges defaultFocus via TvHeroActions.bind (no enter overwrite).
+    if (_tvBoundKey != key) {
+      _tvBoundKey = key;
+      bindHubPageFocus(tab, _pageFocus);
+      ShellTvFocusCoordinator.setTabPageScroll(tab, _nudgeHubPageScroll);
+    }
+    // Always refresh reveal — hub hero only binds defaultFocus; a prior State
+    // reveal callback must not stay registered across hero remounts.
     TvHeroActions.bind(tab, heroReveal: _revealHeroScroll);
-    ShellTvFocusCoordinator.setTabPageScroll(tab, _nudgeHubPageScroll);
   }
 
   /// One catalog-row step — mounts below-fold slivers / LazyViewportGate for ↓.
@@ -808,9 +810,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
     }
 
-    // Progressive first paint: fan out action:`rail` in parallel, publish each
-    // rail in layout `feedRails` order. Spotlight can paint while Popular is
-    // still hung — the old action:`feed` Promise.all blocked the whole batch.
+    // Progressive first paint: fan out action:`rail` pools in parallel, publish
+    // each rail in layout `feedRails` order. Spotlight can paint while Popular
+    // is still hung — the old action:`feed` Promise.all blocked the whole batch.
+    //
+    // Fetch 2 pages per rail before exclusive claim (pack tmdbListPool parity).
+    // A single page + claim left Featured/Popular short when Films/TV overlap
+    // Spotlight (looked like “filter existing cards”).
     final ordered = _pageFeedRailIds.toList(growable: false);
     if (ordered.isEmpty) {
       if (mounted && gen == _pageFeedGen) {
@@ -822,16 +828,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       return const {};
     }
 
-    final pending = <String, Future<MetaEnvelope>>{
+    final pending = <String, Future<({List<dynamic> pool, MetaError? error})>>{
       for (final railId in ordered)
-        railId: packOpaqueRun(
-          pluginId: widget.pluginId,
-          packSourceUrl: widget.packSourceUrl,
-          action: 'rail',
-          params: catalogParamsWithFilters(
-            {'rail': railId},
-            filters: chromeFilters,
-          ),
+        railId: _fetchPageFeedRailPool(
+          railId: railId,
+          chromeFilters: chromeFilters,
           forceRefresh: forceRefresh,
         ),
     };
@@ -847,19 +848,20 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
       var items = const <dynamic>[];
       try {
-        final envelope = await pending[railId]!;
-        if (!envelope.ok) {
-          hardError ??= envelope.error;
+        final result = await pending[railId]!;
+        if (result.pool.isEmpty && result.error != null) {
+          hardError ??= result.error;
           debugPrint(
             '[catalog] ${widget.pluginId} page-feed rail=$railId fail '
-            '${envelope.error?.code.wire} ${envelope.error?.message}',
+            '${result.error?.code.wire} ${result.error?.message}',
           );
         } else {
           anyOk = true;
-          final raw = envelope.data?['items'];
-          final list =
-              raw is List ? List<dynamic>.from(raw) : <dynamic>[];
-          items = _pageFeedExclusiveItems(list, claimed);
+          items = _pageFeedExclusiveItems(
+            result.pool,
+            claimed,
+            cap: _pageFeedRailCap(railId),
+          );
         }
       } catch (e) {
         debugPrint(
@@ -901,6 +903,63 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     return acc;
   }
 
+  /// Pack `TMDB_HOME_FETCH_PAGES` (2) — enough to refill after exclusive claim.
+  static const _kPageFeedPoolPages = 2;
+  static const _kPageFeedPoolPageSize = 20;
+
+  /// Spotlight hero slide cap; other feed rails use the home rail cap.
+  static int _pageFeedRailCap(String railId) {
+    if (railId == 'spotlight') return 5;
+    return _kPageFeedPoolPageSize;
+  }
+
+  /// Two TMDB pages merged before host exclusive claim (issue 204 refill).
+  Future<({List<dynamic> pool, MetaError? error})> _fetchPageFeedRailPool({
+    required String railId,
+    required List<Map<String, dynamic>?> chromeFilters,
+    required bool forceRefresh,
+  }) async {
+    final pageFutures = <Future<MetaEnvelope>>[
+      for (var page = 1; page <= _kPageFeedPoolPages; page++)
+        packOpaqueRun(
+          pluginId: widget.pluginId,
+          packSourceUrl: widget.packSourceUrl,
+          action: 'rail',
+          params: catalogParamsWithFilters(
+            {
+              'rail': railId,
+              'page': page,
+              'limit': _kPageFeedPoolPageSize,
+              // Skip featured/new_releases rotated first-page special so each
+              // index is a real TMDB page in the pool.
+              '_poolPage': true,
+            },
+            filters: chromeFilters,
+          ),
+          forceRefresh: forceRefresh,
+        ),
+    ];
+    MetaError? hardError;
+    final merged = <dynamic>[];
+    final seen = <String>{};
+    for (final envelope in await Future.wait(pageFutures)) {
+      if (!envelope.ok) {
+        hardError ??= envelope.error;
+        continue;
+      }
+      final raw = envelope.data?['items'];
+      if (raw is! List) continue;
+      for (final item in raw) {
+        final key = _pageFeedMetaKey(item);
+        if (key != null) {
+          if (!seen.add(key)) continue;
+        }
+        merged.add(item);
+      }
+    }
+    return (pool: merged, error: hardError);
+  }
+
   /// Warm action:`feed` peek cache so the next open can sync-paint all rails.
   void _storePageFeedCache(
     Map<String, List<dynamic>> rails, {
@@ -923,15 +982,17 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     );
   }
 
-  /// Same exclusive claim as pack `tmdbClaimRails` — drop `type:tmdbId` already
-  /// shown on a higher page-feed rail (Spotlight → Featured → Popular).
+  /// Same exclusive claim as pack `tmdbClaimRails` — take up to [cap] from the
+  /// rail pool, skipping `type:tmdbId` already shown on a higher page-feed rail.
   static List<dynamic> _pageFeedExclusiveItems(
-    List<dynamic> items,
-    Set<String> claimed,
-  ) {
-    if (items.isEmpty) return const [];
+    List<dynamic> pool,
+    Set<String> claimed, {
+    required int cap,
+  }) {
+    if (pool.isEmpty || cap <= 0) return const [];
     final out = <dynamic>[];
-    for (final item in items) {
+    for (final item in pool) {
+      if (out.length >= cap) break;
       final key = _pageFeedMetaKey(item);
       if (key == null) {
         out.add(item);
@@ -946,11 +1007,18 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   static String? _pageFeedMetaKey(dynamic item) {
     if (item is! Map) return null;
-    final ids = item['ids'];
-    if (ids is! Map) return null;
+    Map? ids = item['ids'] is Map ? item['ids'] as Map : null;
+    if (ids == null && item['meta'] is Map) {
+      final metaIds = (item['meta'] as Map)['ids'];
+      if (metaIds is Map) ids = metaIds;
+    }
+    if (ids == null) return null;
     final tmdb = ids['tmdb'];
     if (tmdb == null || tmdb.toString().trim().isEmpty) return null;
-    final type = (item['type'] ?? '').toString();
+    final type = (item['type'] ??
+            (item['meta'] is Map ? (item['meta'] as Map)['type'] : null) ??
+            '')
+        .toString();
     return '$type:$tmdb';
   }
 
