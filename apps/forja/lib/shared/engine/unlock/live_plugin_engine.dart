@@ -630,5 +630,7 @@ bool liveEngineOpenDirect(String m3u8Url, {bool pluginDirect = false}) {
   final host = Uri.tryParse(m3u8Url.trim())?.host.toLowerCase() ?? '';
   if (host.contains('wfty.st')) return false;
   if (host.contains('amazonaws.com')) return false;
+  // rustls `/hls-proxy` is nginx-403'd on this CDN; Dart/MediaKit TLS works.
+  if (host.contains('indianservers.st')) return true;
   return pluginDirect;
 }
