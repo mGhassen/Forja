@@ -111,7 +111,14 @@ enum PortalLiveSourceKind {
 bool iptvUrlLooksLikeHls(String url) {
   final lower = url.toLowerCase();
   // Local `/hls-proxy?url=…m3u8` keeps `.m3u8` in the query; also match path.
-  return lower.contains('.m3u8') || lower.contains('/hls-proxy');
+  if (lower.contains('.m3u8') || lower.contains('/hls-proxy')) return true;
+  // syria-player playlist proxy (MIME mpegurl, no `.m3u8` in path).
+  if (lower.contains('syria-player.') &&
+      lower.contains('proxy.php') &&
+      lower.contains('stream=')) {
+    return true;
+  }
+  return false;
 }
 
 /// MediaKit `stream-lavf-o` for live open — HLS off (issue 273), progressive on.
@@ -313,7 +320,14 @@ bool iptvLiveEnginePlayUrlReady(String url) {
   final u = url.trim().toLowerCase();
   if (u.isEmpty) return false;
   if (u.contains('127.0.0.1') || u.contains('/hls-proxy')) return true;
-  return RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)').hasMatch(u);
+  if (RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)').hasMatch(u)) return true;
+  // syria-player HLS proxy — playlist MIME without `.m3u8` in the path.
+  if (u.contains('syria-player.') &&
+      u.contains('proxy.php') &&
+      u.contains('stream=')) {
+    return true;
+  }
+  return false;
 }
 
 /// Signed / flaky CDNs (OK.ru, Livepeer, Foorja S3) — re-resolve on recovery

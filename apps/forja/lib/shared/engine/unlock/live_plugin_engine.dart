@@ -547,9 +547,14 @@ class LivePluginEngine {
     final url = (first['url'] ?? '').toString().trim();
     if (url.isEmpty) return null;
     // Embed HTML pages are not native-playable (no-embed-playback).
-    final ready = url.toLowerCase().contains('127.0.0.1') ||
-        url.toLowerCase().contains('/hls-proxy') ||
-        RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)', caseSensitive: false).hasMatch(url);
+    // Keep in sync with [iptvLiveEnginePlayUrlReady] (player screen).
+    final lower = url.toLowerCase();
+    final ready = lower.contains('127.0.0.1') ||
+        lower.contains('/hls-proxy') ||
+        RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)', caseSensitive: false).hasMatch(url) ||
+        (lower.contains('syria-player.') &&
+            lower.contains('proxy.php') &&
+            lower.contains('stream='));
     if (!ready) return null;
     final headers = <String, String>{};
     final h = first['headers'];
