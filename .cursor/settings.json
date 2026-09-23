@@ -1,4 +1,7 @@
 {
   "rust-analyzer.linkedProjects": ["crates/Cargo.toml"],
-  "rust-analyzer.server.path": "rust-analyzer"
+  "rust-analyzer.server.path": "rust-analyzer",
+  "rust-analyzer.cargo.extraEnv": {
+    "SDKROOT": "/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk"
+  }
 }

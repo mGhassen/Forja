@@ -22,6 +22,8 @@ jobs:
           shared-key: rust-engine-test
       - name: cargo test
         run: |
+          # shellcheck source=scripts/lib/macos_rust_sdk.sh
+          source ./scripts/lib/macos_rust_sdk.sh
           cd crates
           cargo test --workspace
           cargo test -p utils --test golden
