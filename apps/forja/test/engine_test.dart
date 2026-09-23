@@ -2081,6 +2081,10 @@ void main() {
       expect(fourkhdhub.contains('article h2 a'), isTrue);
       expect(fourkhdhub.contains('.movie-card'), isTrue);
       expect(fourkhdhub.contains(r'pixel\.hubcloud'), isTrue);
+      expect(fourkhdhub.contains(r'gpdl\.hubcloud'), isTrue);
+      expect(fourkhdhub.contains('directizeHubCloudUrl'), isTrue);
+      expect(fourkhdhub.contains('gamerxyt.com/dl.php'), isTrue);
+      expect(fourkhdhub.contains('video-downloads.googleusercontent.com'), isTrue);
       expect(fourkhdhub.contains('pixeldrain.net/api/file/'), isTrue);
       // /drive/<id> is the HubCloud entry hop — must follow, not bail.
       expect(

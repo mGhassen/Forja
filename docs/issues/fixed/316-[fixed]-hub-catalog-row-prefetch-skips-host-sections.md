@@ -41,3 +41,5 @@
 Prefetch claimed to warm `kKitRowPrefetchAhead` (2) rows below the visible one, but only `LazyViewportGate` participated. Home **Continue / Mood / Because** skip the gate (host mounts), and first-paint rails skipped it when eager — so nothing called `notifyVisible` before **New Releases**. That gated rail only fetched when it itself entered the viewport.
 
 **Root fix:** eager + host sections still claim lane indices and notify on visibility; late-mounted gates inside the ahead window warm on claim; prefetch warm no longer cascades `notifyVisible` (exact ahead=2).
+
+**Follow-up:** genre rows under New Releases still stayed cold when prefetch `setState` dropped `VisibilityDetector` — [325](325-[fixed]-home-genre-rows-under-new-releases-not-prefetched.md).

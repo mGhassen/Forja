@@ -13,7 +13,11 @@ import 'package:visibility_detector/visibility_detector.dart';
 ///
 /// [eager] rows paint [builder] immediately (first-paint / host mounts) but
 /// still claim a lane index and call [KitRowPrefetchLane.notifyVisible] so
-/// gated rows below stay two rows ahead.
+/// gated rows below stay [kKitRowPrefetchAhead] ahead.
+///
+/// Prefetch [setState] can drop an in-flight [VisibilityDetector] callback.
+/// Scroll + post-frame viewport checks also activate / notify so every gated
+/// rail warms [kKitRowPrefetchAhead] rows before it reaches the screen.
 class LazyViewportGate extends StatefulWidget {
   const LazyViewportGate({
     super.key,
@@ -43,10 +47,15 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
   /// Survives State remounts for the same [LazyViewportGate.detectorKey].
   static final Set<String> _activatedKeys = {};
 
+  /// Test-only — sticky keys otherwise poison later widget tests.
+  @visibleForTesting
+  static void debugResetActivatedKeys() => _activatedKeys.clear();
+
   bool _activated = false;
   int? _prefetchIndex;
   int _laneGen = -1;
   PackChromeScope? _chrome;
+  ScrollPosition? _scrollPosition;
 
   String get _stickyId => widget.detectorKey.toString();
 
@@ -63,6 +72,10 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _ensurePrefetchSlot();
+    _bindScrollPosition();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncViewport();
+    });
   }
 
   @override
@@ -71,6 +84,13 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
     if (widget.eager && !_activated) {
       _markActivated();
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollPosition?.removeListener(_onScroll);
+    _scrollPosition = null;
+    super.dispose();
   }
 
   void _markActivated() {
@@ -90,12 +110,25 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
     _prefetchIndex = chrome.rowPrefetch.claim(_warmFromPrefetch);
   }
 
+  void _bindScrollPosition() {
+    final next = Scrollable.maybeOf(context)?.position;
+    if (identical(next, _scrollPosition)) return;
+    _scrollPosition?.removeListener(_onScroll);
+    _scrollPosition = next;
+    _scrollPosition?.addListener(_onScroll);
+  }
+
+  void _onScroll() => _syncViewport();
+
   void _warmFromPrefetch() {
     if (!mounted || _activated) return;
     setState(_markActivated);
     // Do not notifyVisible here — that would cascade and fetch the whole page.
     // Only real visibility (or a late claim inside the ahead window) advances
     // the frontier by exactly [kKitRowPrefetchAhead].
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncViewport();
+    });
   }
 
   void _activateFromViewport() {
@@ -114,15 +147,38 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
     _activateFromViewport();
   }
 
+  /// True when this gate overlaps the vertical catalog viewport (not cache).
+  bool _overlapsViewport() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || box.size.height <= 0) {
+      return false;
+    }
+    final scrollable = Scrollable.maybeOf(context);
+    if (scrollable == null) return false;
+    final vpBox = scrollable.context.findRenderObject();
+    if (vpBox is! RenderBox || !vpBox.hasSize) return false;
+    final topLeft = box.localToGlobal(Offset.zero, ancestor: vpBox);
+    final viewH = scrollable.position.viewportDimension;
+    return topLeft.dy + box.size.height > 0 && topLeft.dy < viewH;
+  }
+
+  /// Activate + notify when in the viewport — works for eager and gated rows.
+  /// Gated rows must not wait only on VisibilityDetector (prefetch setState can
+  /// drop it; scroll past Continue/Mood must still advance the lane).
+  void _syncViewport() {
+    if (!mounted) return;
+    if (!_overlapsViewport()) return;
+    _activateFromViewport();
+  }
+
   @override
   Widget build(BuildContext context) {
     _ensurePrefetchSlot();
+    _bindScrollPosition();
     final child = _activated
         ? widget.builder(context)
         : (widget.placeholder ??
             SizedBox(height: widget.placeholderHeight));
-    // Always attach the detector — eager rows still notify the lane when on
-    // screen so gated neighbors warm two rows ahead.
     return VisibilityDetector(
       key: widget.detectorKey,
       onVisibilityChanged: _onVisibilityChanged,

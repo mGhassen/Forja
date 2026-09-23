@@ -186,6 +186,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 28/28 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [164-[open]-…](164-[open]-vsembed-new-player-chain.md) | VSEmbed new JS player (rcp/prorcp dead) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [324-[fixed]-…](fixed/324-[fixed]-vsembed-embed-domain-vidsrc-sh.md) | VSEmbed embed domain → vidsrc.sh | P2 | Medium | fixed | Complete · 2/2 · A 1/1 | [164](164-[open]-vsembed-new-player-chain.md) |
 | [165-[open]-…](165-[open]-vidnest-cdn-forced-referer.md) | VidNest movie/TV CDN forced vidnest.fun Referer | P1 | High | open | 2/2 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [166-[open]-…](166-[open]-vidlove-opaque-media-proxy.md) | VidLove opaque `/api?d=` media not accepted | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [167-[open]-…](167-[open]-autoembed-cloudflare-turnstile.md) | AutoEmbed Cloudflare Turnstile blocks sniff | P1 | High | open | 1/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -302,7 +303,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [306-[fixed]-…](fixed/306-[fixed]-iptv-player-search-guide-vault-portals.md) | IPTV player Search/Guide missing (vault + catalog gate) | P1 | High | fixed | Complete · 6/6 · A 0/2 | — |
 | [307-[open]-…](307-[open]-web-addons-pack-settings-parity.md) | Web Addons list + pack settings parity | P1 | High | open | 9/9 · A 0/4 | [RFC-089](../rfc/fixed/089-[fixed]-pack-addon-settings.md) |
 | [315-[fixed]-…](fixed/315-[fixed]-iptv-search-no-categories.md) | IPTV search channels but “No categories” | P0 | High | fixed | Complete · 4/4 · A 0/1 | [290](290-[open]-iptv-catalog-page-host-shelf.md) |
-| [316-[fixed]-…](fixed/316-[fixed]-hub-catalog-row-prefetch-skips-host-sections.md) | Hub catalog row prefetch skips host sections | P1 | High | fixed | Complete · 3/3 · A 3/3 | — |
+| [316-[fixed]-…](fixed/316-[fixed]-hub-catalog-row-prefetch-skips-host-sections.md) | Hub catalog row prefetch skips host sections | P1 | High | fixed | Complete · 3/3 · A 3/3 | [325](fixed/325-[fixed]-home-genre-rows-under-new-releases-not-prefetched.md) |
+| [325-[fixed]-…](fixed/325-[fixed]-home-genre-rows-under-new-releases-not-prefetched.md) | Home genre rows under New Releases not prefetched | P1 | High | fixed | Complete · 3/3 · A 3/3 | [316](fixed/316-[fixed]-hub-catalog-row-prefetch-skips-host-sections.md) |
 | [317-[open]-…](317-[open]-hexa-enc-hexa-cap-token-offline.md) | Hexa Sources empty — `enc-hexa` Cap token offline | P1 | High | open | 1/3 · A 1/2 | [169](169-[open]-vidfast-w-path-bundled-hls.md) |
 | [318-[fixed]-…](fixed/318-[fixed]-live-sports-espn-date-range-400.md) | Live Sports ESPN catalog empty (date range 400) | P0 | High | fixed | Complete · 3/3 · A 0/1 | — |
 | [319-[fixed]-…](fixed/319-[fixed]-live-sports-stremio-catalog-plugin-run-empty.md) | Live Sports Stremio Catalog chip empty schedule | P0 | High | fixed | Complete · 3/3 · A 0/1 | [241](fixed/241-[fixed]-live-sports-stremio-catalog-missing-after-kit.md) |

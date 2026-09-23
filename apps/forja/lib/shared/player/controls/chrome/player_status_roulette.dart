@@ -512,12 +512,16 @@ class _StatusRouletteRow extends StatelessWidget {
     this.dimmed = false,
     this.compact = false,
     this.centered = false,
+    this.showSpinner = true,
   });
 
   final StatusRouletteEntry entry;
   final bool dimmed;
   final bool compact;
   final bool centered;
+  /// Inline spinner beside the label. Off for CHECKING SOURCES — the bar below
+  /// already shows work in progress.
+  final bool showSpinner;
 
   @override
   Widget build(BuildContext context) {
@@ -585,7 +589,7 @@ class _StatusRouletteRow extends StatelessWidget {
             ),
           ),
         ),
-        if (isLoading && !dimmed) ...[
+        if (isLoading && !dimmed && showSpinner) ...[
           SizedBox(width: gap),
           SizedBox(
             width: spinnerSize,

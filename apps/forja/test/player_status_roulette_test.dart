@@ -48,7 +48,7 @@ void main() {
     expect(find.text('Megaplay'), findsOneWidget);
     expect(find.text('0 / 2'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('status roulette TV density keeps leanback type', (tester) async {

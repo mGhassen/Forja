@@ -172,7 +172,7 @@ class PackPaintTree extends StatelessWidget {
         ),
       );
       // Eager rails paint immediately but still claim the prefetch lane so
-      // gated rows below (New Releases, genres) warm two rows ahead.
+      // gated rows below warm [kKitRowPrefetchAhead] while scrolling.
       if (eager) {
         return _withMotion(
           context,

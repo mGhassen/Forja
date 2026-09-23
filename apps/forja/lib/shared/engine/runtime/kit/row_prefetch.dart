@@ -1,5 +1,6 @@
 /// How many catalog rows below the visible one to warm-fetch.
-const int kKitRowPrefetchAhead = 2;
+/// Same for every hub rail (Home, Anime, …) — not a per-row special case.
+const int kKitRowPrefetchAhead = 3;
 
 /// Shell row index → warm callback registry. Row [index] calls [notifyVisible]
 /// to start fetching for [index + 1] … [index + ahead] without waiting for

@@ -45,6 +45,7 @@ Live VSEmbed iframe now points at `cloudorchestranova.com/embed/movie/…?vs=…
 
 ## Related
 
+- [324](fixed/324-[fixed]-vsembed-embed-domain-vidsrc-sh.md) — embed host → `vidsrc.sh`
 - [047](fixed/047-[fixed]-vidsrc-vsembed-su-and-broken-plugin.md) — vsembed.su + plugin request
 - [054](fixed/054-[fixed]-vidsrc-cloudstream-referer-blocks-segments.md) — CloudStream Referer
 - [031](031-[workaround]-android-tv-webview-gles-crash.md) — ATV skips HostRequired WebView
