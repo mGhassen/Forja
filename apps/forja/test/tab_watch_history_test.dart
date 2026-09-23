@@ -68,11 +68,13 @@ void main() {
   });
 
   group('isContinueWatchingRowEntry', () {
-    test('lists only inside 5–85% window', () {
+    test('lists only inside 2–85% window', () {
+      // 15s of 1h ≈ 0.4% — under 2%
       expect(isContinueWatchingRowEntry(15_000, 3_600_000), isFalse);
       expect(isInProgressResume(15_000, 3_600_000), isFalse);
-      expect(isContinueWatchingRowEntry(180_000, 3_600_000), isTrue);
-      expect(isInProgressResume(180_000, 3_600_000), isTrue);
+      // 72s of 1h = 2%
+      expect(isContinueWatchingRowEntry(72_000, 3_600_000), isTrue);
+      expect(isInProgressResume(72_000, 3_600_000), isTrue);
     });
 
     test('still hides finished and unsaved rows', () {

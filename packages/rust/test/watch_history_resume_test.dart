@@ -59,9 +59,9 @@ void main() {
   });
 
   group('resumeStartPositionFromProgress', () {
-    test('uses in-progress position only inside 5–85% window', () {
+    test('uses in-progress position only inside 2–85% window', () {
       expect(
-        resumeStartPositionFromProgress({'position': 9_999, 'duration': 200_000}),
+        resumeStartPositionFromProgress({'position': 3_999, 'duration': 200_000}),
         Duration.zero,
       );
       expect(

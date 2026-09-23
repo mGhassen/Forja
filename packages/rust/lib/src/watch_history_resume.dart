@@ -1,14 +1,14 @@
 /// Fraction at which a title/episode counts as finished (auto-watched + restart).
 const double watchFinishedThreshold = 0.85;
 
-/// Shared continue-watching / in-progress resume rules (5–85% watched).
+/// Shared continue-watching / in-progress resume rules (2–85% watched).
 bool isInProgressResume(int position, int duration) {
   if (duration <= 0) return false;
   final progress = position / duration;
-  return progress >= 0.05 && progress < watchFinishedThreshold;
+  return progress >= 0.02 && progress < watchFinishedThreshold;
 }
 
-/// Continue Watching row — same 5–85% window as [isInProgressResume].
+/// Continue Watching row — same 2–85% window as [isInProgressResume].
 bool isContinueWatchingRowEntry(int position, int duration) {
   if (duration <= 0 || position <= 0) return false;
   if (isWatchFinished(position, duration)) return false;

@@ -29,7 +29,7 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 - [Trakt](../accounts/trakt.md) sync can complement local history when logged in
 - [Simkl](../accounts/simkl.md) can seed a few missing continue-watching rows from in-progress titles (newest first; not your whole watching list every launch)
 - Clearing continue watching from Settings only affects this device — Trakt / Simkl cloud history stays
-- Progress at **5–85%** shows on Continue Watching and Resume; **85%+** counts as finished (Play starts from the beginning, not the credits). On details, use the trash control next to Play to clear a false “Watched” bar
+- Progress at **2–85%** shows on Continue Watching and Resume; **85%+** counts as finished (Play starts from the beginning, not the credits). On details, use the trash control next to Play to clear a false “Watched” bar
 
 ## Related
 
