@@ -937,6 +937,15 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         }
         unawaited(SettingsService().setPlayerAutoServer(false));
         final sources = await _loadServer(providerId);
+        if ((sources == null || sources.isEmpty) && mounted) {
+          ForjaToast.warning(
+            PlayerProviderMenu.unavailableMessage(
+              providerId,
+              widget.providers?[providerId],
+            ),
+            duration: const Duration(seconds: 2),
+          );
+        }
         _s._streamMenuRefreshTick.value++;
         return sources;
       },

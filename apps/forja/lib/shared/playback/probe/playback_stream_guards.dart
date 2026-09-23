@@ -40,8 +40,19 @@ bool isDmcdnHlsUrl(String url) {
   return path.contains('.m3u8');
 }
 
-/// User seeks on fMP4 HLS (peakstorm / dmcdn) must remount — [Player.seek]
-/// mid-playlist corrupts segments (NAL decode errors → black / stall).
+/// Vidzee Apre (and peers): fMP4 HLS with `EXT-X-MAP` + `.html` media segments.
+///
+/// Master looks like `https://ok.solarpanelcleaning.cc/playlist/{id}.m3u8`.
+/// Hard [Player.seek] mid-playlist → black / BUFFERING (same class as peakstorm).
+bool isVidzeeApreFmp4HlsUrl(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host == 'solarpanelcleaning.cc' ||
+      host.endsWith('.solarpanelcleaning.cc');
+}
+
+/// User seeks on fMP4 HLS (peakstorm / dmcdn / Vidzee Apre) must remount —
+/// [Player.seek] mid-playlist corrupts segments (NAL decode errors → black / stall).
 const Duration kPeakstormRemountSeekMinDelta = Duration(seconds: 3);
 
 bool peakstormFmp4HlsAvoidHardSeek(String url) {
@@ -49,6 +60,7 @@ bool peakstormFmp4HlsAvoidHardSeek(String url) {
   if (u.isEmpty) return false;
   if (isPeakstormCdnStreamUrl(u)) return true;
   if (isDmcdnHlsUrl(u)) return true;
+  if (isVidzeeApreFmp4HlsUrl(u)) return true;
   final nested = Uri.tryParse(u)?.queryParameters['url'];
   if (nested != null && nested.isNotEmpty) {
     return peakstormFmp4HlsAvoidHardSeek(nested);

@@ -139,8 +139,11 @@ String? _pickVariantUrl(String masterBody, String masterUrl) {
     return masterBody.contains('#EXTINF') ? masterUrl : null;
   }
   final base = _baseUrl(masterUrl);
+  String? defaultUrl;
   String? bestUrl;
+  String? bestNonHdrUrl;
   var bestBw = -1;
+  var bestNonHdrBw = -1;
   final lines = masterBody.split('\n');
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i].trim();
@@ -150,13 +153,29 @@ String? _pickVariantUrl(String masterBody, String masterUrl) {
     final next = i + 1 < lines.length ? lines[i + 1].trim() : '';
     if (next.isEmpty || next.startsWith('#')) continue;
     final resolved = _resolveUrl(next, base);
+    final isDefault = line.contains('DEFAULT=YES');
+    final isHdr = line.contains('VIDEO-RANGE=PQ') ||
+        line.contains('VIDEO-RANGE=HLG') ||
+        RegExp(r'CODECS="[^"]*hvc1', caseSensitive: false).hasMatch(line);
+    if (isDefault) defaultUrl = resolved;
     if (bw >= bestBw) {
       bestBw = bw;
       bestUrl = resolved;
     }
+    if (!isHdr && bw >= bestNonHdrBw) {
+      bestNonHdrBw = bw;
+      bestNonHdrUrl = resolved;
+    }
   }
-  return bestUrl;
+  // Prefer DEFAULT / non-HDR for trim remounts — Vidzee Apre lists 4K HDR
+  // first; remounting that after a hard-seek stall often stays black.
+  return defaultUrl ?? bestNonHdrUrl ?? bestUrl;
 }
+
+/// Test seam for [_pickVariantUrl].
+@visibleForTesting
+String? peakstormPickVariantUrl(String masterBody, String masterUrl) =>
+    _pickVariantUrl(masterBody, masterUrl);
 
 /// Visible for tests.
 String? trimMediaPlaylistFromTarget({

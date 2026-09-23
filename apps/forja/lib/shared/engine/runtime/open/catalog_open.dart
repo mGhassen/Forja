@@ -58,8 +58,9 @@ Future<String> resolveOpenPluginId({
   required String pluginId,
   required MetaItem item,
 }) async {
+  final syncHas = PluginNavRegistry.pluginHasDetailsSync(pluginId);
   final callerHasDetails =
-      await PluginNavRegistry.pluginHasDetails(pluginId);
+      syncHas ?? await PluginNavRegistry.pluginHasDetails(pluginId);
   if (!shouldResolveOpenPluginAwayFromCaller(
     callerHasDetails: callerHasDetails,
     item: item,
@@ -71,7 +72,9 @@ Future<String> resolveOpenPluginId({
   final resolved =
       await PluginNavRegistry.pluginIdForEngineType(engineType);
   if (resolved == null || resolved.isEmpty) return pluginId;
-  if (await PluginNavRegistry.pluginHasDetails(resolved)) return resolved;
+  final resolvedHas = PluginNavRegistry.pluginHasDetailsSync(resolved) ??
+      await PluginNavRegistry.pluginHasDetails(resolved);
+  if (resolvedHas) return resolved;
   return pluginId;
 }
 
@@ -86,19 +89,21 @@ Future<void> openMetaItem(
   Duration? startPosition,
   bool autoPlay = false,
 }) async {
+  final surface = item.open?.surface.trim() ?? '';
+  final surfaceHandler =
+      surface.isEmpty ? null : MetaSurfaceOpen.resolve(surface);
+  // Stream / live surfaces — no pack-index remap; open this frame.
+  if (surfaceHandler != null) {
+    surfaceHandler(context, item);
+    return;
+  }
+
   final effectivePluginId =
       await resolveOpenPluginId(pluginId: pluginId, item: item);
   final key = '$effectivePluginId\x1f${item.id}';
   if (!_metaOpenInFlight.add(key)) return;
   try {
     if (!context.mounted) return;
-    final surface = item.open?.surface.trim() ?? '';
-    final surfaceHandler =
-        surface.isEmpty ? null : MetaSurfaceOpen.resolve(surface);
-    if (surfaceHandler != null) {
-      surfaceHandler(context, item);
-      return;
-    }
     await openKitDetails(
       context,
       pluginId: effectivePluginId,

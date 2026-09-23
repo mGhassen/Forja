@@ -148,11 +148,21 @@ abstract final class HostPlaybackOpen {
             streamId: sid,
           ),
         );
-        final portal = await _portalForKey(pk);
-        if (portal != null) {
-          IptvCatalogLand.bindPortalKey(PortalAliveStore.portalKey(portal));
+        // Bind sync from cache — never await vault before the player route.
+        final cachedStore =
+            (CategoryBarActionHost.cachedLiveListParams['portalStoreKey'] ?? '')
+                .toString()
+                .trim();
+        if (cachedStore.isNotEmpty &&
+            PortalsHost.samePortalKey(pk, cachedStore)) {
+          IptvCatalogLand.bindPortalKey(cachedStore);
         } else {
           IptvCatalogLand.bindPortalKey(pk);
+          unawaited(() async {
+            final portal = await _portalForKey(pk);
+            if (portal == null) return;
+            IptvCatalogLand.bindPortalKey(PortalAliveStore.portalKey(portal));
+          }());
         }
         unawaited(IptvCatalogLand.rememberChannel(sid));
         IptvCatalogLand.armPostPlayerRestore(

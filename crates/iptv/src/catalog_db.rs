@@ -1178,4 +1178,44 @@ mod tests {
         close();
         let _ = std::fs::remove_file(&path);
     }
+
+    #[test]
+    fn page_search_q_and_category_scopes_streams_keeps_hit_ids() {
+        let _g = TEST_LOCK.lock().unwrap();
+        let path = temp_db();
+        open(&path).unwrap();
+        let ph = portal_hash("search-scope");
+        replace_shelf(
+            &ph,
+            "live",
+            &[
+                json!({"id":"fr","name":"France"}),
+                json!({"id":"vip","name":"VIP"}),
+            ],
+            &[
+                json!({"id":"1","name":"FR - M6 FHD","category_id":"fr"}),
+                json!({"id":"2","name":"VIP - M6 4K","category_id":"vip"}),
+            ],
+        )
+        .unwrap();
+        let out = page(&json!({
+            "portal_hash": ph,
+            "section": "live",
+            "q": "m6",
+            "category_id": "vip",
+            "page": 1,
+            "page_size": 48,
+        }))
+        .unwrap();
+        assert_eq!(out["ok"], true);
+        assert_eq!(out["total"], 1);
+        let streams = out["streams"].as_array().unwrap();
+        assert_eq!(streams.len(), 1);
+        assert_eq!(streams[0]["id"], "2");
+        // Shelf-wide hit ids still list every matching category.
+        let hits = out["hitCategoryIds"].as_array().unwrap();
+        assert_eq!(hits.len(), 2);
+        close();
+        let _ = std::fs::remove_file(&path);
+    }
 }

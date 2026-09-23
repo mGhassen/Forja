@@ -225,6 +225,10 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
               kind: StatusRouletteKind.failed,
               dismissAfter: const Duration(seconds: 2),
             );
+            ForjaToast.warning(
+              PlayerProviderMenu.unavailableMessage(newProvider, provider),
+              duration: const Duration(seconds: 2),
+            );
             setState(() => _s._hasError = true);
           }
           return null;
@@ -244,6 +248,10 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
               providerLabel,
               kind: StatusRouletteKind.failed,
               dismissAfter: const Duration(seconds: 2),
+            );
+            ForjaToast.warning(
+              PlayerProviderMenu.unavailableMessage(newProvider, provider),
+              duration: const Duration(seconds: 2),
             );
             setState(() => _s._hasError = true);
           }
@@ -329,6 +337,10 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
             kind: StatusRouletteKind.failed,
             dismissAfter: const Duration(seconds: 2),
           );
+          ForjaToast.warning(
+            PlayerProviderMenu.unavailableMessage(newProvider, provider),
+            duration: const Duration(seconds: 2),
+          );
           setState(() => _s._hasError = true);
         }
       }
@@ -339,6 +351,10 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
           providerLabel,
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
+        );
+        ForjaToast.warning(
+          PlayerProviderMenu.unavailableMessage(newProvider, provider),
+          duration: const Duration(seconds: 2),
         );
         setState(() => _s._hasError = true);
       }

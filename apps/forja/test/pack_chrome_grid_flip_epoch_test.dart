@@ -165,6 +165,82 @@ void main() {
     );
   });
 
+  testWidgets('effective category search with empty cats skips peek',
+      (tester) async {
+    final selections = <String, String>{
+      'catalog': 'live',
+      'sort': 'playlist',
+    };
+    CategoryBarActionHost.cachedLiveListParams = {
+      'portalStoreKey': 'portal-a',
+    };
+    IptvCatalogLand.seedLastCategoryMemForTest('portal-a', '30');
+
+    await tester.pumpWidget(
+      _chrome(
+        selections: selections,
+        child: Builder(
+          builder: (context) {
+            final scope = LayoutScope.maybeOf(context);
+            expect(
+              iptvEffectiveCategoryId(
+                listSpec: {
+                  'kindMenu': 'cats',
+                  'catalogMenu': 'catalog',
+                  'vodPaged': true,
+                },
+                scope: scope,
+                vodPaged: true,
+                eventQuery: '4k',
+              ),
+              '',
+              reason: 'search with empty cats stays shelf-wide (no peek)',
+            );
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+  });
+
+  testWidgets('effective category keeps mid-search pick over peek',
+      (tester) async {
+    final selections = <String, String>{
+      'catalog': 'live',
+      'cats': '20',
+      'sort': 'playlist',
+    };
+    CategoryBarActionHost.cachedLiveListParams = {
+      'portalStoreKey': 'portal-a',
+    };
+    IptvCatalogLand.seedLastCategoryMemForTest('portal-a', '30');
+
+    await tester.pumpWidget(
+      _chrome(
+        selections: selections,
+        child: Builder(
+          builder: (context) {
+            final scope = LayoutScope.maybeOf(context);
+            expect(
+              iptvEffectiveCategoryId(
+                listSpec: {
+                  'kindMenu': 'cats',
+                  'catalogMenu': 'catalog',
+                  'vodPaged': true,
+                },
+                scope: scope,
+                vodPaged: true,
+                eventQuery: '4k',
+              ),
+              '20',
+            );
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+  });
+
   test('empty-grid placeholder only after flip epoch latched', () {
     // Mirrors PackLoadedPaint didChangeDependencies gate.
     bool shouldEmpty({

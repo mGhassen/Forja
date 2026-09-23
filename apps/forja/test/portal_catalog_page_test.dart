@@ -32,6 +32,15 @@ void main() {
     expect(out.map((e) => e['id']), ['1', '4']);
   });
 
+  test('filterSort by q and category together', () {
+    final out = PortalCatalogPage.filterSort(
+      streams: streams,
+      categoryId: 'b',
+      q: 'alp',
+    );
+    expect(out.map((e) => e['id']), ['4']);
+  });
+
   test('filterSort nameAsc', () {
     final out = PortalCatalogPage.filterSort(
       streams: streams,

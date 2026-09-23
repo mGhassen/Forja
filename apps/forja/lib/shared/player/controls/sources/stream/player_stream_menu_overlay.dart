@@ -260,9 +260,17 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       );
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() => _loadingProviders.remove(providerId));
+      if (sources == null || sources.isEmpty) {
+        final provider = widget.providers?[providerId];
+        ForjaToast.warning(
+          PlayerProviderMenu.unavailableMessage(providerId, provider),
+          duration: const Duration(seconds: 2),
+        );
+        return;
+      }
       // Multi-stream servers: paint every row first, then probe one-by-one so
       // the panel shows Checking… per stream (probe only - does not open audio).
-      if (sources != null && sources.length > 1) {
+      if (sources.length > 1) {
         unawaited(_checkStreamsSequentially(
           providerId: providerId,
           sources: sources,
@@ -272,6 +280,11 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     } catch (_) {
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() => _loadingProviders.remove(providerId));
+      final provider = widget.providers?[providerId];
+      ForjaToast.warning(
+        PlayerProviderMenu.unavailableMessage(providerId, provider),
+        duration: const Duration(seconds: 2),
+      );
     }
   }
 
@@ -379,9 +392,10 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
         PlayerStreamMenu._serverPresentation(providerId, provider);
     final hideCategoryBadge =
         PlayerStreamMenu.hasSubDubProviders(widget.providers);
-    final subtitle = PlayerStreamMenu._providerSubtitle(
+    final subtitle = PlayerStreamMenu.providerSubtitle(
       sourceCount: sectionSources.length,
       isPlaying: isPlaying,
+      isFailed: status == PlayerSourceStatus.failed,
       checkingOrdinal: _sequentialCheckProviderId == providerId
           ? _sequentialCheckIndex + 1
           : null,

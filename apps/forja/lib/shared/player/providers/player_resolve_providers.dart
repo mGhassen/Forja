@@ -1,6 +1,5 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rust/rust.dart';
 
 /// Stream / server resolve lifecycle for built-in players (in-player
 /// `_loadServer` / source switch). Sources **panel** list fetches do not use
@@ -68,17 +67,15 @@ final playerResolveStatusProvider =
   PlayerResolveNotifier.new,
 );
 
-/// In-player Sources panel async bag (torrent / Stremio / Nuvio fetch flags).
+/// In-player Sources panel fetch busy flags (torrent / Stremio / Nuvio).
 ///
 /// Position/buffered ticks stay on [ValueNotifier] (R47-A20). Panel chrome
-/// filters stay local to [PlayerSourcesPanel].
+/// and stream lists stay local to [PlayerSourcesPanel] — do not mirror lists
+/// here (I337: copying lists on every setState froze the UI).
 class PlayerSourcesSession {
   bool isSearchingTorrents = false;
   bool isFetchingStremio = false;
   bool isFetchingNuvio = false;
-  List<TorrentResult> torrents = [];
-  List<dynamic> stremioStreams = [];
-  List<Map<String, dynamic>> nuvioStreams = [];
   String? errorMessage;
 
   bool get isBusy =>

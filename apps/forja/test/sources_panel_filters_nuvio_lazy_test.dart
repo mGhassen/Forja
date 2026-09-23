@@ -450,11 +450,41 @@ void main() {
       CatalogSourcesSessionCache.writeStremio(key, [
         {'url': 'https://example.com/s'},
       ]);
+      CatalogSourcesSessionCache.writeProbeHealth(
+        'https://cdn.example/a.m3u8',
+        true,
+      );
       expect(CatalogSourcesSessionCache.readEngine(key), isNotNull);
       expect(CatalogSourcesSessionCache.readStremio(key), isNotNull);
+      expect(
+        CatalogSourcesSessionCache.readProbeHealth('https://cdn.example/a.m3u8'),
+        isTrue,
+      );
       CatalogSourcesSessionCache.clearAll();
       expect(CatalogSourcesSessionCache.readEngine(key), isNull);
       expect(CatalogSourcesSessionCache.readStremio(key), isNull);
+      expect(
+        CatalogSourcesSessionCache.readProbeHealth('https://cdn.example/a.m3u8'),
+        isNull,
+      );
+    });
+
+    test('probe health read/write and magnet keys', () {
+      const url = 'https://cdn.example/stream.m3u8';
+      CatalogSourcesSessionCache.writeProbeHealth(url, true);
+      expect(CatalogSourcesSessionCache.readProbeHealth(url), isTrue);
+      CatalogSourcesSessionCache.writeProbeHealth(url, false);
+      expect(CatalogSourcesSessionCache.readProbeHealth(url), isFalse);
+      expect(
+        CatalogSourcesSessionCache.probeKeyForStream({'url': url}),
+        url,
+      );
+      expect(
+        CatalogSourcesSessionCache.probeKeyForStream({'url': 'magnet:?xt=x'}),
+        isNull,
+      );
+      CatalogSourcesSessionCache.clearAll();
+      expect(CatalogSourcesSessionCache.readProbeHealth(url), isNull);
     });
 
     test('hub cacheKey prefers open over TMDB mediaType flip', () {
@@ -497,17 +527,34 @@ void main() {
       CatalogSourcesSessionCache.writeTorrents(key, const []);
       expect(CatalogSourcesSessionCache.readTorrents(key), isNull);
 
-      CatalogSourcesSessionCache.writeTorrents(key, [
-        TorrentResult(
-          name: 'Show.S01E03',
-          magnet: 'magnet:?xt=urn:btih:abc',
-          seeders: '10',
-          size: '1 GB',
-          source: 'YTS',
-        ),
-      ]);
-      expect(CatalogSourcesSessionCache.readTorrents(key), isNotEmpty);
+      CatalogSourcesSessionCache.writeTorrents(
+        key,
+        [
+          TorrentResult(
+            name: 'Show.S01E03',
+            magnet: 'magnet:?xt=urn:btih:abc',
+            seeders: '10',
+            size: '1 GB',
+            source: 'YTS',
+          ),
+        ],
+        fetchedProviderIds: const {'yts'},
+      );
+      final cached = CatalogSourcesSessionCache.readTorrents(key);
+      expect(cached, isNotNull);
+      expect(cached!.results, isNotEmpty);
+      expect(cached.fetchedProviderIds, contains('yts'));
       CatalogSourcesSessionCache.invalidate(key, kind: 'torrents');
+    });
+  });
+
+  group('Sources session TTL', () {
+    test('stream and probe health use separate TTLs', () {
+      expect(CatalogSourcesSessionCache.streamTtl, const Duration(hours: 1));
+      expect(
+        CatalogSourcesSessionCache.probeHealthTtl,
+        const Duration(minutes: 15),
+      );
     });
   });
 

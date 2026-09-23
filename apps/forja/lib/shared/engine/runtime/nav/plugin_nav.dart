@@ -423,7 +423,25 @@ abstract final class PluginNavRegistry {
   static Future<List<EnginePlugin>> listKitPlugins({
     bool requireEnabled = true,
   }) async {
-    final packs = await EngineService.instance.listPacks();
+    // Capability / open hot path — raw index only. Never [listPacks] (that
+    // runs ensureOfficial + repairMissingScripts on every poster tap).
+    final packs = await PluginRegistry.instance.listPacksRaw();
+    final out = <EnginePlugin>[];
+    for (final p in packs) {
+      if (requireEnabled && !p.enabled) continue;
+      for (final pl in p.plugins) {
+        if (!pl.isKitPlugin) continue;
+        if (requireEnabled && !pl.enabled) continue;
+        out.add(pl);
+      }
+    }
+    return out;
+  }
+
+  /// Sync kit plugins when [PluginRegistry.peekPacks] is warm — null if cold.
+  static List<EnginePlugin>? peekKitPlugins({bool requireEnabled = true}) {
+    final packs = PluginRegistry.instance.peekPacks();
+    if (packs == null) return null;
     final out = <EnginePlugin>[];
     for (final p in packs) {
       if (requireEnabled && !p.enabled) continue;
@@ -888,7 +906,26 @@ abstract final class PluginNavRegistry {
   static Future<bool> pluginHasDetails(String pluginId) async {
     final want = pluginId.trim();
     if (want.isEmpty) return false;
+    final peek = peekKitPlugins();
+    if (peek != null) {
+      for (final pl in peek) {
+        if (pl.id == want) return pl.hasCapability('details');
+      }
+      return false;
+    }
     for (final pl in await listKitPlugins()) {
+      if (pl.id == want) return pl.hasCapability('details');
+    }
+    return false;
+  }
+
+  /// Sync [pluginHasDetails] when pack mem is warm — null if cold.
+  static bool? pluginHasDetailsSync(String pluginId) {
+    final want = pluginId.trim();
+    if (want.isEmpty) return false;
+    final peek = peekKitPlugins();
+    if (peek == null) return null;
+    for (final pl in peek) {
       if (pl.id == want) return pl.hasCapability('details');
     }
     return false;
@@ -901,9 +938,10 @@ abstract final class PluginNavRegistry {
   static Future<String?> pluginIdForEngineType(String typeToken) async {
     final want = typeToken.trim();
     if (want.isEmpty) return null;
+    final plugins = peekKitPlugins() ?? await listKitPlugins();
     String? navFeedFallback;
     String? enrichFallback;
-    for (final pl in await listKitPlugins()) {
+    for (final pl in plugins) {
       if (!pl.types.contains(want)) continue;
       if (pl.hasCapability('details')) return pl.id;
       if (pl.hasCapability('nav') || pl.hasCapability('feed')) {

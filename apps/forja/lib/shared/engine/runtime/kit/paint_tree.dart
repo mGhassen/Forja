@@ -2713,14 +2713,15 @@ class PackPaintTree extends StatelessWidget {
     final keepSyntheticLive = !vodSection &&
         CategoryBarActionHost.featuresEnabled(spec) &&
         PortalLiveCatalog.isSyntheticId(selectedRaw);
-    // Search clears category for global hits — do not snap back to first/all.
+    // Search starts with no category (shelf-wide). Mid-search pick stays lit.
+    // Do not snap empty search selection back to first/all.
     final searching = (chrome?.eventQuery ?? '').trim().isNotEmpty;
     // Live + Movies/Series: land on remembered category when known.
     // Do NOT painter-snap to the first portal group before store land — that
     // paints first-group channels then flips to the selected category (322).
     final String selected;
     if (searching) {
-      selected = '';
+      selected = selectedInItems ? selectedRaw : '';
     } else if (keepSyntheticLive) {
       selected = selectedRaw;
     } else if (!vodSection && CategoryBarActionHost.featuresEnabled(spec)) {

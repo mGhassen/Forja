@@ -68,6 +68,7 @@ Future<T?> openKitDetails<T>(
 }) async {
   // Prefer the content hub that owns the title (Anime / Asian Drama / Home),
   // not the browse tab you opened from (e.g. My List). Switch the rail to match.
+  // Sync when pack mem is warm — never block the route on prefs/repair.
   final contentTab =
       await resolveDetailsShellTabId(pluginId: pluginId, item: item);
   final tab = contentTab ?? shellTabId ?? ShellBus.activeShellTabId;

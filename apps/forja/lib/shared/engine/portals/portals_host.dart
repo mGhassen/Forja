@@ -962,10 +962,13 @@ class PortalsInventory {
 
 /// Debounced health probe — shared TTL cache across chip + panel.
 ///
-  /// Callers: hub-open chip preload ([immediate]), hover/focus dwell,
-  /// Refresh ([force]). Chip tap must not probe. Fresh results skip re-probe
-  /// until [ttl] expires or [invalidate]. UI owns one instance; call [dispose]
-  /// from the widget.
+/// Callers: hub-open chip preload ([immediate]), hover/focus dwell,
+/// Refresh ([force]). Chip tap must not probe. Fresh results skip re-probe
+/// until [ttl] expires or [invalidate]. UI owns one instance; call [dispose]
+/// from the widget.
+///
+/// Panel rows subscribe via [listenableFor] so one probe does not
+/// `setState` the whole inventory. Chip may still use [onChanged].
 class PortalHealthTracker {
   PortalHealthTracker({this.onChanged}) {
     _listeners.add(this);
@@ -984,15 +987,32 @@ class PortalHealthTracker {
   static final Map<String, PortalProbeResult> _probes = {};
   static final Set<String> _inFlight = {};
   static final Map<String, Timer> _debounce = {};
+  static final Map<String, ValueNotifier<int>> _ticks = {};
 
   static const ttl = Duration(minutes: 2);
   static const hoverDelay = Duration(milliseconds: 500);
   static const tvDelay = Duration(seconds: 2);
 
+  /// Per-portal tick — panel rows rebuild from [paint] without a panel setState.
+  ValueListenable<int> listenableFor(String portalKey) {
+    final key = portalKey.trim();
+    return _ticks.putIfAbsent(key, () => ValueNotifier(0));
+  }
+
+  static void _publishKey(String portalKey) {
+    final n = _ticks[portalKey];
+    if (n != null) n.value++;
+  }
+
   static void _notify() {
     for (final t in _listeners) {
       t.onChanged?.call();
     }
+  }
+
+  static void _publishKeyAndNotify(String portalKey) {
+    _publishKey(portalKey);
+    _notify();
   }
 
   static bool _isFresh(String portalKey) {
@@ -1054,6 +1074,9 @@ class PortalHealthTracker {
       _probeActive.clear();
       _probeMax.clear();
       _probes.clear();
+      for (final n in _ticks.values) {
+        n.value++;
+      }
     } else {
       cancel(key);
       _inFlight.remove(key);
@@ -1063,13 +1086,14 @@ class PortalHealthTracker {
       _probeActive.remove(key);
       _probeMax.remove(key);
       _probes.remove(key);
+      _publishKey(key);
     }
     _notify();
   }
 
   Future<void> _run(String portalKey) async {
     if (!_inFlight.add(portalKey)) return;
-    _notify();
+    _publishKeyAndNotify(portalKey);
     try {
       final probe = await PortalsHost.probe(portalKey);
       _health[portalKey] = probe.alive;
@@ -1093,7 +1117,7 @@ class PortalHealthTracker {
       }
     } finally {
       _inFlight.remove(portalKey);
-      _notify();
+      _publishKeyAndNotify(portalKey);
     }
   }
 

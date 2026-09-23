@@ -1751,6 +1751,10 @@ mixin _DesktopPlayerEpisodes
               kind: StatusRouletteKind.failed,
               dismissAfter: const Duration(seconds: 2),
             );
+            ForjaToast.warning(
+              PlayerProviderMenu.unavailableMessage(newProvider, provider),
+              duration: const Duration(seconds: 2),
+            );
             setState(() => _s._hasError = true);
           }
           return null;
@@ -1770,6 +1774,10 @@ mixin _DesktopPlayerEpisodes
               providerLabel,
               kind: StatusRouletteKind.failed,
               dismissAfter: const Duration(seconds: 2),
+            );
+            ForjaToast.warning(
+              PlayerProviderMenu.unavailableMessage(newProvider, provider),
+              duration: const Duration(seconds: 2),
             );
             setState(() => _s._hasError = true);
           }
@@ -1855,6 +1863,10 @@ mixin _DesktopPlayerEpisodes
             kind: StatusRouletteKind.failed,
             dismissAfter: const Duration(seconds: 2),
           );
+          ForjaToast.warning(
+            PlayerProviderMenu.unavailableMessage(newProvider, provider),
+            duration: const Duration(seconds: 2),
+          );
           setState(() => _s._hasError = true);
         }
       }
@@ -1865,6 +1877,10 @@ mixin _DesktopPlayerEpisodes
           providerLabel,
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
+        );
+        ForjaToast.warning(
+          PlayerProviderMenu.unavailableMessage(newProvider, provider),
+          duration: const Duration(seconds: 2),
         );
         setState(() => _s._hasError = true);
       }

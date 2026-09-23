@@ -31,6 +31,7 @@ class CatalogChannelCard extends StatefulWidget {
     this.healthListenable,
     this.highlighted = false,
     this.emphasize = false,
+    this.selectionIndexListenable,
     this.showLogo = true,
     this.listLayout = false,
     this.width,
@@ -67,6 +68,10 @@ class CatalogChannelCard extends StatefulWidget {
 
   /// Letter-jump / local select lit — same chrome as focus/hover (single owner).
   final bool emphasize;
+
+  /// Shared grid selection index — when set, lit chrome follows this notifier
+  /// (avoids parent grid `setState` on hover/focus). Uses [gridIndex].
+  final ValueListenable<int>? selectionIndexListenable;
 
   /// Leanback lazy logos — false until settle / focus reveal.
   final bool showLogo;
@@ -153,13 +158,17 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   LogicalKeyboardKey? _holdActivateKey;
   static const _okHoldDelay = Duration(seconds: 1);
 
-  bool _activeFor({required bool hovered, required bool focused}) =>
+  bool _activeFor({
+    required bool hovered,
+    required bool focused,
+    required bool emphasize,
+  }) =>
       ShellPaintScope.interactiveActive(
         context,
         hovered: hovered,
         focused: focused,
       ) ||
-      widget.emphasize;
+      emphasize;
 
   bool get _epgEnabled =>
       widget.programmes.isNotEmpty || widget.loadProgrammes != null;
@@ -375,13 +384,23 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     final holdJump =
         widget.onHoldJumpToCategory != null && _leanbackOnly;
     final radius = widget.radius ?? ChannelCardTokens.radius;
+    final selectionN = widget.selectionIndexListenable;
+    final chromeListenables = <Listenable>[
+      _hoveredN,
+      _focusedN,
+      ?selectionN,
+    ];
 
     final painted = ListenableBuilder(
-      listenable: Listenable.merge([_hoveredN, _focusedN]),
+      listenable: Listenable.merge(chromeListenables),
       builder: (context, _) {
+        final emphasize = selectionN != null
+            ? selectionN.value == widget.gridIndex
+            : widget.emphasize;
         final active = _activeFor(
           hovered: _hoveredN.value,
           focused: _focusedN.value,
+          emphasize: emphasize,
         );
         if (widget.listLayout) {
           return _buildSourcesListRow(

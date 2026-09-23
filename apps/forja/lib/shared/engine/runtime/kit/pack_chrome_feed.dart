@@ -132,12 +132,15 @@ Map<String, dynamic> packChromeFeedParams(
 
   // Live Sports (horizonMenu): kind → feed sportFilter (schedule re-query).
   // IPTV Live/Movies/Series: kind re-queries catalog_page (issue 290).
+  final q = (chrome?.eventQuery ?? '').trim();
+
   if (kindReloadsFeed || vodPaged) {
     final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
     final kind = iptvEffectiveCategoryId(
       listSpec: listSpec,
       scope: scope,
       vodPaged: vodPaged,
+      eventQuery: q,
     );
     if (kind.isNotEmpty && kind != 'all') {
       params['kind'] = kind;
@@ -158,7 +161,6 @@ Map<String, dynamic> packChromeFeedParams(
   // View (cards / guide / list) is paint-only — do not put it in feed params
   // (that re-fetched IPTV catalog on every Cards↔EPG flip).
 
-  final q = (chrome?.eventQuery ?? '').trim();
   if (q.isNotEmpty && (kindReloadsFeed || vodPaged)) params['q'] = q;
 
   // Live category lists (Favorites / pins / order) — IPTV / Live Sports only.
@@ -180,10 +182,14 @@ Map<String, dynamic> packChromeFeedParams(
 ///
 /// Favorites / Already watched stay as selected. Empty or first-group snap in
 /// [LayoutScope] yields the peeked last category when present (issue 322).
+///
+/// While [eventQuery] is active: empty selection → shelf-wide (no peek);
+/// mid-search category pick → that id (do not peek over it).
 String iptvEffectiveCategoryId({
   required Map<String, dynamic> listSpec,
   required LayoutScope? scope,
   bool? vodPaged,
+  String? eventQuery,
 }) {
   final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
   if (kindMenu.isEmpty) return '';
@@ -199,6 +205,11 @@ String iptvEffectiveCategoryId({
   if (section.isNotEmpty && section != 'live') return selected;
 
   if (PortalLiveCatalog.isSyntheticId(selected)) return selected;
+
+  // Search: empty cats = shelf-wide (no peek). Mid-search pick keeps selected.
+  if ((eventQuery ?? '').trim().isNotEmpty) {
+    return selected;
+  }
 
   final portalKey =
       (CategoryBarActionHost.cachedLiveListParams['portalStoreKey'] ?? '')
@@ -244,12 +255,14 @@ String packChromeGridFlipEpoch(
       ? ''
       : '${listFeedEpochListenable.value}';
 
+  final eventQ = kindBustsFeed ? (chrome?.eventQuery ?? '') : '';
   final kindPart = kindBustsFeed
       ? (vodPaged
           ? iptvEffectiveCategoryId(
               listSpec: listSpec,
               scope: scope,
               vodPaged: true,
+              eventQuery: eventQ,
             )
           : sel('kindMenu'))
       : '';
@@ -260,7 +273,7 @@ String packChromeGridFlipEpoch(
     sel('catalogMenu'),
     kindBustsFeed ? sel('sortMenu') : '',
     sel('horizonMenu'),
-    kindBustsFeed ? (chrome?.eventQuery ?? '') : '',
+    eventQ,
     listEpoch,
     catalogChromeFilterEpoch(tabId),
   ].join('|');

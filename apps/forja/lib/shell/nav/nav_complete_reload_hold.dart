@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Hold a nav tab [ShellTokens.navCompleteReloadHold] to remount hubs.
@@ -222,13 +221,8 @@ class _NavReloadHoldIconState extends State<NavReloadHoldIcon>
                   amplitude: ShellTokens.navCompleteReloadHoldWaveAmplitude,
                   cycles: ShellTokens.navCompleteReloadHoldWaveCycles,
                 ),
-                child: ColorFiltered(
-                  colorFilter: const ColorFilter.mode(
-                    ForjaShellColors.brandGreen,
-                    BlendMode.srcIn,
-                  ),
-                  child: widget.icon,
-                ),
+                // Same tint as the dimmed icon — not brand green.
+                child: widget.icon,
               ),
             ],
           ),

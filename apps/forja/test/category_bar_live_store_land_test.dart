@@ -64,4 +64,42 @@ void main() {
     expect(IptvCatalogLand.peekLastCategory('portal-a'), '30');
     expect(IptvCatalogLand.peekLastCategory('other'), isNull);
   });
+
+  test('patchCachedFavorites updates sync cache for Favorites paint', () {
+    CategoryBarActionHost.cachedLiveListParams = {
+      'portalStoreKey': 'https://x|u|p',
+      'favorites': <String>['a'],
+      'watched': <String>[],
+    };
+    CategoryBarActionHost.patchCachedFavorites({'a', 'b'});
+    expect(
+      CategoryBarActionHost.cachedFavoriteIds(
+        portalKeyOrVaultKey: 'https://x|u',
+      ),
+      {'a', 'b'},
+    );
+    expect(
+      CategoryBarActionHost.cachedFavoriteIds(
+        portalKeyOrVaultKey: 'https://other|u',
+      ),
+      isNull,
+    );
+    CategoryBarActionHost.cachedLiveListParams = const {};
+  });
+
+  test('resolveLiveStoreKey prefers cached portalStoreKey', () async {
+    CategoryBarActionHost.cachedLiveListParams = {
+      'portalStoreKey': 'https://x|u|p',
+      'favorites': <String>[],
+    };
+    expect(
+      await CategoryBarActionHost.resolveLiveStoreKey('https://x|u'),
+      'https://x|u|p',
+    );
+    expect(
+      await CategoryBarActionHost.resolveLiveStoreKey('https://x|u|p'),
+      'https://x|u|p',
+    );
+    CategoryBarActionHost.cachedLiveListParams = const {};
+  });
 }

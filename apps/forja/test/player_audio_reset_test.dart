@@ -4,6 +4,39 @@ import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:media_kit/media_kit.dart';
 
 void main() {
+  group('audioTrackResyncSeekTarget', () {
+    test('stays at zero when already at start', () {
+      expect(audioTrackResyncSeekTarget(Duration.zero), Duration.zero);
+    });
+
+    test('rewinds to zero when within the nudge window', () {
+      expect(
+        audioTrackResyncSeekTarget(const Duration(milliseconds: 200)),
+        Duration.zero,
+      );
+      expect(
+        audioTrackResyncSeekTarget(kAudioTrackResyncNudge),
+        Duration.zero,
+      );
+    });
+
+    test('rewinds by the nudge when deep in the stream', () {
+      const pos = Duration(seconds: 42);
+      expect(
+        audioTrackResyncSeekTarget(pos),
+        pos - kAudioTrackResyncNudge,
+      );
+      expect(audioTrackResyncSeekTarget(pos) < pos, isTrue);
+    });
+
+    test('nudge stays under peakstorm remount seek delta', () {
+      expect(
+        kAudioTrackResyncNudge < kPeakstormRemountSeekMinDelta,
+        isTrue,
+      );
+    });
+  });
+
   group('pickBestAudioTrack', () {
     test('prefers lowest aid when scores tie', () {
       final tracks = [

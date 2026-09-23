@@ -28,7 +28,9 @@ Future<String?> resolveDetailsShellTabId({
 }) async {
   // Feed-only packs (My List) still have a nav tab — don't keep that selected
   // when opening title details; resolve from open.surface instead.
-  if (await PluginNavRegistry.pluginHasDetails(pluginId)) {
+  final hasDetails = PluginNavRegistry.pluginHasDetailsSync(pluginId) ??
+      await PluginNavRegistry.pluginHasDetails(pluginId);
+  if (hasDetails) {
     final fromPlugin = hubShellTabIdForPlugin(pluginId);
     if (fromPlugin != null && fromPlugin.isNotEmpty) return fromPlugin;
   }

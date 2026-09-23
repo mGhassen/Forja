@@ -476,8 +476,23 @@ Future<void> restoreMediaKitAudioOutput(NativePlayer mpv) async {
   } catch (_) {}
 }
 
+/// Rewind so mpv rebinds demux/AO after an `aid` change.
+///
+/// Absolute seek to the **same** playhead is a no-op — audio stays silent
+/// until the user scrubs back (issue 348). Keep well under
+/// [kPeakstormRemountSeekMinDelta] so fMP4 HLS does not remount.
+const Duration kAudioTrackResyncNudge = Duration(milliseconds: 750);
+
+/// Playhead after an audio-track switch — strictly behind [position] when
+/// possible so mpv performs a real seek.
+Duration audioTrackResyncSeekTarget(Duration position) {
+  if (position <= Duration.zero) return Duration.zero;
+  if (position <= kAudioTrackResyncNudge) return Duration.zero;
+  return position - kAudioTrackResyncNudge;
+}
+
 /// Switch audio and re-sync demux/output — raw [Player.setAudioTrack] can
-/// leave mpv silent until the next seek (HLS / multi-track MP4).
+/// leave mpv silent until the next **real** seek (HLS / multi-track MP4).
 Future<void> selectPlayerAudioTrack(Player player, AudioTrack track) async {
   final active = player.state.track.audio;
   if (active.id == track.id) return;
@@ -492,11 +507,33 @@ Future<void> selectPlayerAudioTrack(Player player, AudioTrack track) async {
     await restoreMediaKitAudioOutput(platform);
   }
 
-  if (pos > Duration.zero) {
-    await player.seek(pos);
-    if (playing && !player.state.playing) {
-      await player.play();
+  final target = audioTrackResyncSeekTarget(pos);
+  if (target >= pos) return;
+
+  var nudged = false;
+  if (platform is NativePlayer && !platform.disposed) {
+    final deltaMs = (pos - target).inMilliseconds;
+    if (deltaMs > 0) {
+      try {
+        await platform.command([
+          'seek',
+          (-deltaMs / 1000).toStringAsFixed(3),
+          'relative',
+        ]);
+        nudged = true;
+      } catch (_) {}
     }
+  }
+  if (!nudged) {
+    try {
+      await player.seek(target);
+      nudged = true;
+    } catch (_) {}
+  }
+  if (nudged && playing && !player.state.playing) {
+    try {
+      await player.play();
+    } catch (_) {}
   }
 }
 
@@ -1063,7 +1100,7 @@ String catalogStreamKindLabel(Map<String, dynamic> stream) {
 String? _torrentIndexerFromSessionCache(String cacheKey, String magnet) {
   final torrents = CatalogSourcesSessionCache.readTorrents(cacheKey);
   if (torrents == null) return null;
-  for (final t in torrents) {
+  for (final t in torrents.results) {
     if (t.magnet != magnet) continue;
     final src = t.source.trim();
     if (src.isNotEmpty && src != 'Unknown') return src;

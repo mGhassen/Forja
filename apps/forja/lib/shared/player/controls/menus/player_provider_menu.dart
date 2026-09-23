@@ -63,4 +63,11 @@ class PlayerProviderMenu {
       fallbackName: fallbackName,
     );
   }
+
+  /// Source panel subtitle when extract / open failed for a server.
+  static const unavailableSubtitle = 'Unavailable';
+
+  /// Toast when the user checks or picks a server that returns nothing.
+  static String unavailableMessage(String providerId, [dynamic provider]) =>
+      '${snackbarLabel(providerId, provider)} is unavailable';
 }

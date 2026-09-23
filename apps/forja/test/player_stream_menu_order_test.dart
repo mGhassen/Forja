@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/player/controls/menus/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/sources/stream/player_stream_menu.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
@@ -258,6 +259,50 @@ void main() {
         'stream-b',
         'stream-c',
       ]);
+    });
+  });
+
+  group('PlayerStreamMenu.providerSubtitle', () {
+    test('shows Unavailable when failed with no streams', () {
+      expect(
+        PlayerStreamMenu.providerSubtitle(
+          sourceCount: 0,
+          isPlaying: false,
+          isFailed: true,
+        ),
+        PlayerProviderMenu.unavailableSubtitle,
+      );
+    });
+
+    test('prefers Playing now over Unavailable', () {
+      expect(
+        PlayerStreamMenu.providerSubtitle(
+          sourceCount: 0,
+          isPlaying: true,
+          isFailed: true,
+        ),
+        'Playing now',
+      );
+    });
+
+    test('shows stream count when loaded', () {
+      expect(
+        PlayerStreamMenu.providerSubtitle(
+          sourceCount: 2,
+          isPlaying: false,
+          isFailed: false,
+        ),
+        '2 streams',
+      );
+    });
+  });
+
+  group('PlayerProviderMenu.unavailableMessage', () {
+    test('includes provider display name', () {
+      expect(
+        PlayerProviderMenu.unavailableMessage('test-a', {'name': 'Test A'}),
+        'Test A is unavailable',
+      );
     });
   });
 }

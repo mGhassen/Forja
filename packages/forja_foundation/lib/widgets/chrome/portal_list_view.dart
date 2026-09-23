@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -88,6 +89,8 @@ class PortalListView extends StatefulWidget {
     this.onPortalTvFocus,
     this.onListPointerBrowse,
     this.searchFieldBuilder,
+    this.healthTickFor,
+    this.repaintItem,
   });
 
   final double width;
@@ -121,6 +124,13 @@ class PortalListView extends StatefulWidget {
   final Future<String?> Function(PortalListItem item)? onCopyShareCode;
   final void Function(PortalListItem item)? onHoverEnter;
   final void Function(PortalListItem item)? onHoverExit;
+
+  /// Per-row health tick — when set with [repaintItem], probe updates rebuild
+  /// only that row (host must not panel-`setState` on probe).
+  final ValueListenable<int>? Function(String id)? healthTickFor;
+
+  /// Re-merge probe state onto [items] when [healthTickFor] fires.
+  final PortalListItem Function(PortalListItem item)? repaintItem;
 
   /// ↑ from header icons (e.g. Portals chip).
   final VoidCallback? onHeaderUp;
@@ -611,58 +621,70 @@ class _PortalListViewState extends State<PortalListView> {
           itemCount: filtered.length,
           itemBuilder: (context, index) {
             final item = filtered[index];
-            return PortalListRow(
-              key: ValueKey<String>(item.id),
-              item: item,
-              leanback: widget.leanback,
-              height: rowExtent,
-              listIndex: index,
-              hoverOwnerId: widget.leanback ? null : _hoverRowId,
-              onSelect: widget.busy || widget.onSelect == null
-                  ? null
-                  : () => widget.onSelect!(item),
-              onFavorite: widget.busy || widget.onFavorite == null
-                  ? null
-                  : () => widget.onFavorite!(item),
-              onEdit: widget.busy || widget.onEdit == null
-                  ? null
-                  : () => widget.onEdit!(item),
-              onCopyShareCode: widget.busy || widget.onCopyShareCode == null
-                  ? null
-                  : () => widget.onCopyShareCode!(item),
-            onHoverEnter: () {
-              // Mouse/trackpad hover = pointer browse (I147) — not only scroll.
-              widget.onListPointerBrowse?.call();
-              widget.onHoverEnter?.call(item);
-            },
-            onHoverExit: widget.onHoverExit == null
-                ? null
-                : () => widget.onHoverExit!(item),
-            onDelete: widget.busy || widget.onDelete == null
-                ? null
-                : () {
-                    // Delete Yes is a click — skip inventory focus restore.
-                    if (!widget.leanback) {
-                      widget.onListPointerBrowse?.call();
-                    }
-                    widget.onDelete!(item);
-                  },
-            onUpEdge: !_tv
-                ? null
-                : index == 0
-                    ? widget.onPortalExitUp
-                    : () => widget.onPortalMove?.call(index, -1),
-            onDownEdge: !_tv
-                ? null
-                : index >= last
-                    ? widget.onPortalExitDown
-                    : () => widget.onPortalMove?.call(index, 1),
-            onLeftEdge: _tv ? widget.onPortalLeft : null,
-            onTvFocus: _tv
-                ? () => widget.onPortalTvFocus?.call(index)
-                : null,
-          );
-        },
+            final tick = widget.healthTickFor?.call(item.id);
+            final repaint = widget.repaintItem;
+            Widget rowFor(PortalListItem painted) {
+              return PortalListRow(
+                key: ValueKey<String>(painted.id),
+                item: painted,
+                leanback: widget.leanback,
+                height: rowExtent,
+                listIndex: index,
+                hoverOwnerId: widget.leanback ? null : _hoverRowId,
+                onSelect: widget.busy || widget.onSelect == null
+                    ? null
+                    : () => widget.onSelect!(painted),
+                onFavorite: widget.busy || widget.onFavorite == null
+                    ? null
+                    : () => widget.onFavorite!(painted),
+                onEdit: widget.busy || widget.onEdit == null
+                    ? null
+                    : () => widget.onEdit!(painted),
+                onCopyShareCode: widget.busy || widget.onCopyShareCode == null
+                    ? null
+                    : () => widget.onCopyShareCode!(painted),
+                onHoverEnter: () {
+                  // Mouse/trackpad hover = pointer browse (I147) — not only scroll.
+                  widget.onListPointerBrowse?.call();
+                  widget.onHoverEnter?.call(painted);
+                },
+                onHoverExit: widget.onHoverExit == null
+                    ? null
+                    : () => widget.onHoverExit!(painted),
+                onDelete: widget.busy || widget.onDelete == null
+                    ? null
+                    : () {
+                        // Delete Yes is a click — skip inventory focus restore.
+                        if (!widget.leanback) {
+                          widget.onListPointerBrowse?.call();
+                        }
+                        widget.onDelete!(painted);
+                      },
+                onUpEdge: !_tv
+                    ? null
+                    : index == 0
+                        ? widget.onPortalExitUp
+                        : () => widget.onPortalMove?.call(index, -1),
+                onDownEdge: !_tv
+                    ? null
+                    : index >= last
+                        ? widget.onPortalExitDown
+                        : () => widget.onPortalMove?.call(index, 1),
+                onLeftEdge: _tv ? widget.onPortalLeft : null,
+                onTvFocus: _tv
+                    ? () => widget.onPortalTvFocus?.call(index)
+                    : null,
+              );
+            }
+
+            if (tick == null || repaint == null) {
+              return rowFor(item);
+            }
+            return ValueListenableBuilder<int>(
+              valueListenable: tick,
+              builder: (context, _, _) => rowFor(repaint(item)),
+            );
+          },
         ),
       ),
     );

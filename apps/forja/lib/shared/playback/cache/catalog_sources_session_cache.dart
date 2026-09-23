@@ -6,7 +6,7 @@ import 'package:rust/rust.dart';
 /// Tab, chip, and toolbar state for catalog Sources (player overlay).
 ///
 /// Details keeps this on [DetailsPlaySession] while the route is mounted;
-/// the player writes it here on dismiss so reopening Sources within [ttl]
+/// the player writes it here on dismiss so reopening Sources within [CatalogSourcesSessionCache.streamTtl]
 /// restores the last tab/chips/filters for the same title/episode.
 @immutable
 class CatalogSourcesPanelUiState {
@@ -105,18 +105,36 @@ void applyCatalogSourcesPanelUiState({
 /// In-memory TTL cache for catalog Sources (Torrents / Stremio / Nuvio / Engine).
 ///
 /// Shared by media-details and the in-player Sources panel so reopening the
-/// panel within [ttl] reuses the last fetch. Torrents / Stremio still drop
+/// panel within [streamTtl] reuses the last fetch. Torrents / Stremio still drop
 /// empty lists (flaky search). Forja / Nuvio keep fetched markers even when a
 /// scraper returned nothing so hub overlay reopen matches movie details RAM
 /// (explicit kind/chip reload still force-refetches).
+///
+/// Hover-probe green/red uses a shorter [probeHealthTtl] so status can go
+/// stale while stream rows stay warm.
 class CatalogSourcesSessionCache {
   CatalogSourcesSessionCache._();
 
-  static const ttl = Duration(minutes: 30);
+  /// Stream lists + panel UI (tabs / chips / filters).
+  static const streamTtl = Duration(hours: 1);
+
+  /// Hover-probe left-bar green/red.
+  static const probeHealthTtl = Duration(minutes: 15);
+
+  /// Alias for [streamTtl] (call sites / docs that say "session TTL").
+  static const ttl = streamTtl;
+
   static const _maxEntriesPerKind = 48;
 
   static final _torrents =
-      <String, ({DateTime at, List<TorrentResult> results})>{};
+      <
+        String,
+        ({
+          DateTime at,
+          List<TorrentResult> results,
+          Set<String> fetchedProviderIds,
+        })
+      >{};
   static final _stremio =
       <String, ({DateTime at, List<Map<String, dynamic>> streams})>{};
   static final _nuvio =
@@ -139,6 +157,10 @@ class CatalogSourcesSessionCache {
       >{};
   static final _ui =
       <String, ({DateTime at, CatalogSourcesPanelUiState state})>{};
+
+  /// Hover-probe green/red for stream rows — survives panel dispose/reopen.
+  /// Keyed by stream URL (same identity as the Sources tile).
+  static final _probeHealth = <String, ({DateTime at, bool ok})>{};
 
   /// Stable key for a title/episode Sources session.
   ///
@@ -188,10 +210,11 @@ class CatalogSourcesSessionCache {
     return '$type:$mediaId:S$s:E$ep';
   }
 
-  static List<TorrentResult>? readTorrents(String key) {
+  static ({List<TorrentResult> results, Set<String> fetchedProviderIds})?
+  readTorrents(String key) {
     final entry = _torrents[key];
     if (entry == null) return null;
-    if (DateTime.now().difference(entry.at) > ttl) {
+    if (DateTime.now().difference(entry.at) > streamTtl) {
       _torrents.remove(key);
       return null;
     }
@@ -200,22 +223,33 @@ class CatalogSourcesSessionCache {
       _torrents.remove(key);
       return null;
     }
-    return List<TorrentResult>.from(entry.results);
+    return (
+      results: List<TorrentResult>.from(entry.results),
+      fetchedProviderIds: Set<String>.from(entry.fetchedProviderIds),
+    );
   }
 
-  static void writeTorrents(String key, List<TorrentResult> results) {
+  static void writeTorrents(
+    String key,
+    List<TorrentResult> results, {
+    Set<String> fetchedProviderIds = const {},
+  }) {
     if (results.isEmpty) {
       _torrents.remove(key);
       return;
     }
-    _torrents[key] = (at: DateTime.now(), results: List.from(results));
+    _torrents[key] = (
+      at: DateTime.now(),
+      results: List.from(results),
+      fetchedProviderIds: Set<String>.from(fetchedProviderIds),
+    );
     _trim(_torrents);
   }
 
   static List<Map<String, dynamic>>? readStremio(String key) {
     final entry = _stremio[key];
     if (entry == null) return null;
-    if (DateTime.now().difference(entry.at) > ttl) {
+    if (DateTime.now().difference(entry.at) > streamTtl) {
       _stremio.remove(key);
       return null;
     }
@@ -242,7 +276,7 @@ class CatalogSourcesSessionCache {
   readNuvio(String key) {
     final entry = _nuvio[key];
     if (entry == null) return null;
-    if (DateTime.now().difference(entry.at) > ttl) {
+    if (DateTime.now().difference(entry.at) > streamTtl) {
       _nuvio.remove(key);
       return null;
     }
@@ -279,7 +313,7 @@ class CatalogSourcesSessionCache {
   readEngine(String key) {
     final entry = _engine[key];
     if (entry == null) return null;
-    if (DateTime.now().difference(entry.at) > ttl) {
+    if (DateTime.now().difference(entry.at) > streamTtl) {
       _engine.remove(key);
       return null;
     }
@@ -314,7 +348,7 @@ class CatalogSourcesSessionCache {
   static CatalogSourcesPanelUiState? readUi(String key) {
     final entry = _ui[key];
     if (entry == null) return null;
-    if (DateTime.now().difference(entry.at) > ttl) {
+    if (DateTime.now().difference(entry.at) > streamTtl) {
       _ui.remove(key);
       return null;
     }
@@ -324,6 +358,38 @@ class CatalogSourcesSessionCache {
   static void writeUi(String key, CatalogSourcesPanelUiState state) {
     _ui[key] = (at: DateTime.now(), state: state);
     _trim(_ui);
+  }
+
+  /// Stable key for a Sources-panel hover probe (HTTP stream URL only).
+  static String? probeKeyForStream(Map<String, dynamic> stream) {
+    final url = (stream['url'] ?? '').toString().trim();
+    if (url.isEmpty) return null;
+    final lower = url.toLowerCase();
+    if (lower.startsWith('magnet:') ||
+        lower.startsWith('stremio://') ||
+        lower.startsWith('debrid:')) {
+      return null;
+    }
+    return url;
+  }
+
+  static bool? readProbeHealth(String? probeKey) {
+    final key = (probeKey ?? '').trim();
+    if (key.isEmpty) return null;
+    final entry = _probeHealth[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.at) > probeHealthTtl) {
+      _probeHealth.remove(key);
+      return null;
+    }
+    return entry.ok;
+  }
+
+  static void writeProbeHealth(String? probeKey, bool ok) {
+    final key = (probeKey ?? '').trim();
+    if (key.isEmpty) return;
+    _probeHealth[key] = (at: DateTime.now(), ok: ok);
+    _trim(_probeHealth);
   }
 
   /// Restores stream rows + fetched markers when RAM was cleared but TTL cache remains.
@@ -382,6 +448,7 @@ class CatalogSourcesSessionCache {
         _nuvio.remove(key);
         _engine.remove(key);
         _ui.remove(key);
+        // Probe health is URL-global; leave it (TTL / clearAll still purge).
     }
   }
 
@@ -393,6 +460,7 @@ class CatalogSourcesSessionCache {
     _nuvio.clear();
     _engine.clear();
     _ui.clear();
+    _probeHealth.clear();
   }
 
   static void _trim<T>(Map<String, T> map) {

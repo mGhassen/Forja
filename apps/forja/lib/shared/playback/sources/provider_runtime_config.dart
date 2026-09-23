@@ -734,7 +734,7 @@ class ProviderRuntimeSnapshot {
           'streamkiste': 'https://streamkiste.taxi',
           'frenchcloud': 'https://frenchcloud.cam',
           'cuevana': 'https://ww1.cuevana3.is',
-          'hdhub4u': 'https://new1.hdhub4u.limo',
+          'hdhub4u': 'https://new6.hdhub4u.cl',
           'einschalten': 'https://einschalten.in',
           'movix': 'https://api.movix.cash',
           'frembed': 'https://frembed.cyou',
@@ -924,6 +924,12 @@ class ProviderRuntimeSnapshot {
     'dimatoon': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
     'engine:dimakids': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
     'dimakids': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
+    // FlixCloud via enc-dec parse-flixcloud — master is AES-wrapped CDN URL;
+    // HEAD/range on enc-dec is fine but segment poison sampling is wrong.
+    'engine:hop-flixcloud': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'hop-flixcloud': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'engine:reanime': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
+    'reanime': AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly),
   };
 
   static ProviderRuntimeSnapshot? tryParse(Object? raw) {

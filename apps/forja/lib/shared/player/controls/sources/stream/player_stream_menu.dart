@@ -759,9 +759,12 @@ class PlayerStreamMenu {
     return null;
   }
 
-  static String? _providerSubtitle({
+  /// Server row subtitle under the provider name.
+  @visibleForTesting
+  static String? providerSubtitle({
     required int sourceCount,
     required bool isPlaying,
+    bool isFailed = false,
     int? checkingOrdinal,
     int? checkingTotal,
   }) {
@@ -772,6 +775,7 @@ class PlayerStreamMenu {
     if (sourceCount > 0) {
       return '$sourceCount stream${sourceCount == 1 ? '' : 's'}';
     }
+    if (isFailed) return PlayerProviderMenu.unavailableSubtitle;
     return null;
   }
 

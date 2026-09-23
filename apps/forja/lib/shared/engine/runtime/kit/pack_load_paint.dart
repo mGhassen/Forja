@@ -450,6 +450,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       final nextKind = iptvEffectiveCategoryId(
         listSpec: widget.fallbackSpec,
         scope: LayoutScope.maybeOf(context),
+        eventQuery: PackChromeScope.maybeOf(context)?.eventQuery,
       );
       final softLand = _appliedKindId.isEmpty ||
           _appliedKindId == 'all' ||
@@ -802,10 +803,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           return;
         }
         final landScope = LayoutScope.maybeOf(context);
+        final landChrome = PackChromeScope.maybeOf(context);
         final landKind = iptvEffectiveCategoryId(
           listSpec: widget.fallbackSpec,
           scope: landScope,
           vodPaged: true,
+          eventQuery: landChrome?.eventQuery,
         );
         final current = kindMenu.isEmpty
             ? ''

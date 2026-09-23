@@ -234,6 +234,22 @@ class TorrentMetaParser {
     return name.toLowerCase().contains(query.trim().toLowerCase());
   }
 
+  /// True when any name/meta filter would need [parse] / [matchesFiltersForName].
+  static bool hasActiveNameFilters({
+    String searchQuery = '',
+    Set<String> qualityFilters = const {},
+    Set<String> languageFilters = const {},
+    Set<String> techFilters = const {},
+    Set<String> audioFilters = const {},
+  }) {
+    return searchQuery.trim().isNotEmpty ||
+        qualityFilters.isNotEmpty ||
+        languageFilters.isNotEmpty ||
+        techFilters.isNotEmpty ||
+        audioFilters.isNotEmpty;
+  }
+
+  /// Uses fields already on [this] — callers must [parse] once, then filter.
   bool matchesFiltersForName(
     String name, {
     String searchQuery = '',
@@ -243,21 +259,20 @@ class TorrentMetaParser {
     Set<String> audioFilters = const {},
   }) {
     if (!nameContains(name: name, query: searchQuery)) return false;
-    final meta = parse(name);
     if (qualityFilters.isNotEmpty &&
-        (meta.quality == null || !qualityFilters.contains(meta.quality))) {
+        (quality == null || !qualityFilters.contains(quality))) {
       return false;
     }
     if (languageFilters.isNotEmpty &&
-        !meta.languageCodes.any(languageFilters.contains)) {
+        !languageCodes.any(languageFilters.contains)) {
       return false;
     }
     if (techFilters.isNotEmpty &&
-        !meta.techTags.any(techFilters.contains) &&
-        !meta.sourceTags.any(techFilters.contains)) {
+        !techTags.any(techFilters.contains) &&
+        !sourceTags.any(techFilters.contains)) {
       return false;
     }
-    if (audioFilters.isNotEmpty && !meta.audioTags.any(audioFilters.contains)) {
+    if (audioFilters.isNotEmpty && !audioTags.any(audioFilters.contains)) {
       return false;
     }
     return true;
@@ -422,17 +437,29 @@ List<TorrentResult> filterTorrentResults(
   Set<String> audioFilters = const {},
   Set<String> sizeFilters = const {},
 }) {
+  final needMeta = TorrentMetaParser.hasActiveNameFilters(
+    searchQuery: searchQuery,
+    qualityFilters: qualityFilters,
+    languageFilters: languageFilters,
+    techFilters: techFilters,
+    audioFilters: audioFilters,
+  );
+  final needSize = sizeFilters.isNotEmpty;
+  if (!needMeta && !needSize) return List<TorrentResult>.from(results);
+
   return results.where((r) {
-    if (!TorrentMetaParser.parse(r.name).matchesFiltersForName(
-      r.name,
-      searchQuery: searchQuery,
-      qualityFilters: qualityFilters,
-      languageFilters: languageFilters,
-      techFilters: techFilters,
-      audioFilters: audioFilters,
-    )) {
+    if (needMeta &&
+        !TorrentMetaParser.parse(r.name).matchesFiltersForName(
+          r.name,
+          searchQuery: searchQuery,
+          qualityFilters: qualityFilters,
+          languageFilters: languageFilters,
+          techFilters: techFilters,
+          audioFilters: audioFilters,
+        )) {
       return false;
     }
+    if (!needSize) return true;
     return TorrentMetaParser.matchesSizeFilters(
       r.sizeInBytes > 0
           ? r.sizeInBytes
@@ -451,29 +478,28 @@ Set<String> collectSizeRanges(Iterable<double> sizesInBytes) {
   return out;
 }
 
-Set<String> collectQualities(Iterable<String> names) {
-  final out = <String>{};
-  for (final name in names) {
-    final q = TorrentMetaParser.parse(name).quality;
-    if (q != null) out.add(q);
-  }
-  return out;
-}
-
-Set<String> collectLanguages(Iterable<String> names) {
-  final out = <String>{};
-  for (final name in names) {
-    out.addAll(TorrentMetaParser.parse(name).languageCodes);
-  }
-  return out;
-}
-
-Set<String> collectTechTags(Iterable<String> names) {
-  final out = <String>{};
+/// One parse per name — quality / language / tech+source facets together.
+({Set<String> qualities, Set<String> languages, Set<String> tech})
+    collectNameFacets(Iterable<String> names) {
+  final qualities = <String>{};
+  final languages = <String>{};
+  final tech = <String>{};
   for (final name in names) {
     final meta = TorrentMetaParser.parse(name);
-    out.addAll(meta.techTags);
-    out.addAll(meta.sourceTags);
+    if (meta.quality != null) qualities.add(meta.quality!);
+    languages.addAll(meta.languageCodes);
+    tech
+      ..addAll(meta.techTags)
+      ..addAll(meta.sourceTags);
   }
-  return out;
+  return (qualities: qualities, languages: languages, tech: tech);
 }
+
+Set<String> collectQualities(Iterable<String> names) =>
+    collectNameFacets(names).qualities;
+
+Set<String> collectLanguages(Iterable<String> names) =>
+    collectNameFacets(names).languages;
+
+Set<String> collectTechTags(Iterable<String> names) =>
+    collectNameFacets(names).tech;

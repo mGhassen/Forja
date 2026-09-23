@@ -281,6 +281,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
   Future<void> _ensureServerLoaded(
     String providerId, {
     bool forceRefresh = false,
+    bool toastOnFail = false,
   }) async {
     if (!forceRefresh && _streamsFor(providerId).isNotEmpty) {
       setState(() {
@@ -315,9 +316,17 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
         }
       });
       _pinServerFocus(providerId);
-      if (sources != null && sources.isNotEmpty) {
-        unawaited(_probeStreams(providerId, sources));
+      if (sources == null || sources.isEmpty) {
+        if (toastOnFail) {
+          final provider = widget.providers?[providerId];
+          ForjaToast.warning(
+            PlayerProviderMenu.unavailableMessage(providerId, provider),
+            duration: const Duration(seconds: 2),
+          );
+        }
+        return;
       }
+      unawaited(_probeStreams(providerId, sources));
     } catch (_) {
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() {
@@ -325,6 +334,13 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
         _failedServers.add(providerId);
       });
       _pinServerFocus(providerId);
+      if (toastOnFail) {
+        final provider = widget.providers?[providerId];
+        ForjaToast.warning(
+          PlayerProviderMenu.unavailableMessage(providerId, provider),
+          duration: const Duration(seconds: 2),
+        );
+      }
     }
   }
 
@@ -403,12 +419,14 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                 }
                 go();
               } else {
-                unawaited(_ensureServerLoaded(id).then((_) {
+                unawaited(_ensureServerLoaded(id, toastOnFail: true).then((_) {
                   if (mounted) go();
                 }));
               }
             },
-            onTap: () => unawaited(_ensureServerLoaded(servers[i].key)),
+            onTap: () => unawaited(
+              _ensureServerLoaded(servers[i].key, toastOnFail: true),
+            ),
           ),
       ],
     );
@@ -454,7 +472,9 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              failed ? 'No streams found' : 'Tap the server to check',
+              failed
+                  ? PlayerProviderMenu.unavailableSubtitle
+                  : 'Tap the server to check',
               style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
             const SizedBox(height: 10),
@@ -463,7 +483,11 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
             ExcludeFocus(
               child: TextButton(
                 onPressed: () => unawaited(
-                  _ensureServerLoaded(serverId, forceRefresh: true),
+                  _ensureServerLoaded(
+                    serverId,
+                    forceRefresh: true,
+                    toastOnFail: true,
+                  ),
                 ),
                 child: Text(
                   failed ? 'Retry' : 'Check',

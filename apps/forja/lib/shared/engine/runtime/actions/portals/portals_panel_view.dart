@@ -59,9 +59,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     super.initState();
     _tv = PortalsPanelTvFocus(tabId: widget.tabId);
     _tv.didFocusOnOpen = true;
-    _health = PortalHealthTracker(onChanged: () {
-      if (mounted) setState(() {});
-    });
+    _health = PortalHealthTracker();
     // Vault already painted by provider build; soft cloud prepare in background.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -126,7 +124,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
   }
 
-  /// Soft switch — vault active first, clear grid, soft-bump feed.
+  /// Soft switch — paint clear first, vault/prefs after (issue 351).
   Future<void> _selectPortal(String portalKey) async {
     final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
@@ -134,6 +132,19 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       return;
     }
     if (!mounted) return;
+
+    // Instant feedback — selected row + empty grid before Keychain/prefs.
+    final inv =
+        ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
+    if (inv != null) {
+      ref
+          .read(portalsInventoryProvider(widget.tabId).notifier)
+          .applyActiveOptimistic(portalKey);
+    }
+    EngineCache.instance.wipePlugin(pluginId);
+    PackLoadedPaint.clearMemosForPlugin(pluginId);
+    final chrome = PackChromeScope.maybeOf(context);
+    chrome?.onClearCatalog();
 
     await PortalsHost.setActiveKey(portalKey);
     if (!mounted) return;
@@ -143,15 +154,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
     if (!mounted) return;
 
-    // Soft switch: wipe EngineCache + paint memos (pack may still disk-hit).
-    // Without wipe, an empty “Choose a portal” cover cached under this
-    // portalStoreKey (pre-active fallback) paints forever after select.
-    EngineCache.instance.wipePlugin(pluginId);
-    PackLoadedPaint.clearMemosForPlugin(pluginId);
-    final chrome = PackChromeScope.maybeOf(context);
-    // Drop stale "Choose a portal" cover so loading paints while feed runs.
-    chrome?.onClearCatalog();
-    chrome?.onBumpRefresh(forceNetwork: false);
+    PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
 
     unawaited((() async {
       try {
@@ -338,8 +341,26 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   }
 
   Future<void> _toggleFavorite(String portalKey) async {
-    await PortalsHost.toggleFavorite(portalKey);
+    final inv =
+        ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
+    var current = false;
+    if (inv != null) {
+      for (final p in inv.portals) {
+        if (PortalsHost.samePortalKey(p.id, portalKey)) {
+          current = p.favorite;
+          break;
+        }
+      }
+    }
+    ref
+        .read(portalsInventoryProvider(widget.tabId).notifier)
+        .applyFavoriteOptimistic(portalKey, !current);
+    final next = await PortalsHost.toggleFavorite(portalKey);
     if (!mounted) return;
+    // Persist may disagree (vault miss) — reconcile from vault.
+    ref
+        .read(portalsInventoryProvider(widget.tabId).notifier)
+        .applyFavoriteOptimistic(portalKey, next);
     invalidatePortalsChrome(ref, widget.tabId);
   }
 
@@ -503,10 +524,13 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
             // Soft refresh like the chip — recheck even when TTL is fresh.
             force: true,
           ),
-      onHoverExit: (item) {
-        _health.cancel(item.id);
-        if (mounted) setState(() {});
-      },
+      onHoverExit: (item) => _health.cancel(item.id),
+      healthTickFor: (id) => _health.listenableFor(id),
+      repaintItem: (item) => _health.paint(
+            item,
+            deleting: _deletingKeys.contains(item.id),
+            selected: item.selected,
+          ),
       onHeaderUp: useTv ? _tv.exitUpToChip : null,
       onHeaderDown: useTv
           ? () => _tv.focusPortalsFromHeader(

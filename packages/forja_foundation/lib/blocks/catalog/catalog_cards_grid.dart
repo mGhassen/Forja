@@ -725,7 +725,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   CatalogPosterGridLayout? _layout;
 
   /// Same role as category [selectedId] — letter-jump selection chrome + anchor.
-  int _selectedIndex = -1;
+  final ValueNotifier<int> _selectedIndexN = ValueNotifier(-1);
 
   Timer? _logoSettleTimer;
   bool _allowNewLogos = false;
@@ -768,6 +768,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     _logoSettleTimer?.cancel();
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
+    _selectedIndexN.dispose();
     super.dispose();
   }
 
@@ -786,7 +787,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       widget.landEpoch?.addListener(_onLandEpoch);
     }
     if (!identical(oldWidget.items, widget.items)) {
-      _selectedIndex = -1;
+      _selectedIndexN.value = -1;
       _itemKeys.clear();
       _revealedLogoIds.clear();
       if (_leanbackOnly) {
@@ -860,20 +861,21 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   }
 
   int _letterJumpAnchor() {
-    if (_selectedIndex >= 0 && _selectedIndex < widget.items.length) {
-      return _selectedIndex;
+    final selected = _selectedIndexN.value;
+    if (selected >= 0 && selected < widget.items.length) {
+      return selected;
     }
     return _indexOfSelected();
   }
 
   void _letterJump(int index) {
     if (index < 0 || index >= widget.items.length) return;
-    setState(() => _selectedIndex = index);
+    _selectedIndexN.value = index;
     _scrollAndMaybeFocus(index, focus: false);
   }
 
   /// Focus / hover may fire while the grid is still building (e.g. after tap
-  /// rebuild). Selection setState must not run in that window.
+  /// rebuild). Selection notify must not run in that window.
   void _onChannelInteractiveActive(
     int i,
     Map<String, dynamic> item, {
@@ -885,15 +887,15 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     void applySelection() {
       if (!mounted) return;
       if (active) {
-        if (_selectedIndex != i) {
-          setState(() => _selectedIndex = i);
+        if (_selectedIndexN.value != i) {
+          _selectedIndexN.value = i;
         }
         // Keep category → landing on this tile (not a stale play highlight).
         widget.onArmFocusMemory?.call(i);
-      } else if (_selectedIndex == i) {
+      } else if (_selectedIndexN.value == i) {
         // TV: leaving the tile (e.g. → Portals) must drop play chrome;
-        // letter-jump still sets _selectedIndex without focus.
-        setState(() => _selectedIndex = -1);
+        // letter-jump still sets selection without focus.
+        _selectedIndexN.value = -1;
       }
     }
 
@@ -911,7 +913,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     if (idx < 0) return;
     if (preferCategoryFocus) {
       // Scroll to last-played but leave focus on cats — no channel chrome.
-      if (_selectedIndex != -1) setState(() => _selectedIndex = -1);
+      if (_selectedIndexN.value != -1) _selectedIndexN.value = -1;
       _scrollToIndex(idx);
       widget.onArmFocusMemory?.call(idx);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -921,7 +923,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
       });
       return;
     }
-    setState(() => _selectedIndex = idx);
+    _selectedIndexN.value = idx;
     _scrollAndMaybeFocus(idx, focus: true);
   }
 
@@ -1077,7 +1079,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         // Sticky last-played id stays for land/scroll; paint is single-chrome
         // (focus / hover / letter-jump emphasize only).
         highlighted: panelSelected,
-        emphasize: i == _selectedIndex,
+        selectionIndexListenable: _selectedIndexN,
         showLogo: _showChannelLogo(id),
         listLayout: list,
         width: list ? null : layout?.cardW,
@@ -1097,7 +1099,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         onTap: widget.onItemTap == null
             ? null
             : () {
-                setState(() => _selectedIndex = i);
+                _selectedIndexN.value = i;
                 widget.onItemTap!(item);
               },
         onInteractiveActive: (active) {

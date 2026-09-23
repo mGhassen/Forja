@@ -358,6 +358,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   final Set<Future<void>> _enginePoolTasks = {};
   int _enginePoolLimit = kEngineSourcesBatchDesktop;
 
+  /// Coalesce progressive list paints (torrent batches / Forja plugins).
+  Timer? _coalescedPaintTimer;
+  static const _coalescedPaintDelay = Duration(milliseconds: 64);
+
+  /// Facet chip sets — recompute once per stream-list / selection snapshot.
+  int? _facetCachedKey;
+  Set<String> _cachedQualities = const {};
+  Set<String> _cachedLanguages = const {};
+  Set<String> _cachedTech = const {};
+  Set<String> _cachedSizes = const {};
+
   /// Soft Forja panel bucket. Prefer explicit hub category; else infer from
   /// the playing `engine:` plugin so player Sources reuse chip prefs.
   String get _enginePanelCategory {
@@ -449,7 +460,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool _searching = false;
   bool _stremioFetching = false;
   /// Blocks further taps while a source row is handing off to playback.
-  bool _sourcePickInFlight = false;
+  /// ValueNotifier — do not setState the whole list when pick starts (issue 352).
+  final ValueNotifier<bool> _sourcePickInFlightN = ValueNotifier(false);
   int _searchGen = 0;
   int _stremioGen = 0;
   String? _error;
@@ -631,10 +643,33 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         }
       case 'stremio':
         final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
-        if (cached != null) _stremioStreams = cached;
+        if (cached != null) {
+          _stremioStreams = cached;
+          _loadedAddonBaseUrls
+            ..clear()
+            ..addAll({
+              for (final s in cached)
+                if (s['_addonBaseUrl'] is String)
+                  s['_addonBaseUrl'] as String,
+            });
+          _completedAddonBaseUrls
+            ..clear()
+            ..addAll(_loadedAddonBaseUrls);
+        }
       case 'torrents':
         final cached = CatalogSourcesSessionCache.readTorrents(_catalogCacheKey);
-        if (cached != null) _results = cached;
+        if (cached != null) {
+          _results = cached.results;
+          _torrentFetchedProviderIds
+            ..clear()
+            ..addAll(cached.fetchedProviderIds);
+          if (_torrentFetchedProviderIds.isEmpty) {
+            TorrentSearchProviders.addFetchedFromResultSources(
+              _torrentFetchedProviderIds,
+              cached.results.map((r) => r.source),
+            );
+          }
+        }
     }
   }
 
@@ -642,22 +677,61 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   void setState(VoidCallback fn) {
     super.setState(fn);
     if (!mounted) return;
-    // Panel fetch busy stays in-panel (_isFetching / chip spinners) and on
-    // [playerSourcesSessionProvider]. Do not drive [playerResolveStatusProvider]
-    // — that paints the player center "Loading sources…" overlay for stream
-    // resolve (_loadServer / source switch), not Sources list fetches.
-    ref.read(playerSourcesSessionProvider.notifier).mutate((s) {
-      s.isSearchingTorrents = _searching;
-      s.isFetchingStremio = _stremioFetching;
-      s.isFetchingNuvio = _nuvioFetching;
-      s.torrents = List<TorrentResult>.from(_results);
-      s.stremioStreams = List<dynamic>.from(_stremioStreams);
-      s.nuvioStreams = List<Map<String, dynamic>>.from(_nuvioStreams);
+    // Busy flags only — never copy full stream lists (I337). Do not drive
+    // [playerResolveStatusProvider] (player center "Loading sources…").
+    final notifier = ref.read(playerSourcesSessionProvider.notifier);
+    final s = notifier.session;
+    final searching = _searching;
+    final stremio = _stremioFetching;
+    final nuvio = _nuvioFetching;
+    if (s.isSearchingTorrents == searching &&
+        s.isFetchingStremio == stremio &&
+        s.isFetchingNuvio == nuvio) {
+      return;
+    }
+    notifier.mutate((bag) {
+      bag.isSearchingTorrents = searching;
+      bag.isFetchingStremio = stremio;
+      bag.isFetchingNuvio = nuvio;
     });
+  }
+
+  int get _facetContentKey => Object.hash(
+        _kindFilter,
+        _results.length,
+        _stremioStreams.length,
+        _nuvioStreams.length,
+        _engineStreams.length,
+        Object.hashAll(_nuvioSelectedScraperIds),
+        Object.hashAll(_nuvioViewFilterScraperIds),
+        Object.hashAll(_engineSelectedPluginIds),
+        Object.hashAll(_engineViewFilterPluginIds),
+        _nuvioAllMode,
+        _engineAllMode,
+      );
+
+  /// Mutate lists/flags, then paint at most once per [_coalescedPaintDelay].
+  void _scheduleCoalescedPaint(VoidCallback apply) {
+    apply();
+    if (_coalescedPaintTimer?.isActive ?? false) return;
+    _coalescedPaintTimer = Timer(_coalescedPaintDelay, () {
+      _coalescedPaintTimer = null;
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _flushCoalescedPaint() {
+    final pending = _coalescedPaintTimer;
+    if (pending == null) return;
+    pending.cancel();
+    _coalescedPaintTimer = null;
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _coalescedPaintTimer?.cancel();
+    _coalescedPaintTimer = null;
     PluginRegistry.changeNotifier.removeListener(_onTorrentPackChanged);
     _savePanelUiCache();
     _searchGen++;
@@ -677,6 +751,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       null,
     );
     _listScrollController.dispose();
+    _sourcePickInFlightN.dispose();
     super.dispose();
   }
 
@@ -1403,17 +1478,34 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     if (_searching) return;
     final cached = CatalogSourcesSessionCache.readTorrents(_catalogCacheKey);
-    if (cached != null && _results.isEmpty) {
-      setState(() {
-        _results = cached;
-        TorrentSearchProviders.addFetchedFromResultSources(
-          _torrentFetchedProviderIds,
-          cached.map((r) => r.source),
-        );
-        _error = null;
-      });
-      _focusPlayingSourceIfNeeded();
-      _requestScrollToCurrent();
+    if (cached != null) {
+      final needPaint = _results.isEmpty;
+      final needFetched =
+          _torrentFetchedProviderIds.isEmpty &&
+          (cached.fetchedProviderIds.isNotEmpty || cached.results.isNotEmpty);
+      if (needPaint || needFetched) {
+        setState(() {
+          if (needPaint) {
+            _results = cached.results;
+            _error = null;
+          }
+          if (needFetched) {
+            _torrentFetchedProviderIds
+              ..clear()
+              ..addAll(cached.fetchedProviderIds);
+            if (_torrentFetchedProviderIds.isEmpty) {
+              TorrentSearchProviders.addFetchedFromResultSources(
+                _torrentFetchedProviderIds,
+                cached.results.map((r) => r.source),
+              );
+            }
+          }
+        });
+        if (needPaint) {
+          _focusPlayingSourceIfNeeded();
+          _requestScrollToCurrent();
+        }
+      }
     }
     unawaited(_runTorrentSearch());
   }
@@ -1882,6 +1974,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       TorrentMetaParser.streamSizeBytesForFilters(s);
 
   /// Quality / language / tech / size / search — same contract as details Sources.
+  bool get _hasActiveStreamNameFilters =>
+      TorrentMetaParser.hasActiveNameFilters(
+        searchQuery: _searchQuery,
+        qualityFilters: _qualityFilters,
+        languageFilters: _languageFilters,
+        techFilters: _techFilters,
+        audioFilters: _audioFilters,
+      );
+
   bool _matchesStreamFilters(Map<String, dynamic> s) {
     final audioCat = widget.animeAudioCategory;
     if (audioCat != null &&
@@ -1889,16 +1990,20 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         !engineStreamMatchesAudioCategory(s, audioCat)) {
       return false;
     }
-    final name = '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
-    if (!TorrentMetaParser.parse(name).matchesFiltersForName(
-      name,
-      searchQuery: _searchQuery,
-      qualityFilters: _qualityFilters,
-      languageFilters: _languageFilters,
-      techFilters: _techFilters,
-      audioFilters: _audioFilters,
-    )) {
-      return false;
+    if (!_hasActiveStreamNameFilters && _sizeFilters.isEmpty) return true;
+    if (_hasActiveStreamNameFilters) {
+      final name =
+          '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
+      if (!TorrentMetaParser.parse(name).matchesFiltersForName(
+        name,
+        searchQuery: _searchQuery,
+        qualityFilters: _qualityFilters,
+        languageFilters: _languageFilters,
+        techFilters: _techFilters,
+        audioFilters: _audioFilters,
+      )) {
+        return false;
+      }
     }
     return TorrentMetaParser.matchesSizeFilters(
       _streamSizeBytes(s),
@@ -2002,10 +2107,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
   }
 
-  Set<String> get _availableQualities => collectQualities(_filterNames);
-  Set<String> get _availableLanguages => collectLanguages(_filterNames);
-  Set<String> get _availableTech => collectTechTags(_filterNames);
-  Set<String> get _availableSizes {
+  void _ensureFacetsCached() {
+    final key = _facetContentKey;
+    if (_facetCachedKey == key) return;
+    _facetCachedKey = key;
+    final facets = collectNameFacets(_filterNames);
+    _cachedQualities = facets.qualities;
+    _cachedLanguages = facets.languages;
+    _cachedTech = facets.tech;
     final sizes = <double>[];
     if (_showsTorrents) {
       for (final r in _results) {
@@ -2035,7 +2144,27 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         if (bytes > 0) sizes.add(bytes);
       }
     }
-    return collectSizeRanges(sizes);
+    _cachedSizes = collectSizeRanges(sizes);
+  }
+
+  Set<String> get _availableQualities {
+    _ensureFacetsCached();
+    return _cachedQualities;
+  }
+
+  Set<String> get _availableLanguages {
+    _ensureFacetsCached();
+    return _cachedLanguages;
+  }
+
+  Set<String> get _availableTech {
+    _ensureFacetsCached();
+    return _cachedTech;
+  }
+
+  Set<String> get _availableSizes {
+    _ensureFacetsCached();
+    return _cachedSizes;
   }
 
   List<SourcesPanelProviderOption> get _providerOptions {
@@ -2268,6 +2397,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool merge = false,
   }) async {
     if (!mounted || gen != _searchGen) return;
+    _flushCoalescedPaint();
     setState(() {
       if (merge) {
         _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet([
@@ -2285,7 +2415,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _error = 'No torrents found';
       }
     });
-    CatalogSourcesSessionCache.writeTorrents(_catalogCacheKey, _results);
+    CatalogSourcesSessionCache.writeTorrents(
+      _catalogCacheKey,
+      _results,
+      fetchedProviderIds: _torrentFetchedProviderIds,
+    );
     _focusPlayingSourceIfNeeded();
     _requestScrollToCurrent();
   }
@@ -2306,7 +2440,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (batch.isEmpty || !mounted) return;
     try {
       final next = batch.map(TorrentResult.fromJson).toList();
-      setState(() => _appendTorrentSearchBatch(next));
+      _scheduleCoalescedPaint(() => _appendTorrentSearchBatch(next));
     } catch (e, st) {
       debugPrint('[sources] torrent partial failed: $e\n$st');
     }
@@ -2343,7 +2477,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
     closed = true;
     if (!mounted || gen != _searchGen) return;
-    setState(() => _results = _torrentResultsFromRaw(raw));
+    _flushCoalescedPaint();
+    setState(() {
+      _results = _torrentResultsFromRaw(raw);
+    });
   }
 
   Future<void> _searchForjaTvProgressive(
@@ -2376,7 +2513,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         for (var i = soFarByPass.length - 1; i >= 0; i--) ...soFarByPass[i],
       ];
       if (merged.isEmpty) return;
-      setState(() {
+      _scheduleCoalescedPaint(() {
         if (_torrentDedupeByMagnetOnly) {
           _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(
             merged.map(TorrentResult.fromJson).toList(),
@@ -2411,11 +2548,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     closed = true;
     if (!mounted || gen != _searchGen) return;
-    setState(
-      () => _results = _torrentResultsFromRaw([
+    _flushCoalescedPaint();
+    setState(() {
+      _results = _torrentResultsFromRaw([
         for (var i = soFarByPass.length - 1; i >= 0; i--) ...soFarByPass[i],
-      ]),
-    );
+      ]);
+    });
   }
 
   Future<void> _fetchStremioStreams({
@@ -2702,8 +2840,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
     if (!_nuvioSelectedScraperIds.contains(scraperId)) return;
-    setState(() {
+    _scheduleCoalescedPaint(() {
       _nuvioFetchedScraperIds.add(scraperId);
+      _nuvioInFlightScraperIds.remove(scraperId);
       _nuvioStreams.removeWhere(
         (s) => nuvioStreamBelongsToScraper(s, scraperId),
       );
@@ -2830,6 +2969,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _nuvioFillPool(gen: gen, type: type);
     await _nuvioDrainPool(gen: gen, type: type);
     if (!mounted || gen != _nuvioFetchGen) return;
+    _flushCoalescedPaint();
     final stillPending = _pendingNuvioScraperIds.isNotEmpty;
     setState(() {
       _nuvioFetching = stillPending;
@@ -2916,7 +3056,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       setState(() => _engineInFlightPluginIds.remove(pluginId));
       return;
     }
-    setState(() {
+    _scheduleCoalescedPaint(() {
       _engineFetchedPluginIds.add(pluginId);
       _engineInFlightPluginIds.remove(pluginId);
       _engineStreams.removeWhere(
@@ -3035,6 +3175,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _engineFillPool(gen: gen, type: type);
     await _engineDrainPool(gen: gen, type: type);
     if (!mounted || gen != _engineFetchGen) return;
+    _flushCoalescedPaint();
     final stillPending = _pendingEnginePluginIds.isNotEmpty;
     setState(() {
       _engineFetching = stillPending;
@@ -3048,15 +3189,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   void _onKindChanged(String kind) {
     if (kind == _kindFilter) return;
     _userPickedKind = true;
+    final prev = _kindFilter;
+    // Paint the new kind tab this frame — abort/fetch after so the chip feels
+    // instant (issue 352).
     setState(() {
-      _stashPanelSourceIdForKind(_kindFilter);
-      _abortHiddenKindFetches(kind);
+      _stashPanelSourceIdForKind(prev);
       _kindFilter = kind;
       _restorePanelSourceIdForKind(kind);
     });
-    _savePanelUiCache();
     _resetListScroll(allowScrollToCurrent: true);
-    _ensureVisibleKindsLoaded();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _kindFilter != kind) return;
+      _abortHiddenKindFetches(kind);
+      _savePanelUiCache();
+      _ensureVisibleKindsLoaded();
+    });
   }
 
   String get _year {
@@ -3622,12 +3769,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   Future<void> _selectTorrent(TorrentResult result) async {
-    if (_sourcePickInFlight) return;
+    if (_sourcePickInFlightN.value) return;
     if (widget.playbackConfirmed && _isCurrentMagnet(result.magnet)) {
       widget.onClose();
       return;
     }
-    setState(() => _sourcePickInFlight = true);
+    _sourcePickInFlightN.value = true;
     try {
       // ATV: pair/offline dialog first. Do not dismiss or start local resolve.
       if (!await ensureLanP2pPlayback(context)) {
@@ -3639,12 +3786,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       PlayerSourcesPanel.dismiss(cancelEngine: false);
       await widget.onTorrentSelected(result);
     } finally {
-      if (mounted) setState(() => _sourcePickInFlight = false);
+      if (mounted) _sourcePickInFlightN.value = false;
     }
   }
 
   Future<void> _selectStremio(Map<String, dynamic> stream) async {
-    if (_sourcePickInFlight) return;
+    if (_sourcePickInFlightN.value) return;
     if (widget.playbackConfirmed && _isCurrentStremio(stream)) {
       widget.onClose();
       return;
@@ -3654,7 +3801,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       ForjaToast.info(kStreamDrmAndroidOnlyMessage);
       return;
     }
-    setState(() => _sourcePickInFlight = true);
+    _sourcePickInFlightN.value = true;
     try {
       final precheck = classifyStremioStream(
         stream,
@@ -3669,7 +3816,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       PlayerSourcesPanel.dismiss(cancelEngine: false);
       await widget.onStremioSelected(stream);
     } finally {
-      if (mounted) setState(() => _sourcePickInFlight = false);
+      if (mounted) _sourcePickInFlightN.value = false;
     }
   }
 
@@ -3682,7 +3829,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(playerSourcesSessionProvider);
     final torrents = _showsTorrents ? _filteredTorrents : <TorrentResult>[];
     final stremio = _showsStremio
         ? _visibleStremioStreams
@@ -3827,30 +3973,35 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       ],
     );
 
-    if (!_sourcePickInFlight) return body;
-
-    return AbsorbPointer(
-      absorbing: true,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned.fill(child: body),
-          const ModalBarrier(
-            dismissible: false,
-            color: Color(0x66000000),
-          ),
-          const Center(
-            child: SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white54,
+    return ValueListenableBuilder<bool>(
+      valueListenable: _sourcePickInFlightN,
+      builder: (context, inFlight, child) {
+        if (!inFlight) return child!;
+        return AbsorbPointer(
+          absorbing: true,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(child: child!),
+              const ModalBarrier(
+                dismissible: false,
+                color: Color(0x66000000),
               ),
-            ),
+              const Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white54,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
+      child: body,
     );
   }
 
@@ -4076,6 +4227,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           final description = (s['description'] ?? '').toString();
           final presentation = stremioTilePresentation(s, isResumable: false);
           final isCurrent = i == currentIndex;
+          final probeKey = CatalogSourcesSessionCache.probeKeyForStream(s);
           return KeyedSubtree(
             key: _playerStreamTileKey(s),
             child: KeyedSubtree(
@@ -4094,9 +4246,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 highlightStart: isCurrent,
                 tvItemIndex: tvIndex,
                 onUpEdge: onUp,
-                onHoverProbe: presentation.isExternal
+                probeHealthCache:
+                    CatalogSourcesSessionCache.readProbeHealth(probeKey),
+                onHoverProbe: presentation.isExternal || probeKey == null
                     ? null
-                    : () => probeSourcesPanelStream(s),
+                    : () async {
+                        final ok = await probeSourcesPanelStream(s);
+                        CatalogSourcesSessionCache.writeProbeHealth(
+                          probeKey,
+                          ok,
+                        );
+                        return ok;
+                      },
                 onTap: () => _selectStremio(s),
               ),
             ),

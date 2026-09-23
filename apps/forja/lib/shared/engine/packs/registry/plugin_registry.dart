@@ -63,6 +63,11 @@ class PluginRegistry {
   /// soft-reloads immediately (issues 305 / 311).
   static final ValueNotifier<int> hubFeedEpoch = ValueNotifier<int>(0);
 
+  /// In-memory pack index — avoid SharedPreferences + jsonDecode on every
+  /// poster/list open (issue 352). Invalidated on write / profile scope change.
+  List<EnginePack>? _packsMem;
+  int _packsMemScopeGen = -1;
+
   /// Plugin ids last wiped into [hubFeedEpoch]. Empty = all hubs.
   static Set<String> _hubFeedEpochPlugins = {};
 
@@ -126,10 +131,26 @@ class PluginRegistry {
   }
 
   Future<void> _writePacksJson(SharedPreferences prefs, String json) async {
+    _invalidatePacksMem();
     await prefs.setString(packsPrefsKey, json);
     if (prefs.containsKey(_packsKeyV2)) {
       await prefs.remove(_packsKeyV2);
     }
+  }
+
+  void _invalidatePacksMem() {
+    _packsMem = null;
+    _packsMemScopeGen = -1;
+  }
+
+  /// Sync peek of the last [listPacksRaw] result — null when cold / wrong profile.
+  List<EnginePack>? peekPacks() {
+    if (_packsMem == null) return null;
+    if (_packsMemScopeGen != LocalDataScope.generation) {
+      _invalidatePacksMem();
+      return null;
+    }
+    return _packsMem;
   }
 
   Future<http.Response> _httpGet(Uri uri) async {
@@ -560,22 +581,40 @@ class PluginRegistry {
   }
 
   Future<List<EnginePack>> listPacksRaw() async {
+    final scopeGen = LocalDataScope.generation;
+    final hit = _packsMem;
+    if (hit != null && _packsMemScopeGen == scopeGen) {
+      return hit;
+    }
     await _migrateV1IfNeeded();
     await _wipeLegacyMonolithIfNeeded();
     await migrateScriptsToDiskIfNeeded();
     final prefs = await _prefs;
     final raw = await _readPacksJson(prefs);
-    if (raw == null || raw.isEmpty) return [];
+    if (raw == null || raw.isEmpty) {
+      _packsMem = const [];
+      _packsMemScopeGen = scopeGen;
+      return const [];
+    }
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! List) return [];
+      if (decoded is! List) {
+        _packsMem = const [];
+        _packsMemScopeGen = scopeGen;
+        return const [];
+      }
       final packs = [
         for (final e in decoded)
           if (e is Map) EnginePack.fromStored(Map<String, dynamic>.from(e)),
       ];
-      return _purgeLegacyAssetPacks(packs);
+      final purged = await _purgeLegacyAssetPacks(packs);
+      _packsMem = purged;
+      _packsMemScopeGen = scopeGen;
+      return purged;
     } catch (_) {
-      return [];
+      _packsMem = const [];
+      _packsMemScopeGen = scopeGen;
+      return const [];
     }
   }
 

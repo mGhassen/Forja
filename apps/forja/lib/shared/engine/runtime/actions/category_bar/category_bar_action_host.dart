@@ -95,29 +95,72 @@ abstract final class CategoryBarActionHost {
     );
   }
 
+  /// Prefer [cachedLiveListParams] portalStoreKey — skips vault JSON parse.
+  static Future<String?> resolveLiveStoreKey(String portalKeyOrVaultKey) async {
+    final want = portalKeyOrVaultKey.trim();
+    final cached =
+        (cachedLiveListParams['portalStoreKey'] ?? '').toString().trim();
+    if (cached.isNotEmpty &&
+        (want.isEmpty || PortalsHost.samePortalKey(want, cached))) {
+      return cached;
+    }
+    if (want.isEmpty) return null;
+    // Already url|user|pass store form.
+    if (want.split('|').length >= 3) return want;
+    final portal = await _portalForKey(want);
+    if (portal == null) return null;
+    return PortalAliveStore.portalKey(portal);
+  }
+
+  /// Sync patch so Favorites paint / next feed params see the toggle now.
+  static void patchCachedFavorites(Set<String> streamIds) {
+    final prev = cachedLiveListParams;
+    cachedLiveListParams = <String, dynamic>{
+      ...prev,
+      'favorites': streamIds.toList(growable: false),
+    };
+  }
+
+  /// Cached favorites when [portalStoreKey] matches — no prefs/vault I/O.
+  static Set<String>? cachedFavoriteIds({required String portalKeyOrVaultKey}) {
+    final want = portalKeyOrVaultKey.trim();
+    final cached =
+        (cachedLiveListParams['portalStoreKey'] ?? '').toString().trim();
+    if (cached.isEmpty) return null;
+    if (want.isNotEmpty && !PortalsHost.samePortalKey(want, cached)) {
+      return null;
+    }
+    final raw = cachedLiveListParams['favorites'];
+    if (raw is! List) return null;
+    return {
+      for (final e in raw)
+        if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+    };
+  }
+
   static Future<bool> toggleFavorite({
     required String portalKeyOrVaultKey,
     required String streamId,
   }) async {
     if (streamId.isEmpty) return false;
-    final portal = await _portalForKey(portalKeyOrVaultKey);
-    if (portal == null) return false;
-    final key = PortalAliveStore.portalKey(portal);
+    final key = await resolveLiveStoreKey(portalKeyOrVaultKey);
+    if (key == null || key.isEmpty) return false;
     final next = await PortalLiveChannelListsStore.loadFavorites(key);
     final nowFav = !next.remove(streamId);
     if (nowFav) next.add(streamId);
     await PortalLiveChannelListsStore.saveFavorites(key, next);
+    patchCachedFavorites(next);
     return nowFav;
   }
 
   static Future<Set<String>> loadFavoriteIds({
     required String portalKeyOrVaultKey,
   }) async {
-    final portal = await _portalForKey(portalKeyOrVaultKey);
-    if (portal == null) return {};
-    return PortalLiveChannelListsStore.loadFavorites(
-      PortalAliveStore.portalKey(portal),
-    );
+    final cached = cachedFavoriteIds(portalKeyOrVaultKey: portalKeyOrVaultKey);
+    if (cached != null) return cached;
+    final key = await resolveLiveStoreKey(portalKeyOrVaultKey);
+    if (key == null || key.isEmpty) return {};
+    return PortalLiveChannelListsStore.loadFavorites(key);
   }
 
   /// Favorite star for a live landscape card (props + callbacks only at DS).
@@ -237,10 +280,12 @@ class _LiveFavoriteStarHost extends ConsumerStatefulWidget {
 
 class _LiveFavoriteStarHostState extends ConsumerState<_LiveFavoriteStarHost> {
   bool? _fav;
+  int _toggleGen = 0;
 
   @override
   void initState() {
     super.initState();
+    _fav = _peekCached();
     unawaited(_load());
   }
 
@@ -249,8 +294,17 @@ class _LiveFavoriteStarHostState extends ConsumerState<_LiveFavoriteStarHost> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.streamId != widget.streamId ||
         oldWidget.portalKey != widget.portalKey) {
+      _fav = _peekCached();
       unawaited(_load());
     }
+  }
+
+  bool? _peekCached() {
+    final ids = CategoryBarActionHost.cachedFavoriteIds(
+      portalKeyOrVaultKey: widget.portalKey,
+    );
+    if (ids == null) return null;
+    return ids.contains(widget.streamId);
   }
 
   Future<void> _load() async {
@@ -261,21 +315,58 @@ class _LiveFavoriteStarHostState extends ConsumerState<_LiveFavoriteStarHost> {
     setState(() => _fav = ids.contains(widget.streamId));
   }
 
+  void _onToggle() {
+    final was = _fav ?? false;
+    final next = !was;
+    final gen = ++_toggleGen;
+    // Optimistic — pin already paints before prefs I/O; star was awaiting vault
+    // resolve + save + full liveListFeedParams before the icon flipped.
+    setState(() => _fav = next);
+    final cached = CategoryBarActionHost.cachedFavoriteIds(
+          portalKeyOrVaultKey: widget.portalKey,
+        ) ??
+        <String>{};
+    final patched = Set<String>.from(cached);
+    if (next) {
+      patched.add(widget.streamId);
+    } else {
+      patched.remove(widget.streamId);
+    }
+    CategoryBarActionHost.patchCachedFavorites(patched);
+    unawaited(() async {
+      try {
+        final persisted = await CategoryBarActionHost.toggleFavorite(
+          portalKeyOrVaultKey: widget.portalKey,
+          streamId: widget.streamId,
+        );
+        if (!mounted || gen != _toggleGen) return;
+        if (persisted != next) setState(() => _fav = persisted);
+      } catch (_) {
+        if (!mounted || gen != _toggleGen) return;
+        setState(() => _fav = was);
+        final revert = Set<String>.from(
+          CategoryBarActionHost.cachedFavoriteIds(
+                portalKeyOrVaultKey: widget.portalKey,
+              ) ??
+              <String>{},
+        );
+        if (was) {
+          revert.add(widget.streamId);
+        } else {
+          revert.remove(widget.streamId);
+        }
+        CategoryBarActionHost.patchCachedFavorites(revert);
+      }
+    }());
+  }
+
   @override
   Widget build(BuildContext context) {
     return LiveFavoriteStar(
       favorited: _fav ?? false,
       reveal: widget.reveal,
       iconSize: widget.iconSize,
-      onToggle: () async {
-        final next = await CategoryBarActionHost.toggleFavorite(
-          portalKeyOrVaultKey: widget.portalKey,
-          streamId: widget.streamId,
-        );
-        await CategoryBarActionHost.liveListFeedParams();
-        if (!mounted) return;
-        setState(() => _fav = next);
-      },
+      onToggle: _onToggle,
     );
   }
 }
@@ -551,6 +642,18 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     bool landOrderedFirst = false,
   }) {
     if (items.isEmpty) return;
+
+    // Search: empty selection = shelf-wide hits. Do not land on first group
+    // (that would re-scope the query). Keep a mid-search pick when present.
+    final searching =
+        (PackChromeScope.maybeOf(context)?.eventQuery ?? '').trim().isNotEmpty;
+    if (searching) {
+      final sel = widget.selectedId.trim();
+      if (sel.isNotEmpty && items.any((e) => e.id == sel)) {
+        _armCatsFocusMemory(sel, items: items);
+      }
+      return;
+    }
 
     // Live store reload / hub open: last category wins over painter auto-snap
     // to the first portal group. Keep Favorites / Already watched mid-session.

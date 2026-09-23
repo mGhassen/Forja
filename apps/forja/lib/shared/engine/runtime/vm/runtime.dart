@@ -750,6 +750,8 @@ class EngineRuntime {
           hRaw.forEach((k, v) => headers[k.toString()] = v.toString());
         }
         final body = (m['body'] ?? '').toString();
+        // Prefer bodyB64 for binary POSTs (null bytes / high bytes survive JSON).
+        final bodyB64 = (m['bodyB64'] ?? m['body_b64'] ?? '').toString();
         final gen = _fetchGeneration;
         _fetchGens[id] = gen;
         unawaited(
@@ -759,6 +761,7 @@ class EngineRuntime {
             method: method,
             headers: headers,
             body: body,
+            bodyB64: bodyB64,
             gen: gen,
           ),
         );
@@ -1818,6 +1821,7 @@ class EngineRuntime {
     required String method,
     required Map<String, String> headers,
     required String body,
+    String bodyB64 = '',
     required int gen,
   }) async {
     if (gen != _fetchGeneration) {
@@ -1839,10 +1843,12 @@ class EngineRuntime {
       req.headers.addAll(headers);
       final contentType = (headers['Content-Type'] ?? headers['content-type'] ?? '')
           .toLowerCase();
-      if (body.isNotEmpty &&
-          method != 'GET' &&
-          method != 'HEAD' &&
-          method != 'OPTIONS') {
+      final canHaveBody =
+          method != 'GET' && method != 'HEAD' && method != 'OPTIONS';
+      if (canHaveBody && bodyB64.isNotEmpty) {
+        // Standard base64 — packs use this for binary gate POSTs (CineJoy /g).
+        req.bodyBytes = base64Decode(bodyB64);
+      } else if (canHaveBody && body.isNotEmpty) {
         if (contentType.contains('application/octet-stream')) {
           req.bodyBytes = body.codeUnits;
         } else {
@@ -2826,8 +2832,18 @@ class EngineRuntime {
     var method = (options.method || 'GET').toString().toUpperCase();
     var headers = options.headers || {};
     var bodyOut = '';
-    if (options.body != null) {
+    var bodyB64Out = options.bodyB64 != null ? String(options.bodyB64) : '';
+    if (!bodyB64Out && options.body != null) {
       bodyOut = typeof options.body === 'string' ? options.body : String(options.body);
+      // Binary POST via latin1 strings breaks on null bytes in the JSON bridge —
+      // auto-promote octet-stream bodies to bodyB64.
+      var ct = String(headers['Content-Type'] || headers['content-type'] || '').toLowerCase();
+      if (bodyOut && ct.indexOf('application/octet-stream') >= 0) {
+        try {
+          bodyB64Out = btoa(bodyOut);
+          bodyOut = '';
+        } catch (e) {}
+      }
     }
     return new Promise(function(resolve){
       var id = ++globalThis.__engineFetchSeq;
@@ -2881,7 +2897,7 @@ class EngineRuntime {
         });
       };
       sendMessage('FetchStart', JSON.stringify({
-        id: id, url: String(url), method: method, headers: headers, body: bodyOut
+        id: id, url: String(url), method: method, headers: headers, body: bodyOut, bodyB64: bodyB64Out
       }));
     });
   };
