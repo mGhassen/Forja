@@ -379,9 +379,6 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
         tv ? ShellTokens.tvBodyFontSize : 15.0;
     final subtitleFontSize =
         tv ? ShellTokens.tvMetaFontSize : 12.0;
-    final loadingFontSize =
-        tv ? ShellTokens.tvMetaFontSize : 12.0;
-    final loading = _loadingByTab[_tabId] == true;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
       child: Row(
@@ -415,30 +412,15 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
               ],
             ),
           ),
-          if (loading)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ExcludeFocus(
-                child: Text(
-                  _browseActive ? 'Matching Live TV…' : 'Fetching streams…',
-                  style: TextStyle(
-                    color: ForjaShellColors.textSecondary,
-                    fontSize: loadingFontSize,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            )
-          else
-            IconButton(
-              tooltip: 'Reload',
-              onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
-              icon: Icon(
-                Icons.refresh_rounded,
-                size: ShellPaintScope.iconOf(context, 20),
-              ),
-              color: ForjaShellColors.textSecondary,
+          IconButton(
+            tooltip: 'Reload',
+            onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
+            icon: Icon(
+              Icons.refresh_rounded,
+              size: ShellPaintScope.iconOf(context, 20),
             ),
+            color: ForjaShellColors.textSecondary,
+          ),
           if (widget.onClosed != null)
             IconButton(
               tooltip: 'Close',
