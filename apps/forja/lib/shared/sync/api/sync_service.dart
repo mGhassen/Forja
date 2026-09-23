@@ -231,6 +231,25 @@ class SyncService {
     return s.contains('jwt expired') || s.contains('pgrst303');
   }
 
+  /// Transient Auth `/token` failure (DNS blip, offline, socket). gotrue emits
+  /// [AuthRetryableFetchException] on [onAuthStateChange] — keep the cached
+  /// session; do not treat as sign-out.
+  static bool isRetryableAuthNetworkError(Object? error) {
+    if (error == null) return false;
+    if (error is AuthRetryableFetchException) return true;
+    if (error is SyncProfileFetchException) {
+      return isRetryableAuthNetworkError(error.cause);
+    }
+    final s = error.toString().toLowerCase();
+    return s.contains('authretryablefetchexception') ||
+        s.contains('failed host lookup') ||
+        s.contains('socketexception') ||
+        s.contains('network is unreachable') ||
+        s.contains('connection reset') ||
+        s.contains('connection refused') ||
+        s.contains('timed out');
+  }
+
   /// One retry of [run] after Auth/API `iat` skew. Does not mint a new JWT.
   static Future<T> retryAfterJwtIatSkew<T>(Future<T> Function() run) async {
     try {
@@ -259,8 +278,8 @@ class SyncService {
   }
 
   /// Refresh when the access JWT is missing expiry, already expired, or nearly
-  /// expired. Does **not** refresh a seemingly-valid AT (use [refreshSession]
-  /// with `force: true` on cold start, or retry after [isJwtExpiredError]).
+  /// expired. Does **not** refresh a seemingly-valid AT (cold start uses
+  /// [refreshSession] with `force: true` once in bootstrap).
   Future<void> ensureFreshAccessToken() async {
     if (!isSignedIn) return;
     final current = session;

@@ -202,6 +202,12 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
         SyncService.isJwtIssuedAtFutureError(e.error)) {
       return;
     }
+    // gotrue retries /token on DNS blips then notifyException — one soft line.
+    if (SyncService.isRetryableAuthNetworkError(e.error) ||
+        SyncService.isRetryableAuthNetworkError(e.message)) {
+      debugPrint('[YT] auth network blip: ${e.error ?? e.message}');
+      return;
+    }
     debugPrint('[YT] ${e.message}');
     if (e.error != null) {
       debugPrint('[YT ERROR] ${e.error}');

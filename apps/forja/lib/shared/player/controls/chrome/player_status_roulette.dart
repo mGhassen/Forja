@@ -462,6 +462,7 @@ class StatusRouletteView extends StatelessWidget {
                     child: _StatusRouletteRow(
                       key: ValueKey('${active.id}-${active.kind.name}'),
                       entry: active,
+                      showSpinner: false,
                     ),
                   ),
                 ],

@@ -31,4 +31,28 @@ void main() {
     expect(result, 42);
     expect(n, 2);
   });
+
+  test('AuthRetryableFetchException / DNS are retryable network', () {
+    expect(
+      SyncService.isRetryableAuthNetworkError(
+        AuthRetryableFetchException(
+          message:
+              "ClientException with SocketException: Failed host lookup: "
+              "example.supabase.co",
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      SyncService.isRetryableAuthNetworkError(
+        SyncProfileFetchException(
+          'profiles',
+          cause: AuthRetryableFetchException(message: 'Failed host lookup'),
+        ),
+      ),
+      isTrue,
+    );
+    expect(SyncService.isRetryableAuthNetworkError(expired), isFalse);
+    expect(SyncService.isRetryableAuthNetworkError(null), isFalse);
+  });
 }

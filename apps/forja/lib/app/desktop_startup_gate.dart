@@ -104,6 +104,14 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     _authSub = SyncService.instance.authChanges.listen(
       _onAuthState,
       onError: (Object e, StackTrace st) {
+        // gotrue [notifyException]s retryable /token failures onto this stream.
+        // DNS/offline blips are expected at cold start — keep the cached session.
+        if (SyncService.isRetryableAuthNetworkError(e)) {
+          debugPrint(
+            '[DesktopStartupGate] auth network blip (keeping session): $e',
+          );
+          return;
+        }
         debugPrint('[DesktopStartupGate] auth stream error: $e');
       },
     );
@@ -162,9 +170,30 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     var hasSession = SyncService.instance.isSignedIn;
     if (ForjaSupabase.isConfigured) {
       try {
-        await SyncService.instance.refreshSession(force: true);
+        // Bootstrap already force-refreshed once. Debounced refresh skips a
+        // second /token round-trip when the AT is still valid (avoids DNS-blip
+        // AuthRetryableFetchException storms). Expired AT still refreshes.
+        final ok = await SyncService.instance.refreshSession();
+        if (!ok && SyncService.instance.isSignedIn) {
+          debugPrint(
+            '[DesktopStartupGate] refresh soft-failed; keeping cached session',
+          );
+          // One deferred retry after DNS/Wi-Fi settles (keep-alive also covers).
+          unawaited(
+            Future<void>.delayed(const Duration(seconds: 5), () async {
+              if (!SyncService.instance.isSignedIn) return;
+              await SyncService.instance.refreshSession();
+            }),
+          );
+        }
       } catch (e) {
-        debugPrint('[DesktopStartupGate] refreshSession: $e');
+        if (SyncService.isRetryableAuthNetworkError(e)) {
+          debugPrint(
+            '[DesktopStartupGate] refresh network blip (keeping session): $e',
+          );
+        } else {
+          debugPrint('[DesktopStartupGate] refreshSession: $e');
+        }
       }
       hasSession = SyncService.instance.isSignedIn;
     }

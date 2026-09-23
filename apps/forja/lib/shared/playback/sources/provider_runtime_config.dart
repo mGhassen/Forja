@@ -674,6 +674,12 @@ class ProviderRuntimeSnapshot {
             movie: 'https://vidsrc.sbs/embed/movie/{tmdb}',
             tv: 'https://vidsrc.sbs/embed/tv/{tmdb}/{season}/{episode}',
           ),
+          // VSEmbed (provider id `vidsrc`) — primary mirror is vidsrc.sh
+          // (vsembed.su / older hosts still work). Path accepts TMDB or IMDB.
+          'vidsrc': ProviderUrlTemplates(
+            movie: 'https://vidsrc.sh/embed/movie/{tmdb}',
+            tv: 'https://vidsrc.sh/embed/tv/{tmdb}/{season}/{episode}',
+          ),
           'vidsrcwin': ProviderUrlTemplates(
             movie: 'https://video.moviepire.co/embed/movie/{tmdb}',
             tv: 'https://video.moviepire.co/embed/tv/{tmdb}/{season}/{episode}',
@@ -705,7 +711,7 @@ class ProviderRuntimeSnapshot {
           'videasyApiHost': 'api.speedracelight.com',
           'videasyDbHost': 'db.speedracelight.com',
           'videasyPlayerOrigin': 'https://player.videasy.to',
-          'vidsrcEmbed': 'https://vsembed.su',
+          'vidsrcEmbed': 'https://vidsrc.sh',
           'vixsrcBase': 'https://vixsrc.to',
           'index111477': 'https://a.111477.xyz',
           'rgshowsApi': 'https://api.rgshows.ru',
