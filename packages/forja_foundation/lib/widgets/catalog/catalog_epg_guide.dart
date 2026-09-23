@@ -692,6 +692,7 @@ class _ChannelCellState extends State<_ChannelCell> {
                 height: 34,
                 fit: BoxFit.contain,
                 useOldImageOnUrlChange: false,
+                paintUnderlay: false,
                 error: const SizedBox(
                   width: 34,
                   height: 34,

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// 1×1 transparent PNG — same bytes Flutter uses in painting tests.
@@ -97,6 +98,43 @@ void main() {
         final imageSize = tester.getSize(find.byType(Image));
         expect(imageSize.width, 120);
         expect(imageSize.height, 120);
+      } finally {
+        _clearFakeHttp();
+      }
+    },
+    skip: kIsWeb,
+  );
+
+  testWidgets(
+    'paintUnderlay false skips elevated surface under the logo',
+    (tester) async {
+      final httpClient = _FakeHttpClient()..responseBytes = _kTransparentPng;
+      _installFakeHttp(httpClient);
+      try {
+        await tester.pumpWidget(
+          _wrap(
+            ForjaNetworkImage(
+              url: 'https://example.test/logo.png',
+              width: 80,
+              height: 80,
+              fadeDuration: Duration.zero,
+              paintUnderlay: false,
+            ),
+          ),
+        );
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        });
+        await tester.pump();
+
+        final elevated = ForjaShellColors.surfaceElevated;
+        final boxes = tester.widgetList<ColoredBox>(find.byType(ColoredBox));
+        expect(
+          boxes.where((b) => b.color == elevated),
+          isEmpty,
+          reason: 'channel logos must not paint surfaceElevated underlay',
+        );
+        expect(find.byType(Image), findsOneWidget);
       } finally {
         _clearFakeHttp();
       }

@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
@@ -132,8 +134,12 @@ Map<String, dynamic> packChromeFeedParams(
   // IPTV Live/Movies/Series: kind re-queries catalog_page (issue 290).
   if (kindReloadsFeed || vodPaged) {
     final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
-    final kind = scope?.selectedId(kindMenu);
-    if (kind != null && kind.isNotEmpty && kind != 'all') {
+    final kind = iptvEffectiveCategoryId(
+      listSpec: listSpec,
+      scope: scope,
+      vodPaged: vodPaged,
+    );
+    if (kind.isNotEmpty && kind != 'all') {
       params['kind'] = kind;
       params['categoryId'] = kind;
       if (kindReloadsFeed) {
@@ -170,10 +176,47 @@ Map<String, dynamic> packChromeFeedParams(
   return catalogParamsWithFilters(params, filters: filters);
 }
 
+/// Live category id for IPTV feed / epoch — remembered land beats painter snap.
+///
+/// Favorites / Already watched stay as selected. Empty or first-group snap in
+/// [LayoutScope] yields the peeked last category when present (issue 322).
+String iptvEffectiveCategoryId({
+  required Map<String, dynamic> listSpec,
+  required LayoutScope? scope,
+  bool? vodPaged,
+}) {
+  final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
+  if (kindMenu.isEmpty) return '';
+  final selected = (scope?.selectedId(kindMenu) ?? '').trim();
+  final paged = vodPaged ?? packChromeVodPagedFeed(listSpec, scope);
+  if (!paged) return selected;
+
+  final catalogMenu = (listSpec['catalogMenu'] ?? '').toString().trim();
+  final section = catalogMenu.isEmpty
+      ? ''
+      : (scope?.selectedId(catalogMenu) ?? '').trim().toLowerCase();
+  // Live last-category mem only — never stamp onto Movies/Series.
+  if (section.isNotEmpty && section != 'live') return selected;
+
+  if (PortalLiveCatalog.isSyntheticId(selected)) return selected;
+
+  final portalKey =
+      (CategoryBarActionHost.cachedLiveListParams['portalStoreKey'] ?? '')
+          .toString()
+          .trim();
+  final peek = IptvCatalogLand.peekLastCategory(
+    portalKey.isNotEmpty ? portalKey : IptvCatalogLand.activePortalKey,
+  );
+  if (peek != null && peek.isNotEmpty) return peek;
+  return selected;
+}
+
 /// Epoch for IPTV empty-grid placeholder (category / Favorites / search flip).
 ///
 /// Omits [portalStoreKey] and refresh — those rebind soft (keep last paint).
 /// Hashing portal hydrate (`''` → key) as a flip wiped warm channels on hub open.
+/// Uses [iptvEffectiveCategoryId] so open lands on remembered cat in the epoch
+/// before LayoutScope catches up (avoids first-group → selected flash).
 String packChromeGridFlipEpoch(
   BuildContext context, {
   required Map<String, dynamic> listSpec,
@@ -201,9 +244,19 @@ String packChromeGridFlipEpoch(
       ? ''
       : '${listFeedEpochListenable.value}';
 
+  final kindPart = kindBustsFeed
+      ? (vodPaged
+          ? iptvEffectiveCategoryId(
+              listSpec: listSpec,
+              scope: scope,
+              vodPaged: true,
+            )
+          : sel('kindMenu'))
+      : '';
+
   return [
     status,
-    kindBustsFeed ? sel('kindMenu') : '',
+    kindPart,
     sel('catalogMenu'),
     kindBustsFeed ? sel('sortMenu') : '',
     sel('horizonMenu'),

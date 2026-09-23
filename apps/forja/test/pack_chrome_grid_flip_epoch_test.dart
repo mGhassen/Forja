@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
@@ -50,6 +51,7 @@ void main() {
 
   tearDown(() {
     CategoryBarActionHost.cachedLiveListParams = const {};
+    IptvCatalogLand.clearLastCategoryMemForTest();
   });
 
   testWidgets('grid flip epoch ignores portalStoreKey hydrate', (tester) async {
@@ -130,16 +132,52 @@ void main() {
     );
   });
 
+  testWidgets('effective category prefers peek over LayoutScope first snap',
+      (tester) async {
+    final selections = <String, String>{
+      'catalog': 'live',
+      'cats': '10',
+      'sort': 'playlist',
+    };
+    CategoryBarActionHost.cachedLiveListParams = {
+      'portalStoreKey': 'portal-a',
+    };
+    IptvCatalogLand.seedLastCategoryMemForTest('portal-a', '30');
+
+    await tester.pumpWidget(
+      _chrome(
+        selections: selections,
+        child: Builder(
+          builder: (context) {
+            final scope = LayoutScope.maybeOf(context);
+            expect(
+              iptvEffectiveCategoryId(
+                listSpec: listSpec,
+                scope: scope,
+                vodPaged: true,
+              ),
+              '30',
+            );
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+  });
+
   test('empty-grid placeholder only after flip epoch latched', () {
     // Mirrors PackLoadedPaint didChangeDependencies gate.
     bool shouldEmpty({
       required String appliedFlip,
       required String nextFlip,
+      required String appliedKind,
       required bool shelfFlipped,
       required bool vodPaged,
     }) {
       if (shelfFlipped || !vodPaged) return false;
       if (appliedFlip.isEmpty) return false;
+      final softLand = appliedKind.isEmpty || appliedKind == 'all';
+      if (softLand) return false;
       return appliedFlip != nextFlip;
     }
 
@@ -147,6 +185,7 @@ void main() {
       shouldEmpty(
         appliedFlip: '',
         nextFlip: 'live|10',
+        appliedKind: '',
         shelfFlipped: false,
         vodPaged: true,
       ),
@@ -155,18 +194,20 @@ void main() {
     );
     expect(
       shouldEmpty(
-        appliedFlip: 'live|10',
-        nextFlip: 'live|10',
+        appliedFlip: '|live|',
+        nextFlip: '30|live|',
+        appliedKind: '',
         shelfFlipped: false,
         vodPaged: true,
       ),
       isFalse,
-      reason: 'portal hydrate alone does not change flip epoch',
+      reason: 'empty→remembered land is soft',
     );
     expect(
       shouldEmpty(
         appliedFlip: 'live|10',
         nextFlip: 'live|20',
+        appliedKind: '10',
         shelfFlipped: false,
         vodPaged: true,
       ),

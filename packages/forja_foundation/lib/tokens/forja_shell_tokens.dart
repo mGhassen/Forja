@@ -748,9 +748,16 @@ abstract final class ShellTokens {
   static const double posterBadgeRadiusTv = 3;
 
   /// Outlined rank digit behind Popular / top-N posters (outside focus chrome).
+  /// Desktop baseline; TV uses the film-poster family ([tvLayoutScale]), not chrome.
   static const double posterRankFontSize = 120;
+  static const double posterRankFontSizeTv =
+      posterRankFontSize * posterCardWidthTv / posterCardWidthDesktop;
   static const double posterRankStrokeWidth = 2;
+  static const double posterRankStrokeWidthTv =
+      posterRankStrokeWidth * posterCardWidthTv / posterCardWidthDesktop;
   static const double posterRankLetterSpacing = -8;
+  static const double posterRankLetterSpacingTv =
+      posterRankLetterSpacing * posterCardWidthTv / posterCardWidthDesktop;
   static const double posterRankLineHeight = 0.85;
   static const double posterRankStrokeAlpha = 0.1;
 

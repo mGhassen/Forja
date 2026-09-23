@@ -3,6 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+Widget _paintScope({
+  required Widget child,
+  required bool scaleOnHover,
+  required bool Function(BuildContext context, {required bool focused})
+      focusStyled,
+}) {
+  return ShellPaintScope(
+    useTvFocus: true,
+    scaleOnHover: scaleOnHover,
+    usesTvDensity: !scaleOnHover,
+    focusStyled: focusStyled,
+    child: child,
+  );
+}
 
 void main() {
   testWidgets('hero carousel slide keeps action-row FocusNode attached', (
@@ -187,36 +203,40 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: SizedBox(
-            height: 420,
-            width: 900,
-            child: CinematicHero(
-              key: key,
-              slides: const [
-                CinematicHeroSlide(
-                  id: 'a',
-                  title: 'Alpha',
-                  backdropUrl: 'https://example.com/a.jpg',
-                  overview: 'First',
+          body: _paintScope(
+            scaleOnHover: false,
+            focusStyled: (_, {required focused}) => focused,
+            child: SizedBox(
+              height: 420,
+              width: 900,
+              child: CinematicHero(
+                key: key,
+                slides: const [
+                  CinematicHeroSlide(
+                    id: 'a',
+                    title: 'Alpha',
+                    backdropUrl: 'https://example.com/a.jpg',
+                    overview: 'First',
+                  ),
+                  CinematicHeroSlide(
+                    id: 'b',
+                    title: 'Beta',
+                    backdropUrl: 'https://example.com/b.jpg',
+                    overview: 'Second',
+                  ),
+                ],
+                layout: const CinematicHeroLayout(
+                  kenBurns: false,
+                  compact: true,
                 ),
-                CinematicHeroSlide(
-                  id: 'b',
-                  title: 'Beta',
-                  backdropUrl: 'https://example.com/b.jpg',
-                  overview: 'Second',
-                ),
-              ],
-              layout: const CinematicHeroLayout(
-                kenBurns: false,
-                compact: true,
+                actionRowBuilder: (context, slide, {required isActive}) {
+                  if (!isActive) return const SizedBox.shrink();
+                  return Focus(
+                    focusNode: ctaFocus,
+                    child: const Text('View details'),
+                  );
+                },
               ),
-              actionRowBuilder: (context, slide, {required isActive}) {
-                if (!isActive) return const SizedBox.shrink();
-                return Focus(
-                  focusNode: ctaFocus,
-                  child: const Text('View details'),
-                );
-              },
             ),
           ),
         ),
@@ -248,6 +268,90 @@ void main() {
       greaterThan(pausedAt + 0.05),
     );
   });
+
+  testWidgets(
+    'desktop mouse-retained CTA focus does not hold pause after hover leave',
+    (tester) async {
+      final key = GlobalKey<CinematicHeroState>();
+      final ctaFocus = FocusNode(debugLabel: 'hero-cta-desktop');
+      addTearDown(ctaFocus.dispose);
+      FocusManager.instance.highlightStrategy =
+          FocusHighlightStrategy.alwaysTouch;
+      addTearDown(() {
+        FocusManager.instance.highlightStrategy =
+            FocusHighlightStrategy.automatic;
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: _paintScope(
+              scaleOnHover: true,
+              focusStyled: (_, {required focused}) => false,
+              child: SizedBox(
+                height: 420,
+                width: 900,
+                child: CinematicHero(
+                  key: key,
+                  slides: const [
+                    CinematicHeroSlide(
+                      id: 'a',
+                      title: 'Alpha',
+                      backdropUrl: 'https://example.com/a.jpg',
+                      overview: 'First',
+                    ),
+                    CinematicHeroSlide(
+                      id: 'b',
+                      title: 'Beta',
+                      backdropUrl: 'https://example.com/b.jpg',
+                      overview: 'Second',
+                    ),
+                  ],
+                  layout: const CinematicHeroLayout(
+                    kenBurns: false,
+                    compact: true,
+                  ),
+                  actionRowBuilder: (context, slide, {required isActive}) {
+                    if (!isActive) return const SizedBox.shrink();
+                    return Focus(
+                      focusNode: ctaFocus,
+                      child: const Text('View details'),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
+
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+      await tester.pump();
+      await gesture.moveTo(tester.getCenter(find.text('View details')));
+      await tester.pump();
+      ctaFocus.requestFocus();
+      await tester.pump();
+      expect(key.currentState!.heroAdvancePaused, isTrue);
+      expect(ctaFocus.hasFocus, isTrue);
+
+      await gesture.moveTo(const Offset(1, 1));
+      await tester.pump();
+      expect(
+        key.currentState!.heroAdvancePaused,
+        isFalse,
+        reason: 'invisible mouse focus must not freeze auto-advance',
+      );
+      expect(ctaFocus.hasFocus, isTrue);
+      expect(find.byIcon(Icons.pause_rounded), findsNothing);
+      final resumed = key.currentState!.heroAdvanceProgress;
+      await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
+      expect(key.currentState!.heroAdvanceProgress, greaterThan(resumed));
+    },
+  );
 
   testWidgets('hero CTA hover clears when action row remounts', (tester) async {
     final key = GlobalKey<CinematicHeroState>();

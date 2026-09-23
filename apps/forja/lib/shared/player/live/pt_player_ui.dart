@@ -1860,6 +1860,8 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                   url: _s._logoUrl!.trim(),
                   fit: BoxFit.contain,
                   useOldImageOnUrlChange: false,
+                  // Chrome / video show through — no elevated square under logos.
+                  paintUnderlay: false,
                   error: const SizedBox.shrink(),
                 ),
               ),
@@ -1972,6 +1974,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         height: size,
         fit: BoxFit.contain,
         useOldImageOnUrlChange: false,
+        paintUnderlay: false,
         error: const SizedBox.shrink(),
       ),
     );
@@ -2992,6 +2995,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         memCacheWidth: cacheW,
         filterQuality: FilterQuality.medium,
         useOldImageOnUrlChange: false,
+        paintUnderlay: false,
         error: Icon(
           Icons.live_tv_rounded,
           color: Colors.white38,

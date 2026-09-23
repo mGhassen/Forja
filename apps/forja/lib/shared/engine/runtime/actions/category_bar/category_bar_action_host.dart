@@ -349,6 +349,21 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     if (widget.seedItems.isNotEmpty) {
       _items = _plainItems();
       _loading = false;
+      final peek = IptvCatalogLand.peekLastCategory(
+        CategoryBarActionHost.cachedLiveListParams['portalStoreKey']
+                ?.toString() ??
+            IptvCatalogLand.activePortalKey,
+      );
+      if (peek != null && peek.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _ensureValidSelection(
+            _items,
+            preferCategoryId: peek,
+            landOrderedFirst: true,
+          );
+        });
+      }
     }
     unawaited(_reload());
   }

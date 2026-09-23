@@ -2715,25 +2715,31 @@ class PackPaintTree extends StatelessWidget {
         PortalLiveCatalog.isSyntheticId(selectedRaw);
     // Search clears category for global hits — do not snap back to first/all.
     final searching = (chrome?.eventQuery ?? '').trim().isNotEmpty;
-    // Live + Movies/Series: land on first portal group (skip All / synthetics).
-    // Live pin/reorder: use cached pin/drag order, not API kinds order.
-    // Prefer in-memory last category so open land matches warm channels
-    // before async store reload (avoids first-group snap → clear → reshow).
+    // Live + Movies/Series: land on remembered category when known.
+    // Do NOT painter-snap to the first portal group before store land — that
+    // paints first-group channels then flips to the selected category (322).
     final String selected;
-    if (selectedInItems || keepSyntheticLive) {
-      selected = selectedRaw;
-    } else if (searching) {
+    if (searching) {
       selected = '';
+    } else if (keepSyntheticLive) {
+      selected = selectedRaw;
     } else if (!vodSection && CategoryBarActionHost.featuresEnabled(spec)) {
       final peek = IptvCatalogLand.peekLastCategory(
         CategoryBarActionHost.cachedLiveListParams['portalStoreKey']
-            ?.toString(),
+                ?.toString() ??
+            IptvCatalogLand.activePortalKey,
       );
       if (peek != null && items.any((e) => e.id == peek)) {
         selected = peek;
+      } else if (selectedInItems) {
+        // Keep current only when we have no remembered land yet.
+        selected = selectedRaw;
       } else {
-        selected = _firstOrderedLiveCategoryId(items);
+        // Pending CategoryBarActionHost store land — leave empty.
+        selected = '';
       }
+    } else if (selectedInItems) {
+      selected = selectedRaw;
     } else {
       selected = _firstPortalCategoryId(items);
     }

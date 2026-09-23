@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/live_schedule_progressive.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
@@ -277,6 +278,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   /// changes after the initial latch (not on hub-open warm restore).
   String _appliedFlipEpoch = '';
 
+  /// Last kindMenu id applied for IPTV empty-grid — empty→land is soft.
+  String _appliedKindId = '';
+
   /// Last successful paint for this rail — remount / tab-return warm only.
   ///
   /// Must **not** be used as a cache hit for a new selection epoch: base
@@ -440,11 +444,20 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       // empty grid in place; cats stay visible until the new page lands.
       //
       // Skip on the initial epoch latch (_appliedFlipEpoch empty) and when only
-      // portalStoreKey / refresh hydrates — those must keep warm channels
-      // (hub open: channels → clear → cats → channels flash).
+      // portalStoreKey / refresh hydrates — those must keep warm channels.
+      // Soft land: empty/all → remembered category (hub open) — keep warm;
+      // hard flip: Favorites↔group or group↔group user tap → empty in place.
+      final nextKind = iptvEffectiveCategoryId(
+        listSpec: widget.fallbackSpec,
+        scope: LayoutScope.maybeOf(context),
+      );
+      final softLand = _appliedKindId.isEmpty ||
+          _appliedKindId == 'all' ||
+          _appliedFlipEpoch.isEmpty;
       final gridFlip = _appliedFlipEpoch.isNotEmpty &&
           flipEpoch != _appliedFlipEpoch &&
           !shelfSectionFlipped &&
+          !softLand &&
           packChromeVodPagedFeed(
             widget.fallbackSpec,
             LayoutScope.maybeOf(context),
@@ -468,6 +481,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         _promotedPageFeedEpoch = '';
       }
       _appliedFlipEpoch = flipEpoch;
+      _appliedKindId = nextKind;
       _scopeEpoch = epoch;
       if (!held) _bind();
     } else if (_envelope == null && _inFlight == null && !held) {
@@ -744,6 +758,104 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         kindMenu.isEmpty ? '' : (scope?.selectedId(kindMenu) ?? '').trim();
     final needsLiveLists = widget.action == 'feed' || widget.action == 'rail';
     final syntheticKind = PortalLiveCatalog.isSyntheticId(kind);
+    final vodPaged = packChromeVodPagedFeed(widget.fallbackSpec, scope);
+    final catalogMenu =
+        (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    final section = catalogMenu.isEmpty
+        ? ''
+        : (scope?.selectedId(catalogMenu) ?? '').trim().toLowerCase();
+    final liveShelf = section.isEmpty || section == 'live';
+
+    // IPTV Live: hydrate portal + last category before the first catalog_page
+    // so we never paint the painter's first group then flip to remembered
+    // (issue 322 — first category flash on hub open).
+    if (needsLiveLists && vodPaged && liveShelf && !syntheticKind) {
+      final gen = _bindGen;
+      final completer = Completer<MetaEnvelope>();
+      _inFlight = completer.future;
+      unawaited(() async {
+        await CategoryBarActionHost.liveListFeedParams(
+          preferTabId: widget.tabId,
+        );
+        if (!mounted || gen != _bindGen) {
+          if (!completer.isCompleted) {
+            completer.complete(
+              const MetaEnvelope(ok: true, action: 'feed', data: {'items': []}),
+            );
+          }
+          return;
+        }
+        final portalKey =
+            (CategoryBarActionHost.cachedLiveListParams['portalStoreKey'] ?? '')
+                .toString()
+                .trim();
+        if (portalKey.isNotEmpty) {
+          IptvCatalogLand.bindPortalKey(portalKey);
+          await IptvCatalogLand.loadLastCategory();
+        }
+        if (!mounted || gen != _bindGen) {
+          if (!completer.isCompleted) {
+            completer.complete(
+              const MetaEnvelope(ok: true, action: 'feed', data: {'items': []}),
+            );
+          }
+          return;
+        }
+        final landScope = LayoutScope.maybeOf(context);
+        final landKind = iptvEffectiveCategoryId(
+          listSpec: widget.fallbackSpec,
+          scope: landScope,
+          vodPaged: true,
+        );
+        final current = kindMenu.isEmpty
+            ? ''
+            : (landScope?.selectedId(kindMenu) ?? '').trim();
+        if (landKind.isNotEmpty &&
+            landKind != current &&
+            !PortalLiveCatalog.isSyntheticId(current) &&
+            landScope != null &&
+            kindMenu.isNotEmpty) {
+          // Sync rail before feed — same frame as remembered category params.
+          landScope.onSelect(kindMenu, landKind, toggle: false);
+        }
+        final future = _runWithParams(
+          chrome: PackChromeScope.maybeOf(context),
+        );
+        if (future == null) {
+          if (!completer.isCompleted) {
+            completer.complete(
+              const MetaEnvelope(ok: true, action: 'feed', data: {'items': []}),
+            );
+          }
+          if (mounted && gen == _bindGen) {
+            setState(() => _inFlight = null);
+          }
+          return;
+        }
+        try {
+          final env = await future;
+          if (!completer.isCompleted) completer.complete(env);
+          if (!mounted || gen != _bindGen) return;
+          PackLoadedPaint._resolved[_warmPaintKey] = env;
+          _rememberSectionEnvelope(env);
+          setState(() {
+            _envelope = env;
+            _inFlight = null;
+          });
+        } catch (e, st) {
+          debugPrint('[PackLoadedPaint] iptv land feed: $e\n$st');
+          final fail = MetaEnvelope.failure(
+            MetaErrorCode.upstream,
+            message: '${widget.pluginId} feed failed',
+            action: widget.action,
+          );
+          if (!completer.isCompleted) completer.complete(fail);
+          if (!mounted || gen != _bindGen) return;
+          setState(() => _inFlight = null);
+        }
+      }());
+      return null;
+    }
 
     // Favorites / Watched need stream_ids in params. Prefer the warm host
     // cache (rail already loaded prefs) so `_bind` can sync-hit memo and skip

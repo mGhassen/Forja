@@ -233,6 +233,7 @@ class PosterCard extends StatelessWidget {
 /// Large outlined rank digit for Popular / top-N rails.
 ///
 /// Keep outside focus/hover chrome so the border wraps the poster only.
+/// Size follows film-poster density on TV ([ShellTokens.posterRankFontSizeTv]).
 class PosterRankMark extends StatelessWidget {
   const PosterRankMark({super.key, required this.rank});
 
@@ -240,18 +241,25 @@ class PosterRankMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Text(
       '$rank',
       style: TextStyle(
-        fontSize: ShellTokens.posterRankFontSize,
+        fontSize: tv
+            ? ShellTokens.posterRankFontSizeTv
+            : ShellTokens.posterRankFontSize,
         fontWeight: FontWeight.w900,
         foreground: Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = ShellTokens.posterRankStrokeWidth
+          ..strokeWidth = tv
+              ? ShellTokens.posterRankStrokeWidthTv
+              : ShellTokens.posterRankStrokeWidth
           ..color = Colors.white
               .withValues(alpha: ShellTokens.posterRankStrokeAlpha),
         height: ShellTokens.posterRankLineHeight,
-        letterSpacing: ShellTokens.posterRankLetterSpacing,
+        letterSpacing: tv
+            ? ShellTokens.posterRankLetterSpacingTv
+            : ShellTokens.posterRankLetterSpacing,
       ),
     );
   }
@@ -261,11 +269,22 @@ class PosterRankMark extends StatelessWidget {
 ///
 /// Wraps the row in [ShellPaintEnsureVisibleExtent] so TV focus scroll keeps
 /// the digit on-screen (focus chrome is the poster alone).
+///
+/// Pass [scale] / [scaleDuration] to match poster focus/hover lift — the digit
+/// stays outside the focus ring but grows with the card.
 class PosterRankRow extends StatelessWidget {
-  const PosterRankRow({super.key, required this.rank, required this.child});
+  const PosterRankRow({
+    super.key,
+    required this.rank,
+    required this.child,
+    this.scale = 1.0,
+    this.scaleDuration = const Duration(milliseconds: 180),
+  });
 
   final int rank;
   final Widget child;
+  final double scale;
+  final Duration scaleDuration;
 
   @override
   Widget build(BuildContext context) {
@@ -274,7 +293,13 @@ class PosterRankRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          PosterRankMark(rank: rank),
+          AnimatedScale(
+            scale: scale,
+            duration: scaleDuration,
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.bottomCenter,
+            child: PosterRankMark(rank: rank),
+          ),
           child,
         ],
       ),

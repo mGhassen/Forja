@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4 / 4** fix · **0 / 1** acceptance |
-| **Current slice** | Hub-open warm paint |
+| **Progress** | **Complete · 7 / 7** fix · **0 / 1** acceptance |
+| **Current slice** | First-group → selected land |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,9 @@
 | 2 | I322-T02 | Split `packChromeGridFlipEpoch` (no portal hydrate) from selection epoch | ✅ |
 | 3 | I322-T03 | Category rail paints seed groups while store prefs load (no blank rail) | ✅ |
 | 4 | I322-T04 | Peek last Live category for painter land + unit tests | ✅ |
+| 5 | I322-T05 | Feed params / epoch use remembered cat (not LayoutScope first snap) | ✅ |
+| 6 | I322-T06 | PackLoadedPaint hydrates last cat before first Live catalog_page | ✅ |
+| 7 | I322-T07 | Soft land empty→remembered (no empty-grid); no painter first-group snap | ✅ |
 
 ---
 
@@ -31,14 +34,14 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I322-A01 | Open IPTV hub (warm): channels + categories stay; no clear/reshow flash | ⬜ |
+| 1 | I322-A01 | Open IPTV hub: last selected category’s channels only — no first-group flash | ⬜ |
 
 ---
 
 ## Summary
 
-**Symptom:** Opening the IPTV hub briefly showed channels, cleared the grid, showed categories, then reshowed channels (very fast).
+**Symptom:** Opening the IPTV hub briefly showed the **first** category’s channels, then switched to the remembered/selected category.
 
-**Root cause:** Warm-restored channel paint was wiped by the IPTV empty-grid placeholder on the first selection-epoch latch (meant for mid-session category flips). Portal prefs hydrate and a blank category rail while the store loaded made the flash obvious.
+**Root cause:** Painter snapped LayoutScope to the first portal group and painted that page before store land applied the last category. Warm-paint / empty-grid work (T01–T04) did not stop that first→selected flip.
 
-**Root fix:** Keep warm channels on the initial latch and on portal-key-only epoch changes; paint category seeds immediately; land from in-memory last category when available.
+**Root fix:** Remembered Live category drives feed params and epoch immediately; hydrate last category before the first Live `catalog_page`; do not painter-snap to first while land is pending; soft-land keeps warm paint (no clear) when going empty→remembered.

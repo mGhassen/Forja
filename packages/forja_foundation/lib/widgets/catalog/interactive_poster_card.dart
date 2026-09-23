@@ -259,11 +259,14 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
       );
     }
 
+    final motion = widget.motion ?? ForjaMotionPreset.cardLift;
+    final motionSpec = ForjaMotionTheme.of(context).resolve(motion);
+
     Widget card = ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onLongPress != null ? _onTap : widget.onTap,
       borderRadius: radius,
-      motion: widget.motion ?? ForjaMotionPreset.cardLift,
+      motion: motion,
       scaleOnFocus: widget.scaleOnFocus,
       showFocusBorder: true,
       listIndex: widget.listIndex,
@@ -287,7 +290,26 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
     );
 
     if (widget.rank != null) {
-      card = PosterRankRow(rank: widget.rank!, child: card);
+      // Digit stays outside the focus ring but lifts with the poster.
+      card = ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, child) {
+          final lift = widget.scaleOnFocus ??
+              ForjaMotionTheme.of(context).effectiveScale(
+                context,
+                motion,
+                hovered: _hoveredN.value,
+                focused: _focused,
+              );
+          return PosterRankRow(
+            rank: widget.rank!,
+            scale: lift,
+            scaleDuration: Duration(milliseconds: motionSpec.durationMs),
+            child: child!,
+          );
+        },
+        child: card,
+      );
     }
 
     if (widget.onLongPress != null) {

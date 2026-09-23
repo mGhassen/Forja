@@ -245,6 +245,7 @@ class _TeamBadge extends StatelessWidget {
               width: radius * 1.67,
               height: radius * 1.67,
               fit: BoxFit.contain,
+              paintUnderlay: false,
               error: Text(
                 name.isNotEmpty ? name[0] : '?',
                 style: const TextStyle(

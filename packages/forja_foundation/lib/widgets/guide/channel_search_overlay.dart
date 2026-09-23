@@ -924,6 +924,7 @@ class _ChannelLogo extends StatelessWidget {
         memCacheWidth: cacheW,
         filterQuality: FilterQuality.medium,
         useOldImageOnUrlChange: false,
+        paintUnderlay: false,
         placeholder: _placeholder(context, w, h),
         error: _placeholder(context, w, h),
       ),

@@ -6,6 +6,7 @@ import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/hero_desktop_layout.dart';
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
 import 'package:forja_foundation/widgets/details/hero_title.dart';
 
@@ -284,6 +285,9 @@ class CinematicHeroState extends State<CinematicHero>
   bool _ctaHover = false;
   bool _ctaFocus = false;
   bool _heroAdvancePaused = false;
+  /// From [ShellPaintScope] via [didChangeDependencies] — null when no scope.
+  bool? _paintUseTvFocus;
+  bool? _paintScaleOnHover;
 
   PageController get pageController => _heroController;
   int get heroIndex => _heroIndex;
@@ -293,6 +297,24 @@ class CinematicHeroState extends State<CinematicHero>
 
   /// True while View details / pin hover·focus holds auto-advance.
   bool get heroAdvancePaused => _heroAdvancePaused;
+
+  /// Hover always holds. Focus holds on TV, or on desktop only while keyboard
+  /// highlight is traditional — mouse-retained focus (no ring) must not freeze
+  /// the carousel after the pointer leaves. Uses cached paint flags so
+  /// dispose/deactivate never [dependOnInheritedWidgetOfExactType].
+  bool _ctaEngagedNow() {
+    if (_ctaHover) return true;
+    if (!_ctaFocus) return false;
+    final useTv = _paintUseTvFocus;
+    final scaleHover = _paintScaleOnHover;
+    // No ShellPaintScope (gallery / bare tests): focus holds, same as
+    // [ShellPaintScope.interactiveActive] null default.
+    if (useTv == null || scaleHover == null) return true;
+    if (!useTv) return false;
+    if (!scaleHover) return true;
+    return FocusManager.instance.highlightMode ==
+        FocusHighlightMode.traditional;
+  }
 
   /// [PageController.page] asserts exactly one attached [PageView].
   /// [hasClients] is only "≥1" — remount / reparent can briefly attach two.
@@ -319,7 +341,12 @@ class CinematicHeroState extends State<CinematicHero>
       vsync: this,
       duration: ShellTokens.heroAutoAdvanceDuration,
     )..addStatusListener(_onHeroProgressStatus);
+    FocusManager.instance.addHighlightModeListener(_onHighlightModeChanged);
     _restartHeroProgress();
+  }
+
+  void _onHighlightModeChanged(FocusHighlightMode mode) {
+    _syncCtaEngagement();
   }
 
   @override
@@ -331,7 +358,16 @@ class CinematicHeroState extends State<CinematicHero>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scope = ShellPaintScope.maybeOf(context);
+    _paintUseTvFocus = scope?.useTvFocus;
+    _paintScaleOnHover = scope?.scaleOnHover;
+  }
+
+  @override
   void dispose() {
+    FocusManager.instance.removeHighlightModeListener(_onHighlightModeChanged);
     _heroProgress.removeStatusListener(_onHeroProgressStatus);
     _heroProgress.dispose();
     if (_ownsController) _heroController.dispose();
@@ -389,7 +425,7 @@ class CinematicHeroState extends State<CinematicHero>
   }
 
   void _resumeHeroAdvance() {
-    if (_ctaHover || _ctaFocus) return;
+    if (_ctaEngagedNow()) return;
     if (_heroAdvancePaused) {
       if (mounted) {
         setState(() => _heroAdvancePaused = false);
@@ -419,23 +455,34 @@ class CinematicHeroState extends State<CinematicHero>
     }
   }
 
+  /// Re-check after keyboard↔pointer chrome flips while focus stays on the CTA.
+  void _syncCtaEngagement() {
+    if (!mounted) return;
+    final engaged = _ctaEngagedNow();
+    if (engaged && !_heroAdvancePaused) {
+      _pauseHeroAdvance();
+    } else if (!engaged && _heroAdvancePaused) {
+      _resumeHeroAdvance();
+    }
+  }
+
   void _setCtaHover(bool hovering) {
     if (_ctaHover == hovering) return;
-    final wasEngaged = _ctaHover || _ctaFocus;
+    final wasEngaged = _ctaEngagedNow();
     _ctaHover = hovering;
     _onCtaEngagementChanged(
       wasEngaged: wasEngaged,
-      nowEngaged: _ctaHover || _ctaFocus,
+      nowEngaged: _ctaEngagedNow(),
     );
   }
 
   void _setCtaFocus(bool focused) {
     if (_ctaFocus == focused) return;
-    final wasEngaged = _ctaHover || _ctaFocus;
+    final wasEngaged = _ctaEngagedNow();
     _ctaFocus = focused;
     _onCtaEngagementChanged(
       wasEngaged: wasEngaged,
-      nowEngaged: _ctaHover || _ctaFocus,
+      nowEngaged: _ctaEngagedNow(),
     );
   }
 
