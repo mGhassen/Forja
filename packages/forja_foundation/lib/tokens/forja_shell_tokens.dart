@@ -882,6 +882,7 @@ abstract final class ShellTokens {
   static const double torrentPanelSearchPadHTv =
       torrentPanelSearchPadH * tvChromeScale;
   /// Vertical pad inside the fixed [torrentPanelSearchHeight] face.
+  /// Episodes search still uses this; Sources search uses zero pad + fixed face.
   static const double torrentPanelSearchPadV = 10;
   /// Tighter than desktop × chrome — field must fit leanback type without clipping.
   static const double torrentPanelSearchPadVTv = 4;

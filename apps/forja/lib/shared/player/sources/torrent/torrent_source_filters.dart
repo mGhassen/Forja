@@ -1434,7 +1434,8 @@ class _TorrentSourceSearchToolbarState
 
   @override
   Widget build(BuildContext context) {
-    final tv = SourcesPanelTv.isTv(context);
+    // Same paint density as [_SearchField] — keep tune + search faces aligned.
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final filterGap = tv
         ? ShellTokens.torrentPanelSearchGapTv
         : ShellTokens.torrentPanelSearchGap;
@@ -1451,6 +1452,7 @@ class _TorrentSourceSearchToolbarState
         ? ShellTokens.torrentPanelSearchFontSizeTv
         : ShellTokens.torrentPanelSearchFontSize;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: _SearchField(
@@ -1623,7 +1625,9 @@ class _SearchFieldState extends State<_SearchField> {
 
   @override
   Widget build(BuildContext context) {
-    final tv = SourcesPanelTv.isTv(context);
+    // Paint density — not focus policy. Desktop must keep controlHeight even when
+    // a TV focus graph is mounted under the same overlay.
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     final secondary = ForjaShellColors.cinematic.textSecondary;
     final fontSize = tv
         ? ShellTokens.torrentPanelSearchFontSizeTv
@@ -1634,33 +1638,35 @@ class _SearchFieldState extends State<_SearchField> {
     final padH = tv
         ? ShellTokens.torrentPanelSearchPadHTv
         : ShellTokens.torrentPanelSearchPadH;
-    final padV = tv
-        ? ShellTokens.torrentPanelSearchPadVTv
-        : ShellTokens.torrentPanelSearchPadV;
     final gap = tv
         ? ShellTokens.torrentPanelSearchGapTv
         : ShellTokens.torrentPanelSearchGap;
     final radius = tv
         ? ShellTokens.torrentPanelSearchRadiusTv
         : ShellTokens.torrentPanelSearchRadius;
-    // Same fixed band as Episodes search / shell controlHeight (not the old 32).
+    // Fixed face — never size from isDense TextField intrinsics (collapses ~22px).
     final height = tv
         ? ShellTokens.torrentPanelSearchHeightTv
         : ShellTokens.torrentPanelSearchHeight;
     final hintStyle = TextStyle(
       color: secondary.withValues(alpha: 0.7),
       fontSize: fontSize,
+      height: 1.0,
     );
     final fieldStyle = TextStyle(
       color: ForjaShellColors.cinematic.textPrimary,
       fontSize: fontSize,
+      height: 1.0,
     );
+    // Zero vertical pad: the SizedBox face centers the line. ContentPadding
+    // vertical used to fight the fixed height and still looked thin on desktop.
     final decoration = InputDecoration(
       hintText: 'Search',
       hintStyle: hintStyle,
       border: InputBorder.none,
       isDense: true,
-      contentPadding: EdgeInsets.symmetric(vertical: padV),
+      contentPadding: EdgeInsets.zero,
+      isCollapsed: true,
     );
     // TV passes searchFocusNode — browse focus only until OK (TvBrowseTextField).
     final focus = widget.focusNode;
@@ -1680,30 +1686,36 @@ class _SearchFieldState extends State<_SearchField> {
             onChanged: widget.onChanged,
             onSubmitted: (_) => widget.onDownEdge?.call(),
             style: fieldStyle,
+            cursorHeight: fontSize,
             decoration: decoration,
           );
 
-    return Container(
+    return SizedBox(
+      key: const ValueKey('sources-panel-search'),
       height: height,
-      decoration: _torrentPanelControlDecoration(active: false, radius: radius),
-      padding: EdgeInsets.symmetric(horizontal: padH),
-      alignment: Alignment.centerLeft,
-      child: Row(
-        children: [
-          Icon(Icons.search_rounded, size: iconSize, color: secondary),
-          SizedBox(width: gap),
-          Expanded(child: field),
-          if (widget.query.isNotEmpty)
-            Button(
-              variant: ButtonVariant.plainIcon,
-              size: ButtonSize.icon,
-              icon: Icons.close_rounded,
-              iconSize: iconSize,
-              compact: true,
-              color: secondary,
-              onPressed: () => widget.onChanged(''),
-            ),
-        ],
+      child: DecoratedBox(
+        decoration: _torrentPanelControlDecoration(active: false, radius: radius),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: padH),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(Icons.search_rounded, size: iconSize, color: secondary),
+              SizedBox(width: gap),
+              Expanded(child: field),
+              if (widget.query.isNotEmpty)
+                Button(
+                  variant: ButtonVariant.plainIcon,
+                  size: ButtonSize.icon,
+                  icon: Icons.close_rounded,
+                  iconSize: iconSize,
+                  compact: true,
+                  color: secondary,
+                  onPressed: () => widget.onChanged(''),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
