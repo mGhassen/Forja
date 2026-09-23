@@ -83,22 +83,6 @@ Future<MetaEnvelope> _hubReduceFeed({
   );
 }
 
-/// Hub `feed` without host rows (Stremio chip / legacy aggregate).
-Future<MetaEnvelope> _hubFeedFull({
-  required String hubPluginId,
-  String? packSourceUrl,
-  required Map<String, dynamic> params,
-  required bool forceRefresh,
-}) {
-  return packOpaqueRun(
-    pluginId: hubPluginId,
-    packSourceUrl: packSourceUrl,
-    action: 'feed',
-    params: _feedParamsForReduce(params),
-    forceRefresh: forceRefresh,
-  );
-}
-
 /// Host fans live catalogs one-by-one; hub `feed` only reduces/merges/shapes.
 ///
 /// Yields a [MetaEnvelope] after each catalog so [PackLoadedPaint] can paint
@@ -124,15 +108,30 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   if (isLiveStremioCatalogFilter(filter)) {
     setBusy(busy: true, label: 'Loading…');
     try {
-      yield await _hubFeedFull(
+      final cacheKey = _liveFeedCacheKey(filter);
+      if (!forceRefresh) {
+        final warm = _cachedFeedRows(cacheKey);
+        if (warm != null) {
+          setBusy(busy: false, label: null);
+          yield await _hubReduceFeed(
+            hubPluginId: hubPluginId,
+            packSourceUrl: packSourceUrl,
+            rows: warm,
+            params: feedParams,
+          );
+          return;
+        }
+      }
+      final base = liveStremioBaseUrlFromCatalogFilter(filter);
+      final rows = base == null
+          ? const <Map<String, dynamic>>[]
+          : await loadLiveStremioCatalogFeed(baseUrl: base);
+      if (rows.isNotEmpty) _storeFeedRows(cacheKey, rows);
+      yield await _hubReduceFeed(
         hubPluginId: hubPluginId,
         packSourceUrl: packSourceUrl,
-        params: {
-          ...feedParams,
-          if (forceRefresh) 'force': true,
-          if (forceRefresh) 'forceRefresh': true,
-        },
-        forceRefresh: forceRefresh,
+        rows: rows,
+        params: feedParams,
       );
     } finally {
       setBusy(busy: false, label: null);

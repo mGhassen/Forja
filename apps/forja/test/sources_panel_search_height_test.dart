@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/sources/torrent/torrent_source_filters.dart';
-import 'package:forja/shell/core/forja_shell_input_policy.dart';
-import 'package:forja/shell/core/forja_shell_metrics.dart';
-import 'package:forja/shell/core/shell_paint_host.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
-Widget _harness({required Widget child}) {
+Widget _harness({
+  required ShellProfile profile,
+  required Widget child,
+}) {
   return MaterialApp(
     home: MediaQuery(
-      data: const MediaQueryData(size: Size(1280, 800)),
-      child: shellPaintHostScope(
-        inputPolicy: ShellInputPolicy.desktop,
-        metrics: ShellMetrics.desktop,
+      data: MediaQueryData(
+        size: profile == ShellProfile.tv
+            ? const Size(1920, 1080)
+            : const Size(1280, 800),
+      ),
+      child: ShellScope(
+        profile: profile,
+        config: shellPlatformConfigFor(profile),
         child: Scaffold(
           body: Padding(
             padding: const EdgeInsets.all(16),
@@ -45,7 +52,9 @@ void main() {
   testWidgets('desktop Sources search face is controlHeight (not isDense collapse)', (
     tester,
   ) async {
-    await tester.pumpWidget(_harness(child: _toolbar()));
+    await tester.pumpWidget(
+      _harness(profile: ShellProfile.desktop, child: _toolbar()),
+    );
     await tester.pumpAndSettle();
 
     final search = find.byKey(const ValueKey('sources-panel-search'));
@@ -61,16 +70,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(size: Size(1920, 1080)),
-          child: shellPaintHostScope(
-            inputPolicy: ShellInputPolicy.tv,
-            metrics: ShellMetrics.tv,
-            child: Scaffold(body: _toolbar()),
-          ),
-        ),
-      ),
+      _harness(profile: ShellProfile.tv, child: _toolbar()),
     );
     await tester.pumpAndSettle();
 

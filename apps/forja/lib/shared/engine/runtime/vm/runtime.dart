@@ -13,6 +13,7 @@ import 'package:forja/shared/engine/runtime/vm/hub_host_bridge_nest.dart';
 import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:forja/shared/engine/portals/store/portal_live_tv_search.dart';
 import 'package:forja/shared/engine/unlock/goat_unlock.dart';
+import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
 import 'package:forja/shared/engine/unlock/pack_unlock_files.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
@@ -1993,6 +1994,16 @@ class EngineRuntime {
         final act = actRaw.toLowerCase();
         if (pid.isEmpty || act.isEmpty) return <Map<String, dynamic>>[];
         if (act == 'catalog') {
+          // Live Sports Catalog chip `stremio:<baseUrl>` — not a pack plugin.
+          // Hub feed calls host.plugin.run(filter, 'catalog'); without this
+          // branch the lookup misses and the schedule stays empty (issue 319).
+          if (isLiveStremioCatalogFilter(pid)) {
+            final base = liveStremioBaseUrlFromCatalogFilter(pid);
+            if (base == null) return <Map<String, dynamic>>[];
+            final rows = await loadLiveStremioCatalogFeed(baseUrl: base);
+            debugPrint('[LiveStremio] catalog $base rows=${rows.length}');
+            return rows;
+          }
           final plugin = await EngineService.instance.pluginById(pid);
           if (plugin == null) {
             final normalized = EngineService.normalizeLiveSportPluginId(pid);
