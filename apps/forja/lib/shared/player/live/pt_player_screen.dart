@@ -29,6 +29,7 @@ import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/player/live/hls_play_url.dart';
+import 'package:forja/shared/player/live/live_sports_atv_cache.dart';
 import 'package:forja/shared/player/live/player_stats_panel.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
@@ -117,9 +118,20 @@ bool iptvUrlLooksLikeHls(String url) {
   return lower.contains('.m3u8') || lower.contains('/hls-proxy');
 }
 
-/// MediaKit `stream-lavf-o` for live open — HLS off (issue 273), progressive on.
+/// MediaKit `stream-lavf-o` for live open.
+///
+/// [sportsDirect]: v1.5.36 Live Sports / Stremio direct reconnect string
+/// (delay_max=30 + http_error). IPTV keeps HLS `reconnect=0` / progressive max=5.
 @visibleForTesting
-String iptvStreamLavfO({String? streamUrl}) {
+String iptvStreamLavfO({String? streamUrl, bool sportsDirect = false}) {
+  if (sportsDirect) {
+    return 'reconnect=1,'
+        'reconnect_at_eof=1,'
+        'reconnect_streamed=1,'
+        'reconnect_delay_max=30,'
+        'reconnect_on_network_error=1,'
+        'reconnect_on_http_error=4xx\\,5xx';
+  }
   if (streamUrl != null && iptvUrlLooksLikeHls(streamUrl)) {
     return 'reconnect=0';
   }
@@ -1066,8 +1078,17 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
-  /// ATV MediaKit: 64 MiB Player buffer (demuxer owns readahead).
+  /// ATV MediaKit: sports use v1.5.36 32 MiB; IPTV Forja keeps 64 MiB.
   PlayerConfiguration get _mediaKitPlayerConfiguration {
+    if (_atvMediaKit &&
+        !widget.vodPlayback &&
+        widget.engineContext == BuiltInPlayerContext.live) {
+      return const PlayerConfiguration(
+        bufferSize: 32 * 1024 * 1024,
+        logLevel: MPVLogLevel.warn,
+        libass: true,
+      );
+    }
     return _playerConfiguration;
   }
 

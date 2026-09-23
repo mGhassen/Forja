@@ -9,6 +9,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     bool forceHard = false,
   });
   bool get _livePlaybackProfile;
+  bool get _liveSportsSurface;
   void _syncPlaybackBannerVisibility();
 
   /// Sample cache health every watchdog tick (MediaKit).
@@ -262,6 +263,23 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     _syncPlaybackBannerVisibility();
   }
 
+  /// Show Buffering chrome (Live Sports soft-reopen path — v1.5.36).
+  void _ensureBufferingChrome(DateTime now) {
+    if (_s._buffering) {
+      _s._bufferingSince ??= now;
+      _syncPlaybackBannerVisibility();
+      return;
+    }
+    if (!mounted) return;
+    _s._buffering = true;
+    _s._bufferingClearAt = null;
+    _s._bufferingSince ??= now;
+    if (_s._playbackBannerSnapshot != true) {
+      _s._playbackBannerSnapshot = null;
+      _syncPlaybackBannerVisibility();
+    }
+  }
+
   void _logHold(String reason, {required bool healthy}) {
     debugPrint(
       '[IPTV] ${healthy ? 'skip recovery' : 'hold'} ($reason) — '
@@ -329,6 +347,35 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     // Native HLS engines: trust playing/ready events only (no cache metric).
     if (_nativeHlsEngine) {
       return _s._playing && _s._userPlayWhenReady;
+    }
+    // Live Sports = v1.5.36: no HLS cold-open hold; MediaKit ignores feed-alone.
+    if (_liveSportsSurface) {
+      if (_stallWithoutPlayhead) return false;
+      if (_bufferingHardWall) return false;
+      if (_sustainedEmptyBufferingUnderrun) return false;
+      final openedAt = _s._openedAt;
+      final pastColdOpen =
+          DateTime.now().difference(openedAt) >= const Duration(seconds: 8);
+      if (pastColdOpen &&
+          _s._cacheAheadSecs <
+              _PtPlayerScreenState._liveEmptyUnderrunCacheSecs &&
+          !_networkStillFeeding) {
+        return false;
+      }
+      if (_mediaKitLiveProfile) {
+        if (_playheadRecentlyMoved) return true;
+        if (!_stallReopenRecovery &&
+            _s._cacheAheadSecs >=
+                _PtPlayerScreenState._minHealthyCacheSecs) {
+          return true;
+        }
+        return false;
+      }
+      if (_s._cacheAheadSecs >= _PtPlayerScreenState._minHealthyCacheSecs) {
+        return true;
+      }
+      if (_playheadRecentlyMoved) return true;
+      return false;
     }
     // HLS ABR probe: demuxer cache stays 0 while ffmpeg opens every variant —
     // do not treat that as dead (stall mode would soft-reopen and kill TLS).
@@ -430,14 +477,14 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
       // Recovery stays native error + startup failover only.
       if (_nativeHlsEngine) return;
 
-      // MediaKit live recovery is grace → goLive only. No soft-reopen
-      // underrun / paint / self-pause (that was Forja's reconnect storm).
-      if (_mediaKitLiveProfile) {
+      // IPTV MediaKit (RFC-113): grace → goLive only. Live Sports keeps the
+      // v1.5.36 soft-reopen detectors below.
+      if (_mediaKitLiveProfile && !_liveSportsSurface) {
         if (_streamWorking) _clearBufferingChrome();
         return;
       }
 
-      // Detector 1: long buffering — Exo / non–MediaKit-live only.
+      // Detector 1: long buffering — only if cache is empty / not working.
       final emptyUnderrun = _s._cacheAheadSecs <
           _PtPlayerScreenState._liveEmptyUnderrunCacheSecs;
       final bufferGrace = emptyUnderrun
@@ -449,7 +496,11 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
           _s._bufferingSince != null &&
           now.difference(_s._bufferingSince!) > bufferGrace) {
         if (_streamWorking) {
-          _clearBufferingChrome();
+          if (_liveSportsSurface) {
+            _logHealthyHold('buffering');
+          } else {
+            _clearBufferingChrome();
+          }
           return;
         }
         _triggerRecovery(
@@ -459,36 +510,75 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         );
         return;
       }
-      // Detector 2: position frozen — Exo/VOD.
-      final frozenFor = now.difference(_s._lastPosChange);
-      if (_s._userPlayWhenReady &&
-          _s._lastPos > Duration.zero &&
-          frozenFor > const Duration(milliseconds: 8000)) {
-        if (_streamWorking) {
-          _logHealthyHold('frozen');
+      // Detector 2: position frozen — Exo/VOD only.
+      // Detector 2b: Live Sports MediaKit paint stall (v1.5.36).
+      if (!_mediaKitLiveProfile) {
+        final frozenFor = now.difference(_s._lastPosChange);
+        if (_s._userPlayWhenReady &&
+            _s._lastPos > Duration.zero &&
+            frozenFor > const Duration(milliseconds: 8000)) {
+          if (_streamWorking) {
+            _logHealthyHold('frozen');
+            return;
+          }
+          _triggerRecovery(
+            reason: 'position frozen ${frozenFor.inSeconds}s, cache empty',
+          );
           return;
         }
-        _triggerRecovery(
-          reason: 'position frozen ${frozenFor.inSeconds}s, cache empty',
-        );
-        return;
+      } else if (_liveSportsSurface &&
+          _s._userPlayWhenReady &&
+          _s._playing) {
+        if (_playheadRecentlyMoved && !_sustainedEmptyBufferingUnderrun) {
+          _s._livePaintMissStreak = 0;
+          return;
+        }
+        final frozenFor = now.difference(_s._lastPosChange);
+        if (frozenFor > const Duration(milliseconds: 1500)) {
+          _ensureBufferingChrome(now);
+          if (frozenFor >= _PtPlayerScreenState._liveEmptyPauseReopen) {
+            if (_s._livePaintMissStreak < 2) return;
+            final empty = _s._cacheAheadSecs <
+                _PtPlayerScreenState._minHealthyCacheSecs;
+            if (!empty && !_stallReopenRecovery) {
+              _logHealthyHold('paint idle, cache hold');
+              return;
+            }
+            _triggerRecovery(
+              reason: empty
+                  ? 'live underrun, cache empty'
+                  : 'live vo freeze, paint stalled '
+                      '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
+            );
+            return;
+          }
+        }
       }
-      // Detector 3: silent self-pause (Exo / non–MediaKit-live).
+      // Detector 3: silent self-pause.
       if (_s._userPlayWhenReady &&
           !_s._playing &&
           _s._readyNotPlayingSince != null) {
         final pausedFor = now.difference(_s._readyNotPlayingSince!);
         if (_livePlaybackProfile && _bufferedRecovery) {
           if (_streamWorking) {
-            _clearBufferingChrome();
+            if (_liveSportsSurface) {
+              if (!_s._buffering) _logHealthyHold('self-pause');
+            } else {
+              _clearBufferingChrome();
+            }
             return;
           }
           if (!_stallReopenRecovery &&
               _s._cacheAheadSecs >=
                   _PtPlayerScreenState._minHealthyCacheSecs) {
-            _clearBufferingChrome();
+            if (_liveSportsSurface) {
+              if (!_s._buffering) _logHealthyHold('self-pause');
+            } else {
+              _clearBufferingChrome();
+            }
             return;
           }
+          if (_liveSportsSurface) _ensureBufferingChrome(now);
           if (pausedFor < _PtPlayerScreenState._liveEmptyPauseReopen) {
             if (pausedFor.inMilliseconds < 1200) {
               _logHold('self-pause refill', healthy: false);

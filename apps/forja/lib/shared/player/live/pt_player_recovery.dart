@@ -18,6 +18,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   Future<void> _enginePlay();
   void _armTransientHwDecodeIgnore();
   void _logHealthyHold(String reason);
+  void _logHold(String reason, {required bool healthy});
   void _resetDemuxerProbe();
   bool get _streamWorking;
   bool get _livePlaybackProfile;
@@ -47,15 +48,6 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     );
     _s._liveGraceTimer = Timer(grace, () {
       if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
-      final hwDecode = reason.contains('hw decode') ||
-          reason.contains('hardware decode');
-      // Live Sports only: VT can die while audio/demux still advance — do not
-      // treat playhead growth as recovered. IPTV uses recovered/unrecovered.
-      if (hwDecode && _liveSportsSurface) {
-        debugPrint('[IPTV] live sports hw decode — goLive');
-        unawaited(_tryIptvLiveGoLive(reason: reason));
-        return;
-      }
       final sPlaying = _s._playing;
       final pos = _s._position;
       final recovered = sPlaying && pos > _s._liveGraceStartPos;
@@ -212,8 +204,9 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   void _scheduleJumpToLive({bool force = false}) {
     if (_s._exoBackend) return;
     if (!_livePlaybackProfile) return;
-    // MediaKit live: never seek/drop-buffers — goLive is stop+open.
-    if (_s._mediaKitBackend) return;
+    // IPTV MediaKit live: never seek/drop-buffers — goLive is stop+open.
+    // Live Sports (v1.5.36): allow live-edge snap.
+    if (_s._mediaKitBackend && !_liveSportsSurface) return;
     // Classic: seekable-only open snap (1.3.114). Never force drop-buffers.
     final allowForce = _bufferedRecovery && force;
     if (!allowForce && !_s._streamSeekable) return;
@@ -580,19 +573,18 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
 
   Future<void> _forceSoftwareDecode() async {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
-    // MediaKit live never falls back to TextureSW.
-    // Live Sports: grace→goLive. IPTV: hold when demux feeds (no reopen).
+    // Live Sports = v1.5.36: hold on VT (never TextureSW / goLive).
+    // IPTV Forja: hold when demux feeds; soft reopen when empty.
     if (_livePlaybackProfile &&
         _s._mediaKitBackend &&
         !_s.widget.vodPlayback) {
+      _armTransientHwDecodeIgnore();
       if (_liveSportsSurface) {
-        debugPrint(
-          '[IPTV Player] Live Sports: ignore hw→sw — grace/goLive only',
-        );
-        if (_recoveryInFlight) return;
-        _scheduleIptvLiveGraceRecovery(
-          reason: 'hardware decode failed (live keep HW)',
-        );
+        if (_streamWorking) {
+          _logHealthyHold('hw→sw (live hold)');
+        } else {
+          _logHold('hw→sw (live hold)', healthy: false);
+        }
         return;
       }
       if (_streamWorking) {

@@ -29,6 +29,17 @@ void main() {
     test('null url → progressive reconnect (default)', () {
       expect(iptvStreamLavfO(), contains('reconnect=1'));
     });
+
+    test('sportsDirect → v1.5.36 direct reconnect (even for HLS)', () {
+      final o = iptvStreamLavfO(
+        streamUrl: 'https://cdn.example/live/index.m3u8',
+        sportsDirect: true,
+      );
+      expect(o, contains('reconnect=1'));
+      expect(o, contains('reconnect_delay_max=30'));
+      expect(o, contains('reconnect_on_http_error=4xx\\,5xx'));
+      expect(o, isNot(equals('reconnect=0')));
+    });
   });
 
   group('iptvUrlLooksLikeHls', () {

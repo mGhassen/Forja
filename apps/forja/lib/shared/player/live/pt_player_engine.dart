@@ -10,6 +10,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
     String? streamUrl,
+    bool sportsDirect = false,
   });
   void _startWatchdog();
   void _noteFeedProgress(int markMs, {int? positionMs});
@@ -64,10 +65,11 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
           androidAttachSurfaceAfterVideoParameters: false,
         ),
       );
-    } else if (liveMk) {
-      // Default VideoController — no TextureSW / hwdec pin.
+    } else if (liveMk && !_liveSportsSurface) {
+      // IPTV Forja live: default VideoController — no TextureSW / hwdec pin.
       _s._controller = VideoController(_s._player!);
     } else {
+      // VOD + Live Sports (v1.5.36): configured hwdec.
       _s._controller = VideoController(
         _s._player!,
         configuration: VideoControllerConfiguration(
@@ -616,8 +618,15 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       };
       final kind = _liveSourceKindFor(candidate);
       var playUrl = candidate.url;
+      final sportsMk =
+          _livePlaybackProfile &&
+          !_s.widget.vodPlayback &&
+          _liveSportsSurface;
       // MediaKit/mpv only: pin one media playlist. AVPlayer/VLC/Exo do native ABR.
-      if (_s._mediaKitBackend && iptvUrlLooksLikeHls(playUrl)) {
+      // Live Sports opens the master URL as-is (v1.5.36).
+      if (_s._mediaKitBackend &&
+          iptvUrlLooksLikeHls(playUrl) &&
+          !sportsMk) {
         playUrl = await iptvResolveHlsPlayUrl(
           url: playUrl,
           headers: headers,
@@ -673,23 +682,42 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         _s._stallFrameDropBaseline = -1;
         _s._stallPaintWatchSince = null;
         await resetPlayerAudioForNewOpen(player);
-        // RFC-113: CDN direct + lavf reconnect (no continuity proxy).
         debugPrint('[IPTV Player] direct open ($kind)');
         final np = player.platform;
         final liveMk = _livePlaybackProfile && !_s.widget.vodPlayback;
-        if (np is NativePlayer && liveMk) {
-          await _applyStreamLavfReconnect(np, streamUrl: playUrl);
-        } else if (np is NativePlayer) {
-          await applyMediaHttpHeaders(
-            player,
-            headers,
-            streamUrl: playUrl,
-          );
-        }
-        // Forja live: Media(url) only — no httpHeaders / panel UA.
-        if (liveMk) {
+        final sportsMk = liveMk && _liveSportsSurface;
+        if (sportsMk) {
+          // Live Sports = v1.5.36: headers + Media(httpHeaders) + lavf direct.
+          if (np is NativePlayer) {
+            await applyMediaHttpHeaders(
+              player,
+              headers,
+              streamUrl: playUrl,
+            );
+          }
+          await player.open(Media(playUrl, httpHeaders: headers));
+          if (np is NativePlayer) {
+            await _applyStreamLavfReconnect(
+              np,
+              streamUrl: playUrl,
+              sportsDirect: true,
+            );
+          }
+        } else if (liveMk) {
+          // IPTV RFC-113: CDN direct + lavf reconnect (no continuity proxy).
+          if (np is NativePlayer) {
+            await _applyStreamLavfReconnect(np, streamUrl: playUrl);
+          }
+          // Forja IPTV live: Media(url) only — no httpHeaders / panel UA.
           await player.open(Media(playUrl));
         } else {
+          if (np is NativePlayer) {
+            await applyMediaHttpHeaders(
+              player,
+              headers,
+              streamUrl: playUrl,
+            );
+          }
           await player.open(Media(playUrl, httpHeaders: headers));
         }
         await player.play();
@@ -1014,7 +1042,9 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {
-        if (_livePlaybackProfile && _s._mediaKitBackend) {
+        if (_livePlaybackProfile &&
+            _s._mediaKitBackend &&
+            !_liveSportsSurface) {
           _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         } else {
           _noteSocketTrouble(msg);
@@ -1033,7 +1063,9 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         );
         return;
       }
-      if (_livePlaybackProfile && _s._mediaKitBackend) {
+      if (_livePlaybackProfile &&
+          _s._mediaKitBackend &&
+          !_liveSportsSurface) {
         _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         return;
       }
@@ -1043,6 +1075,8 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     _s._completedSub = player.stream.completed.listen((done) {
       if (!done || !mounted || _s._disposed) return;
       if (!_livePlaybackProfile || !_s._mediaKitBackend) return;
+      // Live Sports (v1.5.36): no completed → goLive.
+      if (_liveSportsSurface) return;
       if (!_s._userPlayWhenReady) return;
       _scheduleIptvLiveGraceRecovery(reason: 'completed');
     });
@@ -1060,15 +1094,18 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
           );
           return;
         }
-        // MediaKit live: never TextureSW.
-        // Live Sports: VT can paint black while demux advances → grace/goLive.
-        // IPTV: hold when working — lavf + cache; do not reopen on VT spam.
+        // Live Sports = v1.5.36: hold on VT (never TextureSW / goLive).
+        // IPTV Forja: hold when working — lavf + cache; do not reopen on VT spam.
         if (_livePlaybackProfile &&
             _s._mediaKitBackend &&
             !_s.widget.vodPlayback) {
           _armTransientHwDecodeIgnore();
           if (_liveSportsSurface) {
-            _scheduleIptvLiveGraceRecovery(reason: 'hw decode fail');
+            if (_streamWorking) {
+              _logHealthyHold('hw decode fail (live hold)');
+            } else {
+              _logHold('hw decode fail (live hold)', healthy: false);
+            }
             return;
           }
           if (_streamWorking) {
@@ -1100,14 +1137,17 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     });
   }
 
-  /// Socket blip: live MediaKit uses silent grace → goLive (RFC-113).
+  /// Socket blip: IPTV MediaKit → silent grace → goLive (RFC-113).
+  /// Live Sports → v1.5.36 8s soft recovery.
   void _noteSocketTrouble(String what) {
     _armTransientHwDecodeIgnore();
     if (!_bufferedRecovery) {
       _triggerRecovery(reason: 'connection dropped: $what', forceHard: true);
       return;
     }
-    if (_livePlaybackProfile && _s._mediaKitBackend) {
+    if (_livePlaybackProfile &&
+        _s._mediaKitBackend &&
+        !_liveSportsSurface) {
       _scheduleIptvLiveGraceRecovery(reason: 'socket $what');
       return;
     }
@@ -1215,13 +1255,12 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         _s._openedAt = DateTime.now();
         _s._playbackBannerSnapshot = null;
         _resetDemuxerProbe();
-        // Probe DVR window for UI. MediaKit live: never post-open live-edge
-        // snap — force-seekable + seek 99999 on thin cache freezes progressive
-        // TS: open+play only; reconnect = goLive stop+open.
+        // Probe DVR window for UI. IPTV MediaKit: never post-open live-edge
+        // snap. Live Sports (v1.5.36): schedule jump-to-live after probe.
         unawaited(
           _probeStreamCapabilities().then((_) {
             if (!mounted || !_livePlaybackProfile) return;
-            if (_s._mediaKitBackend) return;
+            if (_s._mediaKitBackend && !_liveSportsSurface) return;
             _scheduleJumpToLive();
           }),
         );
@@ -1309,13 +1348,15 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     if (mounted) setState(() => _s._playerReady = true);
   }
 
-  /// Manual reload: MediaKit live → goLive (stop+open). Else Stable
-  /// live-edge flush then escalate; Classic soft reopen.
+  /// Manual reload: IPTV MediaKit live → goLive (stop+open).
+  /// Live Sports → v1.5.36 Stable live-edge / soft reopen.
   Future<void> _reloadCurrent() async {
     _s._retryAttempt = 0;
     _resetStalkerHardFails();
     _s._userPlayWhenReady = true;
-    if (_s._mediaKitBackend && _livePlaybackProfile) {
+    if (_s._mediaKitBackend &&
+        _livePlaybackProfile &&
+        !_liveSportsSurface) {
       await _goLiveReopen();
       return;
     }
