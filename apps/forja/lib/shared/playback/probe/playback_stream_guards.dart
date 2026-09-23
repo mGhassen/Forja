@@ -5,25 +5,8 @@ import 'dart:convert';
 
 import 'package:rust/rust.dart';
 
-const _videasyServerChipLabels = [
-  'Yoru',
-  'Kai',
-  'Ryu',
-  'Sora',
-  'Hana',
-  'Kaze',
-  'Mizu',
-];
-
-const _vidnestServerDisplayNames = [
-  'Gama',
-  'Beta',
-  'Delta',
-  'Alfa',
-  'Lamda',
-];
-
-String preferVideasyHlsMasterUrl(String url) {
+/// Prefer master playlist when a demuxed `index-s…` child URL is given.
+String preferHlsMasterPlaylistUrl(String url) {
   final u = url.trim();
   if (!RegExp(r'index-s\d+p-v\d+-a\d+\.m3u8', caseSensitive: false)
       .hasMatch(u)) {
@@ -40,15 +23,15 @@ String preferVideasyHlsMasterUrl(String url) {
   );
 }
 
-/// Videasy / wings CDN (peakstorm, …) — requires player.videasy.to Referer.
-bool isVideasyCdnStreamUrl(String url) {
+/// peakstorm CDN host — fMP4 HLS; hard seek corrupts segments.
+bool isPeakstormCdnStreamUrl(String url) {
   final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
   if (host.isEmpty) return false;
   return host.contains('peakstorm');
 }
 
-/// Dailymotion playable HLS on dmcdn — fMP4 media playlists (not cdndirector).
-bool isDailymotionDmcdnHlsUrl(String url) {
+/// dmcdn.net HLS playlists — fMP4 media (not cdndirector).
+bool isDmcdnHlsUrl(String url) {
   final uri = Uri.tryParse(url.trim());
   if (uri == null) return false;
   final host = uri.host.toLowerCase();
@@ -57,16 +40,15 @@ bool isDailymotionDmcdnHlsUrl(String url) {
   return path.contains('.m3u8');
 }
 
-/// User seeks on peakstorm fMP4 must remount — [Player.seek] corrupts segments.
+/// User seeks on fMP4 HLS (peakstorm / dmcdn) must remount — [Player.seek]
+/// mid-playlist corrupts segments (NAL decode errors → black / stall).
 const Duration kPeakstormRemountSeekMinDelta = Duration(seconds: 3);
 
-/// fMP4 HLS (peakstorm / Videasy / Dailymotion dmcdn) — mpv `start` / remount only.
-/// [Player.seek] mid-playlist corrupts segments (NAL decode errors → black / stall).
 bool peakstormFmp4HlsAvoidHardSeek(String url) {
   final u = url.trim();
   if (u.isEmpty) return false;
-  if (isVideasyCdnStreamUrl(u)) return true;
-  if (isDailymotionDmcdnHlsUrl(u)) return true;
+  if (isPeakstormCdnStreamUrl(u)) return true;
+  if (isDmcdnHlsUrl(u)) return true;
   final nested = Uri.tryParse(u)?.queryParameters['url'];
   if (nested != null && nested.isNotEmpty) {
     return peakstormFmp4HlsAvoidHardSeek(nested);
@@ -89,8 +71,8 @@ bool playbackUrlsEquivalent(String a, String b) {
   final y = b.trim();
   if (x.isEmpty || y.isEmpty) return false;
   if (x == y) return true;
-  if (isVideasyCdnStreamUrl(x) || isVideasyCdnStreamUrl(y)) {
-    return preferVideasyHlsMasterUrl(x) == preferVideasyHlsMasterUrl(y);
+  if (isPeakstormCdnStreamUrl(x) || isPeakstormCdnStreamUrl(y)) {
+    return preferHlsMasterPlaylistUrl(x) == preferHlsMasterPlaylistUrl(y);
   }
   return false;
 }
@@ -101,7 +83,7 @@ bool _urlsMatchForPlayback(String a, String b) =>
 /// True for legacy built-in webstreaming extractors — retired (engine JS only).
 bool isWebStreamProviderId(String sourceId) => false;
 
-/// Retired — VidLink MAL embed path removed.
+/// Retired — anime WebView sniff path removed.
 bool isAnimeWebStreamSniffProvider(String sourceKeyOrServer) => false;
 
 /// True for playback modes that use the torrent/Stremio **Sources** right panel
@@ -139,16 +121,34 @@ int? jwtExpiryUnix(String jwt) {
   }
 }
 
-/// True when `?token=` JWT is expired or within [skew] of expiry.
+/// True when `?token=` JWT or `expires=` unix is expired / within [skew].
 ///
-/// CloudStream / tokenized HLS URLs die at JWT `exp` while session/disk cache
-/// can still hold them - reject before open / cache write.
+/// Unwraps local `/hls-proxy?url=…` so nested CDN tokens are checked.
+/// CloudStream / tokenized HLS die at JWT `exp` while session/disk cache can
+/// still hold them — reject before open / cache write.
 bool isStreamUrlTokenExpired(
   String url, {
   Duration skew = const Duration(minutes: 2),
   DateTime? now,
 }) {
-  final token = Uri.tryParse(url.trim())?.queryParameters['token'];
+  final identity = playbackStreamIdentityUrl(url);
+  final uri = Uri.tryParse(identity.trim());
+  if (uri == null) return false;
+  final clock = (now ?? DateTime.now()).toUtc();
+
+  final expiresRaw = uri.queryParameters['expires'];
+  if (expiresRaw != null && expiresRaw.isNotEmpty) {
+    final expUnix = int.tryParse(expiresRaw);
+    if (expUnix != null) {
+      final deadline = DateTime.fromMillisecondsSinceEpoch(
+        expUnix * 1000,
+        isUtc: true,
+      ).subtract(skew);
+      if (!clock.isBefore(deadline)) return true;
+    }
+  }
+
+  final token = uri.queryParameters['token'];
   if (token == null || token.isEmpty) return false;
   final exp = jwtExpiryUnix(token);
   if (exp == null) return false;
@@ -156,7 +156,7 @@ bool isStreamUrlTokenExpired(
     exp * 1000,
     isUtc: true,
   ).subtract(skew);
-  return !(now ?? DateTime.now()).toUtc().isBefore(deadline);
+  return !clock.isBefore(deadline);
 }
 
 /// Session-local loopback play endpoints (HLS strip proxy, torrent stream, …).
@@ -190,10 +190,12 @@ bool isUnplayableCachedStreamUrl(String url) {
   if (u.startsWith('/') && !u.startsWith('//')) return true;
   if (!u.contains('://')) return true;
   // Unknown loopback is session junk; known engine proxies / torrent streams
-  // are playable (hls-proxy strip=png, jellyfin, librqbit, …).
+  // are playable (hls-proxy strip=png, jellyfin, librqbit, …) unless the
+  // nested CDN token / expires= is already dead.
   final host = Uri.tryParse(u)?.host.toLowerCase() ?? '';
   if (host == '127.0.0.1' || host == 'localhost') {
-    return !isLocalLoopbackPlayUrl(u);
+    if (!isLocalLoopbackPlayUrl(u)) return true;
+    return isStreamUrlTokenExpired(u);
   }
   if (isStreamUrlTokenExpired(u)) return true;
   return false;
@@ -276,8 +278,7 @@ bool _catalogStreamRowPluginScope(
   return false;
 }
 
-/// Stable Sources-row identity when several mirrors share one master.m3u8
-/// (Videasy 1080p / 720p / 480p).
+/// Stable Sources-row identity when several mirrors share one master.m3u8.
 String catalogStreamRowProgressKey(Map<String, dynamic> stream) {
   final url = playbackStreamIdentityUrl(stream['url']?.toString() ?? '');
   final quality = (stream['quality'] ?? '').toString().trim().toLowerCase();
@@ -306,7 +307,7 @@ bool _catalogUrlSharesMasterPlaylist(String url) {
 }
 
 /// Strict saved-progress identity — unwrap hls-proxy only; never collapse
-/// Videasy quality variants (1080p / 720p / 480p) to the same master URL.
+/// quality variants that share one master URL.
 bool catalogStreamRowMatchesSavedProgress(
   Map<String, dynamic> stream, {
   required String savedUrl,
@@ -331,8 +332,7 @@ bool catalogStreamRowMatchesSavedProgress(
 /// Whether a Sources-panel Stremio/Nuvio/Engine row matches the active play URL.
 ///
 /// When [playingEnginePluginId] is set, rows with a different
-/// `_enginePluginId` are rejected even if the CDN URL matches (VidLink vs
-/// VidSrc.sbs mirrors often share the same hakunaymatata / peakstorm URL).
+/// `_enginePluginId` are rejected even if the CDN URL matches.
 bool catalogStreamRowMatchesPlaying(
   Map<String, dynamic> stream, {
   String? playUrl,
@@ -458,24 +458,6 @@ bool streamSourceMatchesPlaying(
   return false;
 }
 
-/// True when [title] matches Videasy Servers-tab mirror labels (`Yoru · …`).
-///
-/// Used to reject Videasy API rows that were wrongly cached under another
-/// server (VSEmbed / VidLink / …) after a shared-sniff race.
-bool hasVideasyMirrorTitle(String title) {
-  return _titleMatchesAnyLabel(title, _videasyServerChipLabels);
-}
-
-/// True when [title] matches VidNest API mirror labels (`Gama · …`).
-bool hasVidnestMirrorTitle(String title) {
-  return _titleMatchesAnyLabel(title, _vidnestServerDisplayNames);
-}
-
-/// True when [title] matches VidSrc.win chip labels (`Alpha · …`).
-bool hasVidsrcwinMirrorTitle(String title) {
-  return _titleMatchesAnyLabel(title, const ['alpha', 'blaze']);
-}
-
 bool _titleMatchesAnyLabel(String title, Iterable<String> labels) {
   final t = title.trim();
   if (t.isEmpty) return false;
@@ -492,17 +474,16 @@ bool _titleMatchesAnyLabel(String title, Iterable<String> labels) {
   return false;
 }
 
-/// True when [title] is clearly another provider's row (display name or
-/// mirror chips) - catches restamped/null providerId cache poison.
+/// True when [title] matches another provider's player display label.
+///
+/// Ownership is [StreamSource.providerId] first. This only catches rows whose
+/// title is clearly another labeled provider's display name (restamp poison).
+/// Pack-specific mirror chip names are not host inventory.
 bool hasForeignProviderTitle(String bucketId, String title) {
   final want = StreamProviderDisplay.canonicalId(bucketId);
   if (want.isEmpty) return false;
   final t = title.trim();
   if (t.isEmpty) return false;
-
-  if (want != 'videasy' && hasVideasyMirrorTitle(t)) return true;
-  if (want != 'vidnest' && hasVidnestMirrorTitle(t)) return true;
-  if (want != 'vidsrcwin' && hasVidsrcwinMirrorTitle(t)) return true;
 
   for (final id in StreamProviderDisplay.labeledProviderIds) {
     final other = StreamProviderDisplay.canonicalId(id);

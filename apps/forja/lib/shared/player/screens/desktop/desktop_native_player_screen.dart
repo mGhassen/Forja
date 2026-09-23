@@ -335,12 +335,14 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
 
   Future<void> _saveProgress() async {
     if (_duration.inMilliseconds <= 0) return;
+    final playUrl = _url.isNotEmpty ? _url : widget.mediaPath;
+    final durableUrl = durableStreamCatalogUrl(playUrl: playUrl);
     if (widget.onSaveProgress != null) {
       await widget.onSaveProgress!(
         _position,
         _duration,
         sourceId: widget.activeProvider,
-        streamUrl: _url.isNotEmpty ? _url : widget.mediaPath,
+        streamUrl: durableUrl ?? playUrl,
       );
       return;
     }
@@ -359,7 +361,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       duration: _duration.inMilliseconds,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
-      streamUrl: _url,
+      streamUrl: durableUrl,
       mediaType: movie.mediaType,
     );
     if (movie.mediaType == 'movie') {

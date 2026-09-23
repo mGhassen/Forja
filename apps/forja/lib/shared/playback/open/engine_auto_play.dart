@@ -198,7 +198,8 @@ Future<void> runEngineAutoPlay({
   /// Resume: re-extract this plugin first (from watch history `sourceId`).
   String? preferredPluginId,
 
-  /// Resume: last play URL from watch history — probed before re-extract.
+  /// Resume soft preference: prefer a matching catalog row after re-extract.
+  /// Never opens this URL directly — session `/hls-proxy` links go stale.
   String? savedStreamUrl,
 
   /// When set (e.g. provider-scoped episode id), race only these.
@@ -349,7 +350,6 @@ Future<void> runEngineAutoPlay({
     ];
 
     var pinPlugin = preferredPluginId?.trim();
-    final resumeAt = startPosition;
     // Callers only pass preferredPluginId when they mean to pin (resume or
     // next/prev episode). Do not require resume position — next ep is at 0.
     var pinActive = pinPlugin != null && pinPlugin.isNotEmpty;
@@ -388,32 +388,9 @@ Future<void> runEngineAutoPlay({
       return;
     }
 
-    if (pinActive) {
-      final savedUrl = savedStreamUrl?.trim() ?? '';
-      if (savedUrl.isNotEmpty &&
-          !isUnplayableCachedStreamUrl(savedUrl) &&
-          !isTorrentStreamUrl(savedUrl) &&
-          await probeStreamSourceUrl(savedUrl, null)) {
-        if (!aborted()) {
-          if (!context.mounted) return;
-          openedPlayer = true;
-          final isTv = movie.mediaType == 'tv';
-          await AppRouter.openPlayer(
-            context,
-            streamUrl: savedUrl,
-            title: movie.title,
-            movie: movie,
-            selectedSeason: isTv ? (season ?? 1) : null,
-            selectedEpisode: isTv ? (episode ?? 1) : null,
-            startPosition: resumeAt,
-            activeProvider: EngineIds.pluginChip(pinPlugin!),
-            pinSource: true,
-            fadeTransition: loadingSession.dialogContext != null,
-          );
-          return;
-        }
-      }
-    }
+    // Resume always re-extracts the preferred plugin (loading overlay + probe),
+    // then seeks via startPosition. Do not open a saved play URL — history often
+    // held session `/hls-proxy` links that fail cold open at resume offset.
 
     final cached = CatalogSourcesSessionCache.readEngine(cacheKey);
     if (cached != null) {
@@ -512,7 +489,10 @@ Future<void> runEngineAutoPlay({
       if (playAborted() || race.isCompleted) return;
       if (!pluginIds.contains(pluginId)) return;
 
-      final rows = sortEngineMetaStreamRows(pluginStreams);
+      final rows = preferSavedEngineStreamRow(
+        sortEngineMetaStreamRows(pluginStreams),
+        savedStreamUrl,
+      );
       if (rows.isEmpty) {
         statusById[pluginId] = StreamProviderProbeStatus.failed;
         publishProbes();
@@ -1136,4 +1116,22 @@ Future<void> _playResolveRow({
   } else {
     await openPlayer();
   }
+}
+
+/// Soft-prefer a history catalog URL after re-extract (same identity / nested proxy).
+List<Map<String, dynamic>> preferSavedEngineStreamRow(
+  List<Map<String, dynamic>> rows,
+  String? savedStreamUrl,
+) {
+  final saved = savedStreamUrl?.trim() ?? '';
+  if (saved.isEmpty || rows.length < 2) return rows;
+  final want = playbackStreamIdentityUrl(saved).toLowerCase();
+  if (want.isEmpty) return rows;
+  final i = rows.indexWhere((row) {
+    final u = row['url']?.toString().trim() ?? '';
+    if (u.isEmpty) return false;
+    return playbackStreamIdentityUrl(u).toLowerCase() == want;
+  });
+  if (i <= 0) return rows;
+  return [rows[i], ...rows.sublist(0, i), ...rows.sublist(i + 1)];
 }

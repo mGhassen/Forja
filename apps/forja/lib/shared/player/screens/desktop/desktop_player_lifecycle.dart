@@ -682,6 +682,14 @@ mixin _DesktopPlayerLifecycle
         }
       }
       final resolvedStreamUrl = _s._currentUrl ?? widget.mediaPath;
+      final historyStreamUrl = isStremioDirect
+          ? widget.mediaPath
+          : (method == 'stream'
+                ? durableStreamCatalogUrl(
+                    catalogUrl: _s._currentPlayingCatalogUrl,
+                    playUrl: resolvedStreamUrl,
+                  )
+                : null);
       await WatchHistoryService().saveProgress(
         tmdbId: widget.movie!.id,
         imdbId: widget.movie!.imdbId,
@@ -699,9 +707,7 @@ mixin _DesktopPlayerLifecycle
             : null,
         magnetLink: widget.magnetLink,
         fileIndex: widget.fileIndex,
-        streamUrl: isStremioDirect
-            ? widget.mediaPath
-            : (method == 'stream' ? resolvedStreamUrl : null),
+        streamUrl: historyStreamUrl,
         streamRowKey: _s._catalogStreamRowKey,
         stremioId: widget.stremioId,
         stremioAddonBaseUrl: widget.stremioAddonBaseUrl,

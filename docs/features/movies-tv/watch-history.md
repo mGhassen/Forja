@@ -13,7 +13,7 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 
 ## What you can do
 
-- Resume from Continue Watching by opening that title’s **details** first, then the **same path as details green Play / Resume** for current Settings → Playback: Webstreaming on → web extract (cache then resolve); Webstreaming off + Forja Auto → Forja plugin race (no sniff); otherwise Sources. Torrent / Stremio Direct resumes still use the saved magnet or addon when that was the last method. **Back** from the player returns to that details page
+- Resume from Continue Watching by opening that title’s **details** first, then the **same loading path as details green Play / Resume** for the last Forja provider (extract + probe, then seek to your saved time). Forja does not reopen a saved play URL cold. Settings → Playback still apply: Webstreaming on → web extract (cache then resolve); Webstreaming off + Forja Auto → Forja plugin race (no sniff); otherwise Sources. Torrent / Stremio Direct resumes still use the saved magnet or addon when that was the last method. **Back** from the player returns to that details page
 - See progress on the details hero (Resume + bar) and on continue watching cards — updates when you leave the player without leaving details
 - Hover a continue watching card (desktop) to scale it and show a play button; hover the play button for a green tint and outline (not a solid fill), float it upward, and pulse — click opens details then resumes
 - On **Android TV**, focusing a continue watching card shows the same green-tint play button (centered, heartbeating) — OK resumes like desktop

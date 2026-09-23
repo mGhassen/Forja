@@ -1209,7 +1209,15 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       try {
         final opened = await _engineOpenSource(src);
         if (_s._disposed || epoch != _openEpoch) return;
-        if (!opened) return;
+        if (!opened) {
+          // Unlock miss: stop cold-open watchdog ("no first frame") from
+          // re-unlocking forever while "Unlocking source…" stays up.
+          _s._userPlayWhenReady = false;
+          if (mounted && iptvIsLiveResolveStatusBanner(_s._statusBanner)) {
+            setState(() => _s._statusBanner = null);
+          }
+          return;
+        }
         _s._userPlayWhenReady = true;
         _s._pausedAt = null;
         _s._lastPos = Duration.zero;

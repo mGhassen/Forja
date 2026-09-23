@@ -842,11 +842,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (_duration.inMilliseconds <= 0) return;
     if (widget.onSaveProgress != null) {
       final url = _currentUrl;
+      final playUrl =
+          (url != null && url.isNotEmpty) ? url : widget.mediaPath;
       await widget.onSaveProgress!(
         _position,
         _duration,
         sourceId: widget.activeProvider,
-        streamUrl: (url != null && url.isNotEmpty) ? url : widget.mediaPath,
+        streamUrl: durableStreamCatalogUrl(playUrl: playUrl) ?? playUrl,
       );
     }
     final movie = widget.movie;

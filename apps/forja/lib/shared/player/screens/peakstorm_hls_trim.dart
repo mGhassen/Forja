@@ -23,7 +23,7 @@ Future<String?> buildPeakstormTrimmedPlaylistFile({
     return null;
   }
   try {
-    final masterUrl = preferVideasyHlsMasterUrl(catalogUrl.trim().split('#').first);
+    final masterUrl = preferHlsMasterPlaylistUrl(catalogUrl.trim().split('#').first);
     final masterBody = await _fetchPlaylistText(masterUrl, headers);
     if (masterBody == null || masterBody.isEmpty) return null;
 

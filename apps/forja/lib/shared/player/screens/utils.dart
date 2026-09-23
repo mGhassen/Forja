@@ -17,12 +17,13 @@ export 'package:forja/shared/playback/probe/playback_stream_guards.dart'
         durableStreamCatalogUrl,
         enginePluginIdFromCatalogBase,
         hlsProxyTargetUrl,
-        isVideasyCdnStreamUrl,
+        isPeakstormCdnStreamUrl,
         peakstormFmp4HlsAvoidHardSeek,
         peakstormHlsNeedsRemountSeek,
         kPeakstormRemountSeekMinDelta,
         playbackStreamIdentityUrl,
         playbackUrlsEquivalent,
+        preferHlsMasterPlaylistUrl,
         streamSourceMatchesPlaying,
         streamSourceProgressKey;
 import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
@@ -123,8 +124,8 @@ String normalizePlaybackStreamUrl(String url) {
   if (_trailingMediaSlash.hasMatch(out)) {
     out = out.replaceFirst(RegExp(r'/+$'), '');
   }
-  if (isVideasyCdnStreamUrl(out)) {
-    out = preferVideasyHlsMasterUrl(out);
+  if (isPeakstormCdnStreamUrl(out)) {
+    out = preferHlsMasterPlaylistUrl(out);
   }
   return out;
 }
@@ -184,12 +185,12 @@ Map<String, String> resolvePlaybackHttpHeaders(
       streamUrl != null && isLocalLoopbackPlayUrl(streamUrl)
       ? (hlsProxyTargetUrl(streamUrl) ?? streamUrl)
       : streamUrl;
-  // VidSrc.sbs nested STREAMCRYPTO mirrors land on Videasy CDNs (peakstorm).
-  // Those rows keep vidsrcsbs / engine:vidsrcsbs identity but must open with
-  // player.videasy.to Referer — vidsrc.sbs gets 403 on the CDN.
+  // Nested STREAMCRYPTO / shared CDNs often land on peakstorm hosts that
+  // require the player.videasy.to Referer even when the opening plugin id
+  // is not videasy.
   var policy = cfg.playbackPolicyFor(pid);
   if (catalogForMatchEarly != null &&
-      isVideasyCdnStreamUrl(catalogForMatchEarly)) {
+      isPeakstormCdnStreamUrl(catalogForMatchEarly)) {
     policy = cfg.playbackPolicyFor('videasy') ?? policy;
   }
   final banSelf = cfg.bansCdnSelfReferer(pid);

@@ -4,55 +4,41 @@ import 'package:forja/shared/player/controls/sources/stream/player_stream_menu.d
 import 'package:rust/rust.dart';
 
 void main() {
-  group('hasVideasyMirrorTitle', () {
-    test('matches Servers-tab labels', () {
-      expect(hasVideasyMirrorTitle('Yoru · 2160p'), isTrue);
-      expect(hasVideasyMirrorTitle('Breach · playhq'), isTrue);
-      expect(hasVideasyMirrorTitle('Cypher · 1080p'), isTrue);
-      expect(hasVideasyMirrorTitle('Primary'), isFalse);
-      expect(hasVideasyMirrorTitle('1080p'), isFalse);
-    });
-  });
-
   group('sourcesOwnedByProvider', () {
-    final videasyRows = [
-      StreamSource(
-        url: 'https://cdn/a.m3u8',
-        title: 'Yoru · 2160p',
-        type: 'hls',
-        providerId: 'videasy',
-      ),
-      StreamSource(
-        url: 'https://cdn/b.m3u8',
-        title: 'Breach · playhq',
-        type: 'hls',
-        providerId: 'videasy',
-      ),
-    ];
-
-    test('keeps Videasy rows under videasy', () {
-      final owned = sourcesOwnedByProvider('videasy', videasyRows);
+    test('keeps rows stamped for the bucket', () {
+      final rows = [
+        StreamSource(
+          url: 'https://cdn/a.m3u8',
+          title: 'Mirror · 2160p',
+          type: 'hls',
+          providerId: 'provider-a',
+        ),
+        StreamSource(
+          url: 'https://cdn/b.m3u8',
+          title: 'Mirror · playhq',
+          type: 'hls',
+          providerId: 'provider-a',
+        ),
+      ];
+      final owned = sourcesOwnedByProvider('provider-a', rows);
       expect(owned, hasLength(2));
     });
 
-    test('drops Videasy rows under vidsrc / VSEmbed', () {
-      final owned = sourcesOwnedByProvider('vidsrc', videasyRows);
-      expect(owned, isEmpty);
-    });
-
-    test('drops foreign providerId even without Videasy title', () {
+    test('drops rows stamped for another provider', () {
       final rows = [
         StreamSource(
-          url: 'https://cdn/x.m3u8',
-          title: 'Stream',
+          url: 'https://cdn/a.m3u8',
+          title: 'Mirror · 2160p',
           type: 'hls',
-          providerId: 'videasy',
+          providerId: 'provider-a',
         ),
       ];
-      expect(sourcesOwnedByProvider('vidsrc', rows), isEmpty);
+      expect(sourcesOwnedByProvider('provider-b', rows), isEmpty);
     });
 
-    test('drops Vidnest-titled rows under VidSrc', () {
+    test('drops foreign display-label titles when restamped', () {
+      // Display label comes from StreamProviderDisplay — title "Vidnest"
+      // under another bucket is foreign even if providerId was restamped.
       final rows = [
         StreamSource(
           url: 'https://cdn/a.mp4',
@@ -61,21 +47,15 @@ void main() {
           providerId: 'vidsrcwin',
         ),
         StreamSource(
-          url: 'https://cdn/b.mpd',
-          title: 'Gama · auto',
-          type: 'dash',
-          providerId: 'vidsrcwin',
-        ),
-        StreamSource(
           url: 'https://cdn/c.m3u8',
-          title: 'Alpha · Stream',
+          title: 'Own row',
           type: 'hls',
           providerId: 'vidsrcwin',
         ),
       ];
       final owned = sourcesOwnedByProvider('vidsrcwin', rows);
       expect(owned, hasLength(1));
-      expect(owned.first.title, 'Alpha · Stream');
+      expect(owned.first.title, 'Own row');
     });
 
     test('stamps bucket id on untagged survivors', () {
@@ -86,9 +66,9 @@ void main() {
           type: 'hls',
         ),
       ];
-      final owned = sourcesOwnedByProvider('vidsrc', rows);
+      final owned = sourcesOwnedByProvider('provider-a', rows);
       expect(owned, hasLength(1));
-      expect(owned.first.providerId, 'vidsrc');
+      expect(owned.first.providerId, 'provider-a');
     });
   });
 
@@ -98,21 +78,24 @@ void main() {
         url: 'https://cdn/a.m3u8',
         title: 'Alpha',
         type: 'hls',
-        providerId: 'vidsrcwin',
+        providerId: 'provider-a',
       );
       final b = StreamSource(
         url: 'https://cdn/b.m3u8',
         title: 'Blaze',
         type: 'hls',
-        providerId: 'vidsrcwin',
+        providerId: 'provider-a',
       );
       final fuller = preferFullerProviderSources(
-        providerId: 'vidsrcwin',
+        providerId: 'provider-a',
         live: [a],
         cached: [a, b],
       );
       expect(fuller, hasLength(2));
-      expect(fuller.map((s) => s.url), ['https://cdn/a.m3u8', 'https://cdn/b.m3u8']);
+      expect(fuller.map((s) => s.url), [
+        'https://cdn/a.m3u8',
+        'https://cdn/b.m3u8',
+      ]);
     });
   });
 
@@ -122,16 +105,16 @@ void main() {
         url: 'https://cdn/a.m3u8',
         title: 'Alpha',
         type: 'hls',
-        providerId: 'vidsrcwin',
+        providerId: 'provider-a',
       );
       final b = StreamSource(
         url: 'https://cdn/b.m3u8',
         title: 'Blaze',
         type: 'hls',
-        providerId: 'vidsrcwin',
+        providerId: 'provider-a',
       );
       final state = PlayerStreamMenuState(
-        currentProviderId: 'vidsrcwin',
+        currentProviderId: 'provider-a',
         sources: [a],
         currentUrl: a.url,
         currentPlayingCatalogUrl: a.url,
@@ -142,41 +125,41 @@ void main() {
       );
       expect(
         PlayerStreamMenu.sourcesForProvider(
-          providerId: 'vidsrcwin',
+          providerId: 'provider-a',
           state: state,
           cache: {
-            'vidsrcwin': [a, b],
+            'provider-a': [a, b],
           },
         ),
         hasLength(2),
       );
     });
 
-    test('VSEmbed section does not show Videasy cache poison', () {
-      final videasy = StreamSource(
+    test('other bucket does not show foreign-stamped cache poison', () {
+      final owned = StreamSource(
         url: 'https://cdn/a.m3u8',
-        title: 'Yoru · 2160p',
+        title: 'Mirror · 2160p',
         type: 'hls',
-        providerId: 'videasy',
+        providerId: 'provider-a',
       );
       final state = PlayerStreamMenuState(
-        currentProviderId: 'videasy',
-        sources: [videasy],
-        currentUrl: videasy.url,
-        currentPlayingCatalogUrl: videasy.url,
+        currentProviderId: 'provider-a',
+        sources: [owned],
+        currentUrl: owned.url,
+        currentPlayingCatalogUrl: owned.url,
         current111477FileUrl: null,
         is111477: false,
         playbackConfirmed: true,
         mediaPlaying: true,
       );
       final cache = <String, List<StreamSource>>{
-        'videasy': [videasy],
-        // Poison: same Videasy rows wrongly stored under vidsrc.
-        'vidsrc': [videasy],
+        'provider-a': [owned],
+        // Poison: same rows wrongly stored under another bucket.
+        'provider-b': [owned],
       };
       expect(
         PlayerStreamMenu.sourcesForProvider(
-          providerId: 'videasy',
+          providerId: 'provider-a',
           state: state,
           cache: cache,
         ),
@@ -184,7 +167,7 @@ void main() {
       );
       expect(
         PlayerStreamMenu.sourcesForProvider(
-          providerId: 'vidsrc',
+          providerId: 'provider-b',
           state: state,
           cache: cache,
         ),

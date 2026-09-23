@@ -22,7 +22,7 @@ The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent
 - Before mpv opens a link, Forja HTTP-probes it (every built-in provider) — dead CDNs fail fast and Auto continues to the next server
 - **Simple resolve** (default): walks **Tries** one server at a time with real budgets — engine HTTP plugins and embed sniffs get full per-provider timeouts so slower paths are not cut off while faster embeds alone “work”
 - A server only counts as streaming when video actually opens (not when extract alone returns a URL)
-- Leave the player and tap green **Play** again on the same title (or same TV episode) — Forja reuses the last **confirmed** webstreaming extract (session/disk cache, ~25 minutes) instead of re-racing providers. Stremio Direct / torrent / Amri sessions are not stored in that cache. Cached or Continue Watching links are probed before open; expired CDN tokens and dead segments drop the cache and re-resolve like first Play
+- Leave the player and tap green **Play** again on the same title (or same TV episode) — Forja reuses the last **confirmed** webstreaming extract (session/disk cache, ~25 minutes) instead of re-racing providers. Stremio Direct / torrent / Amri sessions are not stored in that cache. Cached Play links are probed before open; expired CDN tokens and dead segments drop the cache and re-resolve like first Play. **Continue Watching** always re-extracts the last provider (loading overlay), then seeks — it does not reopen a saved HLS play URL
 - In the player **Servers** menu, tapping a server reuses cache only when that provider already has a cached extract for this title/episode; otherwise it runs a fresh resolve for that server.
 
 ## Setup (if needed)
