@@ -1,6 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+
+/// Test-only — clear sticky activate keys between widget tests.
+@visibleForTesting
+void debugResetLazyViewportGateActivatedKeys() {
+  _LazyViewportGateState.debugResetActivatedKeys();
+}
 
 /// Activate [builder] only once the placeholder enters the viewport — or when
 /// the row-prefetch lane warms this slot ahead of visibility.

@@ -8,8 +8,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 void main() {
   setUp(() {
     VisibilityDetectorController.instance.updateInterval = Duration.zero;
-    // ignore: invalid_use_of_visible_for_testing_member
-    _LazyViewportGateState_debugReset();
+    debugResetLazyViewportGateActivatedKeys();
   });
 
   PackChromeScope chrome({
@@ -65,22 +64,28 @@ void main() {
       final activated = <String>[];
       final controller = ScrollController();
 
+      // Short viewport so only row0 fits — proves ahead=3, not cascade from
+      // a second on-screen row.
       await tester.pumpWidget(
         MaterialApp(
           home: chrome(
             lane: lane,
             child: Scaffold(
-              body: ListView(
-                controller: controller,
-                cacheExtent: 2000,
-                children: [
-                  const SizedBox(height: 400, child: Text('top')),
-                  gate('row0', height: 200, eager: true, activated: activated),
-                  gate('row1', height: 200, activated: activated),
-                  gate('row2', height: 200, activated: activated),
-                  gate('row3', height: 200, activated: activated),
-                  gate('row4', height: 200, activated: activated),
-                ],
+              body: SizedBox(
+                // Exactly one row tall — jumpTo(200) shows only row0.
+                height: 200,
+                child: ListView(
+                  controller: controller,
+                  cacheExtent: 2000,
+                  children: [
+                    const SizedBox(height: 200, child: Text('top')),
+                    gate('row0', height: 200, eager: true, activated: activated),
+                    gate('row1', height: 200, activated: activated),
+                    gate('row2', height: 200, activated: activated),
+                    gate('row3', height: 200, activated: activated),
+                    gate('row4', height: 200, activated: activated),
+                  ],
+                ),
               ),
             ),
           ),
@@ -89,8 +94,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      // row0 on screen (partially under the 400 spacer).
-      controller.jumpTo(300);
+      // view 200–400: only row0.
+      controller.jumpTo(200);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -101,7 +106,7 @@ void main() {
       expect(
         activated.contains('row4'),
         isFalse,
-        reason: 'row4 is past ahead=3 from row0',
+        reason: 'row4 is past ahead=3 from the single visible row',
       );
     },
   );
@@ -118,16 +123,19 @@ void main() {
           home: chrome(
             lane: lane,
             child: Scaffold(
-              body: ListView(
-                controller: controller,
-                cacheExtent: 800,
-                children: [
-                  const SizedBox(height: 600, child: Text('top')),
-                  gate('because', height: 200, eager: true, activated: activated),
-                  gate('new_releases', height: 200, activated: activated),
-                  gate('genre_0', height: 200, activated: activated),
-                  gate('genre_1', height: 200, activated: activated),
-                ],
+              body: SizedBox(
+                height: 250,
+                child: ListView(
+                  controller: controller,
+                  cacheExtent: 800,
+                  children: [
+                    const SizedBox(height: 200, child: Text('top')),
+                    gate('because', height: 200, eager: true, activated: activated),
+                    gate('new_releases', height: 200, activated: activated),
+                    gate('genre_0', height: 200, activated: activated),
+                    gate('genre_1', height: 200, activated: activated),
+                  ],
+                ),
               ),
             ),
           ),
@@ -136,14 +144,14 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      controller.jumpTo(500);
+      controller.jumpTo(180);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(activated.contains('because'), isTrue);
       expect(activated.contains('new_releases'), isTrue);
 
-      controller.jumpTo(700);
+      controller.jumpTo(400);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -154,12 +162,4 @@ void main() {
       );
     },
   );
-}
-
-/// Reach the private State's test reset without exporting the State class.
-void _LazyViewportGateState_debugReset() {
-  // LazyViewportGate's State is private — call via a throwaway pump first?
-  // Use the public @visibleForTesting on the private State through mirror —
-  // actually the method is on _LazyViewportGateState which tests can't name.
-  // Expose a top-level in the library instead.
 }
