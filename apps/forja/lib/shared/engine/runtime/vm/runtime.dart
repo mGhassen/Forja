@@ -1873,8 +1873,12 @@ class EngineRuntime {
       final respCt =
           (streamed.headers['content-type'] ?? '').toLowerCase();
       final respGoat = streamed.headers['goat'];
+      final respIsland = streamed.headers['island'];
+      // goat (embed.st) / island (embedindia) mark encrypted unlock bodies —
+      // must stay raw bytes (bodyB64), never UTF-8-mangled text.
       final binaryResp = respCt.contains('application/octet-stream') ||
-          (respGoat != null && respGoat.isNotEmpty);
+          (respGoat != null && respGoat.isNotEmpty) ||
+          (respIsland != null && respIsland.isNotEmpty);
       const largeBodyThreshold = 48 * 1024;
       final useBodyB64 = binaryResp || text.length > largeBodyThreshold;
       envelope = {

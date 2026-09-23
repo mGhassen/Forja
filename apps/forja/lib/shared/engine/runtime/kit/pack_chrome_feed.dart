@@ -170,8 +170,11 @@ Map<String, dynamic> packChromeFeedParams(
   return catalogParamsWithFilters(params, filters: filters);
 }
 
-/// Epoch string so [PackLoadedPaint] reloads when chrome affecting feed changes.
-String packChromeSelectionEpoch(
+/// Epoch for IPTV empty-grid placeholder (category / Favorites / search flip).
+///
+/// Omits [portalStoreKey] and refresh — those rebind soft (keep last paint).
+/// Hashing portal hydrate (`''` → key) as a flip wiped warm channels on hub open.
+String packChromeGridFlipEpoch(
   BuildContext context, {
   required Map<String, dynamic> listSpec,
   String? tabId,
@@ -179,6 +182,8 @@ String packChromeSelectionEpoch(
   final scope = LayoutScope.maybeOf(context);
   final chrome = PackChromeScope.maybeOf(context);
   final kindReloadsFeed = packChromeKindReloadsFeed(listSpec);
+  final vodPaged = packChromeVodPagedFeed(listSpec, scope);
+  final kindBustsFeed = kindReloadsFeed || vodPaged;
 
   String sel(String key) {
     final id = (listSpec[key] ?? '').toString().trim();
@@ -192,19 +197,36 @@ String packChromeSelectionEpoch(
       : (scope?.selectedId(statusTab) ??
           listSpec['default']?.toString() ??
           'plantowatch');
+  final listEpoch = statusTab.trim().isEmpty
+      ? ''
+      : '${listFeedEpochListenable.value}';
 
+  return [
+    status,
+    kindBustsFeed ? sel('kindMenu') : '',
+    sel('catalogMenu'),
+    kindBustsFeed ? sel('sortMenu') : '',
+    sel('horizonMenu'),
+    kindBustsFeed ? (chrome?.eventQuery ?? '') : '',
+    listEpoch,
+    catalogChromeFilterEpoch(tabId),
+  ].join('|');
+}
+
+/// Epoch string so [PackLoadedPaint] reloads when chrome affecting feed changes.
+String packChromeSelectionEpoch(
+  BuildContext context, {
+  required Map<String, dynamic> listSpec,
+  String? tabId,
+}) {
+  final chrome = PackChromeScope.maybeOf(context);
+  final scope = LayoutScope.maybeOf(context);
+  final kindReloadsFeed = packChromeKindReloadsFeed(listSpec);
   final vodPaged = packChromeVodPagedFeed(listSpec, scope);
-  final kindBustsFeed = kindReloadsFeed || vodPaged;
 
   final portalStoreKey =
       (CategoryBarActionHost.cachedLiveListParams['portalStoreKey'] ?? '')
           .toString();
-
-  // My List: bookmark writes bump listFeedEpoch → PackLayoutPainter refreshEpoch.
-  // Hash epoch here so PackLoadedPaint memo keys cannot reuse a stale compose.
-  final listEpoch = statusTab.trim().isEmpty
-      ? ''
-      : '${listFeedEpochListenable.value}';
 
   // portalStoreKey only for IPTV live shelf — hashing it on every Home/Anime
   // rail rebind when live-list prefs warm caused tab-return skeleton flashes.
@@ -212,17 +234,12 @@ String packChromeSelectionEpoch(
       (vodPaged || kindReloadsFeed) ? portalStoreKey : '';
 
   return [
-    status,
-    // Sport chips + IPTV catalog cats reload feed (catalog_page).
-    kindBustsFeed ? sel('kindMenu') : '',
-    sel('catalogMenu'),
-    kindBustsFeed ? sel('sortMenu') : '',
-    sel('horizonMenu'),
-    // View is paint-only (cards↔EPG) — omit so PackLoadedPaint keeps items.
-    kindBustsFeed ? (chrome?.eventQuery ?? '') : '',
+    packChromeGridFlipEpoch(
+      context,
+      listSpec: listSpec,
+      tabId: tabId,
+    ),
     '${chrome?.refreshEpoch ?? 0}',
-    listEpoch,
     portalEpoch,
-    catalogChromeFilterEpoch(tabId),
   ].join('|');
 }

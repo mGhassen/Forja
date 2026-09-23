@@ -218,13 +218,63 @@ class LiveGoatUnlock {
     return out;
   }
 
-  /// GET the playlist; true only when the body looks like HLS (`#EXTM3U`).
-  /// Used to drop dead GOAT slots that still crack to a signed CDN URL.
+  /// GET playlist (+ media + first segment); false for dead or image-bait HLS.
+  /// Used to drop GOAT/GASM slots that crack to a signed CDN URL that is not
+  /// playable (403, or WAF decoy WebP/PNG segments).
   static Future<bool> probePlayableM3u8(
     String url,
     Map<String, String> headers,
   ) =>
       _probePlayableM3u8(url, headers);
+
+  static bool _isHlsImageBaitUri(String uri) {
+    final path = uri.split('?').first.toLowerCase();
+    if (path.isEmpty) return false;
+    if (RegExp(r'\.(png|jpe?g|gif|webp|svg|image)$').hasMatch(path)) {
+      return true;
+    }
+    return path.contains('tiktokcdn') && path.contains('tplv-tiktokx-origin');
+  }
+
+  static bool _looksLikeImageMagic(List<int> bytes) {
+    if (bytes.length < 12) return false;
+    if (bytes[0] == 0x89 && bytes[1] == 0x50) return true; // PNG
+    if (bytes[0] == 0xff && bytes[1] == 0xd8) return true; // JPEG
+    if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return true;
+    // RIFF....WEBP
+    return bytes[0] == 0x52 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x46 &&
+        bytes[8] == 0x57 &&
+        bytes[9] == 0x45 &&
+        bytes[10] == 0x42 &&
+        bytes[11] == 0x50;
+  }
+
+  static String? _firstHlsUri(String body, String baseUrl) {
+    for (final raw in body.split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty || line.startsWith('#')) continue;
+      final abs = Uri.tryParse(baseUrl)?.resolve(line).toString();
+      if (abs != null && abs.isNotEmpty) return abs;
+      if (line.startsWith('http://') || line.startsWith('https://')) return line;
+    }
+    return null;
+  }
+
+  static String? _firstHlsMediaUri(String masterBody, String masterUrl) {
+    final lines = masterBody.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      if (!lines[i].trim().startsWith('#EXT-X-STREAM-INF')) continue;
+      for (var j = i + 1; j < lines.length; j++) {
+        final next = lines[j].trim();
+        if (next.isEmpty || next.startsWith('#')) continue;
+        return Uri.tryParse(masterUrl)?.resolve(next).toString() ?? next;
+      }
+    }
+    return null;
+  }
 
   static Future<bool> _probePlayableM3u8(
     String url,
@@ -235,7 +285,7 @@ class LiveGoatUnlock {
     try {
       final resp = await http
           .get(Uri.parse(target), headers: headers)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 8));
       if (resp.statusCode < 200 || resp.statusCode >= 400) {
         debugPrint(
           '[LiveGoatUnlock] m3u8 probe HTTP ${resp.statusCode} '
@@ -243,11 +293,73 @@ class LiveGoatUnlock {
         );
         return false;
       }
-      return resp.body.trimLeft().startsWith('#EXTM3U');
+      var text = resp.body.trimLeft();
+      if (!text.startsWith('#EXTM3U')) return false;
+
+      var mediaUrl = target;
+      if (text.contains('#EXT-X-STREAM-INF')) {
+        final media = _firstHlsMediaUri(text, target);
+        if (media == null || media.isEmpty) return false;
+        final mediaResp = await http
+            .get(Uri.parse(media), headers: headers)
+            .timeout(const Duration(seconds: 8));
+        if (mediaResp.statusCode < 200 || mediaResp.statusCode >= 400) {
+          return false;
+        }
+        text = mediaResp.body.trimLeft();
+        if (!text.startsWith('#EXTM3U')) return false;
+        mediaUrl = media;
+      }
+
+      final seg = _firstHlsUri(text, mediaUrl);
+      if (seg == null || seg.isEmpty) return false;
+      if (_isHlsImageBaitUri(seg)) {
+        debugPrint(
+          '[LiveGoatUnlock] m3u8 probe image-bait URI '
+          '${Uri.tryParse(seg)?.host ?? seg}',
+        );
+        return false;
+      }
+      final segResp = await http
+          .get(Uri.parse(seg), headers: headers)
+          .timeout(const Duration(seconds: 12));
+      if (segResp.statusCode < 200 || segResp.statusCode >= 400) return false;
+      final bytes = segResp.bodyBytes;
+      if (_looksLikeImageMagic(bytes)) {
+        debugPrint(
+          '[LiveGoatUnlock] m3u8 probe image-bait magic '
+          '${Uri.tryParse(seg)?.host ?? seg}',
+        );
+        return false;
+      }
+      return bytes.isNotEmpty;
     } catch (e) {
       debugPrint('[LiveGoatUnlock] m3u8 probe failed: $e');
       return false;
     }
+  }
+
+  static Map<String, String> _embedIndiaPlaybackHeaders({
+    required String embedOrigin,
+    required String path,
+  }) {
+    final origin = embedOrigin.replaceAll(RegExp(r'/+$'), '');
+    final p = path.trim();
+    return {
+      'Referer': p.isEmpty ? '$origin/' : '$origin/embed/$p',
+      'Origin': origin,
+      'User-Agent': _ua,
+    };
+  }
+
+  static Future<String?> _acceptPlayableGasmUrl(
+    String? url, {
+    required Map<String, String> headers,
+  }) async {
+    final u = (url ?? '').trim();
+    if (u.isEmpty) return null;
+    if (!await _probePlayableM3u8(u, headers)) return null;
+    return u;
   }
 
   static Future<String?> unlock({
@@ -326,6 +438,10 @@ class LiveGoatUnlock {
     final path = (slot['path'] ?? '').toString();
     if (path.isEmpty) return null;
     final embedOrigin = (slot['origin'] ?? _embedIndiaOrigin).toString();
+    final playbackHeaders = _embedIndiaPlaybackHeaders(
+      embedOrigin: embedOrigin,
+      path: path,
+    );
     debugPrint(
       '[LiveGasmUnlock] path=$path island=${island.length} body=${bodyHex.length ~/ 2}B',
     );
@@ -342,7 +458,11 @@ class LiveGoatUnlock {
           bodyHex: bodyHex,
           embedOrigin: embedOrigin,
         );
-        if (url != null && url.isNotEmpty) return url;
+        final accepted = await _acceptPlayableGasmUrl(
+          url,
+          headers: playbackHeaders,
+        );
+        if (accepted != null) return accepted;
       } catch (e) {
         debugPrint('[LiveGasmUnlock] node unlock failed: $e');
       }
@@ -357,7 +477,11 @@ class LiveGoatUnlock {
         bodyHex: bodyHex,
         embedOrigin: embedOrigin,
       );
-      if (url != null && url.isNotEmpty) return url;
+      final accepted = await _acceptPlayableGasmUrl(
+        url,
+        headers: playbackHeaders,
+      );
+      if (accepted != null) return accepted;
     } catch (e) {
       debugPrint('[LiveGasmUnlock] webview unlock failed: $e');
     }
@@ -371,8 +495,7 @@ class LiveGoatUnlock {
       '[LiveGasmUnlock] wasm unlock empty — trying jw sniff path=$path',
     );
     final sniffed = await _sniffJwEmbedPlaylist(embedUrl: embedUrl);
-    if (sniffed != null && sniffed.isNotEmpty) return sniffed;
-    return null;
+    return _acceptPlayableGasmUrl(sniffed, headers: playbackHeaders);
   }
 
   static Future<String?> sniffEmbed({

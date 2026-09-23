@@ -344,6 +344,12 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   void initState() {
     super.initState();
     unawaited(hydrateIptvLiveSortProviders(ref));
+    // Seed groups paint immediately — blank rail while prefs load made hub
+    // open look like channels → clear → categories → channels (issue 322).
+    if (widget.seedItems.isNotEmpty) {
+      _items = _plainItems();
+      _loading = false;
+    }
     unawaited(_reload());
   }
 
@@ -386,6 +392,13 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       _ensureValidSelection(_items);
       return;
     }
+    // Kinds arrived while store still loading — show groups now (not blank).
+    if (widget.seedItems.isNotEmpty && _items.isEmpty) {
+      setState(() {
+        _items = _plainItems();
+        _loading = false;
+      });
+    }
     unawaited(_reload());
   }
 
@@ -422,7 +435,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     final pinned =
         await PortalLiveChannelListsStore.loadPinnedCategories(key);
     final order = await PortalLiveChannelListsStore.loadCategoryOrder(key);
-    final lastCat = await PortalLiveChannelListsStore.loadLastCategory(key);
+    final lastCat = await IptvCatalogLand.loadLastCategory();
     await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
     if (!mounted) return;
     setState(() {

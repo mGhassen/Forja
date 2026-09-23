@@ -273,6 +273,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   /// chrome filter epoch advances, promote must replace non-empty envelopes.
   String _promotedPageFeedEpoch = '';
 
+  /// Last applied [packChromeGridFlipEpoch] — empty placeholder only when this
+  /// changes after the initial latch (not on hub-open warm restore).
+  String _appliedFlipEpoch = '';
+
   /// Last successful paint for this rail — remount / tab-return warm only.
   ///
   /// Must **not** be used as a cache hit for a new selection epoch: base
@@ -422,6 +426,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // in-flight Movies/Series feed when clearing the category bar notified
     // PackChromeScope — duplicate flutter_js → timeout → "did not answer".
     if (epoch != _scopeEpoch) {
+      final flipEpoch = packChromeGridFlipEpoch(
+        context,
+        listSpec: widget.fallbackSpec,
+        tabId: widget.tabId,
+      );
       // Live/Movies/Series category flip — drop prior page so Favorites /
       // Watched do not keep showing the previous group's channels.
       // Shelf section flips already restored [_sectionResolved] or cleared above.
@@ -429,11 +438,18 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       // Do NOT null the envelope → composition cover + CatalogLoadingTicker
       // (that hides the category rail and flashes a full-page reload). Paint an
       // empty grid in place; cats stay visible until the new page lands.
-      if (!shelfSectionFlipped &&
+      //
+      // Skip on the initial epoch latch (_appliedFlipEpoch empty) and when only
+      // portalStoreKey / refresh hydrates — those must keep warm channels
+      // (hub open: channels → clear → cats → channels flash).
+      final gridFlip = _appliedFlipEpoch.isNotEmpty &&
+          flipEpoch != _appliedFlipEpoch &&
+          !shelfSectionFlipped &&
           packChromeVodPagedFeed(
             widget.fallbackSpec,
             LayoutScope.maybeOf(context),
-          )) {
+          );
+      if (gridFlip) {
         _progressiveSub?.cancel();
         _progressiveSub = null;
         _inFlight = null;
@@ -451,6 +467,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         _skipWarmRestore = true;
         _promotedPageFeedEpoch = '';
       }
+      _appliedFlipEpoch = flipEpoch;
       _scopeEpoch = epoch;
       if (!held) _bind();
     } else if (_envelope == null && _inFlight == null && !held) {

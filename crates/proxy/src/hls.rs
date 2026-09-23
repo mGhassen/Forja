@@ -270,6 +270,9 @@ fn is_plain_image_uri(uri: &str) -> bool {
         || path.ends_with(".gif")
         || path.ends_with(".webp")
         || path.ends_with(".svg")
+        // embedindia WAF decoy segments (TikTok CDN stills as "HLS").
+        || path.ends_with(".image")
+        || (path.contains("tiktokcdn") && path.contains("tplv-tiktokx-origin"))
 }
 
 /// True when every media URI is a still image (WAF decoy), not HLS/TS/fMP4.
@@ -664,6 +667,9 @@ https://cdn.example/lumeflow/y.png
         // when strip=png so wrapped TS still proxies.
         assert!(hls_playlist_is_image_bait(
             "#EXTM3U\n#EXTINF:3,\n//cdn.example/seg.png\n"
+        ));
+        assert!(hls_playlist_is_image_bait(
+            "#EXTM3U\n#EXTINF:4,\nhttps://p16-common-sign.tiktokcdn-eu.com/tos-x~tplv-tiktokx-origin.image?x=1\n"
         ));
     }
 

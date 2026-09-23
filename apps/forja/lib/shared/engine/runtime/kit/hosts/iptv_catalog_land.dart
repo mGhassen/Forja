@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
@@ -45,6 +46,9 @@ abstract final class IptvCatalogLand {
   static bool preferCategoryFocusOnLand = true;
 
   static String? _activePortalKey;
+
+  /// Sync last Live category per portal — painter land before async store read.
+  static final Map<String, String> _lastCategoryMem = {};
 
   static void setVisibleStreamIds(Iterable<String> ids) {
     _visibleStreamIdsOrdered = [
@@ -100,7 +104,27 @@ abstract final class IptvCatalogLand {
     if (key == null || id.isEmpty || PortalLiveCatalog.isSyntheticId(id)) {
       return;
     }
+    _lastCategoryMem[key] = id;
     await PortalLiveChannelListsStore.saveLastCategory(key, id);
+  }
+
+  /// In-memory last category for [portalStoreKey] (session warm / open land).
+  static String? peekLastCategory(String? portalStoreKey) {
+    final key = (portalStoreKey ?? '').trim();
+    if (key.isEmpty) return null;
+    final id = (_lastCategoryMem[key] ?? '').trim();
+    return id.isEmpty ? null : id;
+  }
+
+  @visibleForTesting
+  static void clearLastCategoryMemForTest() => _lastCategoryMem.clear();
+
+  @visibleForTesting
+  static void seedLastCategoryMemForTest(String portalKey, String categoryId) {
+    final key = portalKey.trim();
+    final id = categoryId.trim();
+    if (key.isEmpty || id.isEmpty) return;
+    _lastCategoryMem[key] = id;
   }
 
   static Future<void> rememberChannel(String streamId) async {
@@ -117,7 +141,10 @@ abstract final class IptvCatalogLand {
   static Future<String?> loadLastCategory() async {
     final key = _activePortalKey;
     if (key == null) return null;
-    return PortalLiveChannelListsStore.loadLastCategory(key);
+    final id = await PortalLiveChannelListsStore.loadLastCategory(key);
+    final trimmed = (id ?? '').trim();
+    if (trimmed.isNotEmpty) _lastCategoryMem[key] = trimmed;
+    return id;
   }
 
   static Future<String?> loadLastChannel() async {

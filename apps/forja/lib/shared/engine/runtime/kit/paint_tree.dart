@@ -2717,13 +2717,23 @@ class PackPaintTree extends StatelessWidget {
     final searching = (chrome?.eventQuery ?? '').trim().isNotEmpty;
     // Live + Movies/Series: land on first portal group (skip All / synthetics).
     // Live pin/reorder: use cached pin/drag order, not API kinds order.
+    // Prefer in-memory last category so open land matches warm channels
+    // before async store reload (avoids first-group snap → clear → reshow).
     final String selected;
     if (selectedInItems || keepSyntheticLive) {
       selected = selectedRaw;
     } else if (searching) {
       selected = '';
     } else if (!vodSection && CategoryBarActionHost.featuresEnabled(spec)) {
-      selected = _firstOrderedLiveCategoryId(items);
+      final peek = IptvCatalogLand.peekLastCategory(
+        CategoryBarActionHost.cachedLiveListParams['portalStoreKey']
+            ?.toString(),
+      );
+      if (peek != null && items.any((e) => e.id == peek)) {
+        selected = peek;
+      } else {
+        selected = _firstOrderedLiveCategoryId(items);
+      }
     } else {
       selected = _firstPortalCategoryId(items);
     }

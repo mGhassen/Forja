@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 
 void main() {
+  tearDown(IptvCatalogLand.clearLastCategoryMemForTest);
+
   const items = [
     PortalLiveCatalog.favoritesId,
     PortalLiveCatalog.watchedId,
@@ -54,5 +57,11 @@ void main() {
       ),
       '10',
     );
+  });
+
+  test('peekLastCategory reads session mem', () {
+    IptvCatalogLand.seedLastCategoryMemForTest('portal-a', '30');
+    expect(IptvCatalogLand.peekLastCategory('portal-a'), '30');
+    expect(IptvCatalogLand.peekLastCategory('other'), isNull);
   });
 }
