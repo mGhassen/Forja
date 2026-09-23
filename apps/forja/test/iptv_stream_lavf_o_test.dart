@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
+import 'package:forja/shared/player/live_sports/live_sports_player_screen.dart';
 
 void main() {
   group('iptvStreamLavfO', () {
@@ -29,16 +30,14 @@ void main() {
     test('null url → progressive reconnect (default)', () {
       expect(iptvStreamLavfO(), contains('reconnect=1'));
     });
+  });
 
-    test('sportsDirect → v1.5.36 direct reconnect (even for HLS)', () {
-      final o = iptvStreamLavfO(
-        streamUrl: 'https://cdn.example/live/index.m3u8',
-        sportsDirect: true,
-      );
+  group('liveSportsStreamLavfO', () {
+    test('v1.5.36 direct reconnect string', () {
+      final o = liveSportsStreamLavfO();
       expect(o, contains('reconnect=1'));
       expect(o, contains('reconnect_delay_max=30'));
       expect(o, contains('reconnect_on_http_error=4xx\\,5xx'));
-      expect(o, isNot(equals('reconnect=0')));
     });
   });
 

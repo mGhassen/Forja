@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/player/live/live_sports_atv_cache.dart';
+import 'package:forja/shared/player/live_sports/live_sports_atv_cache.dart';
 
 void main() {
   test('Live Sports ATV cache: UHD shares FHD bytes (no 150MB open spike)', () {

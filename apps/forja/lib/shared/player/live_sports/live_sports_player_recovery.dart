@@ -1,9 +1,9 @@
-part of 'pt_player_screen.dart';
+part of 'live_sports_player_screen.dart';
 
 // Implementations satisfy abstracts on sibling player mixins.
 // ignore_for_file: unused_element
 
-mixin _PtPlayerRecovery on _PtPlayerEngineCore {
+mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
   Future<void> _openCurrent({bool hardRecreate = false});
   Future<bool> _engineOpenSource(
     LivePlaySource src, {
@@ -18,9 +18,11 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   Future<void> _enginePlay();
   void _armTransientHwDecodeIgnore();
   void _logHealthyHold(String reason);
+  void _logHold(String reason, {required bool healthy});
   void _resetDemuxerProbe();
   bool get _streamWorking;
   bool get _livePlaybackProfile;
+  bool get _liveSportsSurface;
   bool get _bufferedRecovery;
   bool get _atvHardReseatStreams;
   bool get _playheadRecentlyMoved;
@@ -37,8 +39,8 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     _s._liveGoLiveTimer?.cancel();
     _s._liveStableTimer?.cancel();
     final grace = _s._atvMediaKit
-        ? _PtPlayerScreenState._liveGraceWindowAtv
-        : _PtPlayerScreenState._liveGraceWindow;
+        ? _LiveSportsPlayerScreenState._liveGraceWindowAtv
+        : _LiveSportsPlayerScreenState._liveGraceWindow;
     _s._liveGraceStartPos = _s._position;
     debugPrint(
       '[IPTV] live glitch ($reason) — '
@@ -69,7 +71,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     final last = _s._lastGoLiveAt;
     if (last != null &&
         DateTime.now().difference(last) <
-            _PtPlayerScreenState._liveGoLiveThrottle) {
+            _LiveSportsPlayerScreenState._liveGoLiveThrottle) {
       debugPrint('[IPTV] goLive throttled — ended');
       if (mounted) {
         setState(() => _s._statusBanner = 'Stream ended');
@@ -80,11 +82,11 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     _s._liveGoLiveAttempt = 1;
     _s._liveStableTimer?.cancel();
     final maxAttempts = _s._atvMediaKit
-        ? _PtPlayerScreenState._maxLiveGoLiveAttemptsAtv
-        : _PtPlayerScreenState._maxLiveGoLiveAttempts;
+        ? _LiveSportsPlayerScreenState._maxLiveGoLiveAttemptsAtv
+        : _LiveSportsPlayerScreenState._maxLiveGoLiveAttempts;
     final poll = _s._atvMediaKit
-        ? _PtPlayerScreenState._liveGoLivePollWindowAtv
-        : _PtPlayerScreenState._liveGoLivePollWindow;
+        ? _LiveSportsPlayerScreenState._liveGoLivePollWindowAtv
+        : _LiveSportsPlayerScreenState._liveGoLivePollWindow;
     if (mounted) {
       setState(() => _s._statusBanner = 'Reconnecting…');
     }
@@ -122,15 +124,15 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   void _armIptvLiveGoLiveStable([int? maxAttempts, Duration? poll]) {
     final max = maxAttempts ??
         (_s._atvMediaKit
-            ? _PtPlayerScreenState._maxLiveGoLiveAttemptsAtv
-            : _PtPlayerScreenState._maxLiveGoLiveAttempts);
+            ? _LiveSportsPlayerScreenState._maxLiveGoLiveAttemptsAtv
+            : _LiveSportsPlayerScreenState._maxLiveGoLiveAttempts);
     final window = poll ??
         (_s._atvMediaKit
-            ? _PtPlayerScreenState._liveGoLivePollWindowAtv
-            : _PtPlayerScreenState._liveGoLivePollWindow);
+            ? _LiveSportsPlayerScreenState._liveGoLivePollWindowAtv
+            : _LiveSportsPlayerScreenState._liveGoLivePollWindow);
     _s._liveStableTimer?.cancel();
     _s._liveStableTimer = Timer(
-      _PtPlayerScreenState._liveStableWindow,
+      _LiveSportsPlayerScreenState._liveStableWindow,
       () {
         if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
         if (_s._statusBanner != 'Reconnecting…') return;
@@ -202,8 +204,9 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   void _scheduleJumpToLive({bool force = false}) {
     if (_s._exoBackend) return;
     if (!_livePlaybackProfile) return;
-    // MediaKit live: never seek/drop-buffers — goLive is stop+open.
-    if (_s._mediaKitBackend) return;
+    // IPTV MediaKit live: never seek/drop-buffers — goLive is stop+open.
+    // Live Sports (v1.5.36): allow live-edge snap.
+    if (_s._mediaKitBackend && !_liveSportsSurface) return;
     // Classic: seekable-only open snap (1.3.114). Never force drop-buffers.
     final allowForce = _bufferedRecovery && force;
     if (!allowForce && !_s._streamSeekable) return;
@@ -220,7 +223,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
         // Never drop-buffers on a weak/empty cushion — flushes the only
         // media left and turns underrun stutter into a hard freeze (I148).
         final cacheOk = _s._cacheAheadSecs >=
-            _PtPlayerScreenState._minHealthyCacheSecs;
+            _LiveSportsPlayerScreenState._minHealthyCacheSecs;
         debugPrint(
           '[IPTV Player] live-edge snap (force=$allowForce'
           '${cacheOk ? '' : ', skip drop-buffers'}'
@@ -371,10 +374,10 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
         if (mounted) {
           setState(
             () => _s._statusBanner =
-                'Stream offline - retrying every ${_PtPlayerScreenState._coldRetryInterval.inSeconds}s…',
+                'Stream offline - retrying every ${_LiveSportsPlayerScreenState._coldRetryInterval.inSeconds}s…',
           );
         }
-        await Future.delayed(_PtPlayerScreenState._coldRetryInterval);
+        await Future.delayed(_LiveSportsPlayerScreenState._coldRetryInterval);
         if (_s._disposed) return;
         try {
           if (!await _recreatePlayer()) return;
@@ -570,11 +573,20 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
 
   Future<void> _forceSoftwareDecode() async {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
-    // MediaKit live never falls back to TextureSW.
-    // IPTV: hold when demux feeds; soft reopen when empty.
+    // Live Sports = v1.5.36: hold on VT (never TextureSW / goLive).
+    // IPTV Forja: hold when demux feeds; soft reopen when empty.
     if (_livePlaybackProfile &&
         _s._mediaKitBackend &&
         !_s.widget.vodPlayback) {
+      _armTransientHwDecodeIgnore();
+      if (_liveSportsSurface) {
+        if (_streamWorking) {
+          _logHealthyHold('hw→sw (live hold)');
+        } else {
+          _logHold('hw→sw (live hold)', healthy: false);
+        }
+        return;
+      }
       if (_streamWorking) {
         _logHealthyHold('hw→sw (iptv hold)');
         return;

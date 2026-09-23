@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
+import 'package:forja/shared/player/live_sports/live_sports_player_screen.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext;
 
-/// Forja platform service: open the shared native live player.
+/// Forja platform service: open the native live player for the right surface.
 ///
-/// Live Sports (and any sports hub that resolves to [LivePlaySource]) uses this
-/// instead of embedding a feature-private player. Peer of portal play in
-/// [iptv_play.dart].
+/// Live Sports (`BuiltInPlayerContext.live`, Stremio / liveEngine) →
+/// [LiveSportsPlayerScreen]. IPTV / VOD → [PtPlayerScreen].
 Future<void> openForjaLiveNativePlayer(
   BuildContext context, {
   required List<LivePlaySource> sources,
@@ -31,12 +31,49 @@ Future<void> openForjaLiveNativePlayer(
   if (sources.isEmpty) return;
   if (!context.mounted) return;
 
+  final kind = liveSourceKind ?? sources.first.liveSourceKind;
+  final sportsSurface = !vodPlayback &&
+      (engineContext == BuiltInPlayerContext.live ||
+          kind == PortalLiveSourceKind.stremio ||
+          kind == PortalLiveSourceKind.liveEngine);
+
   try {
     if (PlatformInfo.isAndroidTv) {
       await PlatformChannel.releaseUnderlayPlatformViewFocus();
     }
     if (!context.mounted) return;
-    PtPlayerScreen buildPlayer(ChannelGuide? guide) => PtPlayerScreen(
+
+    if (sportsSurface) {
+      LiveSportsPlayerScreen buildSports(ChannelGuide? guide) =>
+          LiveSportsPlayerScreen(
+            sources: sources,
+            title: title,
+            subtitle: subtitle,
+            logoUrl: logoUrl,
+            channelGuide: guide,
+            titleTracksSource: titleTracksSource,
+            engineContext: BuiltInPlayerContext.live,
+            liveSourceKind: kind,
+            liveEngineResolveSource: liveEngineResolveSource,
+            vodPlayback: false,
+            onlineSubtitles: onlineSubtitles,
+            onChannelChanged: onChannelChanged,
+          );
+      final Widget player;
+      if (channelGuideFuture != null) {
+        player = _DeferredChannelGuideLivePlayer(
+          guideFuture: channelGuideFuture,
+          initialGuide: channelGuide,
+          builder: buildSports,
+        );
+      } else {
+        player = buildSports(channelGuide);
+      }
+      await LiveSportsPlayerScreen.open(context, player);
+      return;
+    }
+
+    PtPlayerScreen buildIptv(ChannelGuide? guide) => PtPlayerScreen(
           sources: sources,
           title: title,
           subtitle: subtitle,
@@ -44,7 +81,7 @@ Future<void> openForjaLiveNativePlayer(
           channelGuide: guide,
           titleTracksSource: titleTracksSource,
           engineContext: engineContext,
-          liveSourceKind: liveSourceKind ?? sources.first.liveSourceKind,
+          liveSourceKind: kind,
           liveEngineResolveSource: liveEngineResolveSource,
           vodPlayback: vodPlayback,
           onlineSubtitles: onlineSubtitles,
@@ -52,21 +89,21 @@ Future<void> openForjaLiveNativePlayer(
         );
     final Widget player;
     if (channelGuideFuture != null) {
-      player = _DeferredChannelGuidePtPlayer(
+      player = _DeferredChannelGuideLivePlayer(
         guideFuture: channelGuideFuture,
         initialGuide: channelGuide,
-        builder: buildPlayer,
+        builder: buildIptv,
       );
     } else {
-      player = buildPlayer(channelGuide);
+      player = buildIptv(channelGuide);
     }
     await PtPlayerScreen.open(context, player);
   } catch (_) {}
 }
 
-/// Opens [PtPlayerScreen] now; swaps in [guideFuture] without remounting playback.
-class _DeferredChannelGuidePtPlayer extends StatefulWidget {
-  const _DeferredChannelGuidePtPlayer({
+/// Opens a live player now; swaps in [guideFuture] without remounting playback.
+class _DeferredChannelGuideLivePlayer extends StatefulWidget {
+  const _DeferredChannelGuideLivePlayer({
     required this.guideFuture,
     required this.builder,
     this.initialGuide,
@@ -74,15 +111,15 @@ class _DeferredChannelGuidePtPlayer extends StatefulWidget {
 
   final Future<ChannelGuide?> guideFuture;
   final ChannelGuide? initialGuide;
-  final PtPlayerScreen Function(ChannelGuide? guide) builder;
+  final Widget Function(ChannelGuide? guide) builder;
 
   @override
-  State<_DeferredChannelGuidePtPlayer> createState() =>
-      _DeferredChannelGuidePtPlayerState();
+  State<_DeferredChannelGuideLivePlayer> createState() =>
+      _DeferredChannelGuideLivePlayerState();
 }
 
-class _DeferredChannelGuidePtPlayerState
-    extends State<_DeferredChannelGuidePtPlayer> {
+class _DeferredChannelGuideLivePlayerState
+    extends State<_DeferredChannelGuideLivePlayer> {
   ChannelGuide? _guide;
 
   @override

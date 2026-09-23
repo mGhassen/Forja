@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Directory, File, Platform;
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show kDebugMode, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,13 +28,31 @@ import 'package:forja/shared/engine/portals/guide/guide.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
-import 'package:forja/shared/player/live/hls_play_url.dart';
+import 'package:forja/shared/player/live/pt_player_screen.dart'
+    show
+        LivePlaySource,
+        PortalLiveSourceKind,
+        PortalLiveEngineResolveSource,
+        iptvUrlLooksLikeHls,
+        iptvHlsColdOpenHold,
+        iptvIsHardOpenFail,
+        iptvIsDeadEndpointFail,
+        iptvLiveEnginePlayUrlReady,
+        iptvLiveEngineUrlVolatile,
+        iptvLiveEngineCanForceRefresh,
+        iptvLiveEngineShouldForceRefreshOnRecovery,
+        iptvIsLiveResolveStatusBanner,
+        iptvLiveSourceProbeKey,
+        iptvLiveSourceCanHoverProbe,
+        iptvLiveSourceRunHoverProbe,
+        iptvExoUrlLooksLive,
+        portalLiveSourceKindForPortal;
+import 'package:forja/shared/player/live_sports/live_sports_atv_cache.dart';
 import 'package:forja/shared/player/live/player_stats_panel.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide_panel.dart';
 import 'package:forja_foundation/widgets/guide/channel_search_overlay.dart';
-import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
 import 'package:forja/shared/player/live/player_chrome_profile.dart';
 import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
@@ -76,382 +95,28 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
-part 'pt_player_engine_core.dart';
-part 'pt_player_mk_tunables.dart';
-part 'pt_player_lavf.dart';
-part 'pt_player_watchdog.dart';
-part 'pt_player_recovery.dart';
-part 'pt_player_engine.dart';
-part 'pt_player_ui.dart';
+part 'live_sports_player_engine_core.dart';
+part 'live_sports_player_mk_tunables.dart';
+part 'live_sports_player_lavf.dart';
+part 'live_sports_player_watchdog.dart';
+part 'live_sports_player_recovery.dart';
+part 'live_sports_player_engine.dart';
+part 'live_sports_player_ui.dart';
 
-/// True for live IPTV URLs (Xtream `/live/…`, M3U, unknown). False for Xtream VOD.
-bool iptvExoUrlLooksLive(String url) {
-  final lower = url.toLowerCase();
-  if (lower.contains('/movie/') || lower.contains('/series/')) return false;
-  return true;
-}
-
-/// Live native playback profile — one MediaKit/Exo config per surface type,
-/// not inferred from URL shape.
-enum PortalLiveSourceKind {
-  /// IPTV Live tab + Forja Sports Xtream channels (MediaKit direct + lavf reconnect).
-  iptvXtream,
-
-  /// IPTV Live / Forja Sports Stalker (create_link; direct open).
-  iptvStalker,
-
-  /// Live Sports Stremio addon streams (direct HLS / lavf reconnect).
-  stremio,
-
-  /// Forja Live / PPV / Streamed engine plugins (direct open + plugin headers).
-  liveEngine;
-}
-
-/// HLS masters/media playlists — short HTTP bodies, not a progressive TS pipe.
-bool iptvUrlLooksLikeHls(String url) {
-  final lower = url.toLowerCase();
-  // Local `/hls-proxy?url=…m3u8` keeps `.m3u8` in the query; also match path.
-  return lower.contains('.m3u8') || lower.contains('/hls-proxy');
-}
-
-/// MediaKit `stream-lavf-o` for live open — HLS off (issue 273), progressive on.
-String iptvStreamLavfO({String? streamUrl}) {
-  if (streamUrl != null && iptvUrlLooksLikeHls(streamUrl)) {
-    return 'reconnect=0';
-  }
+/// Live Sports MediaKit `stream-lavf-o` — exact v1.5.36 direct reconnect.
+@visibleForTesting
+String liveSportsStreamLavfO() {
   return 'reconnect=1,'
       'reconnect_at_eof=1,'
       'reconnect_streamed=1,'
+      'reconnect_delay_max=30,'
       'reconnect_on_network_error=1,'
-      'reconnect_delay_max=5';
+      'reconnect_on_http_error=4xx\\,5xx';
 }
 
-/// HLS ABR masters (DAI / CloudFront) probe every variant before first paint.
-/// Soft-reopen at the TS empty-cache grace (~5 s) aborts TLS mid-probe (issue 273).
-bool iptvHlsColdOpenHold({
-  required String url,
-  required bool playbackStarted,
-  required DateTime openedAt,
-  required DateTime now,
-  Duration grace = const Duration(seconds: 30),
-}) {
-  if (playbackStarted) return false;
-  if (!iptvUrlLooksLikeHls(url)) return false;
-  return now.difference(openedAt) < grace;
-}
 
-/// IPTV catalog / Forja Sports: portal platform → live source kind.
-PortalLiveSourceKind portalLiveSourceKindForPortal(PortalPlatform platform) {
-  return switch (platform) {
-    PortalPlatform.stalker => PortalLiveSourceKind.iptvStalker,
-    _ => PortalLiveSourceKind.iptvXtream,
-  };
-}
-
-/// Hard open failure (MediaKit / Exo) — VOD can swap engines once.
-bool iptvIsHardOpenFail(String msg) {
-  final lower = msg.toLowerCase();
-  return lower.contains('failed to open') ||
-      lower.contains('unable to open') ||
-      lower.contains('error opening') ||
-      lower.contains('failed to recognize file format') ||
-      lower.contains('unrecognizedinputformat') ||
-      lower.contains('none of the available extractors') ||
-      lower.contains('invalidresponsecode') ||
-      lower.contains('response code: 403') ||
-      lower.contains('response code: 401') ||
-      lower.contains('response code: 407') ||
-      lower.contains('arrayindexoutofbounds') ||
-      lower.contains('unexpectedloaderexception') ||
-      // Exo progressive VOD: HTTP death or Media3 AAC/MP4 extractor crash.
-      lower.contains('source error');
-}
-
-/// Open/connect death where retrying the same URL is useless (multi-source
-/// should rotate immediately). Broader than [iptvIsHardOpenFail] — includes
-/// TCP timeouts that never become "Failed to open".
-bool iptvIsDeadEndpointFail(String msg) {
-  final lower = msg.toLowerCase();
-  if (iptvIsHardOpenFail(msg)) return true;
-  return lower.contains('timed out') ||
-      lower.contains('timeout') ||
-      lower.contains('connection refused') ||
-      lower.contains('could not connect') ||
-      lower.contains('network is unreachable') ||
-      lower.contains('no route to host') ||
-      (lower.contains('tcp:') && lower.contains('failed'));
-}
-
-/// Single source for the IPTV player.
-class LivePlaySource {
-  final String url;
-  final String label;
-
-  /// Source-picker subtitle (e.g. category / group).
-  final String? detail;
-
-  /// Optional channel logo (Xtream `stream_icon`).
-  final String? logoUrl;
-
-  /// Xtream `stream_id` — used to pull logos from the IPTV catalog cache.
-  final String? streamId;
-
-  /// Xtream `epg_channel_id` — fallback when short EPG by stream id is empty.
-  final String? epgChannelId;
-
-  /// Optional HTTP headers (Cookie / Referer / Origin) for Exo / MediaKit.
-  /// Live Sports Streamed handoff uses these instead of `/hls-proxy`.
-  final Map<String, String> headers;
-
-  /// Live Sports: which playback profile applies when this row is active.
-  final PortalLiveSourceKind? liveSourceKind;
-
-  /// Live Sports stream sheet: provider chip (PPV / Streamed / …).
-  final String? liveProviderBadge;
-
-  /// Live Sports stream sheet: concurrent viewers when known.
-  final int liveViewerCount;
-
-  /// Live Sports stream sheet: HD quality row.
-  final bool liveStreamHd;
-
-  /// Catalog embed URL before engine unlock (lazy resolve on source switch).
-  final String? liveEngineEmbedUrl;
-
-  /// Opaque resolve context for [PortalLiveEngineResolveSource].
-  final Map<String, dynamic>? liveEngineResolveParams;
-
-  const LivePlaySource({
-    required this.url,
-    required this.label,
-    this.detail,
-    this.logoUrl,
-    this.streamId,
-    this.epgChannelId,
-    this.headers = const {},
-    this.liveSourceKind,
-    this.liveProviderBadge,
-    this.liveViewerCount = 0,
-    this.liveStreamHd = false,
-    this.liveEngineEmbedUrl,
-    this.liveEngineResolveParams,
-  });
-
-  LivePlaySource copyWith({
-    String? url,
-    String? label,
-    String? detail,
-    String? logoUrl,
-    String? streamId,
-    String? epgChannelId,
-    Map<String, String>? headers,
-    PortalLiveSourceKind? liveSourceKind,
-    String? liveProviderBadge,
-    int? liveViewerCount,
-    bool? liveStreamHd,
-    String? liveEngineEmbedUrl,
-    Map<String, dynamic>? liveEngineResolveParams,
-  }) {
-    return LivePlaySource(
-      url: url ?? this.url,
-      label: label ?? this.label,
-      detail: detail ?? this.detail,
-      logoUrl: logoUrl ?? this.logoUrl,
-      streamId: streamId ?? this.streamId,
-      epgChannelId: epgChannelId ?? this.epgChannelId,
-      headers: headers ?? this.headers,
-      liveSourceKind: liveSourceKind ?? this.liveSourceKind,
-      liveProviderBadge: liveProviderBadge ?? this.liveProviderBadge,
-      liveViewerCount: liveViewerCount ?? this.liveViewerCount,
-      liveStreamHd: liveStreamHd ?? this.liveStreamHd,
-      liveEngineEmbedUrl: liveEngineEmbedUrl ?? this.liveEngineEmbedUrl,
-      liveEngineResolveParams:
-          liveEngineResolveParams ?? this.liveEngineResolveParams,
-    );
-  }
-
-  /// Channel name for chrome — strips leading `T3 · ` rank prefix.
-  String get chromeTitle {
-    final t = label.replaceFirst(RegExp(r'^T\d+\s*·\s*'), '').trim();
-    return t.isEmpty ? label : t;
-  }
-
-  /// Match-rank badge (`T1`…`T4`) when the label carries a Sportio tier prefix.
-  String? get tierBadge {
-    final m = RegExp(r'^T(\d+)\s*·\s*').firstMatch(label);
-    if (m == null) return null;
-    return 'T${m.group(1)}';
-  }
-
-  /// Solid fill for [tierBadge] — T1 strongest → T4 weakest.
-  Color? get tierBadgeColor {
-    return switch (tierBadge) {
-      'T1' => const Color(0xFF22C55E), // green
-      'T2' => const Color(0xFF84CC16), // lime
-      'T3' => const Color(0xFFEAB308), // amber
-      'T4' => const Color(0xFF64748B), // slate
-      _ => null,
-    };
-  }
-
-  /// Channel name for Source rows / chrome — portal name as-is (only strips `Tn ·`).
-  String get pickerTitle => chromeTitle;
-
-  /// Source-picker secondary line — category only.
-  String? get pickerSubtitle {
-    final cat = (detail ?? '').trim();
-    if (cat.isEmpty) return null;
-    return _normalizePipes(cat);
-  }
-
-  static String _normalizePipes(String s) =>
-      s.replaceAll(RegExp(r'\s*\|\s*'), ' · ');
-}
-
-/// True when [url] is already a playable handoff (HLS/proxy), not a catalog embed.
-bool iptvLiveEnginePlayUrlReady(String url) {
-  final u = url.trim().toLowerCase();
-  if (u.isEmpty) return false;
-  if (u.contains('127.0.0.1') || u.contains('/hls-proxy')) return true;
-  return RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)').hasMatch(u);
-}
-
-/// Signed / flaky CDNs (OK.ru, Livepeer, Foorja S3) — re-resolve on recovery
-/// instead of reopening the same dead playlist.
-bool iptvLiveEngineUrlVolatile(String url) {
-  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
-  if (host.isEmpty) return false;
-  return host.contains('okcdn.ru') ||
-      host.contains('vkuser.net') ||
-      host.contains('ok.ru') ||
-      host.contains('livepeer') ||
-      host.contains('amazonaws.com') ||
-      host.contains('foorja');
-}
-
-bool iptvLiveEngineCanForceRefresh(LivePlaySource src) {
-  if (src.liveSourceKind != PortalLiveSourceKind.liveEngine) return false;
-  final params = src.liveEngineResolveParams;
-  if (params == null || params.isEmpty) return false;
-  final matchId = (params['matchId'] ?? '').toString().trim();
-  return matchId.isNotEmpty;
-}
-
-/// Soft buffering reopen reuses the URL. Hard/dead open or volatile CDN
-/// re-unlocks (GOAT/GASM). Avoids "Preparing playback…" spam mid-watch.
-bool iptvLiveEngineShouldForceRefreshOnRecovery(
-  LivePlaySource src, {
-  required String reason,
-}) {
-  if (!iptvLiveEngineCanForceRefresh(src)) return false;
-  if (iptvLiveEngineUrlVolatile(src.url)) return true;
-  return iptvIsHardOpenFail(reason) || iptvIsDeadEndpointFail(reason);
-}
-
-/// Resolve-path banners set via [PortalLiveEngineResolveSource] onProgress.
-bool iptvIsLiveResolveStatusBanner(String? banner) {
-  return banner == 'Unlocking source…' ||
-      banner == 'Refreshing stream…' ||
-      banner == 'Preparing playback…';
-}
-
-/// Cache key for live-source hover / picker health probes.
-String iptvLiveSourceProbeKey(LivePlaySource src) {
-  final id = (src.streamId ?? '').trim();
-  if (id.isNotEmpty) return id;
-  final url = src.url.trim();
-  if (url.isNotEmpty && !url.startsWith('pending:')) return url;
-  final embed = (src.liveEngineEmbedUrl ?? '').trim();
-  if (embed.isNotEmpty) return embed;
-  return url;
-}
-
-/// Playable URL for [PortalAliveChecker], or null when HTTP cannot judge the row
-/// (catalog embed page, unresolved `pending:` without a handoff URL).
-String? iptvLiveSourceProbeUrl(LivePlaySource src) {
-  if (src.liveSourceKind == PortalLiveSourceKind.iptvXtream ||
-      src.liveSourceKind == PortalLiveSourceKind.iptvStalker ||
-      // Flixnest JWT etc.: bare probe paints red while MediaKit opens after
-      // retries (same cold-open flake as "Failed to open" → healthy streak).
-      src.liveSourceKind == PortalLiveSourceKind.stremio) {
-    return null;
-  }
-  final url = src.url.trim();
-  if (iptvLiveEnginePlayUrlReady(url)) {
-    // Signed / Referer playlists (and pack `directPlayback` rows that ship
-    // headers) false-negative on bare HTTP probe while Exo/MediaKit play fine.
-    if (src.headers.isNotEmpty) return null;
-    return url;
-  }
-
-  final embed = (src.liveEngineEmbedUrl ?? '').trim();
-  if (url.startsWith('pending:')) return null;
-
-  if (src.liveSourceKind == PortalLiveSourceKind.liveEngine || embed.isNotEmpty) {
-    return null;
-  }
-
-  if (url.isEmpty) return null;
-  return url;
-}
-
-/// Row [iptvLiveSourceProbeUrl] cannot judge — still selectable, not dead.
-/// Covers embed pages, portal Live TV, Stremio Live TV (signed flixnest JWT),
-/// signed Streamed/WatchFooty HLS (Referer), and direct-playback rows that
-/// drop [LivePlaySource.liveEngineEmbedUrl].
-bool iptvLiveSourceProbeSkipped(LivePlaySource src) {
-  return iptvLiveSourceProbeUrl(src) == null;
-}
-
-/// Live Sports Providers hover — always wire the status strip (pre-9e66afdf).
-/// Real alive-check when a bare or header probe can run; embed / `pending:`
-/// rows still light green as selectable (not dead). Portals resolve then check.
-bool iptvLiveSourceCanHoverProbe(LivePlaySource src) {
-  if (src.liveSourceKind == PortalLiveSourceKind.iptvXtream ||
-      src.liveSourceKind == PortalLiveSourceKind.iptvStalker ||
-      src.liveSourceKind == PortalLiveSourceKind.liveEngine ||
-      src.liveSourceKind == PortalLiveSourceKind.stremio) {
-    return true;
-  }
-  return iptvLiveEnginePlayUrlReady(src.url.trim());
-}
-
-/// Shared hover / focus probe for Providers tiles and in-player Source menu.
-/// Skipped rows (signed HLS, portal Live TV, embeds) remember green without
-/// a bare HTTP check — same contract as [ResolveStreamsAdapter].
-Future<bool> iptvLiveSourceRunHoverProbe(
-  LivePlaySource src, {
-  required KitUrlHealthProbe healthProbe,
-}) async {
-  if (!iptvLiveSourceCanHoverProbe(src)) return true;
-  final key = iptvLiveSourceProbeKey(src);
-  final cached = healthProbe.healthFor(key);
-  if (cached != null) return cached;
-  final probeUrl = iptvLiveSourceProbeUrl(src);
-  if (probeUrl == null) {
-    final ok = iptvLiveSourceProbeSkipped(src);
-    healthProbe.remember(key, ok);
-    return ok;
-  }
-  return healthProbe.checkNow(key, probeUrl);
-}
-
-typedef PortalLiveEngineResolveSource =
-    Future<LivePlaySource?> Function(
-      LivePlaySource catalogSource, {
-      void Function(String message)? onProgress,
-      bool forceRefresh,
-    });
-
-/// Dedicated IPTV / Live native player. Android remembers Exo / MediaKit per
-/// [engineContext] (IPTV ≠ VOD ≠ Live); other platforms use libmpv. Includes:
-///   • Watchdog (3 detectors): long buffering, frozen position, ready-but-not-playing
-///   • Tiered recovery: reopen + live-edge → stop+open → recreate
-///   • Mid-stream underrun → no back-buffer (freeze, no replay); proxy + ffmpeg reconnect bridge CDN closes
-///   • Multi-source rotation
-///   • Backoff retries with healthy-streak reset
-///   • Pretty responsive overlay UI
-class PtPlayerScreen extends ConsumerStatefulWidget {
+/// Live Sports native player (v1.5.36 MediaKit stack — independent of IPTV).
+class LiveSportsPlayerScreen extends ConsumerStatefulWidget {
   final List<LivePlaySource> sources;
   final String title;
   final String? subtitle;
@@ -500,7 +165,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   /// Live Sports: unlock catalog embed rows on source switch.
   final PortalLiveEngineResolveSource? liveEngineResolveSource;
 
-  const PtPlayerScreen({
+  const LiveSportsPlayerScreen({
     super.key,
     required this.sources,
     required this.title,
@@ -509,7 +174,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
     this.channelGuide,
     this.onChannelChanged,
     this.onStreamDead,
-    this.engineContext = BuiltInPlayerContext.iptv,
+    this.engineContext = BuiltInPlayerContext.live,
     this.forceBuiltInEngine,
     this.vodPlayback = false,
     this.onlineSubtitles = false,
@@ -526,7 +191,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   });
 
   /// Convenience: build for a single catalog stream (Xtream / Stalker / M3U).
-  factory PtPlayerScreen.singleStream({
+  factory LiveSportsPlayerScreen.singleStream({
     Key? key,
     required String url,
     required PortalStream stream,
@@ -542,7 +207,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
     final kind = vod || portalPlatform == null
         ? null
         : portalLiveSourceKindForPortal(portalPlatform);
-    return PtPlayerScreen(
+    return LiveSportsPlayerScreen(
       key: key,
       sources: [
         LivePlaySource(
@@ -575,17 +240,17 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   }
 
   /// Convenience: build for a list of channel hits (multi-source).
-  factory PtPlayerScreen.fromHits({
+  factory LiveSportsPlayerScreen.fromHits({
     Key? key,
     required List<ChannelHit> hits,
     required String title,
     String? logoUrl,
-    BuiltInPlayerContext engineContext = BuiltInPlayerContext.iptv,
+    BuiltInPlayerContext engineContext = BuiltInPlayerContext.live,
   }) {
     final kinds = hits
         .map((h) => portalLiveSourceKindForPortal(h.portal.portal.platform))
         .toList();
-    return PtPlayerScreen(
+    return LiveSportsPlayerScreen(
       key: key,
       title: title,
       logoUrl: logoUrl,
@@ -606,7 +271,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   /// Masks the shell underlay (no catalog peek during the slide) without
   /// Offstage/reflow of the rail.
   ///
-  /// [player] is usually [PtPlayerScreen]; wrappers (deferred channel guide)
+  /// [player] is usually [LiveSportsPlayerScreen]; wrappers (deferred channel guide)
   /// are allowed so playback can start before the guide catalog is ready.
   static Future<T?> open<T>(
     BuildContext context,
@@ -623,7 +288,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
     }
     return Navigator.of(hostContext, rootNavigator: true).push<T>(
       InAppMiniAwarePageRoute<T>(
-        settings: const RouteSettings(name: 'iptv_player'),
+        settings: const RouteSettings(name: 'live_sports_player'),
         transitionDuration: const Duration(milliseconds: 350),
         reverseTransitionDuration: const Duration(milliseconds: 300),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -646,19 +311,19 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<PtPlayerScreen> createState() => _PtPlayerScreenState();
+  ConsumerState<LiveSportsPlayerScreen> createState() => _LiveSportsPlayerScreenState();
 }
 
-class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
+class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     with
         WidgetsBindingObserver,
-        _PtPlayerEngineCore,
-        _PtPlayerMkTunables,
-        _PtPlayerLavf,
-        _PtPlayerWatchdog,
-        _PtPlayerRecovery,
-        _PtPlayerEngine,
-        _PtPlayerUi
+        _LiveSportsPlayerEngineCore,
+        _LiveSportsPlayerMkTunables,
+        _LiveSportsPlayerLavf,
+        _LiveSportsPlayerWatchdog,
+        _LiveSportsPlayerRecovery,
+        _LiveSportsPlayerEngine,
+        _LiveSportsPlayerUi
     implements InAppMiniPlayerSession {
   static int _nextExoViewId = 1;
   static int _nextNativeViewId = 1;
@@ -1056,8 +721,15 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
-  /// ATV MediaKit: 64 MiB Player buffer (demuxer owns readahead).
+  /// ATV MediaKit: v1.5.36 32 MiB for Live Sports.
   PlayerConfiguration get _mediaKitPlayerConfiguration {
+    if (_atvMediaKit && !widget.vodPlayback) {
+      return const PlayerConfiguration(
+        bufferSize: 32 * 1024 * 1024,
+        logLevel: MPVLogLevel.warn,
+        libass: true,
+      );
+    }
     return _playerConfiguration;
   }
 
@@ -1107,7 +779,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   }
 
   @override
-  void didUpdateWidget(covariant PtPlayerScreen oldWidget) {
+  void didUpdateWidget(covariant LiveSportsPlayerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     final next = widget.channelGuide;
     final prev = oldWidget.channelGuide;

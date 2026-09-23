@@ -1,14 +1,15 @@
-part of 'pt_player_screen.dart';
+part of 'live_sports_player_screen.dart';
 
 // Implementations satisfy abstracts on sibling player mixins.
 // ignore_for_file: unused_element
 
-mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
+mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
   Future<void> _triggerRecovery({
     required String reason,
     bool forceHard = false,
   });
   bool get _livePlaybackProfile;
+  bool get _liveSportsSurface;
   void _syncPlaybackBannerVisibility();
 
   /// Sample cache health every watchdog tick (MediaKit).
@@ -133,7 +134,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         return;
       }
       if (drops > _s._stallFrameDropBaseline + 2 &&
-          _s._cacheAheadSecs >= _PtPlayerScreenState._minHealthyCacheSecs) {
+          _s._cacheAheadSecs >= _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
         _s._livePaintMissStreak = 2;
       }
     } catch (_) {}
@@ -150,7 +151,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
 
   /// Accept only plausible ahead values (see [_maxSaneCacheAheadSecs]).
   void _applyCacheAheadSample(double aheadSecs, {required String source}) {
-    if (aheadSecs > _PtPlayerScreenState._maxSaneCacheAheadSecs) {
+    if (aheadSecs > _LiveSportsPlayerScreenState._maxSaneCacheAheadSecs) {
       debugPrint(
         '[IPTV] ignore absurd $source=${aheadSecs.toStringAsFixed(1)}s '
         '(PTS discontinuity) — not counting as healthy cache',
@@ -198,7 +199,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     final at = _s._feedAdvancedAt;
     if (at == null) return false;
     return DateTime.now().difference(at) <
-        _PtPlayerScreenState._networkAliveWindow;
+        _LiveSportsPlayerScreenState._networkAliveWindow;
   }
 
   /// Stream is working: enough cache to play, or still downloading, or
@@ -239,16 +240,16 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     if (since == null) return false;
     if (_playheadRecentlyMoved) return false;
     if ((!_mediaKitLiveProfile || !_stallReopenRecovery) &&
-        _s._cacheAheadSecs >= _PtPlayerScreenState._minHealthyCacheSecs) {
+        _s._cacheAheadSecs >= _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
       return false;
     }
     return DateTime.now().difference(since) >=
-        _PtPlayerScreenState._bufferingHardWallDuration;
+        _LiveSportsPlayerScreenState._bufferingHardWallDuration;
   }
 
   void _armTransientHwDecodeIgnore() {
     _s._ignoreHwDecodeFailUntil = DateTime.now().add(
-      _PtPlayerScreenState._transientHwDecodeIgnore,
+      _LiveSportsPlayerScreenState._transientHwDecodeIgnore,
     );
   }
 
@@ -260,6 +261,23 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     _s._bufferingClearAt = null;
     _s._playbackBannerSnapshot = null;
     _syncPlaybackBannerVisibility();
+  }
+
+  /// Show Buffering chrome (Live Sports soft-reopen path — v1.5.36).
+  void _ensureBufferingChrome(DateTime now) {
+    if (_s._buffering) {
+      _s._bufferingSince ??= now;
+      _syncPlaybackBannerVisibility();
+      return;
+    }
+    if (!mounted) return;
+    _s._buffering = true;
+    _s._bufferingClearAt = null;
+    _s._bufferingSince ??= now;
+    if (_s._playbackBannerSnapshot != true) {
+      _s._playbackBannerSnapshot = null;
+      _syncPlaybackBannerVisibility();
+    }
   }
 
   void _logHold(String reason, {required bool healthy}) {
@@ -303,11 +321,11 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     final since = _s._bufferingSince;
     if (since == null) return false;
     if (_s._cacheAheadSecs >=
-        _PtPlayerScreenState._liveEmptyUnderrunCacheSecs) {
+        _LiveSportsPlayerScreenState._liveEmptyUnderrunCacheSecs) {
       return false;
     }
     return DateTime.now().difference(since) >=
-        _PtPlayerScreenState._liveEmptyBufferingUnderrun;
+        _LiveSportsPlayerScreenState._liveEmptyBufferingUnderrun;
   }
 
   String get _activePlayUrl {
@@ -321,7 +339,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         playbackStarted: _playbackStarted,
         openedAt: _s._openedAt,
         now: DateTime.now(),
-        grace: _PtPlayerScreenState._hlsColdOpenGrace,
+        grace: _LiveSportsPlayerScreenState._hlsColdOpenGrace,
       );
 
   bool get _streamWorking {
@@ -329,6 +347,35 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     // Native HLS engines: trust playing/ready events only (no cache metric).
     if (_nativeHlsEngine) {
       return _s._playing && _s._userPlayWhenReady;
+    }
+    // Live Sports = v1.5.36: no HLS cold-open hold; MediaKit ignores feed-alone.
+    if (_liveSportsSurface) {
+      if (_stallWithoutPlayhead) return false;
+      if (_bufferingHardWall) return false;
+      if (_sustainedEmptyBufferingUnderrun) return false;
+      final openedAt = _s._openedAt;
+      final pastColdOpen =
+          DateTime.now().difference(openedAt) >= const Duration(seconds: 8);
+      if (pastColdOpen &&
+          _s._cacheAheadSecs <
+              _LiveSportsPlayerScreenState._liveEmptyUnderrunCacheSecs &&
+          !_networkStillFeeding) {
+        return false;
+      }
+      if (_mediaKitLiveProfile) {
+        if (_playheadRecentlyMoved) return true;
+        if (!_stallReopenRecovery &&
+            _s._cacheAheadSecs >=
+                _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
+          return true;
+        }
+        return false;
+      }
+      if (_s._cacheAheadSecs >= _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
+        return true;
+      }
+      if (_playheadRecentlyMoved) return true;
+      return false;
     }
     // HLS ABR probe: demuxer cache stays 0 while ffmpeg opens every variant —
     // do not treat that as dead (stall mode would soft-reopen and kill TLS).
@@ -345,7 +392,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         DateTime.now().difference(openedAt) >= const Duration(seconds: 8);
     if (pastColdOpen &&
         _s._cacheAheadSecs <
-            _PtPlayerScreenState._liveEmptyUnderrunCacheSecs &&
+            _LiveSportsPlayerScreenState._liveEmptyUnderrunCacheSecs &&
         !_networkStillFeeding) {
       return false;
     }
@@ -357,12 +404,12 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
       if (_networkStillFeeding) return true;
       if (!_stallReopenRecovery &&
           _s._cacheAheadSecs >=
-              _PtPlayerScreenState._minHealthyCacheSecs) {
+              _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
         return true;
       }
       return false;
     }
-    if (_s._cacheAheadSecs >= _PtPlayerScreenState._minHealthyCacheSecs) {
+    if (_s._cacheAheadSecs >= _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
       return true;
     }
     if (_playheadRecentlyMoved) return true;
@@ -376,7 +423,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
       return;
     }
     if (now.difference(clearAt) <
-        _PtPlayerScreenState._bufferingClearHold) {
+        _LiveSportsPlayerScreenState._bufferingClearHold) {
       return;
     }
     final since = _s._bufferingSince;
@@ -414,7 +461,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
               const Duration(milliseconds: 1500) &&
           _s._lastRecoveryAt != null &&
           now.difference(_s._lastRecoveryAt!) >
-              _PtPlayerScreenState._healthyStreakNeeded) {
+              _LiveSportsPlayerScreenState._healthyStreakNeeded) {
         debugPrint('[IPTV Watchdog] healthy streak - resetting retries');
         _s._retryAttempt = 0;
         _s._lastRecoveryAt = null;
@@ -430,18 +477,18 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
       // Recovery stays native error + startup failover only.
       if (_nativeHlsEngine) return;
 
-      // MediaKit live recovery is grace → goLive only. No soft-reopen
-      // underrun / paint / self-pause (that was Forja's reconnect storm).
-      if (_mediaKitLiveProfile) {
+      // IPTV MediaKit (RFC-113): grace → goLive only. Live Sports keeps the
+      // v1.5.36 soft-reopen detectors below.
+      if (_mediaKitLiveProfile && !_liveSportsSurface) {
         if (_streamWorking) _clearBufferingChrome();
         return;
       }
 
-      // Detector 1: long buffering — Exo / non–MediaKit-live only.
+      // Detector 1: long buffering — only if cache is empty / not working.
       final emptyUnderrun = _s._cacheAheadSecs <
-          _PtPlayerScreenState._liveEmptyUnderrunCacheSecs;
+          _LiveSportsPlayerScreenState._liveEmptyUnderrunCacheSecs;
       final bufferGrace = emptyUnderrun
-          ? _PtPlayerScreenState._liveEmptyBufferingUnderrun
+          ? _LiveSportsPlayerScreenState._liveEmptyBufferingUnderrun
           : (_s._lastPos > Duration.zero
               ? const Duration(milliseconds: 12000)
               : const Duration(milliseconds: 25000));
@@ -449,7 +496,11 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
           _s._bufferingSince != null &&
           now.difference(_s._bufferingSince!) > bufferGrace) {
         if (_streamWorking) {
-          _clearBufferingChrome();
+          if (_liveSportsSurface) {
+            _logHealthyHold('buffering');
+          } else {
+            _clearBufferingChrome();
+          }
           return;
         }
         _triggerRecovery(
@@ -459,37 +510,76 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         );
         return;
       }
-      // Detector 2: position frozen — Exo/VOD.
-      final frozenFor = now.difference(_s._lastPosChange);
-      if (_s._userPlayWhenReady &&
-          _s._lastPos > Duration.zero &&
-          frozenFor > const Duration(milliseconds: 8000)) {
-        if (_streamWorking) {
-          _logHealthyHold('frozen');
+      // Detector 2: position frozen — Exo/VOD only.
+      // Detector 2b: Live Sports MediaKit paint stall (v1.5.36).
+      if (!_mediaKitLiveProfile) {
+        final frozenFor = now.difference(_s._lastPosChange);
+        if (_s._userPlayWhenReady &&
+            _s._lastPos > Duration.zero &&
+            frozenFor > const Duration(milliseconds: 8000)) {
+          if (_streamWorking) {
+            _logHealthyHold('frozen');
+            return;
+          }
+          _triggerRecovery(
+            reason: 'position frozen ${frozenFor.inSeconds}s, cache empty',
+          );
           return;
         }
-        _triggerRecovery(
-          reason: 'position frozen ${frozenFor.inSeconds}s, cache empty',
-        );
-        return;
+      } else if (_liveSportsSurface &&
+          _s._userPlayWhenReady &&
+          _s._playing) {
+        if (_playheadRecentlyMoved && !_sustainedEmptyBufferingUnderrun) {
+          _s._livePaintMissStreak = 0;
+          return;
+        }
+        final frozenFor = now.difference(_s._lastPosChange);
+        if (frozenFor > const Duration(milliseconds: 1500)) {
+          _ensureBufferingChrome(now);
+          if (frozenFor >= _LiveSportsPlayerScreenState._liveEmptyPauseReopen) {
+            if (_s._livePaintMissStreak < 2) return;
+            final empty = _s._cacheAheadSecs <
+                _LiveSportsPlayerScreenState._minHealthyCacheSecs;
+            if (!empty && !_stallReopenRecovery) {
+              _logHealthyHold('paint idle, cache hold');
+              return;
+            }
+            _triggerRecovery(
+              reason: empty
+                  ? 'live underrun, cache empty'
+                  : 'live vo freeze, paint stalled '
+                      '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
+            );
+            return;
+          }
+        }
       }
-      // Detector 3: silent self-pause (Exo / non–MediaKit-live).
+      // Detector 3: silent self-pause.
       if (_s._userPlayWhenReady &&
           !_s._playing &&
           _s._readyNotPlayingSince != null) {
         final pausedFor = now.difference(_s._readyNotPlayingSince!);
         if (_livePlaybackProfile && _bufferedRecovery) {
           if (_streamWorking) {
-            _clearBufferingChrome();
+            if (_liveSportsSurface) {
+              if (!_s._buffering) _logHealthyHold('self-pause');
+            } else {
+              _clearBufferingChrome();
+            }
             return;
           }
           if (!_stallReopenRecovery &&
               _s._cacheAheadSecs >=
-                  _PtPlayerScreenState._minHealthyCacheSecs) {
-            _clearBufferingChrome();
+                  _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
+            if (_liveSportsSurface) {
+              if (!_s._buffering) _logHealthyHold('self-pause');
+            } else {
+              _clearBufferingChrome();
+            }
             return;
           }
-          if (pausedFor < _PtPlayerScreenState._liveEmptyPauseReopen) {
+          if (_liveSportsSurface) _ensureBufferingChrome(now);
+          if (pausedFor < _LiveSportsPlayerScreenState._liveEmptyPauseReopen) {
             if (pausedFor.inMilliseconds < 1200) {
               _logHold('self-pause refill', healthy: false);
             }

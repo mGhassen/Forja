@@ -1,15 +1,16 @@
-part of 'pt_player_screen.dart';
+part of 'live_sports_player_screen.dart';
 
 // Implementations satisfy abstracts on sibling player mixins.
 // ignore_for_file: unused_element
 
-mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
+mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
   void _engineSetVolume(double volume);
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
     String? streamUrl,
   });
   bool get _livePlaybackProfile;
+  bool get _liveSportsSurface;
   bool get _useSoftwareDecode;
 
   Future<void> _tuneDesktopMediaKitAfterOpen() async {
@@ -180,8 +181,10 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
     });
   }
 
-  /// Keep Forja live demuxer window after height probe (RFC-113).
-  /// Admin override still widens cache-secs only; demuxer bytes stay fixed.
+  /// Height-probe demuxer window after open.
+  ///
+  /// Live Sports (`_liveSportsSurface`): pre–RFC-113 / v1.5.36 ATV tiers,
+  /// `demuxer-max-back-bytes=0`. IPTV: RFC-113 `live/forja` (untouched).
   Future<void> _applyAtvLiveCacheProfile(
     NativePlayer p, {
     required int height,
@@ -190,6 +193,15 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
     if (_s.widget.vodPlayback) return;
     if (!_livePlaybackProfile) return;
     if (_s._liveCacheTierApplied && height == _s._lastVideoHeight) return;
+
+    if (_liveSportsSurface) {
+      await _applySportsAtvLiveCacheProfile(
+        p,
+        height: height,
+        videoBitrate: videoBitrate,
+      );
+      return;
+    }
 
     const cacheSecs = 30;
     const readaheadSecs = 8;
@@ -218,6 +230,77 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
     );
   }
 
+  /// Live Sports ATV only — v1.5.36 height tiers + back-bytes=0.
+  Future<void> _applySportsAtvLiveCacheProfile(
+    NativePlayer p, {
+    required int height,
+    double videoBitrate = 0,
+  }) async {
+    final overrideSecs = await SettingsService().getIptvLiveBufferSecs();
+    late ({
+      String tier,
+      int cacheSecs,
+      int readaheadSecs,
+      int demuxerMaxBytes,
+    }) profile;
+
+    if (overrideSecs > 0) {
+      final forced = SettingsService.iptvLiveBufferProfileForSecs(overrideSecs);
+      profile = (
+        tier: forced.tier,
+        cacheSecs: forced.cacheSecs,
+        readaheadSecs: forced.readaheadSecs,
+        demuxerMaxBytes: forced.demuxerMaxBytes,
+      );
+      if (videoBitrate > 0) {
+        final needBytes = (videoBitrate / 8) * profile.cacheSecs;
+        if (needBytes > profile.demuxerMaxBytes * 0.9) {
+          debugPrint(
+            '[IPTV Player] live/sports/${profile.tier} demuxer may byte-bind at '
+            '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps '
+            '(override ${profile.cacheSecs}s)',
+          );
+        }
+      }
+    } else {
+      profile = height > 0
+          ? liveSportsAtvCacheTierForHeight(height)
+          : liveSportsAtvCacheTierForHeight(1080);
+
+      if (videoBitrate > 0) {
+        final needBytes = (videoBitrate / 8) * profile.cacheSecs;
+        if (needBytes > profile.demuxerMaxBytes * 0.9) {
+          final bumped = liveSportsBumpAtvCacheTier(profile);
+          if (bumped.tier != profile.tier) {
+            profile = bumped;
+          } else if (profile.tier == 'uhd' || profile.tier == 'fhd') {
+            debugPrint(
+              '[IPTV Player] live/sports/uhd demuxer may still byte-bind at '
+              '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps',
+            );
+          }
+        }
+      }
+    }
+
+    await p.setProperty('cache-secs', '${profile.cacheSecs}');
+    await p.setProperty('demuxer-readahead-secs', '${profile.readaheadSecs}');
+    await p.setProperty('demuxer-max-bytes', '${profile.demuxerMaxBytes}');
+    await p.setProperty('demuxer-max-back-bytes', '0');
+    await p.setProperty('cache-pause', 'no');
+    await p.setProperty('cache-pause-initial', 'no');
+    if (_s._atvMediaKit) {
+      await p.setProperty('cache-on-disk', 'no');
+    }
+
+    _s._liveCacheTierApplied = true;
+    debugPrint(
+      '[IPTV Player] MediaKit cache profile=live/sports/${profile.tier} '
+      'height=$height bitrate=${videoBitrate > 0 ? (videoBitrate / 1e6).toStringAsFixed(1) : "?"}Mbps '
+      'cache=${profile.cacheSecs}s bytes=${profile.demuxerMaxBytes}',
+    );
+  }
+
   Future<void> _applyMpvTunables() async {
     try {
       final p = _s._player?.platform;
@@ -242,20 +325,29 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
           'vd-lavc-dr',
           _useSoftwareDecode ? 'no' : 'yes',
         );
+      } else if (_liveSportsSurface) {
+        // Live Sports desktop = v1.5.36: pin hwdec / vd-lavc.
+        await p.setProperty('hwdec', _useSoftwareDecode ? 'no' : 'auto-safe');
+        await restoreMediaKitAudioOutput(p);
+        await p.setProperty(
+          'vd-lavc-dr',
+          _useSoftwareDecode ? 'no' : 'yes',
+        );
       } else {
-        // Forja live desktop/phone/Windows: no hwdec / vd-lavc-dr pins.
+        // IPTV Forja live desktop/phone/Windows: no hwdec / vd-lavc-dr pins.
         await restoreMediaKitAudioOutput(p);
       }
 
       final liveMk = _livePlaybackProfile && !_s.widget.vodPlayback;
-      if (!liveMk) {
+      final sportsMk = liveMk && _liveSportsSurface;
+      if (!liveMk || sportsMk) {
         await p.setProperty('vd-lavc-threads', '0');
       }
 
-      // Network: 30s so lavf reconnect can finish.
-      await p.setProperty('network-timeout', '30');
+      // Sports: 15s (v1.5.36). IPTV Forja live: 30s for lavf reconnect.
+      await p.setProperty('network-timeout', sportsMk ? '15' : '30');
 
-      // Cache: RFC-113 Forja live profile (desktop + ATV same demuxer bytes).
+      // Cache: sports = pre–RFC-113 cushion; IPTV = RFC-113 live/forja.
       await p.setProperty('cache', 'yes');
       if (_s.widget.vodPlayback) {
         debugPrint('[IPTV Player] MediaKit cache profile=vod (32MiB)');
@@ -265,6 +357,36 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
         await p.setProperty('demuxer-max-back-bytes', '8388608');
         await p.setProperty('audio-buffer', '0.4');
         // VOD: do not pause-on-empty — progressive + MediaCodec pools (issue 163).
+        await p.setProperty('cache-pause', 'no');
+        await p.setProperty('cache-pause-initial', 'no');
+      } else if (sportsMk) {
+        // Live Sports / Stremio / liveEngine — exact v1.5.36 cushion.
+        var coldSecs = 30;
+        var coldReadahead = 20;
+        var coldBytes = 150000000;
+        var coldLabel = 'live/sports';
+        if (_s._atvMediaKit) {
+          final fhd = liveSportsAtvCacheTierForHeight(1080);
+          coldSecs = fhd.cacheSecs;
+          coldReadahead = fhd.readaheadSecs;
+          coldBytes = fhd.demuxerMaxBytes;
+          coldLabel = 'live/sports (fhd-safe)';
+          final overrideSecs = await SettingsService().getIptvLiveBufferSecs();
+          if (overrideSecs > 0) {
+            final forced =
+                SettingsService.iptvLiveBufferProfileForSecs(overrideSecs);
+            coldSecs = forced.cacheSecs;
+            coldReadahead = forced.readaheadSecs;
+            coldBytes = forced.demuxerMaxBytes;
+            coldLabel = 'live/sports (${forced.tier})';
+          }
+        }
+        debugPrint('[IPTV Player] MediaKit cache profile=$coldLabel');
+        await p.setProperty('cache-secs', '$coldSecs');
+        await p.setProperty('demuxer-readahead-secs', '$coldReadahead');
+        await p.setProperty('demuxer-max-bytes', '$coldBytes');
+        await p.setProperty('demuxer-max-back-bytes', '0');
+        await p.setProperty('audio-buffer', '1.0');
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');
       } else {
@@ -304,17 +426,27 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
       await p.setProperty('sub-auto', 'all');
       await p.setProperty('sub-visibility', 'no');
 
-      // keep-open=always so brief EOF does not tear down the player.
-      await p.setProperty('keep-open', 'always');
-      if (!liveMk) {
+      // Sports: keep-open=yes (v1.5.36). IPTV Forja: always so brief EOF survives.
+      await p.setProperty('keep-open', sportsMk ? 'yes' : 'always');
+      if (!liveMk || sportsMk) {
         await p.setProperty('keep-open-pause', 'no');
-        await p.setProperty('hls-bitrate', 'max');
-        await p.setProperty('rtsp-transport', 'tcp');
       }
 
-      // Panel UA — VOD / non-live only. Forja live opens with no UA.
-      if (_s.widget.vodPlayback || !_livePlaybackProfile) {
-        await p.setProperty('user-agent', _PtPlayerScreenState._ua);
+      // Live Sports = v1.5.36: VLC UA + hls-bitrate + rtsp.
+      // IPTV Forja live: no UA / hls / rtsp pins. VOD still sets them.
+      if (sportsMk) {
+        await p.setProperty(
+          'hls-bitrate',
+          _useSoftwareDecode ? '3500000' : 'max',
+        );
+        await p.setProperty('rtsp-transport', 'tcp');
+        await p.setProperty('user-agent', _LiveSportsPlayerScreenState._ua);
+      } else if (!liveMk) {
+        await p.setProperty('hls-bitrate', 'max');
+        await p.setProperty('rtsp-transport', 'tcp');
+        if (_s.widget.vodPlayback || !_livePlaybackProfile) {
+          await p.setProperty('user-agent', _LiveSportsPlayerScreenState._ua);
+        }
       }
 
       // FFmpeg reconnect — applied after open for VOD; live sets around open.
@@ -325,13 +457,16 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
         await _applyStreamLavfReconnect(p, streamUrl: vodUrl);
       }
 
-      // DAI / SCTE HLS often stamps pts < dts (CBS News etc.). Without +igndts
-      // the demuxer can stall cache=0 while segments still download (issue 273).
+      // Sports = v1.5.36 (no +igndts). IPTV / VOD keep +igndts (issue 273).
       await p.setProperty(
         'demuxer-lavf-o',
-        'fflags=+discardcorrupt+genpts+igndts,'
-            'probesize=5000000,'
-            'analyzeduration=5000000',
+        sportsMk
+            ? 'fflags=+discardcorrupt+genpts,'
+                'probesize=5000000,'
+                'analyzeduration=5000000'
+            : 'fflags=+discardcorrupt+genpts+igndts,'
+                'probesize=5000000,'
+                'analyzeduration=5000000',
       );
     } catch (e) {
       debugPrint('[IPTV Player] tunables failed: $e');
