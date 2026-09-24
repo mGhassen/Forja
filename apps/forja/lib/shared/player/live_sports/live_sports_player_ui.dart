@@ -827,7 +827,22 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       return;
     }
     if (!_s._controlsVisible) {
-      setState(() => _s._controlsVisible = true);
+      // Never setState during MouseRegion.onHover — rebuilds this region and
+      // trips mouse_tracker `!_debugDuringDeviceUpdate` (desktop flood).
+      if (_s._chromeRevealScheduled) return;
+      _s._chromeRevealScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _s._chromeRevealScheduled = false;
+        if (!mounted) return;
+        if (_s._guideVisible || _s._searchVisible) return;
+        final again = _s._suppressChromeRevealUntil;
+        if (again != null && DateTime.now().isBefore(again)) return;
+        if (!_s._controlsVisible) {
+          setState(() => _s._controlsVisible = true);
+        }
+        _scheduleHideControls();
+      });
+      return;
     }
     _scheduleHideControls();
   }
@@ -1623,7 +1638,12 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       onHoverChanged: (on) {
         if (!mounted) return;
         if (_s._pipHover == on) return;
-        setState(() => _s._pipHover = on);
+        // Defer — DesktopPipOverlay MouseRegion must not parent-setState mid update.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_s._pipHover == on) return;
+          setState(() => _s._pipHover = on);
+        });
       },
       playing: _s._playing,
       onTogglePlay: () {
@@ -2672,75 +2692,88 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
             SizedBox(width: controlGap),
             MouseRegion(
               onEnter: (_) {
-                setState(() => _s._volumeHovering = true);
+                if (!_s._volumeHoveringN.value) {
+                  _s._volumeHoveringN.value = true;
+                }
                 _s._hideVolumeTimer?.cancel();
                 _scheduleHideControls();
               },
               onExit: (_) {
-                setState(() => _s._volumeHovering = false);
+                if (_s._volumeHoveringN.value) {
+                  _s._volumeHoveringN.value = false;
+                }
                 _scheduleHideVolumeSlider();
               },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FocusRoundIcon(
-                    icon: _s._muted || _s._volume == 0
-                        ? Icons.volume_off_rounded
-                        : (_s._volume < 40
-                              ? Icons.volume_down_rounded
-                              : Icons.volume_up_rounded),
-                    onTap: _toggleMute,
-                    onLongPress: () {
-                      setState(
-                        () => _s._showVolumeSlider = !_s._showVolumeSlider,
-                      );
-                      if (_s._showVolumeSlider) {
-                        _s._hideVolumeTimer?.cancel();
-                      } else {
-                        _scheduleHideVolumeSlider();
-                      }
-                      _scheduleHideControls();
-                    },
-                  ),
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOut,
-                    child: SizedBox(
-                      width: (_s._showVolumeSlider || _s._volumeHovering)
-                          ? (compact ? 110 : 160)
-                          : 0,
-                      child: ClipRect(
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: SliderTheme(
-                            data: GuideChromeStyle.sliderTheme(context).copyWith(
-                              inactiveTrackColor: Colors.white24,
-                              trackHeight: 3,
-                              thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 7,
+              child: ListenableBuilder(
+                listenable: _s._volumeHoveringN,
+                builder: (context, _) {
+                  final volumeHovering = _s._volumeHoveringN.value;
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FocusRoundIcon(
+                        icon: _s._muted || _s._volume == 0
+                            ? Icons.volume_off_rounded
+                            : (_s._volume < 40
+                                  ? Icons.volume_down_rounded
+                                  : Icons.volume_up_rounded),
+                        onTap: _toggleMute,
+                        onLongPress: () {
+                          setState(
+                            () =>
+                                _s._showVolumeSlider = !_s._showVolumeSlider,
+                          );
+                          if (_s._showVolumeSlider) {
+                            _s._hideVolumeTimer?.cancel();
+                          } else {
+                            _scheduleHideVolumeSlider();
+                          }
+                          _scheduleHideControls();
+                        },
+                      ),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOut,
+                        child: SizedBox(
+                          width: (_s._showVolumeSlider || volumeHovering)
+                              ? (compact ? 110 : 160)
+                              : 0,
+                          child: ClipRect(
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: SliderTheme(
+                                data: GuideChromeStyle.sliderTheme(context)
+                                    .copyWith(
+                                  inactiveTrackColor: Colors.white24,
+                                  trackHeight: 3,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 7,
+                                  ),
+                                ),
+                                child: Slider(
+                                  value: _s._volume.clamp(0.0, 100.0),
+                                  min: 0,
+                                  max: 100,
+                                  onChangeStart: (_) {
+                                    _s._hideVolumeTimer?.cancel();
+                                    _scheduleHideControls();
+                                  },
+                                  onChanged: (v) {
+                                    setState(() => _s._setCachedVolume(v));
+                                    _scheduleHideVolumeSlider();
+                                    _scheduleHideControls();
+                                  },
+                                  onChangeEnd: (_) =>
+                                      _scheduleHideVolumeSlider(),
+                                ),
                               ),
-                            ),
-                            child: Slider(
-                              value: _s._volume.clamp(0.0, 100.0),
-                              min: 0,
-                              max: 100,
-                              onChangeStart: (_) {
-                                _s._hideVolumeTimer?.cancel();
-                                _scheduleHideControls();
-                              },
-                              onChanged: (v) {
-                                setState(() => _s._setCachedVolume(v));
-                                _scheduleHideVolumeSlider();
-                                _scheduleHideControls();
-                              },
-                              onChangeEnd: (_) => _scheduleHideVolumeSlider(),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -2942,7 +2975,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   void _scheduleHideVolumeSlider() {
     _s._hideVolumeTimer?.cancel();
     _s._hideVolumeTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted || _s._volumeHovering) return;
+      if (!mounted || _s._volumeHoveringN.value) return;
       setState(() => _s._showVolumeSlider = false);
     });
   }

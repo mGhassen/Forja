@@ -501,8 +501,10 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   double _volumeBeforeMute = 100.0;
   bool _muted = false;
   bool _showVolumeSlider = false;
-  bool _volumeHovering = false;
+  /// ValueNotifier — never parent-setState on hover (mouse_tracker assert).
+  final ValueNotifier<bool> _volumeHoveringN = ValueNotifier(false);
   Timer? _hideVolumeTimer;
+  bool _chromeRevealScheduled = false;
 
   // Tracks — MediaKit only (same menus as the home movies player).
   bool _isNativeSubtitle = false;
@@ -1488,6 +1490,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     _displayFrameRateApplied = false;
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
+    _volumeHoveringN.dispose();
     _subtitleFetchSub?.cancel();
     _exoCueTexts.dispose();
     _playerTvKeyFocus.dispose();

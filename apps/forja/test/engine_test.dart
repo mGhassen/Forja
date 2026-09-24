@@ -2244,6 +2244,10 @@ void main() {
       expect(kisskh.contains('fetchDrama'), isTrue);
       expect(kisskh.contains('dramaId'), isTrue);
       expect(kisskh.contains('if (episodeId)'), isTrue);
+      // Home/TMDB has no kisskhId; Search never returns tmdbID — title score, not list[0].
+      expect(kisskh.contains('searchDramaByTitle'), isTrue);
+      expect(kisskh.contains('scoreHit'), isTrue);
+      expect(kisskh.contains('pickFromRows'), isTrue);
 
       final animedunya = await loadForjaHqFile('providers/animedunya.js');
       expect(animedunya.contains('anime-dunya.com'), isTrue);

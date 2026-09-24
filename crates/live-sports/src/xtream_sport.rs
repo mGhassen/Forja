@@ -32,11 +32,69 @@ fn portal_cache_key(base: &str, user: &str, pass: &str) -> String {
     format!("{}|{}|{}", trim_base(base), user, pass)
 }
 
+/// Host SQLite shelf key (matches Dart `Portal.key` → sha256).
+fn dart_portal_key(platform: &str, url: &str, user: &str, pass: &str) -> String {
+    format!("{platform}|{url}|{user}|{pass}").to_lowercase()
+}
+
+fn cats_from_export(categories: &[Value]) -> HashMap<String, String> {
+    let mut cats = HashMap::new();
+    for c in categories {
+        let id = field_str(c, &["id", "category_id"]);
+        let name = field_str(c, &["name", "category_name"]);
+        if !id.is_empty() {
+            cats.insert(id, name);
+        }
+    }
+    cats
+}
+
+fn try_sqlite_live_shelf(
+    platform: &str,
+    url: &str,
+    user: &str,
+    pass: &str,
+) -> Option<(Vec<Value>, HashMap<String, String>)> {
+    let candidates = [
+        dart_portal_key(platform, url.trim(), user, pass),
+        dart_portal_key(platform, &trim_base(url), user, pass),
+    ];
+    for key in candidates {
+        let hash = iptv::catalog_db::portal_hash(&key);
+        let ok = iptv::catalog_db::has_shelf(&hash, "live").unwrap_or(false);
+        if !ok {
+            continue;
+        }
+        let exported = iptv::catalog_db::export_shelf(&hash, "live").ok()?;
+        if exported.get("ok") != Some(&Value::Bool(true)) {
+            continue;
+        }
+        let streams = exported
+            .get("streams")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let categories = exported
+            .get("categories")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        if streams.is_empty() && categories.is_empty() {
+            continue;
+        }
+        return Some((streams, cats_from_export(&categories)));
+    }
+    None
+}
+
 fn get_or_fetch_portal_live(
     base: &str,
     user: &str,
     pass: &str,
 ) -> (Vec<Value>, HashMap<String, String>) {
+    if let Some(hit) = try_sqlite_live_shelf("xtream", base, user, pass) {
+        return hit;
+    }
     let key = portal_cache_key(base, user, pass);
     if let Ok(cache) = live_cache().lock() {
         if let Some(entry) = cache.get(&key) {
@@ -501,5 +559,29 @@ mod tests {
         let c = skeleton_candidate("http://x.com", "u", "p", &s, &HashMap::new())
             .expect("candidate");
         assert!(c.stream_url.ends_with(".ts"), "{}", c.stream_url);
+    }
+
+    #[test]
+    fn try_sqlite_live_shelf_hits_export() {
+        let path = std::env::temp_dir().join(format!(
+            "forja-xtream-shelf-{}.sqlite",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&path);
+        iptv::catalog_db::open(path.to_str().unwrap()).unwrap();
+        let key = dart_portal_key("xtream", "http://x.com", "u", "p");
+        let hash = iptv::catalog_db::portal_hash(&key);
+        iptv::catalog_db::replace_shelf(
+            &hash,
+            "live",
+            &[json!({"id": "12", "name": "Sports"})],
+            &[json!({"stream_id": "99", "name": "NBA", "category_id": "12"})],
+        )
+        .unwrap();
+        let hit = try_sqlite_live_shelf("xtream", "http://x.com", "u", "p").expect("shelf");
+        assert_eq!(hit.0.len(), 1);
+        assert_eq!(hit.1.get("12").map(String::as_str), Some("Sports"));
+        iptv::catalog_db::close();
+        let _ = std::fs::remove_file(&path);
     }
 }

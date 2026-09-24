@@ -268,6 +268,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   int? _holdAtRefreshEpoch;
   int _bindGen = 0;
   StreamSubscription<MetaEnvelope>? _progressiveSub;
+  /// Coalesce progressive setState to the next frame (avoids mouse_tracker
+  /// re-entrancy when scrape ticks land under the cursor).
+  MetaEnvelope? _progressivePending;
+  bool _progressivePaintScheduled = false;
+  int _progressivePaintGen = 0;
   /// Skip warmPaintKey restore on the next [_bind] (Live category / Favorites flip).
   bool _skipWarmRestore = false;
   /// Page-feed epoch last painted via [_promotePageFeedRailIfReady] — when the
@@ -371,6 +376,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       shelfSectionFlipped = true;
       _progressiveSub?.cancel();
       _progressiveSub = null;
+      _progressivePending = null;
+      _progressivePaintScheduled = false;
+      _progressivePaintGen++;
       _inFlight = null;
       _lastPaintedWidget = null;
       // Invalidate post-frame Live kind publishes scheduled before this flip.
@@ -399,6 +407,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       _appliedHoldEpoch = holdEpoch;
       _progressiveSub?.cancel();
       _progressiveSub = null;
+      _progressivePending = null;
+      _progressivePaintScheduled = false;
+      _progressivePaintGen++;
       _envelope = null;
       _lastPaintedWidget = null;
       _inFlight = null;
@@ -415,6 +426,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (refreshBumped) {
       _progressiveSub?.cancel();
       _progressiveSub = null;
+      _progressivePending = null;
+      _progressivePaintScheduled = false;
+      _progressivePaintGen++;
       _holdAtRefreshEpoch = null;
       if (!(chrome?.refreshKeepPainted ?? false)) {
         _envelope = null;
@@ -711,8 +725,20 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         last = env;
         PackLoadedPaint._resolved[key] = env;
         paintedOnce = true;
-        setState(() {
-          _envelope = env;
+        _progressivePending = env;
+        if (_progressivePaintScheduled) return;
+        _progressivePaintScheduled = true;
+        final paintGen = ++_progressivePaintGen;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (paintGen != _progressivePaintGen) return;
+          _progressivePaintScheduled = false;
+          if (!mounted || gen != _bindGen) return;
+          final pending = _progressivePending;
+          if (pending == null) return;
+          _progressivePending = null;
+          setState(() {
+            _envelope = pending;
+          });
         });
       },
       onError: (Object e, StackTrace st) {

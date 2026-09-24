@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS channel_hits (
 );
 "#;
 
-fn portal_hash(portal_key: &str) -> String {
+pub fn portal_hash(portal_key: &str) -> String {
     let mut h = Sha256::new();
     h.update(portal_key.as_bytes());
     format!("{:x}", h.finalize())

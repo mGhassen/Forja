@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/portals/store/iptv_catalog_db.dart';
+import 'package:forja/shared/engine/portals/store/portal_catalog_page.dart';
 import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:rust/rust.dart' show runLiveSportsFetchJson;
@@ -29,12 +30,21 @@ abstract final class PortalLiveTvSearch {
   static int _session = 0;
   static final Map<String, _CacheEntry> _cache = {};
   static final Map<String, Future<List<Map<String, dynamic>>>> _inFlight = {};
+  static String? _activePortalKey;
 
   /// Drop in-flight matching (Providers tab / background). Safe anytime.
   static void cancel({String reason = 'cancel'}) {
     _session++;
     _inFlight.clear();
     debugPrint('[PortalLiveTvSearch] cancel session=$_session ($reason)');
+  }
+
+  /// Clear result cache (portal change / shelf warm for a new key).
+  static void invalidateCache() {
+    _cache.clear();
+    _inFlight.clear();
+    _activePortalKey = null;
+    debugPrint('[PortalLiveTvSearch] cache invalidated');
   }
 
   static bool get appInForeground {
@@ -58,6 +68,13 @@ abstract final class PortalLiveTvSearch {
 
     final verified = await _resolvePortal();
     if (dead() || verified == null) return const [];
+
+    if (_activePortalKey != null &&
+        _activePortalKey != verified.key) {
+      _cache.clear();
+      _inFlight.clear();
+    }
+    _activePortalKey = verified.key;
 
     final gameRaw = params['game'];
     final game = gameRaw is Map
@@ -122,6 +139,17 @@ abstract final class PortalLiveTvSearch {
   }) async {
     try {
       final portal = verified.portal;
+      if (portal.platform.supportsForjaSports) {
+        try {
+          await PortalCatalogPage.ensureSection(
+            portal: portal,
+            section: 'live',
+          );
+        } catch (e) {
+          debugPrint('[PortalLiveTvSearch] live shelf ensure failed: $e');
+        }
+        if (dead()) return const [];
+      }
       final Map<String, dynamic> portalCreds;
       if (portal.platform == PortalPlatform.stalker) {
         portalCreds = {

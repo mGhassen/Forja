@@ -7,6 +7,8 @@ import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/portal_form_dialog.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
+import 'package:forja/shared/engine/portals/store/portal_catalog_page.dart';
+import 'package:forja/shared/engine/portals/store/portal_live_tv_search.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_tv.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
@@ -147,6 +149,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     chrome?.onClearCatalog();
 
     await PortalsHost.setActiveKey(portalKey);
+    PortalLiveTvSearch.invalidateCache();
     if (!mounted) return;
     invalidatePortalsChrome(ref, widget.tabId);
 
@@ -155,6 +158,8 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     if (!mounted) return;
 
     PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+
+    unawaited(_warmLiveShelf(portalKey));
 
     unawaited((() async {
       try {
@@ -182,6 +187,47 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         }
       }
     })());
+  }
+
+  /// Warm SQLite live shelf for Live TV matching; stripe the portal card.
+  Future<void> _warmLiveShelf(String portalKey) async {
+    final notifier =
+        ref.read(portalsInventoryProvider(widget.tabId).notifier);
+    notifier.applyShelfLoading(portalKey, true);
+    VerifiedPortal? verified;
+    try {
+      final portals = await PortalsHost.loadVaultVerifiedPortals();
+      for (final p in portals) {
+        if (PortalsHost.samePortalKey(p.key, portalKey) ||
+            PortalsHost.samePortalKey(p.credKey, portalKey) ||
+            PortalsHost.samePortalKey(
+              PortalsHost.packPortalKey(p.portal),
+              portalKey,
+            )) {
+          verified = p;
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('[PortalsPanel] resolve portal for shelf warm failed: $e');
+    }
+    if (!mounted) {
+      notifier.applyShelfLoading(portalKey, false);
+      return;
+    }
+    final portal = verified?.portal;
+    if (portal == null || !portal.platform.supportsForjaSports) {
+      notifier.applyShelfLoading(portalKey, false);
+      return;
+    }
+
+    try {
+      await PortalCatalogPage.ensureSection(portal: portal, section: 'live');
+    } catch (e) {
+      debugPrint('[PortalsPanel] live shelf warm failed: $e');
+    } finally {
+      notifier.applyShelfLoading(portalKey, false);
+    }
   }
 
   Future<bool> _runAction(

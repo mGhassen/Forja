@@ -75,7 +75,8 @@ class PortalListRow extends StatefulWidget {
   State<PortalListRow> createState() => _PortalListRowState();
 }
 
-class _PortalListRowState extends State<PortalListRow> {
+class _PortalListRowState extends State<PortalListRow>
+    with SingleTickerProviderStateMixin {
   static const _probeBarWidth = 4.0;
   static const _detailHoverDelay = Duration(seconds: 1);
   /// D-pad / keyboard dwell — longer than hover so ↑/↓ skimming stays clean.
@@ -91,6 +92,7 @@ class _PortalListRowState extends State<PortalListRow> {
   final LayerLink _detailLink = LayerLink();
   Timer? _detailTimer;
   OverlayEntry? _detailOverlay;
+  AnimationController? _shelfStripeCtrl;
 
   late final FocusNode _rowFocus;
   late final FocusNode _favoriteFocus;
@@ -162,7 +164,7 @@ class _PortalListRowState extends State<PortalListRow> {
   }
 
   bool get _showStar {
-    if (item.deleting) return false;
+    if (item.deleting || item.shelfLoading) return false;
     return _reveal ||
         item.favorite ||
         (!widget.leanback &&
@@ -170,7 +172,11 @@ class _PortalListRowState extends State<PortalListRow> {
   }
 
   bool get _showNewChrome =>
-      !item.deleting && item.isNew && !_reveal && !_showShareCode;
+      !item.deleting &&
+      !item.shelfLoading &&
+      item.isNew &&
+      !_reveal &&
+      !_showShareCode;
 
   String get _actionsRowId => 'portal-${widget.listIndex}-actions';
 
@@ -195,6 +201,7 @@ class _PortalListRowState extends State<PortalListRow> {
       node.addListener(_onActionFocusChanged);
     }
     widget.hoverOwnerId?.addListener(_onHoverOwnerChanged);
+    _syncShelfStripe(item.shelfLoading);
   }
 
   @override
@@ -203,6 +210,9 @@ class _PortalListRowState extends State<PortalListRow> {
     if (oldWidget.hoverOwnerId != widget.hoverOwnerId) {
       oldWidget.hoverOwnerId?.removeListener(_onHoverOwnerChanged);
       widget.hoverOwnerId?.addListener(_onHoverOwnerChanged);
+    }
+    if (oldWidget.item.shelfLoading != item.shelfLoading) {
+      _syncShelfStripe(item.shelfLoading);
     }
     if (_detailOverlay == null) return;
     // OverlayEntry lives under Overlay, not this row. Sync markNeedsBuild
@@ -219,6 +229,20 @@ class _PortalListRowState extends State<PortalListRow> {
     });
   }
 
+  void _syncShelfStripe(bool loading) {
+    if (loading) {
+      _shelfStripeCtrl ??= AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 900),
+      )..repeat();
+      if (!(_shelfStripeCtrl?.isAnimating ?? false)) {
+        _shelfStripeCtrl?.repeat();
+      }
+    } else {
+      _shelfStripeCtrl?.stop();
+    }
+  }
+
   @override
   void dispose() {
     widget.hoverOwnerId?.removeListener(_onHoverOwnerChanged);
@@ -226,6 +250,8 @@ class _PortalListRowState extends State<PortalListRow> {
       widget.hoverOwnerId!.value = null;
     }
     _hideDetailCard();
+    _shelfStripeCtrl?.dispose();
+    _shelfStripeCtrl = null;
     for (final node in [
       _favoriteFocus,
       _copyFocus,
@@ -494,6 +520,8 @@ class _PortalListRowState extends State<PortalListRow> {
   @override
   Widget build(BuildContext context) {
     final deleting = item.deleting;
+    final shelfLoading = item.shelfLoading;
+    final blocked = deleting || shelfLoading;
     final reveal = _reveal;
     final railAnim = widget.leanback
         ? Duration.zero
@@ -501,9 +529,9 @@ class _PortalListRowState extends State<PortalListRow> {
     final cardHeight = _rowHeight - 4;
 
     Widget tile = ExcludeFocus(
-      excluding: deleting,
+      excluding: blocked,
       child: IgnorePointer(
-        ignoring: deleting,
+        ignoring: blocked,
         child: Opacity(
           opacity: deleting ? 0.55 : 1,
           child: Stack(
@@ -560,6 +588,17 @@ class _PortalListRowState extends State<PortalListRow> {
                 const Positioned.fill(
                   child: CustomPaint(painter: _DeletingStripePainter()),
                 ),
+              if (shelfLoading && _shelfStripeCtrl != null)
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _shelfStripeCtrl!,
+                    builder: (context, _) => CustomPaint(
+                      painter: _ShelfLoadingStripePainter(
+                        progress: _shelfStripeCtrl!.value,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -568,10 +607,10 @@ class _PortalListRowState extends State<PortalListRow> {
 
     if (!widget.leanback) {
       tile = MouseRegion(
-        onEnter: deleting ? null : (_) => _claimHover(),
+        onEnter: blocked ? null : (_) => _claimHover(),
         // Scroll clears ownership under a still cursor; onHover re-claims without
         // needing a full exit/enter (and does not reset the 1s timer while owned).
-        onHover: deleting
+        onHover: blocked
             ? null
             : (_) {
                 final owner = widget.hoverOwnerId;
@@ -579,7 +618,7 @@ class _PortalListRowState extends State<PortalListRow> {
                 if (owner.value == item.id && _lineHover) return;
                 _claimHover();
               },
-        onExit: deleting ? null : (_) => _releaseHover(),
+        onExit: blocked ? null : (_) => _releaseHover(),
         child: tile,
       );
     }
@@ -789,12 +828,12 @@ class _PortalListRowState extends State<PortalListRow> {
         tvRowId: _kPortalsRowId,
         tvItemIndex: widget.listIndex,
         tvZone: ShellPaintTvZone.row,
-        allowNestedFocus: !deleting,
+        allowNestedFocus: !deleting && !item.shelfLoading,
         ensureVisibleMode: ShellPaintEnsureVisible.off,
         onUpEdge: widget.onUpEdge,
         onDownEdge: widget.onDownEdge,
         onLeftEdge: widget.onLeftEdge,
-        onRightEdge: deleting
+        onRightEdge: deleting || item.shelfLoading
             ? null
             : () => _focusAction(
                   _confirmingDelete ? _confirmYesFocus : _favoriteFocus,
@@ -1401,4 +1440,35 @@ class _DeletingStripePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DeletingStripePainter oldDelegate) => false;
+}
+
+/// Indeterminate diagonal stripes while the live channel shelf warms.
+class _ShelfLoadingStripePainter extends CustomPainter {
+  const _ShelfLoadingStripePainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = ForjaShellColors.brandGreen.withValues(alpha: 0.18)
+      ..strokeWidth = 6
+      ..style = PaintingStyle.stroke;
+    const spacing = 14.0;
+    final shift = progress * spacing;
+    for (double x = -size.height - spacing;
+        x < size.width + size.height + spacing;
+        x += spacing) {
+      final ox = x + shift;
+      canvas.drawLine(
+        Offset(ox, size.height),
+        Offset(ox + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShelfLoadingStripePainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

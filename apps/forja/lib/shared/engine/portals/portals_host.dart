@@ -1176,6 +1176,7 @@ class PortalHealthTracker {
       favorite: p.favorite,
       isNew: p.isNew,
       deleting: deleting,
+      shelfLoading: p.shelfLoading,
       probeDetail: _detailFor(_probes[p.id]) ?? p.probeDetail,
     );
   }

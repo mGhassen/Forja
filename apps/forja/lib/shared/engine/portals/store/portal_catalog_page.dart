@@ -90,6 +90,26 @@ abstract final class PortalCatalogPage {
     return page;
   }
 
+  /// Ensure a portal section shelf is in SQLite (no page payload required).
+  ///
+  /// Used by Live Sports / Portals select to warm live channels before Live TV
+  /// matching. Idempotent when the shelf is already present.
+  static Future<bool> ensureSection({
+    required Portal portal,
+    String section = 'live',
+    bool refresh = false,
+    int? timeoutSecs,
+  }) async {
+    final sectionWire = _sectionWire(_section(section));
+    return _ensureShelf(
+      portal: portal,
+      portalKey: portal.key,
+      sectionWire: sectionWire,
+      timeoutSecs: timeoutSecs ?? _timeoutSecs(_section(section)),
+      refresh: refresh,
+    );
+  }
+
   static Future<bool> _ensureShelf({
     required Portal portal,
     required String portalKey,

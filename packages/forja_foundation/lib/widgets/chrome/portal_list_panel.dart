@@ -46,6 +46,7 @@ class PortalListItem {
     this.favorite = false,
     this.isNew = false,
     this.deleting = false,
+    this.shelfLoading = false,
     this.probeDetail,
   });
 
@@ -64,6 +65,9 @@ class PortalListItem {
   final bool favorite;
   final bool isNew;
   final bool deleting;
+
+  /// Live channel shelf warm in progress (full-card striped progress).
+  final bool shelfLoading;
 
   /// Desktop 1s-hover card; null until a probe has run.
   final PortalProbeDetail? probeDetail;

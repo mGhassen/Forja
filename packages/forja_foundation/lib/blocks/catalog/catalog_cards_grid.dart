@@ -1353,7 +1353,12 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
 
   void _setHovered(bool hovered) {
     if (_hoveredN.value == hovered) return;
-    _hoveredN.value = hovered;
+    // Defer past mouse_tracker device update (raw MouseRegion onEnter/onExit).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_hoveredN.value == hovered) return;
+      _hoveredN.value = hovered;
+    });
   }
 
   Widget _buildTile(bool hovered) => EventDenseTile(

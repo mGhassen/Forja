@@ -49,7 +49,54 @@ class PortalsInventoryNotifier
         prev.actions.length == next.actions.length) {
       return;
     }
-    state = AsyncData(next);
+    // Preserve in-flight shelf-warm stripes across vault repaint.
+    final loadingKeys = <String>{
+      if (prev != null)
+        for (final p in prev.portals)
+          if (p.shelfLoading) p.id,
+    };
+    if (loadingKeys.isEmpty) {
+      state = AsyncData(next);
+      return;
+    }
+    state = AsyncData(
+      PortalsInventory(
+        portals: [
+          for (final p in next.portals)
+            PortalListItem(
+              id: p.id,
+              label: p.label,
+              subtitle: p.subtitle,
+              selected: p.selected,
+              healthy: p.healthy,
+              checking: p.checking,
+              platformLabel: p.platformLabel,
+              expiry: p.expiry,
+              activeConnections: p.activeConnections,
+              maxConnections: p.maxConnections,
+              favorite: p.favorite,
+              isNew: p.isNew,
+              deleting: p.deleting,
+              shelfLoading: loadingKeys.any(
+                (k) => PortalsHost.samePortalKey(p.id, k),
+              ),
+              probeDetail: p.probeDetail,
+            ),
+        ],
+        activeKey: next.activeKey,
+        pluginId: next.pluginId,
+        title: next.title,
+        actions: next.actions,
+        editForm: next.editForm,
+        formValues: next.formValues,
+        emptyTitle: next.emptyTitle,
+        emptyDescription: next.emptyDescription,
+        searchPlaceholder: next.searchPlaceholder,
+        width: next.width,
+        rowHeight: next.rowHeight,
+        titleFontSize: next.titleFontSize,
+      ),
+    );
   }
 
   /// Instant selected row — vault [setActiveKey] + softReload catch up after.
@@ -74,6 +121,7 @@ class PortalsInventoryNotifier
           favorite: p.favorite,
           isNew: p.isNew,
           deleting: p.deleting,
+          shelfLoading: p.shelfLoading,
           probeDetail: p.probeDetail,
         ),
     ];
@@ -81,6 +129,61 @@ class PortalsInventoryNotifier
       PortalsInventory(
         portals: portals,
         activeKey: key,
+        pluginId: inv.pluginId,
+        title: inv.title,
+        actions: inv.actions,
+        editForm: inv.editForm,
+        formValues: inv.formValues,
+        emptyTitle: inv.emptyTitle,
+        emptyDescription: inv.emptyDescription,
+        searchPlaceholder: inv.searchPlaceholder,
+        width: inv.width,
+        rowHeight: inv.rowHeight,
+        titleFontSize: inv.titleFontSize,
+      ),
+    );
+  }
+
+  /// Stripe progress while live channel shelf warms for [portalKey].
+  ///
+  /// When [loading] is true, only that portal shows the stripe (others clear).
+  void applyShelfLoading(String portalKey, bool loading) {
+    final inv = state.asData?.value;
+    if (inv == null) return;
+    final key = portalKey.trim();
+    if (key.isEmpty) return;
+    var changed = false;
+    final portals = <PortalListItem>[
+      for (final p in inv.portals)
+        () {
+          final hit = PortalsHost.samePortalKey(p.id, key);
+          final next = hit ? loading : false;
+          if (p.shelfLoading == next) return p;
+          changed = true;
+          return PortalListItem(
+            id: p.id,
+            label: p.label,
+            subtitle: p.subtitle,
+            selected: p.selected,
+            healthy: p.healthy,
+            checking: p.checking,
+            platformLabel: p.platformLabel,
+            expiry: p.expiry,
+            activeConnections: p.activeConnections,
+            maxConnections: p.maxConnections,
+            favorite: p.favorite,
+            isNew: p.isNew,
+            deleting: p.deleting,
+            shelfLoading: next,
+            probeDetail: p.probeDetail,
+          );
+        }(),
+    ];
+    if (!changed) return;
+    state = AsyncData(
+      PortalsInventory(
+        portals: portals,
+        activeKey: inv.activeKey,
         pluginId: inv.pluginId,
         title: inv.title,
         actions: inv.actions,
@@ -123,6 +226,7 @@ class PortalsInventoryNotifier
           favorite: favorite,
           isNew: p.isNew,
           deleting: p.deleting,
+          shelfLoading: p.shelfLoading,
           probeDetail: p.probeDetail,
         ),
       );

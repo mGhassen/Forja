@@ -232,11 +232,15 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
       builder: (context, playing, _) {
         return DesktopPipOverlay(
           hovering: _s._pipHover,
-          onHoverChanged: (on) {
-            if (!mounted) return;
-            if (_s._pipHover == on) return;
-            setState(() => _s._pipHover = on);
-          },
+      onHoverChanged: (on) {
+        if (!mounted) return;
+        if (_s._pipHover == on) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_s._pipHover == on) return;
+          setState(() => _s._pipHover = on);
+        });
+      },
           playing: playing,
           onTogglePlay: () {
             _s._player.playOrPause();
