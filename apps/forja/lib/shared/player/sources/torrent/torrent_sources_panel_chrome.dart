@@ -55,6 +55,8 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     this.availableSizeRanges = const {},
     this.activeSizeFilters = const {},
     this.onSizeFiltersChanged,
+    this.offlineFilters = const {},
+    this.onOfflineFiltersChanged,
     this.sortPreference,
     this.onSortChanged,
     this.cacheRefreshToken,
@@ -126,6 +128,8 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   final Set<String> availableSizeRanges;
   final Set<String> activeSizeFilters;
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
+  final Set<String> offlineFilters;
+  final ValueChanged<Set<String>>? onOfflineFiltersChanged;
   final String? sortPreference;
   final ValueChanged<String>? onSortChanged;
   final int? cacheRefreshToken;
@@ -375,6 +379,8 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
           availableSizeRanges: widget.availableSizeRanges,
           activeSizeFilters: widget.activeSizeFilters,
           onSizeFiltersChanged: widget.onSizeFiltersChanged,
+          offlineFilters: widget.offlineFilters,
+          onOfflineFiltersChanged: widget.onOfflineFiltersChanged,
           sortPreference: widget.sortPreference,
           onSortChanged: widget.onSortChanged,
           enableBlur: widget.filterEnableBlur,

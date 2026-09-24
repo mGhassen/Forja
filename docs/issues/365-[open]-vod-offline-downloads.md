@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 14** tasks (2 deferred) · **10 / 10** acceptance |
-| **Current slice** | Phase 1 complete — Phase 2/3 deferred |
+| **Progress** | **14 / 17** tasks (2 deferred) · **11 / 11** acceptance |
+| **Current slice** | Phase 1 + integrity follow-ups ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -34,6 +34,9 @@
 | 12 | I365-T12 | Reject DASH MPD / tiny manifest responses (no ~60KB “completed” junk) | ✅ |
 | 13 | I365-T13 | Sources card inline confirm + size probe (portal delete/share style) before enqueue | ✅ |
 | 14 | I365-T14 | Player Download re-extract + Referer expiry / fail-fast 403 ([374](fixed/374-[fixed]-vod-download-expired-referer-403.md)) | ✅ |
+| 15 | I365-T15 | Same-title dedup toast + init race / Settings queue visibility ([376](fixed/376-[fixed]-vod-download-dedup-toast-empty-settings.md)) | ✅ |
+| 16 | I365-T16 | Sources card download progress + offline stripes; Filters Offline / Online | ✅ |
+| 17 | I365-T17 | Corrupt Range resume + offline play stream-hop ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) | 🔄 |
 
 ---
 
@@ -51,6 +54,7 @@
 | 8 | I365-A08 | DASH / playlist / &lt;256KB responses fail instead of completing | ✅ |
 | 9 | I365-A09 | Sources Download: card shows probed size (or estimate) + Yes/No before enqueue | ✅ |
 | 10 | I365-A10 | Mid-watch Forja Download uses a fresh extract — expired Referer does not 403-loop | ✅ |
+| 11 | I365-A11 | Downloading / offline Sources rows show striped chrome; Filters Offline / Online | ✅ |
 
 ---
 

@@ -51,4 +51,59 @@ void main() {
       );
     });
   });
+
+  group('looksLikeMediaContainerBytes', () {
+    test('accepts Matroska EBML and ISO BMFF magics', () {
+      expect(
+        looksLikeMediaContainerBytes([0x1a, 0x45, 0xdf, 0xa3, 0x01, 0x02]),
+        isTrue,
+      );
+      expect(
+        looksLikeMediaContainerBytes([
+          0x00,
+          0x00,
+          0x00,
+          0x18,
+          0x66,
+          0x74,
+          0x79,
+          0x70,
+          0x69,
+          0x73,
+          0x6f,
+          0x6d,
+        ]),
+        isTrue,
+      );
+    });
+
+    test('rejects leading zeros / SegmentInfo-only (corrupt resume)', () {
+      expect(looksLikeMediaContainerBytes([0, 0, 0, 0, 0, 0, 0, 0]), isFalse);
+      // Matroska SegmentInfo without EBML is not playable.
+      expect(
+        looksLikeMediaContainerBytes([0x15, 0x49, 0xa9, 0x66, 0x40, 0x9e]),
+        isFalse,
+      );
+    });
+  });
+
+  group('content disposition / range helpers', () {
+    test('parses filename and Content-Range', () {
+      expect(
+        extensionFromContentDisposition(
+          'attachment; filename="The.Love.Hypothesis.mkv"',
+        ),
+        '.mkv',
+      );
+      expect(extensionFromContentType('video/matroska'), '.mkv');
+      expect(
+        parseContentRangeStart('bytes 4151-1134420390/1134420391'),
+        4151,
+      );
+      expect(
+        parseContentRangeTotal('bytes 4151-1134420390/1134420391'),
+        1134420391,
+      );
+    });
+  });
 }

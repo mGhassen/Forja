@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_path_helper.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_task.dart';
@@ -34,7 +36,8 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     unawaited(_loadSpace());
-    unawaited(DownloadService.instance.initialize());
+    // Ensure queue is visible even if bootstrap init raced an early enqueue.
+    unawaited(DownloadService.instance.ensureQueueVisible());
   }
 
   @override
@@ -78,6 +81,28 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
       ForjaToast.error('Download file is missing');
       return;
     }
+    final file = File(path.startsWith('file://') ? Uri.parse(path).toFilePath() : path);
+    if (!await file.exists()) {
+      ForjaToast.error('Download file is missing');
+      return;
+    }
+    try {
+      final raf = await file.open();
+      try {
+        final head = await raf.read(512);
+        if (!looksLikeMediaContainerBytes(head)) {
+          ForjaToast.error(
+            'Downloaded file can’t be played — delete it and download again',
+          );
+          return;
+        }
+      } finally {
+        await raf.close();
+      }
+    } catch (_) {
+      ForjaToast.error('Downloaded file can’t be played');
+      return;
+    }
     final streamUrl =
         path.startsWith('file://') ? path : Uri.file(path).toString();
     if (!mounted) return;
@@ -98,6 +123,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
       selectedEpisode: task.episode,
       activeProvider: 'offline',
       streamsPrevalidated: true,
+      pinSource: true,
     );
   }
 

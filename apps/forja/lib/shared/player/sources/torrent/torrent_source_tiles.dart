@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:rust/rust.dart';
@@ -323,6 +324,9 @@ class StremioSourceTile extends StatelessWidget {
     this.onHoverProbe,
     this.probeHealthCache,
     this.onPrepareDownload,
+    this.downloadChrome = SourceDownloadChrome.none,
+    this.downloadProgress = 0,
+    this.downloadStatusLabel,
   });
 
   final String title;
@@ -345,6 +349,9 @@ class StremioSourceTile extends StatelessWidget {
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
   final Future<SourceDownloadPrep?> Function()? onPrepareDownload;
+  final SourceDownloadChrome downloadChrome;
+  final double downloadProgress;
+  final String? downloadStatusLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -398,6 +405,9 @@ class StremioSourceTile extends StatelessWidget {
       onHoverProbe: isExternal ? null : onHoverProbe,
       probeHealthCache: isExternal ? null : probeHealthCache,
       onPrepareDownload: isExternal ? null : onPrepareDownload,
+      downloadChrome: isExternal ? SourceDownloadChrome.none : downloadChrome,
+      downloadProgress: downloadProgress,
+      downloadStatusLabel: downloadStatusLabel,
       badges: isExternal
           ? [
               if (description.trim().isNotEmpty)
@@ -515,6 +525,9 @@ class _SourceBadgeCard extends StatefulWidget {
     this.viewerCount,
     this.autofocus = false,
     this.onPrepareDownload,
+    this.downloadChrome = SourceDownloadChrome.none,
+    this.downloadProgress = 0,
+    this.downloadStatusLabel,
   });
 
   final VoidCallback onTap;
@@ -546,17 +559,22 @@ class _SourceBadgeCard extends StatefulWidget {
   final int? viewerCount;
   /// Portal-style: Download → probe size → card face becomes confirm + Yes/No.
   final Future<SourceDownloadPrep?> Function()? onPrepareDownload;
+  final SourceDownloadChrome downloadChrome;
+  final double downloadProgress;
+  final String? downloadStatusLabel;
 
   @override
   State<_SourceBadgeCard> createState() => _SourceBadgeCardState();
 }
 
-class _SourceBadgeCardState extends State<_SourceBadgeCard> {
+class _SourceBadgeCardState extends State<_SourceBadgeCard>
+    with SingleTickerProviderStateMixin {
   static const _hoverProbeDelay = Duration(milliseconds: 400);
   static const _probeBarWidth = 4.0;
 
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
+  AnimationController? _stripeCtrl;
   bool? _probeHealth;
   bool _probeChecking = false;
   bool _probeHoverActive = false;
@@ -571,6 +589,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   @override
   void dispose() {
     _cancelHoverProbe();
+    _stripeCtrl?.dispose();
+    _stripeCtrl = null;
     _hoveredN.dispose();
     super.dispose();
   }
@@ -633,6 +653,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   void initState() {
     super.initState();
     _probeHealth = widget.probeHealthCache;
+    _syncStripeAnim();
   }
 
   @override
@@ -641,6 +662,25 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final cached = widget.probeHealthCache;
     if (cached != null && cached != _probeHealth) {
       _probeHealth = cached;
+    }
+    if (oldWidget.downloadChrome != widget.downloadChrome) {
+      _syncStripeAnim();
+    }
+  }
+
+  void _syncStripeAnim() {
+    final need =
+        widget.downloadChrome == SourceDownloadChrome.downloading;
+    if (need) {
+      _stripeCtrl ??= AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 900),
+      )..repeat();
+      if (!(_stripeCtrl?.isAnimating ?? false)) {
+        _stripeCtrl?.repeat();
+      }
+    } else {
+      _stripeCtrl?.stop();
     }
   }
 
@@ -870,11 +910,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final railIconCount = _downloadConfirming
         ? 2
         : (widget.onPrepareDownload != null ? 1 : 0) + (hasMagnet ? 1 : 0);
-    final actionWidth = metrics.usesTvDensity
-        ? 36.0 * railIconCount
-        : 40.0 * railIconCount;
+    final hit = metrics.usesTvDensity ? 36.0 : 40.0;
+    final actionPadH = metrics.usesTvDensity ? 8.0 : 10.0;
+    final actionWidth = railIconCount > 0
+        ? (hit * railIconCount) + (actionPadH * 2)
+        : 0.0;
     final railAnim = const Duration(milliseconds: 180);
-    final iconSize = metrics.torrentPanelMetaIconSize;
+    final iconSize = metrics.usesTvDensity ? 18.0 : 20.0;
     final prep = _downloadPrep;
     final canYes = prep != null && prep.canConfirm;
 
@@ -981,7 +1023,11 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
           ],
           Expanded(child: mainColumn),
           if (!_downloadConfirming &&
-              (selected || hasProvider || hasViewers || hasSeeders)) ...[
+              (selected ||
+                  hasProvider ||
+                  hasViewers ||
+                  hasSeeders ||
+                  widget.downloadChrome != SourceDownloadChrome.none)) ...[
             SizedBox(width: titleGap),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 120),
@@ -1015,6 +1061,40 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                         ),
                       );
                     }),
+                  if (widget.downloadChrome ==
+                      SourceDownloadChrome.downloading) ...[
+                    if (hasProvider || selected) const SizedBox(height: 2),
+                    Text(
+                      (widget.downloadStatusLabel ?? '').trim().isEmpty
+                          ? '${(widget.downloadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%'
+                          : widget.downloadStatusLabel!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: ForjaShellColors.brandGreen,
+                        fontSize: metrics.torrentPanelMetaFontSize,
+                        fontWeight: FontWeight.w600,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                  if (widget.downloadChrome ==
+                      SourceDownloadChrome.offline) ...[
+                    if (hasProvider || selected) const SizedBox(height: 2),
+                    Text(
+                      'Offline',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: ForjaShellColors.brandGreen,
+                        fontSize: metrics.torrentPanelMetaFontSize,
+                        fontWeight: FontWeight.w600,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                   if (hasViewers) ...[
                     if (hasProvider || selected) const SizedBox(height: 2),
                     Row(
@@ -1073,60 +1153,60 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
 
     Widget actionRail;
     if (_downloadConfirming) {
-      actionRail = Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          IconButton(
-            tooltip: 'Yes',
-            padding: const EdgeInsets.all(4),
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            iconSize: iconSize,
-            color: canYes ? ForjaShellColors.brandGreen : Colors.white24,
-            onPressed: canYes ? () => unawaited(_commitDownload()) : null,
-            icon: const Icon(Icons.check_rounded),
-          ),
-          IconButton(
-            tooltip: 'No',
-            padding: const EdgeInsets.all(4),
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            iconSize: iconSize,
-            color: Colors.white60,
-            onPressed: _cancelDownloadConfirm,
-            icon: const Icon(Icons.close_rounded),
-          ),
-        ],
+      actionRail = Padding(
+        padding: EdgeInsets.symmetric(horizontal: actionPadH),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _SourceRailIcon(
+              icon: Icons.check_rounded,
+              idle: canYes ? Colors.white60 : Colors.white24,
+              hit: hit,
+              iconSize: iconSize,
+              onTap: canYes ? () => unawaited(_commitDownload()) : null,
+            ),
+            _SourceRailIcon(
+              icon: Icons.close_rounded,
+              idle: Colors.white60,
+              hit: hit,
+              iconSize: iconSize,
+              onTap: _cancelDownloadConfirm,
+            ),
+          ],
+        ),
       );
     } else {
-      actionRail = Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (widget.onPrepareDownload != null)
-            IconButton(
-              tooltip: 'Download',
-              padding: const EdgeInsets.all(4),
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              iconSize: iconSize,
-              color: Colors.white60,
-              onPressed: () => unawaited(_beginDownloadConfirm()),
-              icon: const Icon(Icons.download_rounded),
-            ),
-          if (hasMagnet)
-            IconButton(
-              tooltip: 'Copy magnet',
-              padding: const EdgeInsets.all(4),
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              iconSize: iconSize,
-              color: Colors.white60,
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: magnet));
-                ForjaToast.success(
-                  'Magnet copied',
-                  duration: const Duration(seconds: 2),
-                );
-              },
-              icon: const Icon(Icons.content_copy_rounded),
-            ),
-        ],
+      actionRail = Padding(
+        padding: EdgeInsets.symmetric(horizontal: actionPadH),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (widget.onPrepareDownload != null)
+              _SourceRailIcon(
+                tooltip: 'Download',
+                icon: Icons.download_rounded,
+                idle: Colors.white60,
+                hit: hit,
+                iconSize: iconSize,
+                onTap: () => unawaited(_beginDownloadConfirm()),
+              ),
+            if (hasMagnet)
+              _SourceRailIcon(
+                tooltip: 'Copy magnet',
+                icon: Icons.content_copy_rounded,
+                idle: Colors.white60,
+                hit: hit,
+                iconSize: iconSize,
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: magnet));
+                  ForjaToast.success(
+                    'Magnet copied',
+                    duration: const Duration(seconds: 2),
+                  );
+                },
+              ),
+          ],
+        ),
       );
     }
 
@@ -1148,42 +1228,58 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         ),
       ),
       // Portal-style: probe | main | push-in action rail (RFC-117).
-      child: Stack(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(width: _probeBarWidth),
-              Expanded(child: main),
-              if (railIconCount > 0)
-                ClipRect(
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(end: reveal ? 1.0 : 0.0),
-                    duration: railAnim,
-                    curve: Curves.easeOutCubic,
-                    builder: (context, factor, child) {
-                      return Align(
-                        alignment: Alignment.centerRight,
-                        widthFactor: factor.clamp(0.0, 1.0),
-                        child: child,
-                      );
-                    },
-                    child: SizedBox(
-                      width: actionWidth,
-                      child: actionRail,
+      child: ClipRect(
+        child: Stack(
+          children: [
+            if (widget.downloadChrome == SourceDownloadChrome.offline)
+              const Positioned.fill(
+                child: CustomPaint(painter: _SourceOfflineStripePainter()),
+              ),
+            if (widget.downloadChrome == SourceDownloadChrome.downloading)
+              Positioned.fill(
+                child: _SourceDownloadingChrome(
+                  progress: widget.downloadProgress,
+                  controller: _stripeCtrl,
+                ),
+              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(width: _probeBarWidth),
+                Expanded(child: main),
+                if (railIconCount > 0)
+                  ClipRect(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(end: reveal ? 1.0 : 0.0),
+                      duration: railAnim,
+                      curve: Curves.easeOutCubic,
+                      builder: (context, factor, child) {
+                        return Align(
+                          alignment: Alignment.centerRight,
+                          widthFactor: factor.clamp(0.0, 1.0),
+                          child: child,
+                        );
+                      },
+                      child: SizedBox(
+                        width: actionWidth,
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: actionRail,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-            ],
-          ),
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: _probeBarWidth,
-            child: ColoredBox(color: leftBarColor),
-          ),
-        ],
+              ],
+            ),
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: _probeBarWidth,
+              child: ColoredBox(color: leftBarColor),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1356,4 +1452,157 @@ class _SourceMetaBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Portal-style rail icon — plain glyph, brand-green on hover (not a Material button).
+class _SourceRailIcon extends StatefulWidget {
+  const _SourceRailIcon({
+    this.tooltip,
+    required this.icon,
+    required this.idle,
+    required this.hit,
+    required this.iconSize,
+    this.onTap,
+  });
+
+  final String? tooltip;
+  final IconData icon;
+  final Color idle;
+  final double hit;
+  final double iconSize;
+  final VoidCallback? onTap;
+
+  @override
+  State<_SourceRailIcon> createState() => _SourceRailIconState();
+}
+
+class _SourceRailIconState extends State<_SourceRailIcon> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    final color = !enabled
+        ? widget.idle
+        : (_hovered ? ForjaShellColors.brandGreen : widget.idle);
+    Widget icon = SizedBox(
+      width: widget.hit,
+      height: widget.hit,
+      child: Center(
+        child: Icon(
+          widget.icon,
+          size: widget.iconSize,
+          color: color,
+        ),
+      ),
+    );
+    final tip = widget.tooltip?.trim();
+    if (tip != null && tip.isNotEmpty) {
+      icon = Tooltip(message: tip, child: icon);
+    }
+    return MouseRegion(
+      onEnter: enabled ? (_) => setState(() => _hovered = true) : null,
+      onExit: enabled ? (_) => setState(() => _hovered = false) : null,
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: icon,
+      ),
+    );
+  }
+}
+
+class _SourceDownloadingChrome extends StatelessWidget {
+  const _SourceDownloadingChrome({
+    required this.progress,
+    required this.controller,
+  });
+
+  final double progress;
+  final AnimationController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final fill = progress.clamp(0.0, 1.0);
+    final widthFactor = fill <= 0 ? 0.08 : fill;
+    final ctrl = controller;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(
+            widthFactor: widthFactor,
+            heightFactor: 1,
+            child: ColoredBox(
+              color: ForjaShellColors.brandGreen.withValues(alpha: 0.14),
+            ),
+          ),
+        ),
+        if (ctrl != null)
+          AnimatedBuilder(
+            animation: ctrl,
+            builder: (context, _) => CustomPaint(
+              painter: _SourceMovingStripePainter(progress: ctrl.value),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Static diagonal stripes for a completed offline source row.
+class _SourceOfflineStripePainter extends CustomPainter {
+  const _SourceOfflineStripePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = ForjaShellColors.brandGreen.withValues(alpha: 0.12)
+      ..strokeWidth = 5
+      ..style = PaintingStyle.stroke;
+    const spacing = 14.0;
+    for (double x = -size.height; x < size.width + size.height; x += spacing) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SourceOfflineStripePainter oldDelegate) => false;
+}
+
+/// Animated diagonal stripes while a source is downloading.
+class _SourceMovingStripePainter extends CustomPainter {
+  const _SourceMovingStripePainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = ForjaShellColors.brandGreen.withValues(alpha: 0.2)
+      ..strokeWidth = 6
+      ..style = PaintingStyle.stroke;
+    const spacing = 14.0;
+    final shift = progress * spacing;
+    for (double x = -size.height - spacing;
+        x < size.width + size.height + spacing;
+        x += spacing) {
+      final ox = x + shift;
+      canvas.drawLine(
+        Offset(ox, size.height),
+        Offset(ox + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SourceMovingStripePainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

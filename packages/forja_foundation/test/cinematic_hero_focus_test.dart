@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
+import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 Widget _paintScope({
@@ -21,6 +22,64 @@ Widget _paintScope({
 }
 
 void main() {
+  testWidgets('hero keeps every slide backdrop mounted across carousel steps', (
+    tester,
+  ) async {
+    final key = GlobalKey<CinematicHeroState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 420,
+            width: 900,
+            child: CinematicHero(
+              key: key,
+              slides: const [
+                CinematicHeroSlide(
+                  id: 'a',
+                  title: 'Alpha',
+                  backdropUrl: 'https://example.com/a.jpg',
+                  overview: 'First',
+                ),
+                CinematicHeroSlide(
+                  id: 'b',
+                  title: 'Beta',
+                  backdropUrl: 'https://example.com/b.jpg',
+                  overview: 'Second',
+                ),
+                CinematicHeroSlide(
+                  id: 'c',
+                  title: 'Gamma',
+                  backdropUrl: 'https://example.com/c.jpg',
+                  overview: 'Third',
+                ),
+              ],
+              layout: const CinematicHeroLayout(
+                kenBurns: false,
+                compact: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(RotatingHeroBackdrop), findsNWidgets(3));
+
+    key.currentState!.stepFilm(1, instant: true);
+    await tester.pump();
+    expect(find.byType(RotatingHeroBackdrop), findsNWidgets(3));
+
+    key.currentState!.stepFilm(1, instant: true);
+    await tester.pump();
+    expect(find.byType(RotatingHeroBackdrop), findsNWidgets(3));
+
+    key.currentState!.stepFilm(-2, instant: true);
+    await tester.pump();
+    expect(find.byType(RotatingHeroBackdrop), findsNWidgets(3));
+  });
+
   testWidgets('hero carousel slide keeps action-row FocusNode attached', (
     tester,
   ) async {

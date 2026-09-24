@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
@@ -1194,6 +1195,8 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
     this.availableSizeRanges = const {},
     this.activeSizeFilters = const {},
     this.onSizeFiltersChanged,
+    this.offlineFilters = const {},
+    this.onOfflineFiltersChanged,
     this.sortPreference,
     this.onSortChanged,
 
@@ -1238,6 +1241,8 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
   final Set<String> availableSizeRanges;
   final Set<String> activeSizeFilters;
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
+  final Set<String> offlineFilters;
+  final ValueChanged<Set<String>>? onOfflineFiltersChanged;
   final String? sortPreference;
   final ValueChanged<String>? onSortChanged;
   final bool enableBlur;
@@ -1278,6 +1283,7 @@ class _TorrentSourceSearchToolbarState
       widget.activeTechFilters.length +
       widget.activeAudioFilters.length +
       widget.activeSizeFilters.length +
+      widget.offlineFilters.length +
       (widget.showEngineCategories
           ? EngineCategories.extraCategoryFilterCount(
               visibleCategories: widget.engineVisibleCategories,
@@ -1397,6 +1403,8 @@ class _TorrentSourceSearchToolbarState
           onTechFiltersChanged: widget.onTechFiltersChanged,
           onAudioFiltersChanged: widget.onAudioFiltersChanged,
           onSizeFiltersChanged: widget.onSizeFiltersChanged,
+          offlineFilters: widget.offlineFilters,
+          onOfflineFiltersChanged: widget.onOfflineFiltersChanged,
           onSortChanged: widget.onSortChanged,
           showEngineCategories: widget.showEngineCategories,
           engineVisibleCategories: widget.engineVisibleCategories,
@@ -1409,6 +1417,7 @@ class _TorrentSourceSearchToolbarState
             widget.onTechFiltersChanged({});
             widget.onAudioFiltersChanged?.call({});
             widget.onSizeFiltersChanged?.call({});
+            widget.onOfflineFiltersChanged?.call({});
             if (widget.showEngineCategories &&
                 widget.onEngineCategoriesChanged != null) {
               widget.onEngineCategoriesChanged!(
@@ -1741,6 +1750,8 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
     this.onSortChanged,
     this.onAudioFiltersChanged,
     this.onSizeFiltersChanged,
+    this.offlineFilters = const {},
+    this.onOfflineFiltersChanged,
     this.showEngineCategories = false,
     this.engineVisibleCategories = const {},
     this.engineCategoryOptions = const [],
@@ -1765,6 +1776,8 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
   final ValueChanged<Set<String>> onTechFiltersChanged;
   final ValueChanged<Set<String>>? onAudioFiltersChanged;
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
+  final Set<String> offlineFilters;
+  final ValueChanged<Set<String>>? onOfflineFiltersChanged;
   final ValueChanged<String>? onSortChanged;
   final bool showEngineCategories;
   final Set<String> engineVisibleCategories;
@@ -1785,6 +1798,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
   late Set<String> _tech;
   late Set<String> _audio;
   late Set<String> _size;
+  late Set<String> _offline;
   late Set<String> _engineCats;
   late String? _sort;
 
@@ -1796,6 +1810,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     _tech = Set<String>.from(widget.activeTechFilters);
     _audio = Set<String>.from(widget.activeAudioFilters);
     _size = Set<String>.from(widget.activeSizeFilters);
+    _offline = Set<String>.from(widget.offlineFilters);
     _engineCats = Set<String>.from(widget.engineVisibleCategories);
     _sort = widget.sortPreference;
   }
@@ -1805,6 +1820,9 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.engineVisibleCategories != widget.engineVisibleCategories) {
       _engineCats = Set<String>.from(widget.engineVisibleCategories);
+    }
+    if (oldWidget.offlineFilters != widget.offlineFilters) {
+      _offline = Set<String>.from(widget.offlineFilters);
     }
   }
 
@@ -1816,6 +1834,22 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
         set.add(value);
       }
       emit(Set<String>.from(set));
+    });
+  }
+
+  /// Offline / Online are exclusive — picking one clears the other.
+  void _toggleOffline(String value) {
+    final onChanged = widget.onOfflineFiltersChanged;
+    if (onChanged == null) return;
+    setState(() {
+      if (_offline.contains(value)) {
+        _offline.remove(value);
+      } else {
+        _offline
+          ..clear()
+          ..add(value);
+      }
+      onChanged(Set<String>.from(_offline));
     });
   }
 
@@ -2087,6 +2121,30 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                 selected: _audio.contains(tags[i]),
                 onTap: () =>
                     _toggle(_audio, tags[i], widget.onAudioFiltersChanged!),
+                rowId: rowId,
+                index: i,
+              ),
+          ],
+        ),
+      );
+    }
+    if (widget.onOfflineFiltersChanged != null) {
+      const rowId = 'filters-offline';
+      const options = [
+        (kSourcesOfflineFilterId, 'Offline'),
+        (kSourcesOnlineFilterId, 'Online'),
+      ];
+      sections.add(
+        _sheetSection(
+          'Offline',
+          rowId: rowId,
+          sortOrder: nextSort++,
+          chips: [
+            for (var i = 0; i < options.length; i++)
+              _sheetChip(
+                label: options[i].$2,
+                selected: _offline.contains(options[i].$1),
+                onTap: () => _toggleOffline(options[i].$1),
                 rowId: rowId,
                 index: i,
               ),

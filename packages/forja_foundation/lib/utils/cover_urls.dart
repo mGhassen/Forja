@@ -1,6 +1,8 @@
 /// Absolute / CDN cover URL helpers (no host TMDB client).
 library;
 
+import 'package:flutter/widgets.dart';
+
 /// Hub thumbnail URL normalization (pack-agnostic).
 /// Official TMDB image hosts → Forja gateway (`tmdb.forjahq.xyz`).
 String normalizeCoverUrl(String raw) {
@@ -40,4 +42,26 @@ String paintableNetworkImageUrl(String raw) {
   final http = lower.startsWith('http://') || lower.startsWith('https://');
   if (!http || !lower.endsWith('.svg')) return value;
   return '${value.substring(0, value.length - 4)}.png';
+}
+
+/// Decode [url] into [ImageCache] without reporting load failures as
+/// framework errors (hero warm must not spam tests / logs on a miss).
+void warmNetworkImage(BuildContext context, String url) {
+  final paint = paintableNetworkImageUrl(url);
+  if (paint.isEmpty) return;
+  if (!(paint.startsWith('http://') || paint.startsWith('https://'))) return;
+  final stream = NetworkImage(paint).resolve(
+    createLocalImageConfiguration(context),
+  );
+  late final ImageStreamListener listener;
+  listener = ImageStreamListener(
+    (ImageInfo image, bool synchronousCall) {
+      stream.removeListener(listener);
+      image.dispose();
+    },
+    onError: (Object _, StackTrace? __) {
+      stream.removeListener(listener);
+    },
+  );
+  stream.addListener(listener);
 }

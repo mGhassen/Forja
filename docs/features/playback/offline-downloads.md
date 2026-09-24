@@ -14,7 +14,9 @@ are not offline yet.
   hover a stream row to push the card and reveal a right action rail with
   Download (same pattern as IPTV Portals). Row tap still plays.
 - **Sources** — hover any HTTP stream row to push in the Download action;
-  torrents toast that offline isn’t available yet.
+  torrents toast that offline isn’t available yet. Downloading rows show
+  progress with striped chrome; finished offline rows keep static stripes.
+  Filters include **Offline** / **Online**.
 - **Player** — use the download icon in the top bar to save the stream you’re
   watching (phone, Android TV Exo, and desktop).
 
@@ -39,6 +41,9 @@ The header is a storage meter: offline library vs other space on the volume vs f
 
 On a completed row, tap **Play**. Forja opens the local file in the same player
 (ExoPlayer and MediaKit stay available — pick from the Player menu as usual).
+
+If Play says the file can’t be played, delete that row and download again — the
+saved file is damaged or incomplete.
 
 ## Tips
 

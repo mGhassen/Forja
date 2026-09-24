@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 
 /// Network image that crossfades to the next URL after it has decoded.
+///
+/// Cached / sync frames skip the fade — already-shown hero stills must not
+/// animate in from empty when the widget remounts or the URL rotates back.
 class SettledNetworkImage extends StatefulWidget {
   const SettledNetworkImage({
     super.key,
@@ -81,7 +84,17 @@ class _SettledNetworkImageState extends State<SettledNetworkImage> {
   }
 
   void _settleIncoming() {
-    if (!mounted || !_incomingVisible || _incoming == null) return;
+    if (!mounted || _incoming == null) return;
+    setState(() {
+      _base = _incoming!;
+      _incoming = null;
+      _incomingVisible = false;
+    });
+  }
+
+  void _settleIncomingSync() {
+    if (!mounted || _incoming == null) return;
+    // Already in ImageCache — snap, no fade-from-empty.
     setState(() {
       _base = _incoming!;
       _incoming = null;
@@ -105,6 +118,12 @@ class _SettledNetworkImageState extends State<SettledNetworkImage> {
             errorBuilder: (_, _, _) => const SizedBox.shrink(),
             frameBuilder: (context, child, frame, sync) {
               if (frame == null && !sync) return const SizedBox.shrink();
+              if (sync) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _settleIncomingSync();
+                });
+                return child;
+              }
               if (!_incomingVisible) {
                 WidgetsBinding.instance
                     .addPostFrameCallback((_) => _revealIncoming());

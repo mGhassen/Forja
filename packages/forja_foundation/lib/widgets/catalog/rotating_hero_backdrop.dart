@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/widgets/catalog/ken_burns_backdrop.dart';
 
 /// Ken Burns hero that crossfades through [imageUrls] on a random beat.
@@ -55,6 +56,12 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _warmUrls(_urls);
+  }
+
+  @override
   void didUpdateWidget(covariant RotatingHeroBackdrop oldWidget) {
     super.didUpdateWidget(oldWidget);
     final next = RotatingHeroBackdrop.normalizeUrls(widget.imageUrls);
@@ -71,6 +78,7 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
         _index = keep >= 0 ? keep : 0;
       }
       _scheduleNext();
+      _warmUrls(_urls);
     }
   }
 
@@ -78,6 +86,12 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  void _warmUrls(List<String> urls) {
+    for (final raw in urls) {
+      warmNetworkImage(context, raw);
+    }
   }
 
   void _scheduleNext() {

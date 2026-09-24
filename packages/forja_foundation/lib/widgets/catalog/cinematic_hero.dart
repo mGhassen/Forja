@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/utils/hero_desktop_layout.dart';
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -355,6 +356,9 @@ class CinematicHeroState extends State<CinematicHero>
     if (oldWidget.slides.length != widget.slides.length) {
       _restartHeroProgress();
     }
+    if (!_slidesImageUrlsEqual(oldWidget.slides, widget.slides)) {
+      _warmSlideBackdropImages();
+    }
   }
 
   @override
@@ -363,6 +367,32 @@ class CinematicHeroState extends State<CinematicHero>
     final scope = ShellPaintScope.maybeOf(context);
     _paintUseTvFocus = scope?.useTvFocus;
     _paintScaleOnHover = scope?.scaleOnHover;
+    _warmSlideBackdropImages();
+  }
+
+  static bool _slidesImageUrlsEqual(
+    List<CinematicHeroSlide> a,
+    List<CinematicHeroSlide> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+      if (a[i].primaryImageUrl != b[i].primaryImageUrl) return false;
+    }
+    return true;
+  }
+
+  /// Decode Spotlight stills into [ImageCache] before / while the carousel
+  /// paints — swipe-back must not reload from empty.
+  void _warmSlideBackdropImages() {
+    for (final slide in widget.slides) {
+      final raw = slide.primaryImageUrl;
+      if (raw.isEmpty) continue;
+      final url = paintableNetworkImageUrl(raw);
+      if (url.isEmpty) continue;
+      warmNetworkImage(context, url);
+    }
   }
 
   @override
@@ -719,70 +749,151 @@ class CinematicHeroState extends State<CinematicHero>
           );
         }
         _heroPageViewportWidth = pageW;
-        return PageView.builder(
-          key: _heroPageViewKey,
+        // Backdrops live outside the looping [PageView] so each slide keeps
+        // one mounted image State. Swiping back must not remount → fade-from
+        // empty (PageView disposes off-screen pages).
+        return Stack(
+          fit: StackFit.expand,
           clipBehavior: Clip.hardEdge,
-          controller: _heroController,
-          itemCount: _heroLoopLength,
-          onPageChanged: _onHeroPageChanged,
-          itemBuilder: (context, index) {
-            final item = items[index % items.length];
-            return Stack(
-              fit: StackFit.expand,
+          children: [
+            ColoredBox(color: shellBg),
+            AnimatedBuilder(
+              animation: _heroController,
+              builder: (context, _) {
+                final page = _safeHeroPage() ??
+                    (_heroLoopStart + _heroIndex).toDouble();
+                return Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      _persistentSlideBackdropLayer(
+                        slide: items[i],
+                        slideIndex: i,
+                        page: page,
+                        count: items.length,
+                        pageWidth: pageW,
+                        solidLeftWidth: solidLeftWidth,
+                        shellBg: shellBg,
+                      ),
+                  ],
+                );
+              },
+            ),
+            PageView.builder(
+              key: _heroPageViewKey,
               clipBehavior: Clip.hardEdge,
-              children: [
-                ColoredBox(color: shellBg),
-                Positioned(
-                  left: solidLeftWidth,
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: _buildSlideBackdrop(item, index),
-                ),
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: _buildImageGradients(
-                      shellBg,
-                      imageStartFraction: imageStartFraction,
-                      softBottomFade: pageBleed,
+              controller: _heroController,
+              itemCount: _heroLoopLength,
+              onPageChanged: _onHeroPageChanged,
+              itemBuilder: (context, index) {
+                return Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: solidLeftWidth,
+                      child: ColoredBox(color: shellBg),
                     ),
-                  ),
-                ),
-              ],
-            );
-          },
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: _buildImageGradients(
+                          shellBg,
+                          imageStartFraction: imageStartFraction,
+                          softBottomFade: pageBleed,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: solidLeftWidth,
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: AnimatedBuilder(
+                        animation: _heroController,
+                        builder: (context, _) {
+                          final page = _safeHeroPage() ?? index.toDouble();
+                          final rightEdgeViewportFraction =
+                              index - page + 1.0;
+                          final opacity = _rightEdgeJoinOpacity(
+                            rightEdgeViewportFraction,
+                          );
+                          return _buildTrailingEdge(opacity: opacity);
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
         );
       },
     );
   }
 
-  Widget _buildSlideBackdrop(CinematicHeroSlide item, int index) {
-    final shellBg = Theme.of(context).scaffoldBackgroundColor;
-    final urls = _slideUrls(item);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (urls.isEmpty)
-          ColoredBox(color: shellBg)
-        else
-          RotatingHeroBackdrop(
-            key: ValueKey('hero-bg-${item.id}'),
+  /// One backdrop [State] per slide id — translated with the page offset.
+  Widget _persistentSlideBackdropLayer({
+    required CinematicHeroSlide slide,
+    required int slideIndex,
+    required double page,
+    required int count,
+    required double pageWidth,
+    required double solidLeftWidth,
+    required Color shellBg,
+  }) {
+    final urls = _slideUrls(slide);
+    final backdrop = urls.isEmpty
+        ? ColoredBox(color: shellBg)
+        : RotatingHeroBackdrop(
+            key: ValueKey('hero-bg-${slide.id}'),
             imageUrls: urls,
             showColorTint: false,
-            fit: item.imageFit,
-            imageAlignment: item.imageAlignment,
+            fit: slide.imageFit,
+            imageAlignment: slide.imageAlignment,
             enableMotion: widget.layout.kenBurns,
+          );
+
+    final base = page.floor();
+    int? bestK;
+    var bestDist = double.infinity;
+    for (var k = base - 2; k <= base + 2; k++) {
+      if (((k % count) + count) % count != slideIndex) continue;
+      final d = (k - page).abs();
+      if (d < bestDist) {
+        bestDist = d;
+        bestK = k;
+      }
+    }
+
+    // Stable tree shape (always Transform → Offstage → page) so backdrop
+    // [State] is never disposed when a slide leaves the viewport.
+    final hide = bestK == null || bestDist > 1.05;
+    final dx = bestK == null ? 0.0 : (bestK - page) * pageWidth;
+    return Transform.translate(
+      offset: Offset(dx, 0),
+      child: Offstage(
+        offstage: hide,
+        child: SizedBox(
+          width: pageWidth,
+          height: double.infinity,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned(
+                left: solidLeftWidth,
+                top: 0,
+                right: 0,
+                bottom: 0,
+                child: backdrop,
+              ),
+            ],
           ),
-        AnimatedBuilder(
-          animation: _heroController,
-          builder: (context, _) {
-            final page = _safeHeroPage() ?? index.toDouble();
-            final rightEdgeViewportFraction = index - page + 1.0;
-            final opacity = _rightEdgeJoinOpacity(rightEdgeViewportFraction);
-            return _buildTrailingEdge(opacity: opacity);
-          },
         ),
-      ],
+      ),
     );
   }
 

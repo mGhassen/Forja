@@ -267,6 +267,13 @@ Future<DownloadTask?> enqueueVodDownload({
       ForjaToast.error(reject, duration: const Duration(seconds: 4));
       return null;
     }
+    // One offline slot per title (season/episode). A second Sources tap must
+    // not pretend a new transfer started when HdHub (etc.) is already going.
+    final existing = DownloadService.instance.findActiveOrCompleted(
+      mediaId: mediaId,
+      season: season,
+      episode: episode,
+    );
     final task = await DownloadService.instance.startDownload(
       title: title,
       mediaId: mediaId,
@@ -281,12 +288,31 @@ Future<DownloadTask?> enqueueVodDownload({
       headers: resolved,
       sourceName: sourceName,
     );
-    ForjaToast.success(
-      'Downloading $title',
-      duration: const Duration(seconds: 5),
-      actionLabel: 'View',
-      onAction: openSettingsDownloads,
-    );
+    final sameSlot = existing != null && existing.id == task.id;
+    if (sameSlot && existing.isCompleted) {
+      ForjaToast.info(
+        'Already saved offline',
+        duration: const Duration(seconds: 5),
+        actionLabel: 'View',
+        onAction: openSettingsDownloads,
+      );
+    } else if (sameSlot &&
+        (existing.isDownloading ||
+            existing.status == DownloadStatus.queued)) {
+      ForjaToast.info(
+        'Already downloading $title',
+        duration: const Duration(seconds: 5),
+        actionLabel: 'View',
+        onAction: openSettingsDownloads,
+      );
+    } else {
+      ForjaToast.success(
+        'Downloading $title',
+        duration: const Duration(seconds: 5),
+        actionLabel: 'View',
+        onAction: openSettingsDownloads,
+      );
+    }
     return task;
   } catch (e) {
     ForjaToast.error(

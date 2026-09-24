@@ -79,6 +79,150 @@ bool looksLikeManifestBytes(List<int> bytes) {
   return false;
 }
 
+/// True when [bytes] start with a known playable media container magic.
+///
+/// Rejects leading-zero / garbage heads that mpv reports as
+/// "Failed to recognize file format" after a corrupt Range resume.
+bool looksLikeMediaContainerBytes(List<int> bytes) {
+  if (bytes.length < 4) return false;
+
+  bool matchAt(int offset, int b0, [int? b1, int? b2, int? b3]) {
+    if (offset >= bytes.length) return false;
+    if (bytes[offset] != b0) return false;
+    if (b1 != null &&
+        (offset + 1 >= bytes.length || bytes[offset + 1] != b1)) {
+      return false;
+    }
+    if (b2 != null &&
+        (offset + 2 >= bytes.length || bytes[offset + 2] != b2)) {
+      return false;
+    }
+    if (b3 != null &&
+        (offset + 3 >= bytes.length || bytes[offset + 3] != b3)) {
+      return false;
+    }
+    return true;
+  }
+
+  bool hasMagicAt(int offset) {
+    // Matroska / WebM EBML
+    if (matchAt(offset, 0x1a, 0x45, 0xdf, 0xa3)) return true;
+    // ISO BMFF (mp4 / m4v / mov) — size(4) + 'ftyp'
+    if (bytes.length - offset >= 8 &&
+        matchAt(offset + 4, 0x66, 0x74, 0x79, 0x70)) {
+      return true;
+    }
+    // MPEG-TS sync
+    if (matchAt(offset, 0x47)) return true;
+    // RIFF (AVI / WAV)
+    if (matchAt(offset, 0x52, 0x49, 0x46, 0x46)) return true;
+    // Ogg
+    if (matchAt(offset, 0x4f, 0x67, 0x67, 0x53)) return true;
+    // FLV
+    if (matchAt(offset, 0x46, 0x4c, 0x56)) return true;
+    // ID3-tagged MPEG
+    if (matchAt(offset, 0x49, 0x44, 0x33)) return true;
+    // MPEG PES / pack
+    if (matchAt(offset, 0x00, 0x00, 0x01)) return true;
+    return false;
+  }
+
+  if (hasMagicAt(0)) return true;
+
+  // Tiny leading null pad only (not kilobytes of wiped header).
+  var offset = 0;
+  final maxPad = bytes.length < 16 ? bytes.length : 16;
+  while (offset < maxPad && bytes[offset] == 0) {
+    offset++;
+  }
+  if (offset == 0 || offset >= bytes.length - 3) return false;
+  return hasMagicAt(offset);
+}
+
+/// Preferred file extension from a `Content-Disposition` filename, or null.
+String? extensionFromContentDisposition(String? header) {
+  if (header == null || header.isEmpty) return null;
+  final star = RegExp(
+    r'''filename\*\s*=\s*[^']*'[^']*'([^;]+)''',
+    caseSensitive: false,
+  ).firstMatch(header);
+  final plain = RegExp(
+    r'''filename\s*=\s*"?([^";]+)"?''',
+    caseSensitive: false,
+  ).firstMatch(header);
+  final name = (star?.group(1) ?? plain?.group(1) ?? '').trim();
+  if (name.isEmpty) return null;
+  final dot = name.lastIndexOf('.');
+  if (dot < 0 || dot >= name.length - 1) return null;
+  final ext = name.substring(dot).toLowerCase();
+  const allowed = {
+    '.mp4',
+    '.m4v',
+    '.mkv',
+    '.webm',
+    '.mov',
+    '.avi',
+    '.ts',
+    '.m2ts',
+    '.mpg',
+    '.mpeg',
+    '.flv',
+  };
+  return allowed.contains(ext) ? ext : null;
+}
+
+/// Preferred extension from `Content-Type`, or null.
+String? extensionFromContentType(String? mime) {
+  if (mime == null || mime.isEmpty) return null;
+  final m = mime.toLowerCase().split(';').first.trim();
+  switch (m) {
+    case 'video/matroska':
+    case 'video/x-matroska':
+      return '.mkv';
+    case 'video/webm':
+      return '.webm';
+    case 'video/mp4':
+    case 'video/x-m4v':
+      return '.mp4';
+    case 'video/quicktime':
+      return '.mov';
+    case 'video/avi':
+    case 'video/x-msvideo':
+      return '.avi';
+    case 'video/mp2t':
+    case 'video/MP2T':
+      return '.ts';
+    case 'video/x-flv':
+      return '.flv';
+    default:
+      return null;
+  }
+}
+
+/// Start byte from a `Content-Range: bytes START-END/TOTAL` header, or null.
+int? parseContentRangeStart(String? header) {
+  if (header == null || header.isEmpty) return null;
+  final m = RegExp(
+    r'bytes\s+(\d+)\s*-\s*(\d+)\s*/\s*(\d+|\*)',
+    caseSensitive: false,
+  ).firstMatch(header.trim());
+  if (m == null) return null;
+  return int.tryParse(m.group(1)!);
+}
+
+/// Total size from `Content-Range`, or null when `*` / missing.
+int? parseContentRangeTotal(String? header) {
+  if (header == null || header.isEmpty) return null;
+  final m = RegExp(
+    r'bytes\s+(\d+)\s*-\s*(\d+)\s*/\s*(\d+|\*)',
+    caseSensitive: false,
+  ).firstMatch(header.trim());
+  if (m == null) return null;
+  final total = m.group(3);
+  if (total == null || total == '*') return null;
+  return int.tryParse(total);
+}
+
 const String kOfflineDownloadExpiredMessage =
     'Stream link expired — open Sources and download again';
 

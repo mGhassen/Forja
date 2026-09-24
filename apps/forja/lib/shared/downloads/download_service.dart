@@ -23,16 +23,44 @@ class DownloadService {
   final ValueNotifier<List<DownloadTask>> tasksNotifier =
       ValueNotifier<List<DownloadTask>>([]);
   bool _isInitialized = false;
+  Completer<void>? _initCompleter;
 
   final Map<String, HttpClientRequest> _httpRequests = {};
   final Map<String, StreamSubscription<List<int>>> _httpSubscriptions = {};
   final Map<String, IOSink> _httpFileSinks = {};
   final Set<String> _canceledOrPausedTaskIds = {};
+  /// Prevents overlapping HTTP writers for the same task (resume vs reconnect).
+  final Set<String> _httpExecutors = {};
 
+  /// Loads persisted tasks once. Concurrent callers await the same load so a
+  /// late finish cannot wipe an enqueue that already wrote to [tasksNotifier].
   Future<void> initialize() async {
     if (_isInitialized) return;
+    final inFlight = _initCompleter;
+    if (inFlight != null) {
+      await inFlight.future;
+      return;
+    }
+    final completer = Completer<void>();
+    _initCompleter = completer;
+    try {
+      await _loadPersistedTasks();
+      _isInitialized = true;
+      completer.complete();
+    } catch (e, st) {
+      _initCompleter = null;
+      completer.completeError(e, st);
+      rethrow;
+    }
+  }
+
+  /// Settings → Downloads: if memory is empty after a race, surface disk rows.
+  ///
+  /// In-progress transfers on disk become **paused** (no executor attached).
+  Future<void> ensureQueueVisible() async {
+    await initialize();
+    if (tasksNotifier.value.isNotEmpty) return;
     await _loadPersistedTasks();
-    _isInitialized = true;
   }
 
   static const String _storageFilename = 'forja_download_tasks.json';
@@ -107,6 +135,16 @@ class DownloadService {
       current[idx] = updated;
       tasksNotifier.value = current;
       _persistTasks();
+    } else if (updated.isActive || updated.isFailed) {
+      // Recover when a concurrent init load wiped the in-memory row while the
+      // HTTP/HLS transfer was still running.
+      current.insert(0, updated);
+      tasksNotifier.value = current;
+      _persistTasks();
+      debugPrint(
+        '[DownloadService] Re-attached orphaned task ${updated.id} '
+        '(${updated.status.name})',
+      );
     }
     _updateWakelockState();
   }
@@ -158,6 +196,34 @@ class DownloadService {
       if (t.isActive || t.isCompleted) return t;
     }
     return null;
+  }
+
+  /// Match a Sources-panel stream row to a download task (URL first, then name).
+  DownloadTask? findTaskForStream({
+    required String mediaId,
+    int? season,
+    int? episode,
+    String? streamUrl,
+    String? sourceName,
+  }) {
+    final url = streamUrl?.trim() ?? '';
+    final name = sourceName?.trim() ?? '';
+    DownloadTask? byName;
+    for (final t in tasksNotifier.value) {
+      if (t.mediaId != mediaId) continue;
+      if (t.season != season || t.episode != episode) continue;
+      if (!(t.isActive || t.isCompleted)) continue;
+      final taskUrl = t.rawUrl?.trim() ?? '';
+      if (url.isNotEmpty && taskUrl.isNotEmpty && taskUrl == url) {
+        return t;
+      }
+      if (name.isNotEmpty &&
+          t.sourceName.trim().isNotEmpty &&
+          t.sourceName.trim().toLowerCase() == name.toLowerCase()) {
+        byName ??= t;
+      }
+    }
+    return byName;
   }
 
   /// Starts an HTTP or HLS download. [url] and [headers] are required.
@@ -224,8 +290,13 @@ class DownloadService {
     final baseFilename = '$safeTitle$epSuffix';
 
     var targetExt = '.mp4';
-    if (rawUrl.toLowerCase().contains('.mkv')) {
+    final urlLower = rawUrl.toLowerCase();
+    if (urlLower.contains('.mkv')) {
       targetExt = '.mkv';
+    } else if (urlLower.contains('.webm')) {
+      targetExt = '.webm';
+    } else if (urlLower.contains('.avi')) {
+      targetExt = '.avi';
     }
 
     final targetPath = p.join(downloadDir, '$baseFilename$targetExt');
@@ -310,6 +381,14 @@ class DownloadService {
       return;
     }
 
+    if (attempt == 1 && !_httpExecutors.add(task.id)) {
+      debugPrint(
+        '[DownloadService] Skipping overlapping HTTP executor for ${task.id}',
+      );
+      return;
+    }
+    var releaseExecutor = attempt == 1;
+
     final partFilePath = '${task.targetFilePath}.part';
     final partFile = File(partFilePath);
     if (!await partFile.parent.exists()) {
@@ -323,6 +402,7 @@ class DownloadService {
 
     if (task.totalBytes > 0 && existingBytes >= task.totalBytes) {
       await _finalizeDownloadedFile(task, partFile);
+      if (releaseExecutor) _httpExecutors.remove(task.id);
       return;
     }
 
@@ -357,6 +437,7 @@ class DownloadService {
         if (response.statusCode == HttpStatus.requestedRangeNotSatisfiable &&
             existingBytes > 0) {
           await _finalizeDownloadedFile(task, partFile);
+          if (releaseExecutor) _httpExecutors.remove(task.id);
           return;
         }
         final code = response.statusCode;
@@ -375,6 +456,7 @@ class DownloadService {
                 : 'Server returned HTTP $code: $phrase',
             speedBytesPerSec: 0.0,
           ));
+          if (releaseExecutor) _httpExecutors.remove(task.id);
           return;
         }
         throw Exception(
@@ -393,6 +475,7 @@ class DownloadService {
           error: "DASH streams can't be saved offline yet",
           speedBytesPerSec: 0.0,
         ));
+        if (releaseExecutor) _httpExecutors.remove(task.id);
         return;
       }
       if (contentType.contains('mpegurl') ||
@@ -400,23 +483,97 @@ class DownloadService {
           contentType.contains('apple.mpegurl')) {
         response.listen((_) {}).cancel();
         _cleanupHttpTask(task.id);
+        if (releaseExecutor) {
+          _httpExecutors.remove(task.id);
+          releaseExecutor = false;
+        }
         await _executeHlsDownload(task);
         return;
       }
 
+      // Prefer real container extension from the server (pixeldrain → .mkv).
+      final dispExt = extensionFromContentDisposition(
+        response.headers.value('content-disposition'),
+      );
+      final typeExt = extensionFromContentType(contentType);
+      final preferredExt = dispExt ?? typeExt;
+      var activeTask = task;
+      var activePart = partFile;
+      if (preferredExt != null &&
+          !task.targetFilePath.toLowerCase().endsWith(preferredExt)) {
+        final renamed = await _retargetDownloadExtension(task, preferredExt);
+        if (renamed != null) {
+          activeTask = renamed;
+          activePart = File('${renamed.targetFilePath}.part');
+          if (activePart.path != partFile.path && await partFile.exists()) {
+            if (!await activePart.exists()) {
+              await partFile.rename(activePart.path);
+            }
+          }
+        }
+      }
+
       final totalContentLength = response.contentLength;
-      var totalBytes = task.totalBytes;
+      var totalBytes = activeTask.totalBytes;
+      final rangeHeader = response.headers.value('content-range');
+      final rangeStart = parseContentRangeStart(rangeHeader);
+      final rangeTotal = parseContentRangeTotal(rangeHeader);
+
+      // Disk may have shrunk under us (overlapping writer / lost flush). Always
+      // re-stat before appending so Range offset matches EOF.
+      final diskNow =
+          await activePart.exists() ? await activePart.length() : 0;
 
       if (isPartial) {
-        totalBytes =
-            existingBytes + (totalContentLength > 0 ? totalContentLength : 0);
+        final expectedStart = rangeStart ?? existingBytes;
+        if (diskNow != expectedStart) {
+          debugPrint(
+            '[DownloadService] Resume mismatch: disk=$diskNow '
+            'rangeStart=$expectedStart existing=$existingBytes — realigning',
+          );
+          response.listen((_) {}).cancel();
+          _cleanupHttpTask(activeTask.id);
+          if (expectedStart >= 0 && diskNow > expectedStart) {
+            // Keep the valid prefix; never FileMode.write (that zeros the file).
+            final raf = await activePart.open(mode: FileMode.append);
+            try {
+              await raf.truncate(expectedStart);
+            } finally {
+              await raf.close();
+            }
+          } else if (expectedStart > diskNow) {
+            // Gap we cannot fill from this response — restart clean.
+            try {
+              if (await activePart.exists()) await activePart.delete();
+            } catch (_) {}
+          }
+          if (releaseExecutor) {
+            _httpExecutors.remove(activeTask.id);
+            releaseExecutor = false;
+          }
+          await _executeHttpDownload(
+            activeTask.copyWith(totalBytes: rangeTotal ?? totalBytes),
+            attempt: attempt + 1,
+          );
+          return;
+        }
+        existingBytes = diskNow;
+        if (rangeTotal != null && rangeTotal > 0) {
+          totalBytes = rangeTotal;
+        } else {
+          totalBytes =
+              existingBytes + (totalContentLength > 0 ? totalContentLength : 0);
+        }
       } else if (isOk) {
+        // 200 after a Range request: full body replace (not a silent remainder).
         existingBytes = 0;
-        totalBytes = totalContentLength > 0 ? totalContentLength : 0;
+        totalBytes = totalContentLength > 0
+            ? totalContentLength
+            : (rangeTotal ?? 0);
       }
 
       final enoughSpace = await StorageSpaceHelper.hasEnoughSpace(
-        partFile.parent.path,
+        activePart.parent.path,
         totalBytes > 0 ? (totalBytes - existingBytes) : 1024 * 1024 * 500,
       );
       if (!enoughSpace) {
@@ -425,8 +582,10 @@ class DownloadService {
 
       final mode =
           (existingBytes > 0 && isPartial) ? FileMode.append : FileMode.write;
-      final sink = partFile.openWrite(mode: mode);
-      _httpFileSinks[task.id] = sink;
+      final sink = activePart.openWrite(mode: mode);
+      _httpFileSinks[activeTask.id] = sink;
+      task = activeTask;
+      final outFile = activePart;
 
       var receivedSoFar = existingBytes;
       var bytesInLastSecond = 0;
@@ -463,7 +622,7 @@ class DownloadService {
                   } catch (_) {}
                   _cleanupHttpTask(task.id);
                   try {
-                    if (await partFile.exists()) await partFile.delete();
+                    if (await outFile.exists()) await outFile.delete();
                   } catch (_) {}
                   if (_canceledOrPausedTaskIds.contains(task.id)) return;
                   if (head.startsWith('#EXTM3U') ||
@@ -519,7 +678,10 @@ class DownloadService {
           }
         },
         onDone: () async {
-          if (abortAfterSniff) return;
+          if (abortAfterSniff) {
+            if (releaseExecutor) _httpExecutors.remove(task.id);
+            return;
+          }
           try {
             await sink.flush();
             await sink.close();
@@ -528,17 +690,24 @@ class DownloadService {
           _httpSubscriptions.remove(task.id);
           _httpRequests.remove(task.id);
 
-          if (_canceledOrPausedTaskIds.contains(task.id)) return;
+          if (_canceledOrPausedTaskIds.contains(task.id)) {
+            if (releaseExecutor) _httpExecutors.remove(task.id);
+            return;
+          }
 
           // Tiny response that never filled the sniff buffer.
           if (!sniffedHead && headBuffer.isNotEmpty) {
             if (looksLikeManifestBytes(headBuffer)) {
               try {
-                if (await partFile.exists()) await partFile.delete();
+                if (await outFile.exists()) await outFile.delete();
               } catch (_) {}
               final head = String.fromCharCodes(headBuffer).trimLeft();
               if (head.startsWith('#EXTM3U') ||
                   head.toLowerCase().startsWith('#extm3u')) {
+                if (releaseExecutor) {
+                  _httpExecutors.remove(task.id);
+                  releaseExecutor = false;
+                }
                 await _executeHlsDownload(task);
                 return;
               }
@@ -549,24 +718,31 @@ class DownloadService {
                     : 'Server returned a playlist/page, not a video file',
                 speedBytesPerSec: 0.0,
               ));
+              if (releaseExecutor) _httpExecutors.remove(task.id);
               return;
             }
             try {
-              await partFile.writeAsBytes(headBuffer);
+              await outFile.writeAsBytes(headBuffer);
               receivedSoFar = headBuffer.length;
             } catch (_) {}
           }
 
+          // Prefer on-disk length over in-memory counters (lost flush / race).
+          final diskBytes =
+              await outFile.exists() ? await outFile.length() : receivedSoFar;
+
           if (totalBytes > 0 &&
-              receivedSoFar < (totalBytes - 2048) &&
+              diskBytes < (totalBytes - 256) &&
               attempt < 5) {
             debugPrint(
               '[DownloadService] Stream closed prematurely '
-              '($receivedSoFar / $totalBytes bytes). Auto-reconnecting '
+              '($diskBytes / $totalBytes bytes). Auto-reconnecting '
               'attempt ${attempt + 1}...',
             );
             _updateTask(task.copyWith(
               status: DownloadStatus.downloading,
+              receivedBytes: diskBytes,
+              totalBytes: totalBytes,
               error: 'Reconnecting remaining data (attempt $attempt)...',
               speedBytesPerSec: 0.0,
             ));
@@ -574,22 +750,25 @@ class DownloadService {
             if (!_canceledOrPausedTaskIds.contains(task.id)) {
               await _executeHttpDownload(
                 task.copyWith(
-                  receivedBytes: receivedSoFar,
+                  receivedBytes: diskBytes,
                   totalBytes: totalBytes,
                 ),
                 attempt: attempt + 1,
               );
+            } else if (releaseExecutor) {
+              _httpExecutors.remove(task.id);
             }
             return;
           }
 
           await _finalizeDownloadedFile(
             task.copyWith(
-              receivedBytes: receivedSoFar,
-              totalBytes: totalBytes > 0 ? totalBytes : receivedSoFar,
+              receivedBytes: diskBytes,
+              totalBytes: totalBytes > 0 ? totalBytes : diskBytes,
             ),
-            partFile,
+            outFile,
           );
+          if (releaseExecutor) _httpExecutors.remove(task.id);
         },
         onError: (err) async {
           try {
@@ -600,7 +779,10 @@ class DownloadService {
           _httpSubscriptions.remove(task.id);
           _httpRequests.remove(task.id);
 
-          if (_canceledOrPausedTaskIds.contains(task.id)) return;
+          if (_canceledOrPausedTaskIds.contains(task.id)) {
+            if (releaseExecutor) _httpExecutors.remove(task.id);
+            return;
+          }
 
           if (attempt < 5) {
             debugPrint(
@@ -621,6 +803,8 @@ class DownloadService {
                 ),
                 attempt: attempt + 1,
               );
+            } else if (releaseExecutor) {
+              _httpExecutors.remove(task.id);
             }
             return;
           }
@@ -630,6 +814,7 @@ class DownloadService {
             error: err.toString(),
             speedBytesPerSec: 0.0,
           ));
+          if (releaseExecutor) _httpExecutors.remove(task.id);
         },
         cancelOnError: true,
       );
@@ -650,6 +835,10 @@ class DownloadService {
           ));
           await Future.delayed(Duration(seconds: attempt * 2));
           if (!_canceledOrPausedTaskIds.contains(task.id)) {
+            if (releaseExecutor) {
+              _httpExecutors.remove(task.id);
+              releaseExecutor = false;
+            }
             await _executeHttpDownload(task, attempt: attempt + 1);
             return;
           }
@@ -660,7 +849,22 @@ class DownloadService {
           speedBytesPerSec: 0.0,
         ));
       }
+      if (releaseExecutor) _httpExecutors.remove(task.id);
     }
+  }
+
+  /// Point [task] at the same basename with [ext] (e.g. `.mkv` from Disposition).
+  Future<DownloadTask?> _retargetDownloadExtension(
+    DownloadTask task,
+    String ext,
+  ) async {
+    final dir = p.dirname(task.targetFilePath);
+    final base = p.basenameWithoutExtension(task.targetFilePath);
+    final nextPath = p.join(dir, '$base$ext');
+    if (nextPath == task.targetFilePath) return task;
+    final updated = task.copyWith(targetFilePath: nextPath);
+    _updateTask(updated);
+    return updated;
   }
 
   Future<void> _finalizeDownloadedFile(DownloadTask task, File partFile) async {
@@ -675,7 +879,18 @@ class DownloadService {
         return;
       }
 
-      final peekLen = (await partFile.length()).clamp(0, 512);
+      final partBytes = await partFile.length();
+      if (task.totalBytes > 0 && partBytes < task.totalBytes - 256) {
+        _updateTask(task.copyWith(
+          status: DownloadStatus.failed,
+          error: 'Download incomplete — delete and try again',
+          receivedBytes: partBytes,
+          speedBytesPerSec: 0.0,
+        ));
+        return;
+      }
+
+      final peekLen = partBytes.clamp(0, 512);
       if (peekLen > 0) {
         final raf = await partFile.open();
         try {
@@ -694,13 +909,23 @@ class DownloadService {
             ));
             return;
           }
+          if (!looksLikeMediaContainerBytes(head)) {
+            try {
+              await partFile.delete();
+            } catch (_) {}
+            _updateTask(task.copyWith(
+              status: DownloadStatus.failed,
+              error: 'Downloaded file is not a playable video',
+              speedBytesPerSec: 0.0,
+            ));
+            return;
+          }
         } finally {
           await raf.close();
         }
       }
 
       // Guard against tiny junk that slipped past sniff (real episodes are MBs).
-      final partBytes = await partFile.length();
       if (partBytes > 0 && partBytes < 256 * 1024) {
         try {
           await partFile.delete();

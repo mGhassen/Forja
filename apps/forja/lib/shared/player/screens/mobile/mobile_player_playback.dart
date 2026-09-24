@@ -690,11 +690,18 @@ mixin _MobilePlayerPlayback
                   _s._showControls = true;
                 });
               }
-              if (_s._providerPinned) {
+              final isLocalFile = openUrl.startsWith('file://') ||
+                  (openUrl.startsWith('/') && !isLocalTorrentStreamUrl(openUrl));
+              if (_s._providerPinned ||
+                  widget.streamsPrevalidated ||
+                  widget.pinSource ||
+                  isLocalFile) {
                 await _failPlaybackNoFailover(
-                  message: isTorrent
-                      ? 'Torrent stream failed to open.'
-                      : 'Playback failed.',
+                  message: isLocalFile
+                      ? 'Downloaded file can’t be played'
+                      : isTorrent
+                          ? 'Torrent stream failed to open.'
+                          : 'Playback failed.',
                 );
               } else {
                 await _autoFallbackToNextProvider();
@@ -1122,7 +1129,7 @@ mixin _MobilePlayerPlayback
     _s._finalizeProbeStatusesAfterPlayback();
     _s._statusController.upsert(
       'playback-failed',
-      'Failed to stream',
+      message.trim().isEmpty ? 'Failed to stream' : message,
       kind: StatusRouletteKind.failed,
     );
     setState(() {

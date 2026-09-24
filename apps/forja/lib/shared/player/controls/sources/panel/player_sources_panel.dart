@@ -5,6 +5,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/downloads/download_service.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shared/playback/stremio_stream_id.dart';
@@ -500,6 +502,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Set<String> _techFilters = {};
   Set<String> _audioFilters = {};
   Set<String> _sizeFilters = {};
+  Set<String> _offlineFilters = {};
 
   bool _jackettConfigured = false;
   bool _prowlarrConfigured = false;
@@ -515,9 +518,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   void initState() {
     super.initState();
     PluginRegistry.changeNotifier.addListener(_onTorrentPackChanged);
+    DownloadService.instance.tasksNotifier.addListener(_onDownloadsChanged);
+    unawaited(DownloadService.instance.initialize());
     _seedOptimisticChrome();
     unawaited(_bootstrap());
     _offerListScrollIntoView();
+  }
+
+  void _onDownloadsChanged() {
+    if (mounted) setState(() {});
   }
 
   void _offerListScrollIntoView() {
@@ -734,6 +743,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _coalescedPaintTimer?.cancel();
     _coalescedPaintTimer = null;
     PluginRegistry.changeNotifier.removeListener(_onTorrentPackChanged);
+    DownloadService.instance.tasksNotifier.removeListener(_onDownloadsChanged);
     _savePanelUiCache();
     _searchGen++;
     _stremioGen++;
@@ -1986,7 +1996,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         !engineStreamMatchesAudioCategory(s, audioCat)) {
       return false;
     }
-    if (!_hasActiveStreamNameFilters && _sizeFilters.isEmpty) return true;
+    if (!_hasActiveStreamNameFilters &&
+        _sizeFilters.isEmpty &&
+        _offlineFilters.isEmpty) {
+      return true;
+    }
     if (_hasActiveStreamNameFilters) {
       final name =
           '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
@@ -2001,11 +2015,29 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         return false;
       }
     }
-    return TorrentMetaParser.matchesSizeFilters(
+    if (!TorrentMetaParser.matchesSizeFilters(
       _streamSizeBytes(s),
       _sizeFilters,
+    )) {
+      return false;
+    }
+    if (_offlineFilters.isEmpty) return true;
+    final task = downloadTaskForStream(
+      mediaId: _downloadMediaId,
+      season: widget.season,
+      episode: widget.episode,
+      stream: s,
+    );
+    return streamMatchesOfflineFilter(
+      offlineFilters: _offlineFilters,
+      task: task,
     );
   }
+
+  String get _downloadMediaId => mediaIdForDownloadMovie(
+        imdbId: widget.movie.imdbId,
+        id: widget.movie.id,
+      );
 
   List<Map<String, dynamic>> get _filteredStremio {
     return _stremioStreams.where((s) {
@@ -3751,6 +3783,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _techFilters = {};
       _audioFilters = {};
       _sizeFilters = {};
+      _offlineFilters = {};
       _searchQuery = '';
     });
     if (_kindFilter == 'stremio') {
@@ -3907,6 +3940,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           onLanguageFiltersChanged: (v) => setState(() => _languageFilters = v),
           onTechFiltersChanged: (v) => setState(() => _techFilters = v),
           onSizeFiltersChanged: (v) => setState(() => _sizeFilters = v),
+          offlineFilters: _offlineFilters,
+          onOfflineFiltersChanged: (v) => setState(() => _offlineFilters = v),
           showEngineCategories: _kindFilter == 'engine',
           engineVisibleCategories: _effectiveEngineCategories,
           engineCategoryOptions: _engineCategoryFilterOptions,
@@ -4236,6 +4271,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           final presentation = stremioTilePresentation(s, isResumable: false);
           final isCurrent = i == currentIndex;
           final probeKey = CatalogSourcesSessionCache.probeKeyForStream(s);
+          final dlTask = downloadTaskForStream(
+            mediaId: _downloadMediaId,
+            season: widget.season,
+            episode: widget.episode,
+            stream: s,
+          );
+          final dlChrome = chromeForDownloadTask(dlTask);
+          final dlLabel = dlTask == null
+              ? null
+              : (dlTask.isActive
+                  ? '${(dlTask.progressPercent * 100).clamp(0, 100).toStringAsFixed(0)}% · ${dlTask.speedLabel}'
+                  : null);
           return KeyedSubtree(
             key: _playerStreamTileKey(s),
             child: KeyedSubtree(
@@ -4273,6 +4320,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                       season: widget.season,
                       episode: widget.episode,
                     ),
+                downloadChrome: dlChrome,
+                downloadProgress: dlTask?.progressPercent ?? 0,
+                downloadStatusLabel: dlLabel,
               ),
             ),
           );
