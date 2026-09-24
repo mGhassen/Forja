@@ -79,13 +79,14 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       subtitle: 'Tabs, order, default menu',
       icon: Icons.tab_rounded,
     ),
-    const SettingsCategoryMeta(
-      id: SettingsCategoryId.downloads,
-      title: 'Downloads',
-      subtitle: 'Offline library and download progress',
-      icon: Icons.download_rounded,
-      fillViewport: true,
-    ),
+    if (visibility.showDownloadsCategory)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.downloads,
+        title: 'Downloads',
+        subtitle: 'Offline library and download progress',
+        icon: Icons.download_rounded,
+        fillViewport: true,
+      ),
     if (visibility.showDataCategory)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.data,

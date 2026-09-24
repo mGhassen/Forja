@@ -14,6 +14,7 @@ import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
 import 'package:forja/shared/player/vlc/vlc_player_view.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
@@ -593,7 +594,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
                 onPlayer: widget.onSwitchPlayer != null
                     ? (anchor) => unawaited(_showPlayerMenu(anchor))
                     : null,
-                showDownload: true,
+                showDownload: PlatformInfo.offlineDownloadsEnabled,
                 onDownload: () => unawaited(_enqueueCurrentDownload()),
               ),
             ),

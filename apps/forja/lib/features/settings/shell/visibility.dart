@@ -86,6 +86,9 @@ class SettingsVisibility {
   /// MDBlist API key — admin accounts only (`accounts.is_admin`).
   bool get showMdblist => AccountFeatures.instance.isAdmin;
 
+  /// Settings → Downloads. Android TV has no offline Downloads.
+  bool get showDownloadsCategory => !_isAndroidTv;
+
   /// Settings → Data & backup (cache clear, export/import, IPTV portals CSV).
   bool get showDataCategory => !_isAndroidTv;
 

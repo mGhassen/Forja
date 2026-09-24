@@ -15,6 +15,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/controls/menus/player_menus.dart';
 import 'package:forja/shared/player/screens/playback_recovery.dart';

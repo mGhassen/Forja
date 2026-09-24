@@ -420,7 +420,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                       // Cast / PiP are phone/desktop chrome - hide on ATV.
                       showCast: false,
                       showPip: false,
-                      showDownload: true,
+                      showDownload: PlatformInfo.offlineDownloadsEnabled,
                       onDownload: () => unawaited(_s._enqueueCurrentDownload()),
                     ),
                   ),
@@ -449,7 +449,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                         ? (anchorContext) =>
                             unawaited(_s._showPlayerMenu(anchorContext))
                         : null,
-                    showDownload: true,
+                    showDownload: PlatformInfo.offlineDownloadsEnabled,
                     onDownload: () => unawaited(_s._enqueueCurrentDownload()),
                     showCast:
                         CastingService.instance.isAirPlayAvailable ||

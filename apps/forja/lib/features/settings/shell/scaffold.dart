@@ -300,6 +300,16 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     final categories = settingsCategories(visibility);
     final split = SettingsTokens.useSplitLayout(context);
     final selectedMeta = settingsCategoryById(widget.selectedId, visibility);
+    if (!visibility.showDownloadsCategory &&
+        widget.selectedId == SettingsCategoryId.downloads &&
+        categories.isNotEmpty) {
+      final fallback = categories.first.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (widget.selectedId != SettingsCategoryId.downloads) return;
+        widget.onSelect(fallback);
+      });
+    }
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (ShellBus.takeEnterSettingsDetail()) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

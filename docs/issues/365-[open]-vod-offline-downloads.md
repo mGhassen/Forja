@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **16 / 19** tasks (2 deferred) · **12 / 12** acceptance |
+| **Progress** | **17 / 20** tasks (2 deferred) · **13 / 13** acceptance |
 | **Current slice** | Phase 1 + integrity follow-ups ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -39,6 +39,7 @@
 | 17 | I365-T17 | Corrupt Range resume + offline play stream-hop ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) | 🔄 |
 | 18 | I365-T18 | Sources active-download rail: Pause / Resume + delete (X), not Download again | ✅ |
 | 19 | I365-T19 | Active speed/ETA flash every second ([379](fixed/379-[fixed]-vod-download-speed-eta-flash.md)) | ✅ |
+| 20 | I365-T20 | Android TV: no Downloads UI (Settings, details, Sources, player) and no queue boot | ✅ |
 
 ---
 
@@ -58,6 +59,7 @@
 | 10 | I365-A10 | Mid-watch Forja Download uses a fresh extract — expired Referer does not 403-loop | ✅ |
 | 11 | I365-A11 | Downloading / offline Sources rows show striped chrome; Filters Offline / Online | ✅ |
 | 12 | I365-A12 | Active Sources download row hover shows Pause/Resume + delete — not Download | ✅ |
+| 13 | I365-A13 | Android TV has no Downloads entry (Settings, details, Sources, player) | ✅ |
 
 ---
 

@@ -25,6 +25,7 @@ Widget buildSettingsCategoryBody(
     case SettingsCategoryId.forjaPacks:
       return SettingsForjaPacksPageBody(visibility: visibility);
     case SettingsCategoryId.downloads:
+      if (!visibility.showDownloadsCategory) return const SizedBox.shrink();
       return const SettingsDownloadsPageBody();
     case SettingsCategoryId.data:
       return SettingsDataPageBody(visibility: visibility);

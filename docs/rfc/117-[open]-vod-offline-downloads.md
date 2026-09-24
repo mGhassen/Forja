@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 8** components · **12 / 12** acceptance |
+| **Progress** | **7 / 9** components · **13 / 13** acceptance |
 | **Current slice** | Phase 1 shipped — Phase 2/3 deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -27,6 +27,7 @@
 | 6 | R117-C06 | Phase 3 — Android OS background (Media3 / WorkManager) + Wi‑Fi-only | ⏭️ |
 | 7 | R117-C07 | Sources hover Download + reject DASH/tiny junk Completed | ✅ |
 | 8 | R117-C08 | Sources card inline size probe + Yes/No confirm (portal-style) | ✅ |
+| 9 | R117-C09 | Android TV: no Downloads UI and no download queue at boot | ✅ |
 
 ---
 
@@ -46,6 +47,7 @@
 | 10 | R117-A10 | DASH / playlist / tiny junk responses fail (not Completed) | ✅ |
 | 11 | R117-A11 | Sources Download card shows size (exact or ~estimate) + free space; Yes enqueues | ✅ |
 | 12 | R117-A12 | Expired Referer / HTTP 403 fails clearly — no reconnect loop on auth errors | ✅ |
+| 13 | R117-A13 | Android TV: no Settings Downloads, details download, Sources download, or player download | ✅ |
 
 ---
 
@@ -55,4 +57,4 @@ Host-owned offline Downloads: save a resolved play URL to disk (PlayTorrio-shape
 
 ## Out of scope (v1)
 
-Live Sports · DRM · embed WebView · new shell nav tab · torrent/magnet offline · true OS background
+Live Sports · DRM · embed WebView · new shell nav tab · torrent/magnet offline · true OS background · Android TV

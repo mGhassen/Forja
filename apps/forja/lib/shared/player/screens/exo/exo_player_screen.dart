@@ -2178,7 +2178,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                           ? (anchorContext) =>
                               unawaited(_showPlayerMenu(anchorContext))
                           : null,
-                      showDownload: true,
+                      showDownload: PlatformInfo.offlineDownloadsEnabled,
                       onDownload: () => unawaited(_enqueueCurrentDownload()),
                     ),
                   ),
@@ -2214,7 +2214,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                         ? (anchorContext) =>
                             unawaited(_showPlayerMenu(anchorContext))
                         : null,
-                    showDownload: true,
+                    showDownload: PlatformInfo.offlineDownloadsEnabled,
                     onDownload: () => unawaited(_enqueueCurrentDownload()),
                   ),
                 ),

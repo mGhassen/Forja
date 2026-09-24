@@ -156,7 +156,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   unawaited(PortalVaultInventory.ensureMigratedFromStore());
   SettingsKitHooksRegister.ensureRegistered();
   unawaited(AppVersion.instance.load());
-  unawaited(DownloadService.instance.initialize());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaPlatformSecureStore.ensureConsentLoaded();
   await ForjaSupabase.ensureInitialized();
@@ -172,6 +171,9 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
 
   // TV profile before any WebView (lazy warm-up uses PlatformInfo).
   await PlatformChannel.initialize();
+  if (PlatformInfo.offlineDownloadsEnabled) {
+    unawaited(DownloadService.instance.initialize());
+  }
   ShellTvFocusCoordinator.tvBackPolicyEnabled =
       PlatformInfo.isAndroidTv || PlatformChannel.forceAndroidTv;
   ShellTvFocusCoordinator.bindFrame(

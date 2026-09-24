@@ -74,6 +74,7 @@ void main() {
       expect(v.lanPlaySourcesEditable, isTrue);
       expect(v.showSourcesCategory, isTrue);
       expect(v.showForjaPacksCategory, isTrue);
+      expect(v.showDownloadsCategory, isFalse);
       expect(v.showDataCategory, isFalse);
       expect(v.showDebrid, isFalse);
       expect(v.showAccounts, isTrue);
@@ -87,6 +88,7 @@ void main() {
         SettingsCategoryId.navigation,
         SettingsCategoryId.about,
       ]);
+      expect(ids.contains(SettingsCategoryId.downloads), isFalse);
       expect(ids.contains(SettingsCategoryId.data), isFalse);
     },
   );
@@ -177,6 +179,7 @@ void main() {
       expect(v.showNuvio, isTrue);
       expect(v.showTorrentEngine, isTrue);
       expect(v.showSourcesCategory, isTrue);
+      expect(v.showDownloadsCategory, isTrue);
       expect(v.showAccounts, isTrue);
     },
   );

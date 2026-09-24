@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
@@ -528,8 +529,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   void initState() {
     super.initState();
     PluginRegistry.changeNotifier.addListener(_onTorrentPackChanged);
-    DownloadService.instance.tasksNotifier.addListener(_onDownloadsChanged);
-    unawaited(DownloadService.instance.initialize());
+    if (PlatformInfo.offlineDownloadsEnabled) {
+      DownloadService.instance.tasksNotifier.addListener(_onDownloadsChanged);
+      unawaited(DownloadService.instance.initialize());
+    }
     _seedOptimisticChrome();
     unawaited(_bootstrap());
     _offerListScrollIntoView();
@@ -3950,8 +3953,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           onLanguageFiltersChanged: (v) => setState(() => _languageFilters = v),
           onTechFiltersChanged: (v) => setState(() => _techFilters = v),
           onSizeFiltersChanged: (v) => setState(() => _sizeFilters = v),
-          offlineFilters: _offlineFilters,
-          onOfflineFiltersChanged: (v) => setState(() => _offlineFilters = v),
+          offlineFilters: PlatformInfo.offlineDownloadsEnabled
+              ? _offlineFilters
+              : const {},
+          onOfflineFiltersChanged: PlatformInfo.offlineDownloadsEnabled
+              ? (v) => setState(() => _offlineFilters = v)
+              : null,
           showEngineCategories: _kindFilter == 'engine',
           engineVisibleCategories: _effectiveEngineCategories,
           engineCategoryOptions: _engineCategoryFilterOptions,
@@ -4281,13 +4288,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           final presentation = stremioTilePresentation(s, isResumable: false);
           final isCurrent = i == currentIndex;
           final probeKey = CatalogSourcesSessionCache.probeKeyForStream(s);
-          final dlTask = downloadTaskForStream(
-            mediaId: _downloadMediaId,
-            season: widget.season,
-            episode: widget.episode,
-            stream: s,
-          );
-          final dlChrome = chromeForDownloadTask(dlTask);
+          final downloadsOn = PlatformInfo.offlineDownloadsEnabled;
+          final dlTask = downloadsOn
+              ? downloadTaskForStream(
+                  mediaId: _downloadMediaId,
+                  season: widget.season,
+                  episode: widget.episode,
+                  stream: s,
+                )
+              : null;
+          final dlChrome = downloadsOn
+              ? chromeForDownloadTask(dlTask)
+              : SourceDownloadChrome.none;
           final dlLabel = dlTask == null
               ? null
               : (dlTask.isActive
@@ -4324,12 +4336,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                         return ok;
                       },
                 onTap: () => _selectStremio(s),
-                onPrepareDownload: () => prepareStremioStreamDownload(
-                      movie: widget.movie,
-                      stream: s,
-                      season: widget.season,
-                      episode: widget.episode,
-                    ),
+                onPrepareDownload: downloadsOn
+                    ? () => prepareStremioStreamDownload(
+                          movie: widget.movie,
+                          stream: s,
+                          season: widget.season,
+                          episode: widget.episode,
+                        )
+                    : null,
                 onPauseDownload: dlTask != null && dlTask.isDownloading
                     ? () => unawaited(
                           DownloadService.instance.pauseDownload(dlTask.id),

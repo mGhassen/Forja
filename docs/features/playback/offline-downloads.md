@@ -8,6 +8,8 @@ Forja can download a resolved HTTP or HLS stream to this device. Manage the
 queue and offline library under **Settings → Downloads**. Torrents and magnets
 are not offline yet.
 
+Offline Downloads is on phone and desktop.
+
 ## How to start a download
 
 - **Details** — tap the download icon next to Play / Sources. Sources opens;
@@ -19,7 +21,7 @@ are not offline yet.
   Download again. Finished offline rows keep static stripes. Filters include
   **Offline** / **Online**.
 - **Player** — use the download icon in the top bar to save the stream you’re
-  watching (phone, Android TV Exo, and desktop).
+  watching (phone and desktop).
 
 Hover a stream row and tap Download — the card switches to a confirm face
 (like IPTV portal delete / share), shows the stream size (exact for files,

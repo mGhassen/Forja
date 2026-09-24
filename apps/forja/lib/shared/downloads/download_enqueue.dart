@@ -1,4 +1,5 @@
 import 'package:forja/shared/downloads/download_guards.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/downloads/download_path_helper.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_size_probe.dart';
@@ -56,6 +57,7 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
   int? season,
   int? episode,
 }) async {
+  if (!PlatformInfo.offlineDownloadsEnabled) return null;
   final profile = PlatformPlayback.capabilities;
   final precheck = classifyStremioStream(stream, profile);
 
@@ -180,6 +182,7 @@ Future<DownloadTask?> enqueuePlayerCurrentDownload({
   String? sourceName,
   String? providerId,
 }) async {
+  if (!PlatformInfo.offlineDownloadsEnabled) return null;
   var playUrl = url.trim();
   var playHeaders = headers;
   var playSource = sourceName;
@@ -252,6 +255,7 @@ Future<DownloadTask?> enqueueVodDownload({
   String? providerId,
   bool headersAlreadyResolved = false,
 }) async {
+  if (!PlatformInfo.offlineDownloadsEnabled) return null;
   final rawUrl = url.trim();
 
   try {

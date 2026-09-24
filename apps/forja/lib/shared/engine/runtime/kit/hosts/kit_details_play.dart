@@ -7,6 +7,7 @@ import 'package:forja/shared/playback/open/pack_green_play.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/sources/kit/kit_sources.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 
 PlaySession _sessionFromContext(PlayContext ctx) {
   final meta = ctx.metaItem;
@@ -84,6 +85,7 @@ Future<void> runDownloadFromContext({
   required BuildContext context,
   required PlayContext ctx,
 }) async {
+  if (!PlatformInfo.offlineDownloadsEnabled) return;
   final open = ctx.effectiveOpen;
   if (open?.effectiveExtract.resolveType == 'iptv') {
     ForjaToast.info('IPTV channels can’t be saved offline');

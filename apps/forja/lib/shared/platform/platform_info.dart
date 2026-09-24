@@ -6,6 +6,9 @@ abstract final class PlatformInfo {
 
   static bool get isAndroidTv => profile == PlatformProfile.androidTv;
 
+  /// Offline Downloads (Settings, details, Sources, player). Android TV has none.
+  static bool get offlineDownloadsEnabled => !isAndroidTv;
+
   static bool get isDesktop => profile == PlatformProfile.desktop;
 
   static bool get isPhone => profile == PlatformProfile.phone;
