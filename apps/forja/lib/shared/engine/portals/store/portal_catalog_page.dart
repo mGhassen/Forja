@@ -77,10 +77,8 @@ abstract final class PortalCatalogPage {
       'portal_hash': IptvCatalogDb.portalHash(portalKey),
       'section': sectionWire,
     };
-    // Yield one frame so category / search selection paints before sync
-    // SQLite FFI (`iptvCatalogJson`) runs on the UI isolate (issue 351).
-    await Future<void>.delayed(Duration.zero);
-    final page = IptvCatalogDb.page(pageBody);
+    // page / has_shelf run via EngineJobs (spawn_blocking) — not UI isolate.
+    final page = await IptvCatalogDb.page(pageBody);
     if (page['error'] != null && page['ok'] != true) {
       return {
         'ok': false,
@@ -99,7 +97,7 @@ abstract final class PortalCatalogPage {
     required int timeoutSecs,
     required bool refresh,
   }) async {
-    if (!refresh && IptvCatalogDb.hasShelf(portalKey, sectionWire)) {
+    if (!refresh && await IptvCatalogDb.hasShelf(portalKey, sectionWire)) {
       return true;
     }
 

@@ -5,11 +5,26 @@ import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 
 /// Thin host wrapper around Rust `iptv_catalog_json` (RFC-116).
+///
+/// Hot page / shelf reads go through [EngineJobs] so SQLite FFI does not stall
+/// the UI isolate (issue 351). Alive / channel-hits stay sync (tiny payloads).
 abstract final class IptvCatalogDb {
   IptvCatalogDb._();
 
   static String portalHash(String portalKey) =>
       sha256.convert(utf8.encode(portalKey.trim())).toString();
+
+  static Map<String, dynamic> _decode(String raw) {
+    if (raw.trim().isEmpty) return {'error': 'empty'};
+    try {
+      final v = jsonDecode(raw);
+      if (v is Map<String, dynamic>) return v;
+      if (v is Map) return Map<String, dynamic>.from(v);
+      return {'error': 'bad_json'};
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
 
   static Map<String, dynamic> _call(Map<String, dynamic> body) {
     if (!Engine.isReady) {
@@ -17,19 +32,31 @@ abstract final class IptvCatalogDb {
     }
     try {
       final raw = RustLib.instance.iptvCatalogJson(jsonEncode(body));
-      if (raw.trim().isEmpty) return {'error': 'empty'};
-      final v = jsonDecode(raw);
-      if (v is Map<String, dynamic>) return v;
-      if (v is Map) return Map<String, dynamic>.from(v);
-      return {'error': 'bad_json'};
+      return _decode(raw);
     } catch (e) {
       debugPrint('[IptvCatalogDb] $e');
       return {'error': e.toString()};
     }
   }
 
-  static bool hasShelf(String portalKey, String section) {
-    final r = _call({
+  /// Async catalog FFI via EngineJobs (page / has_shelf / replace_shelf).
+  static Future<Map<String, dynamic>> _callAsync(
+    Map<String, dynamic> body,
+  ) async {
+    if (!Engine.isReady) {
+      return {'error': 'engine_not_ready'};
+    }
+    try {
+      final raw = await runIptvCatalogJson(jsonEncode(body));
+      return _decode(raw);
+    } catch (e) {
+      debugPrint('[IptvCatalogDb] async $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  static Future<bool> hasShelf(String portalKey, String section) async {
+    final r = await _callAsync({
       'action': 'has_shelf',
       'portal_hash': portalHash(portalKey),
       'section': section,
@@ -43,7 +70,7 @@ abstract final class IptvCatalogDb {
     required List<Map<String, dynamic>> categories,
     required List<Map<String, dynamic>> streams,
   }) async {
-    final r = _call({
+    final r = await _callAsync({
       'action': 'replace_shelf',
       'portal_hash': portalHash(portalKey),
       'section': section,
@@ -53,8 +80,8 @@ abstract final class IptvCatalogDb {
     return r['ok'] == true;
   }
 
-  static Map<String, dynamic> page(Map<String, dynamic> body) {
-    return _call({
+  static Future<Map<String, dynamic>> page(Map<String, dynamic> body) async {
+    return _callAsync({
       ...body,
       'action': 'page',
       if (body['portal_hash'] == null && body['portal_key'] != null)
@@ -92,7 +119,7 @@ abstract final class IptvCatalogDb {
   }
 
   static Future<void> clearAll() async {
-    _call({'action': 'clear'});
+    await _callAsync({'action': 'clear'});
   }
 
   // Alive
@@ -163,7 +190,10 @@ abstract final class IptvCatalogDb {
   }
 
   static void channelHitsClear(String channelId) {
-    _call({'action': 'channel_hits_clear', 'channel_id': channelId});
+    _call({
+      'action': 'channel_hits_clear',
+      'channel_id': channelId,
+    });
   }
 
   static void channelHitsClearAll() {

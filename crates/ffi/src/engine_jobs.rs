@@ -43,6 +43,9 @@ pub enum JobKind {
     IptvRedditCatalog = 13,
     IptvXtream = 14,
     EngineJsExtract = 15,
+    /// IPTV catalog SQLite (`iptv::catalog_db::handle_json`) — page / has_shelf
+    /// must not run on the UI isolate (issue 351).
+    IptvCatalog = 16,
 }
 
 pub fn submit(kind: u32, payload_json: String) -> u64 {
@@ -281,6 +284,19 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
                 serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
             let result = engine::extract(req).await;
             serde_json::to_string(&result).map_err(|e| e.to_string())
+        }
+        k if k == JobKind::IptvCatalog as u32 => {
+            let req: RequestJsonPayload =
+                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let request_json = req.request_json;
+            let token = utils::engine_cancel::cancellation_token();
+            // rusqlite + Mutex — keep off the UI isolate (issue 351).
+            tokio::task::spawn_blocking(move || {
+                utils::engine_cancel::attach_job_token(token);
+                Ok(iptv::catalog_db::handle_json(&request_json))
+            })
+            .await
+            .map_err(|e| e.to_string())?
         }
         _ => Err(format!("unknown job kind {kind}")),
     }

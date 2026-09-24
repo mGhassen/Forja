@@ -96,6 +96,9 @@ Future<String> runIptvRedditCatalogJson(String requestJson) => EngineJobs.run(
 Future<String> runIptvXtreamJson(String requestJson) =>
     EngineJobs.run(EngineAsyncJob.iptvXtream, {'requestJson': requestJson});
 
+Future<String> runIptvCatalogJson(String requestJson) =>
+    EngineJobs.run(EngineAsyncJob.iptvCatalog, {'requestJson': requestJson});
+
 // ── CPU / fast — worker pool ────────────────────────────────────────────────
 
 Future<String> runOpensslAesDecryptJson(

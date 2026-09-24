@@ -105,7 +105,7 @@ class EnginePlugin {
   bool get needsListsHost => isKitPlugin && types.contains('list');
 
   /// Hub that calls `ctx.host.http` / `vault` / `playback` (portal packs).
-  /// EngineJS has no host bridges — flutter_js for feed + pack actions.
+  /// EngineJS has no host bridges — flutter_js for feed, details, + pack actions.
   bool get needsPortalPackHost => isKitPlugin && types.contains('iptv');
 
   /// Any kit hub that must skip EngineJS-first for host-bridge actions.

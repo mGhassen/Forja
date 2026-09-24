@@ -515,6 +515,9 @@ class EngineService {
     // Actions that call ctx.host.* must skip EngineJS — a valid empty
     // envelope (e.g. liveTv with no plugin bridge) would otherwise stick and
     // never fall through to flutter_js.
+    // IPTV `details` fetches series episodes via vault + engine/http
+    // (get_series_info). Without the bridge, meta.videos stays empty while
+    // TMDB enrich still paints Cast / season counts — no episode picker.
     final hostBridgeActions = {
       'feed',
       'rail',
@@ -531,6 +534,7 @@ class EngineService {
       'shareDecode',
       'prefsLoad',
       'prefsSave',
+      'details',
     };
     final needsHostFeedBridge =
         plugin.needsHostBridge && hostBridgeActions.contains(action);

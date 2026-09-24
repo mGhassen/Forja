@@ -42,7 +42,7 @@
 
 User: every list click feels dead — portals, Sources, posters, not IPTV-only.
 
-IPTV-specific awaits ([349](349-[fixed]-iptv-favorite-star-lag.md), [351](../351-[open]-iptv-click-lag-await-catalog-ffi.md)) were real but not the shared multiplier.
+IPTV-specific awaits ([349](349-[fixed]-iptv-favorite-star-lag.md), [351](351-[fixed]-iptv-click-lag-await-catalog-ffi.md)) were real but not the shared multiplier.
 
 ### Root (shared)
 
@@ -64,4 +64,4 @@ Chip / kind / pick-in-flight still `setState` the whole frosted Sources panel (I
 ### Related
 
 - [337](337-[fixed]-sources-panel-jank-many-streams.md) — fetch paint coalesce (not tap rebuild)  
-- [349](349-[fixed]-iptv-favorite-star-lag.md) · [351](../351-[open]-iptv-click-lag-await-catalog-ffi.md)
+- [349](349-[fixed]-iptv-favorite-star-lag.md) · [351](351-[fixed]-iptv-click-lag-await-catalog-ffi.md)
