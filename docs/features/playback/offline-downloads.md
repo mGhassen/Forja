@@ -18,9 +18,10 @@ are not offline yet.
 - **Player** — use the download icon in the top bar to save the stream you’re
   watching (phone, Android TV Exo, and desktop).
 
-A confirm sheet shows the stream size (exact for progressive files, ~estimate
-for HLS) and free space on the downloads folder. Cancel aborts; **Download**
-starts the transfer. A toast then offers **View** → Settings → Downloads.
+Hover a stream row and tap Download — the card switches to a confirm face
+(like IPTV portal delete / share), shows the stream size (exact for files,
+~estimate for HLS) and free space, then Yes starts the transfer. Tap the row
+or No to cancel. A toast then offers **View** → Settings → Downloads.
 
 DASH (`.mpd`) and other playlist/page responses are rejected — only real
 HTTP/HLS media files are saved.
@@ -32,7 +33,7 @@ HTTP/HLS media files are saved.
 | **Active** | Queued, downloading, paused, or failed items — progress, speed, pause / resume / retry / cancel |
 | **Completed** | Finished files — play offline, delete one, or delete all |
 
-The header shows space used by downloads and free space on the downloads folder.
+The header is a storage meter: offline library vs other space on the volume vs free, with the downloads folder path underneath.
 
 ## Offline play
 
@@ -45,6 +46,9 @@ On a completed row, tap **Play**. Forja opens the local file in the same player
   from Active.
 - Magnets and session-only loopback URLs cannot be saved in this version.
 - Live Sports and IPTV live channels are not part of offline Downloads.
+- Downloading from the **player** refreshes the Forja provider first (short-lived
+  stream links expire while you watch). If a link is already dead, Forja asks
+  you to open Sources and download again.
 
 ## Related
 

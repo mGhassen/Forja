@@ -124,6 +124,9 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   /// After pin/unpin, follow the row to its new list index (scroll + focus).
   String? _pendingFocusId;
 
+  /// Search pick / clear-restore: scroll selected into view (~4th row).
+  String? _pendingScrollSelectedId;
+
   double _listPadV(BuildContext context) => catalogUsesTvDensity(context)
       ? catalogCategoryRailListPadV(context)
       : widget.listPadV;
@@ -182,6 +185,22 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
           newIdx >= 0 ? widget.items[newIdx].pinned : null;
       if (newIdx >= 0 && (oldIdx != newIdx || oldPinned != newPinned)) {
         _scheduleScrollAndFocus(pending);
+      }
+    } else {
+      // Mid-search category pick, or search clear restoring the prior group —
+      // scroll the selected row into view (4th-row pin when the filtered list
+      // expands back to the full rail — changelog 1.2.366).
+      final oldSel = (oldWidget.selectedId ?? '').trim();
+      final newSel = (widget.selectedId ?? '').trim();
+      final listGrewOrShrunk =
+          oldWidget.items.length != widget.items.length;
+      if (newSel.isNotEmpty &&
+          widget.items.any((e) => e.id == newSel)) {
+        if (newSel != oldSel) {
+          _scheduleScrollSelectedIntoView(newSel, pinFourth: false);
+        } else if (listGrewOrShrunk) {
+          _scheduleScrollSelectedIntoView(newSel, pinFourth: true);
+        }
       }
     }
   }
@@ -377,6 +396,48 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
         go(clear: true);
       });
     });
+  }
+
+  /// Place [id] in view. [pinFourth] → ~4th row (search clear / list rebuild).
+  void _scheduleScrollSelectedIntoView(
+    String id, {
+    required bool pinFourth,
+  }) {
+    _pendingScrollSelectedId = id;
+    void go({required bool clear}) {
+      if (!mounted || _pendingScrollSelectedId != id) return;
+      // Pin owns scroll+focus — do not fight it.
+      if (_pendingFocusId != null) return;
+      _scrollSelectedIntoView(id, pinFourth: pinFourth);
+      if (clear) _pendingScrollSelectedId = null;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      go(clear: false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        go(clear: true);
+      });
+    });
+  }
+
+  void _scrollSelectedIntoView(String id, {required bool pinFourth}) {
+    final idx = widget.items.indexWhere((e) => e.id == id);
+    if (idx < 0 || !_scroll.hasClients || !mounted) return;
+    if (!pinFourth) {
+      _scrollToIndex(idx, keepAbove: 1);
+      return;
+    }
+    final position = _scroll.position;
+    final rowExtent = _rowExtent(context);
+    final pad = _listPadV(context);
+    // ~4th visible row (keepAbove: 3) — same as pre-kit IPTV after search.
+    const keepAbove = 3;
+    final target = (pad + idx * rowExtent - keepAbove * rowExtent).clamp(
+      0.0,
+      position.maxScrollExtent,
+    );
+    if ((position.pixels - target).abs() < 0.5) return;
+    _scroll.jumpTo(target);
   }
 
   void _scrollAndFocusId(String id) {

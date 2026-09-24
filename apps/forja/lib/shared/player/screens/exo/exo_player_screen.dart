@@ -1741,7 +1741,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         ? _sources[_sourceIndex].headers
         : widget.headers;
     await enqueuePlayerCurrentDownload(
-      context: context,
       url: url,
       headers: headers,
       movie: widget.movie,

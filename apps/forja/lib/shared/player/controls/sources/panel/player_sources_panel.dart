@@ -4216,11 +4216,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                   tvItemIndex: tvIndex,
                   onUpEdge: onUp,
                   onPlay: () => _selectTorrent(r),
-                  onDownload: () {
-                    ForjaToast.info(
-                      "Torrents aren't available for offline download yet",
-                    );
-                  },
                 ),
               ),
             );
@@ -4272,17 +4267,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                         return ok;
                       },
                 onTap: () => _selectStremio(s),
-                onDownload: () {
-                  unawaited(
-                    enqueueStremioStreamDownload(
-                      context: context,
+                onPrepareDownload: () => prepareStremioStreamDownload(
                       movie: widget.movie,
                       stream: s,
                       season: widget.season,
                       episode: widget.episode,
                     ),
-                  );
-                },
               ),
             ),
           );

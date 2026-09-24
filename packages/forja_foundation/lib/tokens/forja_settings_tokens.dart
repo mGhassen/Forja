@@ -175,6 +175,21 @@ abstract final class SettingsTokens {
   static const double sliderPadBottom = 12;
   static const double sliderPadBottomTv = sliderPadBottom * _s;
 
+  /// Settings → Downloads storage meter (segmented disk usage).
+  static const double storageMeterHeight = 28;
+  static const double storageMeterHeightTv = 22;
+  static const double storageMeterRadius = 6;
+  static const double storageMeterRadiusTv = 4;
+  static const double storageMeterBorderWidth = 1;
+  static const double storageLegendDotSize = 8;
+  static const double storageLegendDotSizeTv = 7;
+  static const double storageLegendGap = 16;
+  static const double storageLegendGapTv = 12;
+  static const double storageBlockGap = 14;
+  static const double storageBlockGapTv = 10;
+  static const EdgeInsets storageBlockPad = EdgeInsets.fromLTRB(2, 4, 2, 8);
+  static const EdgeInsets storageBlockPadTv = EdgeInsets.fromLTRB(2, 2, 2, 6);
+
   /// Forja Packs choice cards (Official / Community).
   static const double packChoiceMinHeight = 168;
   static const double packChoiceMinHeightTv = packChoiceMinHeight * _s;
@@ -415,6 +430,24 @@ abstract final class SettingsTokens {
 
   static double sliderPadBottomOf(BuildContext context) =>
       _tv(context) ? sliderPadBottomTv : sliderPadBottom;
+
+  static double storageMeterHeightOf(BuildContext context) =>
+      _tv(context) ? storageMeterHeightTv : storageMeterHeight;
+
+  static double storageMeterRadiusOf(BuildContext context) =>
+      _tv(context) ? storageMeterRadiusTv : storageMeterRadius;
+
+  static double storageLegendDotSizeOf(BuildContext context) =>
+      _tv(context) ? storageLegendDotSizeTv : storageLegendDotSize;
+
+  static double storageLegendGapOf(BuildContext context) =>
+      _tv(context) ? storageLegendGapTv : storageLegendGap;
+
+  static double storageBlockGapOf(BuildContext context) =>
+      _tv(context) ? storageBlockGapTv : storageBlockGap;
+
+  static EdgeInsets storageBlockPadOf(BuildContext context) =>
+      _tv(context) ? storageBlockPadTv : storageBlockPad;
 
   static double packChoiceMinHeightOf(
     BuildContext context, {

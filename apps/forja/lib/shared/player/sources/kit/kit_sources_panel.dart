@@ -138,9 +138,12 @@ class KitSourcesPanel extends StatelessWidget {
     required String tvTabId,
     required VoidCallback onReload,
     VoidCallback? onClose,
+    required bool loading,
   }) {
     final iconSize = ShellPaintScope.iconOf(context, 20);
-    final count = onClose != null ? 2 : 1;
+    final showReload = !loading;
+    final count = (showReload ? 1 : 0) + (onClose != null ? 1 : 0);
+    if (count == 0) return const SizedBox.shrink();
     Widget action({
       required int index,
       required String tooltip,
@@ -183,15 +186,16 @@ class KitSourcesPanel extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          action(
-            index: 0,
-            tooltip: 'Reload',
-            icon: Icons.refresh_rounded,
-            onTap: onReload,
-          ),
+          if (showReload)
+            action(
+              index: 0,
+              tooltip: 'Reload',
+              icon: Icons.refresh_rounded,
+              onTap: onReload,
+            ),
           if (onClose != null)
             action(
-              index: 1,
+              index: showReload ? 1 : 0,
               tooltip: 'Close',
               icon: Icons.close_rounded,
               onTap: onClose,
@@ -233,11 +237,13 @@ class KitSourcesPanel extends StatelessWidget {
       usesTvDensity: metrics.usesTvDensity,
       headerActionsBuilder: tvTab == null
           ? null
-          : (context, {required onReload, onClose}) => _headerActions(
+          : (context, {required onReload, onClose, required loading}) =>
+              _headerActions(
                 context,
                 tvTabId: tvTab,
                 onReload: onReload,
                 onClose: onClose,
+                loading: loading,
               ),
       onScrollIntoViewChanged: tvTab == null
           ? null

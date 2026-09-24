@@ -35,6 +35,13 @@ abstract final class ForjaShellColors {
 
   /// Unaired / not-yet-started episode date and number-chip label (soft amber).
   static const Color upcomingMuted = Color(0xFFC9A46C);
+
+  /// Downloads storage meter — offline library segment (hatched).
+  static const Color storageOffline = Color(0xFFE8E8E8);
+  /// Downloads storage meter — other used space on the same volume.
+  static const Color storageOther = Color(0xFF6B5CE7);
+  /// Downloads storage meter — free / available track fill.
+  static const Color storageAvailable = Color(0xFF262626);
 }
 
 /// Fixed dark-on-imagery palette for hero overlays.

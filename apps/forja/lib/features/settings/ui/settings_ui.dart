@@ -2137,6 +2137,7 @@ class SettingsIconButton extends StatelessWidget {
     required this.tooltip,
     required this.icon,
     required this.onPressed,
+    this.busy = false,
     this.color = ForjaShellColors.textPrimary,
     this.focusNode,
     this.onLeftEdge,
@@ -2148,6 +2149,7 @@ class SettingsIconButton extends StatelessWidget {
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
+  final bool busy;
   final Color color;
   final FocusNode? focusNode;
   final VoidCallback? onLeftEdge;
@@ -2159,13 +2161,23 @@ class SettingsIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final iconSize = SettingsTokens.iconButtonIconSizeOf(context);
     final hit = SettingsTokens.iconButtonHitSizeOf(context);
-    final child = Icon(icon, color: color, size: iconSize);
+    final child = busy
+        ? SizedBox(
+            width: iconSize,
+            height: iconSize,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: color,
+            ),
+          )
+        : Icon(icon, color: color, size: iconSize);
+    final enabled = onPressed != null && !busy;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (tv) {
       return shellFocusableTap(
         context: context,
         focusNode: focusNode,
-        onTap: onPressed,
+        onTap: enabled ? onPressed : null,
         borderRadius: 8,
         scaleOnFocus: 1.0,
         showFocusRail: false,
@@ -2183,7 +2195,7 @@ class SettingsIconButton extends StatelessWidget {
     }
     return IconButton(
       tooltip: tooltip,
-      onPressed: onPressed,
+      onPressed: enabled ? onPressed : null,
       icon: child,
       iconSize: iconSize,
     );

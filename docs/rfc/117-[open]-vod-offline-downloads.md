@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 8** components · **11 / 11** acceptance |
+| **Progress** | **6 / 8** components · **12 / 12** acceptance |
 | **Current slice** | Phase 1 shipped — Phase 2/3 deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -26,7 +26,7 @@
 | 5 | R117-C05 | Phase 2 — debrid HTTPS + torrent Keep-offline into Downloads | ⏭️ |
 | 6 | R117-C06 | Phase 3 — Android OS background (Media3 / WorkManager) + Wi‑Fi-only | ⏭️ |
 | 7 | R117-C07 | Sources hover Download + reject DASH/tiny junk Completed | ✅ |
-| 8 | R117-C08 | Pre-enqueue size probe + confirm (HTTP / HLS estimate + free space) | ✅ |
+| 8 | R117-C08 | Sources card inline size probe + Yes/No confirm (portal-style) | ✅ |
 
 ---
 
@@ -36,7 +36,7 @@
 |--:|----|-------------|--------|
 | 1 | R117-A01 | Details Download resolves without opening the player; enqueues HTTP/HLS with playback headers | ✅ |
 | 2 | R117-A02 | Sources row can Download instead of Play | ✅ |
-| 3 | R117-A03 | Player Download uses current resolved URL | ✅ |
+| 3 | R117-A03 | Player Download re-extracts the pinned Forja provider (fresh URL/headers) before enqueue | ✅ |
 | 4 | R117-A04 | Settings → Downloads shows Active progress and Completed library + storage used/free | ✅ |
 | 5 | R117-A05 | Completed item plays offline from local file | ✅ |
 | 6 | R117-A06 | Pause / resume / cancel / delete work; cold start marks interrupted as paused | ✅ |
@@ -44,7 +44,8 @@
 | 8 | R117-A08 | Magnets rejected in v1 auto-enqueue (Phase 2) | ✅ |
 | 9 | R117-A09 | Details Download opens Sources; hover row Download enqueues (tap still plays) | ✅ |
 | 10 | R117-A10 | DASH / playlist / tiny junk responses fail (not Completed) | ✅ |
-| 11 | R117-A11 | Download shows size (exact or ~estimate) + free space; user confirms before enqueue | ✅ |
+| 11 | R117-A11 | Sources Download card shows size (exact or ~estimate) + free space; Yes enqueues | ✅ |
+| 12 | R117-A12 | Expired Referer / HTTP 403 fails clearly — no reconnect loop on auth errors | ✅ |
 
 ---
 

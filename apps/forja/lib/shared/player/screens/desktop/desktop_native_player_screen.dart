@@ -393,7 +393,6 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
   Future<void> _enqueueCurrentDownload() async {
     final url = (_url.isNotEmpty ? _url : widget.mediaPath).trim();
     await enqueuePlayerCurrentDownload(
-      context: context,
       url: url,
       headers: widget.headers,
       movie: widget.movie,

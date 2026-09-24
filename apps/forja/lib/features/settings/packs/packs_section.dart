@@ -303,8 +303,9 @@ class _SettingsForjaPacksSectionState
                 if (reloadable.isNotEmpty)
                   _settingsTvIconButton(
                     context,
-                    tooltip: 'Reload',
+                    tooltip: _engineReloading ? 'Reloading packs…' : 'Reload',
                     icon: Icons.refresh_rounded,
+                    busy: _engineReloading,
                     focusNode: _toolbarReloadFocus,
                     onLeftEdge: downloadable.isNotEmpty
                         ? () {
@@ -352,25 +353,6 @@ class _SettingsForjaPacksSectionState
               ],
             ),
             if (packs.isNotEmpty) ...[
-              if (_bulkPackBusy) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
-                  child: Text(
-                    _engineReloading
-                        ? 'Reloading packs…'
-                        : _engineUpdatingAll
-                            ? 'Updating packs…'
-                            : 'Downloading packs…',
-                    style: TextStyle(
-                      color: ForjaShellColors.textSecondary.withValues(
-                        alpha: 0.9,
-                      ),
-                      fontSize: SettingsTokens.rowSubtitleSizeOf(context),
-                      height: 1.3,
-                    ),
-                  ),
-                ),
-              ],
               SettingsEngineMiniLabel(
                 downloadable.isNotEmpty && reloadable.isEmpty
                     ? 'Pending downloads'
@@ -1076,6 +1058,7 @@ Widget _settingsTvIconButton(
   required String tooltip,
   required IconData icon,
   required VoidCallback? onPressed,
+  bool busy = false,
   Color color = ForjaShellColors.textPrimary,
   FocusNode? focusNode,
   VoidCallback? onLeftEdge,
@@ -1085,6 +1068,7 @@ Widget _settingsTvIconButton(
     tooltip: tooltip,
     icon: icon,
     onPressed: onPressed,
+    busy: busy,
     color: color,
     focusNode: focusNode,
     onLeftEdge: onLeftEdge,

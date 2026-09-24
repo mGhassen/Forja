@@ -126,15 +126,17 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
             _StorageHeader(
               usedBytes: used,
               freeBytes: _space?.freeBytes,
+              totalBytes: _space?.totalBytes,
               downloadsDir: _downloadsDir,
               onRefreshSpace: _loadSpace,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: SettingsTokens.storageBlockGapOf(context)),
             TabBar(
               controller: _tabs,
               isScrollable: true,
               tabAlignment: TabAlignment.start,
               indicatorColor: ForjaShellColors.brandGreen,
+              indicatorWeight: 3,
               labelColor: ForjaShellColors.textPrimary,
               unselectedLabelColor: ForjaShellColors.textSecondary,
               dividerColor: ForjaShellColors.borderSubtle,
@@ -158,6 +160,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
                   _TaskList(
                     tasks: active,
                     emptyLabel: 'No active downloads',
+                    emptyHint: 'Start one from details, Sources, or the player.',
                     trailing: null,
                     itemBuilder: (task) => _ActiveTile(
                       task: task,
@@ -167,6 +170,8 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
                   _TaskList(
                     tasks: completed,
                     emptyLabel: 'No offline downloads yet',
+                    emptyHint:
+                        'Finished titles show up here — play anytime without a network.',
                     trailing: completed.isEmpty
                         ? null
                         : Button(
@@ -202,68 +207,296 @@ class _StorageHeader extends StatelessWidget {
   const _StorageHeader({
     required this.usedBytes,
     required this.freeBytes,
+    required this.totalBytes,
     required this.downloadsDir,
     required this.onRefreshSpace,
   });
 
   final int usedBytes;
   final int? freeBytes;
+  final int? totalBytes;
   final String? downloadsDir;
   final VoidCallback onRefreshSpace;
 
   @override
   Widget build(BuildContext context) {
+    final gap = SettingsTokens.storageBlockGapOf(context);
     final usedLabel = DownloadTask.formatBytes(usedBytes);
-    final freeLabel = freeBytes == null
-        ? '…'
-        : DownloadTask.formatBytes(freeBytes!);
-    return SettingsGroup(
-      label: 'Storage',
-      children: [
-        Padding(
-          padding: SettingsTokens.rowPaddingOf(context),
-          child: Row(
+    final free = freeBytes ?? 0;
+    final total = totalBytes ?? 0;
+    final freeLabel =
+        freeBytes == null ? '…' : DownloadTask.formatBytes(free);
+    final totalLabel =
+        totalBytes == null ? '…' : DownloadTask.formatBytes(total);
+
+    // Volume breakdown: offline library · other used · available.
+    final offline = usedBytes.clamp(0, total > 0 ? total : usedBytes);
+    final other = total > 0
+        ? (total - free - offline).clamp(0, total)
+        : 0;
+    final available = free.clamp(0, total > 0 ? total : free);
+    final sum = offline + other + available;
+    final denom = total > 0
+        ? total.toDouble()
+        : (sum > 0 ? sum : 1).toDouble();
+
+    return Padding(
+      padding: SettingsTokens.storageBlockPadOf(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$usedLabel used · $freeLabel free',
+                      'Storage',
                       style: TextStyle(
                         color: ForjaShellColors.textPrimary,
-                        fontSize: SettingsTokens.rowTitleSizeOf(context),
+                        fontSize: SettingsTokens.typeSizeOf(context, 18),
                         fontWeight: FontWeight.w600,
+                        height: 1.2,
                       ),
                     ),
-                    if (downloadsDir != null) ...[
-                      SizedBox(
-                        height: SettingsTokens.rowTitleSubtitleGapOf(context),
+                    SizedBox(
+                      height: SettingsTokens.rowTitleSubtitleGapOf(context),
+                    ),
+                    Text(
+                      'Offline library on this device.',
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+                        height: 1.35,
                       ),
-                      Text(
-                        downloadsDir!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: ForjaShellColors.textSecondary,
-                          fontSize: SettingsTokens.rowSubtitleSizeOf(context),
-                        ),
-                      ),
-                    ],
+                    ),
                   ],
                 ),
               ),
               Button(
-                variant: ButtonVariant.plainIcon,
-                size: ButtonSize.icon,
+                variant: ButtonVariant.outline,
+                size: ButtonSize.sm,
                 onPressed: onRefreshSpace,
-                child: Icon(
-                  Icons.refresh_rounded,
-                  size: SettingsTokens.iconButtonIconSizeOf(context),
-                  color: ForjaShellColors.iconMuted,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.refresh_rounded,
+                      size: SettingsTokens.typeSizeOf(context, 14),
+                      color: ForjaShellColors.iconActive,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Refresh',
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: SettingsTokens.typeSizeOf(context, 12),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
+          ),
+          SizedBox(height: gap + 4),
+          Text.rich(
+            TextSpan(
+              style: TextStyle(
+                color: ForjaShellColors.textPrimary,
+                fontSize: SettingsTokens.rowTitleSizeOf(context),
+                height: 1.3,
+              ),
+              children: [
+                TextSpan(
+                  text: usedLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const TextSpan(text: ' used of '),
+                TextSpan(
+                  text: totalLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                TextSpan(
+                  text: '  ·  $freeLabel free',
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: gap),
+          _StorageMeter(
+            offlineFraction: offline / denom,
+            otherFraction: other / denom,
+          ),
+          SizedBox(height: gap),
+          Wrap(
+            spacing: SettingsTokens.storageLegendGapOf(context),
+            runSpacing: 8,
+            children: const [
+              _StorageLegendDot(
+                color: ForjaShellColors.storageOffline,
+                label: 'Offline',
+                hatched: true,
+              ),
+              _StorageLegendDot(
+                color: ForjaShellColors.storageOther,
+                label: 'Other',
+              ),
+              _StorageLegendDot(
+                color: ForjaShellColors.storageAvailable,
+                label: 'Available',
+              ),
+            ],
+          ),
+          if (downloadsDir != null) ...[
+            SizedBox(height: gap),
+            Text(
+              downloadsDir!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: ForjaShellColors.iconMuted,
+                fontSize: SettingsTokens.typeSizeOf(context, 11.5),
+                height: 1.3,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StorageMeter extends StatelessWidget {
+  const _StorageMeter({
+    required this.offlineFraction,
+    required this.otherFraction,
+  });
+
+  final double offlineFraction;
+  final double otherFraction;
+
+  @override
+  Widget build(BuildContext context) {
+    final height = SettingsTokens.storageMeterHeightOf(context);
+    final radius = SettingsTokens.storageMeterRadiusOf(context);
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: ForjaShellColors.borderSubtle,
+          width: SettingsTokens.storageMeterBorderWidth,
+        ),
+        color: ForjaShellColors.storageAvailable,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final offlineW = (w * offlineFraction.clamp(0.0, 1.0));
+          final otherW = (w * otherFraction.clamp(0.0, 1.0));
+          return Row(
+            children: [
+              if (offlineW > 0.5)
+                SizedBox(
+                  width: offlineW,
+                  height: height,
+                  child: CustomPaint(
+                    painter: _HatchedSegmentPainter(
+                      fill: ForjaShellColors.storageOffline,
+                      hatch: ForjaShellColors.iconMuted.withValues(alpha: 0.45),
+                    ),
+                  ),
+                ),
+              if (otherW > 0.5)
+                Container(
+                  width: otherW,
+                  height: height,
+                  color: ForjaShellColors.storageOther,
+                ),
+              const Expanded(child: SizedBox.expand()),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _HatchedSegmentPainter extends CustomPainter {
+  _HatchedSegmentPainter({required this.fill, required this.hatch});
+
+  final Color fill;
+  final Color hatch;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = fill);
+    final paint = Paint()
+      ..color = hatch
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+    const step = 6.0;
+    for (var x = -size.height; x < size.width + size.height; x += step) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _HatchedSegmentPainter old) =>
+      old.fill != fill || old.hatch != hatch;
+}
+
+class _StorageLegendDot extends StatelessWidget {
+  const _StorageLegendDot({
+    required this.color,
+    required this.label,
+    this.hatched = false,
+  });
+
+  final Color color;
+  final String label;
+  final bool hatched;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = SettingsTokens.storageLegendDotSizeOf(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+            border: hatched
+                ? Border.all(
+                    color: ForjaShellColors.iconMuted.withValues(alpha: 0.5),
+                    width: 0.8,
+                  )
+                : null,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -275,12 +508,14 @@ class _TaskList extends StatelessWidget {
   const _TaskList({
     required this.tasks,
     required this.emptyLabel,
+    required this.emptyHint,
     required this.itemBuilder,
     this.trailing,
   });
 
   final List<DownloadTask> tasks;
   final String emptyLabel;
+  final String emptyHint;
   final Widget Function(DownloadTask task) itemBuilder;
   final Widget? trailing;
 
@@ -288,11 +523,39 @@ class _TaskList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (tasks.isEmpty) {
       return Center(
-        child: Text(
-          emptyLabel,
-          style: TextStyle(
-            color: ForjaShellColors.textSecondary,
-            fontSize: SettingsTokens.typeSizeOf(context, 14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.download_outlined,
+                size: SettingsTokens.typeSizeOf(context, 36),
+                color: ForjaShellColors.iconMuted,
+              ),
+              SizedBox(height: SettingsTokens.storageBlockGapOf(context)),
+              Text(
+                emptyLabel,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ForjaShellColors.textPrimary,
+                  fontSize: SettingsTokens.rowTitleSizeOf(context),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(
+                height: SettingsTokens.rowTitleSubtitleGapOf(context) + 2,
+              ),
+              Text(
+                emptyHint,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+                  height: 1.4,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -315,7 +578,8 @@ class _TaskList extends StatelessWidget {
               bottom: SettingsTokens.pagePaddingOf(context),
             ),
             itemCount: tasks.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) =>
+                SizedBox(height: SettingsTokens.storageBlockGapOf(context) - 2),
             itemBuilder: (context, i) => itemBuilder(tasks[i]),
           ),
         ),
@@ -451,11 +715,15 @@ class _DownloadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = SettingsTokens.storageMeterRadiusOf(context) + 2;
     return Container(
-      padding: SettingsTokens.rowPaddingOf(context),
+      padding: EdgeInsets.symmetric(
+        horizontal: SettingsTokens.rowPadH + 10,
+        vertical: SettingsTokens.rowPadV - 2,
+      ),
       decoration: BoxDecoration(
         color: ForjaShellColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(SettingsTokens.categoryTileRadius),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: ForjaShellColors.borderSubtle),
       ),
       child: Column(
@@ -497,13 +765,13 @@ class _DownloadCard extends StatelessWidget {
             ],
           ),
           if (progress != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
                 value: progress!.clamp(0.0, 1.0),
-                minHeight: 4,
-                backgroundColor: ForjaShellColors.borderSubtle,
+                minHeight: 5,
+                backgroundColor: ForjaShellColors.storageAvailable,
                 color: ForjaShellColors.brandGreen,
               ),
             ),

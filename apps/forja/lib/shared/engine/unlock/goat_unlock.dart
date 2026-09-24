@@ -115,14 +115,16 @@ class LiveGoatUnlock {
       // MediaKit + sportsembed Referer (via /hls-proxy) can play.
       final host = Uri.tryParse(result)?.host.toLowerCase() ?? '';
       final skipProbe = host.contains('wfty.st');
-      if (!skipProbe && !await _probePlayableM3u8(result, headers)) {
+      if (skipProbe) return (url: result, headers: headers);
+      final playable = await _selectPlayableM3u8(result, headers);
+      if (playable == null) {
         debugPrint(
           '[LiveSportsEmbed] CDN m3u8 not playable '
           '${Uri.tryParse(result)?.host ?? result}',
         );
         return null;
       }
-      return (url: result, headers: headers);
+      return (url: playable, headers: headers);
     } catch (e) {
       debugPrint('[LiveSportsEmbed] unlock failed: $e');
       return null;
@@ -224,8 +226,16 @@ class LiveGoatUnlock {
   static Future<bool> probePlayableM3u8(
     String url,
     Map<String, String> headers,
+  ) async =>
+      (await selectPlayableM3u8(url, headers)) != null;
+
+  /// Highest-bandwidth playable media playlist URL (skips TikTok WebP bait
+  /// variants that admin goat masters list first).
+  static Future<String?> selectPlayableM3u8(
+    String url,
+    Map<String, String> headers,
   ) =>
-      _probePlayableM3u8(url, headers);
+      _selectPlayableM3u8(url, headers);
 
   static bool _looksLikeImageMagic(List<int> bytes) {
     if (bytes.length < 12) return false;
@@ -243,36 +253,95 @@ class LiveGoatUnlock {
         bytes[11] == 0x50;
   }
 
-  static String? _firstHlsUri(String body, String baseUrl) {
-    for (final raw in body.split('\n')) {
-      final line = raw.trim();
-      if (line.isEmpty || line.startsWith('#')) continue;
-      final abs = Uri.tryParse(baseUrl)?.resolve(line).toString();
-      if (abs != null && abs.isNotEmpty) return abs;
-      if (line.startsWith('http://') || line.startsWith('https://')) return line;
+  static bool _isImageBaitUri(String uri) {
+    final path = uri.split('?').first.toLowerCase();
+    if (path.isEmpty) return false;
+    if (RegExp(r'\.(png|jpe?g|gif|webp|svg|image)$').hasMatch(path)) {
+      return true;
     }
-    return null;
+    if (path.contains('tiktokcdn') &&
+        (path.contains('.image') || path.contains('tplv-tiktokx-origin'))) {
+      return true;
+    }
+    return false;
   }
 
-  static String? _firstHlsMediaUri(String masterBody, String masterUrl) {
+  static List<({String url, int bandwidth})> _masterVariantEntries(
+    String masterBody,
+    String masterUrl,
+  ) {
+    final out = <({String url, int bandwidth})>[];
     final lines = masterBody.split('\n');
     for (var i = 0; i < lines.length; i++) {
-      if (!lines[i].trim().startsWith('#EXT-X-STREAM-INF')) continue;
+      final line = lines[i].trim();
+      if (!line.startsWith('#EXT-X-STREAM-INF')) continue;
+      var bw = 0;
+      final m = RegExp(r'BANDWIDTH=(\d+)', caseSensitive: false).firstMatch(line);
+      if (m != null) bw = int.tryParse(m.group(1) ?? '') ?? 0;
       for (var j = i + 1; j < lines.length; j++) {
         final next = lines[j].trim();
         if (next.isEmpty || next.startsWith('#')) continue;
-        return Uri.tryParse(masterUrl)?.resolve(next).toString() ?? next;
+        final abs =
+            Uri.tryParse(masterUrl)?.resolve(next).toString() ?? next;
+        if (abs.isNotEmpty) out.add((url: abs, bandwidth: bw));
+        break;
       }
     }
-    return null;
+    out.sort((a, b) => b.bandwidth.compareTo(a.bandwidth));
+    return out;
   }
 
-  static Future<bool> _probePlayableM3u8(
+  static Future<bool> _mediaPlaylistIsPlayable(
+    String mediaUrl,
+    Map<String, String> headers, {
+    String? bodyText,
+  }) async {
+    var text = bodyText;
+    if (text == null) {
+      final mediaResp = await http
+          .get(Uri.parse(mediaUrl), headers: headers)
+          .timeout(const Duration(seconds: 8));
+      if (mediaResp.statusCode < 200 || mediaResp.statusCode >= 400) {
+        return false;
+      }
+      text = mediaResp.body.trimLeft();
+    }
+    if (!text.startsWith('#EXTM3U')) return false;
+    final segs = <String>[];
+    for (final raw in text.split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty || line.startsWith('#')) continue;
+      final abs = Uri.tryParse(mediaUrl)?.resolve(line).toString() ?? line;
+      if (abs.isNotEmpty) segs.add(abs);
+    }
+    if (segs.isEmpty) return false;
+    final baitCount = segs.where(_isImageBaitUri).length;
+    if (baitCount == segs.length) return false;
+    final sample = segs.firstWhere(
+      (s) => !_isImageBaitUri(s),
+      orElse: () => segs.first,
+    );
+    final segResp = await http
+        .get(Uri.parse(sample), headers: headers)
+        .timeout(const Duration(seconds: 12));
+    if (segResp.statusCode < 200 || segResp.statusCode >= 400) return false;
+    final bytes = segResp.bodyBytes;
+    if (_looksLikeImageMagic(bytes)) {
+      debugPrint(
+        '[LiveGoatUnlock] m3u8 probe image-bait magic '
+        '${Uri.tryParse(sample)?.host ?? sample}',
+      );
+      return false;
+    }
+    return bytes.isNotEmpty;
+  }
+
+  static Future<String?> _selectPlayableM3u8(
     String url,
     Map<String, String> headers,
   ) async {
     final target = url.trim();
-    if (target.isEmpty) return false;
+    if (target.isEmpty) return null;
     try {
       final resp = await http
           .get(Uri.parse(target), headers: headers)
@@ -282,47 +351,28 @@ class LiveGoatUnlock {
           '[LiveGoatUnlock] m3u8 probe HTTP ${resp.statusCode} '
           '${Uri.tryParse(target)?.host ?? target}',
         );
-        return false;
+        return null;
       }
-      var text = resp.body.trimLeft();
-      if (!text.startsWith('#EXTM3U')) return false;
-
-      var mediaUrl = target;
-      if (text.contains('#EXT-X-STREAM-INF')) {
-        final media = _firstHlsMediaUri(text, target);
-        if (media == null || media.isEmpty) return false;
-        final mediaResp = await http
-            .get(Uri.parse(media), headers: headers)
-            .timeout(const Duration(seconds: 8));
-        if (mediaResp.statusCode < 200 || mediaResp.statusCode >= 400) {
-          return false;
-        }
-        text = mediaResp.body.trimLeft();
-        if (!text.startsWith('#EXTM3U')) return false;
-        mediaUrl = media;
-      }
-
-      final seg = _firstHlsUri(text, mediaUrl);
-      if (seg == null || seg.isEmpty) return false;
-      final segResp = await http
-          .get(Uri.parse(seg), headers: headers)
-          .timeout(const Duration(seconds: 12));
-      if (segResp.statusCode < 200 || segResp.statusCode >= 400) return false;
-      final bytes = segResp.bodyBytes;
-      // Real WAF stills decoy — reject. MPEG-TS (or other media) behind a
-      // .png/.jpg name (WatchFooty) is playable via /hls-proxy?strip=png.
-      if (_looksLikeImageMagic(bytes)) {
-        debugPrint(
-          '[LiveGoatUnlock] m3u8 probe image-bait magic '
-          '${Uri.tryParse(seg)?.host ?? seg}',
+      final text = resp.body.trimLeft();
+      if (!text.startsWith('#EXTM3U')) return null;
+      if (!text.contains('#EXT-X-STREAM-INF')) {
+        final ok = await _mediaPlaylistIsPlayable(
+          target,
+          headers,
+          bodyText: text,
         );
-        return false;
+        return ok ? target : null;
       }
-      if (bytes.isEmpty) return false;
-      return true;
+      final variants = _masterVariantEntries(text, target);
+      for (final v in variants) {
+        if (await _mediaPlaylistIsPlayable(v.url, headers)) {
+          return v.url;
+        }
+      }
+      return null;
     } catch (e) {
       debugPrint('[LiveGoatUnlock] m3u8 probe failed: $e');
-      return false;
+      return null;
     }
   }
 
@@ -345,8 +395,7 @@ class LiveGoatUnlock {
   }) async {
     final u = (url ?? '').trim();
     if (u.isEmpty) return null;
-    if (!await _probePlayableM3u8(u, headers)) return null;
-    return u;
+    return _selectPlayableM3u8(u, headers);
   }
 
   static Future<String?> unlock({

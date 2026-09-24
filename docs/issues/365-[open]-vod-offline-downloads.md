@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** tasks · **9 / 9** acceptance |
+| **Progress** | **12 / 14** tasks (2 deferred) · **10 / 10** acceptance |
 | **Current slice** | Phase 1 complete — Phase 2/3 deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -32,7 +32,8 @@
 | 10 | I365-T10 | Phase 3 — OS background downloads | ⏭️ |
 | 11 | I365-T11 | Sources row hover Download icon; details Download opens Sources (no auto-pick) | ✅ |
 | 12 | I365-T12 | Reject DASH MPD / tiny manifest responses (no ~60KB “completed” junk) | ✅ |
-| 13 | I365-T13 | Probe size + confirm sheet before enqueue (HTTP Content-Length / HLS estimate) | ✅ |
+| 13 | I365-T13 | Sources card inline confirm + size probe (portal delete/share style) before enqueue | ✅ |
+| 14 | I365-T14 | Player Download re-extract + Referer expiry / fail-fast 403 ([374](fixed/374-[fixed]-vod-download-expired-referer-403.md)) | ✅ |
 
 ---
 
@@ -48,7 +49,8 @@
 | 6 | I365-A06 | App kill → tasks resume as paused (not stuck downloading) | ✅ |
 | 7 | I365-A07 | Sources: hover reveals Download; row tap still plays | ✅ |
 | 8 | I365-A08 | DASH / playlist / &lt;256KB responses fail instead of completing | ✅ |
-| 9 | I365-A09 | Download confirms with probed size (or estimate) and free space before enqueue | ✅ |
+| 9 | I365-A09 | Sources Download: card shows probed size (or estimate) + Yes/No before enqueue | ✅ |
+| 10 | I365-A10 | Mid-watch Forja Download uses a fresh extract — expired Referer does not 403-loop | ✅ |
 
 ---
 

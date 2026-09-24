@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4 / 4** fix · **2 / 3** acceptance |
+| **Progress** | **Complete · 5 / 5** fix · **3 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I350-T02 | Host: mid-search category pick stays selected; empty search skips peek land | ✅ |
 | 3 | I350-T03 | Category rail: do not auto-land first group while searching | ✅ |
 | 4 | I350-T04 | Unit tests (Dart filter + effective category; Rust q+category) + changelog | ✅ |
+| 5 | I350-T05 | Category rail scrolls selected into view on mid-search pick / search clear | ✅ |
 
 ---
 
@@ -33,6 +34,8 @@
 | 1 | I350-A01 | Unit: `filterSort` / `iptvEffectiveCategoryId` / Rust page q+category | ✅ |
 | 2 | I350-A02 | App: search “4k” → shelf-wide hits; click a category → only that group’s matches | ⬜ |
 | 3 | I350-A03 | App: clear search restores prior category when none was picked mid-search | ⬜ |
+| 4 | I350-A04 | Unit: rail scrolls on select + search list expand | ✅ |
+| 5 | I350-A05 | App: pick/clear search scrolls the selected category into view on the rail | ⬜ |
 
 ---
 

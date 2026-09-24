@@ -10,11 +10,37 @@ bool isDashManifestUrl(String url) {
   return false;
 }
 
+/// True when [url] or playback [headers] carry an expired `expires=` / JWT.
+///
+/// Vixsrc (and similar) gate the CDN with an embed Referer token while the
+/// play URL itself has no `expires=` — mid-watch downloads must not reuse it.
+bool isDownloadAuthExpired(
+  String url, {
+  Map<String, String>? headers,
+  DateTime? now,
+}) {
+  if (isStreamUrlTokenExpired(url, now: now)) return true;
+  if (headers == null || headers.isEmpty) return false;
+  for (final e in headers.entries) {
+    final k = e.key.trim().toLowerCase();
+    if (k != 'referer' && k != 'origin') continue;
+    final v = e.value.trim();
+    if (v.isEmpty) continue;
+    if (isStreamUrlTokenExpired(v, now: now)) return true;
+  }
+  return false;
+}
+
 /// Whether [url] is a durable HTTP(S) stream that Phase 1 may download.
 ///
 /// Rejects magnets/torrents, DASH MPD, empty URLs, loopback junk, and expired
-/// stream tokens (`?token=` JWT / `expires=`).
-bool isDownloadableHttpUrl(String url) {
+/// stream tokens (`?token=` JWT / `expires=`). Pass [headers] so embed Referer
+/// expiry is checked too.
+bool isDownloadableHttpUrl(
+  String url, {
+  Map<String, String>? headers,
+  DateTime? now,
+}) {
   final u = url.trim();
   if (u.isEmpty) return false;
   if (isTorrentStreamUrl(u)) return false;
@@ -34,7 +60,7 @@ bool isDownloadableHttpUrl(String url) {
     return false;
   }
 
-  if (isStreamUrlTokenExpired(u)) return false;
+  if (isDownloadAuthExpired(u, headers: headers, now: now)) return false;
   return true;
 }
 
@@ -53,8 +79,15 @@ bool looksLikeManifestBytes(List<int> bytes) {
   return false;
 }
 
+const String kOfflineDownloadExpiredMessage =
+    'Stream link expired — open Sources and download again';
+
 /// User-facing reason when a URL cannot be saved offline.
-String? offlineDownloadRejectReason(String url) {
+String? offlineDownloadRejectReason(
+  String url, {
+  Map<String, String>? headers,
+  DateTime? now,
+}) {
   final u = url.trim();
   if (u.isEmpty) return 'This stream can’t be saved offline';
   if (isTorrentStreamUrl(u)) {
@@ -63,7 +96,10 @@ String? offlineDownloadRejectReason(String url) {
   if (isDashManifestUrl(u)) {
     return "DASH streams can't be saved offline yet";
   }
-  if (!isDownloadableHttpUrl(u)) {
+  if (isDownloadAuthExpired(u, headers: headers, now: now)) {
+    return kOfflineDownloadExpiredMessage;
+  }
+  if (!isDownloadableHttpUrl(u, headers: headers, now: now)) {
     return 'This stream can’t be saved offline';
   }
   return null;

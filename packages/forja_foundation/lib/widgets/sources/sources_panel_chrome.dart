@@ -135,10 +135,12 @@ class SourcesPanelChrome extends StatefulWidget {
   })? tabsBuilder;
 
   /// Host trailing header actions (Reload / Close). Null → IconButtons.
+  /// When [loading] is true, omit Reload — status text lives on the tabs row.
   final Widget Function(
     BuildContext context, {
     required VoidCallback onReload,
     VoidCallback? onClose,
+    required bool loading,
   })? headerActionsBuilder;
 
   /// Empty-state copy when channel query matches nothing (host owns product wording).
@@ -370,7 +372,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!widget.embedded) _header(context),
+        if (!widget.embedded) _header(context, loading: loading),
         if (widget.showTabs && widget.tabs.length > 1) _tabs(context),
         Expanded(
           child: _body(context, loading: loading, error: error, rows: rows),
@@ -381,7 +383,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
     return column;
   }
 
-  Widget _header(BuildContext context) {
+  Widget _header(BuildContext context, {required bool loading}) {
     final tv = widget.usesTvDensity;
     final titleFontSize =
         tv ? ShellTokens.tvBodyFontSize : 15.0;
@@ -425,17 +427,19 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
               context,
               onReload: () => unawaited(_ensureLoaded(_tabId, force: true)),
               onClose: widget.onClosed,
+              loading: loading,
             )
           else ...[
-            IconButton(
-              tooltip: 'Reload',
-              onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
-              icon: Icon(
-                Icons.refresh_rounded,
-                size: ShellPaintScope.iconOf(context, 20),
+            if (!loading)
+              IconButton(
+                tooltip: 'Reload',
+                onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
+                icon: Icon(
+                  Icons.refresh_rounded,
+                  size: ShellPaintScope.iconOf(context, 20),
+                ),
+                color: ForjaShellColors.textSecondary,
               ),
-              color: ForjaShellColors.textSecondary,
-            ),
             if (widget.onClosed != null)
               IconButton(
                 tooltip: 'Close',

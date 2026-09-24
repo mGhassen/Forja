@@ -281,6 +281,145 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'selecting a category scrolls it into view',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          tv: false,
+          child: const SizedBox(
+            height: 280,
+            child: _SelectScrollRailHost(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final scrollState = tester.state<ScrollableState>(find.byType(Scrollable));
+      final maxExtent = scrollState.position.maxScrollExtent;
+      expect(maxExtent, greaterThan(0));
+      scrollState.position.jumpTo(0);
+      await tester.pumpAndSettle();
+      expect(scrollState.position.pixels, 0);
+
+      // Select a row that is off-screen below.
+      final host = tester.state<_SelectScrollRailHostState>(
+        find.byType(_SelectScrollRailHost),
+      );
+      host.select('z');
+      await tester.pumpAndSettle();
+
+      final offsetAfter = tester
+          .state<ScrollableState>(find.byType(Scrollable))
+          .position
+          .pixels;
+      expect(
+        offsetAfter,
+        greaterThan(0),
+        reason: 'rail must scroll down to the selected category',
+      );
+    },
+  );
+
+  testWidgets(
+    'search list expand pins selected category near 4th row',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          tv: false,
+          child: const SizedBox(
+            height: 280,
+            child: _SearchExpandScrollRailHost(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final host = tester.state<_SearchExpandScrollRailHostState>(
+        find.byType(_SearchExpandScrollRailHost),
+      );
+      // Filtered search hits, then expand back to full list (clear search).
+      host.expandToFull();
+      await tester.pumpAndSettle();
+
+      final offsetAfter = tester
+          .state<ScrollableState>(find.byType(Scrollable))
+          .position
+          .pixels;
+      expect(
+        offsetAfter,
+        greaterThan(0),
+        reason: 'clearing search must scroll the restored category into view',
+      );
+    },
+  );
+}
+
+class _SelectScrollRailHost extends StatefulWidget {
+  const _SelectScrollRailHost();
+
+  @override
+  State<_SelectScrollRailHost> createState() => _SelectScrollRailHostState();
+}
+
+class _SelectScrollRailHostState extends State<_SelectScrollRailHost> {
+  String _selected = 'a';
+
+  late final List<CatalogCategoryItem> _items = [
+    for (var i = 0; i < 24; i++)
+      CatalogCategoryItem(
+        id: String.fromCharCode(97 + (i % 26)) + '$i',
+        label: 'Cat $i',
+      ),
+    const CatalogCategoryItem(id: 'z', label: 'Z'),
+  ];
+
+  void select(String id) => setState(() => _selected = id);
+
+  @override
+  Widget build(BuildContext context) {
+    return CatalogCategoryRail(
+      selectedId: _selected,
+      items: _items,
+      onSelect: select,
+    );
+  }
+}
+
+class _SearchExpandScrollRailHost extends StatefulWidget {
+  const _SearchExpandScrollRailHost();
+
+  @override
+  State<_SearchExpandScrollRailHost> createState() =>
+      _SearchExpandScrollRailHostState();
+}
+
+class _SearchExpandScrollRailHostState extends State<_SearchExpandScrollRailHost> {
+  var _filtered = true;
+  static const _selected = 'z';
+
+  late final List<CatalogCategoryItem> _all = [
+    for (var i = 0; i < 24; i++)
+      CatalogCategoryItem(id: 'c$i', label: 'Cat $i'),
+    const CatalogCategoryItem(id: 'z', label: 'Z'),
+  ];
+
+  void expandToFull() => setState(() => _filtered = false);
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _filtered
+        ? const [
+            CatalogCategoryItem(id: 'z', label: 'Z'),
+            CatalogCategoryItem(id: 'c0', label: 'Cat 0'),
+          ]
+        : _all;
+    return CatalogCategoryRail(
+      selectedId: _selected,
+      items: items,
+    );
+  }
 }
 
 class _ReorderRailHost extends StatefulWidget {

@@ -164,6 +164,8 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       EngineCache.instance.wipePlugin(pluginId);
       PackLoadedPaint.clearMemosForPlugin(pluginId);
       PackChromeScope.maybeOf(context)?.onClearCatalog();
+      // Stripe immediately — IPTV warms live for every platform (incl. M3U).
+      _setShelfLoading(portalKey, true);
     }
 
     await PortalsHost.setActiveKey(portalKey);
@@ -174,7 +176,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     // Fill live shelf while the portal card shows stripes. Await on IPTV so
     // the feed bump pages a ready shelf; Live Sports can finish in background.
     if (portalScopedHub) {
-      await _warmLiveShelf(portalKey);
+      await _warmLiveShelf(portalKey, sportsCapableOnly: false);
       if (!mounted) return;
       await CategoryBarActionHost.liveListFeedParams(
         preferTabId: widget.tabId,
@@ -185,7 +187,8 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       unawaited(
         CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId),
       );
-      unawaited(_warmLiveShelf(portalKey));
+      // Live TV matching only needs Xtream/Stalker shelves.
+      unawaited(_warmLiveShelf(portalKey, sportsCapableOnly: true));
     }
 
     unawaited((() async {
@@ -249,8 +252,14 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         .applyShelfLoading(key, loading);
   }
 
-  /// Warm SQLite live shelf for Live TV matching; stripe the portal card.
-  Future<void> _warmLiveShelf(String portalKey) async {
+  /// Warm SQLite live shelf; stripe the portal card while fetching.
+  ///
+  /// [sportsCapableOnly] — Live Sports Live TV path: skip M3U. IPTV hub passes
+  /// false so M3U / Xtream / Stalker all show stripes while the live shelf fills.
+  Future<void> _warmLiveShelf(
+    String portalKey, {
+    bool sportsCapableOnly = false,
+  }) async {
     final gen = ++_warmGen;
     _setShelfLoading(portalKey, true);
     VerifiedPortal? verified;
@@ -275,7 +284,11 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       return;
     }
     final portal = verified?.portal;
-    if (portal == null || !portal.platform.supportsForjaSports) {
+    if (portal == null) {
+      _setShelfLoading(portalKey, false);
+      return;
+    }
+    if (sportsCapableOnly && !portal.platform.supportsForjaSports) {
       _setShelfLoading(portalKey, false);
       return;
     }
@@ -287,7 +300,8 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       );
       debugPrint(
         '[PortalsPanel] live shelf warm '
-        '${ok ? 'ok' : 'failed'} key=$portalKey',
+        '${ok ? 'ok' : 'failed'} key=$portalKey '
+        'platform=${portal.platform.wire}',
       );
     } catch (e) {
       debugPrint('[PortalsPanel] live shelf warm failed: $e');

@@ -86,7 +86,15 @@ class DownloadService {
     try {
       final file = await _getStorageFile();
       final jsonList = tasksNotifier.value.map((t) => t.toJson()).toList();
-      await file.writeAsString(jsonEncode(jsonList));
+      final encoded = jsonEncode(jsonList);
+      final tmp = File('${file.path}.tmp');
+      await tmp.writeAsString(encoded);
+      if (await file.exists()) {
+        try {
+          await file.delete();
+        } catch (_) {}
+      }
+      await tmp.rename(file.path);
     } catch (e) {
       debugPrint('[DownloadService] Failed to persist tasks: $e');
     }
@@ -175,8 +183,8 @@ class DownloadService {
     if (rawUrl.isEmpty) {
       throw ArgumentError('Empty download URL');
     }
-    if (!isDownloadableHttpUrl(rawUrl)) {
-      final reason = offlineDownloadRejectReason(rawUrl) ??
+    if (!isDownloadableHttpUrl(rawUrl, headers: headers)) {
+      final reason = offlineDownloadRejectReason(rawUrl, headers: headers) ??
           'URL is not a downloadable HTTP(S) stream';
       throw ArgumentError(reason);
     }
@@ -351,8 +359,26 @@ class DownloadService {
           await _finalizeDownloadedFile(task, partFile);
           return;
         }
+        final code = response.statusCode;
+        final phrase = response.reasonPhrase;
+        // Auth / gone — retrying the same URL never helps (expired Referer, …).
+        if (code == HttpStatus.unauthorized ||
+            code == HttpStatus.forbidden ||
+            code == HttpStatus.notFound ||
+            code == HttpStatus.gone) {
+          _cleanupHttpTask(task.id);
+          _updateTask(task.copyWith(
+            status: DownloadStatus.failed,
+            error: code == HttpStatus.forbidden ||
+                    code == HttpStatus.unauthorized
+                ? kOfflineDownloadExpiredMessage
+                : 'Server returned HTTP $code: $phrase',
+            speedBytesPerSec: 0.0,
+          ));
+          return;
+        }
         throw Exception(
-          'Server returned HTTP ${response.statusCode}: ${response.reasonPhrase}',
+          'Server returned HTTP $code: $phrase',
         );
       }
 

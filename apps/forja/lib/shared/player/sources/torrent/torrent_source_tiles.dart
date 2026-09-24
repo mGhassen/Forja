@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:rust/rust.dart';
@@ -23,7 +24,7 @@ class TorrentSourceTile extends StatelessWidget {
     this.tvItemIndex,
     this.onUpEdge,
     this.onDownEdge,
-    this.onDownload,
+    this.onPrepareDownload,
   });
 
   final TorrentResult result;
@@ -34,7 +35,7 @@ class TorrentSourceTile extends StatelessWidget {
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
-  final VoidCallback? onDownload;
+  final Future<SourceDownloadPrep?> Function()? onPrepareDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +69,7 @@ class TorrentSourceTile extends StatelessWidget {
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
-      onDownload: onDownload,
+      onPrepareDownload: onPrepareDownload,
       badges: [
         if (meta.quality != null)
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
@@ -321,7 +322,7 @@ class StremioSourceTile extends StatelessWidget {
     this.onDownEdge,
     this.onHoverProbe,
     this.probeHealthCache,
-    this.onDownload,
+    this.onPrepareDownload,
   });
 
   final String title;
@@ -343,7 +344,7 @@ class StremioSourceTile extends StatelessWidget {
   final VoidCallback? onDownEdge;
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
-  final VoidCallback? onDownload;
+  final Future<SourceDownloadPrep?> Function()? onPrepareDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +397,7 @@ class StremioSourceTile extends StatelessWidget {
       onDownEdge: onDownEdge,
       onHoverProbe: isExternal ? null : onHoverProbe,
       probeHealthCache: isExternal ? null : probeHealthCache,
-      onDownload: isExternal ? null : onDownload,
+      onPrepareDownload: isExternal ? null : onPrepareDownload,
       badges: isExternal
           ? [
               if (description.trim().isNotEmpty)
@@ -513,7 +514,7 @@ class _SourceBadgeCard extends StatefulWidget {
     this.probeHealthCache,
     this.viewerCount,
     this.autofocus = false,
-    this.onDownload,
+    this.onPrepareDownload,
   });
 
   final VoidCallback onTap;
@@ -543,8 +544,8 @@ class _SourceBadgeCard extends StatefulWidget {
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
   final int? viewerCount;
-  /// When set, a download icon animates in on hover / focus (portal rail style).
-  final VoidCallback? onDownload;
+  /// Portal-style: Download → probe size → card face becomes confirm + Yes/No.
+  final Future<SourceDownloadPrep?> Function()? onPrepareDownload;
 
   @override
   State<_SourceBadgeCard> createState() => _SourceBadgeCardState();
@@ -561,6 +562,11 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   bool _probeHoverActive = false;
   int _probeGen = 0;
   Timer? _hoverProbeTimer;
+
+  /// idle · probing · confirm (portal delete / share pattern).
+  var _downloadPhase = _DownloadCardPhase.idle;
+  SourceDownloadPrep? _downloadPrep;
+  int _downloadGen = 0;
 
   @override
   void dispose() {
@@ -580,6 +586,48 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         focused: _focused,
         context: context,
       );
+
+  bool get _downloadConfirming =>
+      _downloadPhase == _DownloadCardPhase.probing ||
+      _downloadPhase == _DownloadCardPhase.confirm;
+
+  void _cancelDownloadConfirm() {
+    _downloadGen++;
+    setState(() {
+      _downloadPhase = _DownloadCardPhase.idle;
+      _downloadPrep = null;
+    });
+  }
+
+  Future<void> _beginDownloadConfirm() async {
+    final prepare = widget.onPrepareDownload;
+    if (prepare == null) return;
+    final gen = ++_downloadGen;
+    setState(() {
+      _downloadPhase = _DownloadCardPhase.probing;
+      _downloadPrep = null;
+    });
+    final prep = await prepare();
+    if (!mounted || gen != _downloadGen) return;
+    if (prep == null) {
+      setState(() {
+        _downloadPhase = _DownloadCardPhase.idle;
+        _downloadPrep = null;
+      });
+      return;
+    }
+    setState(() {
+      _downloadPhase = _DownloadCardPhase.confirm;
+      _downloadPrep = prep;
+    });
+  }
+
+  Future<void> _commitDownload() async {
+    final prep = _downloadPrep;
+    if (prep == null || !prep.canConfirm) return;
+    _cancelDownloadConfirm();
+    await prep.commit();
+  }
 
   @override
   void initState() {
@@ -643,7 +691,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   }
 
   Color _backgroundColor(bool hovered) {
-    final active = _hoverFor(hovered);
+    final active = _hoverFor(hovered) || _downloadConfirming;
     if (widget.selected) {
       return ForjaShellColors.brandGreen.withValues(alpha: 0.16);
     }
@@ -656,7 +704,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   }
 
   Color _borderColor(bool hovered) {
-    final active = _hoverFor(hovered);
+    final active = _hoverFor(hovered) || _downloadConfirming;
     if (widget.selected) {
       return active
           ? ForjaShellColors.brandGreen
@@ -671,7 +719,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   }
 
   double _borderWidth(bool hovered) {
-    if (widget.selected || _hoverFor(hovered)) return 1.5;
+    if (widget.selected || _hoverFor(hovered) || _downloadConfirming) {
+      return 1.5;
+    }
     return 1;
   }
 
@@ -686,6 +736,99 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       false => const Color(0xFFEF4444),
       null => Colors.transparent,
     };
+  }
+
+  Widget _downloadConfirmFace({
+    required double titleSize,
+    required Color metaColor,
+    required double metaFontSize,
+  }) {
+    final probing = _downloadPhase == _DownloadCardPhase.probing;
+    final prep = _downloadPrep;
+    final blocked = prep != null && !prep.canConfirm;
+    final sizeColor = blocked
+        ? const Color(0xFFF87171)
+        : ForjaShellColors.brandGreen;
+    final sizeText = probing
+        ? 'Checking size…'
+        : (prep?.sizeLabel ?? 'Size unknown');
+    final detail = prep?.detailLine;
+    final spaceWarn = prep?.blockReason == 'space'
+        ? 'Not enough free space'
+        : null;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            probing ? 'DOWNLOAD' : 'DOWNLOAD OFFLINE?',
+            style: TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              if (probing) ...[
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: ForjaShellColors.brandGreen,
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Text(
+                  sizeText,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: sizeColor,
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (detail != null && detail.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              detail,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: metaColor,
+                fontSize: metaFontSize,
+              ),
+            ),
+          ],
+          if (spaceWarn != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              spaceWarn,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: const Color(0xFFF87171),
+                fontSize: metaFontSize,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildFace(bool hovered) {
@@ -714,8 +857,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final hasLanguageFlags = widget.languageCodes.isNotEmpty;
     final magnet = widget.magnet;
     final hasMagnet = magnet != null && magnet.isNotEmpty;
-    final reveal = _hoverFor(hovered) &&
-        (widget.onDownload != null || hasMagnet);
+    final reveal = _downloadConfirming ||
+        (_hoverFor(hovered) &&
+            (widget.onPrepareDownload != null || hasMagnet));
     const seedColor = Color(0xFF22C55E);
     final providerLines = hasProvider
         ? _providerLines(widget.provider!)
@@ -723,13 +867,103 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final footerLabel = (widget.footerLabel ?? '').trim();
     final hasFooterLabel = footerLabel.isNotEmpty;
     final leftBarColor = _probeLeftBarColor();
-    final railIconCount =
-        (widget.onDownload != null ? 1 : 0) + (hasMagnet ? 1 : 0);
+    final railIconCount = _downloadConfirming
+        ? 2
+        : (widget.onPrepareDownload != null ? 1 : 0) + (hasMagnet ? 1 : 0);
     final actionWidth = metrics.usesTvDensity
         ? 36.0 * railIconCount
         : 40.0 * railIconCount;
     final railAnim = const Duration(milliseconds: 180);
     final iconSize = metrics.torrentPanelMetaIconSize;
+    final prep = _downloadPrep;
+    final canYes = prep != null && prep.canConfirm;
+
+    Widget mainColumn = _downloadConfirming
+        ? _downloadConfirmFace(
+            titleSize: titleSize,
+            metaColor: metaColor,
+            metaFontSize: metrics.torrentPanelMetaFontSize,
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (titlePrefixBadges.isNotEmpty) ...[
+                    Wrap(
+                      spacing: badgeGap,
+                      runSpacing: badgeGap,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        for (final badge in titlePrefixBadges)
+                          _SourceMetaBadge(badge: badge),
+                      ],
+                    ),
+                    SizedBox(width: titleGap),
+                  ],
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: titleColor,
+                        fontSize: titleSize,
+                        height: 1.25,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (hasLanguageFlags || inlineBadges.isNotEmpty) ...[
+                SizedBox(height: titleGap),
+                Wrap(
+                  spacing: badgeGap,
+                  runSpacing: badgeGap,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (hasLanguageFlags)
+                      _LanguageFlagBadges(
+                        codes: widget.languageCodes,
+                      ),
+                    for (final badge in inlineBadges)
+                      _SourceMetaBadge(badge: badge),
+                  ],
+                ),
+              ],
+              if (hasFooterLabel) ...[
+                const SizedBox(height: 4),
+                Text(
+                  footerLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: metaColor,
+                    fontSize: metrics.torrentPanelMetaFontSize,
+                  ),
+                ),
+              ] else if (widget.footer != null) ...[
+                const SizedBox(height: 4),
+                widget.footer!,
+              ],
+              if (selected) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Playing',
+                  style: TextStyle(
+                    color: accentFg,
+                    fontSize: metrics.torrentPanelMetaFontSize,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          );
 
     Widget main = Padding(
       padding: EdgeInsets.fromLTRB(
@@ -741,93 +975,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.leading != null) ...[
+          if (widget.leading != null && !_downloadConfirming) ...[
             widget.leading!,
             SizedBox(width: titleGap),
           ],
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (titlePrefixBadges.isNotEmpty) ...[
-                      Wrap(
-                        spacing: badgeGap,
-                        runSpacing: badgeGap,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          for (final badge in titlePrefixBadges)
-                            _SourceMetaBadge(badge: badge),
-                        ],
-                      ),
-                      SizedBox(width: titleGap),
-                    ],
-                    Expanded(
-                      child: Text(
-                        widget.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: titleColor,
-                          fontSize: titleSize,
-                          height: 1.25,
-                          fontWeight: selected
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (hasLanguageFlags || inlineBadges.isNotEmpty) ...[
-                  SizedBox(height: titleGap),
-                  Wrap(
-                    spacing: badgeGap,
-                    runSpacing: badgeGap,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (hasLanguageFlags)
-                        _LanguageFlagBadges(
-                          codes: widget.languageCodes,
-                        ),
-                      for (final badge in inlineBadges)
-                        _SourceMetaBadge(badge: badge),
-                    ],
-                  ),
-                ],
-                if (hasFooterLabel) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    footerLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: metaColor,
-                      fontSize: metrics.torrentPanelMetaFontSize,
-                    ),
-                  ),
-                ] else if (widget.footer != null) ...[
-                  const SizedBox(height: 4),
-                  widget.footer!,
-                ],
-                if (selected) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    'Playing',
-                    style: TextStyle(
-                      color: accentFg,
-                      fontSize: metrics.torrentPanelMetaFontSize,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (selected || hasProvider || hasViewers || hasSeeders) ...[
+          Expanded(child: mainColumn),
+          if (!_downloadConfirming &&
+              (selected || hasProvider || hasViewers || hasSeeders)) ...[
             SizedBox(width: titleGap),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 120),
@@ -917,9 +1071,71 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       ),
     );
 
+    Widget actionRail;
+    if (_downloadConfirming) {
+      actionRail = Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          IconButton(
+            tooltip: 'Yes',
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            iconSize: iconSize,
+            color: canYes ? ForjaShellColors.brandGreen : Colors.white24,
+            onPressed: canYes ? () => unawaited(_commitDownload()) : null,
+            icon: const Icon(Icons.check_rounded),
+          ),
+          IconButton(
+            tooltip: 'No',
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            iconSize: iconSize,
+            color: Colors.white60,
+            onPressed: _cancelDownloadConfirm,
+            icon: const Icon(Icons.close_rounded),
+          ),
+        ],
+      );
+    } else {
+      actionRail = Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (widget.onPrepareDownload != null)
+            IconButton(
+              tooltip: 'Download',
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              iconSize: iconSize,
+              color: Colors.white60,
+              onPressed: () => unawaited(_beginDownloadConfirm()),
+              icon: const Icon(Icons.download_rounded),
+            ),
+          if (hasMagnet)
+            IconButton(
+              tooltip: 'Copy magnet',
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              iconSize: iconSize,
+              color: Colors.white60,
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: magnet));
+                ForjaToast.success(
+                  'Magnet copied',
+                  duration: const Duration(seconds: 2),
+                );
+              },
+              icon: const Icon(Icons.content_copy_rounded),
+            ),
+        ],
+      );
+    }
+
     // Stack + Positioned probe bar — not Row(stretch). ListView children get
     // unbounded max height; stretch forces infinite height and blows the panel
     // (Live Sports Providers). Avoid IntrinsicHeight (issue 352 lag).
+    //
+    // Push-in rail uses Align.widthFactor (not OverflowBox) — OverflowBox got
+    // infinite max height in this ListView and threw on hover, hiding Download.
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
@@ -933,7 +1149,6 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       ),
       // Portal-style: probe | main | push-in action rail (RFC-117).
       child: Stack(
-        fit: StackFit.passthrough,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -941,61 +1156,23 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
               const SizedBox(width: _probeBarWidth),
               Expanded(child: main),
               if (railIconCount > 0)
-                AnimatedContainer(
-                  duration: railAnim,
-                  curve: Curves.easeOutCubic,
-                  width: reveal ? actionWidth : 0,
-                  child: !reveal
-                      ? const SizedBox.shrink()
-                      : ClipRect(
-                          child: OverflowBox(
-                            minWidth: actionWidth,
-                            maxWidth: actionWidth,
-                            alignment: Alignment.centerRight,
-                            child: SizedBox(
-                              width: actionWidth,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (widget.onDownload != null)
-                                    IconButton(
-                                      tooltip: 'Download',
-                                      padding: const EdgeInsets.all(4),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 28,
-                                        minHeight: 28,
-                                      ),
-                                      iconSize: iconSize,
-                                      color: Colors.white60,
-                                      onPressed: widget.onDownload,
-                                      icon: const Icon(Icons.download_rounded),
-                                    ),
-                                  if (hasMagnet)
-                                    IconButton(
-                                      tooltip: 'Copy magnet',
-                                      padding: const EdgeInsets.all(4),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 28,
-                                        minHeight: 28,
-                                      ),
-                                      iconSize: iconSize,
-                                      color: Colors.white60,
-                                      onPressed: () async {
-                                        await Clipboard.setData(
-                                          ClipboardData(text: magnet),
-                                        );
-                                        ForjaToast.success(
-                                          'Magnet copied',
-                                          duration: const Duration(seconds: 2),
-                                        );
-                                      },
-                                      icon: const Icon(Icons.content_copy_rounded),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                ClipRect(
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(end: reveal ? 1.0 : 0.0),
+                    duration: railAnim,
+                    curve: Curves.easeOutCubic,
+                    builder: (context, factor, child) {
+                      return Align(
+                        alignment: Alignment.centerRight,
+                        widthFactor: factor.clamp(0.0, 1.0),
+                        child: child,
+                      );
+                    },
+                    child: SizedBox(
+                      width: actionWidth,
+                      child: actionRail,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -1019,7 +1196,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final rowId = widget.tvRowId ?? SourcesPanelTv.listRowId;
     return shellFocusableTap(
       context: context,
-      onTap: widget.onTap,
+      onTap: () {
+        if (_downloadConfirming) {
+          _cancelDownloadConfirm();
+          return;
+        }
+        widget.onTap();
+      },
       borderRadius: 0,
       scaleOnFocus: 1.0,
       showFocusBorder: false,
@@ -1045,6 +1228,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
           _syncHoverProbe(true);
         },
         onExit: (_) {
+          if (_downloadConfirming) return;
           _setHovered(false);
           _syncHoverProbe(false);
         },
@@ -1056,6 +1240,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     );
   }
 }
+
+enum _DownloadCardPhase { idle, probing, confirm }
 
 /// Split `Plugin · Stream` (engine/Nuvio `_addonName`) into server then stream.
 List<String> _providerLines(String provider) {
