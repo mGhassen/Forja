@@ -484,6 +484,14 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
         return;
       }
 
+      // VOD MediaKit mid-stream: lavf + cache-pause own truncations (ipdigi).
+      if (_s.widget.vodPlayback &&
+          _s._mediaKitBackend &&
+          _playbackStarted) {
+        if (_streamWorking) _clearBufferingChrome();
+        return;
+      }
+
       // Detector 1: long buffering — only if cache is empty / not working.
       final emptyUnderrun = _s._cacheAheadSecs <
           _LiveSportsPlayerScreenState._liveEmptyUnderrunCacheSecs;

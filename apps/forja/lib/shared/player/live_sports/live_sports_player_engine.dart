@@ -1036,6 +1036,12 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         return;
       }
+      // VOD MediaKit mid-stream: ignore non-fatal error strings (ipdigi).
+      if (_s.widget.vodPlayback &&
+          _s._mediaKitBackend &&
+          _playbackStarted) {
+        return;
+      }
       _triggerRecovery(reason: 'error: $msg');
     });
     _s._completedSub?.cancel();
@@ -1108,6 +1114,10 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   /// Live Sports → v1.5.36 8s soft recovery.
   void _noteSocketTrouble(String what) {
     _armTransientHwDecodeIgnore();
+    // VOD MediaKit: lavf reconnect owns mid-stream truncations (ipdigi parity).
+    if (_s.widget.vodPlayback && _s._mediaKitBackend) {
+      return;
+    }
     if (!_bufferedRecovery) {
       _triggerRecovery(reason: 'connection dropped: $what', forceHard: true);
       return;

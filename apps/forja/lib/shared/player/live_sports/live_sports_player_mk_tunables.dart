@@ -350,15 +350,38 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
       // Cache: sports = pre–RFC-113 cushion; IPTV = RFC-113 live/forja.
       await p.setProperty('cache', 'yes');
       if (_s.widget.vodPlayback) {
-        debugPrint('[IPTV Player] MediaKit cache profile=vod (32MiB)');
-        await p.setProperty('cache-secs', '10');
-        await p.setProperty('demuxer-readahead-secs', '5');
-        await p.setProperty('demuxer-max-bytes', '33554432');
-        await p.setProperty('demuxer-max-back-bytes', '8388608');
-        await p.setProperty('audio-buffer', '0.4');
-        // VOD: do not pause-on-empty — progressive + MediaCodec pools (issue 163).
-        await p.setProperty('cache-pause', 'no');
+        // IPTV Movies/Series — ipdigi VOD profile: fat cushion + pause-to-refill
+        // so progressive Xtream truncations survive lavf reconnect (issue 357).
+        // Live path below stays lean/reconnect-oriented (issue 163 gates intact).
+        const vodBytes = 128 * 1024 * 1024;
+        const vodBackBytes = 64 * 1024 * 1024;
+        debugPrint('[IPTV Player] MediaKit cache profile=vod (128MiB)');
+        await p.setProperty('cache-secs', '30');
+        await p.setProperty('demuxer-readahead-secs', '30');
+        await p.setProperty('demuxer-max-bytes', '$vodBytes');
+        await p.setProperty('demuxer-max-back-bytes', '$vodBackBytes');
+        // Pause-to-refill on underrun — avoids A/V desync while lavf reconnects.
+        await p.setProperty('cache-pause', 'yes');
         await p.setProperty('cache-pause-initial', 'no');
+        await p.setProperty('cache-pause-wait', '1');
+        // ATV: memory-only (eMMC + mediacodec); desktop/phone disk for track swaps.
+        if (_s._atvMediaKit) {
+          await p.setProperty('cache-on-disk', 'no');
+        } else if (!kIsWeb) {
+          try {
+            final support = await getApplicationSupportDirectory();
+            final dir = Directory('${support.path}/mpv_cache');
+            if (!await dir.exists()) await dir.create(recursive: true);
+            await p.setProperty('cache-on-disk', 'yes');
+            await p.setProperty('cache-dir', dir.path);
+          } catch (e) {
+            debugPrint('[IPTV Player] VOD cache-on-disk setup failed: $e');
+          }
+        }
+        // Progressive IPTV often omits Accept-Ranges — force seek + keep last frame.
+        await p.setProperty('force-seekable', 'yes');
+        await p.setProperty('initial-audio-sync', 'yes');
+        await p.setProperty('hr-seek', 'yes');
       } else if (sportsMk) {
         // Live Sports / Stremio / liveEngine — exact v1.5.36 cushion.
         var coldSecs = 30;

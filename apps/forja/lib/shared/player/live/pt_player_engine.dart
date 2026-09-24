@@ -1039,6 +1039,12 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         return;
       }
+      // VOD MediaKit mid-stream: ignore non-fatal error strings (ipdigi).
+      if (_s.widget.vodPlayback &&
+          _s._mediaKitBackend &&
+          _playbackStarted) {
+        return;
+      }
       _triggerRecovery(reason: 'error: $msg');
     });
     _s._completedSub?.cancel();
@@ -1100,6 +1106,11 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   /// Socket blip: live MediaKit uses silent grace → goLive (RFC-113).
   void _noteSocketTrouble(String what) {
     _armTransientHwDecodeIgnore();
+    // VOD MediaKit: lavf reconnect owns mid-stream truncations (ipdigi parity).
+    // Do not skip-recovery spam or reopen while ffmpeg Range-reconnects.
+    if (_s.widget.vodPlayback && _s._mediaKitBackend) {
+      return;
+    }
     if (!_bufferedRecovery) {
       _triggerRecovery(reason: 'connection dropped: $what', forceHard: true);
       return;

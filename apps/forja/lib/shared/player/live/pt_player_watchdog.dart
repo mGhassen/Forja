@@ -437,6 +437,15 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         return;
       }
 
+      // VOD MediaKit mid-stream: lavf + cache-pause own truncations (ipdigi).
+      // Soft-reopen on empty cache raced reconnect and stuttered Movies/Series.
+      if (_s.widget.vodPlayback &&
+          _s._mediaKitBackend &&
+          _playbackStarted) {
+        if (_streamWorking) _clearBufferingChrome();
+        return;
+      }
+
       // Detector 1: long buffering — Exo / non–MediaKit-live only.
       final emptyUnderrun = _s._cacheAheadSecs <
           _PtPlayerScreenState._liveEmptyUnderrunCacheSecs;
