@@ -324,6 +324,9 @@ class StremioSourceTile extends StatelessWidget {
     this.onHoverProbe,
     this.probeHealthCache,
     this.onPrepareDownload,
+    this.onPauseDownload,
+    this.onResumeDownload,
+    this.onDeleteDownload,
     this.downloadChrome = SourceDownloadChrome.none,
     this.downloadProgress = 0,
     this.downloadStatusLabel,
@@ -349,6 +352,9 @@ class StremioSourceTile extends StatelessWidget {
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
   final Future<SourceDownloadPrep?> Function()? onPrepareDownload;
+  final VoidCallback? onPauseDownload;
+  final VoidCallback? onResumeDownload;
+  final VoidCallback? onDeleteDownload;
   final SourceDownloadChrome downloadChrome;
   final double downloadProgress;
   final String? downloadStatusLabel;
@@ -405,6 +411,9 @@ class StremioSourceTile extends StatelessWidget {
       onHoverProbe: isExternal ? null : onHoverProbe,
       probeHealthCache: isExternal ? null : probeHealthCache,
       onPrepareDownload: isExternal ? null : onPrepareDownload,
+      onPauseDownload: isExternal ? null : onPauseDownload,
+      onResumeDownload: isExternal ? null : onResumeDownload,
+      onDeleteDownload: isExternal ? null : onDeleteDownload,
       downloadChrome: isExternal ? SourceDownloadChrome.none : downloadChrome,
       downloadProgress: downloadProgress,
       downloadStatusLabel: downloadStatusLabel,
@@ -525,6 +534,9 @@ class _SourceBadgeCard extends StatefulWidget {
     this.viewerCount,
     this.autofocus = false,
     this.onPrepareDownload,
+    this.onPauseDownload,
+    this.onResumeDownload,
+    this.onDeleteDownload,
     this.downloadChrome = SourceDownloadChrome.none,
     this.downloadProgress = 0,
     this.downloadStatusLabel,
@@ -559,6 +571,10 @@ class _SourceBadgeCard extends StatefulWidget {
   final int? viewerCount;
   /// Portal-style: Download → probe size → card face becomes confirm + Yes/No.
   final Future<SourceDownloadPrep?> Function()? onPrepareDownload;
+  /// Active transfer: Pause / Resume / delete instead of Download.
+  final VoidCallback? onPauseDownload;
+  final VoidCallback? onResumeDownload;
+  final VoidCallback? onDeleteDownload;
   final SourceDownloadChrome downloadChrome;
   final double downloadProgress;
   final String? downloadStatusLabel;
@@ -897,9 +913,16 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
     final hasLanguageFlags = widget.languageCodes.isNotEmpty;
     final magnet = widget.magnet;
     final hasMagnet = magnet != null && magnet.isNotEmpty;
+    final activeDownload =
+        widget.downloadChrome == SourceDownloadChrome.downloading &&
+            (widget.onPauseDownload != null ||
+                widget.onResumeDownload != null ||
+                widget.onDeleteDownload != null);
+    final canEnqueueDownload = widget.onPrepareDownload != null &&
+        widget.downloadChrome == SourceDownloadChrome.none;
     final reveal = _downloadConfirming ||
         (_hoverFor(hovered) &&
-            (widget.onPrepareDownload != null || hasMagnet));
+            (activeDownload || canEnqueueDownload || hasMagnet));
     const seedColor = Color(0xFF22C55E);
     final providerLines = hasProvider
         ? _providerLines(widget.provider!)
@@ -909,7 +932,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
     final leftBarColor = _probeLeftBarColor();
     final railIconCount = _downloadConfirming
         ? 2
-        : (widget.onPrepareDownload != null ? 1 : 0) + (hasMagnet ? 1 : 0);
+        : activeDownload
+            ? ((widget.onPauseDownload != null ||
+                        widget.onResumeDownload != null
+                    ? 1
+                    : 0) +
+                (widget.onDeleteDownload != null ? 1 : 0))
+            : (canEnqueueDownload ? 1 : 0) + (hasMagnet ? 1 : 0);
     final hit = metrics.usesTvDensity ? 36.0 : 40.0;
     final actionPadH = metrics.usesTvDensity ? 8.0 : 10.0;
     final actionWidth = railIconCount > 0
@@ -1175,13 +1204,49 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
           ],
         ),
       );
+    } else if (activeDownload) {
+      actionRail = Padding(
+        padding: EdgeInsets.symmetric(horizontal: actionPadH),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (widget.onPauseDownload != null)
+              _SourceRailIcon(
+                tooltip: 'Pause',
+                icon: Icons.pause_rounded,
+                idle: Colors.white60,
+                hit: hit,
+                iconSize: iconSize,
+                onTap: widget.onPauseDownload,
+              ),
+            if (widget.onResumeDownload != null)
+              _SourceRailIcon(
+                tooltip: 'Resume',
+                icon: Icons.play_arrow_rounded,
+                idle: Colors.white60,
+                hit: hit,
+                iconSize: iconSize,
+                onTap: widget.onResumeDownload,
+              ),
+            if (widget.onDeleteDownload != null)
+              _SourceRailIcon(
+                tooltip: 'Delete',
+                icon: Icons.close_rounded,
+                idle: Colors.white60,
+                hit: hit,
+                iconSize: iconSize,
+                onTap: widget.onDeleteDownload,
+              ),
+          ],
+        ),
+      );
     } else {
       actionRail = Padding(
         padding: EdgeInsets.symmetric(horizontal: actionPadH),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (widget.onPrepareDownload != null)
+            if (canEnqueueDownload)
               _SourceRailIcon(
                 tooltip: 'Download',
                 icon: Icons.download_rounded,

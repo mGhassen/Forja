@@ -14,9 +14,10 @@ are not offline yet.
   hover a stream row to push the card and reveal a right action rail with
   Download (same pattern as IPTV Portals). Row tap still plays.
 - **Sources** — hover any HTTP stream row to push in the Download action;
-  torrents toast that offline isn’t available yet. Downloading rows show
-  progress with striped chrome; finished offline rows keep static stripes.
-  Filters include **Offline** / **Online**.
+  torrents toast that offline isn’t available yet. While a row is downloading
+  (or paused), hover shows **Pause** / **Resume** and **X** to delete — not
+  Download again. Finished offline rows keep static stripes. Filters include
+  **Offline** / **Online**.
 - **Player** — use the download icon in the top bar to save the stream you’re
   watching (phone, Android TV Exo, and desktop).
 

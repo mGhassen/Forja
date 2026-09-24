@@ -4320,6 +4320,23 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                       season: widget.season,
                       episode: widget.episode,
                     ),
+                onPauseDownload: dlTask != null && dlTask.isDownloading
+                    ? () => unawaited(
+                          DownloadService.instance.pauseDownload(dlTask.id),
+                        )
+                    : null,
+                onResumeDownload: dlTask != null &&
+                        dlTask.isActive &&
+                        !dlTask.isDownloading
+                    ? () => unawaited(
+                          DownloadService.instance.resumeDownload(dlTask.id),
+                        )
+                    : null,
+                onDeleteDownload: dlTask != null && dlTask.isActive
+                    ? () => unawaited(
+                          DownloadService.instance.deleteDownload(dlTask.id),
+                        )
+                    : null,
                 downloadChrome: dlChrome,
                 downloadProgress: dlTask?.progressPercent ?? 0,
                 downloadStatusLabel: dlLabel,

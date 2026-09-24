@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **14 / 17** tasks (2 deferred) · **11 / 11** acceptance |
+| **Progress** | **15 / 18** tasks (2 deferred) · **12 / 12** acceptance |
 | **Current slice** | Phase 1 + integrity follow-ups ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -37,6 +37,7 @@
 | 15 | I365-T15 | Same-title dedup toast + init race / Settings queue visibility ([376](fixed/376-[fixed]-vod-download-dedup-toast-empty-settings.md)) | ✅ |
 | 16 | I365-T16 | Sources card download progress + offline stripes; Filters Offline / Online | ✅ |
 | 17 | I365-T17 | Corrupt Range resume + offline play stream-hop ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) | 🔄 |
+| 18 | I365-T18 | Sources active-download rail: Pause / Resume + delete (X), not Download again | ✅ |
 
 ---
 
@@ -55,6 +56,7 @@
 | 9 | I365-A09 | Sources Download: card shows probed size (or estimate) + Yes/No before enqueue | ✅ |
 | 10 | I365-A10 | Mid-watch Forja Download uses a fresh extract — expired Referer does not 403-loop | ✅ |
 | 11 | I365-A11 | Downloading / offline Sources rows show striped chrome; Filters Offline / Online | ✅ |
+| 12 | I365-A12 | Active Sources download row hover shows Pause/Resume + delete — not Download | ✅ |
 
 ---
 
