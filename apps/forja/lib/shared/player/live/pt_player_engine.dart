@@ -838,11 +838,16 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   }
 
   PortalLiveSourceKind _liveSourceKindFor(LivePlaySource src) {
-    return src.liveSourceKind ??
-        _s.widget.liveSourceKind ??
-        (_s.widget.engineContext == BuiltInPlayerContext.iptv
-            ? PortalLiveSourceKind.iptvXtream
-            : PortalLiveSourceKind.stremio);
+    final explicit = src.liveSourceKind ?? _s.widget.liveSourceKind;
+    if (explicit != null) return explicit;
+    // Never invent Stremio. Stremio / liveEngine callers set kind explicitly.
+    switch (_s.widget.engineContext) {
+      case BuiltInPlayerContext.iptv:
+      case BuiltInPlayerContext.vod:
+        return PortalLiveSourceKind.iptvXtream;
+      case BuiltInPlayerContext.live:
+        return PortalLiveSourceKind.liveEngine;
+    }
   }
 
   /// Live recovery / live-edge profile. Catalog `vodPlayback` wins over URL so

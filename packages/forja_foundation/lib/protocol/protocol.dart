@@ -431,6 +431,7 @@ class MetaVideo {
     this.thumbnail = '',
     this.airDate = '',
     this.aired,
+    this.containerExt = '',
   });
 
   final String id;
@@ -442,17 +443,34 @@ class MetaVideo {
   final String airDate;
   /// When `false`, the episode is scheduled but not playable yet.
   final bool? aired;
+  /// IPTV / portal container (`mkv`, `mp4`, `ts`, …) for play URL extension.
+  final String containerExt;
 
-  factory MetaVideo.fromJson(Map<String, dynamic> j) => MetaVideo(
-        id: (j['id'] ?? '').toString(),
-        title: (j['title'] ?? '').toString(),
-        season: (j['season'] as num?)?.toInt(),
-        episode: (j['episode'] as num?)?.toInt(),
-        thumbnail: (j['thumbnail'] ?? j['poster'] ?? '').toString(),
-        airDate: (j['airDate'] ?? j['air_date'] ?? j['release_date'] ?? '')
-            .toString(),
-        aired: j['aired'] is bool ? j['aired'] as bool : null,
-      );
+  factory MetaVideo.fromJson(Map<String, dynamic> j) {
+    final open = j['open'];
+    final openExt = open is Map
+        ? (open['containerExt'] ?? open['container_ext'] ?? '').toString()
+        : '';
+    final ext = (j['containerExt'] ??
+            j['container_ext'] ??
+            j['container_extension'] ??
+            j['ext'] ??
+            openExt)
+        .toString()
+        .replaceFirst(RegExp(r'^\.'), '')
+        .trim();
+    return MetaVideo(
+      id: (j['id'] ?? '').toString(),
+      title: (j['title'] ?? '').toString(),
+      season: (j['season'] as num?)?.toInt(),
+      episode: (j['episode'] as num?)?.toInt(),
+      thumbnail: (j['thumbnail'] ?? j['poster'] ?? '').toString(),
+      airDate: (j['airDate'] ?? j['air_date'] ?? j['release_date'] ?? '')
+          .toString(),
+      aired: j['aired'] is bool ? j['aired'] as bool : null,
+      containerExt: ext,
+    );
+  }
 }
 
 /// One row from hub `stream` action.
@@ -713,6 +731,7 @@ class MetaItem {
                 if (v.thumbnail.isNotEmpty) 'thumbnail': v.thumbnail,
                 if (v.airDate.isNotEmpty) 'airDate': v.airDate,
                 if (v.aired != null) 'aired': v.aired,
+                if (v.containerExt.isNotEmpty) 'containerExt': v.containerExt,
               },
           ],
         if (cast.isNotEmpty) 'cast': cast,

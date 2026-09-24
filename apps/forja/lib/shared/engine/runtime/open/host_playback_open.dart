@@ -66,7 +66,7 @@ abstract final class HostPlaybackOpen {
         epgChannelId: epg.isEmpty ? null : epg,
         portalKey: portalKey.isEmpty ? null : portalKey,
         categoryId: categoryId.isEmpty ? null : categoryId,
-        liveSourceKind: _liveSourceKindFromOpen(open, vod: vod),
+        liveSourceKind: _liveSourceKindFromOpen(open),
         engineContext: _engineContext(open: open, vod: vod),
         vodPlayback: vod,
         onlineSubtitles: vod,
@@ -305,18 +305,15 @@ abstract final class HostPlaybackOpen {
     return BuiltInPlayerContext.iptv;
   }
 
-  static PortalLiveSourceKind? _liveSourceKindFromOpen(
-    MetaOpen? open, {
-    required bool vod,
-  }) {
-    if (vod || open == null) return null;
+  static PortalLiveSourceKind? _liveSourceKindFromOpen(MetaOpen? open) {
+    if (open == null) return null;
     final platform = (open.extraString('platform') ?? '').trim().toLowerCase();
     if (platform == 'stalker') return PortalLiveSourceKind.iptvStalker;
     if (platform == 'xtream' ||
         platform == 'm3u' ||
         platform == 'm3u8' ||
         platform.isEmpty) {
-      // IPTV live rows default to Xtream-style recovery when platform omitted.
+      // Portal Movies/Series and Live share Xtream/Stalker kinds — never Stremio.
       return PortalLiveSourceKind.iptvXtream;
     }
     return null;

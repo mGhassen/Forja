@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:forja/shared/playback/play_context.dart';
@@ -100,17 +101,34 @@ abstract final class PackStreamPlayHooks {
     final base = _normBase((portal['url'] ?? '').toString());
     final user = (portal['username'] ?? '').toString();
     final pass = (portal['password'] ?? '').toString();
-    final e = ext.replaceFirst(RegExp(r'^\.'), '');
-    final useExt = e.isEmpty ? (folder == 'live' ? 'ts' : 'mp4') : e;
+    final useExt = ext.isEmpty ? (folder == 'live' ? 'ts' : 'mp4') : ext;
     if (base.isEmpty || user.isEmpty || pass.isEmpty || id.isEmpty) return '';
     return '$base/$folder/${Uri.encodeComponent(user)}/'
         '${Uri.encodeComponent(pass)}/${Uri.encodeComponent(id)}.$useExt';
+  }
+
+  /// Episode container wins over series/movie open extras (catalog often defaults
+  /// series posters to `mp4` while episodes are `mkv` / `ts`).
+  @visibleForTesting
+  static String playContainerExt({
+    String episodeExt = '',
+    String seriesExt = '',
+    String fallback = 'mp4',
+  }) {
+    String clean(String raw) =>
+        raw.replaceFirst(RegExp(r'^\.'), '').trim();
+    final ep = clean(episodeExt);
+    if (ep.isNotEmpty) return ep;
+    final series = clean(seriesExt);
+    if (series.isNotEmpty) return series;
+    return fallback;
   }
 
   static Future<void> _openVod({
     required BuildContext context,
     required String url,
     required String title,
+    required PortalLiveSourceKind liveSourceKind,
     String? logoUrl,
     String? subtitle,
   }) {
@@ -122,16 +140,25 @@ abstract final class PackStreamPlayHooks {
           label: title,
           logoUrl: logoUrl,
           headers: const {'User-Agent': 'Mozilla/5.0'},
+          liveSourceKind: liveSourceKind,
         ),
       ],
       title: title,
       subtitle: subtitle,
       logoUrl: logoUrl,
       engineContext: BuiltInPlayerContext.vod,
+      liveSourceKind: liveSourceKind,
       titleTracksSource: false,
       vodPlayback: true,
       onlineSubtitles: true,
     );
+  }
+
+  @visibleForTesting
+  static PortalLiveSourceKind portalLiveSourceKind(String? platform) {
+    final p = (platform ?? '').trim().toLowerCase();
+    if (p == 'stalker') return PortalLiveSourceKind.iptvStalker;
+    return PortalLiveSourceKind.iptvXtream;
   }
 
   static Future<void> _playFromContext({
@@ -151,10 +178,12 @@ abstract final class PackStreamPlayHooks {
         extras['kind'] == 'vod' ||
         extras['kind'] == 'movie' ||
         meta.type == 'movie';
-    final containerExt =
-        (extras['containerExt'] ?? 'mp4').toString().replaceFirst(RegExp(r'^\.'), '');
+    final seriesExt = (extras['containerExt'] ?? '').toString();
     final logo = meta.poster.trim().isEmpty ? null : meta.poster.trim();
     final portalName = (portalRaw['name'] ?? '').toString().trim();
+    final liveSourceKind = portalLiveSourceKind(
+      (extras['platform'] ?? portalRaw['platform'])?.toString(),
+    );
 
     if (isMovie) {
       final streamId =
@@ -163,7 +192,7 @@ abstract final class PackStreamPlayHooks {
         portal: portalRaw,
         folder: 'movie',
         id: streamId,
-        ext: containerExt,
+        ext: playContainerExt(seriesExt: seriesExt),
       );
       if (!context.mounted) return;
       if (url.isEmpty) {
@@ -174,6 +203,7 @@ abstract final class PackStreamPlayHooks {
         context: context,
         url: url,
         title: meta.name,
+        liveSourceKind: liveSourceKind,
         logoUrl: logo,
         subtitle: portalName.isEmpty ? null : portalName,
       );
@@ -182,13 +212,20 @@ abstract final class PackStreamPlayHooks {
 
     final videos = meta.videos;
     final epNum = ctx.episode ?? 1;
+    final seasonNum = ctx.season ?? 1;
     MetaVideo? selected;
     for (final v in videos) {
-      if ((v.episode ?? 1) == epNum) {
+      if ((v.episode ?? 1) == epNum && (v.season ?? 1) == seasonNum) {
         selected = v;
         break;
       }
     }
+    selected ??= () {
+      for (final v in videos) {
+        if ((v.episode ?? 1) == epNum) return v;
+      }
+      return null;
+    }();
     selected ??= videos.isEmpty ? null : videos.first;
     if (selected == null) {
       ForjaToast.error('No episode selected');
@@ -198,7 +235,10 @@ abstract final class PackStreamPlayHooks {
       portal: portalRaw,
       folder: 'series',
       id: selected.id,
-      ext: containerExt,
+      ext: playContainerExt(
+        episodeExt: selected.containerExt,
+        seriesExt: seriesExt,
+      ),
     );
     if (!context.mounted) return;
     if (url.isEmpty) {
@@ -209,6 +249,7 @@ abstract final class PackStreamPlayHooks {
       context: context,
       url: url,
       title: 'Ep ${selected.episode ?? epNum} · ${selected.title}',
+      liveSourceKind: liveSourceKind,
       logoUrl: logo,
       subtitle: portalName.isEmpty ? meta.name : '$portalName · ${meta.name}',
     );

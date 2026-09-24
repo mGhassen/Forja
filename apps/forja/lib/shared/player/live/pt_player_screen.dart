@@ -1042,6 +1042,15 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   String _liveRecoveryMode = SettingsService.iptvLiveRecoveryBuffered;
 
   void _applyLiveRecoveryModeForCurrentSource({LivePlaySource? src}) {
+    // Portal Movies/Series are not live — do not inherit Xtream stall Auto.
+    if (widget.vodPlayback) {
+      _liveRecoveryMode = SettingsService.iptvLiveRecoveryBuffered;
+      debugPrint(
+        '[IPTV Player] live recovery kind=vodPlayback '
+        'setting=$_liveRecoveryModeSetting effective=$_liveRecoveryMode',
+      );
+      return;
+    }
     final active = src ??
         (_sources.isEmpty
             ? null
