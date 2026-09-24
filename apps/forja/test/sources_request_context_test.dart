@@ -145,6 +145,83 @@ void main() {
       );
       expect(streamId, 'tt16478058');
     });
+
+    test('drama pack resolveType remaps to movie when meta.tmdbMediaType set', () {
+      final meta = MetaItem(
+        id: 'hub:film',
+        type: 'drama',
+        name: 'Test Film',
+        tmdbMediaType: 'movie',
+        ids: const {'tmdb': '1032863', 'imdb': 'tt22526100'},
+        open: const MetaOpen(
+          surface: 'drama',
+          id: '1',
+          extract: MetaOpenExtract(
+            resolveType: 'drama',
+            panelCategory: 'drama',
+            ctx: {'kisskhId': 1},
+          ),
+        ),
+      );
+      final movie = Movie(
+        id: 1032863,
+        imdbId: 'tt22526100',
+        title: 'Test Film',
+        posterPath: '',
+        backdropPath: '',
+        voteAverage: 0,
+        releaseDate: '2026',
+        overview: '',
+        mediaType: 'movie',
+      );
+      final ctx = buildSourcesRequestContext(
+        movie: movie,
+        meta: meta,
+        open: meta.open,
+      );
+      expect(ctx.engine?.resolveType, 'movie');
+      expect(ctx.engine?.panelCategory, 'drama');
+      expect(ctx.engine?.tmdbId, '1032863');
+      expect(ctx.engine?.ctx['kisskhId'], 1);
+      expect(ctx.nuvio?.type, 'movie');
+    });
+
+    test('drama without tmdbMediaType defaults engine type to tv', () {
+      final meta = MetaItem(
+        id: 'hub:show',
+        type: 'drama',
+        name: 'Test Show',
+        ids: const {'tmdb': '281009'},
+        open: const MetaOpen(
+          surface: 'drama',
+          id: '2',
+          extract: MetaOpenExtract(
+            resolveType: 'drama',
+            panelCategory: 'drama',
+            ctx: {'kisskhId': 2},
+          ),
+        ),
+      );
+      final movie = Movie(
+        id: 281009,
+        title: 'Test Show',
+        posterPath: '',
+        backdropPath: '',
+        voteAverage: 0,
+        releaseDate: '2025',
+        overview: '',
+        mediaType: 'tv',
+      );
+      final ctx = buildSourcesRequestContext(
+        movie: movie,
+        meta: meta,
+        open: meta.open,
+        season: 1,
+        episode: 1,
+      );
+      expect(ctx.engine?.resolveType, 'tv');
+      expect(ctx.engine?.panelCategory, 'drama');
+    });
   });
 
   group('resolveStremioStreamId', () {

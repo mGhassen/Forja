@@ -204,6 +204,23 @@ String _nuvioMediaType({
   return 'movie';
 }
 
+/// Hub kinds (e.g. `drama`) are panel buckets — dual movie/TV scrapers need
+/// `movie` / `tv`. Prefer enrich [MetaItem.tmdbMediaType]; else default TV.
+String engineExtractResolveType({
+  required String packResolveType,
+  String? tmdbMediaType,
+}) {
+  final rt = packResolveType.trim().toLowerCase();
+  if (rt == 'movie') return 'movie';
+  if (rt == 'tv' || rt == 'series') return 'tv';
+  if (rt == 'drama') {
+    final hint = (tmdbMediaType ?? '').trim().toLowerCase();
+    if (hint == 'movie' || hint == 'tv') return hint;
+    return 'tv';
+  }
+  return packResolveType;
+}
+
 /// Build Sources request context from catalog meta / open / movie.
 SourcesRequestContext buildSourcesRequestContext({
   required Movie movie,
@@ -257,6 +274,11 @@ SourcesRequestContext buildSourcesRequestContext({
   final tmdbOk = tmdbN != null && tmdbN > 0;
   final tmdbIdStr = tmdbOk ? tmdbN.toString() : null;
 
+  final engineResolveType = engineExtractResolveType(
+    packResolveType: extract.resolveType,
+    tmdbMediaType: meta?.tmdbMediaType,
+  );
+
   final engineCtx = Map<String, dynamic>.from(extract.ctx);
   for (final e in _schemeToEngineKey.entries) {
     final v = bag[e.key];
@@ -268,7 +290,7 @@ SourcesRequestContext buildSourcesRequestContext({
   }
 
   final engine = EngineExtractSlice(
-    resolveType: extract.resolveType,
+    resolveType: engineResolveType,
     panelCategory: extract.panelCategory,
     ctx: engineCtx,
     tmdbId: tmdbIdStr,

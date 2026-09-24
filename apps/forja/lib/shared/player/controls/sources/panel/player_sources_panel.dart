@@ -414,19 +414,29 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return null;
   }
 
-  /// Engine extract type — opaque string from pack `open.extract.resolveType`.
+  /// Engine extract type — opaque string from pack `open.extract.resolveType`,
+  /// remapped for hub kinds that dual movie/TV scrapers cannot consume.
   String get _engineResolveType {
     if (widget.open != null) {
-      return engineExtractContext(
+      final pack = engineExtractContext(
         open: widget.open,
         movie: widget.movie,
         episode: widget.episode,
         episodeVideoId: widget.episodeVideoId,
         panelCategoryHint: widget.engineCategory,
       ).resolveType;
+      return engineExtractResolveType(
+        packResolveType: pack,
+        tmdbMediaType: _resolvedCatalogMeta?.tmdbMediaType,
+      );
     }
     final hint = widget.engineCategory?.trim();
-    if (hint != null && hint.isNotEmpty) return hint;
+    if (hint != null && hint.isNotEmpty) {
+      return engineExtractResolveType(
+        packResolveType: hint,
+        tmdbMediaType: _resolvedCatalogMeta?.tmdbMediaType,
+      );
+    }
     final t = widget.movie.mediaType.toLowerCase();
     if (t == 'tv' || t == 'series' || t == 'show') return 'tv';
     return 'movie';

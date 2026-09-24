@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
@@ -8,6 +10,7 @@ import 'package:forja/shared/downloads/download_path_helper.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/routing/app_router.dart';
@@ -30,6 +33,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
   late final TabController _tabs;
   StorageSpaceInfo? _space;
   String? _downloadsDir;
+  bool _hasCustomDir = false;
 
   @override
   void initState() {
@@ -50,13 +54,65 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
     try {
       final dir = await DownloadPathHelper.getDownloadsDirectoryPath();
       final space = await StorageSpaceHelper.getAvailableSpace(dir);
+      final custom =
+          await DownloadPathHelper.hasCustomDownloadsDirectoryPath();
       if (!mounted) return;
       setState(() {
         _downloadsDir = dir;
         _space = space;
+        _hasCustomDir = custom;
       });
     } catch (e) {
       debugPrint('[SettingsDownloads] space check failed: $e');
+    }
+  }
+
+  bool get _canPickDownloadFolder {
+    if (kIsWeb) return false;
+    // Folder pickers are unreliable on leanback TV remotes.
+    if (ShellScope.inputPolicyOf(context).leanbackOnly) return false;
+    return Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.isMacOS ||
+        Platform.isWindows ||
+        Platform.isLinux;
+  }
+
+  Future<void> _pickDownloadFolder() async {
+    final selected = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: 'Choose download folder',
+    );
+    if (selected == null || selected.trim().isEmpty) return;
+
+    final dir = Directory(selected);
+    try {
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      // Probe write access before persisting.
+      final probe = File('${dir.path}${Platform.pathSeparator}.forja_write_probe');
+      await probe.writeAsString('ok');
+      await probe.delete();
+    } catch (e) {
+      if (mounted) {
+        ForjaToast.error('Can’t write to that folder');
+      }
+      debugPrint('[SettingsDownloads] folder not writable: $e');
+      return;
+    }
+
+    await DownloadPathHelper.setCustomDownloadsDirectoryPath(dir.path);
+    await _loadSpace();
+    if (mounted) {
+      ForjaToast.success('New downloads will save here');
+    }
+  }
+
+  Future<void> _resetDownloadFolder() async {
+    await DownloadPathHelper.clearCustomDownloadsDirectoryPath();
+    await _loadSpace();
+    if (mounted) {
+      ForjaToast.success('Using the default download folder');
     }
   }
 
@@ -154,7 +210,11 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
               freeBytes: _space?.freeBytes,
               totalBytes: _space?.totalBytes,
               downloadsDir: _downloadsDir,
+              canChangeFolder: _canPickDownloadFolder,
+              hasCustomFolder: _hasCustomDir,
               onRefreshSpace: _loadSpace,
+              onChangeFolder: () => unawaited(_pickDownloadFolder()),
+              onResetFolder: () => unawaited(_resetDownloadFolder()),
             ),
             SizedBox(height: SettingsTokens.storageBlockGapOf(context)),
             TabBar(
@@ -235,14 +295,22 @@ class _StorageHeader extends StatelessWidget {
     required this.freeBytes,
     required this.totalBytes,
     required this.downloadsDir,
+    required this.canChangeFolder,
+    required this.hasCustomFolder,
     required this.onRefreshSpace,
+    required this.onChangeFolder,
+    required this.onResetFolder,
   });
 
   final int usedBytes;
   final int? freeBytes;
   final int? totalBytes;
   final String? downloadsDir;
+  final bool canChangeFolder;
+  final bool hasCustomFolder;
   final VoidCallback onRefreshSpace;
+  final VoidCallback onChangeFolder;
+  final VoidCallback onResetFolder;
 
   @override
   Widget build(BuildContext context) {
@@ -383,15 +451,52 @@ class _StorageHeader extends StatelessWidget {
           ),
           if (downloadsDir != null) ...[
             SizedBox(height: gap),
-            Text(
-              downloadsDir!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: ForjaShellColors.iconMuted,
-                fontSize: SettingsTokens.typeSizeOf(context, 11.5),
-                height: 1.3,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    downloadsDir!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: ForjaShellColors.iconMuted,
+                      fontSize: SettingsTokens.typeSizeOf(context, 11.5),
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+                if (canChangeFolder) ...[
+                  const SizedBox(width: 8),
+                  Button(
+                    variant: ButtonVariant.ghost,
+                    size: ButtonSize.sm,
+                    onPressed: onChangeFolder,
+                    child: Text(
+                      'Change',
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: SettingsTokens.typeSizeOf(context, 12),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (hasCustomFolder)
+                    Button(
+                      variant: ButtonVariant.ghost,
+                      size: ButtonSize.sm,
+                      onPressed: onResetFolder,
+                      child: Text(
+                        'Default',
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary,
+                          fontSize: SettingsTokens.typeSizeOf(context, 12),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
+              ],
             ),
           ],
         ],

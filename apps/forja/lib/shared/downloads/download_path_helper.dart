@@ -37,6 +37,19 @@ class DownloadPathHelper {
     await prefs.setString(_customPathKey, path);
   }
 
+  /// Clears a custom folder so the next resolve uses the platform default.
+  static Future<void> clearCustomDownloadsDirectoryPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_customPathKey);
+  }
+
+  /// Whether Settings has a user-picked downloads folder (may be stale on disk).
+  static Future<bool> hasCustomDownloadsDirectoryPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final custom = prefs.getString(_customPathKey);
+    return custom != null && custom.isNotEmpty;
+  }
+
   /// Platform default: public Downloads/Forja, else Documents/ForjaDownloads.
   static Future<String> getDefaultDownloadsDirectoryPath() async {
     if (!kIsWeb && Platform.isAndroid) {

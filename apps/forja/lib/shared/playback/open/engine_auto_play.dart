@@ -239,7 +239,10 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     panelCategoryHint: engineCategory,
   );
   final category = extract.panelCategory;
-  final resolveType = extract.resolveType;
+  final resolveType = engineExtractResolveType(
+    packResolveType: extract.resolveType,
+    tmdbMediaType: session?.meta?.tmdbMediaType,
+  );
   final activeSession = session ??
       PlaySession(
         malId: malId,
@@ -598,7 +601,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
         season: season,
         episode: episode,
         episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
-        panelCategoryHint: resolveType,
+        panelCategoryHint: category,
       );
       EngineExtractResult? batch;
       try {
