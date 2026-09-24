@@ -32,6 +32,9 @@ abstract final class ForjaShellColors {
   static const Color chipSelectedIcon = textPrimary;
   static const Color progressFill = textPrimary;
   static const Color badgeLabel = textSecondary;
+
+  /// Unaired / not-yet-started episode date and number-chip label (soft amber).
+  static const Color upcomingMuted = Color(0xFFC9A46C);
 }
 
 /// Fixed dark-on-imagery palette for hero overlays.

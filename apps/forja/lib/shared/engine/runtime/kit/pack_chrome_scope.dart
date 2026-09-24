@@ -86,9 +86,11 @@ class PackChromeScope extends InheritedWidget {
 
   /// [forceNetwork] true = Refresh / shelf reload (skip pack disk cache).
   /// false = portal switch (EngineCache wipe only; pack may disk-hit).
+  /// Does not clear [selectedListItem] — docked resolve panels stay open.
   final void Function({bool forceNetwork}) onBumpRefresh;
 
   /// Immediate empty + loading — no fetch until [onBumpRefresh].
+  /// Clears [selectedListItem] (portal wipe).
   final VoidCallback onClearCatalog;
   final void Function(String style) onViewStyle;
   final void Function(String barId, List<Map<String, dynamic>> items)

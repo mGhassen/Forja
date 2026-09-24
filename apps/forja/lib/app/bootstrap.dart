@@ -28,6 +28,7 @@ import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
 import 'package:forja/shared/player/live/hooks/live_kit_hooks_register.dart';
 import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
+import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -155,6 +156,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   unawaited(PortalVaultInventory.ensureMigratedFromStore());
   SettingsKitHooksRegister.ensureRegistered();
   unawaited(AppVersion.instance.load());
+  unawaited(DownloadService.instance.initialize());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaPlatformSecureStore.ensureConsentLoaded();
   await ForjaSupabase.ensureInitialized();
@@ -316,6 +318,15 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
+  /// Coalesces focus + resume + restore (desktop often fires several at once).
+  Timer? _becameActiveDebounce;
+
+  /// When the window last left the foreground — skip wake work for brief alt-tabs.
+  DateTime? _leftActiveAt;
+
+  static const _becameActiveCoalesce = Duration(milliseconds: 400);
+  static const _briefAwaySkip = Duration(minutes: 2);
+
   @override
   void initState() {
     super.initState();
@@ -343,6 +354,8 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
 
   @override
   void dispose() {
+    _becameActiveDebounce?.cancel();
+    _becameActiveDebounce = null;
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.removeListener(this);
       SyncService.instance.stopDesktopSessionKeepAlive();
@@ -363,21 +376,48 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     await _runDesktopQuit();
   }
 
+  /// Desktop focus / restore / lifecycle resume — JWT keep-alive only.
+  ///
+  /// Cloud soft-pull stays on tab switch + cold start. Simkl runs post-splash.
+  /// Full focus sync (session + cloud + Simkl + telemetry) made every Cmd-Tab
+  /// hitch (issue 364). Keep-alive timer already covers long-idle JWT.
+  void _noteLeftActive() {
+    _leftActiveAt ??= DateTime.now();
+  }
+
+  void _scheduleBecameActive() {
+    _becameActiveDebounce?.cancel();
+    _becameActiveDebounce = Timer(_becameActiveCoalesce, () {
+      _becameActiveDebounce = null;
+      _onBecameActive();
+    });
+  }
+
+  void _onBecameActive() {
+    final left = _leftActiveAt;
+    _leftActiveAt = null;
+    if (left != null && DateTime.now().difference(left) < _briefAwaySkip) {
+      return;
+    }
+    unawaited(SyncService.instance.ensureFreshAccessToken());
+  }
+
   @override
   void onWindowFocus() {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
-    unawaited(SyncService.instance.refreshSession());
-    unawaited(SyncDomainBridge.instance.syncFromCloud());
-    unawaited(Telemetry.syncAnalyticsIdentity());
-    unawaited(SimklService().fullSync());
+    _scheduleBecameActive();
+  }
+
+  @override
+  void onWindowBlur() {
+    if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
+    _noteLeftActive();
   }
 
   @override
   void onWindowRestore() {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
-    unawaited(SyncService.instance.refreshSession());
-    unawaited(SyncDomainBridge.instance.syncFromCloud());
-    unawaited(Telemetry.syncAnalyticsIdentity());
+    _scheduleBecameActive();
   }
 
   @override
@@ -406,13 +446,14 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      _noteLeftActive();
+      return;
+    }
     if (state == AppLifecycleState.resumed) {
-      unawaited(SyncService.instance.refreshSession());
-      // Cloud is master — pull full profile_settings (Stremio, nav, …) into
-      // local cache, not only account feature flags.
-      unawaited(SyncDomainBridge.instance.syncFromCloud());
-      unawaited(Telemetry.syncAnalyticsIdentity());
-      unawaited(SimklService().fullSync());
+      _scheduleBecameActive();
       return;
     }
     if (state == AppLifecycleState.detached) {

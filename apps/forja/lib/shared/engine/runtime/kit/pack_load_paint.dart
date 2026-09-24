@@ -364,6 +364,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
     // Live ↔ Movies ↔ Series: restore that shelf's last paint when warm;
     // otherwise clear so CatalogLoadingTicker shows (first visit).
+    // Keep the last paint when a docked side panel is open (Live Sports
+    // resolve) so catalog / shelf flips do not dismiss it mid-reload.
     var shelfSectionFlipped = false;
     if (_catalogSection.isNotEmpty && section != _catalogSection) {
       shelfSectionFlipped = true;
@@ -382,6 +384,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         if (cached.feedParams.isNotEmpty) {
           _lastFeedParams = Map<String, dynamic>.from(cached.feedParams);
         }
+        _skipWarmRestore = false;
+      } else if (chrome?.selectedListItem.value != null) {
+        // Side panel open — keep schedule+panel painted while the new feed binds.
         _skipWarmRestore = false;
       } else {
         _envelope = null;

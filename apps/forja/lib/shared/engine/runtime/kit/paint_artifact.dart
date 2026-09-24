@@ -126,16 +126,31 @@ abstract final class PackPaintArtifact {
     }
     final openMap = open is Map ? Map<String, dynamic>.from(open) : null;
     if (openMap == null) return null;
+    // Never use open.surface as MetaItem.type (e.g. stremio) — that is the
+    // host route, not movie/tv. Prefer mediaType from open extras / paint.
+    final mediaTypeRaw = (openMap['mediaType'] ?? props['mediaType'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final metaType = mediaTypeRaw == 'series'
+        ? 'tv'
+        : (mediaTypeRaw == 'tv' ||
+                mediaTypeRaw == 'movie' ||
+                mediaTypeRaw == 'collections'
+            ? mediaTypeRaw
+            : 'movie');
+    final release = (props['year'] ?? props['subtitle'] ?? '').toString().trim();
     return MetaItem(
       id: (openMap['id'] ?? '').toString(),
-      type: (openMap['surface'] ?? props['mediaType'] ?? '').toString(),
+      type: metaType,
       name: (props['title'] ?? '').toString(),
       poster: (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
       background:
           (props['backdropUrl'] ?? props['backgroundUrl'] ?? '').toString(),
+      description: (props['overview'] ?? props['description'] ?? '').toString(),
       rating: props['rating'] is num ? (props['rating'] as num).toDouble() : null,
-      releaseInfo: (props['subtitle'] ?? props['year'] ?? '').toString(),
-      tmdbMediaType: props['mediaType']?.toString(),
+      releaseInfo: release.length >= 4 ? release.substring(0, 4) : release,
+      tmdbMediaType: metaType == 'tv' || metaType == 'movie' ? metaType : null,
       open: MetaOpen.fromJson(openMap),
     );
   }

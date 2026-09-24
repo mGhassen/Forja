@@ -3,6 +3,7 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
 import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
+import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:rust/rust.dart';
 
 void main() {
@@ -30,6 +31,31 @@ void main() {
       expect(metaOpenUsesKitDetails(open), isTrue);
     });
 
+    test('stremio surface extract falls back to movie/tv not stremio panel', () {
+      const movieOpen = MetaOpen(
+        surface: 'stremio',
+        id: 'tt16478058',
+        extras: {
+          'mediaType': 'movie',
+          'stremioType': 'movie',
+          'stremioAddonBaseUrl': 'https://addon.example/manifest.json',
+        },
+      );
+      expect(movieOpen.effectiveExtract.panelCategory, 'movie');
+      expect(movieOpen.effectiveExtract.resolveType, 'movie');
+
+      const tvOpen = MetaOpen(
+        surface: 'stremio',
+        id: 'tt39473828',
+        extras: {
+          'mediaType': 'tv',
+          'stremioType': 'series',
+        },
+      );
+      expect(tvOpen.effectiveExtract.panelCategory, 'tv');
+      expect(tvOpen.effectiveExtract.resolveType, 'tv');
+    });
+
     test('explicit detailsRoute uses feature escape hatch', () {
       const open = MetaOpen(
         surface: 'tmdb',
@@ -54,6 +80,32 @@ void main() {
           'https://addon.example/manifest.json');
       expect(meta.open?.extraString('stremioId'), 'anilist:12345');
       expect(meta.ids.containsKey('tmdb'), isFalse);
+    });
+
+    test('paint metaItemOf uses mediaType not open.surface as type', () {
+      final open = {
+        'surface': 'stremio',
+        'id': 'tt16478058',
+        'stremioId': 'tt16478058',
+        'stremioType': 'movie',
+        'stremioAddonBaseUrl': 'https://v3-cinemeta.strem.io/manifest.json',
+        'mediaType': 'movie',
+      };
+      final item = PackPaintArtifact.metaItemOf(
+        props: {
+          'title': 'Best of the Best',
+          'imageUrl': 'https://cdn.example/p.jpg',
+          'mediaType': 'movie',
+          'year': '2026',
+        },
+        open: open,
+      );
+      expect(item, isNotNull);
+      expect(item!.type, 'movie');
+      expect(item.tmdbMediaType, 'movie');
+      expect(item.open?.surface, 'stremio');
+      expect(item.open?.extraString('stremioAddonBaseUrl'),
+          'https://v3-cinemeta.strem.io/manifest.json');
     });
 
     test('legacy movie meta uses tmdb route not plugin id', () {

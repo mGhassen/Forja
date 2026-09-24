@@ -24,6 +24,7 @@ Tap **Anime** in the navigation bar.
 ## Tips
 
 - Choose **Anime title language** under **Settings → Addons → Anime** (**Romaji** / **English** / **Native**). Stream matching still tries romaji, then English, native, and synonyms.
+- Choose **Episode list** (**Cards** or **Number chips**) under **Settings → Addons → Anime** or **Settings → Forja Packs** → expand Anime — same control as Home / Asian Drama / IPTV series details.
 - Browse rails need the hub’s catalog API. If it fails, you see a short message and **Retry** (or a toast with **Refresh** when the page shell already loaded) — not raw HTTP codes. On **Android TV**, focus lands on **Refresh**; D-pad or Back dismisses the toast and returns to the control you had before. Re-tap the Anime tab to reload. After an AniList rate limit, the hub cools down and does **not** re-fire every rail in parallel.
 - Browse loads as **one** AniList feed (cached ~15 minutes) shared across Spotlight / rails — opening details still fetches synopsis and episodes when needed.
 - On **desktop**, drag-select hub and details hero titles to copy them.

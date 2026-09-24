@@ -535,6 +535,8 @@ class EngineService {
       'prefsLoad',
       'prefsSave',
       'details',
+      // Stremio catalog hub: layout lists installed catalogs via engine.request.
+      if (plugin.needsStremioCatalogHost) ...{'layout', 'search'},
     };
     final needsHostFeedBridge =
         plugin.needsHostBridge && hostBridgeActions.contains(action);

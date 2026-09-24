@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Parsed air-date metadata for an episode list row.
 class EpisodeAirDateInfo {
@@ -76,5 +77,5 @@ Color episodeDateColor({
   required bool notShippedYet,
   required Color normal,
 }) {
-  return notShippedYet ? Colors.orange.shade300 : normal;
+  return notShippedYet ? ForjaShellColors.upcomingMuted : normal;
 }

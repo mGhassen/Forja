@@ -149,6 +149,7 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
       child: DecoratedBox(
         decoration: const BoxDecoration(
           border: Border(
+            top: BorderSide(color: ForjaShellColors.borderSubtle),
             left: BorderSide(color: ForjaShellColors.borderSubtle),
           ),
         ),

@@ -1147,6 +1147,8 @@ class PlayerTopBarActions extends StatelessWidget {
     this.showInAppMini = false,
     this.onPlayer,
     this.showPlayer = false,
+    this.onDownload,
+    this.showDownload = false,
     this.tvFocusable = false,
     this.playerFocusNode,
     this.playerOnLeftEdge,
@@ -1162,6 +1164,8 @@ class PlayerTopBarActions extends StatelessWidget {
   final bool showInAppMini;
   final ValueChanged<BuildContext>? onPlayer;
   final bool showPlayer;
+  final VoidCallback? onDownload;
+  final bool showDownload;
   final bool tvFocusable;
   final FocusNode? playerFocusNode;
   final VoidCallback? playerOnLeftEdge;
@@ -1187,6 +1191,15 @@ class PlayerTopBarActions extends StatelessWidget {
             focusNode: playerFocusNode,
             onLeftEdge: playerOnLeftEdge,
             onDownEdge: playerOnDownEdge,
+          ),
+        if (showDownload && onDownload != null)
+          PlayerFlatIconButton(
+            icon: Icons.download_rounded,
+            tooltip: 'Download',
+            onPressed: onDownload!,
+            size: size,
+            iconSize: iconSize,
+            tvFocusable: tvFocusable,
           ),
         if (showCast && onCast != null)
           PlayerFlatIconButton(

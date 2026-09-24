@@ -45,6 +45,8 @@ bool kitHasPanelSources([KitPanelSourceFlags? flags]) {
 
 /// Opens the same Torrents / Stremio / Nuvio / Forja Sources panel as movies/TV,
 /// then plays the picked row. Hub details stamp tab-local CW, not Home history.
+///
+/// Offline download is per-row: hover a source and tap the download icon.
 Future<void> openKitSources({
   required BuildContext context,
   required Movie movie,
@@ -57,6 +59,7 @@ Future<void> openKitSources({
   String? episodeVideoId,
   String? engineCategory,
   String? preferredEnginePluginId,
+  String? preferredKind,
   PlaySession? playSession,
 }) {
   final hooks = buildPlayHooks(
@@ -78,6 +81,7 @@ Future<void> openKitSources({
             ? providerIdFromEpisodeVideoId(epVid)
             : null) ??
           open?.extraString('source')?.trim();
+  final kind = preferredKind?.trim();
   return PlayerSourcesPanel.show(
     context: context,
     movie: movie,
@@ -93,24 +97,29 @@ Future<void> openKitSources({
         (preferredPlugin != null && preferredPlugin.isNotEmpty)
             ? preferredPlugin
             : null,
+    preferredKind: (kind != null && kind.isNotEmpty) ? kind : null,
     animeAudioCategory: audioCategory,
     detailsHost: true,
-    onTorrentSelected: (result) => _playTorrent(
-      context: context,
-      movie: movie,
-      result: result,
-      season: season,
-      episode: episode,
-      hooks: hooks,
-    ),
-    onStremioSelected: (stream) => _playStremio(
-      context: context,
-      movie: movie,
-      stream: stream,
-      season: season,
-      episode: episode,
-      hooks: hooks,
-    ),
+    onTorrentSelected: (result) async {
+      await _playTorrent(
+        context: context,
+        movie: movie,
+        result: result,
+        season: season,
+        episode: episode,
+        hooks: hooks,
+      );
+    },
+    onStremioSelected: (stream) async {
+      await _playStremio(
+        context: context,
+        movie: movie,
+        stream: stream,
+        season: season,
+        episode: episode,
+        hooks: hooks,
+      );
+    },
   );
 }
 

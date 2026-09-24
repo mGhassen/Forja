@@ -3,10 +3,13 @@ import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 import 'package:forja/shared/player/sources/torrent/torrent_source_tiles.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart' show kitPanelTabIcon;
 import 'package:forja_foundation/widgets/sources/live_tv_browse.dart';
 import 'package:forja_foundation/widgets/sources/sources_panel_chrome.dart';
@@ -122,8 +125,80 @@ class KitSourcesPanel extends StatelessWidget {
     return () => SourcesPanelTv.focusKindItem(forTabId: tvTabId);
   }
 
+  VoidCallback _tabsFocusUp(String tvTabId) {
+    return () => SourcesPanelTv.focusHeaderItem(forTabId: tvTabId);
+  }
+
   void _focusListItem(String? forTabId, {int index = 0}) {
     SourcesPanelTv.focusListItem(index: index, forTabId: forTabId);
+  }
+
+  Widget _headerActions(
+    BuildContext context, {
+    required String tvTabId,
+    required VoidCallback onReload,
+    VoidCallback? onClose,
+  }) {
+    final iconSize = ShellPaintScope.iconOf(context, 20);
+    final count = onClose != null ? 2 : 1;
+    Widget action({
+      required int index,
+      required String tooltip,
+      required IconData icon,
+      required VoidCallback onTap,
+    }) {
+      return Tooltip(
+        message: tooltip,
+        child: shellFocusableTap(
+          context: context,
+          onTap: onTap,
+          borderRadius: 20,
+          scaleOnFocus: 1.0,
+          showFocusBorder: true,
+          listIndex: index,
+          tvTabId: tvTabId,
+          tvRowId: SourcesPanelTv.headerRowId,
+          tvItemIndex: index,
+          tvZone: ShellTvZone.row,
+          onDownEdge: () => SourcesPanelTv.focusKindItem(forTabId: tvTabId),
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Icon(
+              icon,
+              size: iconSize,
+              color: ForjaShellColors.textSecondary,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return TvKitRow(
+      tabId: tvTabId,
+      rowId: SourcesPanelTv.headerRowId,
+      sortOrder: SourcesPanelTv.headerSort,
+      itemCount: count,
+      onFocusDown: () => SourcesPanelTv.focusKindItem(forTabId: tvTabId),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          action(
+            index: 0,
+            tooltip: 'Reload',
+            icon: Icons.refresh_rounded,
+            onTap: onReload,
+          ),
+          if (onClose != null)
+            action(
+              index: 1,
+              tooltip: 'Close',
+              icon: Icons.close_rounded,
+              onTap: onClose,
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -156,6 +231,14 @@ class KitSourcesPanel extends StatelessWidget {
       reloadNonce: reloadNonce,
       useFocusableChips: policy.useFocusableMoodChips,
       usesTvDensity: metrics.usesTvDensity,
+      headerActionsBuilder: tvTab == null
+          ? null
+          : (context, {required onReload, onClose}) => _headerActions(
+                context,
+                tvTabId: tvTab,
+                onReload: onReload,
+                onClose: onClose,
+              ),
       onScrollIntoViewChanged: tvTab == null
           ? null
           : (scroll) {
@@ -187,6 +270,7 @@ class KitSourcesPanel extends StatelessWidget {
           tvRowId: tabsRowId,
           tvItemIndexStart: 0,
           onLeftEdge: onTabsLeftEdge,
+          onUpEdge: tvTab != null ? _tabsFocusUp(tvTab) : null,
           onDownEdge: tvTab != null
               ? () => _focusListItem(tvTab, index: 0)
               : null,
@@ -208,6 +292,7 @@ class KitSourcesPanel extends StatelessWidget {
                 rowId: tabsRowId,
                 sortOrder: SourcesPanelTv.kindSort,
                 itemCount: itemCount,
+                onFocusUp: _tabsFocusUp(tvTab),
                 onFocusDown: () => _focusListItem(tvTab, index: 0),
                 child: child,
               );

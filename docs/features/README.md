@@ -35,12 +35,15 @@ Your cinema universe in one app. This guide explains every **in-scope** feature 
 - [Shahid](hubs/shahid.md)
 - [كرتون](hubs/cartoon.md)
 - [Kids](hubs/kids.md)
+- [Stremio](hubs/stremio-catalog.md) — installed Stremio addon catalogs
+
 
 ---
 
 ## Playback
 
 - [Player](playback/player.md)
+- [Offline Downloads](playback/offline-downloads.md)
 - [Torrent playback](playback/torrent-playback.md)
 - [Subtitles](playback/subtitles.md)
 - [Audio tracks](playback/audio-tracks.md)

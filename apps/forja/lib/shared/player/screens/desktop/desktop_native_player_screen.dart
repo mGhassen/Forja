@@ -13,6 +13,7 @@ import 'package:forja/shared/player/controls/seek/seek_bar_with_preview.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
 import 'package:forja/shared/player/vlc/vlc_player_view.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
@@ -389,6 +390,20 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
     });
   }
 
+  Future<void> _enqueueCurrentDownload() async {
+    final url = (_url.isNotEmpty ? _url : widget.mediaPath).trim();
+    await enqueuePlayerCurrentDownload(
+      url: url,
+      headers: widget.headers,
+      movie: widget.movie,
+      fallbackTitle: widget.title,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+      sourceName: widget.activeProvider ?? 'Stream',
+      providerId: widget.activeProvider,
+    );
+  }
+
   Future<void> _exit() async {
     await _saveProgress();
     if (!mounted) return;
@@ -578,6 +593,8 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
                 onPlayer: widget.onSwitchPlayer != null
                     ? (anchor) => unawaited(_showPlayerMenu(anchor))
                     : null,
+                showDownload: true,
+                onDownload: () => unawaited(_enqueueCurrentDownload()),
               ),
             ),
           ),

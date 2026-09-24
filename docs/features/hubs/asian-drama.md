@@ -22,6 +22,7 @@ Tap **Asian Drama** in the navigation bar.
 
 ## Tips
 
+- Choose **Episode list** (**Cards** or **Number chips**) under **Settings → Forja Packs** → expand Asian Drama — same control as Home / Anime / IPTV series details.
 - On **desktop**, drag-select hero titles to copy them.
 - KissKH posters often use TMDB CDN; Android 7.0 builds embed Let's Encrypt roots for those hosts.
 - Stream resolve signs KissKH keys in-engine (~1s typical); WebView fallback only if direct path fails. Rate-limit cooldown does not hop mirrors.

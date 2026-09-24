@@ -26,7 +26,7 @@ PlayContext catalogPlayContextFromMeta({
   final epNum = ep?.episode ?? episodeNumber ?? 1;
   final seasonNum = ep?.season ?? season ?? 1;
   final isMovie = _metaIsMovie(meta);
-  final isTv = !isMovie && vids.length > 1;
+  final isTv = !isMovie;
   final open = meta.open;
 
   final videoId = episodeVideoId ?? ep?.id;

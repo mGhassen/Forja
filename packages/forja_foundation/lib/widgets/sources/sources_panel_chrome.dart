@@ -47,6 +47,7 @@ class SourcesPanelChrome extends StatefulWidget {
     this.listFocusWrap,
     this.tabsFocusWrap,
     this.tabsBuilder,
+    this.headerActionsBuilder,
     this.onScrollIntoViewChanged,
     this.emptyQueryMessage = 'No matches',
   });
@@ -132,6 +133,13 @@ class SourcesPanelChrome extends StatefulWidget {
     required ValueChanged<String> onSelected,
     required List<SourcesTab> tabs,
   })? tabsBuilder;
+
+  /// Host trailing header actions (Reload / Close). Null → IconButtons.
+  final Widget Function(
+    BuildContext context, {
+    required VoidCallback onReload,
+    VoidCallback? onClose,
+  })? headerActionsBuilder;
 
   /// Empty-state copy when channel query matches nothing (host owns product wording).
   final String emptyQueryMessage;
@@ -412,25 +420,33 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'Reload',
-            onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
-            icon: Icon(
-              Icons.refresh_rounded,
-              size: ShellPaintScope.iconOf(context, 20),
-            ),
-            color: ForjaShellColors.textSecondary,
-          ),
-          if (widget.onClosed != null)
+          if (widget.headerActionsBuilder != null)
+            widget.headerActionsBuilder!(
+              context,
+              onReload: () => unawaited(_ensureLoaded(_tabId, force: true)),
+              onClose: widget.onClosed,
+            )
+          else ...[
             IconButton(
-              tooltip: 'Close',
-              onPressed: widget.onClosed,
+              tooltip: 'Reload',
+              onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
               icon: Icon(
-                Icons.close_rounded,
+                Icons.refresh_rounded,
                 size: ShellPaintScope.iconOf(context, 20),
               ),
               color: ForjaShellColors.textSecondary,
             ),
+            if (widget.onClosed != null)
+              IconButton(
+                tooltip: 'Close',
+                onPressed: widget.onClosed,
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: ShellPaintScope.iconOf(context, 20),
+                ),
+                color: ForjaShellColors.textSecondary,
+              ),
+          ],
         ],
       ),
     );

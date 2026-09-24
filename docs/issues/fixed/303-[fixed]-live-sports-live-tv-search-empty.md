@@ -43,7 +43,7 @@
 1. `liveTv` was missing from `runCatalog` host-bridge actions — EngineJS ran without `ctx.host.plugin`, returned `hubOk({ sources: [] })`, and that empty envelope stuck (no flutter_js fallback).
 2. When flutter_js did run Live Sports `liveTv` → `plugin.run(iptv, searchChannels)`, nested `runCatalog` waited on the same flutter_js mutex the outer extract held → deadlock until timeout → empty.
 
-**Fix:** Allowlist `liveTv` for flutter_js; nested `searchChannels` matches on the host portal shelf (`PortalLiveTvSearch`); pack `searchChannels` paginates shelf hits.
+**Fix:** Allowlist `liveTv` for flutter_js; nested `searchChannels` matches on the host (later restored to Rust `sport_match_streams` in [364](364-[fixed]-live-sports-live-tv-misses-channels.md)); pack `searchChannels` paginates shelf hits.
 
 **Symptom fix:** Live TV rows populate again.  
 **Root fix:** Done (bridge allowlist + nest path).  

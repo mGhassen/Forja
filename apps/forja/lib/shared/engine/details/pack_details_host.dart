@@ -813,6 +813,21 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     unawaited(openSourcesFromContext(context: context, ctx: ctx));
   }
 
+  void _downloadSelected() {
+    final ep = _selectedVideo();
+    final ctx = catalogPlayContextFromMeta(
+      meta: _show,
+      pluginId: widget.pluginId,
+      episode: ep,
+      season: _selectedSeason,
+      episodeNumber: _selectedEpisode,
+      videos: _videos,
+      extras: _playFilterExtras,
+      audioCategory: catalogPlayAudioCategory(_playFilterSelections),
+    );
+    unawaited(runDownloadFromContext(context: context, ctx: ctx));
+  }
+
   @override
   Widget build(BuildContext context) {
     return PlayerSurfaceChromeStub(
@@ -857,7 +872,11 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final tvFocus = policy.useFocusableMoodChips;
     final playbackFlags = KitPanelSourceFlagsHooks.watch?.call(ref);
     final isIptv = hubMetaIsIptv(_show);
-    final showCatalogSources = !isIptv && kitHasPanelSources(playbackFlags);
+    final isStremio = hubMetaIsStremio(_show);
+    // Stremio hub titles always get the white Sources control (Stremio streams),
+    // even when Forja/Torrent toggles are off.
+    final showCatalogSources =
+        !isIptv && (kitHasPanelSources(playbackFlags) || isStremio);
     final hasEpisodes = videos.isNotEmpty && !_isMovie;
 
     if (policy.heroPlayAutoFocus &&
@@ -891,6 +910,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     var tvIndex = 0;
     final playIndex = tvIndex++;
     final sourcesIndex = showCatalogSources ? tvIndex++ : null;
+    final downloadIndex = (!isUpcoming && !isIptv) ? tvIndex++ : null;
     final clearIndex = hasClearableProgress ? tvIndex++ : null;
     final trailerIndex = hasTrailers ? tvIndex++ : null;
     final listIndex = listTarget != null ? tvIndex++ : null;
@@ -1151,15 +1171,24 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
                   enabled: !selectedUnaired &&
                       (_isMovie || videos.isNotEmpty || show.open != null),
                   onPlay: _playSelected,
-                  onOpenSources:
-                      showCatalogSources && (_isMovie || videos.isNotEmpty)
-                          ? _openCatalogSources
-                          : null,
+                  onOpenSources: showCatalogSources &&
+                          (_isMovie ||
+                              videos.isNotEmpty ||
+                              isStremio)
+                      ? _openCatalogSources
+                      : null,
+                  onDownload: (!isUpcoming &&
+                          !isIptv &&
+                          !selectedUnaired &&
+                          (_isMovie || videos.isNotEmpty || show.open != null))
+                      ? _downloadSelected
+                      : null,
                   focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                   onUpEdge: heroPopUp,
                   tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                   tvItemIndex: playIndex,
                   tvSourcesItemIndex: sourcesIndex,
+                  tvDownloadItemIndex: downloadIndex,
                 ),
               if (hasClearableProgress) ...[
                 const SizedBox(width: 10),

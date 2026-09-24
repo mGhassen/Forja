@@ -108,9 +108,16 @@ class EnginePlugin {
   /// EngineJS has no host bridges — flutter_js for feed, details, + pack actions.
   bool get needsPortalPackHost => isKitPlugin && types.contains('iptv');
 
+  /// Hub that calls `ctx.host.engine.request('stremio', …)` (VOD catalog hub).
+  /// EngineJS has no host bridges — flutter_js for layout / rail / search.
+  bool get needsStremioCatalogHost => isKitPlugin && types.contains('stremio');
+
   /// Any kit hub that must skip EngineJS-first for host-bridge actions.
   bool get needsHostBridge =>
-      needsLiveFeedHost || needsListsHost || needsPortalPackHost;
+      needsLiveFeedHost ||
+      needsListsHost ||
+      needsPortalPackHost ||
+      needsStremioCatalogHost;
 
   /// Pack install must cache JS for this plugin.
   bool get needsScript =>

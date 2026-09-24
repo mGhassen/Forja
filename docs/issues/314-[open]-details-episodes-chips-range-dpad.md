@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 4** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 3 | I314-T03 | Home hub pack settings: Episode list Cards vs Number chips | ✅ |
 | 4 | I314-T04 | Number chips paint as a wrap grid with 2D D-pad (`ShellPaintScope.tvGrid`) | ✅ |
 | 5 | I314-T05 | Feature docs + changelog | ✅ |
+| 6 | I314-T06 | Anime / Asian Drama / IPTV pack `episodeView` (same Cards / Number chips) | ✅ |
 
 ---
 
@@ -36,11 +37,12 @@
 | 2 | I314-A02 | Android TV: ↓ from Play reaches range (when shown) before season posters | ⬜ |
 | 3 | I314-A03 | Forja Packs → expand Home → Episode list → Number chips switches details to a number grid | ⬜ |
 | 4 | I314-A04 | Chips mode: D-pad ←/→/↑/↓ moves across the grid (not only one horizontal line) | ⬜ |
+| 5 | I314-A05 | Anime / Asian Drama / IPTV series details honor that pack’s Episode list setting | ⬜ |
 
 ---
 
 ## Summary
 
-Series details **Episodes** header range control sits too close to the screen edge and is outside the TV focus graph (seasons register first). Users want a Home pack setting to show episodes as **Cards** (stills) or **Number chips** in a wrapping grid with real 2D D-pad.
+Series details **Episodes** header range control sits too close to the screen edge and is outside the TV focus graph (seasons register first). Users want a pack setting to show episodes as **Cards** (stills) or **Number chips** in a wrapping grid with real 2D D-pad — Home, Anime, Asian Drama, and IPTV VOD series.
 
-**Root fix:** pad the title row; register `episode-range` before seasons; Home pack `settings.select` `episodeView` (Forja Packs expand — no host Addons row); chips via foundation grid + host `TvGrid` wrap.
+**Root fix:** pad the title row; register `episode-range` before seasons; each hub pack `settings.select` `episodeView` (Forja Packs expand; Anime / IPTV also via Addons); chips via foundation grid + host `TvGrid` wrap.

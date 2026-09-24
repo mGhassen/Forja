@@ -60,6 +60,8 @@ MetaItem metaItemFromStremioSearchResult(
   final releaseInfo = item['releaseInfo']?.toString() ?? '';
   final rating = double.tryParse(item['imdbRating']?.toString() ?? '');
 
+  final panelKind = metaType == 'tv' ? 'tv' : 'movie';
+
   return MetaItem(
     id: 'stremio:$metaType:$id',
     type: metaType,
@@ -82,6 +84,12 @@ MetaItem metaItemFromStremioSearchResult(
         if (item['_addonName'] != null) 'stremioAddonName': item['_addonName'],
         'mediaType': metaType,
       },
+      // Same Forja panel as Home — extract must be declared, not inferred from surface.
+      extract: MetaOpenExtract(
+        resolveType: panelKind,
+        panelCategory: panelKind,
+        ctx: {if (id.isNotEmpty) 'openId': id},
+      ),
     ),
   );
 }

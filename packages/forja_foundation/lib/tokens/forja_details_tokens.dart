@@ -147,6 +147,20 @@ abstract final class DetailsTokens {
   static const int episodeChipColumnsMin = 4;
   static const int episodeChipColumnsMax = 12;
 
+  /// Corner watched badge on number chips (solid green pip + dark check).
+  static const double episodeChipWatchedBadgeSize = 12;
+  static const double episodeChipWatchedBadgeSizeTv =
+      episodeChipWatchedBadgeSize * _s;
+  static const double episodeChipWatchedBadgeInset = 3;
+  static const double episodeChipWatchedBadgeInsetTv =
+      episodeChipWatchedBadgeInset * _s;
+  static const double episodeChipWatchedBadgeHalo = 1.5;
+  static const double episodeChipWatchedBadgeHaloTv =
+      episodeChipWatchedBadgeHalo * _s;
+  static const double episodeChipWatchedCheckSize = 8;
+  static const double episodeChipWatchedCheckSizeTv =
+      episodeChipWatchedCheckSize * _s;
+
   /// Right-column production facts card on the details hero.
   static const double factsMaxWidth = 300;
   static const double factsMaxWidthTv = factsMaxWidth * _s;

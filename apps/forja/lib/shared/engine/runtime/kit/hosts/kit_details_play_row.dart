@@ -45,30 +45,35 @@ class DetailsHeroTvActionScope extends StatelessWidget {
 ///
 /// Optional [onOpenSources] adds the white link Play (Torrents / Stremio /
 /// Nuvio / Forja), matching movie/TV details.
+/// Optional [onDownload] adds a download icon next to Sources.
 class KitDetailsPlayRow extends StatelessWidget {
   const KitDetailsPlayRow({
     super.key,
     required this.label,
     this.onPlay,
     this.onOpenSources,
+    this.onDownload,
     this.enabled = true,
     this.focusNode,
     this.autoFocus = false,
     this.tvTabId,
     this.tvItemIndex,
     this.tvSourcesItemIndex,
+    this.tvDownloadItemIndex,
     this.onUpEdge,
   });
 
   final String label;
   final VoidCallback? onPlay;
   final VoidCallback? onOpenSources;
+  final VoidCallback? onDownload;
   final bool enabled;
   final FocusNode? focusNode;
   final bool autoFocus;
   final String? tvTabId;
   final int? tvItemIndex;
   final int? tvSourcesItemIndex;
+  final int? tvDownloadItemIndex;
   final VoidCallback? onUpEdge;
 
   @override
@@ -84,25 +89,44 @@ class KitDetailsPlayRow extends StatelessWidget {
       tvRowId: tv ? MediaDetailsTv.heroRowId : null,
       tvItemIndex: tv ? tvItemIndex : null,
     );
-    final row = onOpenSources == null
+    final children = <Widget>[play];
+    if (onOpenSources != null) {
+      children.addAll([
+        const SizedBox(width: 10),
+        HeroPillPlayButton(
+          label: label,
+          icon: Icons.link_rounded,
+          tone: HeroPillPlayTone.streaming,
+          onTap: enabled ? onOpenSources : null,
+          onUpEdge: tv ? onUpEdge : null,
+          tvTabId: tv ? tvTabId : null,
+          tvRowId: tv ? MediaDetailsTv.heroRowId : null,
+          tvItemIndex: tv ? tvSourcesItemIndex : null,
+        ),
+      ]);
+    }
+    if (onDownload != null) {
+      children.addAll([
+        const SizedBox(width: 10),
+        HeroPillIconGroup(
+          tvTabId: tv ? tvTabId : null,
+          tvRowId: tv ? MediaDetailsTv.heroRowId : null,
+          tvItemIndexStart: tvDownloadItemIndex,
+          onUpEdge: tv ? onUpEdge : null,
+          slots: [
+            HeroPillIconSlot(
+              icon: Icons.download_rounded,
+              label: 'Download',
+              tooltip: 'Download for offline',
+              onTap: enabled ? onDownload : null,
+            ),
+          ],
+        ),
+      ]);
+    }
+    final row = children.length == 1
         ? play
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              play,
-              const SizedBox(width: 10),
-              HeroPillPlayButton(
-                label: label,
-                icon: Icons.link_rounded,
-                tone: HeroPillPlayTone.streaming,
-                onTap: enabled ? onOpenSources : null,
-                onUpEdge: tv ? onUpEdge : null,
-                tvTabId: tv ? tvTabId : null,
-                tvRowId: tv ? MediaDetailsTv.heroRowId : null,
-                tvItemIndex: tv ? tvSourcesItemIndex : null,
-              ),
-            ],
-          );
+        : Row(mainAxisSize: MainAxisSize.min, children: children);
     if (enabled) return row;
     return Opacity(opacity: 0.42, child: row);
   }

@@ -24,6 +24,7 @@ class TorrentSourceTile extends StatelessWidget {
     this.tvItemIndex,
     this.onUpEdge,
     this.onDownEdge,
+    this.onDownload,
   });
 
   final TorrentResult result;
@@ -34,6 +35,7 @@ class TorrentSourceTile extends StatelessWidget {
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +69,7 @@ class TorrentSourceTile extends StatelessWidget {
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
+      onDownload: onDownload,
       badges: [
         if (meta.quality != null)
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
@@ -319,6 +322,7 @@ class StremioSourceTile extends StatelessWidget {
     this.onDownEdge,
     this.onHoverProbe,
     this.probeHealthCache,
+    this.onDownload,
   });
 
   final String title;
@@ -340,6 +344,7 @@ class StremioSourceTile extends StatelessWidget {
   final VoidCallback? onDownEdge;
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
+  final VoidCallback? onDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -392,6 +397,7 @@ class StremioSourceTile extends StatelessWidget {
       onDownEdge: onDownEdge,
       onHoverProbe: isExternal ? null : onHoverProbe,
       probeHealthCache: isExternal ? null : probeHealthCache,
+      onDownload: isExternal ? null : onDownload,
       badges: isExternal
           ? [
               if (description.trim().isNotEmpty)
@@ -508,6 +514,7 @@ class _SourceBadgeCard extends StatefulWidget {
     this.probeHealthCache,
     this.viewerCount,
     this.autofocus = false,
+    this.onDownload,
   });
 
   final VoidCallback onTap;
@@ -537,6 +544,8 @@ class _SourceBadgeCard extends StatefulWidget {
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
   final int? viewerCount;
+  /// When set, a download icon animates in on hover / focus (portal rail style).
+  final VoidCallback? onDownload;
 
   @override
   State<_SourceBadgeCard> createState() => _SourceBadgeCardState();
@@ -705,7 +714,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         widget.seeders != null && widget.seeders!.trim().isNotEmpty;
     final hasLanguageFlags = widget.languageCodes.isNotEmpty;
     final magnet = widget.magnet;
-    final showCopyMagnet = magnet != null && magnet.isNotEmpty && hovered;
+    final showCopyMagnet = magnet != null && magnet.isNotEmpty && _hoverFor(hovered);
+    final showDownload = widget.onDownload != null && _hoverFor(hovered);
     const seedColor = Color(0xFF22C55E);
     final providerLines = hasProvider
         ? _providerLines(widget.provider!)
@@ -828,7 +838,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                     hasProvider ||
                     hasViewers ||
                     hasSeeders ||
-                    showCopyMagnet) ...[
+                    showCopyMagnet ||
+                    widget.onDownload != null) ...[
                   SizedBox(width: titleGap),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 120),
@@ -909,8 +920,33 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                             ],
                           ),
                         ],
+                        if (widget.onDownload != null) ...[
+                          if (hasProvider ||
+                              hasSeeders ||
+                              hasViewers ||
+                              selected)
+                            const SizedBox(height: 2),
+                          AnimatedOpacity(
+                            opacity: showDownload ? 1 : 0,
+                            duration: const Duration(milliseconds: 150),
+                            curve: Curves.easeOut,
+                            child: IgnorePointer(
+                              ignoring: !showDownload,
+                              child: Button(
+                                variant: ButtonVariant.plainIcon,
+                                size: ButtonSize.icon,
+                                icon: Icons.download_rounded,
+                                tooltip: 'Download',
+                                iconSize: metrics.torrentPanelMetaIconSize,
+                                height: metrics.usesTvDensity ? 20 : 24,
+                                color: ForjaShellColors.brandGreen,
+                                onPressed: widget.onDownload,
+                              ),
+                            ),
+                          ),
+                        ],
                         if (showCopyMagnet) ...[
-                          if (hasProvider || hasSeeders)
+                          if (hasProvider || hasSeeders || widget.onDownload != null)
                             const SizedBox(height: 2),
                           Button(
                             variant: ButtonVariant.plainIcon,

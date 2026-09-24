@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_page.dart';
+import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
 import 'package:rust/rust.dart';
 
 /// Opaque pack → Rust/engine jobs. No product `host.iptv` namespace (RFC-109).
@@ -23,6 +24,8 @@ abstract final class HostEngineRequest {
           return await _portalShare(body);
         case 'parse_m3u':
           return await _parseM3u(body);
+        case 'stremio':
+          return await _stremio(body);
         default:
           return {
             'ok': false,
@@ -33,6 +36,72 @@ abstract final class HostEngineRequest {
     } catch (e, st) {
       debugPrint('[HostEngineRequest] $k failed: $e\n$st');
       return {'ok': false, 'error': 'exception', 'message': e.toString()};
+    }
+  }
+
+  /// VOD Stremio catalog hub bridge (issue 363). Feature defaults to [vod].
+  static Future<Map<String, dynamic>> _stremio(
+    Map<String, dynamic> body,
+  ) async {
+    final action = (body['action'] ?? '').toString().trim().toLowerCase();
+    final stremio = StremioService();
+    switch (action) {
+      case 'list':
+        final feature = (body['feature'] ?? StremioAddonFeatures.vod)
+            .toString()
+            .trim();
+        final catalogs = await stremio.getAllCatalogs(
+          feature: feature.isEmpty ? StremioAddonFeatures.vod : feature,
+        );
+        return {'ok': true, 'catalogs': catalogs};
+      case 'catalog':
+        final baseUrl = (body['baseUrl'] ?? body['addonBaseUrl'] ?? '')
+            .toString()
+            .trim();
+        final type =
+            (body['type'] ?? body['catalogType'] ?? '').toString().trim();
+        final id = (body['id'] ?? body['catalogId'] ?? '').toString().trim();
+        if (baseUrl.isEmpty || type.isEmpty || id.isEmpty) {
+          return {
+            'ok': false,
+            'error': 'missing_params',
+            'message': 'catalog needs baseUrl, type, and id',
+          };
+        }
+        final genre = (body['genre'] ?? '').toString().trim();
+        final skip = (body['skip'] as num?)?.toInt();
+        final addonName = (body['addonName'] ?? '').toString().trim();
+        final metas = await stremio.getCatalog(
+          baseUrl: baseUrl,
+          type: type,
+          id: id,
+          genre: genre.isEmpty ? null : genre,
+          skip: skip,
+        );
+        final items = <Map<String, dynamic>>[];
+        for (final m in metas) {
+          final stamped = Map<String, dynamic>.from(m);
+          stamped['_addonBaseUrl'] = baseUrl;
+          if (addonName.isNotEmpty) stamped['_addonName'] = addonName;
+          items.add(metaItemFromStremioSearchResult(stamped).toJson());
+        }
+        return {'ok': true, 'items': items};
+      case 'search':
+        final query = (body['query'] ?? body['q'] ?? '').toString();
+        if (query.trim().isEmpty) {
+          return {'ok': true, 'items': <Map<String, dynamic>>[]};
+        }
+        final metas = await stremio.searchAllAddons(query);
+        final items = metas
+            .map((m) => metaItemFromStremioSearchResult(m).toJson())
+            .toList();
+        return {'ok': true, 'items': items};
+      default:
+        return {
+          'ok': false,
+          'error': 'unknown_action',
+          'message': 'Unknown stremio action: $action',
+        };
     }
   }
 

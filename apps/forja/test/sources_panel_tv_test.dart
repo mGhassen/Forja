@@ -330,5 +330,118 @@ void main() {
     forja.dispose();
     torrents.dispose();
   });
+
+  testWidgets('↑ from kind tabs focuses header Reload', (tester) async {
+    final kind = FocusNode(debugLabel: 'sources-kind-0');
+    final reload = FocusNode(debugLabel: 'sources-header-reload');
+
+    await tester.pumpWidget(
+      _wrapTv(
+        TvOverlayScope(
+          autofocusFirst: false,
+          debugLabel: 'sources-panel-tv',
+          child: Column(
+            children: [
+              TvKitRow(
+                tabId: SourcesPanelTv.tabId,
+                rowId: SourcesPanelTv.headerRowId,
+                sortOrder: SourcesPanelTv.headerSort,
+                itemCount: 1,
+                onFocusDown: () => SourcesPanelTv.focusKindItem(),
+                child: FocusableControl(
+                  focusNode: reload,
+                  scaleOnFocus: 1.0,
+                  tvMeta: ShellTvFocusMeta(
+                    tabId: SourcesPanelTv.tabId,
+                    zone: ShellTvZone.row,
+                    rowId: SourcesPanelTv.headerRowId,
+                    itemIndex: 0,
+                  ),
+                  onTap: () {},
+                  child: const SizedBox(width: 40, height: 40),
+                ),
+              ),
+              TvKitRow(
+                tabId: SourcesPanelTv.tabId,
+                rowId: SourcesPanelTv.kindRowId,
+                sortOrder: SourcesPanelTv.kindSort,
+                itemCount: 1,
+                onFocusUp: () => SourcesPanelTv.focusHeaderItem(),
+                child: FocusableControl(
+                  focusNode: kind,
+                  scaleOnFocus: 1.0,
+                  tvMeta: ShellTvFocusMeta(
+                    tabId: SourcesPanelTv.tabId,
+                    zone: ShellTvZone.row,
+                    rowId: SourcesPanelTv.kindRowId,
+                    itemIndex: 0,
+                  ),
+                  onUpEdge: () => SourcesPanelTv.focusHeaderItem(),
+                  onTap: () {},
+                  child: const SizedBox(width: 80, height: 40),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.headerRowId,
+      index: 0,
+      node: reload,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.kindRowId,
+      index: 0,
+      node: kind,
+    );
+
+    kind.requestFocus();
+    await tester.pump();
+    expect(kind.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(
+      reload.hasFocus,
+      isTrue,
+      reason: '↑ from Providers / Live TV must land on Reload',
+    );
+
+    kind.dispose();
+    reload.dispose();
+  });
+
+  testWidgets('focusHeaderItem respects forTabId hub graph', (tester) async {
+    const hubTab = 'hub-live-sports';
+    final reload = FocusNode(debugLabel: 'hub-header-reload');
+    addTearDown(() {
+      ShellTvFocusCoordinator.clearTab(hubTab);
+      reload.dispose();
+    });
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Focus(focusNode: reload, child: const SizedBox(width: 40, height: 40)),
+      ),
+    );
+    await tester.pump();
+
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: hubTab,
+      rowId: SourcesPanelTv.headerRowId,
+      index: 0,
+      node: reload,
+    );
+
+    SourcesPanelTv.focusHeaderItem(forTabId: hubTab);
+    await tester.pump();
+    expect(reload.hasFocus, isTrue);
+  });
 }
 

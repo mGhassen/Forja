@@ -9,6 +9,7 @@ abstract final class SettingsCategoryId {
   static const profile = 'profile';
   static const sources = 'sources'; // displayed as "Addons"
   static const forjaPacks = 'forja_packs';
+  static const downloads = 'downloads';
   static const data = 'data';
   static const navigation = 'navigation';
   static const about = 'about';
@@ -21,6 +22,7 @@ abstract final class SettingsCategoryId {
     sources,
     forjaPacks,
     navigation,
+    downloads,
     data,
     about,
   ];
@@ -76,6 +78,13 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       title: 'Features',
       subtitle: 'Tabs, order, default menu',
       icon: Icons.tab_rounded,
+    ),
+    const SettingsCategoryMeta(
+      id: SettingsCategoryId.downloads,
+      title: 'Downloads',
+      subtitle: 'Offline library and download progress',
+      icon: Icons.download_rounded,
+      fillViewport: true,
     ),
     if (visibility.showDataCategory)
       const SettingsCategoryMeta(

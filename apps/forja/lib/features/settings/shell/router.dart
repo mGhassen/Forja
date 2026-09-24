@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/addons/addons_host.dart';
 import 'package:forja/features/settings/about/page.dart';
 import 'package:forja/features/settings/data/page.dart';
+import 'package:forja/features/settings/downloads/page.dart';
 import 'package:forja/features/settings/features/page.dart';
 import 'package:forja/features/settings/packs/page.dart';
 import 'package:forja/features/settings/profile/page.dart';
@@ -23,6 +24,8 @@ Widget buildSettingsCategoryBody(
       return SettingsAddonsHost(visibility: visibility);
     case SettingsCategoryId.forjaPacks:
       return SettingsForjaPacksPageBody(visibility: visibility);
+    case SettingsCategoryId.downloads:
+      return const SettingsDownloadsPageBody();
     case SettingsCategoryId.data:
       return SettingsDataPageBody(visibility: visibility);
     case SettingsCategoryId.navigation:

@@ -1206,12 +1206,14 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         });
       },
       onBumpRefresh: ({bool forceNetwork = true}) {
-        _selectedListItem.value = null;
+        // Keep the docked resolve panel open across Reload / soft bumps.
+        // Portal wipe still clears via [onClearCatalog].
+        final keepSidePanel = _selectedListItem.value != null;
         PortalChannelGuideOpen.invalidateLiveCatalog();
         setState(() {
           _refreshEpoch++;
           _refreshForceNetwork = forceNetwork;
-          _refreshKeepPainted = false;
+          _refreshKeepPainted = keepSidePanel;
           if (!forceNetwork) {
             // Portal switch — drop stale Live kinds until the new feed publishes.
             _dynamicBarItems.clear();

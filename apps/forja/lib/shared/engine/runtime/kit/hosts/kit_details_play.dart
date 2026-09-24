@@ -3,8 +3,9 @@ import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/player/sources/resolve/stream_play_hooks.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/player/sources/kit/kit_sources.dart';
+import 'package:rust/rust.dart';
 
 PlaySession _sessionFromContext(PlayContext ctx) {
   final meta = ctx.metaItem;
@@ -20,7 +21,8 @@ PlaySession _sessionFromContext(PlayContext ctx) {
   );
 }
 
-/// Shared hub details play dispatch — green Play and Sources panel.
+/// Shared hub details play dispatch — green Play is always [runEngineAutoPlay]
+/// (same Forja race as Home). IPTV is the only extract-type fork.
 Future<void> runPlayFromContext({
   required BuildContext context,
   required PlayContext ctx,
@@ -76,18 +78,21 @@ Future<void> openSourcesFromContext({
   );
 }
 
-/// TV focus helper after player closes — shared by hub details screens.
-Future<void> hubDetailsAfterPlayClosed({
-  required ScrollController scrollController,
-  required FocusNode heroPlayFocus,
-  required bool Function() isMounted,
+/// Details Download CTA — opens Sources so the user picks a stream via the
+/// row download icon (hover / focus).
+Future<void> runDownloadFromContext({
+  required BuildContext context,
+  required PlayContext ctx,
 }) async {
-  if (!isMounted()) return;
-  if (scrollController.hasClients) {
-    scrollController.jumpTo(0);
+  final open = ctx.effectiveOpen;
+  if (open?.effectiveExtract.resolveType == 'iptv') {
+    ForjaToast.info('IPTV channels can’t be saved offline');
+    return;
   }
-  ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
-    heroPlayFocus,
-    isMounted: isMounted,
+
+  ForjaToast.info(
+    'Hover a source and tap download',
+    duration: const Duration(seconds: 3),
   );
+  await openSourcesFromContext(context: context, ctx: ctx);
 }

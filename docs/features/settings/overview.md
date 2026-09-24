@@ -24,6 +24,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | **Addons** | Playback, torrent, Stremio, Nuvio, Connected services, LAN. Playback is first (player prefs, no switch). Other host rows show a switch. **OK / click the row** turns the addon on or off; the **chevron on the right** opens that addon's settings. **Enabled** packs can add more rows (IPTV, Live Sports, Anime, My List, Debrid, …) and typed settings / Connected services login inside those pages — pack off hides that pack’s settings. On the **web portal**, the same host list plus discovered pack rows appear; each addon detail page has a back link to the Addons list. Connected services / LAN / Debrid API keys stay in the app. | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | [Features](navigation-bar.md) | Tab visibility, order, default menu — Addons/packs unlock features and default them on; Features hide/reorder | Always |
+| [Downloads](../playback/offline-downloads.md) | Offline library, download progress, storage used / free | Always |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [About](app-updates.md) | Check for updates, app version; Privacy / Developer rows for admins | Always |
 

@@ -163,15 +163,19 @@ abstract final class SourcesPanelTv {
     attempt();
   }
 
-  static void focusHeaderItem({int index = 0, int maxTries = 12}) {
+  static void focusHeaderItem({
+    int index = 0,
+    int maxTries = 12,
+    String? forTabId,
+  }) {
     var tries = 0;
     void attempt() {
-      if (_tryRow(headerRowId, index)) return;
+      if (_tryRow(headerRowId, index, forTabId: forTabId)) return;
       if (tries++ < maxTries) {
         WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
         return;
       }
-      focusKindItem();
+      focusKindItem(forTabId: forTabId);
     }
 
     attempt();

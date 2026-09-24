@@ -39,4 +39,18 @@ void main() {
       isFalse,
     );
   });
+
+  test('fixtureKey — stable team pair (order independent)', () {
+    final a = PortalLiveTvSearch.fixtureKeyForTest({
+      'homeTeam': 'Barcelona',
+      'awayTeam': 'Real Madrid',
+      'title': 'ignored',
+    });
+    final b = PortalLiveTvSearch.fixtureKeyForTest({
+      'homeTeam': 'Real Madrid',
+      'awayTeam': 'Barcelona',
+    });
+    expect(a.startsWith('t:'), isTrue);
+    expect(a, b);
+  });
 }

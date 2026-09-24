@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shared/playback/stremio_stream_id.dart';
@@ -4208,6 +4209,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                   tvItemIndex: tvIndex,
                   onUpEdge: onUp,
                   onPlay: () => _selectTorrent(r),
+                  onDownload: () {
+                    ForjaToast.info(
+                      "Torrents aren't available for offline download yet",
+                    );
+                  },
                 ),
               ),
             );
@@ -4259,6 +4265,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                         return ok;
                       },
                 onTap: () => _selectStremio(s),
+                onDownload: () {
+                  unawaited(
+                    enqueueStremioStreamDownload(
+                      movie: widget.movie,
+                      stream: s,
+                      season: widget.season,
+                      episode: widget.episode,
+                    ),
+                  );
+                },
               ),
             ),
           );

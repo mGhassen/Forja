@@ -5,7 +5,6 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/probe/engine_catalog_stream_probe.dart';
-import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/playback/kit_episodes.dart';
 import 'package:forja/shared/playback/play_hooks.dart';
@@ -179,7 +178,11 @@ class EngineAutoPlayPick {
 /// (cancel rest). Not extract-all-then-probe-all; not webstreaming sequential.
 ///
 /// Used by movies/TV details, Anime, and Asian Drama — one path, not copies.
-Future<void> runEngineAutoPlay({
+///
+/// When [downloadOnly] is true, a race win calls [onPick] and returns the pick
+/// without opening the player. Failure returns null so the caller can open
+/// Sources in download mode.
+Future<EngineAutoPlayPick?> runEngineAutoPlay({
   required BuildContext context,
   required Movie movie,
   required String engineCategory,
@@ -215,6 +218,9 @@ Future<void> runEngineAutoPlay({
   onCacheUpdated,
   void Function(EngineAutoPlayPick pick)? onPick,
   VoidCallback? onCancelUi,
+
+  /// Resolve a stream for offline download — never opens the player.
+  bool downloadOnly = false,
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
@@ -313,16 +319,16 @@ Future<void> runEngineAutoPlay({
   if (aborted()) {
     dismissLoading();
     disposeStreamLoadingNotifiers(loadingSession);
-    return;
+    return null;
   }
 
   try {
     await EngineService.instance.ensureOfficialInstalled();
-    if (aborted()) return;
+    if (aborted()) return null;
 
     final loadedPacks =
         packs ?? await EngineService.instance.listSourcesPanelPacks();
-    if (aborted()) return;
+    if (aborted()) return null;
 
     final enabledIds = enabledEnginePluginIds(loadedPacks);
     final scope = EngineCategories.matchingPluginIds(
@@ -385,7 +391,7 @@ Future<void> runEngineAutoPlay({
         },
       );
       await action.future;
-      return;
+      return null;
     }
 
     // Resume always re-extracts the preferred plugin (loading overlay + probe),
@@ -757,12 +763,15 @@ Future<void> runEngineAutoPlay({
     }
 
     final hit = playAborted() ? null : await race.future;
-    if (playAborted()) return;
+    if (playAborted()) return null;
 
     if (hit != null) {
-      if (!context.mounted) return;
-      openedPlayer = true;
+      if (!context.mounted) return null;
       onPick?.call(hit);
+      if (downloadOnly) {
+        return hit;
+      }
+      openedPlayer = true;
       await _playFromProbedSources(
         context: context,
         movie: movie,
@@ -786,7 +795,7 @@ Future<void> runEngineAutoPlay({
         messageNotifier: messageNotifier,
         isAborted: playAborted,
       );
-      return;
+      return hit;
     }
 
     final resolveRow = await firstEngineCatalogResolveRow(
@@ -798,17 +807,19 @@ Future<void> runEngineAutoPlay({
       settings: settings,
     );
     if (resolveRow != null && !playAborted()) {
-      if (!context.mounted) return;
-      openedPlayer = true;
+      if (!context.mounted) return null;
       final pluginId =
           resolveRow['_enginePluginId']?.toString() ?? pluginIds.first;
-      onPick?.call(
-        EngineAutoPlayPick(
-          pluginId: pluginId,
-          stream: resolveRow,
-          sources: const [],
-        ),
+      final pick = EngineAutoPlayPick(
+        pluginId: pluginId,
+        stream: resolveRow,
+        sources: const [],
       );
+      onPick?.call(pick);
+      if (downloadOnly) {
+        return pick;
+      }
+      openedPlayer = true;
       await _playResolveRow(
         context: context,
         movie: movie,
@@ -831,7 +842,7 @@ Future<void> runEngineAutoPlay({
         loadingSession: loadingSession,
         isAborted: playAborted,
       );
-      return;
+      return pick;
     }
 
     if (sawPlatformBlockedDrmOnly &&
@@ -840,7 +851,11 @@ Future<void> runEngineAutoPlay({
       if (context.mounted) {
         ForjaToast.info(kStreamDrmAndroidOnlyMessage);
       }
-      return;
+      return null;
+    }
+
+    if (downloadOnly) {
+      return null;
     }
 
     final action = Completer<bool>();
@@ -859,7 +874,7 @@ Future<void> runEngineAutoPlay({
     final retry = await action.future;
     dismissLoading();
     if (retry && context.mounted) {
-      await runEngineAutoPlay(
+      return await runEngineAutoPlay(
         context: context,
         movie: movie,
         engineCategory: engineCategory,
@@ -880,8 +895,10 @@ Future<void> runEngineAutoPlay({
         onCacheUpdated: onCacheUpdated,
         onPick: onPick,
         onCancelUi: onCancelUi,
+        downloadOnly: downloadOnly,
       );
     }
+    return null;
   } finally {
     if (!openedPlayer) {
       dismissLoading();

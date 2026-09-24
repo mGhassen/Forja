@@ -20,7 +20,10 @@ Widget _wrap({required bool tv, required Widget child}) {
   );
 }
 
-TvSeasonEpisodePicker _picker({String episodeView = kEpisodeViewCards}) {
+TvSeasonEpisodePicker _picker({
+  String episodeView = kEpisodeViewCards,
+  Set<String> watchedEpisodes = const {},
+}) {
   return TvSeasonEpisodePicker(
     tmdbId: 1,
     seasonCount: 1,
@@ -38,7 +41,7 @@ TvSeasonEpisodePicker _picker({String episodeView = kEpisodeViewCards}) {
           },
       ],
     },
-    watchedEpisodes: const {},
+    watchedEpisodes: watchedEpisodes,
     fallbackPosterPath: '',
     onSeasonSelected: (_) {},
     onEpisodeSelected: (_) {},
@@ -70,5 +73,18 @@ void main() {
     expect(find.text('1'), findsWidgets); // count row + chip
     expect(find.text('2'), findsOneWidget);
     expect(find.text('Episode 1'), findsNothing);
+  });
+
+  testWidgets('Number chips show a corner watched badge', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        tv: false,
+        child: _picker(
+          episodeView: kEpisodeViewChips,
+          watchedEpisodes: const {'1_S1_E2'},
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
   });
 }

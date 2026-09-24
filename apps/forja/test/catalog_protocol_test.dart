@@ -194,10 +194,25 @@ void main() {
       expect(
         validateLayoutData({
           'pages': {
-            'home': {'widgets': [{'id': 'x'}]},
+            'home': {
+              'widgets': [
+                {'id': 'x'},
+              ],
+            },
           },
         }),
         isNotNull,
+      );
+    });
+
+    test('accepts empty widgets shell', () {
+      expect(
+        validateLayoutData({
+          'pages': {
+            'home': {'widgets': <dynamic>[]},
+          },
+        }),
+        isNull,
       );
     });
   });

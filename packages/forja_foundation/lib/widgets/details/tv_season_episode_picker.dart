@@ -487,6 +487,18 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
         tv ? DetailsTokens.episodeChipRadiusTv : DetailsTokens.episodeChipRadius;
     final fontSize =
         tv ? DetailsTokens.bodyFontSizeTv : DetailsTokens.bodyFontSize;
+    final watchedBadgeSize = tv
+        ? DetailsTokens.episodeChipWatchedBadgeSizeTv
+        : DetailsTokens.episodeChipWatchedBadgeSize;
+    final watchedBadgeInset = tv
+        ? DetailsTokens.episodeChipWatchedBadgeInsetTv
+        : DetailsTokens.episodeChipWatchedBadgeInset;
+    final watchedBadgeHalo = tv
+        ? DetailsTokens.episodeChipWatchedBadgeHaloTv
+        : DetailsTokens.episodeChipWatchedBadgeHalo;
+    final watchedCheckSize = tv
+        ? DetailsTokens.episodeChipWatchedCheckSizeTv
+        : DetailsTokens.episodeChipWatchedCheckSize;
     final hPad = DetailsTokens.contentHorizontalPadding(
       MediaQuery.sizeOf(context).width,
     );
@@ -518,6 +530,10 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                   height: chipH,
                   radius: radius,
                   fontSize: fontSize,
+                  watchedBadgeSize: watchedBadgeSize,
+                  watchedBadgeInset: watchedBadgeInset,
+                  watchedBadgeHalo: watchedBadgeHalo,
+                  watchedCheckSize: watchedCheckSize,
                   columns: cols,
                   tvFocus: useTv,
                   tabId: tabId,
@@ -548,6 +564,10 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     required double height,
     required double radius,
     required double fontSize,
+    required double watchedBadgeSize,
+    required double watchedBadgeInset,
+    required double watchedBadgeHalo,
+    required double watchedCheckSize,
     required int columns,
     required bool tvFocus,
     required String? tabId,
@@ -567,6 +587,10 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       height: height,
       radius: radius,
       fontSize: fontSize,
+      watchedBadgeSize: watchedBadgeSize,
+      watchedBadgeInset: watchedBadgeInset,
+      watchedBadgeHalo: watchedBadgeHalo,
+      watchedCheckSize: watchedCheckSize,
       selected: selected,
       watched: watched,
       unaired: unaired,
@@ -788,6 +812,10 @@ class _EpisodeNumberChip extends StatefulWidget {
     required this.height,
     required this.radius,
     required this.fontSize,
+    required this.watchedBadgeSize,
+    required this.watchedBadgeInset,
+    required this.watchedBadgeHalo,
+    required this.watchedCheckSize,
     required this.selected,
     required this.watched,
     required this.unaired,
@@ -807,6 +835,10 @@ class _EpisodeNumberChip extends StatefulWidget {
   final double height;
   final double radius;
   final double fontSize;
+  final double watchedBadgeSize;
+  final double watchedBadgeInset;
+  final double watchedBadgeHalo;
+  final double watchedCheckSize;
   final bool selected;
   final bool watched;
   final bool unaired;
@@ -849,16 +881,18 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
         final liveBorder = widget.selected || liveActive
             ? ForjaShellColors.chipSelectedBorder
             : cinematic.borderSubtle;
-        final labelColor = widget.unaired
-            ? const Color(0xFFFF9800)
-            : (widget.selected || liveActive
-                ? cinematic.textPrimary
-                : cinematic.textSecondary);
+        final labelColor = episodeDateColor(
+          notShippedYet: widget.unaired,
+          normal: widget.selected || liveActive
+              ? cinematic.textPrimary
+              : cinematic.textSecondary,
+        );
         return AnimatedContainer(
           duration: ForjaMotionTheme.of(context).chipLift.duration,
           width: widget.width,
           height: widget.height,
           alignment: Alignment.center,
+          clipBehavior: Clip.none,
           decoration: BoxDecoration(
             color: cinematic.menuSurface,
             borderRadius: BorderRadius.circular(widget.radius),
@@ -868,6 +902,7 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
             ),
           ),
           child: Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
               Text(
@@ -882,12 +917,25 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
               ),
               if (widget.watched)
                 Positioned(
-                  right: 4,
-                  top: 4,
-                  child: Icon(
-                    Icons.check_rounded,
-                    size: widget.fontSize,
-                    color: ForjaShellColors.brandGreen,
+                  right: widget.watchedBadgeInset,
+                  top: widget.watchedBadgeInset,
+                  child: Container(
+                    width: widget.watchedBadgeSize,
+                    height: widget.watchedBadgeSize,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: ForjaShellColors.brandGreen,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: cinematic.menuSurface,
+                        width: widget.watchedBadgeHalo,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: widget.watchedCheckSize,
+                      color: ForjaShellColors.bgDark,
+                    ),
                   ),
                 ),
             ],

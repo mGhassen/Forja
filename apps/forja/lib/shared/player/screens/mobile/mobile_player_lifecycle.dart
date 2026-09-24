@@ -596,6 +596,21 @@ mixin _MobilePlayerLifecycle
     }
   }
 
+  /// Enqueue the currently playing HTTP stream for offline download.
+  Future<void> _enqueueCurrentDownload() async {
+    final url = (_s._currentUrl ?? widget.mediaPath).trim();
+    await enqueuePlayerCurrentDownload(
+      url: url,
+      headers: widget.headers,
+      movie: widget.movie,
+      fallbackTitle: widget.title,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+      sourceName: widget.activeProvider ?? _s._currentProvider ?? 'Stream',
+      providerId: widget.activeProvider ?? _s._currentProvider,
+    );
+  }
+
   /// Rotate back to portrait & restore system UI BEFORE popping,
   /// so the details page never sees stale landscape dimensions.
   Future<void> _exitPlayer() async {

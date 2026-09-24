@@ -1473,9 +1473,13 @@ class PackPaintTree extends StatelessWidget {
       if (slides.length >= slideCap) break;
       final item = Map<String, dynamic>.from(raw);
       final props = PackPaintArtifact.propsOf(item);
-      final meta = item['meta'] is Map
+      // Prefer nested paint meta; flat MetaItem JSON (id/type/name/open) works too.
+      final MetaItem? meta = item['meta'] is Map
           ? MetaItem.fromJson(Map<String, dynamic>.from(item['meta'] as Map))
-          : null;
+          : (item['open'] is Map &&
+                  (item['id'] != null || item['name'] != null)
+              ? MetaItem.fromJson(item)
+              : null);
       final open = item['open'] is Map
           ? MetaOpen.fromJson(Map<String, dynamic>.from(item['open'] as Map))
           : meta?.open;

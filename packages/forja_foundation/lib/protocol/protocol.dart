@@ -955,6 +955,9 @@ class MetaRailPage<T> {
 }
 
 /// Null when valid; otherwise a short reason string.
+///
+/// Empty `widgets: []` is valid (empty shell hubs — e.g. Stremio before
+/// catalog addons are installed). Missing `widgets` key is not.
 String? validateLayoutData(Map<String, dynamic>? data) {
   if (data == null) return 'missing data';
   final pages = data['pages'];
@@ -963,7 +966,7 @@ String? validateLayoutData(Map<String, dynamic>? data) {
     final page = entry.value;
     if (page is! Map) return 'page ${entry.key} invalid';
     final widgets = page['widgets'];
-    if (widgets is! List || widgets.isEmpty) {
+    if (widgets is! List) {
       return 'page ${entry.key} missing widgets';
     }
     for (final w in widgets) {
