@@ -137,9 +137,10 @@ class PackChromeScope extends InheritedWidget {
         viewStyle != oldWidget.viewStyle ||
         !identical(selectedListItem, oldWidget.selectedListItem) ||
         !identical(searchHitKindIds, oldWidget.searchHitKindIds) ||
-        // shellTabVisible: MainScreen already rebuilds the tab tree on switch.
-        // Notifying here forced every PackLoadedPaint didChangeDependencies and
-        // rebind on hide/show (skeleton flash on already-loaded hubs).
+        // Hide must notify — PackLoadedPaint / LazyViewportGate gate on this.
+        // Hide path cancels binds (no skeleton); show path does not auto-_bind
+        // unless refreshEpoch / filters also change.
+        shellTabVisible != oldWidget.shellTabVisible ||
         !setEquals(eagerLoadKeys, oldWidget.eagerLoadKeys) ||
         !setEquals(pageFeedRailIds, oldWidget.pageFeedRailIds) ||
         !identical(pageFeedFuture, oldWidget.pageFeedFuture) ||

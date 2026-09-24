@@ -129,6 +129,7 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
 
   void _warmFromPrefetch() {
     if (!mounted || _activated) return;
+    if (_chrome != null && !_chrome!.shellTabVisible) return;
     setState(_markActivated);
     // Do not notifyVisible here — that would cascade and fetch the whole page.
     // Only real visibility (or a late claim inside the ahead window) advances
@@ -139,6 +140,9 @@ class _LazyViewportGateState extends State<LazyViewportGate> {
   }
 
   void _activateFromViewport() {
+    // Off-screen keep-alive tabs still have maintainSize geometry — do not
+    // activate rails while the shell tab is hidden (pack reload / other hub).
+    if (_chrome != null && !_chrome!.shellTabVisible) return;
     if (_activated) {
       final index = _prefetchIndex;
       if (index != null) _chrome?.rowPrefetch.notifyVisible(index);

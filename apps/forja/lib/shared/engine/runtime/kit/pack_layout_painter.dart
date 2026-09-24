@@ -302,21 +302,30 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (!mounted) return;
     if (!PluginRegistry.hubFeedEpochTouches(widget.pluginId)) return;
     final forceNet = PluginRegistry.hubFeedEpochForceNetwork;
-    // Off-screen keep-alive: flag only. MainScreen.refreshIfStale on tab show
-    // runs the soft reload — Reload packs must not re-fetch every hub now.
-    if (!shellTabVisible) {
+    // Pack install / Reload / Update (forceNetwork): flag only — never scrape
+    // catalog/rails here. Soft reload runs on next hub show (refreshIfStale).
+    // Settings tweaks (forceNetwork: false) still soft-reload while this hub
+    // is the selected tab so Addons fields rebind without leaving.
+    if (forceNet || !shellTabVisible) {
       _pendingHubFeedSoftReload = true;
-      _refreshForceNetwork = forceNet;
+      if (forceNet) _refreshForceNetwork = true;
       markShellTabStale();
       return;
     }
     unawaited(_applyHubFeedSoftReload(forceNetwork: forceNet));
   }
 
-  /// Soft reload after pack script wipe (issue 305 / 311) or pack settings
+  /// Soft reload after pack script wipe (issue 305 / 311 / 380) or pack settings
   /// (issue 314 — settings keep [live_sports.feed] when [forceNetwork] is false).
   Future<void> _applyHubFeedSoftReload({bool? forceNetwork}) async {
     if (!mounted) return;
+    // Belt: pack wipe must not scrape while this hub is keep-alive off-screen.
+    if (!shellTabVisible) {
+      _pendingHubFeedSoftReload = true;
+      if (forceNetwork == true) _refreshForceNetwork = true;
+      markShellTabStale();
+      return;
+    }
     _pendingHubFeedSoftReload = false;
     final force = forceNetwork ?? _refreshForceNetwork;
     // Soft: keep painted rails while scripts refresh. Must bump refreshEpoch
@@ -383,6 +392,16 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     _pageFeedGen++;
     EngineService.instance.cancelCatalog();
     EngineService.instance.cancelLiveCatalog();
+    // Push shellTabVisible:false into PackChromeScope so PackLoadedPaint /
+    // LazyViewportGate stop binding. Without setState, chrome stayed true and
+    // keep-alive hubs kept scraping after pack reload (AniList 429 stampede).
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -633,6 +652,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             'This hub did not declare nav.page.action — pack must own the page load.';
         _widgets = const [];
       });
+      return;
+    }
+
+    // Keep-alive off-screen: never start layout/feed network. Pack reload flags
+    // pending soft reload; show → onShellTabRefresh runs the real load.
+    if (!shellTabVisible) {
       return;
     }
 
