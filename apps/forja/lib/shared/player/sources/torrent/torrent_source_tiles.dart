@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:rust/rust.dart';
-import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
@@ -714,8 +713,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         widget.seeders != null && widget.seeders!.trim().isNotEmpty;
     final hasLanguageFlags = widget.languageCodes.isNotEmpty;
     final magnet = widget.magnet;
-    final showCopyMagnet = magnet != null && magnet.isNotEmpty && _hoverFor(hovered);
-    final showDownload = widget.onDownload != null && _hoverFor(hovered);
+    final hasMagnet = magnet != null && magnet.isNotEmpty;
+    final reveal = _hoverFor(hovered) &&
+        (widget.onDownload != null || hasMagnet);
     const seedColor = Color(0xFF22C55E);
     final providerLines = hasProvider
         ? _providerLines(widget.provider!)
@@ -723,6 +723,198 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final footerLabel = (widget.footerLabel ?? '').trim();
     final hasFooterLabel = footerLabel.isNotEmpty;
     final leftBarColor = _probeLeftBarColor();
+    final railIconCount =
+        (widget.onDownload != null ? 1 : 0) + (hasMagnet ? 1 : 0);
+    final actionWidth = metrics.usesTvDensity
+        ? 36.0 * railIconCount
+        : 40.0 * railIconCount;
+    final railAnim = const Duration(milliseconds: 180);
+    final iconSize = metrics.torrentPanelMetaIconSize;
+
+    Widget main = Padding(
+      padding: EdgeInsets.fromLTRB(
+        metrics.torrentPanelRowPadH,
+        padV,
+        metrics.torrentPanelRowPadH,
+        padV,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.leading != null) ...[
+            widget.leading!,
+            SizedBox(width: titleGap),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (titlePrefixBadges.isNotEmpty) ...[
+                      Wrap(
+                        spacing: badgeGap,
+                        runSpacing: badgeGap,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          for (final badge in titlePrefixBadges)
+                            _SourceMetaBadge(badge: badge),
+                        ],
+                      ),
+                      SizedBox(width: titleGap),
+                    ],
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: titleColor,
+                          fontSize: titleSize,
+                          height: 1.25,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (hasLanguageFlags || inlineBadges.isNotEmpty) ...[
+                  SizedBox(height: titleGap),
+                  Wrap(
+                    spacing: badgeGap,
+                    runSpacing: badgeGap,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (hasLanguageFlags)
+                        _LanguageFlagBadges(
+                          codes: widget.languageCodes,
+                        ),
+                      for (final badge in inlineBadges)
+                        _SourceMetaBadge(badge: badge),
+                    ],
+                  ),
+                ],
+                if (hasFooterLabel) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    footerLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: metaColor,
+                      fontSize: metrics.torrentPanelMetaFontSize,
+                    ),
+                  ),
+                ] else if (widget.footer != null) ...[
+                  const SizedBox(height: 4),
+                  widget.footer!,
+                ],
+                if (selected) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Playing',
+                    style: TextStyle(
+                      color: accentFg,
+                      fontSize: metrics.torrentPanelMetaFontSize,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (selected || hasProvider || hasViewers || hasSeeders) ...[
+            SizedBox(width: titleGap),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (selected)
+                    Icon(
+                      Icons.check_rounded,
+                      color: ForjaShellColors.brandGreen,
+                      size: metrics.torrentPanelLeadingIconSize,
+                    ),
+                  if (hasProvider)
+                    ...providerLines.asMap().entries.map((entry) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          top: entry.key == 0 && !selected ? 0 : 2,
+                        ),
+                        child: Text(
+                          entry.value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            color: metaColor,
+                            fontSize: metrics.torrentPanelMetaFontSize,
+                            fontWeight: FontWeight.w500,
+                            height: 1.25,
+                          ),
+                        ),
+                      );
+                    }),
+                  if (hasViewers) ...[
+                    if (hasProvider || selected) const SizedBox(height: 2),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.visibility_outlined,
+                          size: metrics.torrentPanelMetaFontSize,
+                          color: metaColor.withValues(
+                            alpha: selected ? 0.85 : 0.75,
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${widget.viewerCount}',
+                          style: TextStyle(
+                            color: metaColor,
+                            fontSize: metrics.torrentPanelMetaFontSize,
+                            fontWeight: FontWeight.w500,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (hasSeeders) ...[
+                    if (hasProvider) const SizedBox(height: 2),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_upward_rounded,
+                          size: metrics.torrentPanelMetaFontSize,
+                          color: seedColor,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          widget.seeders!,
+                          style: TextStyle(
+                            color: seedColor,
+                            fontSize: metrics.torrentPanelMetaFontSize,
+                            fontWeight: FontWeight.w600,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
@@ -734,253 +926,72 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
           width: _borderWidth(hovered),
         ),
       ),
-      // Left probe bar via Positioned — avoid IntrinsicHeight (O(n) layout on
-      // every Sources chip/kind rebuild, issue 352).
-      child: Stack(
-        fit: StackFit.passthrough,
+      // Portal-style: probe | main | push-in action rail (RFC-117).
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              metrics.torrentPanelRowPadH + _probeBarWidth,
-              padV,
-              metrics.torrentPanelRowPadH,
-              padV,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (widget.leading != null) ...[
-                  widget.leading!,
-                  SizedBox(width: titleGap),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (titlePrefixBadges.isNotEmpty) ...[
-                            Wrap(
-                              spacing: badgeGap,
-                              runSpacing: badgeGap,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                for (final badge in titlePrefixBadges)
-                                  _SourceMetaBadge(badge: badge),
-                              ],
-                            ),
-                            SizedBox(width: titleGap),
-                          ],
-                          Expanded(
-                            child: Text(
-                              widget.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: titleColor,
-                                fontSize: titleSize,
-                                height: 1.25,
-                                fontWeight: selected
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
-                              ),
-                            ),
+          ColoredBox(
+            color: leftBarColor,
+            child: const SizedBox(width: _probeBarWidth),
+          ),
+          Expanded(child: main),
+          if (railIconCount > 0)
+            AnimatedContainer(
+              duration: railAnim,
+              curve: Curves.easeOutCubic,
+              width: reveal ? actionWidth : 0,
+              child: !reveal
+                  ? const SizedBox.shrink()
+                  : ClipRect(
+                      child: OverflowBox(
+                        minWidth: actionWidth,
+                        maxWidth: actionWidth,
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: actionWidth,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (widget.onDownload != null)
+                                IconButton(
+                                  tooltip: 'Download',
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 28,
+                                    minHeight: 28,
+                                  ),
+                                  iconSize: iconSize,
+                                  color: Colors.white60,
+                                  onPressed: widget.onDownload,
+                                  icon: const Icon(Icons.download_rounded),
+                                ),
+                              if (hasMagnet)
+                                IconButton(
+                                  tooltip: 'Copy magnet',
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 28,
+                                    minHeight: 28,
+                                  ),
+                                  iconSize: iconSize,
+                                  color: Colors.white60,
+                                  onPressed: () async {
+                                    await Clipboard.setData(
+                                      ClipboardData(text: magnet),
+                                    );
+                                    ForjaToast.success(
+                                      'Magnet copied',
+                                      duration: const Duration(seconds: 2),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.content_copy_rounded),
+                                ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                      if (hasLanguageFlags || inlineBadges.isNotEmpty) ...[
-                        SizedBox(height: titleGap),
-                        Wrap(
-                          spacing: badgeGap,
-                          runSpacing: badgeGap,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            if (hasLanguageFlags)
-                              _LanguageFlagBadges(
-                                codes: widget.languageCodes,
-                              ),
-                            for (final badge in inlineBadges)
-                              _SourceMetaBadge(badge: badge),
-                          ],
-                        ),
-                      ],
-                      if (hasFooterLabel) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          footerLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: metaColor,
-                            fontSize: metrics.torrentPanelMetaFontSize,
-                          ),
-                        ),
-                      ] else if (widget.footer != null) ...[
-                        const SizedBox(height: 4),
-                        widget.footer!,
-                      ],
-                      if (selected) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'Playing',
-                          style: TextStyle(
-                            color: accentFg,
-                            fontSize: metrics.torrentPanelMetaFontSize,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (selected ||
-                    hasProvider ||
-                    hasViewers ||
-                    hasSeeders ||
-                    showCopyMagnet ||
-                    widget.onDownload != null) ...[
-                  SizedBox(width: titleGap),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 120),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (selected)
-                          Icon(
-                            Icons.check_rounded,
-                            color: ForjaShellColors.brandGreen,
-                            size: metrics.torrentPanelLeadingIconSize,
-                          ),
-                        if (hasProvider)
-                          ...providerLines.asMap().entries.map((entry) {
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                top: entry.key == 0 && !selected ? 0 : 2,
-                              ),
-                              child: Text(
-                                entry.value,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  color: metaColor,
-                                  fontSize: metrics.torrentPanelMetaFontSize,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.25,
-                                ),
-                              ),
-                            );
-                          }),
-                        if (hasViewers) ...[
-                          if (hasProvider || selected) const SizedBox(height: 2),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.visibility_outlined,
-                                size: metrics.torrentPanelMetaFontSize,
-                                color: metaColor.withValues(
-                                  alpha: selected ? 0.85 : 0.75,
-                                ),
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                '${widget.viewerCount}',
-                                style: TextStyle(
-                                  color: metaColor,
-                                  fontSize: metrics.torrentPanelMetaFontSize,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (hasSeeders) ...[
-                          if (hasProvider) const SizedBox(height: 2),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.arrow_upward_rounded,
-                                size: metrics.torrentPanelMetaFontSize,
-                                color: seedColor,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                widget.seeders!,
-                                style: TextStyle(
-                                  color: seedColor,
-                                  fontSize: metrics.torrentPanelMetaFontSize,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (widget.onDownload != null) ...[
-                          if (hasProvider ||
-                              hasSeeders ||
-                              hasViewers ||
-                              selected)
-                            const SizedBox(height: 2),
-                          AnimatedOpacity(
-                            opacity: showDownload ? 1 : 0,
-                            duration: const Duration(milliseconds: 150),
-                            curve: Curves.easeOut,
-                            child: IgnorePointer(
-                              ignoring: !showDownload,
-                              child: Button(
-                                variant: ButtonVariant.plainIcon,
-                                size: ButtonSize.icon,
-                                icon: Icons.download_rounded,
-                                tooltip: 'Download',
-                                iconSize: metrics.torrentPanelMetaIconSize,
-                                height: metrics.usesTvDensity ? 20 : 24,
-                                color: ForjaShellColors.brandGreen,
-                                onPressed: widget.onDownload,
-                              ),
-                            ),
-                          ),
-                        ],
-                        if (showCopyMagnet) ...[
-                          if (hasProvider || hasSeeders || widget.onDownload != null)
-                            const SizedBox(height: 2),
-                          Button(
-                            variant: ButtonVariant.plainIcon,
-                            size: ButtonSize.icon,
-                            icon: Icons.content_copy_rounded,
-                            tooltip: 'Copy magnet',
-                            iconSize: metrics.torrentPanelMetaIconSize,
-                            height: metrics.usesTvDensity ? 20 : 24,
-                            color: cinematic.textSecondary,
-                            onPressed: () async {
-                              await Clipboard.setData(
-                                ClipboardData(text: magnet),
-                              );
-                              ForjaToast.success(
-                                'Magnet copied',
-                                duration: const Duration(seconds: 2),
-                              );
-                            },
-                          ),
-                        ],
-                      ],
                     ),
-                  ),
-                ],
-              ],
             ),
-          ),
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: _probeBarWidth,
-            child: ColoredBox(color: leftBarColor),
-          ),
         ],
       ),
     );

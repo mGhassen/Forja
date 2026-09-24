@@ -608,6 +608,7 @@ mixin _DesktopPlayerLifecycle
   Future<void> _enqueueCurrentDownload() async {
     final url = (_s._currentUrl ?? widget.mediaPath).trim();
     await enqueuePlayerCurrentDownload(
+      context: context,
       url: url,
       headers: widget.headers,
       movie: widget.movie,

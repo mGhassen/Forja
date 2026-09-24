@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/addons/pack/pack_addon_settings_section.dart';
+import 'package:forja/features/settings/addons/pack/pack_green_play_section.dart';
 import 'package:forja/features/settings/packs/engine_pack_update.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
@@ -175,6 +176,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
           ),
           children: [
             if (pack.enabled) PackAddonSettingsSection(plugins: plugins),
+            if (pack.enabled) PackGreenPlaySection(plugins: plugins),
             SettingsEnginePluginGroupList(
               sourceUrl: pack.sourceUrl,
               byGroup: grouped.byGroup,
@@ -390,6 +392,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
       ),
       children: [
         if (pack.enabled) PackAddonSettingsSection(plugins: plugins),
+        if (pack.enabled) PackGreenPlaySection(plugins: plugins),
         SettingsLiveSportCapabilityTabs(
           sourceUrl: pack.sourceUrl,
           plugins: plugins,

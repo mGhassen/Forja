@@ -3,9 +3,10 @@ import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/player/sources/resolve/stream_play_hooks.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
+import 'package:forja/shared/playback/open/pack_green_play.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/sources/kit/kit_sources.dart';
-import 'package:rust/rust.dart';
 
 PlaySession _sessionFromContext(PlayContext ctx) {
   final meta = ctx.metaItem;
@@ -21,8 +22,8 @@ PlaySession _sessionFromContext(PlayContext ctx) {
   );
 }
 
-/// Shared hub details play dispatch — green Play is always [runEngineAutoPlay]
-/// (same Forja race as Home). IPTV is the only extract-type fork.
+/// Shared hub details play dispatch — green Play uses pack-owned multi-tech
+/// race (RFC-118). IPTV is the only extract-type fork.
 Future<void> runPlayFromContext({
   required BuildContext context,
   required PlayContext ctx,
@@ -33,24 +34,7 @@ Future<void> runPlayFromContext({
     if (play == null) return Future.value();
     return play(context: context, ctx: ctx);
   }
-  final session = _sessionFromContext(ctx);
-  return runEngineAutoPlay(
-    context: context,
-    movie: ctx.movie,
-    engineCategory: engineCategoryForSession(session, ctx.movie) ?? 'movie',
-    season: ctx.season,
-    episode: ctx.episode,
-    malId: ctx.malId,
-    audioCategory: ctx.audioCategory,
-    startPosition: ctx.startPosition,
-    preferredPluginId: ctx.preferredPluginId,
-    savedStreamUrl: ctx.savedStreamUrl,
-    loadingSubtitle: ctx.loadingSubtitle,
-    episodes: ctx.kitEpisodes,
-    hubEpisodeNumber: ctx.episode,
-    selectedPluginIds: ctx.selectedPluginIds,
-    playSession: session,
-  );
+  return runPackGreenPlay(context: context, ctx: ctx);
 }
 
 Future<void> openSourcesFromContext({
@@ -75,6 +59,22 @@ Future<void> openSourcesFromContext({
         ? ctx.selectedPluginIds!.first
         : null,
     playSession: session,
+  );
+}
+
+/// TV focus helper after player closes — shared by hub details screens.
+Future<void> hubDetailsAfterPlayClosed({
+  required ScrollController scrollController,
+  required FocusNode heroPlayFocus,
+  required bool Function() isMounted,
+}) async {
+  if (!isMounted()) return;
+  if (scrollController.hasClients) {
+    scrollController.jumpTo(0);
+  }
+  ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+    heroPlayFocus,
+    isMounted: isMounted,
   );
 }
 

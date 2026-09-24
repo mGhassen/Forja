@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **0 / 5** acceptance |
+| **Progress** | **11 / 11** fix · **0 / 6** acceptance |
 | **Current slice** | Code shipped — manual QA pending |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
@@ -26,9 +26,11 @@
 | 4 | I363-T04 | Tighten `loadKitStremioDetails` `/meta` field map (no TMDB) | ✅ |
 | 5 | I363-T05 | Tests + changelog + feature guide | ✅ |
 | 6 | I363-T06 | Allow empty `widgets: []` in `validateLayoutData` (empty shell) | ✅ |
-| 7 | I363-T07 | Stremio details meta/episodes + green Play via Stremio streams | ✅ |
+| 7 | I363-T07 | Stremio details meta/episodes; green Play = Forja race via extract type | ✅ |
 | 8 | I363-T08 | Paint rail/hero items (`hubItems` + host type fix) so details get movie/TV + open | ✅ |
-| 9 | I363-T09 | Sources Forja uses movie/tv panel (not empty stremio bucket); open on Stremio tab | ✅ |
+| 9 | I363-T09 | Stamp `extract` movie/tv/anime + opaque `preferredSourcesKind` → Sources Stremio tab | ✅ |
+| 10 | I363-T10 | Pack type chrome menus from installed catalog types + layout `showWhenType` | ✅ |
+| 11 | I363-T11 | Generic layout `showWhenType` / `showOnlyWhenType` + chrome type filter helper | ✅ |
 
 ---
 
@@ -41,6 +43,7 @@
 | 3 | I363-A03 | Second catalog addon appends rails; remove → those rails gone | ⬜ |
 | 4 | I363-A04 | Open title → Stremio `/meta` details → Sources (no TMDB details) | ⬜ |
 | 5 | I363-A05 | Pack has no fixed rail ids / no TMDB URLs / no `open.surface: tmdb` | ⬜ |
+| 6 | I363-A06 | Type menus filter rails; anime titles stamp anime Forja panel; Sources defaults to Stremio | ⬜ |
 
 ---
 

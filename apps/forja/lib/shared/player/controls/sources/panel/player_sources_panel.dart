@@ -4268,6 +4268,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 onDownload: () {
                   unawaited(
                     enqueueStremioStreamDownload(
+                      context: context,
                       movie: widget.movie,
                       stream: s,
                       season: widget.season,

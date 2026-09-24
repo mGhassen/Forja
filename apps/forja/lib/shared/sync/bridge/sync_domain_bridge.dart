@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/portals/models.dart';
@@ -8,6 +9,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
 import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
+import 'package:forja/shared/engine/packs/settings/pack_green_play_config.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 import 'package:forja/shared/engine/store/list_open_prefs.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
@@ -1120,47 +1122,63 @@ class SyncDomainBridge {
     final out = <String, Map<String, dynamic>>{};
     for (final plugin in activePluginsFromPacks(packs)) {
       final spec = PackAddonSettingsSpec.fromPlugin(plugin);
-      if (spec == null || spec.fields.isEmpty) continue;
       final fields = <String, dynamic>{};
-      for (final field in spec.fields) {
-        if (field.type == PackAddonSettingsFieldType.password) continue;
-        switch (field.type) {
-          case PackAddonSettingsFieldType.toggle:
-            fields[field.id] = await PackSettingsStore.getBool(
-              spec.pluginId,
-              field.id,
-              defaultValue: field.defaultBool,
-            );
-          case PackAddonSettingsFieldType.multiSelect:
-            fields[field.id] = await PackSettingsStore.getStringList(
-              spec.pluginId,
-              field.id,
-              defaultValue: field.defaultStringList,
-            );
-          case PackAddonSettingsFieldType.select:
-          case PackAddonSettingsFieldType.text:
-          case PackAddonSettingsFieldType.hubSelect:
-            var value = await PackSettingsStore.getString(
-              spec.pluginId,
-              field.id,
-              defaultValue: field.defaultString,
-            );
-            if (field.type == PackAddonSettingsFieldType.hubSelect &&
-                field.listOpenDefault &&
-                field.hubTypes.isNotEmpty) {
-              final fromPrefs = await ListOpenPrefs.defaultPluginId(
-                field.hubTypes.first,
+      if (spec != null) {
+        for (final field in spec.fields) {
+          if (field.type == PackAddonSettingsFieldType.password) continue;
+          switch (field.type) {
+            case PackAddonSettingsFieldType.toggle:
+              fields[field.id] = await PackSettingsStore.getBool(
+                spec.pluginId,
+                field.id,
+                defaultValue: field.defaultBool,
               );
-              if (fromPrefs != null && fromPrefs.isNotEmpty) {
-                value = fromPrefs;
+            case PackAddonSettingsFieldType.multiSelect:
+              fields[field.id] = await PackSettingsStore.getStringList(
+                spec.pluginId,
+                field.id,
+                defaultValue: field.defaultStringList,
+              );
+            case PackAddonSettingsFieldType.select:
+            case PackAddonSettingsFieldType.text:
+            case PackAddonSettingsFieldType.hubSelect:
+              var value = await PackSettingsStore.getString(
+                spec.pluginId,
+                field.id,
+                defaultValue: field.defaultString,
+              );
+              if (field.type == PackAddonSettingsFieldType.hubSelect &&
+                  field.listOpenDefault &&
+                  field.hubTypes.isNotEmpty) {
+                final fromPrefs = await ListOpenPrefs.defaultPluginId(
+                  field.hubTypes.first,
+                );
+                if (fromPrefs != null && fromPrefs.isNotEmpty) {
+                  value = fromPrefs;
+                }
               }
-            }
-            fields[field.id] = value;
-          case PackAddonSettingsFieldType.password:
-            break;
+              fields[field.id] = value;
+            case PackAddonSettingsFieldType.password:
+              break;
+          }
         }
       }
-      if (fields.isNotEmpty) out[spec.pluginId] = fields;
+      // RFC-118 green Play JSON blob (when declared + user overlay present).
+      if (PackGreenPlayConfig.isDeclared(plugin)) {
+        final raw = await PackSettingsStore.getString(
+          plugin.id,
+          PackGreenPlayConfig.fieldId,
+          defaultValue: '',
+        );
+        if (raw.trim().isNotEmpty) {
+          try {
+            fields[PackGreenPlayConfig.fieldId] = jsonDecode(raw);
+          } catch (_) {
+            fields[PackGreenPlayConfig.fieldId] = raw;
+          }
+        }
+      }
+      if (fields.isNotEmpty) out[plugin.id] = fields;
     }
     return out;
   }
@@ -1191,6 +1209,14 @@ class SyncDomainBridge {
               for (final e in value)
                 if (e.toString().trim().isNotEmpty) e.toString().trim(),
             ],
+            reloadHub: false,
+          );
+        } else if (value is Map) {
+          // RFC-118 greenPlay (and any future JSON object fields).
+          await PackSettingsStore.setString(
+            pluginId,
+            fieldId,
+            jsonEncode(Map<String, dynamic>.from(value)),
             reloadHub: false,
           );
         } else if (value is String || value is num) {

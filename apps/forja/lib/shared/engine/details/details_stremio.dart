@@ -22,6 +22,7 @@ String stremioApiType(String? raw, {String seedType = 'movie'}) {
   if (t == 'movie' || t == 'channel' || t == 'anime' || t == 'other') return t;
   // seed.type may be a host surface (stremio) — do not treat as series.
   if (seedType == 'tv' || seedType == 'series') return 'series';
+  if (seedType == 'anime') return 'anime';
   if (seedType == 'movie') return 'movie';
   return 'movie';
 }
@@ -29,6 +30,13 @@ String stremioApiType(String? raw, {String seedType = 'movie'}) {
 String stremioUiType(String apiType) {
   if (apiType == 'series') return 'tv';
   if (apiType == 'collections') return 'collections';
+  if (apiType == 'anime') return 'anime';
+  return 'movie';
+}
+
+String stremioPanelKind(String uiType) {
+  if (uiType == 'tv' || uiType == 'series') return 'tv';
+  if (uiType == 'anime') return 'anime';
   return 'movie';
 }
 
@@ -262,7 +270,7 @@ Future<KitStremioLoadResult> loadKitStremioDetails(MetaItem seed) async {
               ),
             );
           }
-        } else if (resolvedApiType == 'series') {
+        } else if (resolvedApiType == 'series' || resolvedApiType == 'anime') {
           videos.addAll(_catalogVideosFromStremio(rawVideos));
           if (videos.isNotEmpty) {
             facts['episodeCount'] = videos.length;
@@ -273,11 +281,13 @@ Future<KitStremioLoadResult> loadKitStremioDetails(MetaItem seed) async {
     }
 
     final uiType = stremioUiType(resolvedApiType);
+    final panelKind = stremioPanelKind(uiType);
     final openExtras = Map<String, dynamic>.from(open.extras);
     openExtras['stremioType'] = resolvedApiType;
     openExtras['stremioId'] = stremioId;
     openExtras['stremioAddonBaseUrl'] = baseUrl;
     openExtras['mediaType'] = uiType;
+    openExtras.putIfAbsent('preferredSourcesKind', () => 'stremio');
 
     final meta = MetaItem(
       id: seed.id,
@@ -300,7 +310,14 @@ Future<KitStremioLoadResult> loadKitStremioDetails(MetaItem seed) async {
       open: MetaOpen(
         surface: open.surface,
         id: open.id,
-        extract: open.extract,
+        extract: MetaOpenExtract(
+          resolveType: panelKind,
+          panelCategory: panelKind,
+          ctx: {
+            ...?open.extract?.ctx,
+            if (stremioId.isNotEmpty) 'openId': stremioId,
+          },
+        ),
         extras: openExtras,
       ),
       videos: videos,
@@ -374,12 +391,18 @@ List<MetaItem> _metaItemsFromStremioVideos(
         open: MetaOpen(
           surface: 'stremio',
           id: id,
+          extract: MetaOpenExtract(
+            resolveType: stremioPanelKind(metaType),
+            panelCategory: stremioPanelKind(metaType),
+            ctx: {if (id.isNotEmpty) 'openId': id},
+          ),
           extras: {
             'stremioId': id,
             'stremioType': apiType,
             'stremioAddonBaseUrl': addonBaseUrl,
             'stremioAddonName': ?addonName,
             'mediaType': metaType,
+            'preferredSourcesKind': 'stremio',
           },
         ),
       ),

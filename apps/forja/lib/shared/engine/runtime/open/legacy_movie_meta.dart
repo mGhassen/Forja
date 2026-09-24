@@ -39,16 +39,30 @@ MetaItem metaItemFromMovie(Movie movie) {
 /// Stremio catalog/search row → hub meta ([open.surface] `stremio`).
 ///
 /// Uses the addon's opaque id and catalog addon URL — not TMDB/IMDB routing.
+/// [item.type] from the addon (`movie` / `series` / `anime` / …) drives
+/// [MetaItem.type] and Forja [MetaOpenExtract.panelCategory].
 MetaItem metaItemFromStremioSearchResult(
   Map<String, dynamic> item,
 ) {
   final id = item['id']?.toString() ?? '';
   var type = item['type']?.toString() ?? 'movie';
   if (type.isEmpty) type = 'movie';
-  final isCollection = type == 'collections' || id.startsWith('ctmdb.');
-  final metaType = isCollection
-      ? 'collections'
-      : (type == 'series' ? 'tv' : 'movie');
+  final typeLower = type.toLowerCase().trim();
+  final isCollection =
+      typeLower == 'collections' || typeLower == 'collection' || id.startsWith('ctmdb.');
+  final String metaType;
+  if (isCollection) {
+    metaType = 'collections';
+  } else if (typeLower == 'series' || typeLower == 'tv') {
+    metaType = 'tv';
+  } else if (typeLower == 'anime') {
+    metaType = 'anime';
+  } else if (typeLower == 'movie') {
+    metaType = 'movie';
+  } else {
+    // channel / other VOD — movie panel (not live_sport / iptv).
+    metaType = 'movie';
+  }
 
   final ids = <String, dynamic>{};
   if (id.startsWith('tt')) ids['imdb'] = id;
@@ -60,7 +74,11 @@ MetaItem metaItemFromStremioSearchResult(
   final releaseInfo = item['releaseInfo']?.toString() ?? '';
   final rating = double.tryParse(item['imdbRating']?.toString() ?? '');
 
-  final panelKind = metaType == 'tv' ? 'tv' : 'movie';
+  final panelKind = metaType == 'tv'
+      ? 'tv'
+      : (metaType == 'anime' ? 'anime' : 'movie');
+  final stremioApi =
+      isCollection ? 'collections' : (typeLower == 'tv' ? 'series' : typeLower);
 
   return MetaItem(
     id: 'stremio:$metaType:$id',
@@ -71,20 +89,21 @@ MetaItem metaItemFromStremioSearchResult(
     description: description,
     releaseInfo: releaseInfo.length >= 4 ? releaseInfo.substring(0, 4) : releaseInfo,
     rating: rating,
-    tmdbMediaType: metaType == 'tv' ? 'tv' : 'movie',
+    tmdbMediaType: metaType == 'tv' ? 'tv' : (metaType == 'movie' ? 'movie' : null),
     ids: ids,
     open: MetaOpen(
       surface: 'stremio',
       id: id,
       extras: {
         'stremioId': id,
-        'stremioType': isCollection ? 'collections' : type,
+        'stremioType': stremioApi,
         if (item['_addonBaseUrl'] != null)
           'stremioAddonBaseUrl': item['_addonBaseUrl'],
         if (item['_addonName'] != null) 'stremioAddonName': item['_addonName'],
         'mediaType': metaType,
+        // Pack/bridge-declared Sources entry tab — host passes through opaque.
+        'preferredSourcesKind': 'stremio',
       },
-      // Same Forja panel as Home — extract must be declared, not inferred from surface.
       extract: MetaOpenExtract(
         resolveType: panelKind,
         panelCategory: panelKind,

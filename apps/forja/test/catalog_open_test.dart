@@ -79,7 +79,24 @@ void main() {
       expect(meta.open?.extraString('stremioAddonBaseUrl'),
           'https://addon.example/manifest.json');
       expect(meta.open?.extraString('stremioId'), 'anilist:12345');
+      expect(meta.open?.extraString('preferredSourcesKind'), 'stremio');
+      expect(meta.type, 'tv');
+      expect(meta.open?.effectiveExtract.panelCategory, 'tv');
       expect(meta.ids.containsKey('tmdb'), isFalse);
+    });
+
+    test('stremio anime type stamps anime extract and Sources default', () {
+      final meta = metaItemFromStremioSearchResult({
+        'id': 'anilist:99',
+        'type': 'anime',
+        'name': 'Anime Title',
+        '_addonBaseUrl': 'https://addon.example/manifest.json',
+      });
+      expect(meta.type, 'anime');
+      expect(meta.open?.effectiveExtract.panelCategory, 'anime');
+      expect(meta.open?.effectiveExtract.resolveType, 'anime');
+      expect(meta.open?.extraString('preferredSourcesKind'), 'stremio');
+      expect(meta.open?.extraString('stremioType'), 'anime');
     });
 
     test('paint metaItemOf uses mediaType not open.surface as type', () {

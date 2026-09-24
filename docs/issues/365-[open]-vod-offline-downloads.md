@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** tasks · **8 / 8** acceptance |
+| **Progress** | **11 / 11** tasks · **9 / 9** acceptance |
 | **Current slice** | Phase 1 complete — Phase 2/3 deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -32,6 +32,7 @@
 | 10 | I365-T10 | Phase 3 — OS background downloads | ⏭️ |
 | 11 | I365-T11 | Sources row hover Download icon; details Download opens Sources (no auto-pick) | ✅ |
 | 12 | I365-T12 | Reject DASH MPD / tiny manifest responses (no ~60KB “completed” junk) | ✅ |
+| 13 | I365-T13 | Probe size + confirm sheet before enqueue (HTTP Content-Length / HLS estimate) | ✅ |
 
 ---
 
@@ -47,6 +48,7 @@
 | 6 | I365-A06 | App kill → tasks resume as paused (not stuck downloading) | ✅ |
 | 7 | I365-A07 | Sources: hover reveals Download; row tap still plays | ✅ |
 | 8 | I365-A08 | DASH / playlist / &lt;256KB responses fail instead of completing | ✅ |
+| 9 | I365-A09 | Download confirms with probed size (or estimate) and free space before enqueue | ✅ |
 
 ---
 

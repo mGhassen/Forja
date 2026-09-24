@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+import 'package:forja/shared/downloads/download_confirm_dialog.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_task.dart';
@@ -21,6 +23,7 @@ String _mediaIdForDownload(Movie movie) {
 
 /// Enqueue offline download for a Sources-panel Stremio/Nuvio/engine row.
 Future<DownloadTask?> enqueueStremioStreamDownload({
+  required BuildContext context,
   required Movie movie,
   required Map<String, dynamic> stream,
   int? season,
@@ -42,6 +45,7 @@ Future<DownloadTask?> enqueueStremioStreamDownload({
       return null;
     }
     return enqueueVodDownload(
+      context: context,
       title: movie.title,
       mediaId: _mediaIdForDownload(movie),
       type: _downloadTypeForMovie(movie),
@@ -74,6 +78,7 @@ Future<DownloadTask?> enqueueStremioStreamDownload({
 
 /// Enqueues the stream currently playing in a VOD player.
 Future<DownloadTask?> enqueuePlayerCurrentDownload({
+  required BuildContext context,
   required String url,
   Map<String, String>? headers,
   Movie? movie,
@@ -94,6 +99,7 @@ Future<DownloadTask?> enqueuePlayerCurrentDownload({
       ? 'series'
       : (mt == 'anime' ? 'anime' : 'movie');
   return enqueueVodDownload(
+    context: context,
     title: title,
     mediaId: mediaId,
     type: type,
@@ -112,8 +118,9 @@ Future<DownloadTask?> enqueuePlayerCurrentDownload({
   );
 }
 
-/// Enqueues an HTTP/HLS VOD download and toasts with a View → Downloads action.
+/// Probes size, asks for confirm, then enqueues HTTP/HLS VOD download.
 Future<DownloadTask?> enqueueVodDownload({
+  required BuildContext context,
   required String title,
   required String mediaId,
   required String type,
@@ -135,12 +142,24 @@ Future<DownloadTask?> enqueueVodDownload({
     return null;
   }
 
+  final resolved = resolvePlaybackHttpHeaders(
+    headers,
+    streamUrl: rawUrl,
+    providerId: providerId,
+  );
+
+  if (!context.mounted) return null;
+  final ok = await confirmOfflineDownload(
+    context: context,
+    title: title,
+    sourceName: sourceName,
+    url: rawUrl,
+    headers: resolved,
+  );
+  if (!ok) return null;
+  if (!context.mounted) return null;
+
   try {
-    final resolved = resolvePlaybackHttpHeaders(
-      headers,
-      streamUrl: rawUrl,
-      providerId: providerId,
-    );
     final task = await DownloadService.instance.startDownload(
       title: title,
       mediaId: mediaId,

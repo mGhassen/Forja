@@ -396,6 +396,12 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
   void _onBecameActive() {
     final left = _leftActiveAt;
     _leftActiveAt = null;
+    // macOS Cmd-Tab can leave Flutter lifecycle stuck at `hidden` (frames
+    // gated — frozen UI/video). Native AppDelegate nudges `resumed`; also
+    // force a paint from Dart when window_manager reports focus.
+    if (Platform.isMacOS) {
+      WidgetsBinding.instance.scheduleForcedFrame();
+    }
     if (left != null && DateTime.now().difference(left) < _briefAwaySkip) {
       return;
     }
@@ -405,6 +411,10 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
   @override
   void onWindowFocus() {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
+    // Immediate paint — do not wait for the JWT coalesce timer.
+    if (Platform.isMacOS) {
+      WidgetsBinding.instance.scheduleForcedFrame();
+    }
     _scheduleBecameActive();
   }
 

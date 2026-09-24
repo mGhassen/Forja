@@ -344,6 +344,30 @@ class MetaOpenExtract {
         ctx: {'tmdbId': ?idN},
       );
     }
+    // Pack/bridge may stamp mediaType without extract — use it so the panel
+    // is movie/tv/anime, not the opaque open.surface name.
+    final mediaType = extras['mediaType']?.toString().trim().toLowerCase() ?? '';
+    if (mediaType == 'tv' || mediaType == 'series') {
+      return MetaOpenExtract(
+        resolveType: 'tv',
+        panelCategory: 'tv',
+        ctx: {if (id.isNotEmpty) 'openId': id},
+      );
+    }
+    if (mediaType == 'anime') {
+      return MetaOpenExtract(
+        resolveType: 'anime',
+        panelCategory: 'anime',
+        ctx: {if (id.isNotEmpty) 'openId': id},
+      );
+    }
+    if (mediaType == 'movie') {
+      return MetaOpenExtract(
+        resolveType: 'movie',
+        panelCategory: 'movie',
+        ctx: {if (id.isNotEmpty) 'openId': id},
+      );
+    }
     return MetaOpenExtract(
       resolveType: surface.isNotEmpty ? surface : 'movie',
       panelCategory: surface.isNotEmpty ? surface : 'movie',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/addons/pack/pack_addon_settings_section.dart';
+import 'package:forja/features/settings/addons/pack/pack_green_play_section.dart';
 import 'package:forja/features/settings/addons/pack/pack_connected_auth_section.dart';
 import 'package:forja/features/settings/addons/catalog.dart';
 import 'package:forja/features/settings/addons/host/debrid_section.dart';
@@ -24,6 +25,7 @@ Widget buildAddonDetailBody(String addonId, SettingsVisibility visibility) {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       PackAddonSettingsSection(addonId: addonId),
+      PackGreenPlaySection(addonId: addonId),
       host,
     ],
   );

@@ -208,6 +208,9 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
   /// When set (e.g. provider-scoped episode id), race only these.
   /// Null → all enabled plugins in the panel category (not Sources chip prefs).
   Set<String>? selectedPluginIds,
+
+  /// Optional start order (RFC-118 pack green Play). Falls back to pack walk order.
+  List<String>? racePluginOrder,
   List<EnginePack>? packs,
 
   /// Keep an open Sources panel in sync with the shared session cache.
@@ -221,6 +224,9 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
 
   /// Resolve a stream for offline download — never opens the player.
   bool downloadOnly = false,
+
+  /// Multi-tech green Play reuses the parent overlay (RFC-118).
+  StreamLoadingSession? existingLoading,
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
@@ -273,6 +279,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
   }
 
   late final StreamLoadingSession loadingSession;
+  final ownsLoadingOverlay = existingLoading == null;
   /// Mid-race tap on the overlay server list — set after the race starts.
   void Function(String pluginId)? liveManualCheck;
   void cancel() {
@@ -281,25 +288,31 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     abortPool();
     final pending = hitCompleter;
     if (pending != null && !pending.isCompleted) pending.complete(null);
-    dismissStreamLoading(loadingSession);
+    if (ownsLoadingOverlay) dismissStreamLoading(loadingSession);
     onCancelUi?.call();
   }
 
-  loadingSession = showStreamLoadingOverlay(
-    context,
-    movie: movie,
-    kind: StreamLoadingKind.direct,
-    initialMessage: 'Finding Forja servers…',
-    subtitle: loadingSubtitle,
-    onCancel: cancel,
-    onManualCheckProvider: (id) => liveManualCheck?.call(id),
-  );
+  if (existingLoading != null) {
+    loadingSession = existingLoading;
+  } else {
+    loadingSession = showStreamLoadingOverlay(
+      context,
+      movie: movie,
+      kind: StreamLoadingKind.direct,
+      initialMessage: 'Finding Forja servers…',
+      subtitle: loadingSubtitle,
+      onCancel: cancel,
+      onManualCheckProvider: (id) => liveManualCheck?.call(id),
+    );
+  }
   final fadeOutNotifier = loadingSession.fadeOutNotifier;
   final messageNotifier = loadingSession.messageNotifier;
   final probeNotifier = loadingSession.probeNotifier;
   final failureNotifier = loadingSession.failureNotifier;
 
-  void dismissLoading() => dismissStreamLoading(loadingSession);
+  void dismissLoading() {
+    if (ownsLoadingOverlay) dismissStreamLoading(loadingSession);
+  }
 
   void publishCache() {
     CatalogSourcesSessionCache.writeEngine(
@@ -347,7 +360,19 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
               if (enabledIds.contains(id)) id,
           };
 
-    final orderedIds = orderedEnginePluginIds(loadedPacks);
+    final walkOrder = orderedEnginePluginIds(loadedPacks);
+    final orderedIds = () {
+      final custom = racePluginOrder;
+      if (custom == null || custom.isEmpty) return walkOrder;
+      final out = <String>[];
+      for (final id in custom) {
+        if (selected.contains(id) && !out.contains(id)) out.add(id);
+      }
+      for (final id in walkOrder) {
+        if (selected.contains(id) && !out.contains(id)) out.add(id);
+      }
+      return out;
+    }();
     var pluginIds = [
       for (final id in orderedIds)
         if (selected.contains(id) &&
@@ -900,7 +925,9 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     }
     return null;
   } finally {
-    if (!openedPlayer) {
+    if (!ownsLoadingOverlay) {
+      // Parent multi-tech race owns overlay lifecycle.
+    } else if (!openedPlayer) {
       dismissLoading();
       disposeStreamLoadingNotifiers(loadingSession);
     } else {

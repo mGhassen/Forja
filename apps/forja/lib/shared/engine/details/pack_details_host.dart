@@ -872,11 +872,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final tvFocus = policy.useFocusableMoodChips;
     final playbackFlags = KitPanelSourceFlagsHooks.watch?.call(ref);
     final isIptv = hubMetaIsIptv(_show);
-    final isStremio = hubMetaIsStremio(_show);
-    // Stremio hub titles always get the white Sources control (Stremio streams),
-    // even when Forja/Torrent toggles are off.
-    final showCatalogSources =
-        !isIptv && (kitHasPanelSources(playbackFlags) || isStremio);
+    final showCatalogSources = !isIptv && kitHasPanelSources(playbackFlags);
     final hasEpisodes = videos.isNotEmpty && !_isMovie;
 
     if (policy.heroPlayAutoFocus &&
@@ -1174,7 +1170,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
                   onOpenSources: showCatalogSources &&
                           (_isMovie ||
                               videos.isNotEmpty ||
-                              isStremio)
+                              show.open != null)
                       ? _openCatalogSources
                       : null,
                   onDownload: (!isUpcoming &&

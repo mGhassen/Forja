@@ -59,7 +59,6 @@ Future<void> openKitSources({
   String? episodeVideoId,
   String? engineCategory,
   String? preferredEnginePluginId,
-  String? preferredKind,
   PlaySession? playSession,
 }) {
   final hooks = buildPlayHooks(
@@ -81,7 +80,7 @@ Future<void> openKitSources({
             ? providerIdFromEpisodeVideoId(epVid)
             : null) ??
           open?.extraString('source')?.trim();
-  final kind = preferredKind?.trim();
+  final preferredKind = open?.extraString('preferredSourcesKind')?.trim();
   return PlayerSourcesPanel.show(
     context: context,
     movie: movie,
@@ -97,7 +96,8 @@ Future<void> openKitSources({
         (preferredPlugin != null && preferredPlugin.isNotEmpty)
             ? preferredPlugin
             : null,
-    preferredKind: (kind != null && kind.isNotEmpty) ? kind : null,
+    preferredKind:
+        (preferredKind != null && preferredKind.isNotEmpty) ? preferredKind : null,
     animeAudioCategory: audioCategory,
     detailsHost: true,
     onTorrentSelected: (result) async {

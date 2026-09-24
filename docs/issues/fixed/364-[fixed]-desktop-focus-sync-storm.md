@@ -43,6 +43,6 @@ Every desktop foreground return ran session refresh + full cloud soft-pull + Sim
 
 **Symptom fix:** lean coalesced wake. **Root fix:** same — removed the unnecessary focus cascade (not a hide).
 
-**Note:** A hard macOS UI freeze with no frames until Dock click may still be Flutter engine [flutter#155977](https://github.com/flutter/flutter/issues/155977) — separate from this sync storm.
+**Note:** A hard macOS UI freeze with no frames until Dock click is Flutter engine [flutter#155977](https://github.com/flutter/flutter/issues/155977) — app workaround in [367](../367-[workaround]-macos-cmd-tab-frame-freeze.md); root upgrade in [368](../368-[open]-flutter-macos-occlusion-resume-upgrade.md).
 
 **Related:** [106](../106-[open]-desktop-session-profile-chrome-desync.md)

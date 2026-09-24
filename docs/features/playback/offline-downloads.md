@@ -11,14 +11,16 @@ are not offline yet.
 ## How to start a download
 
 - **Details** — tap the download icon next to Play / Sources. Sources opens;
-  hover a stream row and tap the green download icon on the right (same reveal
-  as portal actions). Row tap still plays.
-- **Sources** — hover any HTTP stream row to reveal **Download**; torrents
-  toast that offline isn’t available yet.
+  hover a stream row to push the card and reveal a right action rail with
+  Download (same pattern as IPTV Portals). Row tap still plays.
+- **Sources** — hover any HTTP stream row to push in the Download action;
+  torrents toast that offline isn’t available yet.
 - **Player** — use the download icon in the top bar to save the stream you’re
   watching (phone, Android TV Exo, and desktop).
 
-A toast confirms the enqueue; tap **View** to open Settings → Downloads.
+A confirm sheet shows the stream size (exact for progressive files, ~estimate
+for HLS) and free space on the downloads folder. Cancel aborts; **Download**
+starts the transfer. A toast then offers **View** → Settings → Downloads.
 
 DASH (`.mpd`) and other playlist/page responses are rejected — only real
 HTTP/HLS media files are saved.

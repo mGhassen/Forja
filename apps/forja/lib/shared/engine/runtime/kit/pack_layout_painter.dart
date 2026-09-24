@@ -266,7 +266,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   }
 
   void _onChromeFiltersChanged() {
-    if (!mounted || _pageFeedRailIds.isEmpty) return;
+    if (!mounted) return;
+    // Always recompose — `showWhenType` / `hideWhenTypeFilter` need a rebuild
+    // even when this hub has no page-feed rails (Stremio catalog hub).
+    if (_pageFeedRailIds.isEmpty) {
+      setState(() {});
+      return;
+    }
     // Films / TV Shows / Categories must refetch — never peek-or-promote over
     // the previously painted mixed rails (progressive promote skipped non-empty
     // envelopes and soft peek could poison the filtered feed cache).
@@ -1499,12 +1505,44 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   bool _chromeHidesTypeFilterRail() =>
       catalogChromeHidesTypeFilterRails(_pageKey);
 
+  static bool _chromeTypeMatches(String want, String active) {
+    if (want == active) return true;
+    if ((want == 'tv' || want == 'series') &&
+        (active == 'tv' || active == 'series')) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Layout type visibility (`showWhenType` / `showOnlyWhenType`).
+  ///
+  /// - `showWhenType`: hide when a type menu is selected and does not match
+  ///   (`series` ≡ `tv`). When no type menu is selected, still show.
+  /// - `showOnlyWhenType`: show only when that type menu is selected (hide
+  ///   when All / no menu) — used for per-type heroes.
+  bool _chromeShowsWidget(Map<String, dynamic> w) {
+    final active = catalogChromeTypeFilterValue(
+      tabId: _pageKey,
+      pluginId: widget.pluginId,
+    )?.toLowerCase();
+    final only =
+        (w['showOnlyWhenType'] ?? '').toString().trim().toLowerCase();
+    if (only.isNotEmpty) {
+      if (active == null || active.isEmpty) return false;
+      return _chromeTypeMatches(only, active);
+    }
+    final want = (w['showWhenType'] ?? '').toString().trim().toLowerCase();
+    if (want.isEmpty) return true;
+    if (active == null || active.isEmpty) return true;
+    return _chromeTypeMatches(want, active);
+  }
+
   /// Hero bleed rail (VF registered via [VerticalFiltersRegistry.syncFromLayout]).
   List<Widget> _composeSections() {
     // Only reshuffle prefetch claim order when the section tree actually changes.
     final structureSig = [
       for (final w in _widgets)
-        '${w['id']}|${w['rail']}|${w['type']}|${w['hideWhenTypeFilter']}',
+        '${w['id']}|${w['rail']}|${w['type']}|${w['hideWhenTypeFilter']}|${w['showWhenType']}|${w['showOnlyWhenType']}',
     ].join('>');
     if (structureSig != _sectionStructureSig) {
       _sectionStructureSig = structureSig;
@@ -1515,6 +1553,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     for (final w in _widgets) {
       final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
       if (type != LayoutTypes.hero) continue;
+      if (!_chromeShowsWidget(w)) continue;
       heroSpec = w;
       final bleed = (w['bleed'] ?? '').toString().trim();
       if (bleed.isNotEmpty) bleedKey = bleed;
@@ -1544,6 +1583,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
           final id = (w['id'] ?? '').toString().trim();
           final rail = (w['rail'] ?? '').toString().trim();
           if (id != bleedKey && rail != bleedKey) continue;
+          if (!_chromeShowsWidget(w)) continue;
           if (w['hideWhenTypeFilter'] == true &&
               _chromeHidesTypeFilterRail()) {
             break;
@@ -1559,6 +1599,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     for (final w in _widgets) {
       final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
       if (type == LayoutTypes.verticalFilters) continue;
+      if (!_chromeShowsWidget(w)) continue;
       if (identical(w, bleedSpec) &&
           bleedSpec != null &&
           bleedSpec['hideWhenBleed'] == true) {
