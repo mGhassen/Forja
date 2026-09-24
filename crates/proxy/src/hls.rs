@@ -437,18 +437,19 @@ pub async fn hls_proxy_handler(
                 .body(Body::from(body))
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
-        // WAF decoy: #EXTM3U whose only URIs are bare images (not PNG-wrapped TS).
-        if strip != Some("png") && hls_playlist_is_image_bait(&body) {
-            return Response::builder()
-                .status(StatusCode::BAD_GATEWAY)
-                .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from("hls-proxy: rejected image decoy playlist"))
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
-        }
+        // URI ends in .png/.jpg/… — often a WAF stills decoy, but WatchFooty
+        // `wfty.st` (and peers) serve real MPEG-TS under image filenames.
+        // Don't 502 the playlist; rewrite children with strip=png so the
+        // segment path sniffs TS / strips a PNG shell (KissKh path).
+        let effective_strip = if strip == Some("png") || hls_playlist_is_image_bait(&body) {
+            Some("png")
+        } else {
+            strip
+        };
         let port = *state.listen_port.read().await;
         let proxy_base = format!("http://127.0.0.1:{port}/hls-proxy");
-        let rewritten = rewrite_hls_playlist(&body, &target_url, &proxy_base, headers_json, strip);
+        let rewritten =
+            rewrite_hls_playlist(&body, &target_url, &proxy_base, headers_json, effective_strip);
         return Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
@@ -650,6 +651,25 @@ https://cdn.example/seg.ts
     }
 
     #[test]
+    fn image_bait_playlist_rewrites_with_strip_png() {
+        const BODY: &str = "\
+#EXTM3U
+#EXTINF:4,
+https://cdn.example/anon/seg.png
+";
+        assert!(hls_playlist_is_image_bait(BODY));
+        let out = rewrite_hls_playlist(
+            BODY,
+            "https://lb1.wfty.st/secure/tok/pro/slug/1/1/1/playlist.m3u8",
+            "http://127.0.0.1:9/hls-proxy",
+            r#"{"Referer":"https://sportsembed.su/embed/1/slug/pro/1"}"#,
+            Some("png"),
+        );
+        assert!(out.contains("strip=png"), "{out}");
+        assert!(out.contains("seg.png"), "{out}");
+    }
+
+    #[test]
     fn image_bait_playlist_is_detected() {
         const BAIT: &str = "\
 #EXTM3U
@@ -663,13 +683,17 @@ https://cdn.example/lumeflow/y.png
         assert!(!hls_playlist_is_image_bait(
             "#EXTM3U\n#EXTINF:4,\nhttps://lb6.wfty.st/secure/tok/seg.ts\n"
         ));
-        // KissKh-style .png media URIs are bait at this layer; handler skips
-        // when strip=png so wrapped TS still proxies.
+        // .png media URIs classify as image-bait; handler upgrades to strip=png
+        // so MPEG-TS / PNG-wrapped TS (WatchFooty, KissKh) still proxies.
         assert!(hls_playlist_is_image_bait(
             "#EXTM3U\n#EXTINF:3,\n//cdn.example/seg.png\n"
         ));
         assert!(hls_playlist_is_image_bait(
             "#EXTM3U\n#EXTINF:4,\nhttps://p16-common-sign.tiktokcdn-eu.com/tos-x~tplv-tiktokx-origin.image?x=1\n"
+        ));
+        // WatchFooty-style: image filenames that are still playable via strip.
+        assert!(hls_playlist_is_image_bait(
+            "#EXTM3U\n#EXTINF:4,\nhttps://cdn.example/anon/seg.png\n"
         ));
     }
 

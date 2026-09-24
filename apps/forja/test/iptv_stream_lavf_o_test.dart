@@ -4,31 +4,30 @@ import 'package:forja/shared/player/live_sports/live_sports_player_screen.dart';
 
 void main() {
   group('iptvStreamLavfO', () {
-    test('HLS / hls-proxy → reconnect=0', () {
+    test('HLS / progressive → same lavf reconnect (ipdigi)', () {
+      const expected = 'reconnect=1,'
+          'reconnect_at_eof=1,'
+          'reconnect_streamed=1,'
+          'reconnect_on_network_error=1,'
+          'reconnect_delay_max=5';
       expect(
         iptvStreamLavfO(streamUrl: 'https://cdn.example/live/index.m3u8'),
-        'reconnect=0',
+        expected,
       );
       expect(
         iptvStreamLavfO(
           streamUrl:
               'http://127.0.0.1:9/hls-proxy?url=${Uri.encodeComponent('https://cdn.example/a.m3u8')}',
         ),
-        'reconnect=0',
+        expected,
       );
-    });
-
-    test('progressive TS → lavf reconnect', () {
-      final o = iptvStreamLavfO(
-        streamUrl: 'http://portal.example:8080/live/user/pass/1.ts',
+      expect(
+        iptvStreamLavfO(
+          streamUrl: 'http://portal.example:8080/live/user/pass/1.ts',
+        ),
+        expected,
       );
-      expect(o, contains('reconnect=1'));
-      expect(o, contains('reconnect_at_eof=1'));
-      expect(o, contains('reconnect_delay_max=5'));
-    });
-
-    test('null url → progressive reconnect (default)', () {
-      expect(iptvStreamLavfO(), contains('reconnect=1'));
+      expect(iptvStreamLavfO(), expected);
     });
   });
 

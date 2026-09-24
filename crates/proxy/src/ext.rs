@@ -13,9 +13,7 @@ use axum::{
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::hls::{
-    build_hls_upstream_request, hls_playlist_is_image_bait, rewrite_hls_playlist_relative,
-};
+use crate::hls::{build_hls_upstream_request, rewrite_hls_playlist_relative};
 use crate::{forward_response, parse_custom_headers, ProxyState};
 
 const MAX_SESSIONS: usize = 48;
@@ -171,14 +169,9 @@ pub async fn ext_proxy_handler(
                 .body(Body::from(body))
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
-        if hls_playlist_is_image_bait(&body) {
-            return Response::builder()
-                .status(StatusCode::BAD_GATEWAY)
-                .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from("ext-proxy: rejected image decoy playlist"))
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
-        }
+        // Do not reject image-extension playlists here — WatchFooty serves
+        // MPEG-TS under .png names. Ext relative rewrite cannot attach
+        // strip=png; demuxer sniffs. Live sports uses query /hls-proxy.
         let rewritten = rewrite_hls_playlist_relative(&body, &target_url, &session.base);
         return Response::builder()
             .status(StatusCode::OK)

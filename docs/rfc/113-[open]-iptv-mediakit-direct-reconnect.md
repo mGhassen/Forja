@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 12** components · **2 / 9** acceptance (manual QA) |
+| **Progress** | **13 / 13** components · **2 / 10** acceptance (manual QA) |
 | **Current slice** | Full Forja MediaKit live: decode/controller + lavf + grace/goLive |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -31,6 +31,7 @@
 | 10 | R113-C10 | Android Impeller off globally (`EnableImpeller=false` manifest) | ✅ |
 | 11 | R113-C11 | MediaKit live: default `VideoController` (non-ATV); never TextureSW (incl. Windows); no extra live mpv pins | ✅ |
 | 12 | R113-C12 | Live `demuxer-lavf-o` `+igndts` (DAI pts&lt;dts) — Forja live path; restores issue 273 | ✅ |
+| 13 | R113-C13 | Live lavf: always `reconnect=1…delay_max=5` (ipdigi) — supersedes C08 HLS `reconnect=0` ([357](../../issues/357-[open]-iptv-vod-mediakit-ipdigi-parity.md)) | ✅ |
 
 ---
 
@@ -47,6 +48,7 @@
 | 7 | R113-A07 | Progressive MediaKit uses lavf reconnect; HLS keeps `reconnect=0` | ✅ |
 | 8 | R113-A08 | Android Impeller off globally (manifest); MediaKit video paints phone+TV | ⬜ |
 | 9 | R113-A09 | MediaKit live underrun does not soft-reopen via watchdog — grace/goLive only | ⬜ |
+| 10 | R113-A10 | Live lavf string matches ipdigi on HLS + progressive (`reconnect=1…delay_max=5`) — [357](../../issues/357-[open]-iptv-vod-mediakit-ipdigi-parity.md) A03 | ⬜ |
 
 ---
 
@@ -55,13 +57,14 @@
 Replace Forja’s MediaKit Xtream/M3U **continuity proxy** with CDN-direct live playback:
 
 1. Open CDN URL in mpv (keep panel headers if needed).
-2. ffmpeg `stream-lavf-o` reconnect (`reconnect_delay_max=5`) for **progressive TS**; HLS keeps `reconnect=0` (playlist bodies EOF — issue 273).
+2. ffmpeg `stream-lavf-o` reconnect (`reconnect_delay_max=5`) for **all** live MediaKit URLs (progressive + HLS) — ipdigi parity ([357](../../issues/357-[open]-iptv-vod-mediakit-ipdigi-parity.md) T04; C08 HLS `reconnect=0` superseded).
 3. Page-level silent grace (6s / ATV 9s) then `stop`+`open` (`goLive`) — **no** MediaKit live soft-reopen underrun.
 4. Android: Impeller **off** globally (manifest); TV also forces SurfaceTexture producers.
 
 ### Related
 
-- Issue 273 — HLS `reconnect=0` restored (R113-A05); progressive keeps lavf reconnect
+- Issue 273 — HLS cold-open hold / `+igndts` / ABR pin remain; T05 `reconnect=0` superseded by R113-C13 / issue 357 T04
+- Issue 357 — VOD + live lavf ipdigi parity
 - Issue 155 — ATV OOM risk with fat demuxer; soak A04
 - Issue 215 — glyph risk on leanback Skia; soak A08
 - RFC-107 — Exo/AVPlayer/VLC stay; MediaKit live path changes here

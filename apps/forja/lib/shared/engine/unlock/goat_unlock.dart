@@ -227,15 +227,6 @@ class LiveGoatUnlock {
   ) =>
       _probePlayableM3u8(url, headers);
 
-  static bool _isHlsImageBaitUri(String uri) {
-    final path = uri.split('?').first.toLowerCase();
-    if (path.isEmpty) return false;
-    if (RegExp(r'\.(png|jpe?g|gif|webp|svg|image)$').hasMatch(path)) {
-      return true;
-    }
-    return path.contains('tiktokcdn') && path.contains('tplv-tiktokx-origin');
-  }
-
   static bool _looksLikeImageMagic(List<int> bytes) {
     if (bytes.length < 12) return false;
     if (bytes[0] == 0x89 && bytes[1] == 0x50) return true; // PNG
@@ -313,18 +304,13 @@ class LiveGoatUnlock {
 
       final seg = _firstHlsUri(text, mediaUrl);
       if (seg == null || seg.isEmpty) return false;
-      if (_isHlsImageBaitUri(seg)) {
-        debugPrint(
-          '[LiveGoatUnlock] m3u8 probe image-bait URI '
-          '${Uri.tryParse(seg)?.host ?? seg}',
-        );
-        return false;
-      }
       final segResp = await http
           .get(Uri.parse(seg), headers: headers)
           .timeout(const Duration(seconds: 12));
       if (segResp.statusCode < 200 || segResp.statusCode >= 400) return false;
       final bytes = segResp.bodyBytes;
+      // Real WAF stills decoy — reject. MPEG-TS (or other media) behind a
+      // .png/.jpg name (WatchFooty) is playable via /hls-proxy?strip=png.
       if (_looksLikeImageMagic(bytes)) {
         debugPrint(
           '[LiveGoatUnlock] m3u8 probe image-bait magic '
@@ -332,7 +318,8 @@ class LiveGoatUnlock {
         );
         return false;
       }
-      return bytes.isNotEmpty;
+      if (bytes.isEmpty) return false;
+      return true;
     } catch (e) {
       debugPrint('[LiveGoatUnlock] m3u8 probe failed: $e');
       return false;

@@ -9,8 +9,7 @@ mixin _PtPlayerLavf on _PtPlayerEngineCore {
   Future<void> _enginePlay();
   void _applyCacheAheadSample(double aheadSecs, {required String source});
 
-  /// Progressive TS uses [iptvStreamLavfO] reconnect; HLS is `reconnect=0`
-  /// (playlist EOF loop — issue 273).
+  /// [iptvStreamLavfO] — lavf reconnect on (ipdigi parity; progressive + HLS).
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
     String? streamUrl,

@@ -577,7 +577,11 @@ class LivePluginEngine {
     final proxy = LocalServerService();
     await proxy.start();
     if (proxy.port <= 0) return url;
-    return proxy.getHlsProxyUrl(url, headers);
+    // WatchFooty `wfty.st` media playlists list .png/.jpg segment names that
+    // are MPEG-TS — /hls-proxy?strip=png sniffs TS and sets video/mp2t.
+    final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+    final strip = host.contains('wfty.st') ? 'png' : null;
+    return proxy.getHlsProxyUrl(url, headers, stripMode: strip);
   }
 
   static void engineResolveFailed([String? detail]) {

@@ -121,11 +121,9 @@ bool iptvUrlLooksLikeHls(String url) {
   return false;
 }
 
-/// MediaKit `stream-lavf-o` for live open — HLS off (issue 273), progressive on.
+/// MediaKit `stream-lavf-o` — ipdigi parity: lavf reconnect on for all live
+/// URLs (progressive + HLS).
 String iptvStreamLavfO({String? streamUrl}) {
-  if (streamUrl != null && iptvUrlLooksLikeHls(streamUrl)) {
-    return 'reconnect=0';
-  }
   return 'reconnect=1,'
       'reconnect_at_eof=1,'
       'reconnect_streamed=1,'
