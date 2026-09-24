@@ -14,6 +14,7 @@ import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_tv.dar
 import 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -127,6 +128,10 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   }
 
   /// Soft switch — paint clear first, vault/prefs after (issue 351).
+  ///
+  /// Hub catalog clear/bump only when this tab **is** the portals pack hub
+  /// (IPTV channel grid). Live Sports shares the Portals panel but its
+  /// schedule does not depend on the active portal — only Live TV matching.
   Future<void> _selectPortal(String portalKey) async {
     final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
@@ -135,7 +140,12 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     }
     if (!mounted) return;
 
-    // Instant feedback — selected row + empty grid before Keychain/prefs.
+    final hubPluginId =
+        PluginNavRegistry.pluginIdForTabSync(widget.tabId)?.trim() ?? '';
+    final portalScopedHub =
+        hubPluginId.isNotEmpty && hubPluginId == pluginId;
+
+    // Instant feedback — selected row (+ empty IPTV grid before Keychain/prefs).
     final inv =
         ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
     if (inv != null) {
@@ -143,21 +153,30 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
           .read(portalsInventoryProvider(widget.tabId).notifier)
           .applyActiveOptimistic(portalKey);
     }
-    EngineCache.instance.wipePlugin(pluginId);
-    PackLoadedPaint.clearMemosForPlugin(pluginId);
-    final chrome = PackChromeScope.maybeOf(context);
-    chrome?.onClearCatalog();
+    if (portalScopedHub) {
+      EngineCache.instance.wipePlugin(pluginId);
+      PackLoadedPaint.clearMemosForPlugin(pluginId);
+      PackChromeScope.maybeOf(context)?.onClearCatalog();
+    }
 
     await PortalsHost.setActiveKey(portalKey);
     PortalLiveTvSearch.invalidateCache();
     if (!mounted) return;
     invalidatePortalsChrome(ref, widget.tabId);
 
-    // Stamp portalStoreKey into feed params so EngineCache is per-portal.
-    await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
-    if (!mounted) return;
-
-    PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+    if (portalScopedHub) {
+      // Stamp portalStoreKey into feed params so EngineCache is per-portal.
+      await CategoryBarActionHost.liveListFeedParams(
+        preferTabId: widget.tabId,
+      );
+      if (!mounted) return;
+      PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+    } else {
+      // Still stamp global portal key so IPTV is correct if the user switches tabs.
+      unawaited(
+        CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId),
+      );
+    }
 
     unawaited(_warmLiveShelf(portalKey));
 
@@ -170,9 +189,12 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         if (!mounted) return;
         if (!env.ok) {
           ForjaToast.error(env.error?.message ?? 'Could not select portal');
-          PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+          if (portalScopedHub) {
+            PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+          }
           return;
         }
+        if (!portalScopedHub) return;
         // Pack may rewrite active to canonical url|user — re-stamp + soft bump.
         await CategoryBarActionHost.liveListFeedParams(
           preferTabId: widget.tabId,
@@ -183,7 +205,9 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       } catch (e) {
         if (mounted) {
           ForjaToast.error(e.toString());
-          PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+          if (portalScopedHub) {
+            PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+          }
         }
       }
     })());

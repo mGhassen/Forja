@@ -64,6 +64,25 @@ class PackGreenPlayConfig {
   /// Host fallback when the hub pack omits `settings.greenPlay`.
   static const hostFallback = PackGreenPlayConfig();
 
+  /// Forja-only preferred list (Settings UI). Empty preferred = race all enabled.
+  factory PackGreenPlayConfig.forjaPreferred(List<String> preferred) {
+    final prefs = [
+      for (final id in preferred)
+        if (id.trim().isNotEmpty) id.trim(),
+    ];
+    return PackGreenPlayConfig(
+      techAllowlist: const [PackGreenPlayTechs.engine],
+      techPreferred: const [PackGreenPlayTechs.engine],
+      techOrder: const [PackGreenPlayTechs.engine],
+      providers: {
+        PackGreenPlayTechs.engine: PackGreenPlayProviderPrefs(
+          preferred: prefs,
+          order: prefs,
+        ),
+      },
+    );
+  }
+
   final List<String> techAllowlist;
   final List<String> techPreferred;
   final List<String> techOrder;

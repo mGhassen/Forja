@@ -43,21 +43,4 @@
 
 ## Summary
 
-Green Play is pack-owned: each hub declares `settings.greenPlay` (technologies + per-tech providers: allowlist, preferred, order). Users edit under that hub’s Addon settings. Undeclared packs keep today’s Forja-only race of all enabled HTTP plugins.
-
-### Goals
-
-- Multi-tech race: `engine` · `stremio` · `nuvio` · `torrent`
-- Parallel race; preferred pin; order = start order
-- Host stays generic (opaque tech ids; no hub pack-id branches)
-
-### Non-goals
-
-- Sources panel chips driving green Play
-- Host Playback provider-order UI
-- Webstreaming sniff restore
-
-### Related
-
-- Issue [366](../issues/366-[open]-pack-green-play.md)
-- [RFC-089](fixed/089-[fixed]-pack-addon-settings.md)
+Green Play is pack-owned: each hub can declare `settings.greenPlay`. Settings UI is **preferred Forja providers only** (search → add). Preferred are tried first; empty preferred races all enabled Forja plugins. Undeclared packs use the same host fallback.

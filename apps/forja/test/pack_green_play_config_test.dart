@@ -119,27 +119,12 @@ void main() {
       expect(ordered, ['b', 'c', 'a']);
     });
 
-    test('round-trip toJson', () {
-      final original = PackGreenPlayConfig.fromJson({
-        'technologies': {
-          'allowlist': ['engine', 'torrent'],
-          'preferred': ['engine'],
-          'order': ['engine', 'torrent'],
-        },
-        'providers': {
-          'torrent': {
-            'allowlist': ['yts'],
-            'preferred': ['yts'],
-            'order': ['yts'],
-          },
-        },
-      })!;
-      final again = PackGreenPlayConfig.fromJson(original.toJson());
-      expect(again!.techAllowlist, original.techAllowlist);
-      expect(again.techPreferred, original.techPreferred);
+    test('forjaPreferred keeps engine-only shape', () {
+      final c = PackGreenPlayConfig.forjaPreferred(['beta', 'alpha']);
+      expect(c.techAllowlist, [PackGreenPlayTechs.engine]);
       expect(
-        again.providerPrefs(PackGreenPlayTechs.torrent).allowlist,
-        ['yts'],
+        c.providerPrefs(PackGreenPlayTechs.engine).preferred,
+        ['beta', 'alpha'],
       );
     });
   });

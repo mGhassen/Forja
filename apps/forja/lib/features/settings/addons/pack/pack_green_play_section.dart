@@ -5,17 +5,15 @@ import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/packs/settings/pack_green_play_config.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
-import 'package:forja/shared/nuvio/nuvio_service.dart';
-import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
-import 'package:rust/rust.dart';
 
-/// Pack-declared green Play settings (RFC-118).
+/// Pack-declared green Play settings (RFC-118) — preferred Forja providers only.
 ///
-/// Shown when a hub plugin contributing to [addonId] (or listed in [plugins])
-/// declares `settings.greenPlay`.
+/// Shown when a hub plugin declares `settings.greenPlay`.
 class PackGreenPlaySection extends StatefulWidget {
   const PackGreenPlaySection({
     super.key,
@@ -90,12 +88,18 @@ class _PackGreenPlaySectionState extends State<PackGreenPlaySection> {
     });
   }
 
-  Future<void> _save(_GreenPlayTarget target, PackGreenPlayConfig next) async {
+  Future<void> _savePreferred(
+    _GreenPlayTarget target,
+    List<String> preferred,
+  ) async {
+    final next = PackGreenPlayConfig.forjaPreferred(preferred);
     await PackGreenPlayConfig.save(target.plugin.id, next);
     if (!mounted) return;
     setState(() {
       final i = _targets.indexWhere((t) => t.plugin.id == target.plugin.id);
-      if (i >= 0) _targets[i] = _GreenPlayTarget(plugin: target.plugin, config: next);
+      if (i >= 0) {
+        _targets[i] = _GreenPlayTarget(plugin: target.plugin, config: next);
+      }
     });
   }
 
@@ -106,9 +110,10 @@ class _PackGreenPlaySectionState extends State<PackGreenPlaySection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final target in _targets)
-          _GreenPlayEditor(
+          _PreferredForjaEditor(
             target: target,
-            onChanged: (next) => unawaited(_save(target, next)),
+            onChanged: (preferred) =>
+                unawaited(_savePreferred(target, preferred)),
           ),
       ],
     );
@@ -121,105 +126,122 @@ class _GreenPlayTarget {
   final PackGreenPlayConfig config;
 }
 
-class _GreenPlayEditor extends StatefulWidget {
-  const _GreenPlayEditor({
+class _ProviderOption {
+  const _ProviderOption({required this.id, required this.label});
+  final String id;
+  final String label;
+}
+
+class _PreferredForjaEditor extends StatefulWidget {
+  const _PreferredForjaEditor({
     required this.target,
     required this.onChanged,
   });
 
   final _GreenPlayTarget target;
-  final ValueChanged<PackGreenPlayConfig> onChanged;
+  final ValueChanged<List<String>> onChanged;
 
   @override
-  State<_GreenPlayEditor> createState() => _GreenPlayEditorState();
+  State<_PreferredForjaEditor> createState() => _PreferredForjaEditorState();
 }
 
-class _GreenPlayEditorState extends State<_GreenPlayEditor> {
-  late PackGreenPlayConfig _config;
-  Map<String, bool> _techGates = {};
-  Map<String, List<_ProviderOption>> _providerOptions = {};
+class _PreferredForjaEditorState extends State<_PreferredForjaEditor> {
+  List<_ProviderOption> _catalog = const [];
+  late List<String> _preferred;
   bool _ready = false;
 
   @override
   void initState() {
     super.initState();
-    _config = widget.target.config;
-    unawaited(_loadOptions());
+    _preferred = List<String>.from(
+      widget.target.config.providerPrefs(PackGreenPlayTechs.engine).preferred,
+    );
+    unawaited(_loadCatalog());
   }
 
   @override
-  void didUpdateWidget(covariant _GreenPlayEditor oldWidget) {
+  void didUpdateWidget(covariant _PreferredForjaEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.target.config != widget.target.config) {
-      _config = widget.target.config;
+    final next = widget.target.config
+        .providerPrefs(PackGreenPlayTechs.engine)
+        .preferred;
+    if (!_listEq(_preferred, next)) {
+      _preferred = List<String>.from(next);
     }
   }
 
-  Future<void> _loadOptions() async {
-    final gates = <String, bool>{
-      PackGreenPlayTechs.engine: await PlaySourceEffective.engine(),
-      PackGreenPlayTechs.stremio: await PlaySourceEffective.stremio(),
-      PackGreenPlayTechs.nuvio: await PlaySourceEffective.nuvio(),
-      PackGreenPlayTechs.torrent: await PlaySourceEffective.torrent(),
-    };
-
-    final options = <String, List<_ProviderOption>>{};
-
+  Future<void> _loadCatalog() async {
     final packs = await EngineService.instance.listSourcesPanelPacks();
     final enabled = enabledEnginePluginIds(packs);
-    options[PackGreenPlayTechs.engine] = [
-      for (final pack in packs)
-        if (pack.enabled)
-          for (final p in pack.plugins)
-            if (p.enabled && p.isHttp && enabled.contains(p.id))
-              _ProviderOption(
-                id: p.id,
-                label: p.name.trim().isNotEmpty ? p.name : p.id,
-              ),
-    ];
-
-    final settings = SettingsService();
-    final stremioAddons = await settings.getStremioAddons();
-    options[PackGreenPlayTechs.stremio] = [
-      for (final addon in stremioAddons)
-        if (StremioAddonFeatures.isEnabled(addon))
-          () {
-            final base = SettingsService.normalizeStremioAddonBaseUrl(
-              (addon['baseUrl'] ?? addon['url'] ?? '').toString(),
-            );
-            if (base.isEmpty) return null;
-            final name =
-                (addon['name'] ?? addon['manifestName'] ?? base).toString();
-            return _ProviderOption(id: base, label: name);
-          }(),
-    ].whereType<_ProviderOption>().toList();
-
-    final nuvioAddons = await NuvioService.instance.listAddons();
-    options[PackGreenPlayTechs.nuvio] = [
-      for (final addon in nuvioAddons)
-        for (final s in addon.scrapers)
-          if (s.enabled)
-            _ProviderOption(
-              id: s.id,
-              label: s.name.trim().isNotEmpty ? s.name : s.id,
-            ),
-    ];
-
-    options[PackGreenPlayTechs.torrent] = [
-      for (final id in TorrentSearchProviders.all)
-        _ProviderOption(id: id, label: TorrentSearchProviders.label(id)),
-    ];
-
+    final out = <_ProviderOption>[];
+    final seen = <String>{};
+    for (final pack in packs) {
+      if (!pack.enabled) continue;
+      for (final p in pack.plugins) {
+        if (!p.enabled || !p.isHttp || !enabled.contains(p.id)) continue;
+        if (!seen.add(p.id)) continue;
+        out.add(
+          _ProviderOption(
+            id: p.id,
+            label: p.name.trim().isNotEmpty ? p.name : p.id,
+          ),
+        );
+      }
+    }
+    out.sort(
+      (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()),
+    );
     if (!mounted) return;
     setState(() {
-      _techGates = gates;
-      _providerOptions = options;
+      _catalog = out;
       _ready = true;
     });
   }
 
-  void _emit(PackGreenPlayConfig next) {
-    setState(() => _config = next);
+  String _labelFor(String id) {
+    for (final o in _catalog) {
+      if (o.id == id) return o.label;
+    }
+    return id;
+  }
+
+  Future<void> _openAddDialog() async {
+    final picked = await showDialog<String>(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: true,
+      builder: (ctx) => ShellScope.rehost(
+        context,
+        _PreferredProviderSearchDialog(
+          catalog: [
+            for (final o in _catalog)
+              if (!_preferred.contains(o.id)) o,
+          ],
+        ),
+      ),
+    );
+    if (picked == null || picked.isEmpty || !mounted) return;
+    if (_preferred.contains(picked)) return;
+    final next = [..._preferred, picked];
+    setState(() => _preferred = next);
+    widget.onChanged(next);
+  }
+
+  void _remove(String id) {
+    final next = [for (final p in _preferred) if (p != id) p];
+    setState(() => _preferred = next);
+    widget.onChanged(next);
+  }
+
+  void _reorder(int oldIndex, int newIndex) {
+    if (oldIndex < 0 || oldIndex >= _preferred.length) return;
+    var ni = newIndex;
+    if (ni > oldIndex) ni--;
+    if (ni < 0 || ni >= _preferred.length) return;
+    final next = List<String>.from(_preferred);
+    final item = next.removeAt(oldIndex);
+    next.insert(ni, item);
+    setState(() => _preferred = next);
     widget.onChanged(next);
   }
 
@@ -234,385 +256,182 @@ class _GreenPlayEditorState extends State<_GreenPlayEditor> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Text(
-            'Technologies and providers for the green Play button on this hub. '
-            'Preferred run first; order is start order. Empty provider list = all enabled.',
+            'Preferred Forja providers for the green Play button. '
+            'They are tried first; empty list races all enabled Forja providers.',
             style: TextStyle(color: muted, fontSize: 13, height: 1.35),
           ),
         ),
-        _TechAllowlistEditor(
-          config: _config,
-          gates: _techGates,
-          onChanged: _emit,
-        ),
-        for (final tech in PackGreenPlayTechs.all)
-          if (_config.techAllowlist.isEmpty ||
-              _config.techAllowlist.contains(tech))
-            _ProviderAllowlistEditor(
-              tech: tech,
-              config: _config,
-              options: _providerOptions[tech] ?? const [],
-              gateOn: _techGates[tech] == true,
-              onChanged: _emit,
+        if (_preferred.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              'No preferred providers — green Play races every enabled Forja plugin.',
+              style: TextStyle(color: muted, fontSize: 13),
             ),
-      ],
-    );
-  }
-}
-
-class _ProviderOption {
-  const _ProviderOption({required this.id, required this.label});
-  final String id;
-  final String label;
-}
-
-class _TechAllowlistEditor extends StatelessWidget {
-  const _TechAllowlistEditor({
-    required this.config,
-    required this.gates,
-    required this.onChanged,
-  });
-
-  final PackGreenPlayConfig config;
-  final Map<String, bool> gates;
-  final ValueChanged<PackGreenPlayConfig> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final allow = config.techAllowlist.isEmpty
-        ? List<String>.from(PackGreenPlayTechs.all)
-        : List<String>.from(config.techAllowlist);
-    final order = config.techOrder.isEmpty
-        ? List<String>.from(allow)
-        : [
-            for (final t in config.techOrder)
-              if (allow.contains(t)) t,
-            for (final t in allow)
-              if (!config.techOrder.contains(t)) t,
-          ];
-    final preferred = config.techPreferred.toSet();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text(
-            'Technologies',
-            style: TextStyle(
-              color: ForjaShellColors.textPrimary,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-        ),
-        ReorderableListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          buildDefaultDragHandles: false,
-          itemCount: order.length,
-          onReorder: (oldIndex, newIndex) {
-            final working = List<String>.from(order);
-            if (oldIndex < 0 || oldIndex >= working.length) return;
-            var ni = newIndex;
-            if (ni > oldIndex) ni--;
-            if (ni < 0 || ni >= working.length) return;
-            final item = working.removeAt(oldIndex);
-            working.insert(ni, item);
-            onChanged(
-              PackGreenPlayConfig(
-                techAllowlist: allow,
-                techPreferred: [
-                  for (final t in config.techPreferred)
-                    if (working.contains(t)) t,
-                ],
-                techOrder: working,
-                providers: config.providers,
-              ),
-            );
-          },
-          itemBuilder: (context, index) {
-            // Only show allowlisted techs in drag order; others via checkbox below.
-            final tech = order[index];
-            final on = true;
-            final gate = gates[tech] == true;
-            final isPreferred = preferred.contains(tech);
-            return ListTile(
-              key: ValueKey('tech-$tech'),
-              dense: true,
-              title: Text(PackGreenPlayTechs.label(tech)),
-              subtitle: Text(
-                gate
-                    ? (isPreferred ? 'Preferred · in race' : 'In race')
-                    : 'Play source off — kept in settings, skipped at play',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-              leading: Checkbox(
-                value: on,
-                onChanged: (v) {
-                  if (v == true) return;
-                  final nextAllow = List<String>.from(allow)..remove(tech);
-                  if (nextAllow.isEmpty) return;
-                  onChanged(
-                    PackGreenPlayConfig(
-                      techAllowlist: nextAllow,
-                      techPreferred: [
-                        for (final t in config.techPreferred)
-                          if (nextAllow.contains(t)) t,
-                      ],
-                      techOrder: [
-                        for (final t in order)
-                          if (nextAllow.contains(t)) t,
-                      ],
-                      providers: config.providers,
+          )
+        else
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            itemCount: _preferred.length,
+            onReorder: _reorder,
+            itemBuilder: (context, index) {
+              final id = _preferred[index];
+              return ListTile(
+                key: ValueKey('pref-$id'),
+                dense: true,
+                title: Text(_labelFor(id)),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Remove',
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      onPressed: () => _remove(id),
                     ),
-                  );
-                },
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ForjaShellChip(
-                    label: 'Preferred',
-                    selected: isPreferred,
-                    onTap: () {
-                      final nextPref = List<String>.from(
-                        config.techPreferred,
-                      );
-                      if (isPreferred) {
-                        nextPref.remove(tech);
-                      } else if (!nextPref.contains(tech)) {
-                        nextPref.add(tech);
-                      }
-                      onChanged(
-                        PackGreenPlayConfig(
-                          techAllowlist: allow,
-                          techPreferred: nextPref,
-                          techOrder: order,
-                          providers: config.providers,
-                        ),
-                      );
-                    },
-                  ),
-                  ReorderableDragStartListener(
-                    index: index,
-                    child: const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Icon(Icons.drag_handle_rounded),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        // Off techs — tap to add back into the race.
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final tech in PackGreenPlayTechs.all)
-              if (!allow.contains(tech))
-                ForjaShellChip(
-                  label: '+ ${PackGreenPlayTechs.label(tech)}',
-                  selected: false,
-                  onTap: () {
-                    final nextAllow = [...allow, tech];
-                    onChanged(
-                      PackGreenPlayConfig(
-                        techAllowlist: nextAllow,
-                        techPreferred: config.techPreferred,
-                        techOrder: [...order, tech],
-                        providers: config.providers,
-                      ),
-                    );
-                  },
-                ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _ProviderAllowlistEditor extends StatelessWidget {
-  const _ProviderAllowlistEditor({
-    required this.tech,
-    required this.config,
-    required this.options,
-    required this.gateOn,
-    required this.onChanged,
-  });
-
-  final String tech;
-  final PackGreenPlayConfig config;
-  final List<_ProviderOption> options;
-  final bool gateOn;
-  final ValueChanged<PackGreenPlayConfig> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    if (options.isEmpty) return const SizedBox.shrink();
-    final prefs = config.providerPrefs(tech);
-    final allIds = [for (final o in options) o.id];
-    // Empty allowlist = all enabled.
-    final allowAll = prefs.allowlist.isEmpty;
-    final allow = allowAll ? allIds : [
-      for (final id in prefs.allowlist)
-        if (allIds.contains(id)) id,
-    ];
-    final order = [
-      for (final id in prefs.order)
-        if (allow.contains(id)) id,
-      for (final id in allow)
-        if (!prefs.order.contains(id)) id,
-    ];
-    final preferred = prefs.preferred.toSet();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text(
-            '${PackGreenPlayTechs.label(tech)} providers'
-            '${gateOn ? '' : ' (play source off)'}',
-            style: TextStyle(
-              color: ForjaShellColors.textPrimary,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-        ),
-        ReorderableListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          buildDefaultDragHandles: false,
-          itemCount: options.length,
-          onReorder: (oldIndex, newIndex) {
-            final working = List<String>.from(order);
-            if (oldIndex < 0 || oldIndex >= working.length) return;
-            var ni = newIndex;
-            if (ni > oldIndex) ni--;
-            if (ni < 0 || ni > working.length) return;
-            // Map visual index (all options) to allow-order — only reorder allowlisted.
-            final visualOrdered = [
-              for (final id in order) id,
-              for (final o in options)
-                if (!order.contains(o.id)) o.id,
-            ];
-            if (oldIndex >= visualOrdered.length) return;
-            if (ni > visualOrdered.length) ni = visualOrdered.length;
-            final item = visualOrdered.removeAt(oldIndex);
-            visualOrdered.insert(ni.clamp(0, visualOrdered.length), item);
-            final nextOrder = [
-              for (final id in visualOrdered)
-                if (allow.contains(id)) id,
-            ];
-            _emit(
-              allowlist: allowAll ? const [] : allow,
-              preferred: prefs.preferred,
-              order: nextOrder,
-            );
-          },
-          itemBuilder: (context, index) {
-            final opt = options[index];
-            final on = allow.contains(opt.id);
-            final isPreferred = preferred.contains(opt.id);
-            return ListTile(
-              key: ValueKey('$tech-${opt.id}'),
-              dense: true,
-              title: Text(opt.label),
-              subtitle: isPreferred
-                  ? const Text('Preferred', style: TextStyle(fontSize: 12))
-                  : null,
-              leading: Checkbox(
-                value: on,
-                onChanged: (v) {
-                  var nextAllow = List<String>.from(allow);
-                  if (v == true) {
-                    if (!nextAllow.contains(opt.id)) nextAllow.add(opt.id);
-                  } else {
-                    nextAllow.remove(opt.id);
-                  }
-                  final nextIsAll = nextAllow.length == allIds.length &&
-                      allIds.every(nextAllow.contains);
-                  _emit(
-                    allowlist: nextIsAll ? const [] : nextAllow,
-                    preferred: [
-                      for (final id in prefs.preferred)
-                        if (nextAllow.contains(id)) id,
-                    ],
-                    order: [
-                      for (final id in order)
-                        if (nextAllow.contains(id)) id,
-                      for (final id in nextAllow)
-                        if (!order.contains(id)) id,
-                    ],
-                  );
-                },
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ForjaShellChip(
-                    label: 'Preferred',
-                    selected: isPreferred,
-                    onTap: !on
-                        ? null
-                        : () {
-                            final nextPref = List<String>.from(prefs.preferred);
-                            if (isPreferred) {
-                              nextPref.remove(opt.id);
-                            } else if (!nextPref.contains(opt.id)) {
-                              nextPref.add(opt.id);
-                            }
-                            _emit(
-                              allowlist: allowAll ? const [] : allow,
-                              preferred: nextPref,
-                              order: order,
-                            );
-                          },
-                  ),
-                  if (on)
                     ReorderableDragStartListener(
                       index: index,
                       child: const Padding(
-                        padding: EdgeInsets.only(left: 8),
+                        padding: EdgeInsets.only(left: 4),
                         child: Icon(Icons.drag_handle_rounded),
                       ),
                     ),
-                ],
-              ),
-            );
-          },
+                  ],
+                ),
+              );
+            },
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ForjaShellChip(
+              label: 'Add preferred',
+              selected: false,
+              icon: Icons.add_rounded,
+              onTap: _catalog.length <= _preferred.length
+                  ? null
+                  : () => unawaited(_openAddDialog()),
+            ),
+          ),
         ),
       ],
     );
   }
+}
 
-  void _emit({
-    required List<String> allowlist,
-    required List<String> preferred,
-    required List<String> order,
-  }) {
-    final providers = Map<String, PackGreenPlayProviderPrefs>.from(
-      config.providers,
-    );
-    providers[tech] = PackGreenPlayProviderPrefs(
-      allowlist: allowlist,
-      preferred: preferred,
-      order: order,
-    );
-    onChanged(
-      PackGreenPlayConfig(
-        techAllowlist: config.techAllowlist,
-        techPreferred: config.techPreferred,
-        techOrder: config.techOrder,
-        providers: providers,
+class _PreferredProviderSearchDialog extends StatefulWidget {
+  const _PreferredProviderSearchDialog({required this.catalog});
+
+  final List<_ProviderOption> catalog;
+
+  @override
+  State<_PreferredProviderSearchDialog> createState() =>
+      _PreferredProviderSearchDialogState();
+}
+
+class _PreferredProviderSearchDialogState
+    extends State<_PreferredProviderSearchDialog> {
+  final _query = TextEditingController();
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _query.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  List<_ProviderOption> get _filtered {
+    final q = _query.text.trim().toLowerCase();
+    if (q.isEmpty) return widget.catalog;
+    return [
+      for (final o in widget.catalog)
+        if (o.label.toLowerCase().contains(q) ||
+            o.id.toLowerCase().contains(q))
+          o,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final maxH = SettingsTokens.dialogMaxHeightOf(context, size.height);
+    final maxW = SettingsTokens.dialogMaxWidthOf(context, size.width);
+    final filtered = _filtered;
+
+    return AlertDialog(
+      backgroundColor: ForjaShellColors.surfaceElevated,
+      title: const Text('Add preferred provider'),
+      content: SizedBox(
+        width: maxW,
+        height: maxH * 0.7,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SettingsTextField(
+              controller: _query,
+              label: 'Search',
+              hint: 'Provider name',
+              autofocus: true,
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        widget.catalog.isEmpty
+                            ? 'No Forja providers enabled'
+                            : 'No matches',
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scrollController,
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final o = filtered[index];
+                        return ListTile(
+                          dense: true,
+                          title: Text(o.label),
+                          subtitle: Text(
+                            o.id,
+                            style: TextStyle(
+                              color: ForjaShellColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                          onTap: () => Navigator.of(context).pop(o.id),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
+}
+
+bool _listEq(List<String> a, List<String> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
