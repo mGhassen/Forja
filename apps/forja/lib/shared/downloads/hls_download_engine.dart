@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/downloads/download_speed_sampler.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:pointycastle/export.dart' as pc;
 
@@ -95,14 +96,23 @@ class HlsDownloadEngine {
       totalBytesWritten += initBytes.length;
     }
 
-    var bytesInLastSecond = 0;
-    var lastSpeedCalc = DateTime.now();
+    final speedSampler = DownloadSpeedSampler();
+    var lastMetaWrite = DateTime.fromMillisecondsSinceEpoch(0);
+    var segmentsSinceMeta = 0;
 
     try {
       for (var i = startSegmentIndex; i < segments.length; i++) {
         if (isPausedOrCanceled()) {
           await sink.flush();
           await sink.close();
+          // Persist resume cursor on pause/cancel.
+          try {
+            await metaFile.writeAsString(jsonEncode({
+              'lastSegmentIndex': i,
+              'totalSegments': segments.length,
+              'bytesWritten': totalBytesWritten,
+            }));
+          } catch (_) {}
           return;
         }
 
@@ -123,32 +133,32 @@ class HlsDownloadEngine {
 
         sink.add(chunkBytes);
         totalBytesWritten += chunkBytes.length;
-        bytesInLastSecond += chunkBytes.length;
+        speedSampler.addBytes(chunkBytes.length);
 
         final avgChunkSize = totalBytesWritten / (i + 1);
         final estimatedTotalBytes = (avgChunkSize * segments.length).round();
+        final speed = speedSampler.speedBytesPerSec;
+        final remaining = estimatedTotalBytes > totalBytesWritten
+            ? estimatedTotalBytes - totalBytesWritten
+            : 0;
+        final eta = speedSampler.etaSecondsFor(remaining);
 
+        segmentsSinceMeta++;
         final now = DateTime.now();
-        final elapsed = now.difference(lastSpeedCalc).inMilliseconds;
-
-        var speed = task.speedBytesPerSec;
-        if (elapsed >= 1000) {
-          speed = bytesInLastSecond / (elapsed / 1000.0);
-          bytesInLastSecond = 0;
-          lastSpeedCalc = now;
+        final metaDue = segmentsSinceMeta >= 5 ||
+            now.difference(lastMetaWrite).inMilliseconds >= 2000;
+        if (metaDue) {
+          await metaFile.writeAsString(jsonEncode({
+            'lastSegmentIndex': i + 1,
+            'totalSegments': segments.length,
+            'bytesWritten': totalBytesWritten,
+          }));
+          lastMetaWrite = now;
+          segmentsSinceMeta = 0;
         }
 
-        int? eta;
-        if (speed > 0 && estimatedTotalBytes > totalBytesWritten) {
-          eta = ((estimatedTotalBytes - totalBytesWritten) / speed).ceil();
-        }
-
-        await metaFile.writeAsString(jsonEncode({
-          'lastSegmentIndex': i + 1,
-          'totalSegments': segments.length,
-          'bytesWritten': totalBytesWritten,
-        }));
-
+        // Always report progress; sampler holds last rate between 1s windows
+        // so speed/ETA do not flash back to 0 after every segment.
         onProgress(task.copyWith(
           status: DownloadStatus.downloading,
           receivedBytes: totalBytesWritten,

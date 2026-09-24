@@ -87,7 +87,7 @@ class DownloadTask {
       status == DownloadStatus.paused;
 
   String get speedLabel {
-    if (speedBytesPerSec <= 0) return '0 KB/s';
+    if (speedBytesPerSec <= 0) return '…';
     final mbps = speedBytesPerSec / 1024 / 1024;
     return mbps >= 1.0
         ? '${mbps.toStringAsFixed(2)} MB/s'

@@ -33,7 +33,7 @@ HTTP/HLS media files are saved.
 
 | Tab | What you see |
 |-----|----------------|
-| **Active** | Queued, downloading, paused, or failed items — progress, speed, pause / resume / retry / cancel |
+| **Active** | Queued, downloading, paused, or failed items — progress, speed, ETA, pause / resume / retry / cancel |
 | **Completed** | Finished files — play offline, delete one, or delete all |
 
 The header is a storage meter: offline library vs other space on the volume vs free, with the downloads folder path underneath. On desktop and phone, **Change** opens a folder picker for where new downloads save; **Default** restores the usual Downloads/Forja (or Documents) folder. Existing completed files stay where they were saved.

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **15 / 18** tasks (2 deferred) · **12 / 12** acceptance |
+| **Progress** | **16 / 19** tasks (2 deferred) · **12 / 12** acceptance |
 | **Current slice** | Phase 1 + integrity follow-ups ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -38,6 +38,7 @@
 | 16 | I365-T16 | Sources card download progress + offline stripes; Filters Offline / Online | ✅ |
 | 17 | I365-T17 | Corrupt Range resume + offline play stream-hop ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) | 🔄 |
 | 18 | I365-T18 | Sources active-download rail: Pause / Resume + delete (X), not Download again | ✅ |
+| 19 | I365-T19 | Active speed/ETA flash every second ([379](fixed/379-[fixed]-vod-download-speed-eta-flash.md)) | ✅ |
 
 ---
 

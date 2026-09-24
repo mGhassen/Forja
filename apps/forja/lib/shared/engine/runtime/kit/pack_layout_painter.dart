@@ -127,6 +127,16 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     _scroll.addListener(_publishScroll);
     PluginRegistry.hubFeedEpoch.addListener(_onHubFeedEpoch);
     listFeedEpochListenable.addListener(_onListFeedEpoch);
+    // Reset chrome scroll fade after mount — never from dispose (finalizeTree
+    // locks the tree; notifying KitChromeTopBar asserts and can blank the hub).
+    final tab = widget.tabId?.trim();
+    if (tab != null && tab.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final offset = ShellBus.hubScrollOffsetFor(tab);
+        if (offset.value != 0) offset.value = 0;
+      });
+    }
     // Sync shell from EngineCache when boot prefetch / prior visit warmed layout.
     final warmed = _tryApplyCachedLayout();
     unawaited(_loadPage(keepPainted: warmed));
@@ -209,7 +219,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final tab = widget.tabId?.trim();
     if (tab != null && tab.isNotEmpty) {
       VerticalFiltersRegistry.unregister(tab);
-      ShellBus.hubScrollOffsetFor(tab).value = 0;
+      // Do not set ShellBus.hubScrollOffsetFor here — ValueListenableBuilder in
+      // the top bar is still mounted; notify during finalizeTree asserts
+      // ("widget tree was locked") and aborts hub remount paint.
       // Drop tab TV defaults — hero may have merged defaultFocus into the same id.
       TvHeroActions.unbind(tab);
       ShellTvFocusCoordinator.setTabPageScroll(tab, null);

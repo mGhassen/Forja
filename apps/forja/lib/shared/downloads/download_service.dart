@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_path_helper.dart';
+import 'package:forja/shared/downloads/download_speed_sampler.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/hls_download_engine.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
@@ -24,6 +25,10 @@ class DownloadService {
       ValueNotifier<List<DownloadTask>>([]);
   bool _isInitialized = false;
   Completer<void>? _initCompleter;
+
+  /// Progress ticks only schedule a write; status changes flush immediately.
+  static const Duration _progressPersistInterval = Duration(seconds: 5);
+  Timer? _progressPersistTimer;
 
   final Map<String, HttpClientRequest> _httpRequests = {};
   final Map<String, StreamSubscription<List<int>>> _httpSubscriptions = {};
@@ -128,19 +133,43 @@ class DownloadService {
     }
   }
 
+  void _persistTasksNow() {
+    _progressPersistTimer?.cancel();
+    _progressPersistTimer = null;
+    unawaited(_persistTasks());
+  }
+
+  void _scheduleProgressPersist() {
+    if (_progressPersistTimer?.isActive ?? false) return;
+    _progressPersistTimer = Timer(_progressPersistInterval, () {
+      _progressPersistTimer = null;
+      unawaited(_persistTasks());
+    });
+  }
+
   void _updateTask(DownloadTask updated) {
     final current = List<DownloadTask>.from(tasksNotifier.value);
     final idx = current.indexWhere((t) => t.id == updated.id);
+    final prev = idx != -1 ? current[idx] : null;
+    final statusChanged = prev == null || prev.status != updated.status;
+    // Byte progress while downloading — keep UI live, throttle disk JSON.
+    final progressOnly =
+        !statusChanged && updated.status == DownloadStatus.downloading;
+
     if (idx != -1) {
       current[idx] = updated;
       tasksNotifier.value = current;
-      _persistTasks();
+      if (progressOnly) {
+        _scheduleProgressPersist();
+      } else {
+        _persistTasksNow();
+      }
     } else if (updated.isActive || updated.isFailed) {
       // Recover when a concurrent init load wiped the in-memory row while the
       // HTTP/HLS transfer was still running.
       current.insert(0, updated);
       tasksNotifier.value = current;
-      _persistTasks();
+      _persistTasksNow();
       debugPrint(
         '[DownloadService] Re-attached orphaned task ${updated.id} '
         '(${updated.status.name})',
@@ -588,8 +617,7 @@ class DownloadService {
       final outFile = activePart;
 
       var receivedSoFar = existingBytes;
-      var bytesInLastSecond = 0;
-      var lastSpeedCalc = DateTime.now();
+      final speedSampler = DownloadSpeedSampler();
       var sniffedHead = existingBytes > 0;
       var abortAfterSniff = false;
       final headBuffer = <int>[];
@@ -643,7 +671,7 @@ class DownloadService {
               // Flush buffered head into the file once.
               sink.add(headBuffer);
               receivedSoFar += headBuffer.length;
-              bytesInLastSecond += headBuffer.length;
+              speedSampler.addBytes(headBuffer.length);
               headBuffer.clear();
               return;
             }
@@ -652,30 +680,22 @@ class DownloadService {
 
           sink.add(chunk);
           receivedSoFar += chunk.length;
-          bytesInLastSecond += chunk.length;
+          final windowClosed = speedSampler.addBytes(chunk.length);
+          if (!windowClosed) return;
 
-          final now = DateTime.now();
-          final elapsed = now.difference(lastSpeedCalc).inMilliseconds;
+          final speed = speedSampler.speedBytesPerSec;
+          final remaining =
+              totalBytes > receivedSoFar ? totalBytes - receivedSoFar : 0;
+          final eta = speedSampler.etaSecondsFor(remaining);
 
-          if (elapsed >= 1000) {
-            final speed = bytesInLastSecond / (elapsed / 1000.0);
-            bytesInLastSecond = 0;
-            lastSpeedCalc = now;
-
-            int? eta;
-            if (speed > 0 && totalBytes > receivedSoFar) {
-              eta = ((totalBytes - receivedSoFar) / speed).ceil();
-            }
-
-            _updateTask(task.copyWith(
-              status: DownloadStatus.downloading,
-              receivedBytes: receivedSoFar,
-              totalBytes: totalBytes > 0 ? totalBytes : receivedSoFar,
-              speedBytesPerSec: speed,
-              etaSeconds: eta,
-              error: null,
-            ));
-          }
+          _updateTask(task.copyWith(
+            status: DownloadStatus.downloading,
+            receivedBytes: receivedSoFar,
+            totalBytes: totalBytes > 0 ? totalBytes : receivedSoFar,
+            speedBytesPerSec: speed,
+            etaSeconds: eta,
+            error: null,
+          ));
         },
         onDone: () async {
           if (abortAfterSniff) {

@@ -369,6 +369,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
           (tabId != null ? navDestinationFor(tabId)?.label : null)?.trim();
       final name = (tabName != null && tabName.isNotEmpty) ? tabName : 'Navbar';
       ForjaToast.info('Reloading $name…');
+      // Abort in-flight hub catalog / flutter_js forks before wipe + remount so
+      // the new painter's layout is not stuck behind dead Stremio rail work
+      // (blank hub after hold-to-reload).
+      EngineService.instance.cancelCatalog();
+      EngineService.instance.cancelLiveCatalog();
       for (final hubTabId in PluginNavRegistry.destinations.keys) {
         final id = PluginNavRegistry.pluginIdForTabSync(hubTabId);
         if (id != null && id.isNotEmpty) {
