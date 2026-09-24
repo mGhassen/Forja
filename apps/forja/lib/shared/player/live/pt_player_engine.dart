@@ -1092,18 +1092,24 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       if (l.level != 'error' && l.level != 'fatal' && l.level != 'warn') {
         return;
       }
+      // ffmpeg still logs "Stream ends prematurely" / reset while lavf
+      // reconnect stitches Xtream progressive TS. ipdigi never recovers from
+      // log lines — only from completed/error. Driving grace/goLive here
+      // caused ~10s reconnect churn + VT ignore spam (issue 362).
       if (text.contains('ends prematurely') ||
           text.contains('end of file') ||
           text.contains('connection reset') ||
           text.contains('connection refused') ||
           text.contains('connection timed out')) {
-        debugPrint('[IPTV Player] mpv log: ${l.level} ${l.prefix}: ${l.text}');
-        _noteSocketTrouble(l.text);
+        debugPrint(
+          '[IPTV Player] mpv log (lavf owns): ${l.level} ${l.prefix}: ${l.text}',
+        );
       }
     });
   }
 
-  /// Socket blip: live MediaKit uses silent grace → goLive (RFC-113).
+  /// Socket blip from Dart error stream (not mpv logs).
+  /// Live MediaKit: silent grace → goLive (RFC-113). ipdigi parity.
   void _noteSocketTrouble(String what) {
     _armTransientHwDecodeIgnore();
     // VOD MediaKit: lavf reconnect owns mid-stream truncations (ipdigi parity).

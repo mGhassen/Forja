@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 13** components · **2 / 10** acceptance (manual QA) |
+| **Progress** | **14 / 14** components · **2 / 10** acceptance (manual QA) |
 | **Current slice** | Full Forja MediaKit live: decode/controller + lavf + grace/goLive |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -32,6 +32,7 @@
 | 11 | R113-C11 | MediaKit live: default `VideoController` (non-ATV); never TextureSW (incl. Windows); no extra live mpv pins | ✅ |
 | 12 | R113-C12 | Live `demuxer-lavf-o` `+igndts` (DAI pts&lt;dts) — Forja live path; restores issue 273 | ✅ |
 | 13 | R113-C13 | Live lavf: always `reconnect=1…delay_max=5` (ipdigi) — supersedes C08 HLS `reconnect=0` ([357](../../issues/357-[open]-iptv-vod-mediakit-ipdigi-parity.md)) | ✅ |
+| 14 | R113-C14 | MediaKit: never grace/goLive from mpv log premature-EOF / reset — lavf owns; only `completed`/`error` ([362](../../issues/fixed/362-[fixed]-iptv-mediakit-log-eof-grace-storm.md)) | ✅ |
 
 ---
 
@@ -40,7 +41,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R113-A01 | Desktop MediaKit Xtream TS: `direct open`, zero `[IPTV Proxy]`, ≥10 min | ⬜ |
-| 2 | R113-A02 | Panel EOF: silent grace recovers without soft-reopen storm / replay loop | ⬜ |
+| 2 | R113-A02 | Panel EOF: lavf reconnect silent (log `lavf owns`); grace/goLive only on Dart `completed`/`error` — no ~10s log→grace storm ([362](../../issues/fixed/362-[fixed]-iptv-mediakit-log-eof-grace-storm.md)) | ⬜ |
 | 3 | R113-A03 | Grace fail → goLive reopen then ok or ended — not 1Hz skip-recovery spam | ⬜ |
 | 4 | R113-A04 | ATV MediaKit: Forja live demuxer bytes; cache-on-disk=no; grace 9s / max 1 goLive | ⬜ |
 | 5 | R113-A05 | HLS MediaKit still `reconnect=0` (Forja issue 273) | ✅ |
@@ -58,7 +59,7 @@ Replace Forja’s MediaKit Xtream/M3U **continuity proxy** with CDN-direct live 
 
 1. Open CDN URL in mpv (keep panel headers if needed).
 2. ffmpeg `stream-lavf-o` reconnect (`reconnect_delay_max=5`) for **all** live MediaKit URLs (progressive + HLS) — ipdigi parity ([357](../../issues/357-[open]-iptv-vod-mediakit-ipdigi-parity.md) T04; C08 HLS `reconnect=0` superseded).
-3. Page-level silent grace (6s / ATV 9s) then `stop`+`open` (`goLive`) — **no** MediaKit live soft-reopen underrun.
+3. Page-level silent grace (6s / ATV 9s) then `stop`+`open` (`goLive`) on Dart `completed`/`error` only — **not** from ffmpeg log premature-EOF ([362](../../issues/fixed/362-[fixed]-iptv-mediakit-log-eof-grace-storm.md)); **no** MediaKit live soft-reopen underrun.
 4. Android: Impeller **off** globally (manifest); TV also forces SurfaceTexture producers.
 
 ### Related

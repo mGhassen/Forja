@@ -50,3 +50,4 @@ Forja IPTV Movies/Series used a **lean** MediaKit VOD profile from [163](163-[op
 - [187](187-[open]-android-tv-mediakit-vod-cache-empty.md) — Home/Movies MediaKit `cache-pause=yes` (same refill idea)
 - [273](fixed/273-[fixed]-iptv-hls-cold-open-watchdog-kill.md) — HLS cold-open / `+igndts` / ABR pin (T05 `reconnect=0` superseded by T04)
 - [RFC-113](../rfc/113-[open]-iptv-mediakit-direct-reconnect.md) — lavf reconnect (live)
+- [362](fixed/362-[fixed]-iptv-mediakit-log-eof-grace-storm.md) — live: do not grace/goLive from ffmpeg log premature-EOF (ipdigi)

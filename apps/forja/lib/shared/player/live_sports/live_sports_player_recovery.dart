@@ -22,7 +22,6 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
   void _resetDemuxerProbe();
   bool get _streamWorking;
   bool get _livePlaybackProfile;
-  bool get _liveSportsSurface;
   bool get _bufferedRecovery;
   bool get _atvHardReseatStreams;
   bool get _playheadRecentlyMoved;
@@ -204,9 +203,8 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
   void _scheduleJumpToLive({bool force = false}) {
     if (_s._exoBackend) return;
     if (!_livePlaybackProfile) return;
-    // IPTV MediaKit live: never seek/drop-buffers — goLive is stop+open.
-    // Live Sports (v1.5.36): allow live-edge snap.
-    if (_s._mediaKitBackend && !_liveSportsSurface) return;
+    // MediaKit live: never seek/drop-buffers — goLive is stop+open.
+    if (_s._mediaKitBackend) return;
     // Classic: seekable-only open snap (1.3.114). Never force drop-buffers.
     final allowForce = _bufferedRecovery && force;
     if (!allowForce && !_s._streamSeekable) return;
@@ -272,15 +270,12 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     if (_giveUpDeadStalkerStream()) return;
     // Stable cache/feed hold is live-only — VOD must not skip recovery after a
     // false "video alive" / open fail (issue 163). Hard format/open death
-    // must never be held as "working". Live Sports VT soft-reopen must not be
-    // held either — playhead can tick on corrupt VideoToolbox frames.
-    final liveVtSoftReopen = reason.contains('hw decode fail (live VT)');
+    // must never be held as "working".
     if (!userInitiated &&
         _livePlaybackProfile &&
         _playbackStarted &&
         _streamWorking &&
-        !iptvIsHardOpenFail(reason) &&
-        !liveVtSoftReopen) {
+        !iptvIsHardOpenFail(reason)) {
       _logHealthyHold(reason);
       return;
     }
@@ -576,42 +571,17 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
 
   Future<void> _forceSoftwareDecode() async {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
-    // Live Sports: cold-open hold; sustained VT → soft-reopen keep HW
-    // (never TextureSW — Brightcove/Stremio HLS goes black under SW).
-    // IPTV Forja: hold when demux feeds; soft reopen when empty.
+    // MediaKit live never falls back to TextureSW.
+    // Hold when demux feeds; grace→goLive when empty (no soft-reopen storm).
     if (_livePlaybackProfile &&
         _s._mediaKitBackend &&
         !_s.widget.vodPlayback) {
       _armTransientHwDecodeIgnore();
-      if (_liveSportsSurface) {
-        final pastCold = DateTime.now().difference(_s._openedAt) >=
-            const Duration(seconds: 8);
-        if (!pastCold) {
-          if (_streamWorking) {
-            _logHealthyHold('hw→sw (live hold)');
-          } else {
-            _logHold('hw→sw (live hold)', healthy: false);
-          }
-          return;
-        }
-        if (_recoveryInFlight) return;
-        await _triggerRecovery(
-          reason: 'hw decode fail (live VT)',
-          forceHard: false,
-        );
-        return;
-      }
       if (_streamWorking) {
-        _logHealthyHold('hw→sw (iptv hold)');
+        _logHealthyHold('hw→sw (live hold)');
         return;
       }
-      debugPrint(
-        '[IPTV Player] IPTV MediaKit: ignore hw→sw — soft reopen keep HW',
-      );
-      if (_recoveryInFlight) return;
-      await _triggerRecovery(
-        reason: 'hardware decode failed (iptv keep HW)',
-      );
+      _scheduleIptvLiveGraceRecovery(reason: 'hardware decode failed');
       return;
     }
     if (_streamWorking) {

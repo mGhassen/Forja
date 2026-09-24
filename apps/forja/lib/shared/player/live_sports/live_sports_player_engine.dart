@@ -659,7 +659,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         final player = _s._player;
         if (player == null) return false;
         // Do NOT stop() before first open — virgin mpv stop hangs the UI isolate
-        // on ATV (ANR). Live reload uses [_reloadCurrent] (live-edge snap).
+        // on ATV (ANR). Live reload uses [_reloadCurrent] (MediaKit → goLive).
         // New open may have a different container fps — allow one mode switch.
         _s._displayFrameRateApplied = false;
         _s._liveCacheTierApplied = false;
@@ -1009,9 +1009,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {
-        if (_livePlaybackProfile &&
-            _s._mediaKitBackend &&
-            !_liveSportsSurface) {
+        if (_livePlaybackProfile && _s._mediaKitBackend) {
           _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         } else {
           _noteSocketTrouble(msg);
@@ -1030,9 +1028,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         );
         return;
       }
-      if (_livePlaybackProfile &&
-          _s._mediaKitBackend &&
-          !_liveSportsSurface) {
+      if (_livePlaybackProfile && _s._mediaKitBackend) {
         _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         return;
       }
@@ -1048,8 +1044,6 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     _s._completedSub = player.stream.completed.listen((done) {
       if (!done || !mounted || _s._disposed) return;
       if (!_livePlaybackProfile || !_s._mediaKitBackend) return;
-      // Live Sports (v1.5.36): no completed → goLive.
-      if (_liveSportsSurface) return;
       if (!_s._userPlayWhenReady) return;
       _scheduleIptvLiveGraceRecovery(reason: 'completed');
     });
@@ -1067,41 +1061,24 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
           );
           return;
         }
-        // Live Sports: cold-open VT blip → hold; sustained VT after cold open →
-        // soft-reopen keep HW (never TextureSW). Playhead can advance on
-        // garbage frames, so healthy-hold left Stremio macroblocked forever.
-        // IPTV Forja: hold when working — lavf + cache; do not reopen on VT spam.
+        // MediaKit live: never TextureSW. Cold-open VT blip → hold; past cold
+        // open → grace→goLive (issue 295/359 — recover corrupt frames without
+        // soft-reopen ladder / reconnect storm).
         if (_livePlaybackProfile &&
             _s._mediaKitBackend &&
             !_s.widget.vodPlayback) {
           _armTransientHwDecodeIgnore();
-          if (_liveSportsSurface) {
-            final pastCold = DateTime.now().difference(_s._openedAt) >=
-                const Duration(seconds: 8);
-            if (!pastCold) {
-              if (_streamWorking) {
-                _logHealthyHold('hw decode fail (live hold)');
-              } else {
-                _logHold('hw decode fail (live hold)', healthy: false);
-              }
-              return;
+          final pastCold = DateTime.now().difference(_s._openedAt) >=
+              const Duration(seconds: 8);
+          if (!pastCold) {
+            if (_streamWorking) {
+              _logHealthyHold('hw decode fail (live hold)');
+            } else {
+              _logHold('hw decode fail (live hold)', healthy: false);
             }
-            debugPrint(
-              '[IPTV Player] live VT fail — soft reopen keep HW',
-            );
-            unawaited(
-              _triggerRecovery(
-                reason: 'hw decode fail (live VT)',
-                forceHard: false,
-              ),
-            );
             return;
           }
-          if (_streamWorking) {
-            _logHealthyHold('hw decode fail (iptv hold)');
-          } else {
-            _logHold('hw decode fail (iptv hold)', healthy: false);
-          }
+          _scheduleIptvLiveGraceRecovery(reason: 'hw decode fail (live VT)');
           return;
         }
         if (_streamWorking) {
@@ -1115,19 +1092,24 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       if (l.level != 'error' && l.level != 'fatal' && l.level != 'warn') {
         return;
       }
+      // ffmpeg still logs "Stream ends prematurely" / reset while lavf
+      // reconnect stitches progressive live TS. ipdigi never recovers from
+      // log lines — only from completed/error. Driving grace/goLive here
+      // caused ~10s reconnect churn + VT ignore spam (issue 362).
       if (text.contains('ends prematurely') ||
           text.contains('end of file') ||
           text.contains('connection reset') ||
           text.contains('connection refused') ||
           text.contains('connection timed out')) {
-        debugPrint('[IPTV Player] mpv log: ${l.level} ${l.prefix}: ${l.text}');
-        _noteSocketTrouble(l.text);
+        debugPrint(
+          '[IPTV Player] mpv log (lavf owns): ${l.level} ${l.prefix}: ${l.text}',
+        );
       }
     });
   }
 
-  /// Socket blip: IPTV MediaKit → silent grace → goLive (RFC-113).
-  /// Live Sports → v1.5.36 8s soft recovery.
+  /// Socket blip from Dart error stream (not mpv logs).
+  /// Live MediaKit: silent grace → goLive (RFC-113). ipdigi parity.
   void _noteSocketTrouble(String what) {
     _armTransientHwDecodeIgnore();
     // VOD MediaKit: lavf reconnect owns mid-stream truncations (ipdigi parity).
@@ -1138,9 +1120,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       _triggerRecovery(reason: 'connection dropped: $what', forceHard: true);
       return;
     }
-    if (_livePlaybackProfile &&
-        _s._mediaKitBackend &&
-        !_liveSportsSurface) {
+    if (_livePlaybackProfile && _s._mediaKitBackend) {
       _scheduleIptvLiveGraceRecovery(reason: 'socket $what');
       return;
     }
@@ -1256,12 +1236,12 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _s._openedAt = DateTime.now();
         _s._playbackBannerSnapshot = null;
         _resetDemuxerProbe();
-        // Probe DVR window for UI. IPTV MediaKit: never post-open live-edge
-        // snap. Live Sports (v1.5.36): schedule jump-to-live after probe.
+        // Probe DVR window for UI. MediaKit live: never post-open live-edge
+        // snap — goLive is stop+open.
         unawaited(
           _probeStreamCapabilities().then((_) {
             if (!mounted || !_livePlaybackProfile) return;
-            if (_s._mediaKitBackend && !_liveSportsSurface) return;
+            if (_s._mediaKitBackend) return;
             _scheduleJumpToLive();
           }),
         );
@@ -1349,15 +1329,12 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     if (mounted) setState(() => _s._playerReady = true);
   }
 
-  /// Manual reload: IPTV MediaKit live → goLive (stop+open).
-  /// Live Sports → v1.5.36 Stable live-edge / soft reopen.
+  /// Manual reload: MediaKit live → goLive (stop+open).
   Future<void> _reloadCurrent() async {
     _s._retryAttempt = 0;
     _resetStalkerHardFails();
     _s._userPlayWhenReady = true;
-    if (_s._mediaKitBackend &&
-        _livePlaybackProfile &&
-        !_liveSportsSurface) {
+    if (_s._mediaKitBackend && _livePlaybackProfile) {
       await _goLiveReopen();
       return;
     }

@@ -477,9 +477,10 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
       // Recovery stays native error + startup failover only.
       if (_nativeHlsEngine) return;
 
-      // IPTV MediaKit (RFC-113): grace → goLive only. Live Sports keeps the
-      // v1.5.36 soft-reopen detectors below.
-      if (_mediaKitLiveProfile && !_liveSportsSurface) {
+      // MediaKit live (RFC-113 / ipdigi): grace → goLive only.
+      // Soft-reopen on empty-cache Buffering was an infinite #1 reconnect storm
+      // (Auto→stall + healthy-streak reset) on Live Sports Xtream.
+      if (_mediaKitLiveProfile) {
         if (_streamWorking) _clearBufferingChrome();
         return;
       }

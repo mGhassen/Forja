@@ -43,3 +43,5 @@ Live Sports player (issue 321 v1.5.36 stack) **held** on VideoToolbox fails whil
 Issue 295 already required reconnect on VT black-frame for Stremio; issue 321 restored indefinite VT hold and regressed that path for sports. TextureSW remains wrong for Stremio HLS (Brightcove black).
 
 **Root fix:** past cold open (8s), Live Sports VT fail soft-reopens the same URL with hardware decode; healthy-hold does not apply to that recovery reason.
+
+> **Status update (I361).** Soft-reopen ladder for VT was replaced by grace→goLive on Live Sports MediaKit ([360](361-[fixed]-live-sports-mediakit-soft-reopen-storm.md)) — same recovery intent without the empty-cache reconnect storm.
