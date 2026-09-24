@@ -309,6 +309,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     ].join('|');
   }
 
+  /// Mirrors [PackChromeScope.shellTabVisible] — false after hub hide.
+  bool _shellTabVisible = true;
+
   @override
   void initState() {
     super.initState();
@@ -366,6 +369,23 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final refreshEpoch = chrome?.refreshEpoch ?? 0;
     final holdEpoch = chrome?.catalogHoldEpoch ?? 0;
     final refreshBumped = refreshEpoch > _appliedRefreshEpoch;
+    final visible = chrome?.shellTabVisible ?? true;
+
+    // Hub hide (RFC-024): cancel in-flight rail/feed work; keep last paint.
+    // Do not start new network while the tab is off-screen keep-alive.
+    if (_shellTabVisible && !visible) {
+      _shellTabVisible = false;
+      _bindGen++;
+      _progressiveSub?.cancel();
+      _progressiveSub = null;
+      _progressivePending = null;
+      _progressivePaintScheduled = false;
+      _progressivePaintGen++;
+      _inFlight = null;
+      return;
+    }
+    _shellTabVisible = visible;
+    if (!visible) return;
 
     // Live ↔ Movies ↔ Series: restore that shelf's last paint when warm;
     // otherwise clear so CatalogLoadingTicker shows (first visit).
@@ -626,6 +646,15 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   }
 
   void _bind() {
+    final chrome = PackChromeScope.maybeOf(context);
+    if (chrome != null && !chrome.shellTabVisible) {
+      // Off-screen keep-alive — never start a new catalog/rail fetch.
+      _bindGen++;
+      _progressiveSub?.cancel();
+      _progressiveSub = null;
+      _inFlight = null;
+      return;
+    }
     final gen = ++_bindGen;
     _progressiveSub?.cancel();
     _progressiveSub = null;

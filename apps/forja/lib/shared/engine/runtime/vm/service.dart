@@ -163,9 +163,20 @@ class EngineService {
     EngineRuntime.abortTorrentSearchForks();
   }
 
+  /// Generation stamp for [runCatalog] / host Stremio catalog requests.
+  ///
+  /// Hub [onShellTabHidden] bumps this so keep-alive tabs cannot keep fetching
+  /// after the user leaves (RFC-024).
+  int get catalogGeneration => _catalogGeneration;
+
   /// Abort in-flight catalog hub actions (tab switch / logout).
+  ///
+  /// Bumps [catalogGeneration] and aborts flutter_js forks so mid-flight
+  /// `ctx.host.engine.request` (Stremio rails, hub feed) stop promptly —
+  /// keep-alive must not mean keep-fetching.
   void cancelCatalog() {
     _catalogGeneration++;
+    EngineRuntime.abortAll(includeTorrentSearch: false);
   }
 
   void cancelLiveCatalog() {

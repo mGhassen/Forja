@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_page.dart';
 import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
+import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:rust/rust.dart';
 
 /// Opaque pack → Rust/engine jobs. No product `host.iptv` namespace (RFC-109).
@@ -40,7 +41,7 @@ abstract final class HostEngineRequest {
   }
 
   /// VOD Stremio catalog hub bridge (issue 363). Feature defaults to [vod].
-  static Future<Map<String, dynamic>> _stremio(
+  static   Future<Map<String, dynamic>> _stremio(
     Map<String, dynamic> body,
   ) async {
     final action = (body['action'] ?? '').toString().trim().toLowerCase();
@@ -71,6 +72,9 @@ abstract final class HostEngineRequest {
         final genre = (body['genre'] ?? '').toString().trim();
         final skip = (body['skip'] as num?)?.toInt();
         final addonName = (body['addonName'] ?? '').toString().trim();
+        // Hub tab hide bumps catalogGeneration — drop mid-flight addon
+        // catalog HTTP so Stremio rails do not keep fetching off-tab.
+        final catalogGen = EngineService.instance.catalogGeneration;
         final metas = await stremio.getCatalog(
           baseUrl: baseUrl,
           type: type,
@@ -78,6 +82,9 @@ abstract final class HostEngineRequest {
           genre: genre.isEmpty ? null : genre,
           skip: skip,
         );
+        if (catalogGen != EngineService.instance.catalogGeneration) {
+          return {'ok': true, 'items': <Map<String, dynamic>>[]};
+        }
         final items = <Map<String, dynamic>>[];
         for (final m in metas) {
           final stamped = Map<String, dynamic>.from(m);

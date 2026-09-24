@@ -600,17 +600,24 @@ class MetaRuntime {
     required Duration timeout,
   }) {
     if (!_revalidating.add(key)) return;
+    // Hub hide cancels catalog work — do not start SWR revalidate off-tab.
+    final catalogGen = EngineService.instance.catalogGeneration;
     unawaited(
-      _fetch(
-            key: key,
-            pluginId: pluginId,
-            packSourceUrl: packSourceUrl,
-            action: action,
-            params: params,
-            auth: auth,
-            entry: entry,
-            timeout: timeout,
-          )
+      Future<MetaEnvelope>(() async {
+        if (catalogGen != EngineService.instance.catalogGeneration) {
+          return _cachedEnvelope(action, entry);
+        }
+        return _fetch(
+          key: key,
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          action: action,
+          params: params,
+          auth: auth,
+          entry: entry,
+          timeout: timeout,
+        );
+      })
           .catchError((Object e) {
             debugPrint('[catalog] $pluginId $action revalidate failed: $e');
             return _cachedEnvelope(action, entry);

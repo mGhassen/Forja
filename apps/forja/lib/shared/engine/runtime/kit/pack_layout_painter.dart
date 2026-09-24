@@ -16,6 +16,7 @@ import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
 import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
+import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
@@ -358,6 +359,18 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (_pageKey.isEmpty) return;
     ShellBus.hubScrollOffsetFor(_pageKey).value =
         _scroll.hasClients ? _scroll.offset : 0;
+  }
+
+  @override
+  void onShellTabHidden() {
+    super.onShellTabHidden();
+    // RFC-024: keep-alive must not keep fetching. Drop late page-feed publishes
+    // and abort in-flight catalog / live scrapes (Stremio rails, Live Sports,
+    // Home TMDB pools) so a background hub cannot hammer the network while the
+    // user is on another tab (e.g. IPTV).
+    _pageFeedGen++;
+    EngineService.instance.cancelCatalog();
+    EngineService.instance.cancelLiveCatalog();
   }
 
   @override
@@ -790,6 +803,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     required bool forceRefresh,
   }) async {
     final gen = _pageFeedGen;
+    if (!shellTabVisible) {
+      return const <String, List<dynamic>>{};
+    }
     // Capture chrome filters at fetch start — a mid-flight Films flip must not
     // store this All batch under the Films feed cache key.
     final feedParams = _pageFeedParams();
@@ -808,7 +824,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         ),
       );
       if (peeked != null) {
-        if (mounted && gen == _pageFeedGen) {
+        if (mounted && gen == _pageFeedGen && shellTabVisible) {
           _pageFeedRails = peeked;
           _pageFeedError = null;
         }
