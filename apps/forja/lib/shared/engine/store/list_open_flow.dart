@@ -1,10 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
 import 'package:forja/shared/engine/store/list_open_bind_sheet.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+
+/// Feed-only kits (no `details`) use hub binding; details hubs open meta as-is.
+@visibleForTesting
+bool kitListUsesOpenBinding({required bool? callerHasDetails}) =>
+    callerHasDetails == false;
+
+/// Flatten kit.list feed row so legacy open binding sees open / title / ids.
+Map<String, dynamic> kitListOpenRow(Map<String, dynamic> item) {
+  final row = Map<String, dynamic>.from(item);
+  final meta = item['meta'];
+  if (meta is Map) {
+    final m = Map<String, dynamic>.from(meta);
+    row['open'] ??= m['open'] ?? item['metaOpen'] ?? item['catalogOpen'];
+    row['metaOpen'] ??= m['open'] ?? item['metaOpen'];
+    final name = (m['name'] ?? '').toString().trim();
+    if (name.isNotEmpty) {
+      row['name'] ??= name;
+      row['title'] ??= name;
+    }
+    final poster = (m['poster'] ?? '').toString().trim();
+    if (poster.isNotEmpty) row['poster'] ??= poster;
+    final bg = (m['background'] ?? '').toString().trim();
+    if (bg.isNotEmpty) row['background'] ??= bg;
+    final ids = m['ids'];
+    if (ids is Map && row['ids'] == null) {
+      row['ids'] = Map<String, dynamic>.from(ids);
+    }
+    final tmdbMt = (m['tmdbMediaType'] ?? '').toString().trim();
+    if (tmdbMt.isNotEmpty) row['tmdbMediaType'] ??= tmdbMt;
+    final type = (m['type'] ?? '').toString().trim();
+    if (type.isNotEmpty) {
+      row['type'] ??= type;
+      row['mediaType'] ??= type;
+    }
+  } else {
+    row['open'] ??= item['metaOpen'] ?? item['catalogOpen'];
+  }
+  return row;
+}
+
+/// Open a kit.list poster — hub binding when the caller pack has no details.
+Future<void> openKitListItem(
+  BuildContext context, {
+  required String pluginId,
+  required Map<String, dynamic> item,
+  String? shellTabId,
+  bool forcePick = false,
+}) async {
+  final syncHas = PluginNavRegistry.pluginHasDetailsSync(pluginId);
+  final hasDetails =
+      syncHas ?? await PluginNavRegistry.pluginHasDetails(pluginId);
+  if (!kitListUsesOpenBinding(callerHasDetails: hasDetails)) {
+    if (forcePick) return;
+    final meta = PackPaintArtifact.metaItemOf(
+      props: PackPaintArtifact.propsOf(item),
+      open: item['open'] ?? item['metaOpen'] ?? item['catalogOpen'],
+      meta: item['meta'],
+    );
+    if (meta == null) return;
+    if (!context.mounted) return;
+    await openMetaItem(
+      context,
+      pluginId: pluginId,
+      item: meta,
+      shellTabId: shellTabId,
+    );
+    return;
+  }
+  if (!context.mounted) return;
+  await openListItemWithBinding(
+    context,
+    item: kitListOpenRow(item),
+    shellTabId: shellTabId,
+    forcePick: forcePick,
+  );
+}
 
 /// Open a My List / catalog list row with hub binding (RFC-108).
 Future<void> openListItemWithBinding(

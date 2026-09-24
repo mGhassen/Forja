@@ -110,11 +110,24 @@ Movie? metaItemToMovie(MetaItem item) {
     backdropPath: catalogPosterPathForMovie(item.background),
     logoPath: catalogPosterPathForMovie(item.logo),
     voteAverage: item.rating ?? 0,
-    releaseDate: item.releaseInfo,
+    releaseDate: metaReleaseYear(item),
     overview: item.description,
     genres: item.genres,
     mediaType: mediaType,
   );
+}
+
+/// Year string for bookmarks / card footers from [MetaItem] release fields.
+String metaReleaseYear(MetaItem item) {
+  final release = item.releaseInfo.trim();
+  if (release.isNotEmpty) {
+    if (release.contains('-')) return release.split('-').first;
+    if (release.contains(' • ')) return release.split(' • ').first.trim();
+    return release.length >= 4 ? release.substring(0, 4) : release;
+  }
+  final premiere = item.premiereDate.trim();
+  if (premiere.isEmpty) return '';
+  return premiere.length >= 4 ? premiere.substring(0, 4) : premiere;
 }
 
 List<Movie> metaItemsToMovies(Iterable<MetaItem> items) => [
@@ -126,15 +139,14 @@ List<Movie> metaItemsToMovies(Iterable<MetaItem> items) => [
 /// Packs that already put format in [MetaItem.releaseInfo] (e.g.
 /// `2026 • 12 eps`) are passed through unchanged.
 String? kitPosterSubtitle(MetaItem item) {
-  final release = item.releaseInfo.trim();
-  if (release.contains(' • ')) {
-    return release.isEmpty ? null : release;
+  final release = metaReleaseYear(item);
+  final raw = item.releaseInfo.trim();
+  if (raw.contains(' • ')) {
+    return raw.isEmpty ? null : raw;
   }
 
   final parts = <String>[];
-  if (release.isNotEmpty) {
-    parts.add(release.contains('-') ? release.split('-').first : release);
-  }
+  if (release.isNotEmpty) parts.add(release);
 
   final typeLabel = hubPosterTypeLabel(item);
   if (typeLabel != null) parts.add(typeLabel);
@@ -145,7 +157,13 @@ String? kitPosterSubtitle(MetaItem item) {
 String? hubPosterTypeLabel(MetaItem item) {
   final hint = (item.tmdbMediaType ?? '').trim().toLowerCase();
   final kind = item.type.trim().toLowerCase();
+  final surface = (item.open?.surface ?? '').trim().toLowerCase();
 
+  // Hub kinds win over TMDB hint (drama often stores tmdbMediaType=tv).
+  if (kind == 'asian_drama' || kind == 'drama' || surface == 'drama') {
+    return 'DRAMA';
+  }
+  if (kind == 'anime' || surface == 'anime') return 'ANIME';
   if (hint == 'tv' || kind == 'tv' || kind == 'series') return 'TV';
   if (hint == 'movie' || kind == 'movie') return 'FILM';
 

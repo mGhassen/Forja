@@ -31,29 +31,25 @@ void main() {
       expect(metaOpenUsesKitDetails(open), isTrue);
     });
 
-    test('stremio surface extract falls back to movie/tv not stremio panel', () {
-      const movieOpen = MetaOpen(
-        surface: 'stremio',
-        id: 'tt16478058',
-        extras: {
-          'mediaType': 'movie',
-          'stremioType': 'movie',
-          'stremioAddonBaseUrl': 'https://addon.example/manifest.json',
-        },
-      );
-      expect(movieOpen.effectiveExtract.panelCategory, 'movie');
-      expect(movieOpen.effectiveExtract.resolveType, 'movie');
+    test('stremio catalog row stamps extract from meta type (not surface)', () {
+      final movie = metaItemFromStremioSearchResult({
+        'id': 'tt16478058',
+        'type': 'movie',
+        'name': 'Best of the Best',
+        '_addonBaseUrl': 'https://addon.example/manifest.json',
+      });
+      expect(movie.open?.effectiveExtract.panelCategory, 'movie');
+      expect(movie.open?.effectiveExtract.resolveType, 'movie');
+      expect(movie.open?.extraString('preferredSourcesKind'), 'stremio');
 
-      const tvOpen = MetaOpen(
-        surface: 'stremio',
-        id: 'tt39473828',
-        extras: {
-          'mediaType': 'tv',
-          'stremioType': 'series',
-        },
-      );
-      expect(tvOpen.effectiveExtract.panelCategory, 'tv');
-      expect(tvOpen.effectiveExtract.resolveType, 'tv');
+      final tv = metaItemFromStremioSearchResult({
+        'id': 'tt39473828',
+        'type': 'series',
+        'name': 'A Series',
+        '_addonBaseUrl': 'https://addon.example/manifest.json',
+      });
+      expect(tv.open?.effectiveExtract.panelCategory, 'tv');
+      expect(tv.open?.effectiveExtract.resolveType, 'tv');
     });
 
     test('explicit detailsRoute uses feature escape hatch', () {

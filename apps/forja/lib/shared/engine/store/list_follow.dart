@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -66,7 +67,7 @@ class ListFollowTarget {
       title: meta.name,
       posterPath: meta.poster,
       voteAverage: meta.rating ?? 0,
-      releaseDate: meta.releaseInfo,
+      releaseDate: metaReleaseYear(meta),
       tmdbId: fromIds ?? fromOpen,
       tmdbMediaType: meta.tmdbMediaType ??
           (open.surface.trim() == 'tmdb'

@@ -305,8 +305,19 @@ SourcesRequestContext buildSourcesRequestContext({
         );
 
   final customBase = open?.extraString('stremioAddonBaseUrl');
-  final customId =
-      open?.extraString('stremioId') ?? (open?.surface == 'stremio' ? open?.id : null);
+  // Catalog handoff id — stamp into bag so stream addons resolve via idPrefixes
+  // (IMDb / anilist / …). Do not use open.id unless a catalog base was set.
+  final customId = open?.extraString('stremioId') ??
+      (customBase != null && customBase.isNotEmpty ? open?.id : null);
+  if (customId != null && customId.isNotEmpty) {
+    if (customId.startsWith('tt')) {
+      _putId(bag, 'imdb', customId);
+    }
+    final colon = customId.indexOf(':');
+    if (colon > 0) {
+      _putId(bag, customId.substring(0, colon), customId);
+    }
+  }
   final stremioBag = StremioBagSlice(
     ids: Map<String, String>.from(bag),
     customAddonBaseUrl: customBase,

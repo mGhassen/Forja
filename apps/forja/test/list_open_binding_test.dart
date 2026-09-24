@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
+import 'package:forja/shared/engine/store/list_open_flow.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -167,6 +168,41 @@ void main() {
         BookmarkStore().items.single['listStatus'],
         'watching',
       );
+    });
+  });
+
+  group('kitListUsesOpenBinding', () {
+    test('feed-only caller (no details) uses binding', () {
+      expect(kitListUsesOpenBinding(callerHasDetails: false), isTrue);
+    });
+
+    test('details hub skips binding', () {
+      expect(kitListUsesOpenBinding(callerHasDetails: true), isFalse);
+      expect(kitListUsesOpenBinding(callerHasDetails: null), isFalse);
+    });
+  });
+
+  group('kitListOpenRow', () {
+    test('lifts nested meta open and title onto the row', () {
+      final row = kitListOpenRow({
+        'uniqueId': 'catalog_test-hub_1',
+        'meta': {
+          'id': '1',
+          'name': 'Fight Club',
+          'poster': 'https://example/p.jpg',
+          'type': 'movie',
+          'open': {
+            'surface': 'tmdb',
+            'id': '550',
+          },
+        },
+      });
+      expect(row['open'], isA<Map>());
+      expect((row['open'] as Map)['id'], '550');
+      expect(row['title'], 'Fight Club');
+      expect(row['name'], 'Fight Club');
+      expect(row['poster'], 'https://example/p.jpg');
+      expect(row['mediaType'], 'movie');
     });
   });
 }

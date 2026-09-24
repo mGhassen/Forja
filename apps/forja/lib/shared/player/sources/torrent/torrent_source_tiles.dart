@@ -747,6 +747,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
           ],
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -831,6 +832,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 120),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (selected)
@@ -915,6 +917,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       ),
     );
 
+    // Stack + Positioned probe bar — not Row(stretch). ListView children get
+    // unbounded max height; stretch forces infinite height and blows the panel
+    // (Live Sports Providers). Avoid IntrinsicHeight (issue 352 lag).
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
@@ -927,71 +932,80 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         ),
       ),
       // Portal-style: probe | main | push-in action rail (RFC-117).
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
+        fit: StackFit.passthrough,
         children: [
-          ColoredBox(
-            color: leftBarColor,
-            child: const SizedBox(width: _probeBarWidth),
-          ),
-          Expanded(child: main),
-          if (railIconCount > 0)
-            AnimatedContainer(
-              duration: railAnim,
-              curve: Curves.easeOutCubic,
-              width: reveal ? actionWidth : 0,
-              child: !reveal
-                  ? const SizedBox.shrink()
-                  : ClipRect(
-                      child: OverflowBox(
-                        minWidth: actionWidth,
-                        maxWidth: actionWidth,
-                        alignment: Alignment.centerRight,
-                        child: SizedBox(
-                          width: actionWidth,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              if (widget.onDownload != null)
-                                IconButton(
-                                  tooltip: 'Download',
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 28,
-                                    minHeight: 28,
-                                  ),
-                                  iconSize: iconSize,
-                                  color: Colors.white60,
-                                  onPressed: widget.onDownload,
-                                  icon: const Icon(Icons.download_rounded),
-                                ),
-                              if (hasMagnet)
-                                IconButton(
-                                  tooltip: 'Copy magnet',
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 28,
-                                    minHeight: 28,
-                                  ),
-                                  iconSize: iconSize,
-                                  color: Colors.white60,
-                                  onPressed: () async {
-                                    await Clipboard.setData(
-                                      ClipboardData(text: magnet),
-                                    );
-                                    ForjaToast.success(
-                                      'Magnet copied',
-                                      duration: const Duration(seconds: 2),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.content_copy_rounded),
-                                ),
-                            ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(width: _probeBarWidth),
+              Expanded(child: main),
+              if (railIconCount > 0)
+                AnimatedContainer(
+                  duration: railAnim,
+                  curve: Curves.easeOutCubic,
+                  width: reveal ? actionWidth : 0,
+                  child: !reveal
+                      ? const SizedBox.shrink()
+                      : ClipRect(
+                          child: OverflowBox(
+                            minWidth: actionWidth,
+                            maxWidth: actionWidth,
+                            alignment: Alignment.centerRight,
+                            child: SizedBox(
+                              width: actionWidth,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  if (widget.onDownload != null)
+                                    IconButton(
+                                      tooltip: 'Download',
+                                      padding: const EdgeInsets.all(4),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 28,
+                                        minHeight: 28,
+                                      ),
+                                      iconSize: iconSize,
+                                      color: Colors.white60,
+                                      onPressed: widget.onDownload,
+                                      icon: const Icon(Icons.download_rounded),
+                                    ),
+                                  if (hasMagnet)
+                                    IconButton(
+                                      tooltip: 'Copy magnet',
+                                      padding: const EdgeInsets.all(4),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 28,
+                                        minHeight: 28,
+                                      ),
+                                      iconSize: iconSize,
+                                      color: Colors.white60,
+                                      onPressed: () async {
+                                        await Clipboard.setData(
+                                          ClipboardData(text: magnet),
+                                        );
+                                        ForjaToast.success(
+                                          'Magnet copied',
+                                          duration: const Duration(seconds: 2),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.content_copy_rounded),
+                                    ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-            ),
+                ),
+            ],
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: _probeBarWidth,
+            child: ColoredBox(color: leftBarColor),
+          ),
         ],
       ),
     );

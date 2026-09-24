@@ -27,4 +27,27 @@ void main() {
   test('kitPosterSubtitle still carries FILM under the title', () {
     expect(kitPosterSubtitle(_item(badge: 'FILM')), '2024 • FILM');
   });
+
+  test('kitPosterSubtitle prefers drama kind over tmdbMediaType tv', () {
+    final item = MetaItem(
+      id: 'drama:1',
+      type: 'drama',
+      name: 'True Beauty',
+      releaseInfo: '2020',
+      tmdbMediaType: 'tv',
+      open: const MetaOpen(surface: 'drama', id: '975'),
+    );
+    expect(kitPosterSubtitle(item), '2020 • DRAMA');
+  });
+
+  test('metaReleaseYear falls back to premiereDate', () {
+    final item = MetaItem(
+      id: 'drama:2',
+      type: 'drama',
+      name: 'Heard',
+      premiereDate: '2013-06-05',
+    );
+    expect(metaReleaseYear(item), '2013');
+    expect(kitPosterSubtitle(item), '2013 • DRAMA');
+  });
 }

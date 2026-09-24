@@ -18,7 +18,7 @@ Toggle the tab under **Settings → Features** after the pack is installed.
 
 ## What you can do
 
-- See one rail per catalog from your installed VOD-targeted addons (title is usually `Addon · Catalog`). The **hero** uses the first catalog’s posters (same feed as that rail — not a separate hardcoded list).
+- See one rail per catalog from your installed VOD-targeted addons (title is usually `Addon · Catalog`). The **hero** uses the first catalog’s posters (same feed as that rail — not a separate hardcoded list). Catalogs that return no posters stay hidden (no empty title row).
 - Filter the page with top-menu **Movies** / **Series** / **Anime** chips when your installed catalogs include those types (All shows everything).
 - Scroll posters and open a title for Stremio details and Sources. **Sources** opens on the **Stremio** tab; Forja providers match the title’s type (movie, TV, or anime) — not live or IPTV.
 - **Search** from the hub — searches across addons that support catalog search.

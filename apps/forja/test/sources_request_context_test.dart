@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shared/playback/stremio_stream_id.dart';
+import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
@@ -103,6 +104,46 @@ void main() {
       expect(ctx.nuvio?.tmdbId, '550');
       expect(ctx.engine?.tmdbId, '550');
       expect(ctx.hasImdb, isTrue);
+    });
+
+    test('catalog stremioId tt… stamps imdb for stream addons', () {
+      final meta = metaItemFromStremioSearchResult({
+        'id': 'tt16478058',
+        'type': 'movie',
+        'name': 'Best of the Best',
+        '_addonBaseUrl': 'https://v3-cinemeta.strem.io/manifest.json',
+      });
+      final movie = Movie(
+        id: 1,
+        title: 'Best of the Best',
+        posterPath: '',
+        backdropPath: '',
+        voteAverage: 0,
+        releaseDate: '2026',
+        overview: '',
+        mediaType: 'movie',
+        imdbId: 'tt16478058',
+      );
+      final ctx = buildSourcesRequestContext(
+        movie: movie,
+        meta: meta,
+        open: meta.open,
+      );
+      expect(ctx.ids['imdb'], 'tt16478058');
+      expect(ctx.stremioBag?.hasCustomAddon, isTrue);
+      expect(ctx.stremioBag?.customStremioId, 'tt16478058');
+      final streamId = resolveStremioStreamIdFromBag(
+        bag: ctx.stremioBag!,
+        addonManifest: {
+          'resources': [
+            {
+              'name': 'stream',
+              'idPrefixes': ['tt'],
+            },
+          ],
+        },
+      );
+      expect(streamId, 'tt16478058');
     });
   });
 

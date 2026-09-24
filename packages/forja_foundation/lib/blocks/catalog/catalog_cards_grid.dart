@@ -124,6 +124,7 @@ class CatalogCardsGrid extends StatelessWidget {
     super.key,
     required this.items,
     this.onItemTap,
+    this.onItemLongPress,
     this.emptyTitle = 'Nothing here',
     this.emptyDescription,
     this.emptyAction,
@@ -156,6 +157,9 @@ class CatalogCardsGrid extends StatelessWidget {
 
   final List<Map<String, dynamic>> items;
   final void Function(Map<String, dynamic> item)? onItemTap;
+
+  /// Desktop secondary-click / touch long-press / TV hold (~2s) on posters.
+  final void Function(Map<String, dynamic> item)? onItemLongPress;
   final String emptyTitle;
   final String? emptyDescription;
 
@@ -569,6 +573,9 @@ class CatalogCardsGrid extends StatelessWidget {
                   : ({required bool active}) =>
                         itemAccessory!(context, item, active: active),
               onTap: () => onItemTap?.call(item),
+              onLongPress: onItemLongPress == null
+                  ? null
+                  : () => onItemLongPress!(item),
               aspect: itemLandscape
                   ? PosterAspect.landscape
                   : PosterAspect.portrait,

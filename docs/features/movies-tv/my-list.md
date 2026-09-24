@@ -26,6 +26,7 @@ Install and enable the **ForjaHQ My List** hub pack, then show **My List** under
 - The My List tab icon ships in the pack (`icons/nav.png`)
 - My List statuses are stored locally on your device. With Simkl connected, the open tab prefers your local status for titles you’ve already bookmarked, and still lists Simkl-only rows. Opening a title remembers the hub without changing its status. Connecting or Sync Now asks Keep local / Use Simkl / Merge — or No sync / Back to do nothing
 - Titles missing posters (especially Simkl anime) fill from TMDB in the background when a TMDB id is known — pull to refresh if art stays blank
+- Asian Drama (and other) cards show **year • type** under the title when the year is known (from the bookmark, Simkl, the title, or TMDB)
 - Use [Backup & restore](../settings/backup-restore.md) to move lists to another install
 
 ## Related

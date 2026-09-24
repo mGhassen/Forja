@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
@@ -48,6 +49,8 @@ class PortalsPanelView extends ConsumerStatefulWidget {
 class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   bool _busy = false;
   final Set<String> _deletingKeys = {};
+  /// Survives inventory softReload (unlike [PortalListItem.shelfLoading] alone).
+  final Set<String> _shelfLoadingKeys = {};
   late final PortalHealthTracker _health;
   late final PortalsPanelTvFocus _tv;
   Set<String> _knownPortalKeys = {};
@@ -56,6 +59,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   int _activeIndex = -1;
   String? _activeKey;
   bool _tvInventoryScheduled = false;
+  int _warmGen = 0;
 
   @override
   void initState() {
@@ -132,6 +136,9 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   /// Hub catalog clear/bump only when this tab **is** the portals pack hub
   /// (IPTV channel grid). Live Sports shares the Portals panel but its
   /// schedule does not depend on the active portal — only Live TV matching.
+  ///
+  /// On IPTV: warm the live SQLite shelf **before** bumping the feed so
+  /// `catalog_page` hits a filled shelf (no race / empty flash).
   Future<void> _selectPortal(String portalKey) async {
     final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
@@ -164,21 +171,22 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     if (!mounted) return;
     invalidatePortalsChrome(ref, widget.tabId);
 
+    // Fill live shelf while the portal card shows stripes. Await on IPTV so
+    // the feed bump pages a ready shelf; Live Sports can finish in background.
     if (portalScopedHub) {
-      // Stamp portalStoreKey into feed params so EngineCache is per-portal.
+      await _warmLiveShelf(portalKey);
+      if (!mounted) return;
       await CategoryBarActionHost.liveListFeedParams(
         preferTabId: widget.tabId,
       );
       if (!mounted) return;
       PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
     } else {
-      // Still stamp global portal key so IPTV is correct if the user switches tabs.
       unawaited(
         CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId),
       );
+      unawaited(_warmLiveShelf(portalKey));
     }
-
-    unawaited(_warmLiveShelf(portalKey));
 
     unawaited((() async {
       try {
@@ -213,11 +221,38 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     })());
   }
 
+  bool _isShelfLoading(String portalKey) {
+    final key = portalKey.trim();
+    if (key.isEmpty) return false;
+    for (final k in _shelfLoadingKeys) {
+      if (PortalsHost.samePortalKey(k, key)) return true;
+    }
+    return false;
+  }
+
+  void _setShelfLoading(String portalKey, bool loading) {
+    final key = portalKey.trim();
+    if (key.isEmpty) return;
+    final before = {..._shelfLoadingKeys};
+    if (loading) {
+      _shelfLoadingKeys
+        ..clear()
+        ..add(key);
+    } else {
+      _shelfLoadingKeys.removeWhere((k) => PortalsHost.samePortalKey(k, key));
+    }
+    if (!setEquals(before, _shelfLoadingKeys) && mounted) {
+      setState(() {});
+    }
+    ref
+        .read(portalsInventoryProvider(widget.tabId).notifier)
+        .applyShelfLoading(key, loading);
+  }
+
   /// Warm SQLite live shelf for Live TV matching; stripe the portal card.
   Future<void> _warmLiveShelf(String portalKey) async {
-    final notifier =
-        ref.read(portalsInventoryProvider(widget.tabId).notifier);
-    notifier.applyShelfLoading(portalKey, true);
+    final gen = ++_warmGen;
+    _setShelfLoading(portalKey, true);
     VerifiedPortal? verified;
     try {
       final portals = await PortalsHost.loadVaultVerifiedPortals();
@@ -235,22 +270,31 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     } catch (e) {
       debugPrint('[PortalsPanel] resolve portal for shelf warm failed: $e');
     }
-    if (!mounted) {
-      notifier.applyShelfLoading(portalKey, false);
+    if (!mounted || gen != _warmGen) {
+      if (gen == _warmGen) _setShelfLoading(portalKey, false);
       return;
     }
     final portal = verified?.portal;
     if (portal == null || !portal.platform.supportsForjaSports) {
-      notifier.applyShelfLoading(portalKey, false);
+      _setShelfLoading(portalKey, false);
       return;
     }
 
     try {
-      await PortalCatalogPage.ensureSection(portal: portal, section: 'live');
+      final ok = await PortalCatalogPage.ensureSection(
+        portal: portal,
+        section: 'live',
+      );
+      debugPrint(
+        '[PortalsPanel] live shelf warm '
+        '${ok ? 'ok' : 'failed'} key=$portalKey',
+      );
     } catch (e) {
       debugPrint('[PortalsPanel] live shelf warm failed: $e');
     } finally {
-      notifier.applyShelfLoading(portalKey, false);
+      if (gen == _warmGen) {
+        _setShelfLoading(portalKey, false);
+      }
     }
   }
 
@@ -482,6 +526,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         _health.paint(
           p,
           deleting: _deletingKeys.contains(p.id),
+          shelfLoading: _isShelfLoading(p.id),
           selected: p.selected ||
               (activeKey.isNotEmpty &&
                   PortalsHost.samePortalKey(p.id, activeKey)),
@@ -599,6 +644,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       repaintItem: (item) => _health.paint(
             item,
             deleting: _deletingKeys.contains(item.id),
+            shelfLoading: _isShelfLoading(item.id),
             selected: item.selected,
           ),
       onHeaderUp: useTv ? _tv.exitUpToChip : null,

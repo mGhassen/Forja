@@ -1539,13 +1539,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _ensureStremioLoaded({bool force = false}) {
-    final customBase = widget.open?.extraString('stremioAddonBaseUrl');
-    if (customBase != null && customBase.isNotEmpty) {
-      if (!_showsStremio) return;
-      setState(() => _selectedSourceId = customBase);
-      unawaited(_fetchStremioStreams(reset: force, refresh: force));
-      return;
-    }
+    // open.stremioAddonBaseUrl is catalog /meta handoff — not "stream only from
+    // this addon". Always load installed stream-resource addons (Torrentio, …).
     unawaited(
       _refreshStreamAddons().then((_) {
         if (!mounted || !_showsStremio) return;
@@ -2564,7 +2559,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (!_showsStremio) return;
 
     final bag = _sourcesCtx.stremioBag;
-    if (bag != null && bag.hasCustomAddon) {
+    // Catalog addon URL on open is /meta handoff. Only fetch that single addon
+    // when the user (or chip list) selected that same base URL.
+    if (bag != null &&
+        bag.hasCustomAddon &&
+        _selectedSourceId == bag.customAddonBaseUrl) {
       await _fetchStremioStreamsForCustomAddon(
         baseUrl: bag.customAddonBaseUrl!,
         stremioId: bag.customStremioId!,
@@ -2634,9 +2633,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
     });
 
-    final type = (bag?.mediaType == 'tv' || widget.movie.mediaType == 'tv')
-        ? 'series'
-        : 'movie';
+    final type = () {
+      final openType =
+          (widget.open?.extraString('stremioType') ?? '').trim().toLowerCase();
+      if (openType == 'series' || openType == 'tv') return 'series';
+      if (openType == 'anime') return 'anime';
+      if (openType == 'movie') return 'movie';
+      if (bag?.mediaType == 'tv' || widget.movie.mediaType == 'tv') {
+        return 'series';
+      }
+      return 'movie';
+    }();
     try {
       final streams = await _stremio.getStreams(
         baseUrl: baseUrl,

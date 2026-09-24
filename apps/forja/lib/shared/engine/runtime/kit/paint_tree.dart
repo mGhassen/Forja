@@ -26,6 +26,7 @@ import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 import 'package:forja/shared/engine/runtime/kit/lazy_viewport_gate.dart';
 import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
+import 'package:forja/shared/engine/store/list_open_flow.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
@@ -1985,13 +1986,31 @@ class PackPaintTree extends StatelessWidget {
               IptvCatalogLand.highlightedStreamId.value = streamId;
               IptvCatalogLand.noteFocusedStreamId(streamId);
             }
-            PackPaintArtifact.openTap(
-              context,
-              pluginId: pluginId,
-              props: PackPaintArtifact.propsOf(item),
-              open: item['open'],
-              meta: item['meta'],
-            )?.call();
+            // Feed-only hubs (My List): hub binding + Open in… sheet.
+            // Details hubs keep openMetaItem via openKitListItem.
+            unawaited(
+              openKitListItem(
+                context,
+                pluginId: pluginId,
+                item: item,
+                shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+              ),
+            );
+          }
+
+          void onListItemOpenWith(Map<String, dynamic> item) {
+            // Side-panel / match-open hosts keep primary open; Open-with is
+            // feed poster grids only (RFC-108).
+            if (matchOpenSurface) return;
+            unawaited(
+              openKitListItem(
+                context,
+                pluginId: pluginId,
+                item: item,
+                shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+                forcePick: true,
+              ),
+            );
           }
 
           void onHoldJump(Map<String, dynamic> item) {
@@ -2076,6 +2095,8 @@ class PackPaintTree extends StatelessWidget {
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
               onItemTap: onListItemTap,
+              onItemLongPress:
+                  matchOpenSurface ? null : onListItemOpenWith,
               landEpoch: IptvCatalogLand.landEpoch,
               preferCategoryFocusOnLand:
                   IptvCatalogLand.preferCategoryFocusOnLand,
@@ -2200,6 +2221,8 @@ class PackPaintTree extends StatelessWidget {
                           onItemInteractiveActive: onInteractiveActive,
                           loadEpgProgrammes: loadShortEpgProgrammes,
                           onItemTap: onListItemTap,
+                          onItemLongPress:
+                              matchOpenSurface ? null : onListItemOpenWith,
                           landEpoch: IptvCatalogLand.landEpoch,
                           preferCategoryFocusOnLand:
                               IptvCatalogLand.preferCategoryFocusOnLand,

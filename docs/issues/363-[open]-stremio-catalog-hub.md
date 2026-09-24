@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** fix · **0 / 6** acceptance |
+| **Progress** | **13 / 13** fix · **0 / 6** acceptance |
 | **Current slice** | Code shipped — manual QA pending |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
@@ -21,7 +21,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I363-T01 | `HostEngineRequest` kind `stremio` (`list` / `catalog` / `search`) | ✅ |
-| 2 | I363-T02 | `needsStremioCatalogHost` + flutter_js for `layout` / `rail` / `search` | ✅ |
+| 2 | I363-T02 | `needsStremioCatalogHost` + flutter_js for `layout` / `rail` / `filters` / `search` | ✅ |
 | 3 | I363-T03 | Pack `hubs/stremio` — empty shell; rails 1:1 from addon catalogs | ✅ |
 | 4 | I363-T04 | Tighten `loadKitStremioDetails` `/meta` field map (no TMDB) | ✅ |
 | 5 | I363-T05 | Tests + changelog + feature guide | ✅ |
@@ -31,6 +31,8 @@
 | 9 | I363-T09 | Stamp `extract` movie/tv/anime + opaque `preferredSourcesKind` → Sources Stremio tab | ✅ |
 | 10 | I363-T10 | Pack type chrome menus from installed catalog types + layout `showWhenType` | ✅ |
 | 11 | I363-T11 | Generic layout `showWhenType` / `showOnlyWhenType` + chrome type filter helper | ✅ |
+| 12 | I363-T12 | Sources: query stream addons with IMDb/id — don’t lock to catalog `/meta` addon | ✅ |
+| 13 | I363-T13 | Host flutter_js allowlist includes `filters` (+ `rail`); empty poster rails shrink | ✅ |
 
 ---
 

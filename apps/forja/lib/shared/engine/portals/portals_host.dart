@@ -1158,6 +1158,7 @@ class PortalHealthTracker {
   PortalListItem paint(
     PortalListItem p, {
     bool deleting = false,
+    bool shelfLoading = false,
     bool? selected,
   }) {
     final checking = isChecking(p.id);
@@ -1176,7 +1177,7 @@ class PortalHealthTracker {
       favorite: p.favorite,
       isNew: p.isNew,
       deleting: deleting,
-      shelfLoading: p.shelfLoading,
+      shelfLoading: shelfLoading || p.shelfLoading,
       probeDetail: _detailFor(_probes[p.id]) ?? p.probeDetail,
     );
   }

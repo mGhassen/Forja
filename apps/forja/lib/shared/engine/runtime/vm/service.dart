@@ -535,8 +535,10 @@ class EngineService {
       'prefsLoad',
       'prefsSave',
       'details',
-      // Stremio catalog hub: layout lists installed catalogs via engine.request.
-      if (plugin.needsStremioCatalogHost) ...{'layout', 'search'},
+      // Stremio catalog hub: layout / rail / filters / search call
+      // ctx.host.engine.request — EngineJS has no bridge; force flutter_js.
+      if (plugin.needsStremioCatalogHost)
+        ...{'layout', 'rail', 'filters', 'search'},
     };
     final needsHostFeedBridge =
         plugin.needsHostBridge && hostBridgeActions.contains(action);

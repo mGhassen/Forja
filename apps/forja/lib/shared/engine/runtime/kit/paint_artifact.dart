@@ -743,17 +743,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     final canPage = pageLoad != null && _hasMore;
 
     if (_items.isEmpty) {
-      if (title.isEmpty) return const SizedBox.shrink();
-      return ShellSectionTitle(
-        title: title,
-        fontSize: PackPaintArtifact.packLength(context, node['titleFontSize']),
-        padding: EdgeInsetsDirectional.only(
-          start: pad,
-          top: titlePad.top,
-          end: pad,
-          bottom: titlePad.bottom,
-        ),
-      );
+      // Empty catalog rails hide entirely (title-only rows look broken).
+      return const SizedBox.shrink();
     }
 
     final cards = <Widget>[
