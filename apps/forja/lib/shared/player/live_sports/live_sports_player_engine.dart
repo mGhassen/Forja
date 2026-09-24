@@ -847,8 +847,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     return _currentSourceIsLive;
   }
 
-  /// Live Sports native player — VT black-frame → grace/goLive is OK here.
-  /// IPTV Live (`BuiltInPlayerContext.iptv`) holds on hw spam when demux feeds.
+  /// Live Sports native player — sustained VT fail → soft-reopen keep HW
+  /// (cold-open blips still hold). Never TextureSW for Stremio HLS.
   /// This library is Live Sports only — never IPTV.
   bool get _liveSportsSurface => true;
 
@@ -1067,18 +1067,34 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
           );
           return;
         }
-        // Live Sports = v1.5.36: hold on VT (never TextureSW / goLive).
+        // Live Sports: cold-open VT blip → hold; sustained VT after cold open →
+        // soft-reopen keep HW (never TextureSW). Playhead can advance on
+        // garbage frames, so healthy-hold left Stremio macroblocked forever.
         // IPTV Forja: hold when working — lavf + cache; do not reopen on VT spam.
         if (_livePlaybackProfile &&
             _s._mediaKitBackend &&
             !_s.widget.vodPlayback) {
           _armTransientHwDecodeIgnore();
           if (_liveSportsSurface) {
-            if (_streamWorking) {
-              _logHealthyHold('hw decode fail (live hold)');
-            } else {
-              _logHold('hw decode fail (live hold)', healthy: false);
+            final pastCold = DateTime.now().difference(_s._openedAt) >=
+                const Duration(seconds: 8);
+            if (!pastCold) {
+              if (_streamWorking) {
+                _logHealthyHold('hw decode fail (live hold)');
+              } else {
+                _logHold('hw decode fail (live hold)', healthy: false);
+              }
+              return;
             }
+            debugPrint(
+              '[IPTV Player] live VT fail — soft reopen keep HW',
+            );
+            unawaited(
+              _triggerRecovery(
+                reason: 'hw decode fail (live VT)',
+                forceHard: false,
+              ),
+            );
             return;
           }
           if (_streamWorking) {

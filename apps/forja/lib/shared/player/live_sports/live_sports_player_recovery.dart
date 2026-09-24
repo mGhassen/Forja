@@ -272,12 +272,15 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     if (_giveUpDeadStalkerStream()) return;
     // Stable cache/feed hold is live-only — VOD must not skip recovery after a
     // false "video alive" / open fail (issue 163). Hard format/open death
-    // must never be held as "working".
+    // must never be held as "working". Live Sports VT soft-reopen must not be
+    // held either — playhead can tick on corrupt VideoToolbox frames.
+    final liveVtSoftReopen = reason.contains('hw decode fail (live VT)');
     if (!userInitiated &&
         _livePlaybackProfile &&
         _playbackStarted &&
         _streamWorking &&
-        !iptvIsHardOpenFail(reason)) {
+        !iptvIsHardOpenFail(reason) &&
+        !liveVtSoftReopen) {
       _logHealthyHold(reason);
       return;
     }
@@ -573,18 +576,29 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
 
   Future<void> _forceSoftwareDecode() async {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
-    // Live Sports = v1.5.36: hold on VT (never TextureSW / goLive).
+    // Live Sports: cold-open hold; sustained VT → soft-reopen keep HW
+    // (never TextureSW — Brightcove/Stremio HLS goes black under SW).
     // IPTV Forja: hold when demux feeds; soft reopen when empty.
     if (_livePlaybackProfile &&
         _s._mediaKitBackend &&
         !_s.widget.vodPlayback) {
       _armTransientHwDecodeIgnore();
       if (_liveSportsSurface) {
-        if (_streamWorking) {
-          _logHealthyHold('hw→sw (live hold)');
-        } else {
-          _logHold('hw→sw (live hold)', healthy: false);
+        final pastCold = DateTime.now().difference(_s._openedAt) >=
+            const Duration(seconds: 8);
+        if (!pastCold) {
+          if (_streamWorking) {
+            _logHealthyHold('hw→sw (live hold)');
+          } else {
+            _logHold('hw→sw (live hold)', healthy: false);
+          }
+          return;
         }
+        if (_recoveryInFlight) return;
+        await _triggerRecovery(
+          reason: 'hw decode fail (live VT)',
+          forceHard: false,
+        );
         return;
       }
       if (_streamWorking) {

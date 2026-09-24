@@ -77,7 +77,12 @@ class PortalFormDialog extends StatefulWidget {
 class _PortalFormDialogState extends State<PortalFormDialog> {
   static const _portalDialogRowId = 'portal-dialog';
 
-  bool get _tv => liveUseTvFocus(context);
+  /// Leanback layout density — not desktop hybrid D-pad ([liveUseTvFocus]).
+  ///
+  /// Desktop [ShellInputPolicy] has focusable mood chips, so [liveUseTvFocus]
+  /// is true there too. Gating dialog width / type / pads on focus wrongly
+  /// applied the TV shrink on desktop.
+  bool get _tv => ShellScope.metricsOf(context).usesTvDensity;
 
   bool get _compact => !_tv;
 
@@ -1623,14 +1628,20 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
   }
 
   Widget _platformTabs() {
-    final tv = liveUseTvFocus(context);
-    final tabH = tv ? 28.0 : 42.0;
+    final tvFocus = liveUseTvFocus(context);
+    final tabH = _tv ? 28.0 : 42.0;
     return SizedBox(
       height: tabH,
       child: Row(
         children: [
           for (var i = 0; i < _kPlatformTabs.length; i++)
-            Expanded(child: _platformTab(index: i, height: tabH, tv: tv)),
+            Expanded(
+              child: _platformTab(
+                index: i,
+                height: tabH,
+                tvFocus: tvFocus,
+              ),
+            ),
         ],
       ),
     );
@@ -1639,12 +1650,12 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
   Widget _platformTab({
     required int index,
     required double height,
-    required bool tv,
+    required bool tvFocus,
   }) {
     final (platform, label) = _kPlatformTabs[index];
     final selected = _platform == platform;
     final mouse = ShellScope.inputPolicyOf(context).scaleOnHover;
-    final focused = tv && _platformTabFocus[index].hasFocus;
+    final focused = tvFocus && _platformTabFocus[index].hasFocus;
     final hovered = mouse && _tabHoverIndex == index;
     final active = selected || focused || hovered;
     final tabIndex = _indexOfNode(_platformTabFocus[index]);
@@ -1667,7 +1678,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                 label,
                 style: GoogleFonts.plusJakartaSans(
                   color: fg,
-                  fontSize: tv ? ShellTokens.tvBodyFontSize : 13,
+                  fontSize: _tv ? ShellTokens.tvBodyFontSize : 13,
                   fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
@@ -1693,7 +1704,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       );
     }
 
-    if (!tv) {
+    if (!tvFocus) {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _selectPlatform(platform),
