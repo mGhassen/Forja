@@ -16,7 +16,6 @@ import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/tracker_sync.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
-import 'package:forja/shared/player/platform/player_pool_service.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
@@ -79,9 +78,6 @@ bool _appShutdownStarted = false;
 Future<void> _shutdownMediaKitPlayers() async {
   try {
     await MpvExclusiveSession.instance.shutdownAllPlayers();
-  } catch (_) {}
-  try {
-    await PlayerPoolService().dispose();
   } catch (_) {}
 }
 
@@ -305,7 +301,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // After Engine.init so crash-reporting opt-in is readable (RFC-043).
   await Telemetry.ensureInitialized();
 
-  PlayerPoolService().warmUp();
   debugPrint('[Boot] Preloading splash sound...');
   await SplashSound.instance.preload();
   debugPrint('[Boot] Splash sound ready');

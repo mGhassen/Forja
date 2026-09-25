@@ -377,6 +377,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [382-[open]-…](382-[open]-downloads-hub.md) | Downloads hub for saved titles | P2 | Medium | open | 8/8 · A 7/7 | [RFC-117](../rfc/117-[open]-vod-offline-downloads.md) |
 | [383-[fixed]-…](fixed/383-[fixed]-live-sports-panel-keeps-selected-card.md) | Live Sports panel keeps the selected match on screen | P2 | Medium | fixed | 2/2 · A 1/2 | — |
 | [384-[fixed]-…](fixed/384-[fixed]-desktop-click-waits-on-gesture-arena.md) | Desktop clicks wait before they act | P0 | High | fixed | 3/3 · A 0/1 | [352](fixed/352-[fixed]-app-wide-list-click-lag.md) |
+| [385-[fixed]-…](fixed/385-[fixed]-macos-space-switch-resizes-window.md) | macOS desktop switch resizes the window | P1 | High | fixed | Complete · 2/2 · A 0/1 | [284](fixed/284-[fixed]-macos-27-window-zoom-snap-back.md) |
 | [375-[fixed]-…](fixed/375-[fixed]-hub-keep-alive-keeps-fetching-off-tab.md) | Hub keep-alive keeps fetching after leaving the tab | P1 | High | fixed | Complete · 4/4 · A 2/2 | [RFC-024](../rfc/fixed/024-[fixed]-tab-cache-eviction-stale.md) · [311](fixed/311-[fixed]-pack-reload-eager-hub-refetch.md) |
 | [360-[fixed]-…](fixed/360-[fixed]-portal-form-dialog-desktop-tv-shrink.md) | IPTV Add/Edit portal dialog TV-shrinks on desktop | P1 | High | fixed | Complete · 2/2 · A 0/2 | — |
 | [350-[fixed]-…](fixed/350-[fixed]-iptv-search-category-click-ignored.md) | IPTV search ignores category click | P1 | High | fixed | Complete · 5/5 · A 3/5 | [315](fixed/315-[fixed]-iptv-search-no-categories.md) · [290](290-[open]-iptv-catalog-page-host-shelf.md) |

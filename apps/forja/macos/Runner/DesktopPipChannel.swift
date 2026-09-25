@@ -114,6 +114,7 @@ final class DesktopPipController: NSObject {
       pipEnabled = true
       spaceLeavePrepared = false
     }
+    (window as? MainFlutterWindow)?.forjaSetPipActive(true)
     applyPipChrome()
 
     let work = visibleFrame()
@@ -144,10 +145,12 @@ final class DesktopPipController: NSObject {
         pipEnabled = true
         spaceLeavePrepared = false
       }
+      (window as? MainFlutterWindow)?.forjaSetPipActive(true)
       applyPipChrome()
     } else if pipEnabled {
       pipEnabled = false
       spaceLeavePrepared = false
+      (window as? MainFlutterWindow)?.forjaSetPipActive(false)
       restoreChrome()
     } else {
       // Leave without PiP — still clear a leaked Space-leave prep.

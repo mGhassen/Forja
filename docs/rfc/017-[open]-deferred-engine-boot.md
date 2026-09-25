@@ -112,7 +112,6 @@ Users who only browse IPTV still waited for catalog / torrent / music init.
 | TMDB bulk prefetch (4 lists) | **no** | Home tab mount (trending first only) |
 | `MusicPlayerService.init()` | **no** | Music or Audiobooks tab first visit |
 | `AudioService.init()` | **no** | First background audio session |
-| `PlayerPoolService` | **no** | First `PlayerScreen` open |
 
 ## Design: EngineRegistry (historical — deferred)
 

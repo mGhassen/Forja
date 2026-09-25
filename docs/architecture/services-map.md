@@ -95,7 +95,7 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | `NuvioService` / `NuvioScraper` | — | C4 | `flutter_js` |
 | `VideasyExtractor` | 803 | C5 | WASM host (Rust plugin delegates back to host) |
 | `TraktService` / `SimklService` | — | C12 | OAuth + secure storage |
-| `PipService`, `ExternalPlayerService`, `PlayerPoolService`, `AppUpdaterService` | — | C6/C12 | Platform |
+| `PipService`, `ExternalPlayerService`, `AppUpdaterService` | — | C6/C12 | Platform |
 | `MusicPlayerService`, `AudiobookPlayerService`, storage/download | — | C6/C9 | Host playback + files |
 | `CastingService`, `SyncService` | — | C12 | Platform / LAN |
 | `PlaybackEngine`, `DomainStreamProviderResolver`, resume/cache | `shared/playback/` (`open/`, `cache/`, `probe/`, `sources/`) | C11 | Orchestration UX |
@@ -222,7 +222,7 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 
 | Service | Path |
 |---------|------|
-| `ExternalPlayerService`, `PipService`, `PlayerPoolService`, … | `shared/player/platform/` |
+| `ExternalPlayerService`, `PipService`, … | `shared/player/platform/` |
 | `ListFollow`, `ListFollowFromWatched` | `shared/engine/lists/` |
 | `MatchStreams`, `LiveMatchesEngine`, IPTV sports match, … | `shared/foundation/services/live/` |
 

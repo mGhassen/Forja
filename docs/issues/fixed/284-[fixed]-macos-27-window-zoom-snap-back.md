@@ -48,3 +48,4 @@ After macOS 27, AppKit `zoom` with Forja’s hidden titlebar + `fullSizeContentV
 - `apps/forja/lib/shell/desktop/desktop_window_geometry.dart`
 - `apps/forja/lib/app/bootstrap.dart`
 - [196](196-[fixed]-desktop-window-size-resets-after-player.md)
+- [385](385-[fixed]-macos-space-switch-resizes-window.md)

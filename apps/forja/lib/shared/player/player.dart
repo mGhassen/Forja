@@ -49,7 +49,6 @@ export 'platform/external_player_service.dart';
 export 'platform/macos_external_player_launcher.dart';
 export 'platform/mpv_exclusive_session.dart';
 export 'platform/pip_service.dart';
-export 'platform/player_pool_service.dart';
 export 'platform/youtube_stream_service.dart';
 export 'providers/player_prefs_providers.dart';
 export 'providers/player_resolve_providers.dart';
