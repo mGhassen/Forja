@@ -139,7 +139,6 @@ abstract final class Engine {
     if (parsed.containsKey('error')) {
       throw StateError('storage_open failed: ${parsed['error']}');
     }
-    debugPrint('[Engine] storage: $path');
   }
 
   static void _openCatalogDb(String path) {
@@ -150,9 +149,7 @@ abstract final class Engine {
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) {
       debugPrint('[Engine] catalog_db open failed: ${parsed['error']}');
-      return;
     }
-    debugPrint('[Engine] catalog_db: $path');
   }
 
   /// Rebind little KV + IPTV catalog SQLite to the active identity (RFC-116).

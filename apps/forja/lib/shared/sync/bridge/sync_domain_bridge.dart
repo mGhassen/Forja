@@ -495,11 +495,8 @@ class SyncDomainBridge {
       _navigationSyncedGen = navGenAtStart;
       _lastNavigationPushAt = DateTime.now();
       final nav = payload['navigation'];
-      final ids = nav is Map
-          ? _navVisibleIds(Map<String, dynamic>.from(nav))
-          : null;
       debugPrint(
-        '[Sync] navigation upsert ok visibleIds=$ids '
+        '[Sync] navigation upsert ok '
         'tabOrder=${nav is Map ? nav['tabOrder'] : null}',
       );
     }
@@ -1292,7 +1289,6 @@ class SyncDomainBridge {
           return;
         }
       }
-      debugPrint('[Sync] _importNavigation visibleIds=$incoming');
       final tabOrder = payload['tabOrder'] is List
           ? (payload['tabOrder'] as List).cast<String>()
           : null;
@@ -1798,7 +1794,6 @@ class SyncDomainBridge {
       for (final raw in packs)
         if (raw is Map) Map<String, dynamic>.from(raw),
     ];
-    debugPrint('[Sync] importForja packs=${rows.length}');
     final result = await EngineService.instance.applyLeanManifestUrls(
       rows,
       purgeRemovedImmediately: true,

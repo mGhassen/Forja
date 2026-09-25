@@ -128,10 +128,15 @@ class PlayerSourcesPanel {
 
     final overlay = Overlay.of(context);
     _completer = Completer<void>();
+    final direction = Directionality.of(context);
 
-    // OverlayEntry is a sibling of the player route - not under ShellScope.
+    // OverlayEntry is a sibling of the details route, so it does not inherit
+    // the pack Directionality. Copy it so an RTL details page docks this
+    // panel on the left.
     _entry = OverlayEntry(
-      builder: (_) => ShellScopeBuilder(
+      builder: (_) => Directionality(
+        textDirection: direction,
+        child: ShellScopeBuilder(
         builder: (context, _) => _PlayerSourcesOverlay(
           movie: movie,
           season: season,
@@ -156,6 +161,7 @@ class PlayerSourcesPanel {
           onStremioSelected: onStremioSelected,
           onClose: dismiss,
         ),
+      ),
       ),
     );
 

@@ -38,6 +38,8 @@ class ForjaSupabase {
       url: url,
       // Same project key as apps/web VITE_SUPABASE_PUBLISHABLE_KEY.
       publishableKey: publishableKey,
+      // Default debug is kDebugMode, which prints every token refresh.
+      debug: false,
       authOptions: FlutterAuthClientOptions(
         // Desktop/mobile: ForjaPlatformSecureStore (DP Keychain when sandboxed;
         // prefs vault on ad-hoc macOS). Web keeps plugin defaults.

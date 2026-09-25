@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** tasks · **7 / 7** acceptance |
+| **Progress** | **8 / 8** tasks · **7 / 7** acceptance |
 | **Current slice** | Hub, snapshot, offline details, Downloaded tab, green Play |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
@@ -27,6 +27,7 @@
 | 5 | I382-T05 | Feature guide, changelog, RFC-117 rows | ✅ |
 | 6 | I382-T06 | Card tap opens the saved page; the file button lists saved files only | ✅ |
 | 7 | I382-T07 | Card docks a side panel: saved info, finished episodes, Play, file cards only | ✅ |
+| 8 | I382-T08 | Kind menu and posters sit below the window bar and share the same left edge | ✅ |
 
 ---
 

@@ -9,7 +9,8 @@ import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
-/// Right-side sliding panel shell for torrent / addon source picking.
+/// Sliding panel shell for torrent / addon source picking.
+/// Left-to-right pages dock it on the right. A right-to-left details page docks it on the left.
 class TorrentSourcesPanel extends StatelessWidget {
   const TorrentSourcesPanel({
     super.key,
@@ -97,6 +98,8 @@ class TorrentSourcesPanel extends StatelessWidget {
     // (those are top-left). SafeArea.top only left a dead band above the tabs.
     // Phone full-bleed (~92% width) still needs top inset.
     final topSafe = screenWidth < 700;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final seam = BorderSide(color: ForjaShellColors.cinematic.borderSubtle);
 
     return Stack(
       fit: StackFit.expand,
@@ -122,17 +125,20 @@ class TorrentSourcesPanel extends StatelessWidget {
           curve: Curves.easeOutCubic,
           top: 0,
           bottom: 0,
-          right: isOpen ? 0 : -panelWidth,
+          left: rtl ? (isOpen ? 0 : -panelWidth) : null,
+          right: rtl ? null : (isOpen ? 0 : -panelWidth),
           width: panelWidth,
           child: DesktopSwipeBackIgnore(
             child: ForjaFrostedPanel(
               enableBlur: enableBlur,
               frozenFrame: frozenFrame,
               border: Border(
-                left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
+                left: rtl ? BorderSide.none : seam,
+                right: rtl ? seam : BorderSide.none,
               ),
               child: SafeArea(
-                left: false,
+                left: rtl,
+                right: !rtl,
                 top: topSafe,
                 child: Padding(
                   padding: padding,

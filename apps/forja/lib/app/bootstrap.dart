@@ -202,6 +202,11 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   Logger.root.onRecord.listen((e) {
     // youtube_explode spam: countdown every tick while a token is cached
     if (e.message.contains('Access token expires in')) return;
+    // gotrue session refresh is routine (start/stop, save, attempt). Warnings
+    // and failures still print. Supabase's own INFO printer is off too.
+    if (e.loggerName.startsWith('supabase') && e.level < Level.WARNING) {
+      return;
+    }
     // supabase_flutter logs PostgREST failures via this logger before the
     // caller catch; iat-skew is retried with the same token (SyncService).
     if (SyncService.isJwtIssuedAtFutureError(e.message) ||

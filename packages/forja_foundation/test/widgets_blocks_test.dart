@@ -209,6 +209,30 @@ void main() {
       expect(find.text('Your list is empty'), findsOneWidget);
     });
 
+    testWidgets('TabsCardsBlock drops the menu below the window title', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: forjaThemeData(),
+          home: MediaQuery(
+            data: const MediaQueryData(padding: EdgeInsets.only(top: 34)),
+            child: const Scaffold(
+              body: TabsCardsBlock(
+                menu: Padding(
+                  padding: EdgeInsets.only(top: ShellTokens.tabHeaderTopPadding),
+                  child: Text('Film'),
+                ),
+                cards: SizedBox.expand(),
+              ),
+            ),
+          ),
+        ),
+      );
+      final dy = tester.getTopLeft(find.text('Film')).dy;
+      expect(dy, 34 + ShellTokens.shellHeaderTopPadding);
+    });
+
     test('layout_map lists mounted block types', () {
       expect(LayoutMap.slotToArtifactName['catalogBody'], contains('CatalogBody'));
       expect(LayoutMap.slotToArtifactName['columnsHeader'], contains('ColumnsHeader'));

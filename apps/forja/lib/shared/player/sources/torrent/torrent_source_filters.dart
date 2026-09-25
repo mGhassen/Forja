@@ -2345,16 +2345,16 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
         ? ShellTokens.sourcesFilterPanelPaddingTv
         : ShellTokens.sourcesFilterPanelPadding;
 
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final edge = BorderSide(color: ForjaShellColors.cinematic.borderSubtle);
     Widget panel = ForjaFrostedPanel(
       // Details: BackdropFilter. Player: translucent shell (no frame).
       enableBlur: widget.enableBlur,
-      // Only a left border - the right edge butts flush against the
-      // Sources panel (which draws its own left border) so the two
-      // read as one continuous surface, not two floating cards.
+      // Outer edge only. The inner edge butts flush against Sources,
+      // which draws the shared seam.
       border: Border(
-        left: BorderSide(
-          color: ForjaShellColors.cinematic.borderSubtle,
-        ),
+        left: rtl ? BorderSide.none : edge,
+        right: rtl ? edge : BorderSide.none,
       ),
       child: SafeArea(
         left: false,
@@ -2384,23 +2384,22 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
       );
     }
 
-    // Occupy only the region LEFT of Sources. A full-screen Stack overlay
-    // (even with an "empty" Sources strip) can still win the gesture arena on
-    // desktop and block Torrents / Stremio / Nuvio row taps.
+    // Occupy only the page side of Sources so the empty strip does not
+    // steal taps on the list.
     final playerFrost = !widget.enableBlur;
     return Positioned(
       top: 0,
       bottom: 0,
-      left: 0,
-      right: sourcesW,
+      left: rtl ? sourcesW : 0,
+      right: rtl ? 0 : sourcesW,
       child: Stack(
         fit: StackFit.expand,
         children: [
           Positioned(
             top: 0,
             bottom: 0,
-            left: 0,
-            right: filterW,
+            left: rtl ? filterW : 0,
+            right: rtl ? 0 : filterW,
             child: GestureDetector(
               onTap: widget.onClose,
               behavior: HitTestBehavior.opaque,
@@ -2414,13 +2413,14 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
           Positioned(
             top: 0,
             bottom: 0,
-            right: 0,
+            left: rtl ? 0 : null,
+            right: rtl ? null : 0,
             width: filterW,
             child: ClipRect(
               child: AnimatedSlide(
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOutCubic,
-                offset: _open ? Offset.zero : const Offset(1, 0),
+                offset: _open ? Offset.zero : Offset(rtl ? -1 : 1, 0),
                 child: panel,
               ),
             ),

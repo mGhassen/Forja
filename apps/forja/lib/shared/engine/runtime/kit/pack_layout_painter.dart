@@ -143,12 +143,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       });
     }
     // Sync shell from EngineCache when boot prefetch / prior visit warmed layout.
-    final warmed = _tryApplyCachedLayout();
+    // A pack-reload flag must not paint that cache — the open clears it.
     if (PluginRegistry.hubNeedsReloadOnOpen(widget.pluginId)) {
       _pendingHubFeedSoftReload = true;
       _refreshForceNetwork = true;
       unawaited(_reloadFlaggedHubOnOpen());
     } else {
+      final warmed = _tryApplyCachedLayout();
       unawaited(_loadPage(keepPainted: warmed));
     }
   }
@@ -344,7 +345,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   /// Soft reload after pack script wipe (issue 305 / 311 / 380) or pack settings
   /// (issue 314 — settings keep [live_sports.feed] when [forceNetwork] is false).
-  Future<void> _applyHubFeedSoftReload({bool? forceNetwork}) async {
+  ///
+  /// [clearPaint] is the pack-reload open: drop the kept page and show the
+  /// hub skeleton, then load. Settings tweaks stay keep-painted.
+  Future<void> _applyHubFeedSoftReload({
+    bool? forceNetwork,
+    bool clearPaint = false,
+  }) async {
     if (!mounted) return;
     // Belt: pack wipe must not scrape while this hub is keep-alive off-screen.
     if (!shellTabVisible) {
@@ -361,15 +368,28 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     setState(() {
       _refreshEpoch++;
       _refreshForceNetwork = force;
-      _refreshKeepPainted = true;
-      if (_pageFeedRailIds.isNotEmpty) {
+      _refreshKeepPainted = !clearPaint;
+      if (clearPaint) {
+        _widgets = const [];
+        _loading = true;
+        _error = null;
+        _pageFeedGen++;
+        _pageFeedRailIds = const {};
+        _pageFeedRails = null;
+        _pageFeedError = null;
+        _pageFeedFuture = null;
+        _eagerLoadKeys = const {};
+      } else if (_pageFeedRailIds.isNotEmpty) {
         _pageFeedGen++;
         _pageFeedRails = null;
         _pageFeedError = null;
         _pageFeedFuture = _bindPageFeed(forceRefresh: force);
       }
     });
-    await _loadPage(force: force, keepPainted: true);
+    if (clearPaint && _scroll.hasClients) {
+      _scroll.jumpTo(0);
+    }
+    await _loadPage(force: force, keepPainted: !clearPaint);
   }
 
   /// Bookmark / Simkl list write — only hubs with a status-tab list (My List).
@@ -460,11 +480,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     _pendingHubFeedSoftReload = true;
     _refreshForceNetwork = force;
     debugPrint(
-      '[HubReload] opened ${widget.pluginId} tab=$_pageKey — reloading',
+      '[HubReload] opened ${widget.pluginId} tab=$_pageKey — cleared, reloading',
     );
     try {
       if (packReload) PluginRegistry.consumeHubReloadOnOpen(widget.pluginId);
-      await _applyHubFeedSoftReload(forceNetwork: force);
+      await _applyHubFeedSoftReload(forceNetwork: force, clearPaint: true);
     } finally {
       _openReloadRunning = false;
     }
@@ -473,7 +493,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
     if (_pendingHubFeedSoftReload) {
-      await _applyHubFeedSoftReload();
+      await _applyHubFeedSoftReload(clearPaint: _refreshForceNetwork);
       return;
     }
     await _loadPage(force: force);

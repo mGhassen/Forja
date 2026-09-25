@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 5 / 5** fix · **0 / 1** acceptance |
+| **Progress** | **Complete · 6 / 6** fix · **0 / 1** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,7 @@
 | 3 | I380-T03 | `PackChromeScope.updateShouldNotify` includes `shellTabVisible` | ✅ |
 | 4 | I380-T04 | `LazyViewportGate` + `_loadPage` refuse work while hub tab is hidden | ✅ |
 | 5 | I380-T05 | Pack wipe records a registry flag (logged `[HubReload] flagged`) and aborts in-flight layout; open consumes it (`[HubReload] opened`) and is the only scrape | ✅ |
+| 6 | I380-T06 | Opening a flagged hub clears painted widgets / feed / memos (skeleton), then force-loads — keep-painted soft reload is settings only | ✅ |
 
 ---
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:forja_foundation/blocks/catalog/tabs_cards_block.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
@@ -516,9 +517,17 @@ class CatalogCardsGrid extends StatelessWidget {
     final gap =
         this.gap ??
         (tv ? ShellTokens.tvPosterCardRowGap : ShellTokens.posterCardRowGap);
-    // Beside category rail — same pads as Live channels (not ☰ chrome inset).
-    final leading = pad ?? ShellTokens.catalogSplitGridLeadingPad;
-    final trailing = pad ?? ShellTokens.catalogSplitGridTrailingPad;
+    // Beside a category rail the split pad is 8. A kind-menu page has no
+    // rail, so posters share the menu's inset.
+    final menuPage = TabsCardsPageScope.of(context);
+    final leading = pad ??
+        (menuPage
+            ? ShellTokens.compactChromeLeadingInset(context)
+            : ShellTokens.catalogSplitGridLeadingPad);
+    final trailing = pad ??
+        (menuPage
+            ? ShellTokens.bodyHorizontalPadding
+            : ShellTokens.catalogSplitGridTrailingPad);
 
     return LayoutBuilder(
       builder: (context, constraints) {

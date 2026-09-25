@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Prebuilt page: filter chrome ([menu] + [tabs]) over an expand [cards] grid.
 ///
@@ -16,6 +17,20 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// │                               │
 /// └───────────────────────────────┘
 /// ```
+/// Kind-menu pages (Downloads, My List) sit under the window title bar.
+/// Poster grids inside the scope share the menu's left inset.
+class TabsCardsPageScope extends InheritedWidget {
+  const TabsCardsPageScope({super.key, required super.child});
+
+  static bool of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<TabsCardsPageScope>() !=
+        null;
+  }
+
+  @override
+  bool updateShouldNotify(TabsCardsPageScope oldWidget) => false;
+}
+
 class TabsCardsBlock extends StatelessWidget {
   const TabsCardsBlock({
     super.key,
@@ -47,15 +62,25 @@ class TabsCardsBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = backgroundColor ?? ForjaShellColors.bgDark;
-    return ColoredBox(
-      color: bg,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ?menu,
-          ?tabs,
-          Expanded(child: cards),
-        ],
+    final windowTop = MediaQuery.paddingOf(context).top;
+    final belowTitle =
+        ShellTokens.shellHeaderTopPadding - ShellTokens.tabHeaderTopPadding;
+    return TabsCardsPageScope(
+      child: ColoredBox(
+        color: bg,
+        child: Padding(
+          padding: EdgeInsets.only(
+            top: windowTop + (belowTitle > 0 ? belowTitle : 0),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ?menu,
+              ?tabs,
+              Expanded(child: cards),
+            ],
+          ),
+        ),
       ),
     );
   }
