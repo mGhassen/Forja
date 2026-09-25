@@ -8,6 +8,8 @@ import 'library_path.dart';
 /// Job kinds — must match [JobKind] in `crates/ffi/src/engine_jobs.rs`.
 abstract final class EngineAsyncJob {
   static const stremioHttpGet = 2;
+  /// Sources stream-list GET. Safe to cancel without killing catalog GETs.
+  static const stremioStreamGet = 17;
   static const httpGet = 5;
   static const httpPost = 6;
   static const iptvProbeStream = 7;

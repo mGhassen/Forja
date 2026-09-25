@@ -474,6 +474,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool _searching = false;
   bool _stremioFetching = false;
 
+  /// Drop the UI generation and abort the stream-list HTTP (chip off / tab off).
+  void _abortStremioStreamFetch() {
+    _stremioGen++;
+    _stremioFetching = false;
+    _stremio.cancelStreamFetches();
+  }
+
   /// Blocks further taps while a source row is handing off to playback.
   /// ValueNotifier — do not setState the whole list when pick starts (issue 352).
   final ValueNotifier<bool> _sourcePickInFlightN = ValueNotifier(false);
@@ -763,7 +770,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     DownloadService.instance.tasksNotifier.removeListener(_onDownloadsChanged);
     _savePanelUiCache();
     _searchGen++;
-    _stremioGen++;
+    _abortStremioStreamFetch();
     _nuvioFetchGen++;
     _engineFetchGen++;
     // Shared cancel without Engine - [dismiss] already cancelled on user
@@ -1710,8 +1717,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _torrentInFlightProviderIds.clear();
     }
     if (keepKind != 'stremio' && _stremioFetching) {
-      _stremioGen++;
-      _stremioFetching = false;
+      _abortStremioStreamFetch();
       _stremioStreams = [];
       _loadedAddonBaseUrls.clear();
       _completedAddonBaseUrls.clear();
@@ -2695,6 +2701,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
 
+    _stremio.cancelStreamFetches();
     final gen = ++_stremioGen;
     setState(() {
       _stremioFetching = true;
@@ -2784,6 +2791,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
 
+    _stremio.cancelStreamFetches();
     final gen = ++_stremioGen;
     setState(() {
       _stremioFetching = true;
@@ -3463,8 +3471,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
     if (_kindFilter == 'stremio') {
-      _stremioGen++;
-      setState(() => _stremioFetching = false);
+      _abortStremioStreamFetch();
+      setState(() {});
       return;
     }
     if (_kindFilter == 'torrents') {
@@ -3807,6 +3815,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _savePanelUiCache();
       return;
     }
+    if (_kindFilter == 'stremio' && id == _selectedSourceId) {
+      _abortStremioStreamFetch();
+      setState(() {
+        _selectedSourceId = '';
+        _userPickedStremioProvider = true;
+        _error = null;
+      });
+      _savePanelUiCache();
+      return;
+    }
     if (id == _selectedSourceId) return;
     final prev = _selectedSourceId;
     setState(() {
@@ -3982,7 +4000,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           isFetching: _isFetching,
           onCancelFetch: () {
             _searchGen++;
-            _stremioGen++;
+            _abortStremioStreamFetch();
             _nuvioFetchGen++;
             _engineFetchGen++;
             EngineService.instance.cancelPending();

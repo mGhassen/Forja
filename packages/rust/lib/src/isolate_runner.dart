@@ -9,6 +9,13 @@ Future<String> runStremioHttpGet(String url, {int timeoutSecs = 15}) =>
       'timeout_secs': timeoutSecs,
     });
 
+/// Stream-list GET. [Engine.cancelStremioStreamFetches] aborts this kind only.
+Future<String> runStremioStreamGet(String url, {int timeoutSecs = 15}) =>
+    EngineJobs.run(EngineAsyncJob.stremioStreamGet, {
+      'url': url,
+      'timeout_secs': timeoutSecs,
+    });
+
 Future<String> runHttpGetJson(
   String url, {
   int timeoutSecs = 15,

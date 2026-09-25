@@ -138,7 +138,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [114-[open]-…](114-[open]-debrid-magnet-resolve-packs.md) | Debrid magnet-resolve packs (kind: debrid; delete crates/debrid) | — | open | **6 / 6** · **12 / 12** | — |
 | [115-[open]-…](115-[open]-foundation-motion-presets.md) | Foundation motion presets (pack-overridable) | — | open | **6 / 6** · **10 / 10** | — |
 | [116-[fixed]-…](fixed/116-[fixed]-local-storage-kv-sqlite.md) | Local storage — little KV + rusqlite IPTV catalog | — | fixed | **Complete · 5 / 5** · **12 / 12** | [082](082-[open]-account-profile-local-data-scope.md) |
-| [117-[open]-…](117-[open]-vod-offline-downloads.md) | VOD offline Downloads (dual entry + Settings) | — | open | **8 / 10** · **14 / 14** | [365](../issues/365-[open]-vod-offline-downloads.md) |
+| [117-[open]-…](117-[open]-vod-offline-downloads.md) | VOD offline Downloads (dual entry + Settings) | — | open | **9 / 11** · **15 / 15** | [365](../issues/365-[open]-vod-offline-downloads.md) |
 | [118-[open]-…](118-[open]-pack-green-play.md) | Pack-owned green Play (multi-tech race) | — | open | **4 / 4** · **8 / 8** | [366](../issues/366-[open]-pack-green-play.md) |
 
 ## Related

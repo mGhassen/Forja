@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex};
 
-use stremio::{fetch_get, fetch_get_with_headers, fetch_post_with_headers};
+use stremio::{fetch_get, fetch_get_job, fetch_get_with_headers, fetch_post_with_headers};
 use utils::engine_cancel::CancellationToken;
 
 use crate::RUNTIME;
@@ -34,6 +34,9 @@ static JOBS: LazyLock<Mutex<JobStore>> = LazyLock::new(|| {
 #[derive(Clone, Copy, Debug)]
 pub enum JobKind {
     StremioHttpGet = 2,
+    /// Sources stream-list GET. Cancel this kind when a Stremio addon chip
+    /// turns off — do not cancel [StremioHttpGet] (catalog / manifest).
+    StremioStreamGet = 17,
     HttpGet = 5,
     HttpPost = 6,
     IptvProbeStream = 7,
@@ -159,6 +162,19 @@ async fn run_job_async(kind: u32, payload_json: &str) -> String {
 
 async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> {
     match kind {
+        k if k == JobKind::StremioStreamGet as u32 => {
+            let req: StremioHttpReq = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let token = utils::engine_cancel::cancellation_token();
+            tokio::task::spawn_blocking(move || {
+                utils::engine_cancel::attach_job_token(token);
+                match fetch_get_job(&req.url, req.timeout_secs) {
+                    Ok(resp) => serde_json::to_string(&resp).map_err(|e| e.to_string()),
+                    Err(e) => Ok(serde_json::json!({ "error": e }).to_string()),
+                }
+            })
+            .await
+            .map_err(|e| e.to_string())?
+        }
         k if k == JobKind::StremioHttpGet as u32 => {
             let req: StremioHttpReq = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
             let token = utils::engine_cancel::cancellation_token();

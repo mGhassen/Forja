@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **20 / 23** tasks (2 deferred) · **16 / 16** acceptance |
+| **Progress** | **21 / 24** tasks (2 deferred) · **17 / 17** acceptance |
 | **Current slice** | Phase 1 + integrity follow-ups ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -43,6 +43,7 @@
 | 21 | I365-T21 | Sources Offline row tap plays the on-disk file; hover Delete removes it | ✅ |
 | 22 | I365-T22 | Offline Sources hover: Play online opens the cloud stream beside Delete | ✅ |
 | 23 | I365-T23 | Sources shows saved / in-progress downloads before provider search finishes | ✅ |
+| 24 | I365-T24 | Details hero has no Download button; enqueue stays on Sources and the player | ✅ |
 
 ---
 
@@ -66,6 +67,7 @@
 | 14 | I365-A14 | Sources Offline row tap plays the saved file; hover Delete removes it | ✅ |
 | 15 | I365-A15 | Offline Sources hover Play online opens the remote stream | ✅ |
 | 16 | I365-A16 | Sources lists saved / in-progress downloads before provider search returns | ✅ |
+| 17 | I365-A17 | Details hero has no Download button | ✅ |
 
 ---
 

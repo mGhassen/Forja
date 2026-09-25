@@ -12,9 +12,6 @@ Offline Downloads is on phone and desktop.
 
 ## How to start a download
 
-- **Details** — tap the download icon next to Play / Sources. Sources opens;
-  hover a stream row to push the card and reveal a right action rail with
-  Download (same pattern as IPTV Portals). Row tap still plays.
 - **Sources** — hover any HTTP stream row to push in the Download action;
   torrents toast that offline isn’t available yet. A saved or in-progress
   download for this title appears at the top as soon as the panel opens,

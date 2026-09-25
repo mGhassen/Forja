@@ -27,7 +27,6 @@ import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
-import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
@@ -824,21 +823,6 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     unawaited(openSourcesFromContext(context: context, ctx: ctx));
   }
 
-  void _downloadSelected() {
-    final ep = _selectedVideo();
-    final ctx = catalogPlayContextFromMeta(
-      meta: _show,
-      pluginId: widget.pluginId,
-      episode: ep,
-      season: _selectedSeason,
-      episodeNumber: _selectedEpisode,
-      videos: _videos,
-      extras: _playFilterExtras,
-      audioCategory: catalogPlayAudioCategory(_playFilterSelections),
-    );
-    unawaited(runDownloadFromContext(context: context, ctx: ctx));
-  }
-
   @override
   Widget build(BuildContext context) {
     return PlayerSurfaceChromeStub(
@@ -914,15 +898,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final selectedVideo = _selectedVideo();
     final selectedUnaired =
         selectedVideo != null && hubVideoNotAiredYet(selectedVideo);
-    final showDownload = PlatformInfo.offlineDownloadsEnabled &&
-        !isUpcoming &&
-        !isIptv &&
-        !selectedUnaired &&
-        (_isMovie || videos.isNotEmpty || show.open != null);
     var tvIndex = 0;
     final playIndex = tvIndex++;
     final sourcesIndex = showCatalogSources ? tvIndex++ : null;
-    final downloadIndex = showDownload ? tvIndex++ : null;
     final clearIndex = hasClearableProgress ? tvIndex++ : null;
     final trailerIndex = hasTrailers ? tvIndex++ : null;
     final listIndex = listTarget != null ? tvIndex++ : null;
@@ -1189,13 +1167,11 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
                               show.open != null)
                       ? _openCatalogSources
                       : null,
-                  onDownload: showDownload ? _downloadSelected : null,
                   focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                   onUpEdge: heroPopUp,
                   tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                   tvItemIndex: playIndex,
                   tvSourcesItemIndex: sourcesIndex,
-                  tvDownloadItemIndex: downloadIndex,
                 ),
               if (hasClearableProgress) ...[
                 const SizedBox(width: 10),

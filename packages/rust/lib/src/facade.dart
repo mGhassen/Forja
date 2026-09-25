@@ -212,6 +212,12 @@ abstract final class Engine {
     RustLib.instance.engineCancelJobsOfKind(EngineAsyncJob.engineJsExtract);
   }
 
+  /// Abort Sources Stremio stream-list GETs. Catalog / manifest jobs stay.
+  static void cancelStremioStreamFetches() {
+    if (!isReady) return;
+    RustLib.instance.engineCancelJobsOfKind(EngineAsyncJob.stremioStreamGet);
+  }
+
   /// Abort in-flight live-sports schedule/catalog fetches (tab hide / refresh).
   static void cancelLiveSportsFetch() {
     if (!isReady) return;
