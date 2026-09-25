@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -814,6 +815,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   bool _focused = false;
   bool _typing = false;
   Timer? _revealTimer;
+  bool _mouseDownDidNavigate = false;
   Timer? _providerRevealTimer;
   Timer? _providerHoldTimer;
   bool _providerHoldFired = false;
@@ -1226,10 +1228,19 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               cursor: SystemMouseCursors.click,
               child: Listener(
                 behavior: HitTestBehavior.opaque,
-                onPointerDown: (e) => _reloadHold.pointerDown(
-                  e,
-                  hideMenuTabId: widget.destination.id,
-                ),
+                onPointerDown: (e) {
+                  _reloadHold.pointerDown(
+                    e,
+                    hideMenuTabId: widget.destination.id,
+                  );
+                  // Long-press owns the hold (provider menu). A plain click
+                  // acts on mouse down so it doesn't wait on that arena.
+                  if (_hasVerticalFilters) return;
+                  if (e.kind != PointerDeviceKind.mouse) return;
+                  if ((e.buttons & kPrimaryButton) == 0) return;
+                  _mouseDownDidNavigate = true;
+                  _enterPageFromNav();
+                },
                 onPointerUp: _reloadHold.pointerUp,
                 onPointerCancel: _reloadHold.pointerCancel,
                 child: GestureDetector(
@@ -1240,6 +1251,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                   onTapCancel: () => setState(() => _pressed = false),
                   onTap: () {
                     if (_reloadHold.consumeCompleted()) return;
+                    if (_mouseDownDidNavigate) {
+                      _mouseDownDidNavigate = false;
+                      return;
+                    }
                     _enterPageFromNav();
                   },
                   onLongPress: _hasVerticalFilters

@@ -433,7 +433,7 @@ class _DetailsHeroLayout extends StatelessWidget {
             body,
             if (maxHeight != null)
               Align(
-                alignment: Alignment.topRight,
+                alignment: AlignmentDirectional.topEnd,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     maxWidth: factsMaxWidth,
@@ -495,7 +495,7 @@ class _DetailsHeroLayout extends StatelessWidget {
 
     return factsOverlay(
       body: Align(
-        alignment: Alignment.topLeft,
+        alignment: AlignmentDirectional.topStart,
         child: SizedBox(
           width: leftColumnWidth,
           height: maxHeight,
@@ -711,7 +711,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
           SizedBox(
             height: titleHeight,
             child: Align(
-              alignment: Alignment.bottomLeft,
+              alignment: AlignmentDirectional.bottomStart,
                   child: _titleWidget(titleHeight),
             ),
           )
@@ -758,7 +758,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
         ConstrainedBox(
           constraints: BoxConstraints(maxHeight: _overviewSlotHeight),
           child: Align(
-            alignment: Alignment.topLeft,
+            alignment: AlignmentDirectional.topStart,
             child: HeroOverviewText(
               overview: overview,
               maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
@@ -798,7 +798,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
         child: AnimatedSize(
           duration: ForjaMotionTheme.of(context).pageFade.duration,
           curve: Curves.easeOutCubic,
-          alignment: Alignment.topLeft,
+          alignment: AlignmentDirectional.topStart,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -844,11 +844,11 @@ class _DetailsHeroMainColumn extends StatelessWidget {
       width: maxContentWidth,
       height: maxHeight,
       child: Align(
-        alignment: Alignment.topLeft,
+        alignment: AlignmentDirectional.topStart,
         child: AnimatedSize(
           duration: ForjaMotionTheme.of(context).pageFade.duration,
           curve: Curves.easeOutCubic,
-          alignment: Alignment.topLeft,
+          alignment: AlignmentDirectional.topStart,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -1051,8 +1051,8 @@ class _CinematicHeroSideGradient extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+            begin: AlignmentDirectional.centerStart,
+            end: AlignmentDirectional.centerEnd,
             colors: [
               shellBg,
               shellBg.withValues(alpha: 0.72),

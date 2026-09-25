@@ -25,6 +25,7 @@ double fitHeroTitleFontSize({
   double letterSpacing = -1.2,
   FontWeight fontWeight = FontWeight.w900,
   EdgeInsets pad = kHeroTitlePad,
+  TextDirection textDirection = TextDirection.ltr,
 }) {
   final availW = maxWidth - pad.horizontal;
   final availH = maxHeight - pad.vertical;
@@ -45,7 +46,7 @@ double fitHeroTitleFontSize({
       ),
       maxLines: maxLines,
       ellipsis: '…',
-      textDirection: TextDirection.ltr,
+      textDirection: textDirection,
     )..layout(maxWidth: availW);
     return painter.height;
   }
@@ -288,7 +289,7 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
     if (logoUrl.isEmpty) return fallback;
 
     return Stack(
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       children: [
         IgnorePointer(
           ignoring: _logoReady,
@@ -303,7 +304,7 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
           logoUrl,
           height: logoHeight,
           fit: BoxFit.contain,
-          alignment: Alignment.centerLeft,
+          alignment: AlignmentDirectional.centerStart,
           gaplessPlayback: true,
           errorBuilder: (_, _, _) => const SizedBox.shrink(),
           frameBuilder: (context, child, frame, sync) {
@@ -342,6 +343,7 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
           maxLines: maxLines,
           preferredSize: preferred,
           minSize: minSize,
+          textDirection: Directionality.of(context),
         );
         return ChromaticHeroTitleText(
           title: title,
@@ -428,7 +430,7 @@ class _HomeHeroTitleSlot extends StatelessWidget {
       height: compact && slotHeight == null ? null : resolvedSlotHeight,
       width: resolvedMaxWidth,
       child: Align(
-        alignment: Alignment.bottomLeft,
+        alignment: AlignmentDirectional.bottomStart,
         child: Padding(
           padding: EdgeInsets.only(bottom: desktop || compact ? 0 : 14),
           child: paintLogo.isNotEmpty
@@ -436,13 +438,13 @@ class _HomeHeroTitleSlot extends StatelessWidget {
                   height: resolvedLogoMax,
                   width: resolvedMaxWidth,
                   child: Align(
-                    alignment: Alignment.bottomLeft,
+                    alignment: AlignmentDirectional.bottomStart,
                     child: Image.network(
                       paintLogo,
                       height: resolvedLogoMax,
                       width: resolvedMaxWidth,
                       fit: BoxFit.contain,
-                      alignment: Alignment.centerLeft,
+                      alignment: AlignmentDirectional.centerStart,
                       errorBuilder: (_, _, _) => fallback,
                       frameBuilder: (context, child, frame, sync) {
                         if (frame == null && !sync) return fallback;
@@ -499,6 +501,7 @@ class _HomeHeroTitleSlot extends StatelessWidget {
           height: height,
           letterSpacing: letterSpacing,
           pad: EdgeInsets.zero,
+          textDirection: Directionality.of(context),
         );
         return _wrapSelectable(
           Text(

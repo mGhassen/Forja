@@ -18,10 +18,8 @@ import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 typedef SeasonSelectCallback = void Function(int season);
 typedef EpisodeSelectCallback = void Function(int episode);
 typedef EpisodeWatchedToggle = void Function(int season, int episode);
-typedef SeasonWatchedToggle = Future<void> Function(
-  int season,
-  List<int> episodes,
-);
+typedef SeasonWatchedToggle =
+    Future<void> Function(int season, List<int> episodes);
 
 class TvSeasonEpisodePicker extends StatefulWidget {
   const TvSeasonEpisodePicker({
@@ -43,15 +41,18 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     this.seasonPosters = const {},
     this.episodeProgress = const {},
     this.customEpisodesBySeason,
+
     /// When set (`anilist` / `kisskh`), watched keys are `{catalog}_{id}_S…_E…`.
     /// Null keeps TMDB keys `{id}_S…_E…`.
     this.watchedCatalog,
+
     /// When set, watched / progress keys and [onToggleWatched] use this season
     /// instead of [selectedSeason]. Anime franchise rails use `1` (each AniList
     /// Media keeps its own id + historical `S1_E*` marks).
     this.watchedSeasonForKeys,
     this.tvRowOrderBase = 0,
     this.tvFocusUp,
+
     /// `cards` (default) or `chips` — Home pack `episodeView`.
     this.episodeView = kEpisodeViewCards,
   });
@@ -172,13 +173,12 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       buildEpisodeRangesForNumbers(_episodeNumbers);
 
   List<dynamic> get _visibleEpisodes => filterEpisodeChunkByNumber(
-        _sortedEpisodes,
-        _episodeNumberAt,
-        _episodeChunk,
-      );
+    _sortedEpisodes,
+    _episodeNumberAt,
+    _episodeChunk,
+  );
 
-  int _chunkIndexForEpisode(int episode) =>
-      episodeChunkIndexForNumber(episode);
+  int _chunkIndexForEpisode(int episode) => episodeChunkIndexForNumber(episode);
 
   void _selectChunk(int chunk) {
     if (chunk == _episodeChunk) return;
@@ -245,8 +245,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     return episodes;
   }
 
-  int get _keysSeason =>
-      widget.watchedSeasonForKeys ?? widget.selectedSeason;
+  int get _keysSeason => widget.watchedSeasonForKeys ?? widget.selectedSeason;
 
   bool _watchedKey(int episode) {
     final season = _keysSeason;
@@ -261,8 +260,10 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     if (!_seasonScrollController.hasClients || widget.seasonCount <= 1) return;
     final index = widget.selectedSeason - 1;
     if (index < 0) return;
-    final target = (index * _seasonCardStride(context))
-        .clamp(0.0, _seasonScrollController.position.maxScrollExtent);
+    final target = (index * _seasonCardStride(context)).clamp(
+      0.0,
+      _seasonScrollController.position.maxScrollExtent,
+    );
     _seasonScrollController.animateTo(
       target,
       duration: ForjaMotionTheme.of(context).scrollSnap.duration,
@@ -275,7 +276,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
     if (chunk != _episodeChunk) {
       setState(() => _episodeChunk = chunk);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedEpisode());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToSelectedEpisode(),
+      );
       return;
     }
     final index = _visibleEpisodes.indexWhere(
@@ -304,7 +307,6 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     );
   }
 
-
   Widget _buildSeasonRow() {
     return HorizontalScroller(
       height: _SeasonCard.rowScrollerHeightOf(context),
@@ -331,9 +333,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           onDoubleTap: widget.onSeasonToggleWatched == null
               ? null
               : () => widget.onSeasonToggleWatched!(
-                    season,
-                    _episodeNumbersForSeason(season),
-                  ),
+                  season,
+                  _episodeNumbersForSeason(season),
+                ),
           onLeftEdge: null,
           listIndex: i,
         );
@@ -366,14 +368,16 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
         showOverview: meta.showOverview,
       ),
       controller: _episodeScrollController,
-      padding: const EdgeInsets.symmetric(vertical: _EpisodeCard.rowVerticalPadding),
+      padding: const EdgeInsets.symmetric(
+        vertical: _EpisodeCard.rowVerticalPadding,
+      ),
       itemCount: _visibleEpisodes.length,
       separatorBuilder: (_, _) => const SizedBox(width: 16),
       itemBuilder: (_, i) {
         final ep = _visibleEpisodes[i];
         final epNum = (ep['episode_number'] ?? ep['episode']) as int;
-        final title =
-            (ep['name'] ?? ep['title'] ?? 'Episode $epNum').toString();
+        final title = (ep['name'] ?? ep['title'] ?? 'Episode $epNum')
+            .toString();
         final overview = (ep['overview'] ?? '').toString();
         final runtime = ep['runtime'] as int? ?? 0;
         final thumbnail = _resolveThumbnail(
@@ -384,8 +388,8 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
         final progKey = 'S${_keysSeason}_E$epNum';
         final prog = widget.episodeProgress[progKey];
         final pos = prog?['position'] as int? ?? 0;
-        final dur = prog?['duration'] as int? ??
-            (runtime > 0 ? runtime * 60000 : 0);
+        final dur =
+            prog?['duration'] as int? ?? (runtime > 0 ? runtime * 60000 : 0);
         final airDate = episodeAirDateInfo(ep);
 
         final selected = widget.selectedEpisode == epNum;
@@ -443,8 +447,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
               : (focused) {
                   if (focused) widget.onEpisodeFocused!(epNum);
                 },
-          onToggleWatched: () =>
-              widget.onToggleWatched(_keysSeason, epNum),
+          onToggleWatched: () => widget.onToggleWatched(_keysSeason, epNum),
           onLeftEdge: null,
           listIndex: i,
         );
@@ -477,16 +480,21 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   }) {
     final eps = _visibleEpisodes;
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final chipW =
-        tv ? DetailsTokens.episodeChipMinWidthTv : DetailsTokens.episodeChipMinWidth;
-    final chipH =
-        tv ? DetailsTokens.episodeChipHeightTv : DetailsTokens.episodeChipHeight;
-    final gap =
-        tv ? DetailsTokens.episodeChipGapTv : DetailsTokens.episodeChipGap;
-    final radius =
-        tv ? DetailsTokens.episodeChipRadiusTv : DetailsTokens.episodeChipRadius;
-    final fontSize =
-        tv ? DetailsTokens.bodyFontSizeTv : DetailsTokens.bodyFontSize;
+    final chipW = tv
+        ? DetailsTokens.episodeChipMinWidthTv
+        : DetailsTokens.episodeChipMinWidth;
+    final chipH = tv
+        ? DetailsTokens.episodeChipHeightTv
+        : DetailsTokens.episodeChipHeight;
+    final gap = tv
+        ? DetailsTokens.episodeChipGapTv
+        : DetailsTokens.episodeChipGap;
+    final radius = tv
+        ? DetailsTokens.episodeChipRadiusTv
+        : DetailsTokens.episodeChipRadius;
+    final fontSize = tv
+        ? DetailsTokens.bodyFontSizeTv
+        : DetailsTokens.bodyFontSize;
     final watchedBadgeSize = tv
         ? DetailsTokens.episodeChipWatchedBadgeSizeTv
         : DetailsTokens.episodeChipWatchedBadgeSize;
@@ -509,12 +517,10 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width;
         final avail = (rawW - hPad * 2).clamp(chipW, double.infinity);
-        final cols = ((avail + gap) / (chipW + gap))
-            .floor()
-            .clamp(
-              DetailsTokens.episodeChipColumnsMin,
-              DetailsTokens.episodeChipColumnsMax,
-            );
+        final cols = ((avail + gap) / (chipW + gap)).floor().clamp(
+          DetailsTokens.episodeChipColumnsMin,
+          DetailsTokens.episodeChipColumnsMax,
+        );
 
         final grid = Padding(
           padding: EdgeInsets.symmetric(horizontal: hPad),
@@ -573,9 +579,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     required String? tabId,
   }) {
     final epNum = (ep['episode_number'] ?? ep['episode']) as int;
-    final map = ep is Map
-        ? Map<String, dynamic>.from(ep)
-        : <String, dynamic>{};
+    final map = ep is Map ? Map<String, dynamic>.from(ep) : <String, dynamic>{};
     final airDate = episodeAirDateInfo(map);
     final watched = _watchedKey(epNum);
     final selected = widget.selectedEpisode == epNum;
@@ -657,8 +661,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           sortOrder: episodeOrder,
           tabId: tabId,
           useTv: useTv,
-          onFocusUp:
-              (hasMultiSeason || showRange) ? null : widget.tvFocusUp,
+          onFocusUp: (hasMultiSeason || showRange) ? null : widget.tvFocusUp,
         );
       } else {
         final episodeRow = _buildEpisodeRow();
@@ -680,8 +683,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
     // Secondary to the section title (desktop 14 → TV body ladder).
-    final countFontSize =
-        tvDensity ? ShellTokens.tvTypeSize(14) : 14.0;
+    final countFontSize = tvDensity ? ShellTokens.tvTypeSize(14) : 14.0;
 
     Widget? rangeControl;
     if (showRange) {
@@ -711,10 +713,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           padding: DetailsBody.contentPadding(context),
           child: Row(
             children: [
-              Text(
-                'Episodes',
-                style: ShellSectionTitle.titleStyleFor(context),
-              ),
+              Text('Episodes', style: ShellSectionTitle.titleStyleFor(context)),
               if (episodeCount > 0) ...[
                 const SizedBox(width: 8),
                 Text(
@@ -726,10 +725,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                   ),
                 ),
               ],
-              if (rangeControl != null) ...[
-                const Spacer(),
-                rangeControl,
-              ],
+              if (rangeControl != null) ...[const Spacer(), rangeControl],
             ],
           ),
         ),
@@ -752,8 +748,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       final chipH = tv
           ? DetailsTokens.episodeChipHeightTv
           : DetailsTokens.episodeChipHeight;
-      final gap =
-          tv ? DetailsTokens.episodeChipGapTv : DetailsTokens.episodeChipGap;
+      final gap = tv
+          ? DetailsTokens.episodeChipGapTv
+          : DetailsTokens.episodeChipGap;
       return homeLoadingShimmer(
         Padding(
           padding: DetailsBody.contentPadding(context),
@@ -964,6 +961,7 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
       child: ShellPaintScope.focusableTap(
         context: context,
         onTap: widget.onTap,
+        mouseDownActivates: false,
         borderRadius: widget.radius,
         showFocusBorder: false,
         listIndex: widget.listIndex,
@@ -1028,11 +1026,11 @@ class _EpisodeCardSkeleton extends StatelessWidget {
             Container(
               height: 12,
               width: cardWidth,
-            decoration: BoxDecoration(
-              color: ForjaShellColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(4),
+              decoration: BoxDecoration(
+                color: ForjaShellColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
             const SizedBox(height: 4),
             Container(
               height: 12,
@@ -1074,13 +1072,13 @@ class _SeasonCard extends StatefulWidget {
 
   static double cardWidthOf(BuildContext context) =>
       ShellPaintScope.usesTvDensityOf(context)
-          ? DetailsTokens.episodeSeasonWidthTv
-          : DetailsTokens.episodeSeasonWidth;
+      ? DetailsTokens.episodeSeasonWidthTv
+      : DetailsTokens.episodeSeasonWidth;
 
   static double cardHeightOf(BuildContext context) =>
       ShellPaintScope.usesTvDensityOf(context)
-          ? DetailsTokens.episodeSeasonHeightTv
-          : DetailsTokens.episodeSeasonHeight;
+      ? DetailsTokens.episodeSeasonHeightTv
+      : DetailsTokens.episodeSeasonHeight;
 
   static double rowScrollerHeightOf(BuildContext context) =>
       cardHeightOf(context) * ForjaMotionTheme.defaults.chipLift.hoverScale +
@@ -1107,8 +1105,7 @@ class _SeasonCardState extends State<_SeasonCard> {
 
   Widget _buildCard(bool hovered) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final seasonFontSize =
-        tv ? DetailsTokens.bodyFontSizeTv : 12.0;
+    final seasonFontSize = tv ? DetailsTokens.bodyFontSizeTv : 12.0;
     final active = ShellPaintScope.interactiveActive(
       context,
       hovered: hovered,
@@ -1121,16 +1118,16 @@ class _SeasonCardState extends State<_SeasonCard> {
     final liftActive = active && !widget.selected;
 
     return ForjaMotionScale(
-        preset: ForjaMotionPreset.chipLift,
-        active: liftActive,
-        child: GestureDetector(
-          onSecondaryTap: widget.onDoubleTap,
-          onDoubleTap: widget.onDoubleTap,
-          behavior: HitTestBehavior.opaque,
-          child: SizedBox(
-            width: _SeasonCard.cardWidthOf(context),
-            height: _SeasonCard.cardHeightOf(context),
-            child: Stack(
+      preset: ForjaMotionPreset.chipLift,
+      active: liftActive,
+      child: GestureDetector(
+        onSecondaryTap: widget.onDoubleTap,
+        onDoubleTap: widget.onDoubleTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: _SeasonCard.cardWidthOf(context),
+          height: _SeasonCard.cardHeightOf(context),
+          child: Stack(
             fit: StackFit.expand,
             children: [
               ClipRRect(
@@ -1151,10 +1148,7 @@ class _SeasonCardState extends State<_SeasonCard> {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Color(0xD9000000),
-                          ],
+                          colors: [Colors.transparent, Color(0xD9000000)],
                           stops: [0.45, 1.0],
                         ),
                       ),
@@ -1212,6 +1206,7 @@ class _SeasonCardState extends State<_SeasonCard> {
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onTap,
+      mouseDownActivates: widget.onDoubleTap == null,
       borderRadius: _SeasonCard.radius,
       motion: ForjaMotionPreset.fillOnly,
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -1287,14 +1282,15 @@ class _EpisodeCard extends StatefulWidget {
   // were overflowing the row by <1px (e.g. 150.75 thumb in a 216 budget).
   static const double _titleLineHeight = 18; // ceil(14 * 1.25)
   static const double _dateBlockHeight = _metaGap + 15; // ceil(12 * 1.2)
-  static const double _overviewBlockHeight = _metaGap + 34; // ceil(12 * 1.4 * 2)
+  static const double _overviewBlockHeight =
+      _metaGap + 34; // ceil(12 * 1.4 * 2)
   // macOS/desktop font metrics can exceed ceil budgets by ~1px inside ListView rows.
   static const double _layoutSlack = 1;
 
   static double cardWidthOf(BuildContext context) =>
       ShellPaintScope.usesTvDensityOf(context)
-          ? DetailsTokens.episodeCardWidthTv
-          : DetailsTokens.episodeCardWidth;
+      ? DetailsTokens.episodeCardWidthTv
+      : DetailsTokens.episodeCardWidth;
 
   static double thumbHeightOf(BuildContext context) =>
       (cardWidthOf(context) * 9 / 16).ceilToDouble();
@@ -1316,11 +1312,7 @@ class _EpisodeCard extends StatefulWidget {
     bool showDate = true,
     bool showOverview = true,
   }) =>
-      contentHeight(
-        context,
-        showDate: showDate,
-        showOverview: showOverview,
-      ) +
+      contentHeight(context, showDate: showDate, showOverview: showOverview) +
       rowVerticalPadding * 2;
 
   @override
@@ -1346,12 +1338,12 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     final cardWidth = _EpisodeCard.cardWidthOf(context);
     final thumbHeight = _EpisodeCard.thumbHeightOf(context);
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
-    final titleFontSize =
-        tvDensity ? DetailsTokens.bodyFontSizeTv : 14.0;
-    final metaFontSize =
-        tvDensity ? DetailsTokens.metaFontSizeTv : 12.0;
-    final showProgress =
-        WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
+    final titleFontSize = tvDensity ? DetailsTokens.bodyFontSizeTv : 14.0;
+    final metaFontSize = tvDensity ? DetailsTokens.metaFontSizeTv : 12.0;
+    final showProgress = WatchProgressBar.isResumable(
+      widget.positionMs,
+      widget.durationMs,
+    );
     final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
     final tvFocus = ShellPaintScope.useTvFocusOf(context);
     final active = ShellPaintScope.interactiveActive(
@@ -1364,157 +1356,153 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     final showPlayOverlay = tvFocus
         ? (playEnabled || enabled) && (widget.armed || active)
         : (playEnabled || enabled) && (active || widget.selected);
-    final liftActive =
-        !tvFocus && enabled && (active || widget.selected);
+    final liftActive = !tvFocus && enabled && (active || widget.selected);
     final showThumbBorder = widget.selected || active;
     final thumbBorderColor = widget.selected
         ? Colors.white
         : ForjaShellColors.chipSelectedBorder;
 
     return ForjaMotionScale(
-        preset: ForjaMotionPreset.cardLift,
-        active: liftActive,
-        child: GestureDetector(
-          onSecondaryTap: enabled ? widget.onToggleWatched : null,
-          onDoubleTap: enabled ? widget.onToggleWatched : null,
-          behavior: HitTestBehavior.opaque,
-          child: SizedBox(
-            width: cardWidth,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: cardWidth,
-                  height: thumbHeight,
-                  decoration: BoxDecoration(
-                    borderRadius:
-                        BorderRadius.circular(_EpisodeCard.thumbRadius),
-                    border: showThumbBorder
-                        ? Border.all(color: thumbBorderColor, width: 2)
-                        : null,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
+      preset: ForjaMotionPreset.cardLift,
+      active: liftActive,
+      child: GestureDetector(
+        onSecondaryTap: enabled ? widget.onToggleWatched : null,
+        onDoubleTap: enabled ? widget.onToggleWatched : null,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: cardWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: cardWidth,
+                height: thumbHeight,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
+                  border: showThumbBorder
+                      ? Border.all(color: thumbBorderColor, width: 2)
+                      : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      widget.thumbnail != null &&
+                              widget.thumbnail.toString().startsWith('http')
+                          ? SettledNetworkImage(
+                              imageUrl: widget.thumbnail.toString(),
+                              fit: BoxFit.cover,
+                              errorWidget: _thumbFallback(),
+                            )
+                          : _thumbFallback(),
+                      if (showProgress)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: LinearProgressIndicator(
+                            value: (widget.positionMs / widget.durationMs)
+                                .clamp(0.0, 1.0),
+                            minHeight: 3,
+                            backgroundColor: Colors.black54,
+                            valueColor: AlwaysStoppedAnimation(
+                              ForjaShellColors.progressFill,
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: _ThumbBadge(label: 'E${widget.episodeNumber}'),
+                      ),
+                      if (durationLabel != null)
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: _ThumbBadge(label: durationLabel),
+                        ),
+                      if (widget.watched)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Icon(
+                            Icons.check_circle_rounded,
+                            size: ShellPaintScope.iconOf(context, 16),
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ShellCardPlayOverlay(
+                        active: widget.playFocusNode?.hasFocus == true,
+                        visible: showPlayOverlay,
+                        onTap:
+                            playEnabled &&
+                                (tvFocus ? widget.armed : showPlayOverlay)
+                            ? widget.onPlay
+                            : null,
+                        focusNode: widget.playFocusNode,
+                        onKeyEvent: widget.onPlayKeyEvent,
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(_EpisodeCard.thumbRadius),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        widget.thumbnail != null &&
-                                widget.thumbnail
-                                    .toString()
-                                    .startsWith('http')
-                            ? SettledNetworkImage(
-                                imageUrl: widget.thumbnail.toString(),
-                                fit: BoxFit.cover,
-                                errorWidget: _thumbFallback(),
-                              )
-                            : _thumbFallback(),
-                        if (showProgress)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: LinearProgressIndicator(
-                              value: (widget.positionMs / widget.durationMs)
-                                  .clamp(0.0, 1.0),
-                              minHeight: 3,
-                              backgroundColor: Colors.black54,
-                              valueColor: AlwaysStoppedAnimation(
-                                ForjaShellColors.progressFill,
-                              ),
-                            ),
-                          ),
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: _ThumbBadge(label: 'E${widget.episodeNumber}'),
-                        ),
-                        if (durationLabel != null)
-                          Positioned(
-                            right: 8,
-                            bottom: 8,
-                            child: _ThumbBadge(label: durationLabel),
-                          ),
-                        if (widget.watched)
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Icon(
-                              Icons.check_circle_rounded,
-                              size: ShellPaintScope.iconOf(context, 16),
-                              color: Colors.white.withValues(alpha: 0.9),
-                            ),
-                          ),
-                        ShellCardPlayOverlay(
-                          active: widget.playFocusNode?.hasFocus == true,
-                          visible: showPlayOverlay,
-                          onTap: playEnabled &&
-                                  (tvFocus ? widget.armed : showPlayOverlay)
-                              ? widget.onPlay
-                              : null,
-                          focusNode: widget.playFocusNode,
-                          onKeyEvent: widget.onPlayKeyEvent,
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
-                const SizedBox(height: _EpisodeCard._bodyTopGap),
+              ),
+              const SizedBox(height: _EpisodeCard._bodyTopGap),
+              Text(
+                widget.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                ),
+              ),
+              if (widget.dateLabel != null) ...[
+                const SizedBox(height: _EpisodeCard._metaGap),
                 Text(
-                  widget.title,
+                  widget.dateLabel!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: titleFontSize,
-                    fontWeight: FontWeight.w700,
-                    height: 1.25,
+                    color: episodeDateColor(
+                      notShippedYet: widget.dateNotShippedYet,
+                      normal: Colors.white.withValues(alpha: 0.45),
+                    ),
+                    fontSize: metaFontSize,
+                    fontWeight: widget.dateNotShippedYet
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                    height: 1.2,
                   ),
                 ),
-                if (widget.dateLabel != null) ...[
-                  const SizedBox(height: _EpisodeCard._metaGap),
-                  Text(
-                    widget.dateLabel!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: episodeDateColor(
-                        notShippedYet: widget.dateNotShippedYet,
-                        normal: Colors.white.withValues(alpha: 0.45),
-                      ),
-                      fontSize: metaFontSize,
-                      fontWeight: widget.dateNotShippedYet
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                      height: 1.2,
-                    ),
-                  ),
-                ],
-                if (widget.overview.isNotEmpty) ...[
-                  const SizedBox(height: _EpisodeCard._metaGap),
-                  Text(
-                    widget.overview,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
-                      fontSize: metaFontSize,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
               ],
-            ),
+              if (widget.overview.isNotEmpty) ...[
+                const SizedBox(height: _EpisodeCard._metaGap),
+                Text(
+                  widget.overview,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: metaFontSize,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-      );
+      ),
+    );
   }
 
   @override
@@ -1522,6 +1510,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onTap,
+      mouseDownActivates: false,
       borderRadius: _EpisodeCard.thumbRadius,
       motion: ForjaMotionPreset.fillOnly,
       onFocusChange: (focused) {
@@ -1553,8 +1542,7 @@ class _ThumbBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final badgeFontSize =
-        tv ? DetailsTokens.metaFontSizeTv : 11.0;
+    final badgeFontSize = tv ? DetailsTokens.metaFontSizeTv : 11.0;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: tv ? 4 : 7,

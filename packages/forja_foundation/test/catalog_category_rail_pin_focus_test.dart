@@ -34,6 +34,7 @@ Widget _tvTap({
   bool suppressInkHover = false,
   bool allowNestedFocus = false,
   FocusOnKeyEventCallback? onKeyEvent,
+  bool mouseDownActivates = true,
 }) {
   return Focus(
     focusNode: focusNode,
@@ -82,83 +83,77 @@ Widget _wrap({required Widget child, bool tv = true}) {
 }
 
 void main() {
-  testWidgets(
-    'pinned category shows pin icon on leanback without hold',
-    (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          child: CatalogCategoryRail(
-            selectedId: 'a',
-            items: const [
-              CatalogCategoryItem(
-                id: 'a',
-                label: 'EU | FR | REUNION',
-                pinnable: true,
-                pinned: true,
-              ),
-              CatalogCategoryItem(
-                id: 'b',
-                label: 'Sports',
-                pinnable: true,
-              ),
-            ],
-            onTogglePin: (_) {},
-          ),
+  testWidgets('pinned category shows pin icon on leanback without hold', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        child: CatalogCategoryRail(
+          selectedId: 'a',
+          items: const [
+            CatalogCategoryItem(
+              id: 'a',
+              label: 'EU | FR | REUNION',
+              pinnable: true,
+              pinned: true,
+            ),
+            CatalogCategoryItem(id: 'b', label: 'Sports', pinnable: true),
+          ],
+          onTogglePin: (_) {},
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.push_pin_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.push_pin_outlined), findsNothing);
-    },
-  );
+    expect(find.byIcon(Icons.push_pin_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.push_pin_outlined), findsNothing);
+  });
 
-  testWidgets(
-    'hold OK then → focuses category pin (nested focus allowed)',
-    (tester) async {
-      var pinned = false;
-      await tester.pumpWidget(
-        _wrap(
-          child: CatalogCategoryRail(
-            selectedId: 'a',
-            items: const [
-              CatalogCategoryItem(
-                id: 'a',
-                label: 'EU | FR | REUNION',
-                pinnable: true,
-              ),
-            ],
-            onTogglePin: (_) => pinned = !pinned,
-          ),
+  testWidgets('hold OK then → focuses category pin (nested focus allowed)', (
+    tester,
+  ) async {
+    var pinned = false;
+    await tester.pumpWidget(
+      _wrap(
+        child: CatalogCategoryRail(
+          selectedId: 'a',
+          items: const [
+            CatalogCategoryItem(
+              id: 'a',
+              label: 'EU | FR | REUNION',
+              pinnable: true,
+            ),
+          ],
+          onTogglePin: (_) => pinned = !pinned,
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      final rowFinder = find.text('EU | FR | REUNION');
-      expect(rowFinder, findsOneWidget);
-      final rowFocus = Focus.of(tester.element(rowFinder));
-      rowFocus.requestFocus();
-      await tester.pump();
-      expect(rowFocus.hasFocus, isTrue);
+    final rowFinder = find.text('EU | FR | REUNION');
+    expect(rowFinder, findsOneWidget);
+    final rowFocus = Focus.of(tester.element(rowFinder));
+    rowFocus.requestFocus();
+    await tester.pump();
+    expect(rowFocus.hasFocus, isTrue);
 
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
-      await tester.pump(const Duration(seconds: 2, milliseconds: 50));
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
-      await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(seconds: 2, milliseconds: 50));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
 
-      // Pin icon mounted after reveal.
-      expect(find.byIcon(Icons.push_pin_outlined), findsOneWidget);
+    // Pin icon mounted after reveal.
+    expect(find.byIcon(Icons.push_pin_outlined), findsOneWidget);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
 
-      final pinFocus = Focus.of(
-        tester.element(find.byIcon(Icons.push_pin_outlined)),
-      );
-      expect(pinFocus.hasFocus, isTrue, reason: '→ after hold must land on pin');
-      expect(pinned, isFalse);
-    },
-  );
+    final pinFocus = Focus.of(
+      tester.element(find.byIcon(Icons.push_pin_outlined)),
+    );
+    expect(pinFocus.hasFocus, isTrue, reason: '→ after hold must land on pin');
+    expect(pinned, isFalse);
+  });
 
   testWidgets(
     'floating reorder ↑ keeps focus on moved category (not neighbor)',
@@ -219,141 +214,132 @@ void main() {
     },
   );
 
-  testWidgets(
-    'OK on pin scrolls to new index and focuses the category',
-    (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          child: const SizedBox(
-            height: 280,
-            child: _PinRailHost(),
-          ),
+  testWidgets('OK on pin scrolls to new index and focuses the category', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(child: const SizedBox(height: 280, child: _PinRailHost())),
+    );
+    await tester.pumpAndSettle();
+
+    final scrollState = tester.state<ScrollableState>(find.byType(Scrollable));
+    final offsetBefore = scrollState.position.maxScrollExtent;
+    expect(
+      offsetBefore,
+      greaterThan(0),
+      reason: 'list must be taller than rail',
+    );
+    scrollState.position.jumpTo(offsetBefore);
+    await tester.pumpAndSettle();
+
+    final zFinder = find.text('Z');
+    expect(zFinder, findsOneWidget);
+
+    Focus.of(tester.element(zFinder)).requestFocus();
+    await tester.pump();
+
+    // Hold OK reveals pin (pin-only rail — no floating reorder).
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(seconds: 2, milliseconds: 50));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+
+    expect(find.byIcon(Icons.push_pin_outlined), findsWidgets);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+
+    // OK on pin.
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    // Z is first under Favorites.
+    final labels = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((t) => t.data)
+        .whereType<String>()
+        .where((s) => s == 'Favorites' || s == 'A' || s == 'Z')
+        .toList();
+    expect(labels.take(3).toList(), ['Favorites', 'Z', 'A']);
+
+    final zFocus = Focus.of(tester.element(find.text('Z')));
+    expect(zFocus.hasFocus, isTrue, reason: 'pin must focus the category');
+
+    final offsetAfter = tester
+        .state<ScrollableState>(find.byType(Scrollable))
+        .position
+        .pixels;
+    expect(
+      offsetAfter,
+      lessThan(offsetBefore),
+      reason: 'rail must scroll up to the pinned row',
+    );
+  });
+
+  testWidgets('selecting a category scrolls it into view', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        tv: false,
+        child: const SizedBox(height: 280, child: _SelectScrollRailHost()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scrollState = tester.state<ScrollableState>(find.byType(Scrollable));
+    final maxExtent = scrollState.position.maxScrollExtent;
+    expect(maxExtent, greaterThan(0));
+    scrollState.position.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(scrollState.position.pixels, 0);
+
+    // Select a row that is off-screen below.
+    final host = tester.state<_SelectScrollRailHostState>(
+      find.byType(_SelectScrollRailHost),
+    );
+    host.select('z');
+    await tester.pumpAndSettle();
+
+    final offsetAfter = tester
+        .state<ScrollableState>(find.byType(Scrollable))
+        .position
+        .pixels;
+    expect(
+      offsetAfter,
+      greaterThan(0),
+      reason: 'rail must scroll down to the selected category',
+    );
+  });
+
+  testWidgets('search list expand pins selected category near 4th row', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        tv: false,
+        child: const SizedBox(
+          height: 280,
+          child: _SearchExpandScrollRailHost(),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      final scrollState = tester.state<ScrollableState>(find.byType(Scrollable));
-      final offsetBefore = scrollState.position.maxScrollExtent;
-      expect(offsetBefore, greaterThan(0), reason: 'list must be taller than rail');
-      scrollState.position.jumpTo(offsetBefore);
-      await tester.pumpAndSettle();
+    final host = tester.state<_SearchExpandScrollRailHostState>(
+      find.byType(_SearchExpandScrollRailHost),
+    );
+    // Filtered search hits, then expand back to full list (clear search).
+    host.expandToFull();
+    await tester.pumpAndSettle();
 
-      final zFinder = find.text('Z');
-      expect(zFinder, findsOneWidget);
-
-      Focus.of(tester.element(zFinder)).requestFocus();
-      await tester.pump();
-
-      // Hold OK reveals pin (pin-only rail — no floating reorder).
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
-      await tester.pump(const Duration(seconds: 2, milliseconds: 50));
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
-      await tester.pump();
-
-      expect(find.byIcon(Icons.push_pin_outlined), findsWidgets);
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
-
-      // OK on pin.
-      await tester.sendKeyEvent(LogicalKeyboardKey.select);
-      await tester.pumpAndSettle();
-
-      // Z is first under Favorites.
-      final labels = tester
-          .widgetList<Text>(find.byType(Text))
-          .map((t) => t.data)
-          .whereType<String>()
-          .where((s) => s == 'Favorites' || s == 'A' || s == 'Z')
-          .toList();
-      expect(labels.take(3).toList(), ['Favorites', 'Z', 'A']);
-
-      final zFocus = Focus.of(tester.element(find.text('Z')));
-      expect(zFocus.hasFocus, isTrue, reason: 'pin must focus the category');
-
-      final offsetAfter = tester
-          .state<ScrollableState>(find.byType(Scrollable))
-          .position
-          .pixels;
-      expect(
-        offsetAfter,
-        lessThan(offsetBefore),
-        reason: 'rail must scroll up to the pinned row',
-      );
-    },
-  );
-
-  testWidgets(
-    'selecting a category scrolls it into view',
-    (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          tv: false,
-          child: const SizedBox(
-            height: 280,
-            child: _SelectScrollRailHost(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final scrollState = tester.state<ScrollableState>(find.byType(Scrollable));
-      final maxExtent = scrollState.position.maxScrollExtent;
-      expect(maxExtent, greaterThan(0));
-      scrollState.position.jumpTo(0);
-      await tester.pumpAndSettle();
-      expect(scrollState.position.pixels, 0);
-
-      // Select a row that is off-screen below.
-      final host = tester.state<_SelectScrollRailHostState>(
-        find.byType(_SelectScrollRailHost),
-      );
-      host.select('z');
-      await tester.pumpAndSettle();
-
-      final offsetAfter = tester
-          .state<ScrollableState>(find.byType(Scrollable))
-          .position
-          .pixels;
-      expect(
-        offsetAfter,
-        greaterThan(0),
-        reason: 'rail must scroll down to the selected category',
-      );
-    },
-  );
-
-  testWidgets(
-    'search list expand pins selected category near 4th row',
-    (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          tv: false,
-          child: const SizedBox(
-            height: 280,
-            child: _SearchExpandScrollRailHost(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final host = tester.state<_SearchExpandScrollRailHostState>(
-        find.byType(_SearchExpandScrollRailHost),
-      );
-      // Filtered search hits, then expand back to full list (clear search).
-      host.expandToFull();
-      await tester.pumpAndSettle();
-
-      final offsetAfter = tester
-          .state<ScrollableState>(find.byType(Scrollable))
-          .position
-          .pixels;
-      expect(
-        offsetAfter,
-        greaterThan(0),
-        reason: 'clearing search must scroll the restored category into view',
-      );
-    },
-  );
+    final offsetAfter = tester
+        .state<ScrollableState>(find.byType(Scrollable))
+        .position
+        .pixels;
+    expect(
+      offsetAfter,
+      greaterThan(0),
+      reason: 'clearing search must scroll the restored category into view',
+    );
+  });
 }
 
 class _SelectScrollRailHost extends StatefulWidget {
@@ -395,7 +381,8 @@ class _SearchExpandScrollRailHost extends StatefulWidget {
       _SearchExpandScrollRailHostState();
 }
 
-class _SearchExpandScrollRailHostState extends State<_SearchExpandScrollRailHost> {
+class _SearchExpandScrollRailHostState
+    extends State<_SearchExpandScrollRailHost> {
   var _filtered = true;
   static const _selected = 'z';
 
@@ -415,10 +402,7 @@ class _SearchExpandScrollRailHostState extends State<_SearchExpandScrollRailHost
             CatalogCategoryItem(id: 'c0', label: 'Cat 0'),
           ]
         : _all;
-    return CatalogCategoryRail(
-      selectedId: _selected,
-      items: items,
-    );
+    return CatalogCategoryRail(selectedId: _selected, items: items);
   }
 }
 

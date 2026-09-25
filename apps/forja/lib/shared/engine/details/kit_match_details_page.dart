@@ -8,6 +8,7 @@ import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/desktop/desktop_selectable_title.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
@@ -262,7 +263,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             );
     }
 
-    return MatchDetailsPage(
+    final page = MatchDetailsPage(
       backgroundColor: AppTheme.bgDark,
       overlay: MediaDetailsBackButton(focusNode: _backFocus),
       hero: DetailsHero(
@@ -371,6 +372,17 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             contentScrim: true,
             belowActionRow: streamsPanel,
           ),
+    );
+    final tab = ShellBus.activeShellTabId?.trim() ?? '';
+    return ValueListenableBuilder<bool>(
+      valueListenable: ShellBus.hubLayoutRtlFor(tab),
+      builder: (context, rtl, _) {
+        if (!rtl) return page;
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: page,
+        );
+      },
     );
   }
 }

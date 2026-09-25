@@ -16,9 +16,8 @@ class ShellPaintEnsureVisibleExtent extends InheritedWidget {
 
   /// Element context for [Scrollable.ensureVisible] — includes siblings outside
   /// focus chrome. Null when no ancestor is mounted.
-  static BuildContext? maybeContext(BuildContext context) =>
-      context.getElementForInheritedWidgetOfExactType<
-          ShellPaintEnsureVisibleExtent>();
+  static BuildContext? maybeContext(BuildContext context) => context
+      .getElementForInheritedWidgetOfExactType<ShellPaintEnsureVisibleExtent>();
 
   @override
   bool updateShouldNotify(covariant ShellPaintEnsureVisibleExtent oldWidget) =>
@@ -73,60 +72,64 @@ class ShellPaintTvRowScope extends InheritedWidget {
 }
 
 /// Host-provided focus tap (typically wraps app `shellFocusableTap`).
-typedef ShellPaintFocusableTap = Widget Function({
-  required BuildContext context,
-  required Widget child,
-  VoidCallback? onTap,
-  double borderRadius,
-  double scaleOnFocus,
-  VoidCallback? onLeftEdge,
-  VoidCallback? onUpEdge,
-  VoidCallback? onDownEdge,
-  VoidCallback? onRightEdge,
-  ValueChanged<bool>? onFocusChange,
-  ValueChanged<bool>? onHoverChange,
-  FocusNode? focusNode,
-  bool autoFocus,
-  int? listIndex,
-  bool navLeftAlways,
-  int? gridIndex,
-  int? gridColumns,
-  String? tvTabId,
-  String? tvRowId,
-  int? tvItemIndex,
-  ShellPaintTvZone? tvZone,
-  ShellPaintEnsureVisible ensureVisibleMode,
-  bool showFocusBorder,
-  bool showFocusFill,
-  bool showFocusRail,
-  bool suppressInkHover,
-  bool allowNestedFocus,
-  FocusOnKeyEventCallback? onKeyEvent,
-});
+typedef ShellPaintFocusableTap =
+    Widget Function({
+      required BuildContext context,
+      required Widget child,
+      VoidCallback? onTap,
+      double borderRadius,
+      double scaleOnFocus,
+      VoidCallback? onLeftEdge,
+      VoidCallback? onUpEdge,
+      VoidCallback? onDownEdge,
+      VoidCallback? onRightEdge,
+      ValueChanged<bool>? onFocusChange,
+      ValueChanged<bool>? onHoverChange,
+      FocusNode? focusNode,
+      bool autoFocus,
+      int? listIndex,
+      bool navLeftAlways,
+      int? gridIndex,
+      int? gridColumns,
+      String? tvTabId,
+      String? tvRowId,
+      int? tvItemIndex,
+      ShellPaintTvZone? tvZone,
+      ShellPaintEnsureVisible ensureVisibleMode,
+      bool showFocusBorder,
+      bool showFocusFill,
+      bool showFocusRail,
+      bool suppressInkHover,
+      bool allowNestedFocus,
+      FocusOnKeyEventCallback? onKeyEvent,
+      bool mouseDownActivates,
+    });
 
 /// Host TV row registration (typically wraps app `TvKitRow`).
-typedef ShellPaintTvRowWrap = Widget Function({
-  required String tabId,
-  required String rowId,
-  required int sortOrder,
-  required int itemCount,
-  VoidCallback? onFocusUp,
-  VoidCallback? onFocusDown,
-  ShellPaintTvRowAxis axis,
-  required Widget child,
-});
+typedef ShellPaintTvRowWrap =
+    Widget Function({
+      required String tabId,
+      required String rowId,
+      required int sortOrder,
+      required int itemCount,
+      VoidCallback? onFocusUp,
+      VoidCallback? onFocusDown,
+      ShellPaintTvRowAxis axis,
+      required Widget child,
+    });
 
 /// Host TV grid registration (typically wraps app `TvGrid`).
-typedef ShellPaintTvGridWrap = Widget Function({
-  required String tabId,
-  required String rowId,
-  required int sortOrder,
-  required int itemCount,
-  required int columns,
-  VoidCallback? onFocusUp,
-  VoidCallback? onFocusDown,
-  required Widget child,
-});
+typedef ShellPaintTvGridWrap =
+    Widget Function({
+      required String tabId,
+      required String rowId,
+      required int sortOrder,
+      required int itemCount,
+      required int columns,
+      VoidCallback? onFocusUp,
+      VoidCallback? onFocusDown,
+      required Widget child,
+    });
 
 /// Host policy + focus injection so foundation paint never imports `package:forja`.
 ///
@@ -150,7 +153,8 @@ class ShellPaintScope extends InheritedWidget {
 
   final bool useTvFocus;
   final bool scaleOnHover;
-  final bool Function(BuildContext context, {required bool focused}) focusStyled;
+  final bool Function(BuildContext context, {required bool focused})
+  focusStyled;
   final bool usesTvDensity;
   final ShellPaintFocusableTap? focusableTapBuilder;
   final ShellPaintTvRowWrap? wrapTvRow;
@@ -179,10 +183,7 @@ class ShellPaintScope extends InheritedWidget {
   static bool scaleOnHoverOf(BuildContext context) =>
       maybeOf(context)?.scaleOnHover ?? true;
 
-  static bool focusStyledOf(
-    BuildContext context, {
-    required bool focused,
-  }) {
+  static bool focusStyledOf(BuildContext context, {required bool focused}) {
     final scope = maybeOf(context);
     if (scope == null) return focused;
     return scope.focusStyled(context, focused: focused);
@@ -192,8 +193,10 @@ class ShellPaintScope extends InheritedWidget {
       maybeOf(context)?.usesTvDensity ?? false;
 
   /// Desktop icon px → leanback via [ShellTokens.iconSizeFor].
-  static double iconOf(BuildContext context, [double desktop = ShellTokens.iconSize]) =>
-      ShellTokens.iconSizeFor(desktop, tv: usesTvDensityOf(context));
+  static double iconOf(
+    BuildContext context, [
+    double desktop = ShellTokens.iconSize,
+  ]) => ShellTokens.iconSizeFor(desktop, tv: usesTvDensityOf(context));
 
   static bool interactiveActive(
     BuildContext context, {
@@ -213,6 +216,7 @@ class ShellPaintScope extends InheritedWidget {
     required Widget child,
     VoidCallback? onTap,
     double borderRadius = ShellTokens.focusBorderRadius,
+
     /// Prefer [motion]; raw scale kept for host call sites during migration.
     double? scaleOnFocus,
     ForjaMotionPreset? motion,
@@ -239,13 +243,15 @@ class ShellPaintScope extends InheritedWidget {
     bool suppressInkHover = false,
     bool allowNestedFocus = false,
     FocusOnKeyEventCallback? onKeyEvent,
+    bool mouseDownActivates = true,
   }) {
-    final resolvedScale = scaleOnFocus ??
+    final resolvedScale =
+        scaleOnFocus ??
         (motion != null
             ? ForjaMotionTheme.of(context).resolve(motion).focusScale
-            : ForjaMotionTheme.of(context)
-                .resolve(ForjaMotionPreset.chipLift)
-                .focusScale);
+            : ForjaMotionTheme.of(
+                context,
+              ).resolve(ForjaMotionPreset.chipLift).focusScale);
     final rowScope = ShellPaintTvRowScope.maybeOf(context);
     final resolvedTab =
         (tvTabId ?? rowScope?.tabId ?? ShellPaintTvTabScope.tabIdOf(context))
@@ -272,8 +278,12 @@ class ShellPaintScope extends InheritedWidget {
         navLeftAlways: navLeftAlways,
         gridIndex: gridIndex,
         gridColumns: gridColumns,
-        tvTabId: (resolvedTab == null || resolvedTab.isEmpty) ? null : resolvedTab,
-        tvRowId: (resolvedRow == null || resolvedRow.isEmpty) ? null : resolvedRow,
+        tvTabId: (resolvedTab == null || resolvedTab.isEmpty)
+            ? null
+            : resolvedTab,
+        tvRowId: (resolvedRow == null || resolvedRow.isEmpty)
+            ? null
+            : resolvedRow,
         tvItemIndex: tvItemIndex,
         tvZone: tvZone,
         ensureVisibleMode: ensureVisibleMode,
@@ -283,6 +293,7 @@ class ShellPaintScope extends InheritedWidget {
         suppressInkHover: suppressInkHover,
         allowNestedFocus: allowNestedFocus,
         onKeyEvent: onKeyEvent,
+        mouseDownActivates: mouseDownActivates,
       );
     }
     return Material(

@@ -37,6 +37,7 @@ import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
+
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
@@ -80,21 +81,24 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   final Map<String, Widget> _tabCache = {};
+
   /// Empty until [_loadNavbarConfig] mounts the profile default tab.
   final Set<String> _mountedTabIds = {};
   final List<String> _tabLru = [];
+
   /// Empty until first [getNavbarConfig] — avoids all-tabs → filtered flash.
   List<String> _visibleIds = const [];
   bool _initialNavResolved = false;
+
   /// Drop stale navbar loads when toggles fire faster than async reloads.
   int _navbarLoadGen = 0;
+
   /// When every feature tab is hidden, show [ShellEmptyFeaturesScreen] until
   /// the user opens Settings from the rail or an empty-state CTA.
   bool _emptyFeaturesBodyDismissed = false;
   BuildContext? _shellScopedContext;
 
-  bool get _hasFeatureTabs =>
-      _visibleIds.any((id) => id != 'settings');
+  bool get _hasFeatureTabs => _visibleIds.any((id) => id != 'settings');
 
   bool get _showEmptyFeaturesGate =>
       _initialNavResolved && !_hasFeatureTabs && !_emptyFeaturesBodyDismissed;
@@ -112,8 +116,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   String? get _currentTabId =>
       _visibleIds.isEmpty || _selectedIndex >= _visibleIds.length
-          ? null
-          : _visibleIds[_selectedIndex];
+      ? null
+      : _visibleIds[_selectedIndex];
 
   Widget _tabFor(String id) {
     final builder = navTabBuilders[id];
@@ -268,12 +272,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
     // Match nav-rail taps: dismiss details / hub overlays so the tab is visible
     // (e.g. Who's watching → Account settings via [ShellBus.requestTab]).
     popShellOverlayUntilRoot();
-    // Cloud Features / profile settings: soft pull on side-nav use so web
-    // changes land (debounced 15s). Local toggles push only — syncFromCloud
-    // flushes dirty nav before applying cloud as SoT (224).
-    if (SyncService.instance.isSignedIn) {
-      unawaited(SyncDomainBridge.instance.syncFromCloud());
-    }
     final previousId = _currentTabId;
     final id = _visibleIds[index];
     final sameTab = previousId == id;
@@ -296,6 +294,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
     unawaited(ProductAnalytics.screenTab(id));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Cloud pull after the tab paints. Running it on the click frame
+      // stalled the highlight (debounced 15s; 224).
+      if (SyncService.instance.isSignedIn) {
+        unawaited(SyncDomainBridge.instance.syncFromCloud());
+      }
       // Rapid tab switches queue multiple callbacks; only the still-selected
       // tab may run show/refresh (avoids setState/invalidate on a deactivated
       // keep-alive element → Riverpod ancestor lookup / inactive-elements assert).
@@ -310,7 +313,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
       return false;
     }
-    return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    return MediaQuery.sizeOf(context).width >
+        ShellTokens.musicDesktopBreakpoint;
   }
 
   void _applyTabShellChrome(String tabId) {
@@ -365,8 +369,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final run = () async {
       // Name the toast after the held rail item — not the selected tab.
       final tabId = ShellBus.takeCompleteNavbarReloadTabId() ?? _currentTabId;
-      final tabName =
-          (tabId != null ? navDestinationFor(tabId)?.label : null)?.trim();
+      final tabName = (tabId != null ? navDestinationFor(tabId)?.label : null)
+          ?.trim();
       final name = (tabName != null && tabName.isNotEmpty) ? tabName : 'Navbar';
       ForjaToast.info('Reloading $name…');
       // Abort in-flight hub catalog / flutter_js forks before wipe + remount so
@@ -497,7 +501,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
     var visible = await SettingsService().getNavbarConfig();
     final defaultTab = await SettingsService().getDefaultNavTab();
     if (!mounted || gen != _navbarLoadGen) return;
-    final addonFeatures = await SettingsService().listAvailableAddonFeatureNavIds();
+    final addonFeatures = await SettingsService()
+        .listAvailableAddonFeatureNavIds();
     if (!mounted || gen != _navbarLoadGen) return;
     final addonSet = addonFeatures.toSet();
     final beforeFilter = List<String>.from(visible);
@@ -564,7 +569,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
       // (same as profile switch) — issue 253.
       // Do not promote when the user already opened Settings (pack remove /
       // install must not yank Forja Packs → Home / IPTV).
-      final promoteFromSettingsOnly = !hadFeatureTabs &&
+      final promoteFromSettingsOnly =
+          !hadFeatureTabs &&
           visible.isNotEmpty &&
           currentId == 'settings' &&
           defaultTab != 'settings' &&
@@ -600,7 +606,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
           // while still on Settings, then preserve Settings forever.
           if (applyDefaultTab) {
             final matched = tabId == defaultTab;
-            final starMissing = defaultTab != 'settings' &&
+            final starMissing =
+                defaultTab != 'settings' &&
                 !visible.contains(defaultTab) &&
                 tabId != 'settings';
             if (matched || defaultTab == 'settings' || starMissing) {
@@ -727,8 +734,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (!mounted) return;
     final defaultTab = await SettingsService().getDefaultNavTab();
     if (!mounted) return;
-    final featureIds =
-        _visibleIds.where((id) => id != 'settings').toList(growable: false);
+    final featureIds = _visibleIds
+        .where((id) => id != 'settings')
+        .toList(growable: false);
     var target = defaultTab;
     if (!featureIds.contains(target)) {
       target = featureIds.isNotEmpty ? featureIds.first : 'settings';
@@ -828,7 +836,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
-    ShellBus.completeNavbarReloadRevision.removeListener(_onCompleteNavbarReload);
+    ShellBus.completeNavbarReloadRevision.removeListener(
+      _onCompleteNavbarReload,
+    );
     ShellBus.clearOverlayShellTabId();
     ShellBus.activeShellTabId = null;
     ShellBus.clearHideGlobalNav();
@@ -845,8 +855,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
       builder: (shellContext, profile) {
         _shellScopedContext = shellContext;
         final config = shellPlatformConfigFor(profile);
-        final showKitTopBar = config.showKitTopBar &&
-            !ShellBus.shellOverlayHasPage.value;
+        final showKitTopBar =
+            config.showKitTopBar && !ShellBus.shellOverlayHasPage.value;
         final Widget? shellTopBar;
         if (!showKitTopBar) {
           shellTopBar = null;
@@ -854,8 +864,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
           shellTopBar = switch (_currentTabId) {
             null => null,
             // ValueKey: do not reuse State across hubs (Home caps ≠ Live Sports).
-            final id when PluginNavRegistry.isKitTab(id) =>
-              PluginKitTopBar(key: ValueKey(id), tabId: id),
+            final id when PluginNavRegistry.isKitTab(id) => PluginKitTopBar(
+              key: ValueKey(id),
+              tabId: id,
+            ),
             _ => null,
           };
         }

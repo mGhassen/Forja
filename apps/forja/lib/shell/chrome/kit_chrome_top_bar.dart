@@ -333,7 +333,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
             child: SizedBox(
               height: barContentHeight,
               child: Padding(
-                padding: EdgeInsets.fromLTRB(
+                padding: EdgeInsetsDirectional.fromSTEB(
                   // Compact: clear scaffold-owned ☰ lane (not a second button).
                   compactNav
                       ? ShellTokens.compactChromeLeadingInset(context)
@@ -648,7 +648,7 @@ class _CategoryTabState extends State<_CategoryTab> {
             SizedBox(
               height: tabHeight,
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -698,7 +698,7 @@ class _CategoryTabState extends State<_CategoryTab> {
               ),
             ),
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: Container(
                 height: shellScaled(
                   context,

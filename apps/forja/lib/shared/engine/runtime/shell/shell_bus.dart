@@ -24,6 +24,7 @@ class ShellBus {
 
   static final Map<String, ValueNotifier<double>> _hubScrollOffsets = {};
   static final Map<String, ValueNotifier<double>> _hubHeroHeights = {};
+  static final Map<String, ValueNotifier<bool>> _hubLayoutRtl = {};
   static final Map<String, ValueNotifier<String?>> _hubSelectedMenuIds = {};
   static final Map<String, ValueNotifier<String?>> _hubSelectedCategoryIds = {};
 
@@ -34,6 +35,11 @@ class ShellBus {
   /// Per-tab cinematic hero height for catalog hub tabs.
   static ValueNotifier<double> hubHeroHeightFor(String tabId) =>
       _hubHeroHeights.putIfAbsent(tabId, () => ValueNotifier(0));
+
+  /// Pack layout `dir` for this hub tab. The shell top menu follows it.
+  /// The app navbar does not.
+  static ValueNotifier<bool> hubLayoutRtlFor(String tabId) =>
+      _hubLayoutRtl.putIfAbsent(tabId, () => ValueNotifier(false));
 
   /// Legacy Stremio search deep-link bus (archived Search overlay consumed this).
   /// Value: {'query': '...', 'addonBaseUrl': '...'} or null.

@@ -207,7 +207,7 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
             child: _expanded
                 ? SingleChildScrollView(child: content)
                 : Align(
-                    alignment: Alignment.topLeft,
+                    alignment: AlignmentDirectional.topStart,
                     child: content,
                   ),
           ),

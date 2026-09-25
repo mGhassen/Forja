@@ -25,6 +25,7 @@ class HeroPillPlayButton extends StatelessWidget {
     this.tvTabId,
     this.onUpEdge,
     this.onDownEdge,
+    this.onLeftEdge,
     this.onRightEdge,
     this.tvRowId,
     this.tvItemIndex,
@@ -43,6 +44,7 @@ class HeroPillPlayButton extends StatelessWidget {
   final String? tvTabId;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final String? tvRowId;
   final int? tvItemIndex;
@@ -73,6 +75,7 @@ class HeroPillPlayButton extends StatelessWidget {
     // row remounted after Films / Categories (kitFocusEdge miss must fall through).
     final effectiveOnKey = onUpEdge != null ||
             onDownEdge != null ||
+            onLeftEdge != null ||
             onRightEdge != null ||
             onKeyEvent != null
         ? (FocusNode node, KeyEvent event) {
@@ -81,6 +84,7 @@ class HeroPillPlayButton extends StatelessWidget {
               tvMeta: tvMeta,
               onUpEdge: onUpEdge,
               onDownEdge: onDownEdge,
+              onLeftEdge: onLeftEdge,
               onRightEdge: onRightEdge,
             );
             if (arrows == KeyEventResult.handled) return arrows;
@@ -89,7 +93,7 @@ class HeroPillPlayButton extends StatelessWidget {
         : null;
 
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: ForjaInteractive(
         onTap: onTap,
         autoFocus: autoFocus,
@@ -100,7 +104,9 @@ class HeroPillPlayButton extends StatelessWidget {
         pressScale: 0.97,
         // Bottom-left so TV focus scale grows into the action gap, not into
         // the hero ClipRect / bottom inset (which ate the glass border).
-        scaleAlignment: Alignment.bottomLeft,
+        scaleAlignment: AlignmentDirectional.bottomStart.resolve(
+          Directionality.of(context),
+        ),
         builder: (active, pressed) {
           return HeroPillPlaySurface(
             style: style,

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
@@ -95,13 +96,37 @@ class AppTheme {
         surface: preset.bgCard,
         onSurface: const Color(0xFFF5F5F7),
       ),
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme).copyWith(
-        displayLarge: GoogleFonts.oswald(fontSize: 48, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.white),
-        displayMedium: GoogleFonts.oswald(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 0.4, color: Colors.white),
-        titleLarge: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFFF5F5F7)),
-        bodyMedium: GoogleFonts.plusJakartaSans(fontSize: 14, color: const Color(0xFF9CA3AF)),
-        labelLarge: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFFF5F5F7)),
-      ),
+      textTheme:
+          GoogleFonts.plusJakartaSansTextTheme(
+            ThemeData.dark().textTheme,
+          ).copyWith(
+            displayLarge: GoogleFonts.oswald(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+              color: Colors.white,
+            ),
+            displayMedium: GoogleFonts.oswald(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.4,
+              color: Colors.white,
+            ),
+            titleLarge: GoogleFonts.plusJakartaSans(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFF5F5F7),
+            ),
+            bodyMedium: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: const Color(0xFF9CA3AF),
+            ),
+            labelLarge: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFF5F5F7),
+            ),
+          ),
       iconTheme: const IconThemeData(color: Color(0xFF9CA3AF)),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -201,6 +226,11 @@ class FocusableControl extends StatefulWidget {
   /// (e.g. IPTV category double-OK / long-press gestures).
   final FocusOnKeyEventCallback? onKeyEvent;
 
+  /// Desktop mouse: run [onTap] on pointer down. A parent long-press or
+  /// double-tap recognizer otherwise holds the arena (~100–300ms) before
+  /// the click acts. Turn off when a parent owns that gesture.
+  final bool mouseDownActivates;
+
   const FocusableControl({
     super.key,
     required this.child,
@@ -215,6 +245,7 @@ class FocusableControl extends StatefulWidget {
     this.focusBleedWidth,
     this.allowNestedFocus = false,
     this.onKeyEvent,
+    this.mouseDownActivates = true,
     this.onLeftEdge,
     this.onUpEdge,
     this.onDownEdge,
@@ -230,8 +261,10 @@ class FocusableControl extends StatefulWidget {
   State<FocusableControl> createState() => _FocusableControlState();
 }
 
-class _FocusableControlState extends State<FocusableControl> with SingleTickerProviderStateMixin {
+class _FocusableControlState extends State<FocusableControl>
+    with SingleTickerProviderStateMixin {
   bool _isFocused = false;
+
   /// Never setState on hover — rebuilding [MouseRegion] mid-hit-test sticks
   /// chrome across Settings / catalogs / chips (see pack choice cards).
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
@@ -283,10 +316,14 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       _ownedNode = FocusNode(debugLabel: _tvDebugLabel(widget.tvMeta));
     }
     _registerTvItemNode();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
-    _scale = Tween<double>(begin: 1.0, end: widget.scaleOnFocus).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
     );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: widget.scaleOnFocus,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -397,7 +434,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     if (!mounted) return;
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    if (!policy.scaleOnHover && !widget.showFocusRail && !widget.showFocusBorder) {
+    if (!policy.scaleOnHover &&
+        !widget.showFocusRail &&
+        !widget.showFocusBorder) {
       return;
     }
     _updateState(
@@ -514,7 +553,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     if (handled == KeyEventResult.handled) return handled;
 
     // Opt-in linear hosts only (rare). Default TV D-pad is spatial 2D below.
-    final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
+    final linearScope =
+        ShellTvLinearFocusScope.activeOf(context) &&
         !ShellTvDisableLinearFocus.activeOf(context);
     if (linearScope) {
       final linear = shellTvLinearMenuArrows(context: context, event: event);
@@ -540,7 +580,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       // Focused control node — NOT FocusScope.focusInDirection (full-screen
       // chrome scopes find no neighbors from the scope rect).
       if (direction != null) {
-        final vertical = direction == TraversalDirection.up ||
+        final vertical =
+            direction == TraversalDirection.up ||
             direction == TraversalDirection.down;
         final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
         var node = _effectiveNode;
@@ -558,8 +599,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     // tried). Must not run before focusInDirection — that stole ← between
     // horizontal chips (Stremio Sources / Live Sports). Explicit onLeftEdge /
     // row graph still win above. Same under ShellTvDisableLinearFocus.
-    final pageBack =
-        shellTvSettingsBackwardEdge(context: context, event: event);
+    final pageBack = shellTvSettingsBackwardEdge(
+      context: context,
+      event: event,
+    );
     if (pageBack == KeyEventResult.handled) return pageBack;
 
     final trap = shellTvTrapRowGeometry(
@@ -623,12 +666,21 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         // already ran onTap — [_invokeOnTap] coalesces the duplicate so
         // switches do not flip twice. Pointer must still work (mouse on ATV /
         // emulator); skipping onTap entirely made catalog rows look dead.
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap == null ? null : () => _invokeOnTap(),
-          child: ListenableBuilder(
-            listenable: _hoveredN,
-            builder: (context, _) => _buildFocusedChild(context),
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (event) {
+            if (!widget.mouseDownActivates || widget.onTap == null) return;
+            if (event.kind != PointerDeviceKind.mouse) return;
+            if ((event.buttons & kPrimaryButton) == 0) return;
+            _invokeOnTap();
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap == null ? null : () => _invokeOnTap(),
+            child: ListenableBuilder(
+              listenable: _hoveredN,
+              builder: (context, _) => _buildFocusedChild(context),
+            ),
           ),
         ),
       ),
@@ -638,7 +690,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   Widget _buildFocusedChild(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final chromeActive = widget.forceRailActive ||
+    final chromeActive =
+        widget.forceRailActive ||
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _isHovered,
@@ -655,14 +708,16 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         !railFocus && widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
     // Desktop: hover OR focus — hover wins (no focus ring under the pointer).
     final hoverOwnsChrome = _isHovered && policy.scaleOnHover;
-    final showFocusRing = widget.showFocusBorder &&
+    final showFocusRing =
+        widget.showFocusBorder &&
         ((flatMenuFocus && hoverOwnsChrome) ||
             (!hoverOwnsChrome &&
                 policy.focusChromeVisible(context, focused: _isFocused)));
     // Horizontal bleed is for leanback TV so focus scale stays in layout.
     // Desktop hover must not inset idle cards — scale overlaps neighbors instead.
     // 0 = caller already reserved scale room (e.g. a grid cell).
-    final bleed = widget.showFocusBorder &&
+    final bleed =
+        widget.showFocusBorder &&
             !flatMenuFocus &&
             !railFocus &&
             widget.focusBleedWidth != 0 &&
@@ -732,8 +787,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
                   child: IgnorePointer(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(widget.borderRadius),
+                        borderRadius: BorderRadius.circular(
+                          widget.borderRadius,
+                        ),
                         border: Border.all(color: Colors.white, width: 1.5),
                       ),
                     ),

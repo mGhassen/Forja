@@ -124,7 +124,15 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
         PackFiltersRegistry.menuById(pluginId, currentMenu) == null) {
       selectedMenu.value = null;
     }
-    return KitChromeTopBar(
+    return ValueListenableBuilder<bool>(
+      valueListenable: ShellBus.hubLayoutRtlFor(widget.tabId),
+      builder: (context, rtl, child) {
+        return Directionality(
+          textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+          child: child!,
+        );
+      },
+      child: KitChromeTopBar(
       tabId: widget.tabId,
       selectedMenuId: selectedMenu,
       selectedCategoryId: ShellBus.hubSelectedCategoryIdFor(widget.tabId),
@@ -144,6 +152,7 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
               );
             }
           : null,
+      ),
     );
   }
 }

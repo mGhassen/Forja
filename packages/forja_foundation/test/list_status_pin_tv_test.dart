@@ -35,6 +35,7 @@ Widget _tvTap({
   bool suppressInkHover = false,
   bool allowNestedFocus = false,
   FocusOnKeyEventCallback? onKeyEvent,
+  bool mouseDownActivates = true,
 }) {
   return Focus(
     focusNode: focusNode,
@@ -91,7 +92,9 @@ void main() {
     expect(selected, 'plantowatch');
   });
 
-  testWidgets('TV status menu Select toggles off current status', (tester) async {
+  testWidgets('TV status menu Select toggles off current status', (
+    tester,
+  ) async {
     String? selected = 'watching';
     await tester.pumpWidget(
       MaterialApp(

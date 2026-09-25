@@ -38,14 +38,11 @@ class ShellBody extends StatelessWidget {
                       key: ValueKey<String>('shell-tab-${visibleIds[i]}'),
                       visible: i == selectedIndex,
                       maintainState: true,
-                      // Flutter requires maintainAnimation when maintainSize is true.
-                      // Pause tickers on hidden tabs via TickerMode below instead.
+                      // Offstage, not maintainSize. maintainSize laid out every
+                      // kept-alive hub on each shell rebuild, so a click waited
+                      // on four other full pages.
                       maintainAnimation: true,
-                      maintainSize: true,
-                      // Hidden tabs must not hit-test. With maintainInteractivity,
-                      // later mounted tabs sit above the selected one in this Stack
-                      // and swallow hover/clicks (e.g. IPTV "frozen" after visiting
-                      // Settings / Live Sports).
+                      maintainSize: false,
                       maintainInteractivity: false,
                       child: TickerMode(
                         // Hidden tabs, and the selected tab under a fullscreen

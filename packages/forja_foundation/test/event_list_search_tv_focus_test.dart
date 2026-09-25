@@ -33,6 +33,7 @@ Widget _tvTap({
   bool suppressInkHover = false,
   bool allowNestedFocus = false,
   FocusOnKeyEventCallback? onKeyEvent,
+  bool mouseDownActivates = true,
 }) {
   return Focus(
     focusNode: focusNode,
@@ -57,102 +58,100 @@ Widget _tvTap({
 }
 
 void main() {
-  testWidgets(
-    'TV: closing expanded search returns focus to the search icon',
-    (tester) async {
-      var query = '';
-      final searchKey = GlobalKey<EventListSearchState>();
+  testWidgets('TV: closing expanded search returns focus to the search icon', (
+    tester,
+  ) async {
+    var query = '';
+    final searchKey = GlobalKey<EventListSearchState>();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ShellPaintScope(
-            useTvFocus: true,
-            scaleOnHover: false,
-            usesTvDensity: true,
-            focusStyled: (_, {required focused}) => focused,
-            focusableTapBuilder: _tvTap,
-            child: Scaffold(
-              body: Center(
-                child: EventListSearch(
-                  key: searchKey,
-                  query: query,
-                  onQueryChanged: (q) => query = q,
-                  debugLabel: 'test-event-search',
-                ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShellPaintScope(
+          useTvFocus: true,
+          scaleOnHover: false,
+          usesTvDensity: true,
+          focusStyled: (_, {required focused}) => focused,
+          focusableTapBuilder: _tvTap,
+          child: Scaffold(
+            body: Center(
+              child: EventListSearch(
+                key: searchKey,
+                query: query,
+                onQueryChanged: (q) => query = q,
+                debugLabel: 'test-event-search',
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      final state = searchKey.currentState!;
-      state.openSearch();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 350));
+    final state = searchKey.currentState!;
+    state.openSearch();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'test-event-search');
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'test-event-search');
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
-      expect(
-        FocusManager.instance.primaryFocus?.debugLabel,
-        'test-event-search-tool',
-      );
-      expect(query, '');
-    },
-  );
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'test-event-search-tool',
+    );
+    expect(query, '');
+  });
 
-  testWidgets(
-    'TV: closing via × returns focus to the search icon',
-    (tester) async {
-      var query = 'espn';
-      final searchKey = GlobalKey<EventListSearchState>();
+  testWidgets('TV: closing via × returns focus to the search icon', (
+    tester,
+  ) async {
+    var query = 'espn';
+    final searchKey = GlobalKey<EventListSearchState>();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ShellPaintScope(
-            useTvFocus: true,
-            scaleOnHover: false,
-            usesTvDensity: true,
-            focusStyled: (_, {required focused}) => focused,
-            focusableTapBuilder: _tvTap,
-            child: Scaffold(
-              body: Center(
-                child: EventListSearch(
-                  key: searchKey,
-                  query: query,
-                  onQueryChanged: (q) => query = q,
-                  debugLabel: 'test-event-search-x',
-                ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShellPaintScope(
+          useTvFocus: true,
+          scaleOnHover: false,
+          usesTvDensity: true,
+          focusStyled: (_, {required focused}) => focused,
+          focusableTapBuilder: _tvTap,
+          child: Scaffold(
+            body: Center(
+              child: EventListSearch(
+                key: searchKey,
+                query: query,
+                onQueryChanged: (q) => query = q,
+                debugLabel: 'test-event-search-x',
               ),
             ),
           ),
         ),
-      );
-      await tester.pump();
+      ),
+    );
+    await tester.pump();
 
-      // Open is already true from non-empty query; land on the field then ×.
-      searchKey.currentState!.openSearch();
-      await tester.pump();
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
+    // Open is already true from non-empty query; land on the field then ×.
+    searchKey.currentState!.openSearch();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
 
-      expect(
-        FocusManager.instance.primaryFocus?.debugLabel,
-        'test-event-search-x-close',
-      );
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'test-event-search-x-close',
+    );
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.select);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
-      expect(
-        FocusManager.instance.primaryFocus?.debugLabel,
-        'test-event-search-x-tool',
-      );
-      expect(query, '');
-    },
-  );
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'test-event-search-x-tool',
+    );
+    expect(query, '');
+  });
 }

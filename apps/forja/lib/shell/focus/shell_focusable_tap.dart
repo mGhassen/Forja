@@ -13,10 +13,7 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 
 export 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
-    show
-        ShellPaintEnsureVisible,
-        ShellPaintTvRowScope,
-        ShellPaintTvTabScope;
+    show ShellPaintEnsureVisible, ShellPaintTvRowScope, ShellPaintTvTabScope;
 
 /// Prevents nested horizontal rows from scrolling the parent vertical list.
 bool shellAbsorbHorizontalScroll(ScrollNotification notification) =>
@@ -29,7 +26,8 @@ VoidCallback? shellTvNavLeftEdge(
   bool navLeftAlways = false,
 }) {
   final policy = ShellScope.maybeOf(context)?.inputPolicy;
-  final tvFocus = policy?.useFocusableMoodChips ??
+  final tvFocus =
+      policy?.useFocusableMoodChips ??
       resolveShellProfile(context) == ShellProfile.tv;
   if (!tvFocus) return null;
   if (!navLeftAlways && listIndex != 0) return null;
@@ -43,7 +41,8 @@ VoidCallback? shellTvNavLeftEdgeGrid(
   required int columnCount,
 }) {
   final policy = ShellScope.maybeOf(context)?.inputPolicy;
-  final tvFocus = policy?.useFocusableMoodChips ??
+  final tvFocus =
+      policy?.useFocusableMoodChips ??
       resolveShellProfile(context) == ShellProfile.tv;
   if (!tvFocus) return null;
   if (columnCount <= 0 || index % columnCount != 0) return null;
@@ -77,7 +76,8 @@ VoidCallback? _resolveTvNavLeftEdge(
     return null;
   }
   if (tvTabId != null && tvTabId != ShellTvFocus.currentNavTabId) {
-    final known = tvTabId == MediaDetailsTv.tabId ||
+    final known =
+        tvTabId == MediaDetailsTv.tabId ||
         PluginNavRegistry.isKitTab(tvTabId) ||
         PluginNavRegistry.isCoreShell(tvTabId);
     if (!known) return null;
@@ -107,8 +107,7 @@ ShellTvFocusMeta? _resolveTvMeta({
   int? gridColumns,
 }) {
   if (tabId == null || tabId.isEmpty) return null;
-  final zone = tvZone ??
-      (tvRowId != null ? ShellTvZone.row : null);
+  final zone = tvZone ?? (tvRowId != null ? ShellTvZone.row : null);
   if (zone == null) return null;
   return ShellTvFocusMeta(
     tabId: tabId,
@@ -151,11 +150,13 @@ Widget shellFocusableTap({
   bool suppressInkHover = false,
   bool allowNestedFocus = false,
   FocusOnKeyEventCallback? onKeyEvent,
+  bool mouseDownActivates = true,
 }) {
   final policy =
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
   final paintRow = ShellPaintTvRowScope.maybeOf(context);
-  final tabId = tvTabId ??
+  final tabId =
+      tvTabId ??
       paintRow?.tabId ??
       ShellPaintTvTabScope.tabIdOf(context) ??
       ShellTvFocus.currentNavTabId;
@@ -199,6 +200,7 @@ Widget shellFocusableTap({
       ensureVisibleMode: ensureVisibleMode,
       allowNestedFocus: allowNestedFocus,
       onKeyEvent: onKeyEvent,
+      mouseDownActivates: mouseDownActivates,
       child: child,
     );
   }
@@ -250,8 +252,7 @@ void shellTvRegisterRow({
       sortOrder: sortOrder,
       itemCount: itemCount,
       orientation: orientation,
-      nodeAt: (index) =>
-          ShellTvFocusCoordinator.itemNode(tabId, rowId, index),
+      nodeAt: (index) => ShellTvFocusCoordinator.itemNode(tabId, rowId, index),
       onFocusUp: onFocusUp,
       onFocusDown: onFocusDown,
     ),

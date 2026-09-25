@@ -291,7 +291,7 @@ class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
         if (widget.label.isNotEmpty)
           ClipRect(
             child: Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               widthFactor: morph,
               child: Opacity(
                 opacity: labelOpacity,
@@ -562,7 +562,7 @@ class _HeroPillGroupedSlotSurfaceState extends State<HeroPillGroupedSlotSurface>
               if (widget.label.isNotEmpty)
                 ClipRect(
                   child: Align(
-                    alignment: Alignment.centerLeft,
+                    alignment: AlignmentDirectional.centerStart,
                     widthFactor: _expand.value,
                     child: Opacity(
                       opacity: _labelOpacity.value,

@@ -607,6 +607,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     _rebindChromeFilters();
     final tab = widget.tabId?.trim();
     if (tab != null && tab.isNotEmpty) {
+      final rtl = ShellBus.hubLayoutRtlFor(tab);
+      if (rtl.value != _layoutRtl) rtl.value = _layoutRtl;
       VerticalFiltersRegistry.syncFromLayout(
         tabId: tab,
         pluginId: widget.pluginId,

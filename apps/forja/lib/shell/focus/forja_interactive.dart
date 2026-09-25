@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
@@ -49,6 +50,19 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   late final void Function() _hoverClaim = _requestHoverFocus;
   bool _focused = false;
   FocusNode? _ownedNode;
+  DateTime? _lastMouseTapAt;
+
+  void _fireTap() {
+    final tap = widget.onTap;
+    if (tap == null || widget.suppressActive) return;
+    final now = DateTime.now();
+    if (_lastMouseTapAt != null &&
+        now.difference(_lastMouseTapAt!) < const Duration(milliseconds: 400)) {
+      return;
+    }
+    _lastMouseTapAt = now;
+    tap();
+  }
 
   void _requestHoverFocus() {
     if (!mounted || !_wantsFocus) return;
@@ -126,10 +140,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       _registerTvItemNode();
     }
     if (oldWidget.focusNode != widget.focusNode) {
-      _unregisterTvItemNode(
-        oldWidget.tvMeta,
-        node: _nodeFor(oldWidget),
-      );
+      _unregisterTvItemNode(oldWidget.tvMeta, node: _nodeFor(oldWidget));
       if (widget.focusNode == null) {
         if (widget.onTap != null) {
           _ownedNode ??= FocusNode(debugLabel: 'forja-interactive');
@@ -262,7 +273,10 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
               ? Duration.zero
               : const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
-          child: widget.builder(_activeFor(context, policy, hover: hover), pressed),
+          child: widget.builder(
+            _activeFor(context, policy, hover: hover),
+            pressed,
+          ),
         );
       },
     );
@@ -272,16 +286,27 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       onExit: (_) => _setHover(false),
       cursor: SystemMouseCursors.click,
       child: widget.onTap != null
-          ? GestureDetector(
-              onTapDown: (_) {
-                if (widget.suppressActive) return;
-                _pressedN.value = true;
+          ? Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerDown: (event) {
+                if (event.kind != PointerDeviceKind.mouse) return;
+                if ((event.buttons & kPrimaryButton) == 0) return;
+                if (!widget.suppressActive) _pressedN.value = true;
+                _fireTap();
               },
-              onTapUp: (_) => _pressedN.value = false,
-              onTapCancel: () => _pressedN.value = false,
-              onTap: widget.onTap,
-              behavior: HitTestBehavior.opaque,
-              child: body,
+              onPointerUp: (_) => _pressedN.value = false,
+              onPointerCancel: (_) => _pressedN.value = false,
+              child: GestureDetector(
+                onTapDown: (_) {
+                  if (widget.suppressActive) return;
+                  _pressedN.value = true;
+                },
+                onTapUp: (_) => _pressedN.value = false,
+                onTapCancel: () => _pressedN.value = false,
+                onTap: _fireTap,
+                behavior: HitTestBehavior.opaque,
+                child: body,
+              ),
             )
           : Listener(
               onPointerDown: (_) {
@@ -329,11 +354,14 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
           containDpad: ShellTvContainDpad.activeOf(context),
         );
         if (arrow == KeyEventResult.handled) return arrow;
-        final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
+        final linearScope =
+            ShellTvLinearFocusScope.activeOf(context) &&
             !ShellTvDisableLinearFocus.activeOf(context);
         if (linearScope) {
-          final linear =
-              shellTvLinearMenuArrows(context: context, event: event);
+          final linear = shellTvLinearMenuArrows(
+            context: context,
+            event: event,
+          );
           if (linear == KeyEventResult.handled) return linear;
           if (shellTvIsNavigationKey(event)) {
             final key = event.logicalKey;
@@ -362,8 +390,10 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
           }
         }
         // ← → category only after spatial miss (chip strips / side actions).
-        final pageBack =
-            shellTvSettingsBackwardEdge(context: context, event: event);
+        final pageBack = shellTvSettingsBackwardEdge(
+          context: context,
+          event: event,
+        );
         if (pageBack == KeyEventResult.handled) return pageBack;
         final trap = shellTvTrapRowGeometry(
           event: event,

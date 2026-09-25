@@ -88,6 +88,7 @@ Future<T?> openKitDetails<T>(
       (_) => PackDetailsHost(
         pluginId: pluginId,
         item: item,
+        shellTabId: tab,
         initialSeason: initialSeason,
         initialEpisode: initialEpisode,
         startPosition: startPosition,
@@ -107,6 +108,7 @@ class PackDetailsHost extends ConsumerStatefulWidget {
     super.key,
     required this.pluginId,
     required this.item,
+    this.shellTabId,
     this.initialSeason,
     this.initialEpisode,
     this.startPosition,
@@ -115,6 +117,7 @@ class PackDetailsHost extends ConsumerStatefulWidget {
 
   final String pluginId;
   final MetaItem item;
+  final String? shellTabId;
   final int? initialSeason;
   final int? initialEpisode;
   final Duration? startPosition;
@@ -870,7 +873,17 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
 
   @override
   Widget build(BuildContext context) {
-    return PlayerSurfaceChromeStub(
+    final tab = widget.shellTabId?.trim() ?? '';
+    return ValueListenableBuilder<bool>(
+      valueListenable: ShellBus.hubLayoutRtlFor(tab),
+      builder: (context, rtl, child) {
+        if (!rtl) return child!;
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child!,
+        );
+      },
+      child: PlayerSurfaceChromeStub(
       builder: (context) => ValueListenableBuilder<AppThemePreset>(
         valueListenable: AppTheme.themeNotifier,
         builder: (context, _, _) {
@@ -893,6 +906,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           );
         },
       ),
+    ),
     );
   }
 

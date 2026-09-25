@@ -63,6 +63,7 @@ class CatalogChannelCard extends StatefulWidget {
 
   /// Per-channel health — preferred so probe results do not rebuild sibling cards.
   final ValueListenable<bool?>? healthListenable;
+
   /// Sticky last-played / panel id — SoT only; does **not** paint alone.
   final bool highlighted;
 
@@ -121,7 +122,9 @@ class CatalogChannelCard extends StatefulWidget {
       final title = (e['title'] ?? e['name'] ?? '').toString().trim();
       if (title.isEmpty) continue;
       final startMs = _ms(e['startMs'] ?? e['start_timestamp'] ?? e['start']);
-      final endMs = _ms(e['endMs'] ?? e['stop_timestamp'] ?? e['end'] ?? e['stop']);
+      final endMs = _ms(
+        e['endMs'] ?? e['stop_timestamp'] ?? e['end'] ?? e['stop'],
+      );
       if (startMs == null || endMs == null || endMs <= startMs) continue;
       out.add(
         GuideEpgProgramme(
@@ -360,10 +363,10 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
       builder: (_) => _ChannelEpgSheet(
         title: widget.title,
         programmes: list,
-        titleFontSize: widget.titleFontSize ??
-            ChannelCardTokens.titleFontSizeOf(tv),
-        metaFontSize: widget.metaFontSize ??
-            ChannelCardTokens.metaFontSizeOf(tv),
+        titleFontSize:
+            widget.titleFontSize ?? ChannelCardTokens.titleFontSizeOf(tv),
+        metaFontSize:
+            widget.metaFontSize ?? ChannelCardTokens.metaFontSizeOf(tv),
       ),
     );
   }
@@ -381,15 +384,10 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   }
 
   Widget _buildCard(BuildContext context, {required bool? health}) {
-    final holdJump =
-        widget.onHoldJumpToCategory != null && _leanbackOnly;
+    final holdJump = widget.onHoldJumpToCategory != null && _leanbackOnly;
     final radius = widget.radius ?? ChannelCardTokens.radius;
     final selectionN = widget.selectionIndexListenable;
-    final chromeListenables = <Listenable>[
-      _hoveredN,
-      _focusedN,
-      ?selectionN,
-    ];
+    final chromeListenables = <Listenable>[_hoveredN, _focusedN, ?selectionN];
 
     final painted = ListenableBuilder(
       listenable: Listenable.merge(chromeListenables),
@@ -403,11 +401,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
           emphasize: emphasize,
         );
         if (widget.listLayout) {
-          return _buildSourcesListRow(
-            context,
-            active: active,
-            health: health,
-          );
+          return _buildSourcesListRow(context, active: active, health: health);
         }
         return Container(
           width: widget.width,
@@ -425,6 +419,8 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     Widget card = ShellPaintScope.focusableTap(
       context: context,
       onTap: holdJump ? null : widget.onTap,
+      // Parent long-press opens the EPG sheet. Don't also activate on down.
+      mouseDownActivates: false,
       borderRadius: widget.listLayout ? 0 : radius,
       motion: ForjaMotionPreset.fillOnly,
       gridIndex: widget.gridIndex,
@@ -445,17 +441,11 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     );
 
     if (!_leanbackOnly && _epgEnabled) {
-      card = GestureDetector(
-        onLongPress: _showEpgSheet,
-        child: card,
-      );
+      card = GestureDetector(onLongPress: _showEpgSheet, child: card);
     }
 
     // Sticky last-played stays in semantics only — not a second paint border.
-    return Semantics(
-      selected: widget.highlighted,
-      child: card,
-    );
+    return Semantics(selected: widget.highlighted, child: card);
   }
 
   /// Flat Sources-panel row — bordered rect + inner left health/selection bar.
@@ -469,15 +459,14 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     final titleColor = active
         ? ForjaShellColors.brandGreen
         : health == false
-            ? Colors.white54
-            : ForjaShellColors.cinematic.textPrimary;
-    final titleSize = widget.titleFontSize ??
-        ChannelCardTokens.listTitleFontSizeOf(tv);
+        ? Colors.white54
+        : ForjaShellColors.cinematic.textPrimary;
+    final titleSize =
+        widget.titleFontSize ?? ChannelCardTokens.listTitleFontSizeOf(tv);
     final logoSize = ChannelCardTokens.listLogoSizeOf(tv);
     final padH = ChannelCardTokens.listPadHOf(tv);
     final padV = ChannelCardTokens.listPadVOf(tv);
-    final rowH =
-        widget.height ?? ChannelCardTokens.listRowHeightOf(tv);
+    final rowH = widget.height ?? ChannelCardTokens.listRowHeightOf(tv);
 
     return SizedBox(
       width: widget.width,
@@ -526,8 +515,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                             color: titleColor,
                             fontSize: titleSize,
                             height: 1.25,
-                            fontWeight:
-                                active ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight: active
+                                ? FontWeight.w600
+                                : FontWeight.w500,
                           ),
                         ),
                       ),
@@ -576,10 +566,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: topRadius,
-                  child: _logoThumb(
-                    contain: true,
-                    padding: logoPad,
-                  ),
+                  child: _logoThumb(contain: true, padding: logoPad),
                 ),
               ),
               if (active)
@@ -598,14 +585,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                 diameter: EventCardTokens.playOverlaySizeOf(context),
                 iconSize: EventCardTokens.playIconSizeOf(context),
               ),
-              if (fav != null)
-                Positioned(top: 4, left: 4, child: fav),
+              if (fav != null) Positioned(top: 4, left: 4, child: fav),
               if (health != null)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: _healthDot(health),
-                ),
+                Positioned(top: 6, right: 6, child: _healthDot(health)),
             ],
           ),
         ),
@@ -623,9 +605,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
-                    color: health == false
-                        ? Colors.white54
-                        : Colors.white,
+                    color: health == false ? Colors.white54 : Colors.white,
                     fontSize: titleSize,
                     height: 1.15,
                     fontWeight: FontWeight.w500,
@@ -637,12 +617,12 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
         ),
         _EpgNowFooter(
           future: _epgFuture,
-          epgSlotHeight: widget.epgSlotHeight ??
-              ChannelCardTokens.epgSlotHeightOf(tv),
-          badgeFontSize: widget.badgeFontSize ??
-              ChannelCardTokens.badgeFontSizeOf(tv),
-          metaFontSize: widget.metaFontSize ??
-              ChannelCardTokens.metaFontSizeOf(tv),
+          epgSlotHeight:
+              widget.epgSlotHeight ?? ChannelCardTokens.epgSlotHeightOf(tv),
+          badgeFontSize:
+              widget.badgeFontSize ?? ChannelCardTokens.badgeFontSizeOf(tv),
+          metaFontSize:
+              widget.metaFontSize ?? ChannelCardTokens.metaFontSizeOf(tv),
         ),
       ],
     );
@@ -666,8 +646,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
       fit: contain ? BoxFit.contain : BoxFit.cover,
       alignment: Alignment.center,
       memCacheWidth: cacheWidth,
-      filterQuality:
-          cacheWidth != null ? FilterQuality.low : FilterQuality.medium,
+      filterQuality: cacheWidth != null
+          ? FilterQuality.low
+          : FilterQuality.medium,
       useOldImageOnUrlChange: false,
       // Card face is the underlay — no elevated square that only shows on focus.
       paintUnderlay: false,
@@ -756,7 +737,7 @@ class _EpgNowFooterState extends State<_EpgNowFooter> {
                             color: now.isNow
                                 ? const Color(0xFFEF4444)
                                 : ForjaShellColors.chipSelectedBorder
-                                    .withValues(alpha: 0.6),
+                                      .withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(3),
                           ),
                           child: Text(

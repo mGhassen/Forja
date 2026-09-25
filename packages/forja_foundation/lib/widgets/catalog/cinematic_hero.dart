@@ -669,6 +669,9 @@ class CinematicHeroState extends State<CinematicHero>
         ? MediaQuery.sizeOf(context).width - textLeft - textRight
         : desktopTextWidth;
     final heroSlide = slides[_heroIndex % slides.length];
+    // Pack layout `dir` wraps this page. Physical left is the text side only
+    // when that direction is LTR.
+    final packRtl = Directionality.of(context) == TextDirection.rtl;
 
     final heroBody = SizedBox(
       height: imageHeight,
@@ -682,12 +685,13 @@ class CinematicHeroState extends State<CinematicHero>
               solidLeftWidth: solidLeftWidth,
               imageStartFraction: imageStartFraction,
               pageBleed: pageBleed,
+              packRtl: packRtl,
             ),
           ),
-          Positioned(
-            left: solidLeftWidth,
+          PositionedDirectional(
+            start: solidLeftWidth,
             top: 0,
-            right: 0,
+            end: 0,
             bottom: 0,
             child: IgnorePointer(
               child: AnimatedBuilder(
@@ -696,8 +700,8 @@ class CinematicHeroState extends State<CinematicHero>
               ),
             ),
           ),
-          Positioned(
-            left: textLeft,
+          PositionedDirectional(
+            start: textLeft,
             top: textTop,
             bottom: textBottomInset,
             width: textColumnWidth,
@@ -708,17 +712,17 @@ class CinematicHeroState extends State<CinematicHero>
               desktopTextWidth: desktopTextWidth,
             ),
           ),
-          Positioned(
+          PositionedDirectional(
             top: 0,
             bottom: 0,
-            right: layout.scaledChrome(16, floor: 8.0, ceil: 20.0),
+            end: layout.scaledChrome(16, floor: 8.0, ceil: 20.0),
             child: Center(child: _buildStepIndicators()),
           ),
           if (widget.galleryOverlayBuilder != null)
-            Positioned(
-              left: solidLeftWidth,
+            PositionedDirectional(
+              start: solidLeftWidth,
               top: 0,
-              right: 0,
+              end: 0,
               bottom: 0,
               child: widget.galleryOverlayBuilder!(context),
             ),
@@ -750,6 +754,7 @@ class CinematicHeroState extends State<CinematicHero>
     required double solidLeftWidth,
     required double imageStartFraction,
     required bool pageBleed,
+    required bool packRtl,
   }) {
     final items = widget.slides;
     return LayoutBuilder(
@@ -794,6 +799,7 @@ class CinematicHeroState extends State<CinematicHero>
                           pageWidth: pageW,
                           solidLeftWidth: solidLeftWidth,
                           shellBg: shellBg,
+                          packRtl: packRtl,
                         ),
                     ],
                   );
@@ -810,8 +816,8 @@ class CinematicHeroState extends State<CinematicHero>
                     fit: StackFit.expand,
                     clipBehavior: Clip.hardEdge,
                     children: [
-                      Positioned(
-                        left: 0,
+                      PositionedDirectional(
+                        start: 0,
                         top: 0,
                         bottom: 0,
                         width: solidLeftWidth,
@@ -826,10 +832,10 @@ class CinematicHeroState extends State<CinematicHero>
                           ),
                         ),
                       ),
-                      Positioned(
-                        left: solidLeftWidth,
+                      PositionedDirectional(
+                        start: solidLeftWidth,
                         top: 0,
-                        right: 0,
+                        end: 0,
                         bottom: 0,
                         child: AnimatedBuilder(
                           animation: _heroController,
@@ -864,6 +870,7 @@ class CinematicHeroState extends State<CinematicHero>
     required double pageWidth,
     required double solidLeftWidth,
     required Color shellBg,
+    required bool packRtl,
   }) {
     final urls = _slideUrls(slide);
     final backdrop = urls.isEmpty
@@ -892,7 +899,10 @@ class CinematicHeroState extends State<CinematicHero>
     // Stable tree shape (always Transform → Offstage → page) so backdrop
     // [State] is never disposed when a slide leaves the viewport.
     final hide = bestK == null || bestDist > 1.05;
-    final dx = bestK == null ? 0.0 : (bestK - page) * pageWidth;
+    // RTL PageView advances toward the start edge. Keep the painted slide
+    // with that gesture; an LTR translate puts the join gradient on the wrong side.
+    final slideSign = packRtl ? -1.0 : 1.0;
+    final dx = bestK == null ? 0.0 : (bestK - page) * pageWidth * slideSign;
     return Transform.translate(
       offset: Offset(dx, 0),
       child: Offstage(
@@ -903,10 +913,10 @@ class CinematicHeroState extends State<CinematicHero>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Positioned(
-                left: solidLeftWidth,
+              PositionedDirectional(
+                start: solidLeftWidth,
                 top: 0,
-                right: 0,
+                end: 0,
                 bottom: 0,
                 child: backdrop,
               ),
@@ -932,8 +942,8 @@ class CinematicHeroState extends State<CinematicHero>
         return Stack(
           fit: StackFit.expand,
           children: [
-            Positioned(
-              right: 0,
+            PositionedDirectional(
+              end: 0,
               top: 0,
               bottom: 0,
               width: edgeWidth,
@@ -943,8 +953,8 @@ class CinematicHeroState extends State<CinematicHero>
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.centerRight,
-                        end: Alignment.centerLeft,
+                        begin: AlignmentDirectional.centerEnd,
+                        end: AlignmentDirectional.centerStart,
                         colors: [
                           Color(0xFF000000),
                           Color(0x6B000000),
@@ -974,7 +984,8 @@ class CinematicHeroState extends State<CinematicHero>
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final seamX = width * (1 - t);
+        final packRtl = Directionality.of(context) == TextDirection.rtl;
+        final seamX = width * (packRtl ? t : (1 - t));
         final seamLeft = (seamX - _heroSeamScrimWidth / 2)
             .clamp(0.0, math.max(0.0, width - _heroSeamScrimWidth))
             .toDouble();
@@ -1027,8 +1038,8 @@ class CinematicHeroState extends State<CinematicHero>
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
+                      begin: AlignmentDirectional.centerStart,
+                      end: AlignmentDirectional.centerEnd,
                       colors: [
                         shellBg,
                         shellBg,
@@ -1102,7 +1113,7 @@ class CinematicHeroState extends State<CinematicHero>
       return LayoutBuilder(
         builder: (context, constraints) {
           return Align(
-            alignment: Alignment.bottomLeft,
+            alignment: AlignmentDirectional.bottomStart,
             child: _buildCompactColumn(
               slide,
               maxHeight: constraints.maxHeight,
@@ -1116,7 +1127,7 @@ class CinematicHeroState extends State<CinematicHero>
     return LayoutBuilder(
       builder: (context, constraints) {
         return Align(
-          alignment: Alignment(
+          alignment: AlignmentDirectional(
             -1,
             widget.layout.resolvedTextColumnVerticalAlign,
           ),
@@ -1185,7 +1196,7 @@ class CinematicHeroState extends State<CinematicHero>
             SizedBox(
               height: layoutFit.titleHeight,
               child: Align(
-                alignment: Alignment.bottomLeft,
+                alignment: AlignmentDirectional.bottomStart,
                 child: _buildTitle(
                   slide,
                   desktop: true,
@@ -1198,7 +1209,7 @@ class CinematicHeroState extends State<CinematicHero>
             SizedBox(
               height: metaSlotHeight,
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: _buildMetaRow(slide, singleLine: true),
               ),
             ),
@@ -1208,7 +1219,7 @@ class CinematicHeroState extends State<CinematicHero>
             SizedBox(
               height: layoutFit.overviewSlotHeight,
               child: Align(
-                alignment: Alignment.topLeft,
+                alignment: AlignmentDirectional.topStart,
                 child: HeroOverviewText(
                   overview: overview,
                   style: overviewStyle,
@@ -1239,10 +1250,10 @@ class CinematicHeroState extends State<CinematicHero>
           SizedBox(
             height: layoutFit.actionRowHeight,
             child: Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: _wrapHeroActionRow(
                   widget.actionRowBuilder?.call(
                         context,
@@ -1268,7 +1279,7 @@ class CinematicHeroState extends State<CinematicHero>
       constraints: BoxConstraints(maxHeight: maxHeight),
       child: FittedBox(
         fit: BoxFit.scaleDown,
-        alignment: Alignment.topLeft,
+        alignment: AlignmentDirectional.topStart,
         child: sized,
       ),
     );
@@ -1456,7 +1467,7 @@ class CinematicHeroState extends State<CinematicHero>
             fit: FlexFit.loose,
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1607,7 +1618,7 @@ class CinematicHeroState extends State<CinematicHero>
                   animation: _heroProgress,
                   builder: (context, _) {
                     return Align(
-                      alignment: Alignment.centerLeft,
+                      alignment: AlignmentDirectional.centerStart,
                       child: FractionallySizedBox(
                         widthFactor: _heroProgress.value.clamp(0.0, 1.0),
                         heightFactor: 1,

@@ -88,7 +88,7 @@ import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 import 'package:rust/rust.dart'
-    show WatchHistoryService, canResumeFromSavedProgress;
+    show SettingsService, WatchHistoryService, canResumeFromSavedProgress;
 
 /// Pack JSON bool — EngineJS / JSON sometimes deliver `'true'` / `1`.
 bool _packTruthy(Object? value) {
@@ -3449,6 +3449,11 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
 
         final children = <Widget>[];
         var autofocusUsed = false;
+        final packRtl = Directionality.of(ctx) == TextDirection.rtl;
+        final navOnRight = SettingsService.shellWritingIsRtl;
+        void focusNav() {
+          ShellTvFocusCoordinator.focusActiveNavTab();
+        }
         for (final action in widget.actionSpecs) {
           final id = action.id;
           Widget? child;
@@ -3479,20 +3484,22 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               // hub-hero-gallery (full-bleed overlay) after denser TV posters.
               onUpEdge: tv ? _focusGallery : null,
               onDownEdge: tv ? widget.focusDown : null,
-              onRightEdge: tv && hasFollow ? _focusFollow : null,
-              onKeyEvent: tv
-                  ? (node, event) {
-                      if (!shellTvIsNavigationKey(event)) {
-                        return KeyEventResult.ignored;
-                      }
-                      if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-                        if (ShellTvFocusCoordinator.focusActiveNavTab()) {
-                          return KeyEventResult.handled;
-                        }
-                      }
-                      return KeyEventResult.ignored;
-                    }
-                  : null,
+              // Pack RTL mirrors the row: follow sits on the end side.
+              // Leave the hero only toward the navbar (app writing direction).
+              onLeftEdge: !tv
+                  ? null
+                  : packRtl && hasFollow
+                      ? _focusFollow
+                      : !navOnRight && (!packRtl || !hasFollow)
+                          ? focusNav
+                          : null,
+              onRightEdge: !tv
+                  ? null
+                  : !packRtl && hasFollow
+                      ? _focusFollow
+                      : navOnRight && (packRtl || !hasFollow)
+                          ? focusNav
+                          : null,
             );
           } else if (id == 'follow') {
             if (follow == null) continue;
@@ -3503,7 +3510,16 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               focusNode: tv ? _followFocus : null,
               onUpEdge: tv ? _focusGallery : null,
               onDownEdge: tv ? widget.focusDown : null,
-              onLeftEdge: tv ? _focusPlay : null,
+              onLeftEdge: !tv
+                  ? null
+                  : packRtl
+                      ? (navOnRight ? null : focusNav)
+                      : _focusPlay,
+              onRightEdge: !tv
+                  ? null
+                  : packRtl
+                      ? _focusPlay
+                      : (navOnRight ? focusNav : null),
               enabled: true,
             );
           } else {

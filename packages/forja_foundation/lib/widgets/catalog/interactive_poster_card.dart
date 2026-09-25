@@ -134,9 +134,9 @@ class InteractivePosterCard extends StatefulWidget {
       value * _layoutScale(context);
 
   static double cardBorderRadius(BuildContext context) => scaled(
-        context,
-        ShellTokens.posterCardRadius,
-      ).clamp(ShellTokens.posterCardRadiusMin, ShellTokens.posterCardRadius);
+    context,
+    ShellTokens.posterCardRadius,
+  ).clamp(ShellTokens.posterCardRadiusMin, ShellTokens.posterCardRadius);
 
   static double defaultTitleFontSize(BuildContext context) {
     if (ShellPaintScope.usesTvDensityOf(context)) {
@@ -194,7 +194,8 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
   KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
     if (widget.onLongPress == null) return KeyEventResult.ignored;
     final key = event.logicalKey;
-    final activate = key == LogicalKeyboardKey.select ||
+    final activate =
+        key == LogicalKeyboardKey.select ||
         key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter ||
         key == LogicalKeyboardKey.space;
@@ -219,17 +220,21 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
 
   @override
   Widget build(BuildContext context) {
-    final w = widget.width ??
+    final w =
+        widget.width ??
         InteractivePosterCard.cardWidth(context, aspect: widget.aspect);
-    final h = widget.height ??
+    final h =
+        widget.height ??
         InteractivePosterCard.cardHeight(context, aspect: widget.aspect);
     final radius =
         widget.borderRadius ?? InteractivePosterCard.cardBorderRadius(context);
     final inset = InteractivePosterCard.scaled(context, 10).clamp(4.0, 10.0);
     final inGrid = widget.gridIndex != null && widget.gridColumns != null;
     final titleFs =
-        widget.titleFontSize ?? InteractivePosterCard.defaultTitleFontSize(context);
-    final metaFs = widget.metaFontSize ??
+        widget.titleFontSize ??
+        InteractivePosterCard.defaultTitleFontSize(context);
+    final metaFs =
+        widget.metaFontSize ??
         (ShellPaintScope.usesTvDensityOf(context)
             ? ShellTokens.tvMetaFontSize
             : InteractivePosterCard.scaled(context, 11).clamp(7.0, 11.0));
@@ -265,6 +270,8 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
     Widget card = ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onLongPress != null ? _onTap : widget.onTap,
+      // Parent long-press must win the hold. Pointer-down tap would also open.
+      mouseDownActivates: widget.onLongPress == null,
       borderRadius: radius,
       motion: motion,
       scaleOnFocus: widget.scaleOnFocus,
@@ -294,7 +301,8 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
       card = ListenableBuilder(
         listenable: _hoveredN,
         builder: (context, child) {
-          final lift = widget.scaleOnFocus ??
+          final lift =
+              widget.scaleOnFocus ??
               ForjaMotionTheme.of(context).effectiveScale(
                 context,
                 motion,

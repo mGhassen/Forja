@@ -45,12 +45,12 @@ class DetailsHeroActionRowFit extends StatelessWidget {
     final body = scaleDown
         ? FittedBox(
             fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
+            alignment: AlignmentDirectional.centerStart,
             child: child,
           )
         : child;
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: body,
     );
   }

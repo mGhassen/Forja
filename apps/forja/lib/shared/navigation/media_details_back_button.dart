@@ -46,12 +46,15 @@ class MediaDetailsBackButton extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final inset = DetailsTokens.contentLeftInset(constraints.maxWidth);
+          final rtl = Directionality.of(context) == TextDirection.rtl;
           return Align(
-            alignment: Alignment.centerLeft,
+            alignment: AlignmentDirectional.centerStart,
             child: Padding(
-              padding: EdgeInsets.only(left: inset),
+              padding: EdgeInsetsDirectional.only(start: inset),
               child: ShellBackIconButton(
-                icon: Icons.chevron_left_rounded,
+                icon: rtl
+                    ? Icons.chevron_right_rounded
+                    : Icons.chevron_left_rounded,
                 size: iconSize,
                 hitSize: hitSize,
                 tooltip: 'Back',

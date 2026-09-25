@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
@@ -12,6 +13,7 @@ enum ButtonVariant {
   ghost,
   outline,
   destructive,
+
   /// Brand-green tinted fill at rest (Settings accent CTAs).
   accent,
   link,
@@ -19,12 +21,7 @@ enum ButtonVariant {
 }
 
 /// Size scale for [Button].
-enum ButtonSize {
-  sm,
-  md,
-  lg,
-  icon,
-}
+enum ButtonSize { sm, md, lg, icon }
 
 /// Forja action button — one family; close/back/icon are usages via variant/size.
 class Button extends StatefulWidget {
@@ -62,8 +59,10 @@ class Button extends StatefulWidget {
   final FocusNode? focusNode;
   final bool autofocus;
   final String? tooltip;
+
   /// Rest foreground (outline border too). Pack kit: `color`.
   final Color? color;
+
   /// Hover / focus / press foreground. Pack kit: `hoverColor`.
   final Color? hoverColor;
   final double? iconSize;
@@ -119,11 +118,14 @@ class _ButtonState extends State<Button> {
       padding: widget.padding,
     );
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final resolvedHeight = widget.height ??
+    final resolvedHeight =
+        widget.height ??
         (tv ? dims.height * ShellTokens.tvChromeScale : dims.height);
-    final resolvedFontSize = widget.fontSize ??
+    final resolvedFontSize =
+        widget.fontSize ??
         (tv ? ShellTokens.tvTypeSize(dims.fontSize) : dims.fontSize);
-    final resolvedPadding = widget.padding ??
+    final resolvedPadding =
+        widget.padding ??
         (tv
             ? EdgeInsets.symmetric(
                 horizontal: switch (dims.padding) {
@@ -133,8 +135,8 @@ class _ButtonState extends State<Button> {
               )
             : dims.padding);
     // Explicit [iconSize] is caller-owned (already density-aware). Defaults densify.
-    final resolvedIconSize = widget.iconSize ??
-        ShellTokens.iconSizeFor(dims.iconSize, tv: tv);
+    final resolvedIconSize =
+        widget.iconSize ?? ShellTokens.iconSizeFor(dims.iconSize, tv: tv);
     final colors = _resolveColors(
       theme,
       widget.variant,
@@ -169,11 +171,7 @@ class _ButtonState extends State<Button> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (widget.icon != null) ...[
-            Icon(
-              widget.icon,
-              size: resolvedIconSize,
-              color: colors.foreground,
-            ),
+            Icon(widget.icon, size: resolvedIconSize, color: colors.foreground),
             SizedBox(width: theme.spaceSm),
           ],
           if (widget.label != null)
@@ -212,24 +210,27 @@ class _ButtonState extends State<Button> {
       shadowColor: const WidgetStatePropertyAll(Colors.transparent),
     );
 
-    Widget button = _ButtonBase(
+    Widget button = _MouseDownButton(
       onPressed: enabled ? widget.onPressed : null,
-      focusNode: widget.focusNode,
-      autofocus: widget.autofocus,
-      enabled: enabled,
-      statesController: _states,
-      style: style,
-      padding: resolvedPadding,
-      constraints: BoxConstraints(
-        minHeight: resolvedHeight,
-        minWidth: widget.size == ButtonSize.icon ? resolvedHeight : 0,
+      builder: (onPressed) => _ButtonBase(
+        onPressed: onPressed,
+        focusNode: widget.focusNode,
+        autofocus: widget.autofocus,
+        enabled: enabled,
+        statesController: _states,
+        style: style,
+        padding: resolvedPadding,
+        constraints: BoxConstraints(
+          minHeight: resolvedHeight,
+          minWidth: widget.size == ButtonSize.icon ? resolvedHeight : 0,
+        ),
+        borderRadius: BorderRadius.circular(
+          tv ? theme.radiusMd * ShellTokens.tvChromeScale : theme.radiusMd,
+        ),
+        tooltip: widget.tooltip,
+        onKeyEvent: widget.onKeyEvent,
+        child: content,
       ),
-      borderRadius: BorderRadius.circular(
-        tv ? theme.radiusMd * ShellTokens.tvChromeScale : theme.radiusMd,
-      ),
-      tooltip: widget.tooltip,
-      onKeyEvent: widget.onKeyEvent,
-      child: content,
     );
 
     if (widget.expand) {
@@ -245,31 +246,31 @@ class _ButtonState extends State<Button> {
     EdgeInsetsGeometry? padding,
   }) {
     final base = switch (size) {
-        ButtonSize.sm => const _ButtonDims(
-            height: 32,
-            fontSize: 12,
-            iconSize: 16,
-            padding: EdgeInsets.symmetric(horizontal: 12),
-          ),
-        ButtonSize.md => const _ButtonDims(
-            height: 40,
-            fontSize: 14,
-            iconSize: 18,
-            padding: EdgeInsets.symmetric(horizontal: 18),
-          ),
-        ButtonSize.lg => const _ButtonDims(
-            height: 48,
-            fontSize: 16,
-            iconSize: 20,
-            padding: EdgeInsets.symmetric(horizontal: 22),
-          ),
-        ButtonSize.icon => const _ButtonDims(
-            height: 40,
-            fontSize: 14,
-            iconSize: 20,
-            padding: EdgeInsets.zero,
-          ),
-      };
+      ButtonSize.sm => const _ButtonDims(
+        height: 32,
+        fontSize: 12,
+        iconSize: 16,
+        padding: EdgeInsets.symmetric(horizontal: 12),
+      ),
+      ButtonSize.md => const _ButtonDims(
+        height: 40,
+        fontSize: 14,
+        iconSize: 18,
+        padding: EdgeInsets.symmetric(horizontal: 18),
+      ),
+      ButtonSize.lg => const _ButtonDims(
+        height: 48,
+        fontSize: 16,
+        iconSize: 20,
+        padding: EdgeInsets.symmetric(horizontal: 22),
+      ),
+      ButtonSize.icon => const _ButtonDims(
+        height: 40,
+        fontSize: 14,
+        iconSize: 20,
+        padding: EdgeInsets.zero,
+      ),
+    };
     if (height == null && fontSize == null && padding == null) return base;
     return _ButtonDims(
       height: height ?? base.height,
@@ -331,73 +332,118 @@ class _ButtonState extends State<Button> {
     );
     return switch (variant) {
       // White at rest; brand green (or pack hoverColor) on hover / focus / press.
-      ButtonVariant.primary => engaged
-          ? engagedColors
-          : _ButtonColors(
-              foreground: theme.textPrimary,
-              background: Colors.white.withValues(alpha: 0.03),
-              border: ForjaShellColors.ghostBorder,
-            ),
-      ButtonVariant.secondary => engaged
-          ? engagedColors
-          : _ButtonColors(
-              foreground: theme.textPrimary,
-              background: Colors.white.withValues(alpha: 0.03),
-              border: ForjaShellColors.ghostBorder,
-            ),
-      ButtonVariant.ghost => engaged
-          ? engagedColors
-          : _ButtonColors(
-              foreground: theme.textPrimary,
-              background: Colors.transparent,
-              border: null,
-            ),
-      ButtonVariant.outline => engaged
-          ? engagedColors
-          : _ButtonColors(
-              foreground: theme.textPrimary,
-              background: Colors.transparent,
-              border: theme.borderSubtle,
-            ),
+      ButtonVariant.primary =>
+        engaged
+            ? engagedColors
+            : _ButtonColors(
+                foreground: theme.textPrimary,
+                background: Colors.white.withValues(alpha: 0.03),
+                border: ForjaShellColors.ghostBorder,
+              ),
+      ButtonVariant.secondary =>
+        engaged
+            ? engagedColors
+            : _ButtonColors(
+                foreground: theme.textPrimary,
+                background: Colors.white.withValues(alpha: 0.03),
+                border: ForjaShellColors.ghostBorder,
+              ),
+      ButtonVariant.ghost =>
+        engaged
+            ? engagedColors
+            : _ButtonColors(
+                foreground: theme.textPrimary,
+                background: Colors.transparent,
+                border: null,
+              ),
+      ButtonVariant.outline =>
+        engaged
+            ? engagedColors
+            : _ButtonColors(
+                foreground: theme.textPrimary,
+                background: Colors.transparent,
+                border: theme.borderSubtle,
+              ),
       ButtonVariant.destructive => const _ButtonColors(
-          foreground: Color(0xFFF87171),
-          background: Color(0x1FF87171),
-          border: Color(0x8CF87171),
-        ),
-      ButtonVariant.accent => engaged
-          ? _ButtonColors(
-              foreground: theme.brandGreen,
-              background: theme.brandGreen.withValues(alpha: 0.18),
-              border: theme.brandGreen.withValues(alpha: 0.7),
-            )
-          : _ButtonColors(
-              foreground: theme.brandGreen,
-              background: theme.brandGreen.withValues(alpha: 0.12),
-              border: theme.brandGreen.withValues(alpha: 0.55),
-            ),
-      ButtonVariant.link => engaged
-          ? engagedColors
-          : _ButtonColors(
-              foreground: theme.brandGreen,
-              background: Colors.transparent,
-              border: null,
-            ),
-      ButtonVariant.plainIcon => engaged
-          ? _ButtonColors(
-              foreground: engagedFg,
-              background: Colors.transparent,
-              border: null,
-            )
-          : _ButtonColors(
-              foreground: theme.textSecondary,
-              background: Colors.transparent,
-              border: null,
-            ),
+        foreground: Color(0xFFF87171),
+        background: Color(0x1FF87171),
+        border: Color(0x8CF87171),
+      ),
+      ButtonVariant.accent =>
+        engaged
+            ? _ButtonColors(
+                foreground: theme.brandGreen,
+                background: theme.brandGreen.withValues(alpha: 0.18),
+                border: theme.brandGreen.withValues(alpha: 0.7),
+              )
+            : _ButtonColors(
+                foreground: theme.brandGreen,
+                background: theme.brandGreen.withValues(alpha: 0.12),
+                border: theme.brandGreen.withValues(alpha: 0.55),
+              ),
+      ButtonVariant.link =>
+        engaged
+            ? engagedColors
+            : _ButtonColors(
+                foreground: theme.brandGreen,
+                background: Colors.transparent,
+                border: null,
+              ),
+      ButtonVariant.plainIcon =>
+        engaged
+            ? _ButtonColors(
+                foreground: engagedFg,
+                background: Colors.transparent,
+                border: null,
+              )
+            : _ButtonColors(
+                foreground: theme.textSecondary,
+                background: Colors.transparent,
+                border: null,
+              ),
     };
   }
 }
 
 /// Hit target / focus / semantics shell — style values in; no variants.
+/// Desktop mouse: invoke [onPressed] on pointer down, and ignore the
+/// later InkWell [TextButton.onPressed] from the same click.
+class _MouseDownButton extends StatefulWidget {
+  const _MouseDownButton({required this.onPressed, required this.builder});
+
+  final VoidCallback? onPressed;
+  final Widget Function(VoidCallback? onPressed) builder;
+
+  @override
+  State<_MouseDownButton> createState() => _MouseDownButtonState();
+}
+
+class _MouseDownButtonState extends State<_MouseDownButton> {
+  int? _stampMs;
+
+  void _invoke() {
+    final cb = widget.onPressed;
+    if (cb == null) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_stampMs != null && now - _stampMs! < 400) return;
+    _stampMs = now;
+    cb();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (event) {
+        if (event.kind != PointerDeviceKind.mouse) return;
+        if ((event.buttons & kPrimaryButton) == 0) return;
+        _invoke();
+      },
+      child: widget.builder(widget.onPressed == null ? null : _invoke),
+    );
+  }
+}
+
 class _ButtonBase extends StatelessWidget {
   const _ButtonBase({
     required this.onPressed,
@@ -436,9 +482,7 @@ class _ButtonBase extends StatelessWidget {
       autofocus: autofocus,
       statesController: statesController,
       style: (style ?? const ButtonStyle()).copyWith(
-        padding: padding != null
-            ? WidgetStatePropertyAll(padding)
-            : null,
+        padding: padding != null ? WidgetStatePropertyAll(padding) : null,
         minimumSize: constraints != null
             ? WidgetStatePropertyAll(
                 Size(constraints!.minWidth, constraints!.minHeight),

@@ -46,6 +46,7 @@ Widget _tvTap({
   bool suppressInkHover = false,
   bool allowNestedFocus = false,
   FocusOnKeyEventCallback? onKeyEvent,
+  bool mouseDownActivates = true,
 }) {
   return Focus(
     focusNode: focusNode,
@@ -109,7 +110,8 @@ void main() {
   ) async {
     const cardW = 160.0;
     const cardH = 180.0;
-    final expectedBandH = cardH -
+    final expectedBandH =
+        cardH -
         ChannelCardTokens.titleBarHeight -
         ChannelCardTokens.epgSlotHeight;
 
@@ -132,10 +134,7 @@ void main() {
     expect(find.byIcon(Icons.tv_rounded), findsOneWidget);
     final placeholderCenter = tester.getCenter(find.byIcon(Icons.tv_rounded));
     final cardTop = tester.getTopLeft(find.byType(CatalogChannelCard)).dy;
-    expect(
-      placeholderCenter.dy,
-      closeTo(cardTop + expectedBandH / 2, 2.0),
-    );
+    expect(placeholderCenter.dy, closeTo(cardTop + expectedBandH / 2, 2.0));
   });
 
   testWidgets('long titles do not change the logo band height', (tester) async {
@@ -189,13 +188,12 @@ void main() {
     await tester.pump();
 
     final text = tester.widget<Text>(find.text('VIP - NO EVENT'));
-    expect(
-      text.style?.fontSize,
-      ChannelCardTokens.cardTitleFontSizeTv,
-    );
+    expect(text.style?.fontSize, ChannelCardTokens.cardTitleFontSizeTv);
   });
 
-  testWidgets('emphasize flip does not call onInteractiveActive', (tester) async {
+  testWidgets('emphasize flip does not call onInteractiveActive', (
+    tester,
+  ) async {
     var calls = 0;
     await tester.pumpWidget(
       _wrap(
