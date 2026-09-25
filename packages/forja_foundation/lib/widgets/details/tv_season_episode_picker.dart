@@ -409,20 +409,19 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           watched: watched,
           positionMs: pos,
           durationMs: dur,
-          onTap: airDate.notShippedYet
-              ? null
-              : () {
-                  widget.onEpisodeSelected(epNum);
-                  setState(() => _tvArmedEpisode = epNum);
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _scrollToSelectedEpisode();
-                    if (tvFocus &&
-                        widget.onEpisodePlay != null &&
-                        _episodePlayFocus.canRequestFocus) {
-                      _episodePlayFocus.requestFocus();
-                    }
-                  });
-                },
+          onTap: () {
+            widget.onEpisodeSelected(epNum);
+            setState(() => _tvArmedEpisode = epNum);
+            if (airDate.notShippedYet) return;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToSelectedEpisode();
+              if (tvFocus &&
+                  widget.onEpisodePlay != null &&
+                  _episodePlayFocus.canRequestFocus) {
+                _episodePlayFocus.requestFocus();
+              }
+            });
+          },
           onPlay: airDate.notShippedYet || widget.onEpisodePlay == null
               ? null
               : () => widget.onEpisodePlay!(epNum),
@@ -598,12 +597,10 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       selected: selected,
       watched: watched,
       unaired: unaired,
-      onTap: unaired
-          ? null
-          : () {
-              widget.onEpisodeSelected(epNum);
-              setState(() => _tvArmedEpisode = epNum);
-            },
+      onTap: () {
+        widget.onEpisodeSelected(epNum);
+        setState(() => _tvArmedEpisode = epNum);
+      },
       onToggleWatched: () => widget.onToggleWatched(_keysSeason, epNum),
       listIndex: index,
       gridIndex: index,
@@ -1353,9 +1350,10 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     );
     final enabled = widget.onTap != null;
     final playEnabled = widget.onPlay != null;
-    final showPlayOverlay = tvFocus
-        ? (playEnabled || enabled) && (widget.armed || active)
-        : (playEnabled || enabled) && (active || widget.selected);
+    final showPlayOverlay = !widget.dateNotShippedYet &&
+        (tvFocus
+            ? (playEnabled || enabled) && (widget.armed || active)
+            : (playEnabled || enabled) && (active || widget.selected));
     final liftActive = !tvFocus && enabled && (active || widget.selected);
     final showThumbBorder = widget.selected || active;
     final thumbBorderColor = widget.selected
@@ -1366,8 +1364,12 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       preset: ForjaMotionPreset.cardLift,
       active: liftActive,
       child: GestureDetector(
-        onSecondaryTap: enabled ? widget.onToggleWatched : null,
-        onDoubleTap: enabled ? widget.onToggleWatched : null,
+        onSecondaryTap: enabled && !widget.dateNotShippedYet
+            ? widget.onToggleWatched
+            : null,
+        onDoubleTap: enabled && !widget.dateNotShippedYet
+            ? widget.onToggleWatched
+            : null,
         behavior: HitTestBehavior.opaque,
         child: SizedBox(
           width: cardWidth,

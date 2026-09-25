@@ -956,18 +956,26 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final isUpcoming = hubMetaIsUpcoming(show, videos: videos);
     final premiereLabel = hubMetaPremiereDateLabel(show, videos: videos);
     final selectedVideo = _selectedVideo();
-    final selectedUnaired =
-        selectedVideo != null && hubVideoNotAiredYet(selectedVideo);
+    final selectedAir =
+        selectedVideo == null ? null : hubVideoAirDateInfo(selectedVideo);
+    final selectedUnaired = selectedAir?.notShippedYet == true;
+    // Same as a not-yet-started title: message, no green Play / white Sources.
+    final blockPlay = isUpcoming || selectedUnaired;
+    final episodeAirLabel = selectedAir?.label?.trim() ?? '';
+    final noticeLabel = selectedUnaired && episodeAirLabel.isNotEmpty
+        ? episodeAirLabel
+        : premiereLabel;
     var tvIndex = 0;
-    final playIndex = tvIndex++;
-    final sourcesIndex = showCatalogSources ? tvIndex++ : null;
+    final playIndex = blockPlay ? 0 : tvIndex++;
+    final sourcesIndex =
+        !blockPlay && showCatalogSources ? tvIndex++ : null;
     final clearIndex = hasClearableProgress ? tvIndex++ : null;
     final trailerIndex = hasTrailers ? tvIndex++ : null;
     final listIndex = listTarget != null ? tvIndex++ : null;
     final playFilters = _playFilters
         .where((f) => f.style == 'grouped' && f.options.length >= 2)
         .toList();
-    final showPlayFilters = !isUpcoming && playFilters.isNotEmpty;
+    final showPlayFilters = !blockPlay && playFilters.isNotEmpty;
     final playFilterIndex = showPlayFilters ? tvIndex : null;
     if (showPlayFilters) {
       for (final f in playFilters) {
@@ -1211,15 +1219,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           onFocusUp: heroPopUp,
           child: Row(
             children: [
-              if (isUpcoming)
+              if (blockPlay)
                 KitDetailsUpcomingNotice(
-                  releaseDateLabel: premiereLabel,
+                  releaseDateLabel: noticeLabel,
                 )
               else
                 KitDetailsPlayRow(
                   label: playLabel,
-                  enabled: !selectedUnaired &&
-                      (_isMovie || videos.isNotEmpty || show.open != null),
+                  enabled: _isMovie || videos.isNotEmpty || show.open != null,
                   onPlay: _playSelected,
                   onOpenSources: showCatalogSources &&
                           (_isMovie ||

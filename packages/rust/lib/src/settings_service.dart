@@ -1539,11 +1539,8 @@ class SettingsService {
       shellWritingDirection.value == shellWritingRtl;
 
   Future<void> loadShellWritingDirection() async {
-    final raw = (await kvGetString(_shellWritingDirectionKey) ?? '')
-        .trim()
-        .toLowerCase();
-    shellWritingDirection.value =
-        raw == shellWritingRtl ? shellWritingRtl : shellWritingLtr;
+    shellWritingDirection.value = shellWritingLtr;
+    await kvSetString(_shellWritingDirectionKey, shellWritingLtr);
   }
 
   Future<void> setShellWritingDirection(String direction) async {
