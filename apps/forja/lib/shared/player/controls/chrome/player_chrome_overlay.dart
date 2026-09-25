@@ -935,20 +935,12 @@ class PlayerTopBar extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final tv = ShellPaintScope.usesTvDensityOf(context);
-        // Symmetric inset so the centered title clears the top-right cluster.
-        final topBtn = playerChromeScale(
-          context,
-          ShellTokens.playerChromeTopBtnSize,
-        );
-        final actionReserve = topBtn * 5;
-        final titleInsetBase = constraints.maxWidth >= 600
+        final titleInset = constraints.maxWidth >= 600
             ? (tv ? 96.0 : 152.0)
             : (tv ? 64.0 : 96.0);
-        final titleInset = titleInsetBase > actionReserve
-            ? titleInsetBase
-            : actionReserve;
         // Desktop baseline — [PlayerFlatIconButton] densifies via playerChromeScale.
         const topBtnDesktop = ShellTokens.playerChromeTopBtnSize;
+        final topBtn = playerChromeScale(context, topBtnDesktop);
         final titleFs = tv
             ? ShellTokens.playerChromeTitleFontSizeTv
             : ShellTokens.playerChromeTitleFontSize;
@@ -1163,8 +1155,6 @@ class PlayerTopBarActions extends StatelessWidget {
     this.showInAppMini = false,
     this.onPlayer,
     this.showPlayer = false,
-    this.onDownload,
-    this.showDownload = false,
     this.tvFocusable = false,
     this.playerFocusNode,
     this.playerOnLeftEdge,
@@ -1180,8 +1170,6 @@ class PlayerTopBarActions extends StatelessWidget {
   final bool showInAppMini;
   final ValueChanged<BuildContext>? onPlayer;
   final bool showPlayer;
-  final VoidCallback? onDownload;
-  final bool showDownload;
   final bool tvFocusable;
   final FocusNode? playerFocusNode;
   final VoidCallback? playerOnLeftEdge;
@@ -1233,15 +1221,6 @@ class PlayerTopBarActions extends StatelessWidget {
                 : Icons.picture_in_picture_rounded,
             tooltip: 'Picture in Picture',
             onPressed: onPip!,
-            size: size,
-            iconSize: iconSize,
-            tvFocusable: tvFocusable,
-          ),
-        if (showDownload && onDownload != null)
-          PlayerFlatIconButton(
-            icon: Icons.download_rounded,
-            tooltip: 'Download',
-            onPressed: onDownload!,
             size: size,
             iconSize: iconSize,
             tvFocusable: tvFocusable,

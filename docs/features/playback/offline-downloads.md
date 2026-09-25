@@ -21,10 +21,7 @@ Offline Downloads is on phone and desktop.
   Finished offline rows keep static stripes. Hover an Offline row for
   **Play online** (the cloud stream) or **Delete** (removes that file).
   Filters include **Offline** / **Online**. Row tap on a saved stream plays
-  the file on this device, including a file saved from the player. The cloud
-  button is the network stream.
-- **Player** — use the download icon in the top-right corner to save the stream
-  you’re watching (phone and desktop).
+  the file on this device. The cloud button is the network stream.
 
 Hover a stream row and tap Download — the card switches to a confirm face
 (like IPTV portal delete / share), shows the stream size (exact for files,
@@ -50,9 +47,6 @@ with the download (description, cast, backdrop). Series and anime show only
 the episodes that finished. **Play** starts the first saved file: the film,
 or the earliest episode. The button next to Play lists those saved files.
 
-A title saved from the player shows its name and art. Download it again from
-the title page to store the description, cast, and backdrop.
-
 ## Offline play
 
 On a completed row in Settings, tap **Play**. In Sources, tap the Offline stream
@@ -70,9 +64,6 @@ saved file is damaged or incomplete.
   from Active.
 - Magnets and session-only loopback URLs cannot be saved in this version.
 - Live Sports and IPTV live channels are not part of offline Downloads.
-- Downloading from the **player** refreshes the Forja provider first (short-lived
-  stream links expire while you watch). If a link is already dead, Forja asks
-  you to open Sources and download again.
 
 ## Related
 

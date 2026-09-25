@@ -296,35 +296,4 @@ void main() {
     expect(pad, closeTo(16 * ShellTokens.tvChromeScale, 0.001));
     expect(cardW, lessThan(280));
   });
-
-  testWidgets('player Download is the rightmost top-bar action', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PlayerTopBar(
-            title: 'Title',
-            onBack: () {},
-            trailing: PlayerTopBarActions(
-              showPlayer: true,
-              onPlayer: (_) {},
-              showCast: true,
-              onCast: () {},
-              showPip: true,
-              onPip: () {},
-              showDownload: true,
-              onDownload: () {},
-            ),
-          ),
-        ),
-      ),
-    );
-
-    final download = tester.getTopLeft(find.byTooltip('Download')).dx;
-    final pip = tester.getTopLeft(find.byTooltip('Picture in Picture')).dx;
-    final cast = tester.getTopLeft(find.byTooltip('Cast')).dx;
-    expect(download, greaterThan(pip));
-    expect(pip, greaterThan(cast));
-  });
 }

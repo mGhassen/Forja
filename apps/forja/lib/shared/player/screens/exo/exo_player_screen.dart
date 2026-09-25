@@ -46,7 +46,6 @@ import 'package:forja/shared/player/screens/network_playback_recovery.dart';
 import 'package:forja/shared/player/screens/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shared/player/screens/utils.dart';
-import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -1742,26 +1741,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     );
   }
 
-  Future<void> _enqueueCurrentDownload() async {
-    final url = (_currentUrl ?? widget.mediaPath).trim();
-    final headers = _sources.isNotEmpty
-        ? _sources[_sourceIndex].headers
-        : widget.headers;
-    await enqueuePlayerCurrentDownload(
-      url: url,
-      headers: headers,
-      movie: widget.movie,
-      fallbackTitle: widget.title,
-      season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
-      sourceName: downloadSourceLabel(
-        catalogName: _catalogAddonName,
-        providerId: widget.activeProvider,
-      ),
-      providerId: widget.activeProvider,
-    );
-  }
-
   Future<void> _exit() async {
     if (_exitInProgress || _disposed) return;
     if (ShellTvFocusCoordinator.consumeOverlayBack()) {
@@ -2191,8 +2170,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                           ? (anchorContext) =>
                               unawaited(_showPlayerMenu(anchorContext))
                           : null,
-                      showDownload: PlatformInfo.offlineDownloadsEnabled,
-                      onDownload: () => unawaited(_enqueueCurrentDownload()),
                     ),
                   ),
                 )
@@ -2227,8 +2204,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                         ? (anchorContext) =>
                             unawaited(_showPlayerMenu(anchorContext))
                         : null,
-                    showDownload: PlatformInfo.offlineDownloadsEnabled,
-                    onDownload: () => unawaited(_enqueueCurrentDownload()),
                   ),
                 ),
         ),

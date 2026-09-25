@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **23 / 26** tasks (2 deferred) · **19 / 19** acceptance |
+| **Progress** | **24 / 27** tasks (2 deferred) · **20 / 20** acceptance |
 | **Current slice** | Phase 1 + integrity follow-ups ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -46,6 +46,7 @@
 | 24 | I365-T24 | Details hero has no Download button; enqueue stays on Sources and the player | ✅ |
 | 25 | I365-T25 | Player Sources button shows an offline icon while the saved file is playing | ✅ |
 | 26 | I365-T26 | Sources row saved from the player (`engine:<id>` chip) plays the file on tap; cloud stays online | ✅ |
+| 27 | I365-T27 | Player chrome has no Download button; enqueue stays on Sources | ✅ |
 
 ---
 
@@ -72,6 +73,7 @@
 | 17 | I365-A17 | Details hero has no Download button | ✅ |
 | 18 | I365-A18 | Player Sources button shows an offline icon while the saved file is playing; Play online drops it | ✅ |
 | 19 | I365-A19 | A source saved from the player still plays the file when its live URL changed; cloud plays online | ✅ |
+| 20 | I365-A20 | Player chrome has no Download button | ✅ |
 
 ---
 

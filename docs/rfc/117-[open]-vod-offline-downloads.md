@@ -2,13 +2,13 @@
 
 **Status:** open  
 **Depends on:** RFC-109 (pack-product host)  
-**Area:** `apps/forja/lib/shared/downloads/`, Settings → Downloads, details / Sources / player enqueue
+**Area:** `apps/forja/lib/shared/downloads/`, Settings → Downloads, Sources enqueue
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **15 / 17** components · **21 / 21** acceptance |
+| **Progress** | **16 / 18** components · **22 / 22** acceptance |
 | **Current slice** | Phase 1 + Downloads hub shipped — Phase 2/3 deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -36,6 +36,7 @@
 | 15 | R117-C15 | Offline details skips the pack fetch and lists only episodes that have a finished file | ✅ |
 | 16 | R117-C16 | Sources **Downloaded** tab + green Play on that page starts the first finished file | ✅ |
 | 17 | R117-C17 | Saved-library card opens that page directly; its file button lists only the saved file cards | ✅ |
+| 18 | R117-C18 | Player chrome has no Download button; enqueue stays on Sources | ✅ |
 
 ---
 
@@ -64,12 +65,13 @@
 | 19 | R117-A19 | Sources on that page opens on Downloaded and lists the saved files | ✅ |
 | 20 | R117-A20 | Green Play on that page starts the first finished file (film file, or lowest season and episode) | ✅ |
 | 21 | R117-A21 | That card does not ask for a hub. The file button lists only the saved file cards | ✅ |
+| 22 | R117-A22 | Player chrome has no Download button | ✅ |
 
 ---
 
 ## Summary
 
-Host-owned offline Downloads: save a resolved play URL to disk (PlayTorrio-shaped Dart HTTP Range + HLS). Dual entry (outside player + in-player). Settings → Downloads is the management page. Packs only supply streams via `extract`.
+Host-owned offline Downloads: save a resolved play URL to disk (PlayTorrio-shaped Dart HTTP Range + HLS). Start a download from Sources. The details hero and the player have no Download button. Settings → Downloads is the management page. Packs only supply streams via `extract`.
 
 ## Out of scope (v1)
 

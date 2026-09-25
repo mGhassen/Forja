@@ -327,8 +327,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                   ? (anchorContext) =>
                       unawaited(_s._showPlayerMenu(anchorContext))
                   : null,
-              showDownload: PlatformInfo.offlineDownloadsEnabled,
-              onDownload: () => unawaited(_s._enqueueCurrentDownload()),
               showCast:
                   CastingService.instance.isAirPlayAvailable ||
                   CastingService.instance.isChromecastAvailable,

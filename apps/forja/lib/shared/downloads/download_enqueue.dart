@@ -9,8 +9,6 @@ import 'package:forja/shared/downloads/download_size_probe.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/open_settings_downloads.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
-import 'package:forja/shared/engine/models/ids.dart';
-import 'package:forja/shared/playback/open/player_source_resolve.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:rust/rust.dart';
@@ -173,77 +171,6 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
         headersAlreadyResolved: true,
       );
     },
-  );
-}
-
-/// Enqueues the stream currently playing in a VOD player (no inline card).
-///
-/// Forja provider chips re-extract before enqueue so short-lived CDN / Referer
-/// tokens (e.g. Vixsrc) are fresh — the mid-watch URL often 403s by then.
-Future<DownloadTask?> enqueuePlayerCurrentDownload({
-  required String url,
-  Map<String, String>? headers,
-  Movie? movie,
-  required String fallbackTitle,
-  int? season,
-  int? episode,
-  String? sourceName,
-  String? providerId,
-}) async {
-  if (!PlatformInfo.offlineDownloadsEnabled) return null;
-  var playUrl = url.trim();
-  var playHeaders = headers;
-  var playSource = sourceName;
-  final pid = providerId?.trim();
-
-  if (movie != null && pid != null && EngineIds.isPluginChip(pid)) {
-    try {
-      final hit = await PlayerSourceResolve.resolvePinnedForMovie(
-        movie: movie,
-        providers: const {},
-        providerId: pid,
-        season: season ?? 1,
-        episode: episode ?? 1,
-      );
-      if (hit != null && isDownloadableHttpUrl(hit.streamUrl, headers: hit.headers)) {
-        playUrl = hit.streamUrl.trim();
-        playHeaders = hit.headers;
-        if (playSource == null || playSource.trim().isEmpty) {
-          playSource = pid;
-        }
-      }
-    } catch (_) {
-      // Fall through to the in-player URL.
-    }
-  }
-
-  final title = movie?.title.trim().isNotEmpty == true
-      ? movie!.title
-      : fallbackTitle;
-  final mediaId = movie?.imdbId?.trim().isNotEmpty == true
-      ? movie!.imdbId!.trim()
-      : (movie?.id.toString() ?? title);
-  final type = downloadTypeForMovie(movie);
-  return enqueueVodDownload(
-    title: title,
-    mediaId: mediaId,
-    type: type,
-    season: season,
-    episode: episode,
-    posterUrl: movie?.posterPath.isNotEmpty == true ? movie!.posterPath : null,
-    backdropUrl:
-        movie?.backdropPath.isNotEmpty == true ? movie!.backdropPath : null,
-    year: movie?.releaseDate.isNotEmpty == true
-        ? movie!.releaseDate.split('-').first
-        : null,
-    overview: movie?.overview.trim().isNotEmpty == true
-        ? movie!.overview.trim()
-        : null,
-    url: playUrl,
-    headers: playHeaders,
-    sourceName: playSource,
-    providerId: providerId,
-    addonName: pid,
   );
 }
 

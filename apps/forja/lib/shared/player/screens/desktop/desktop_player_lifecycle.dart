@@ -605,23 +605,6 @@ mixin _DesktopPlayerLifecycle
     unawaited(_s._player.play());
   }
 
-  Future<void> _enqueueCurrentDownload() async {
-    final url = (_s._currentUrl ?? widget.mediaPath).trim();
-    await enqueuePlayerCurrentDownload(
-      url: url,
-      headers: widget.headers,
-      movie: widget.movie,
-      fallbackTitle: widget.title,
-      season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
-      sourceName: downloadSourceLabel(
-        catalogName: _s._catalogAddonName,
-        providerId: widget.activeProvider ?? _s._currentProvider,
-      ),
-      providerId: widget.activeProvider ?? _s._currentProvider,
-    );
-  }
-
   Future<void> _saveWatchHistory({bool isBgPause = false}) =>
       _persistWatchHistory(isBgPause: isBgPause);
 
