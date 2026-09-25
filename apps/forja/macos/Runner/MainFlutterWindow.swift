@@ -256,7 +256,6 @@ class MainFlutterWindow: NSWindow {
   private func forjaStartSpaceSizeGuard() {
     let center = NotificationCenter.default
     let names: [Notification.Name] = [
-      NSWindow.willChangeScreenNotification,
       NSWindow.didChangeScreenNotification,
       NSWindow.didChangeOcclusionStateNotification,
       NSWindow.willEnterFullScreenNotification,
@@ -298,7 +297,7 @@ class MainFlutterWindow: NSWindow {
         forjaStableSize = frame.size
         forjaStableSizeValid = true
       }
-    case NSWindow.willChangeScreenNotification, NSWindow.didChangeScreenNotification,
+    case NSWindow.didChangeScreenNotification,
       NSWindow.didChangeOcclusionStateNotification:
       forjaArmSizePin()
       forjaScheduleStableRestore()
