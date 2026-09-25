@@ -67,7 +67,7 @@ void main() {
     expect(mediaIdForMetaItem(item), 'tt22526100');
   });
 
-  test('saved file is listed when the page id differs but the title matches', () {
+  test('saved file is listed when the bag has the imdb id', () {
     final rows = downloadedTitleStreams(
       tasks: [
         _task(
@@ -78,7 +78,7 @@ void main() {
         ),
       ],
       mediaId: '999001',
-      title: 'Show',
+      ids: const ['tt22526100', '999001'],
     );
     expect(rows, hasLength(1));
   });

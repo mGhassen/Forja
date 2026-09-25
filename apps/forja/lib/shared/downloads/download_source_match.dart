@@ -210,21 +210,22 @@ String downloadFileLabel(DownloadTask task) {
 
 /// Finished files for a title, oldest episode first.
 ///
-/// [mediaId] is the id stored at enqueue (usually IMDb). When that misses,
-/// [title] still finds the file if the details page is holding a different id.
+/// [ids] is the Sources id bag (`imdb`, `tmdb`, `anilist`, `mal`, `kisskh`).
+/// A saved file matches when its media id is any value in that bag.
 List<Map<String, dynamic>> downloadedTitleStreams({
   required Iterable<DownloadTask> tasks,
   required String mediaId,
-  String? title,
+  Iterable<String> ids = const [],
 }) {
-  final id = mediaId.trim();
-  final name = title?.trim().toLowerCase() ?? '';
+  final keys = <String>{
+    if (mediaId.trim().isNotEmpty) mediaId.trim(),
+    for (final raw in ids)
+      if (raw.trim().isNotEmpty) raw.trim(),
+  };
+  if (keys.isEmpty) return const [];
   final hits = [
     for (final task in tasks)
-      if (task.isCompleted &&
-          ((id.isNotEmpty && task.mediaId == id) ||
-              (name.isNotEmpty && task.title.trim().toLowerCase() == name)))
-        task,
+      if (task.isCompleted && keys.contains(task.mediaId)) task,
   ];
   hits.sort((a, b) {
     final season = (a.season ?? 0).compareTo(b.season ?? 0);

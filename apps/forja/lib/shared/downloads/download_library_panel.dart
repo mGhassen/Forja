@@ -7,6 +7,7 @@ import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
+import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -73,14 +74,22 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
   String get _mediaId => mediaIdForMetaItem(_meta);
 
   List<DownloadTask> get _filesForTitle {
-    final id = _mediaId;
-    final name = _meta.name.trim().toLowerCase();
+    final movie = metaItemToMovie(_meta);
+    final bag = movie == null
+        ? const <String>{}
+        : buildSourcesRequestContext(
+            movie: movie,
+            meta: _meta,
+            open: _meta.open,
+          ).ids.values;
+    final keys = <String>{
+      if (_mediaId.trim().isNotEmpty) _mediaId.trim(),
+      for (final raw in bag)
+        if (raw.trim().isNotEmpty) raw.trim(),
+    };
     final hits = [
       for (final task in DownloadService.instance.tasksNotifier.value)
-        if (task.isCompleted &&
-            ((id.isNotEmpty && task.mediaId == id) ||
-                (name.isNotEmpty && task.title.trim().toLowerCase() == name)))
-          task,
+        if (task.isCompleted && keys.contains(task.mediaId)) task,
     ];
     hits.sort((a, b) {
       final season = (a.season ?? 0).compareTo(b.season ?? 0);

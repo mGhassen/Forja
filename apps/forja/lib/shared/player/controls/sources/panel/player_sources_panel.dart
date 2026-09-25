@@ -4057,7 +4057,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         ? downloadedTitleStreams(
             tasks: DownloadService.instance.tasksNotifier.value,
             mediaId: _downloadMediaId,
-            title: widget.movie.title,
+            ids: _sourcesCtx.ids.values,
           )
         : _pinnedOfflineStreams(
             stremio: stremio,
