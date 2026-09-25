@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -16,6 +17,7 @@ class EngineCache {
   static final EngineCache instance = EngineCache._();
 
   static const _diskPrefix = 'engine_cache_disk_v1|';
+  static const _catalogDiskNs = 'catalog';
 
   final Map<String, _EngineCacheSlot> _slots = {};
   final Map<String, EngineCacheEntry> _catalog = {};
@@ -110,6 +112,21 @@ class EngineCache {
     }
   }
 
+  Future<void> diskInvalidateKeyPrefix(String namespace, String keyPrefix) async {
+    final ns = namespace.trim();
+    final prefix = keyPrefix.trim();
+    if (ns.isEmpty || prefix.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final full = '$_diskPrefix$ns|$prefix';
+      for (final pk in prefs.getKeys().where((x) => x.startsWith(full))) {
+        await prefs.remove(pk);
+      }
+    } catch (e) {
+      debugPrint('[EngineCache] diskInvalidate prefix failed: $e');
+    }
+  }
+
   Future<void> diskInvalidate(String namespace, [String? key]) async {
     final ns = namespace.trim();
     if (ns.isEmpty) return;
@@ -175,13 +192,71 @@ class EngineCache {
     required Map<String, dynamic> data,
     CatalogCacheHints hints = CatalogCacheHints.empty,
   }) {
-    _catalog[key] = EngineCacheEntry(
+    final entry = EngineCacheEntry(
       pluginId: pluginId,
       data: data,
       etag: hints.etag,
       storedAt: DateTime.now(),
       maxAge: hints.maxAge ?? defaultMaxAge,
       swr: hints.swr ?? defaultSwr,
+    );
+    _catalog[key] = entry;
+    if (_persistCatalogKey(key) && !_catalogRecsPending(data)) {
+      unawaited(_persistCatalog(key, entry));
+    }
+  }
+
+  /// Memory miss → disk details entry (same SWR clock as when it was stored).
+  Future<EngineCacheEntry?> hydrateCatalog(String key) async {
+    final existing = _catalog[key];
+    if (existing != null) return existing;
+    if (!_persistCatalogKey(key)) return null;
+    final raw = await diskGet(_catalogDiskNs, key);
+    if (raw is! Map) return null;
+    final dataRaw = raw['data'];
+    if (dataRaw is! Map) return null;
+    final storedAtMs = (raw['storedAtMs'] as num?)?.toInt();
+    if (storedAtMs == null) return null;
+    final entry = EngineCacheEntry(
+      pluginId: (raw['pluginId'] ?? '').toString(),
+      data: Map<String, dynamic>.from(dataRaw),
+      storedAt: DateTime.fromMillisecondsSinceEpoch(storedAtMs),
+      maxAge: Duration(
+        seconds: (raw['maxAgeSec'] as num?)?.toInt() ?? defaultMaxAge.inSeconds,
+      ),
+      swr: Duration(
+        seconds: (raw['swrSec'] as num?)?.toInt() ?? defaultSwr.inSeconds,
+      ),
+      etag: raw['etag']?.toString(),
+    );
+    if (entry.isExpired || _catalogRecsPending(entry.data)) return null;
+    _catalog[key] = entry;
+    return entry;
+  }
+
+  static bool _persistCatalogKey(String key) {
+    final parts = key.split('|');
+    return parts.length >= 3 && parts[2] == 'details';
+  }
+
+  static bool _catalogRecsPending(Map<String, dynamic> data) {
+    final meta = data['meta'];
+    return meta is Map && meta['_hubRecsPending'] == true;
+  }
+
+  Future<void> _persistCatalog(String key, EngineCacheEntry entry) async {
+    await diskSet(
+      _catalogDiskNs,
+      key,
+      <String, dynamic>{
+        'pluginId': entry.pluginId,
+        'data': entry.data,
+        'storedAtMs': entry.storedAt.millisecondsSinceEpoch,
+        'maxAgeSec': entry.maxAge.inSeconds,
+        'swrSec': entry.swr.inSeconds,
+        if (entry.etag != null) 'etag': entry.etag,
+      },
+      ttl: entry.maxAge + entry.swr,
     );
   }
 
@@ -193,7 +268,10 @@ class EngineCache {
   }
 
   void wipePlugin(String pluginId) {
-    _catalog.removeWhere((_, e) => e.pluginId == pluginId);
+    final id = pluginId.trim();
+    _catalog.removeWhere((_, e) => e.pluginId == id);
+    if (id.isEmpty) return;
+    unawaited(diskInvalidateKeyPrefix(_catalogDiskNs, '$id|'));
   }
 
   /// Drop catalog entries for one action (`feed`, `rail`, …).
@@ -205,9 +283,15 @@ class EngineCache {
       final parts = key.split('|');
       return parts.length >= 3 && parts[2] == want;
     });
+    if (want == 'details') {
+      unawaited(diskInvalidate(_catalogDiskNs));
+    }
   }
 
-  void wipeCatalog() => _catalog.clear();
+  void wipeCatalog() {
+    _catalog.clear();
+    unawaited(diskInvalidate(_catalogDiskNs));
+  }
 
   /// Drop catalog when a pack version changes.
   /// Returns true when entries were wiped.

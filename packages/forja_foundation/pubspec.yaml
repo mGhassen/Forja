@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  cached_network_image: ^3.4.1
   flutter_svg: ^2.2.0
   google_fonts: ^8.0.2
   path_parsing: ^1.1.0

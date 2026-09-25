@@ -19,6 +19,8 @@ class MetaRuntime {
 
   final Set<String> _revalidating = {};
   final Map<String, Future<MetaEnvelope>> _inFlight = {};
+  final Map<String, Future<void>> _deferredRails = {};
+  final Map<String, List<void Function(MetaEnvelope)>> _deferredListeners = {};
 
   Future<MetaEnvelope> run({
     required String pluginId,
@@ -29,6 +31,7 @@ class MetaRuntime {
     String? packSourceUrl,
     bool forceRefresh = false,
     Duration timeout = const Duration(seconds: 45),
+    void Function(MetaEnvelope envelope)? onUpdated,
   }) async {
     final key = EngineCache.keyFor(
       pluginId: pluginId,
@@ -37,7 +40,10 @@ class MetaRuntime {
       authSubject: authSubject,
       packSourceUrl: packSourceUrl,
     );
-    final cached = forceRefresh ? null : EngineCache.instance.getEntry(key);
+    var cached = forceRefresh ? null : EngineCache.instance.getEntry(key);
+    if (cached == null && !forceRefresh) {
+      cached = await EngineCache.instance.hydrateCatalog(key);
+    }
 
     if (cached != null && cached.isFresh) {
       return _pipeEnrichCached(
@@ -49,6 +55,7 @@ class MetaRuntime {
         auth: auth,
         envelope: _cachedEnvelope(action, cached),
         timeout: timeout,
+        onUpdated: onUpdated,
       );
     }
     if (cached != null && cached.isRevalidatable) {
@@ -61,6 +68,7 @@ class MetaRuntime {
         auth: auth,
         entry: cached,
         timeout: timeout,
+        onUpdated: onUpdated,
       );
       return _pipeEnrichCached(
         cacheKey: key,
@@ -71,6 +79,7 @@ class MetaRuntime {
         auth: auth,
         envelope: _cachedEnvelope(action, cached),
         timeout: timeout,
+        onUpdated: onUpdated,
       );
     }
 
@@ -90,6 +99,7 @@ class MetaRuntime {
       auth: auth,
       entry: cached,
       timeout: timeout,
+      onUpdated: onUpdated,
     );
     if (!forceRefresh) _inFlight[key] = future;
     try {
@@ -108,6 +118,7 @@ class MetaRuntime {
     String? packSourceUrl,
     EngineCacheEntry? entry,
     required Duration timeout,
+    void Function(MetaEnvelope envelope)? onUpdated,
   }) async {
     // Boot race: MainScreen under splash / early continue can miss scripts
     // once; retry once before surfacing "did not answer" (same pattern as
@@ -223,6 +234,7 @@ class MetaRuntime {
 
     envelope = await _pipeEnrich(
       sourcePluginId: pluginId,
+      packSourceUrl: packSourceUrl,
       action: action,
       params: params,
       auth: auth,
@@ -230,16 +242,16 @@ class MetaRuntime {
       timeout: timeout,
     );
 
-    final data = envelope.data;
-    if (data != null) {
-      EngineCache.instance.putEntry(
-        key: key,
-        pluginId: pluginId,
-        data: data,
-        hints: envelope.cache,
-      );
-    }
-    return envelope;
+    return _acceptCatalog(
+      key: key,
+      pluginId: pluginId,
+      packSourceUrl: packSourceUrl,
+      action: action,
+      auth: auth,
+      envelope: envelope,
+      timeout: timeout,
+      onUpdated: onUpdated,
+    );
   }
 
   /// Companion enrich on cache hits — skip when payload already carries kit
@@ -253,6 +265,7 @@ class MetaRuntime {
     Map<String, dynamic>? auth,
     required MetaEnvelope envelope,
     required Duration timeout,
+    void Function(MetaEnvelope envelope)? onUpdated,
   }) async {
     if (action != 'rail' && action != 'details' && action != 'feed') {
       return envelope;
@@ -260,6 +273,7 @@ class MetaRuntime {
     if (_envelopeAlreadyEnriched(action, envelope.data, params)) {
       return envelope;
     }
+    if (_joinDeferredRails(cacheKey, onUpdated)) return envelope;
     final enriched = await _pipeEnrich(
       sourcePluginId: sourcePluginId,
       packSourceUrl: packSourceUrl,
@@ -269,16 +283,159 @@ class MetaRuntime {
       envelope: envelope,
       timeout: timeout,
     );
-    final data = enriched.data;
-    if (data != null) {
-      EngineCache.instance.putEntry(
-        key: cacheKey,
-        pluginId: sourcePluginId,
+    return _acceptCatalog(
+      key: cacheKey,
+      pluginId: sourcePluginId,
+      packSourceUrl: packSourceUrl,
+      action: action,
+      auth: auth,
+      envelope: enriched,
+      timeout: timeout,
+      onUpdated: onUpdated,
+    );
+  }
+
+  /// Pack enrich may set `data.deferRails` (`{ phase: 'rails' }`) so details
+  /// paint before a follow-up enrich fills rails. The follow-up is the same
+  /// plugin; the host only forwards the map the pack returned.
+  MetaEnvelope _acceptCatalog({
+    required String key,
+    required String pluginId,
+    String? packSourceUrl,
+    required String action,
+    Map<String, dynamic>? auth,
+    required MetaEnvelope envelope,
+    required Duration timeout,
+    void Function(MetaEnvelope envelope)? onUpdated,
+  }) {
+    final data = envelope.data;
+    if (data == null) return envelope;
+    final defer = takeDeferRails(data);
+    EngineCache.instance.putEntry(
+      key: key,
+      pluginId: pluginId,
+      data: data,
+      hints: envelope.cache,
+    );
+    if (defer != null && action == 'details') {
+      _scheduleDeferredRails(
+        key: key,
+        sourcePluginId: pluginId,
+        packSourceUrl: packSourceUrl,
+        auth: auth,
         data: data,
-        hints: enriched.cache,
+        follow: defer,
+        cache: envelope.cache,
+        timeout: timeout,
+        onUpdated: onUpdated,
       );
     }
-    return enriched;
+    return envelope;
+  }
+
+  bool _joinDeferredRails(
+    String key,
+    void Function(MetaEnvelope envelope)? onUpdated,
+  ) {
+    if (!_deferredRails.containsKey(key)) return false;
+    if (onUpdated != null) {
+      _deferredListeners.putIfAbsent(key, () => []).add(onUpdated);
+    }
+    return true;
+  }
+
+  void _scheduleDeferredRails({
+    required String key,
+    required String sourcePluginId,
+    String? packSourceUrl,
+    Map<String, dynamic>? auth,
+    required Map<String, dynamic> data,
+    required Map<String, dynamic> follow,
+    required CatalogCacheHints cache,
+    required Duration timeout,
+    void Function(MetaEnvelope envelope)? onUpdated,
+  }) {
+    if (onUpdated != null) {
+      _deferredListeners.putIfAbsent(key, () => []).add(onUpdated);
+    }
+    if (_deferredRails.containsKey(key)) return;
+    final fut =
+        _runDeferredRails(
+          key: key,
+          sourcePluginId: sourcePluginId,
+          packSourceUrl: packSourceUrl,
+          auth: auth,
+          data: data,
+          follow: follow,
+          cache: cache,
+          timeout: timeout,
+        ).whenComplete(() {
+          _deferredRails.remove(key);
+          _deferredListeners.remove(key);
+        });
+    _deferredRails[key] = fut;
+  }
+
+  Future<void> _runDeferredRails({
+    required String key,
+    required String sourcePluginId,
+    String? packSourceUrl,
+    Map<String, dynamic>? auth,
+    required Map<String, dynamic> data,
+    required Map<String, dynamic> follow,
+    required CatalogCacheHints cache,
+    required Duration timeout,
+  }) async {
+    final source = await _resolvePlugin(
+      sourcePluginId,
+      packSourceUrl: packSourceUrl,
+    );
+    final enrichId = source?.enrich?.trim() ?? '';
+    if (enrichId.isEmpty || enrichId == sourcePluginId) return;
+    final meta = data['meta'];
+    final enrichParams = <String, dynamic>{...follow};
+    if (meta is Map) {
+      enrichParams['meta'] = Map<String, dynamic>.from(meta);
+    }
+    final merged = await _mergeEnrichAnswer(
+      sourcePluginId: sourcePluginId,
+      packSourceUrl: packSourceUrl,
+      enrichId: enrichId,
+      action: 'details',
+      data: data,
+      enrichParams: enrichParams,
+      auth: auth,
+      timeout: timeout,
+    );
+    if (merged == null) return;
+    final doneMeta = merged['meta'];
+    if (doneMeta is Map) doneMeta.remove('_hubRecsPending');
+    EngineCache.instance.putEntry(
+      key: key,
+      pluginId: sourcePluginId,
+      data: merged,
+      hints: cache,
+    );
+    final envelope = MetaEnvelope(
+      ok: true,
+      action: 'details',
+      data: merged,
+      cache: cache,
+    );
+    final listeners = List<void Function(MetaEnvelope)>.from(
+      _deferredListeners[key] ?? const [],
+    );
+    for (final listener in listeners) {
+      listener(envelope);
+    }
+  }
+
+  /// Removes `deferRails` from [data] when the pack asked for a follow-up.
+  @visibleForTesting
+  static Map<String, dynamic>? takeDeferRails(Map<String, dynamic> data) {
+    final raw = data.remove('deferRails');
+    if (raw is! Map) return null;
+    return Map<String, dynamic>.from(raw);
   }
 
   /// After a source catalog answers `rail` / `details` / `feed`, optionally run
@@ -511,7 +668,7 @@ class MetaRuntime {
       case 'details':
         final meta = data['meta'];
         if (meta is! Map) return false;
-        return Map<String, dynamic>.from(meta)['_hubTmdbEnriched'] == true;
+        return _metaTmdbEnriched(Map<String, dynamic>.from(meta));
       case 'rail':
         final rail = (params['rail'] ?? '').toString().trim();
         if (rail.isNotEmpty && rail != 'spotlight') return false;
@@ -530,8 +687,9 @@ class MetaRuntime {
   }
 
   static bool _metaTmdbEnriched(Map<String, dynamic> meta) {
-    // Only the kit marker — KissKH/AniList/Home often ship TMDB art URLs
-    // before companion enrich fills logo / cast / facts.
+    // Pending rails must re-enter companion enrich (details chrome is already
+    // cached). Only the kit marker means cast / logo / facts are done.
+    if (meta['_hubRecsPending'] == true) return false;
     return meta['_hubTmdbEnriched'] == true;
   }
 
@@ -598,26 +756,28 @@ class MetaRuntime {
     Map<String, dynamic>? auth,
     required EngineCacheEntry entry,
     required Duration timeout,
+    void Function(MetaEnvelope envelope)? onUpdated,
   }) {
     if (!_revalidating.add(key)) return;
     // Hub hide cancels catalog work — do not start SWR revalidate off-tab.
     final catalogGen = EngineService.instance.catalogGeneration;
     unawaited(
       Future<MetaEnvelope>(() async {
-        if (catalogGen != EngineService.instance.catalogGeneration) {
-          return _cachedEnvelope(action, entry);
-        }
-        return _fetch(
-          key: key,
-          pluginId: pluginId,
-          packSourceUrl: packSourceUrl,
-          action: action,
-          params: params,
-          auth: auth,
-          entry: entry,
-          timeout: timeout,
-        );
-      })
+            if (catalogGen != EngineService.instance.catalogGeneration) {
+              return _cachedEnvelope(action, entry);
+            }
+            return _fetch(
+              key: key,
+              pluginId: pluginId,
+              packSourceUrl: packSourceUrl,
+              action: action,
+              params: params,
+              auth: auth,
+              entry: entry,
+              timeout: timeout,
+              onUpdated: onUpdated,
+            );
+          })
           .catchError((Object e) {
             debugPrint('[catalog] $pluginId $action revalidate failed: $e');
             return _cachedEnvelope(action, entry);

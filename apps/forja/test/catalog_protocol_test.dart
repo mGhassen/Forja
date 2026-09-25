@@ -491,6 +491,33 @@ void main() {
   });
 
   group('enrich cache skip', () {
+    test('details does not skip when rails are still pending', () {
+      expect(
+        MetaRuntime.envelopeAlreadyEnriched(
+          'details',
+          {
+            'meta': {
+              'id': 'hub:1',
+              '_hubTmdbEnriched': true,
+              '_hubRecsPending': true,
+            },
+          },
+          const {},
+        ),
+        isFalse,
+      );
+    });
+
+    test('takeDeferRails removes the follow-up map', () {
+      final data = <String, dynamic>{
+        'meta': {'id': 'hub:1'},
+        'deferRails': {'phase': 'rails'},
+      };
+      expect(MetaRuntime.takeDeferRails(data), {'phase': 'rails'});
+      expect(data.containsKey('deferRails'), isFalse);
+      expect(MetaRuntime.takeDeferRails(data), isNull);
+    });
+
     test('details skips when kit marker set', () {
       expect(
         MetaRuntime.envelopeAlreadyEnriched(

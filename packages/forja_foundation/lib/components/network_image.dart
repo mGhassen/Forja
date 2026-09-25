@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
@@ -15,7 +16,8 @@ import 'package:forja_foundation/utils/cover_urls.dart';
 /// [placeholder] widgets (icons, skeletons) show only while loading — removed
 /// once the first frame arrives so they cannot stack under a loaded logo.
 /// [gaplessPlayback] keeps the prior frame on URL updates when
-/// [useOldImageOnUrlChange] is true. First frame fades in ([fadeDuration]).
+/// [useOldImageOnUrlChange] is true. A poster already in memory or on disk
+/// paints immediately. A first load fades in ([fadeDuration]).
 class ForjaNetworkImage extends StatelessWidget {
   const ForjaNetworkImage({
     super.key,
@@ -56,6 +58,70 @@ class ForjaNetworkImage extends StatelessWidget {
     return u.startsWith('http://') || u.startsWith('https://');
   }
 
+  /// Widget tests install [debugNetworkImageHttpClientProvider]. Production
+  /// posters go through the disk cache so a later visit does not hit the
+  /// network again.
+  Widget _frame(
+    String paintUrl, {
+    required Widget loading,
+    required Widget fallback,
+  }) {
+    if (debugNetworkImageHttpClientProvider != null) {
+      return Image.network(
+        paintUrl,
+        key: useOldImageOnUrlChange ? null : ValueKey(paintUrl),
+        fit: fit,
+        alignment: alignment,
+        cacheWidth: memCacheWidth,
+        filterQuality: filterQuality,
+        gaplessPlayback: true,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          final loaded = wasSynchronouslyLoaded || frame != null;
+          Widget image = child;
+          final snap = wasSynchronouslyLoaded ||
+              fadeDuration == Duration.zero ||
+              _memoryCached(NetworkImage(paintUrl));
+          if (!snap) {
+            image = AnimatedOpacity(
+              opacity: loaded ? 1 : 0,
+              duration: fadeDuration,
+              curve: Curves.easeOut,
+              child: child,
+            );
+          }
+          if (loaded) return image;
+          return Stack(
+            fit: StackFit.expand,
+            children: [loading, image],
+          );
+        },
+        errorBuilder: (_, _, _) => fallback,
+      );
+    }
+
+    final provider = CachedNetworkImageProvider(paintUrl);
+    final snap = fadeDuration == Duration.zero || _memoryCached(provider);
+    return CachedNetworkImage(
+      imageUrl: paintUrl,
+      key: useOldImageOnUrlChange ? null : ValueKey(paintUrl),
+      fit: fit,
+      alignment: alignment,
+      width: width,
+      height: height,
+      memCacheWidth: memCacheWidth,
+      filterQuality: filterQuality,
+      useOldImageOnUrlChange: useOldImageOnUrlChange,
+      fadeInDuration: snap ? Duration.zero : fadeDuration,
+      fadeOutDuration: Duration.zero,
+      placeholder: (_, _) => loading,
+      errorWidget: (_, _, _) => fallback,
+    );
+  }
+
+  bool _memoryCached(ImageProvider provider) {
+    return PaintingBinding.instance.imageCache.containsKey(provider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
@@ -85,34 +151,10 @@ class ForjaNetworkImage extends StatelessWidget {
           children: [
             if (paintUnderlay) surface,
             Positioned.fill(
-              child: Image.network(
+              child: _frame(
                 paintUrl,
-                key: useOldImageOnUrlChange ? null : ValueKey(paintUrl),
-                fit: fit,
-                alignment: alignment,
-                cacheWidth: memCacheWidth,
-                filterQuality: filterQuality,
-                gaplessPlayback: true,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                  final loaded = wasSynchronouslyLoaded || frame != null;
-                  Widget image = child;
-                  if (!wasSynchronouslyLoaded &&
-                      fadeDuration != Duration.zero) {
-                    image = AnimatedOpacity(
-                      opacity: loaded ? 1 : 0,
-                      duration: fadeDuration,
-                      curve: Curves.easeOut,
-                      child: child,
-                    );
-                  }
-                  if (loaded) return image;
-                  // Icon/skeleton only while waiting — never under a loaded logo.
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [loading, image],
-                  );
-                },
-                errorBuilder: (_, _, _) => fallback,
+                loading: loading,
+                fallback: fallback,
               ),
             ),
           ],

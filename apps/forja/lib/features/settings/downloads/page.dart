@@ -134,12 +134,12 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
   Future<void> _playOffline(DownloadTask task) async {
     final path = task.targetFilePath.trim();
     if (path.isEmpty) {
-      ForjaToast.error('Download file is missing');
+      ForjaToast.error(kOfflineDownloadMissingMessage);
       return;
     }
     final file = File(path.startsWith('file://') ? Uri.parse(path).toFilePath() : path);
     if (!await file.exists()) {
-      ForjaToast.error('Download file is missing');
+      ForjaToast.error(kOfflineDownloadMissingMessage);
       return;
     }
     try {
@@ -147,16 +147,14 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
       try {
         final head = await raf.read(512);
         if (!looksLikeMediaContainerBytes(head)) {
-          ForjaToast.error(
-            'Downloaded file can’t be played — delete it and download again',
-          );
+          ForjaToast.error(kOfflineDownloadUnplayableMessage);
           return;
         }
       } finally {
         await raf.close();
       }
     } catch (_) {
-      ForjaToast.error('Downloaded file can’t be played');
+      ForjaToast.error(kOfflineDownloadUnreadableMessage);
       return;
     }
     final streamUrl =

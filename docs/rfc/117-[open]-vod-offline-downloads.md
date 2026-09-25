@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 9** components · **13 / 13** acceptance |
+| **Progress** | **8 / 10** components · **14 / 14** acceptance |
 | **Current slice** | Phase 1 shipped — Phase 2/3 deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -28,6 +28,7 @@
 | 7 | R117-C07 | Sources hover Download + reject DASH/tiny junk Completed | ✅ |
 | 8 | R117-C08 | Sources card inline size probe + Yes/No confirm (portal-style) | ✅ |
 | 9 | R117-C09 | Android TV: no Downloads UI and no download queue at boot | ✅ |
+| 10 | R117-C10 | Sources lists saved / in-progress downloads before provider search | ✅ |
 
 ---
 
@@ -48,6 +49,7 @@
 | 11 | R117-A11 | Sources Download card shows size (exact or ~estimate) + free space; Yes enqueues | ✅ |
 | 12 | R117-A12 | Expired Referer / HTTP 403 fails clearly — no reconnect loop on auth errors | ✅ |
 | 13 | R117-A13 | Android TV: no Settings Downloads, details download, Sources download, or player download | ✅ |
+| 14 | R117-A14 | Sources shows saved / in-progress downloads before provider search returns | ✅ |
 
 ---
 

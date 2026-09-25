@@ -55,8 +55,7 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
 
   void _syncMotion(ForjaKenBurnsMotionSpec kb) {
     final enabled = widget.enableMotion;
-    final cycle =
-        widget.cycleDuration ?? Duration(seconds: kb.cycleSeconds);
+    final cycle = widget.cycleDuration ?? Duration(seconds: kb.cycleSeconds);
     final min = widget.minScale ?? kb.minScale;
     final max = widget.maxScale ?? kb.maxScale;
 
@@ -112,10 +111,8 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
     required double maxScale,
   }) {
     _tearDownAnimations();
-    final controller = AnimationController(
-      duration: cycle,
-      vsync: this,
-    )..repeat(reverse: true);
+    final controller = AnimationController(duration: cycle, vsync: this)
+      ..repeat(reverse: true);
     _controller = controller;
     _scaleAnimation = Tween<double>(
       begin: minScale,
@@ -153,14 +150,12 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
               const Color(0xFF141414),
               widget.tintDominant ?? const Color(0xFF141414),
               0.35,
-            )!
-                .withValues(alpha: 0.75),
+            )!.withValues(alpha: 0.75),
             Color.lerp(
               const Color(0xFF000000),
               widget.tintMuted ?? const Color(0xFF000000),
               0.15,
-            )!
-                .withValues(alpha: 0.88),
+            )!.withValues(alpha: 0.88),
           ],
         ),
       ),
@@ -173,12 +168,13 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
     final controller = _controller;
     final scale = _scaleAnimation;
     final align = _alignAnimation;
-    final motion = _motionEnabled == true &&
+    final motion =
+        _motionEnabled == true &&
         controller != null &&
         scale != null &&
         align != null;
 
-    return Stack(
+    final frame = Stack(
       fit: StackFit.expand,
       children: [
         if (motion)
@@ -198,5 +194,8 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
         if (widget.showColorTint) _tintOverlay(),
       ],
     );
+    // Scale does not change layout size, so a parent Stack never clips it.
+    if (!motion) return frame;
+    return ClipRect(child: frame);
   }
 }

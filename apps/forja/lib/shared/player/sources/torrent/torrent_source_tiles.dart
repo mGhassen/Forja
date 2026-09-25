@@ -327,6 +327,7 @@ class StremioSourceTile extends StatelessWidget {
     this.onPauseDownload,
     this.onResumeDownload,
     this.onDeleteDownload,
+    this.onPlayCloud,
     this.downloadChrome = SourceDownloadChrome.none,
     this.downloadProgress = 0,
     this.downloadStatusLabel,
@@ -355,6 +356,8 @@ class StremioSourceTile extends StatelessWidget {
   final VoidCallback? onPauseDownload;
   final VoidCallback? onResumeDownload;
   final VoidCallback? onDeleteDownload;
+  /// Offline row: play the remote stream instead of the saved file.
+  final VoidCallback? onPlayCloud;
   final SourceDownloadChrome downloadChrome;
   final double downloadProgress;
   final String? downloadStatusLabel;
@@ -414,6 +417,7 @@ class StremioSourceTile extends StatelessWidget {
       onPauseDownload: isExternal ? null : onPauseDownload,
       onResumeDownload: isExternal ? null : onResumeDownload,
       onDeleteDownload: isExternal ? null : onDeleteDownload,
+      onPlayCloud: isExternal ? null : onPlayCloud,
       downloadChrome: isExternal ? SourceDownloadChrome.none : downloadChrome,
       downloadProgress: downloadProgress,
       downloadStatusLabel: downloadStatusLabel,
@@ -537,6 +541,7 @@ class _SourceBadgeCard extends StatefulWidget {
     this.onPauseDownload,
     this.onResumeDownload,
     this.onDeleteDownload,
+    this.onPlayCloud,
     this.downloadChrome = SourceDownloadChrome.none,
     this.downloadProgress = 0,
     this.downloadStatusLabel,
@@ -575,6 +580,8 @@ class _SourceBadgeCard extends StatefulWidget {
   final VoidCallback? onPauseDownload;
   final VoidCallback? onResumeDownload;
   final VoidCallback? onDeleteDownload;
+  /// Offline row: play the remote stream instead of the saved file.
+  final VoidCallback? onPlayCloud;
   final SourceDownloadChrome downloadChrome;
   final double downloadProgress;
   final String? downloadStatusLabel;
@@ -920,9 +927,17 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                 widget.onDeleteDownload != null);
     final canEnqueueDownload = widget.onPrepareDownload != null &&
         widget.downloadChrome == SourceDownloadChrome.none;
+    final canDropOffline = widget.onDeleteDownload != null &&
+        widget.downloadChrome == SourceDownloadChrome.offline;
+    final canPlayCloud = widget.onPlayCloud != null &&
+        widget.downloadChrome == SourceDownloadChrome.offline;
     final reveal = _downloadConfirming ||
         (_hoverFor(hovered) &&
-            (activeDownload || canEnqueueDownload || hasMagnet));
+            (activeDownload ||
+                canEnqueueDownload ||
+                canDropOffline ||
+                canPlayCloud ||
+                hasMagnet));
     const seedColor = Color(0xFF22C55E);
     final providerLines = hasProvider
         ? _providerLines(widget.provider!)
@@ -938,7 +953,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                     ? 1
                     : 0) +
                 (widget.onDeleteDownload != null ? 1 : 0))
-            : (canEnqueueDownload ? 1 : 0) + (hasMagnet ? 1 : 0);
+            : (canEnqueueDownload ? 1 : 0) +
+                (canPlayCloud ? 1 : 0) +
+                (canDropOffline ? 1 : 0) +
+                (hasMagnet ? 1 : 0);
     final hit = metrics.usesTvDensity ? 36.0 : 40.0;
     final actionPadH = metrics.usesTvDensity ? 8.0 : 10.0;
     final actionWidth = railIconCount > 0
@@ -1254,6 +1272,24 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                 hit: hit,
                 iconSize: iconSize,
                 onTap: () => unawaited(_beginDownloadConfirm()),
+              ),
+            if (canPlayCloud)
+              _SourceRailIcon(
+                tooltip: 'Play online',
+                icon: Icons.cloud_outlined,
+                idle: Colors.white60,
+                hit: hit,
+                iconSize: iconSize,
+                onTap: widget.onPlayCloud,
+              ),
+            if (canDropOffline)
+              _SourceRailIcon(
+                tooltip: 'Delete',
+                icon: Icons.delete_outline_rounded,
+                idle: Colors.white60,
+                hit: hit,
+                iconSize: iconSize,
+                onTap: widget.onDeleteDownload,
               ),
             if (hasMagnet)
               _SourceRailIcon(

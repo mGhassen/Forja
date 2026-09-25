@@ -642,6 +642,34 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     return out;
   }
 
+  /// True when this hub already has layout and feed rails to paint.
+  ///
+  /// Restores a page-feed peek into the painter when the State was empty but
+  /// [EngineCache] still holds the last visit.
+  bool _restoreWarmHub() {
+    if (_widgets.isEmpty) return false;
+    if (_pageFeedRailIds.isEmpty) return true;
+    final rails = _pageFeedRails;
+    if (rails != null && rails.values.any((items) => items.isNotEmpty)) {
+      return true;
+    }
+    final feed = _peekPageFeedRails();
+    if (feed == null || !feed.values.any((items) => items.isNotEmpty)) {
+      return false;
+    }
+    _loading = false;
+    _error = null;
+    _pageFeedRails = feed;
+    _pageFeedError = null;
+    _pageFeedFuture = Future<Map<String, List<dynamic>>>.value(feed);
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
+    return true;
+  }
+
   Future<void> _loadPage({bool force = false, bool keepPainted = false}) async {
     final action = _pageAction;
     if (action.isEmpty) {
@@ -658,6 +686,14 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     // Keep-alive off-screen: never start layout/feed network. Pack reload flags
     // pending soft reload; show → onShellTabRefresh runs the real load.
     if (!shellTabVisible) {
+      return;
+    }
+
+    // Hub already on screen from cache. Coming back must not start a new
+    // catalog load (same as 1.5.36 memoized rails). Re-tap / Refresh passes
+    // [force] and still reloads.
+    if (!force && _restoreWarmHub()) {
+      markShellTabFresh();
       return;
     }
 

@@ -16,10 +16,14 @@ Offline Downloads is on phone and desktop.
   hover a stream row to push the card and reveal a right action rail with
   Download (same pattern as IPTV Portals). Row tap still plays.
 - **Sources** — hover any HTTP stream row to push in the Download action;
-  torrents toast that offline isn’t available yet. While a row is downloading
-  (or paused), hover shows **Pause** / **Resume** and **X** to delete — not
-  Download again. Finished offline rows keep static stripes. Filters include
-  **Offline** / **Online**.
+  torrents toast that offline isn’t available yet. A saved or in-progress
+  download for this title appears at the top as soon as the panel opens,
+  while providers are still searching. While a row is downloading (or paused),
+  hover shows **Pause** / **Resume** and **X** to delete — not Download again.
+  Finished offline rows keep static stripes. Hover an Offline row for
+  **Play online** (the cloud stream) or **Delete** (removes that file).
+  Filters include **Offline** / **Online**. Row tap on a saved stream plays
+  the file on this device.
 - **Player** — use the download icon in the top bar to save the stream you’re
   watching (phone and desktop).
 
@@ -42,8 +46,9 @@ The header is a storage meter: offline library vs other space on the volume vs f
 
 ## Offline play
 
-On a completed row, tap **Play**. Forja opens the local file in the same player
-(ExoPlayer and MediaKit stay available — pick from the Player menu as usual).
+On a completed row in Settings, tap **Play**. In Sources, tap the Offline stream
+row. Forja opens the local file in the same player (ExoPlayer and MediaKit stay
+available — pick from the Player menu as usual).
 
 If Play says the file can’t be played, delete that row and download again — the
 saved file is damaged or incomplete.

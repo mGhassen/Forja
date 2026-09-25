@@ -370,6 +370,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final holdEpoch = chrome?.catalogHoldEpoch ?? 0;
     final refreshBumped = refreshEpoch > _appliedRefreshEpoch;
     final visible = chrome?.shellTabVisible ?? true;
+    final becameVisible = !_shellTabVisible && visible;
 
     // Hub hide (RFC-024): cancel in-flight rail/feed work; keep last paint.
     // Do not start new network while the tab is off-screen keep-alive.
@@ -464,6 +465,19 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
     final held = _holdAtRefreshEpoch != null &&
         refreshEpoch <= _holdAtRefreshEpoch!;
+
+    // Back to a hub that already painted. Do not start a catalog fetch
+    // just because the tab became visible again.
+    if (becameVisible &&
+        !refreshBumped &&
+        !shelfSectionFlipped &&
+        !held &&
+        _envelope != null &&
+        _envelope!.ok) {
+      _scopeEpoch = epoch;
+      _promotePageFeedRailIfReady(chrome);
+      return;
+    }
 
     // Only rebind on epoch change. `_envelope == null` alone used to restart the
     // in-flight Movies/Series feed when clearing the category bar notified
@@ -1099,7 +1113,6 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
                 action: widget.action,
                 params: runParams,
                 packSourceUrl: widget.packSourceUrl,
-                forceRefresh: true,
               );
               PackLoadedPaint._resolved[key] = direct;
               PackLoadedPaint._resolved[_warmPaintKey] = direct;
@@ -1147,13 +1160,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
               PackLoadedPaint._resolved[_warmPaintKey] = env;
               return env;
             }
-            // Batched feed soft-failed this rail — fetch it directly once.
+            // Batched feed missed this rail — use the rail cache, or fetch once.
             final direct = await packOpaqueRun(
               pluginId: widget.pluginId,
               action: widget.action,
               params: runParams,
               packSourceUrl: widget.packSourceUrl,
-              forceRefresh: true,
             );
             PackLoadedPaint._resolved[key] = direct;
             PackLoadedPaint._resolved[_warmPaintKey] = direct;

@@ -623,6 +623,16 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           ? (KitStreamPlayHooks.hubDetailsParams?.call(widget.item) ??
               hubDetailsParams(widget.item))
           : hubDetailsParams(widget.item),
+      onUpdated: (next) {
+        if (!mounted) return;
+        final meta = hubMergeDetailsSeed(next.meta ?? widget.item, widget.item);
+        final packRails = parseKitDetailRails(next.data);
+        setState(() {
+          _detail = meta;
+          if (packRails.isNotEmpty) _packRails = packRails;
+          _heroBackdrops = hubHeroBackdropUrls(meta);
+        });
+      },
     );
     if (!mounted) return;
     if (!env.ok) {

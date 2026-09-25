@@ -35,10 +35,13 @@ class CinematicHeroSlide {
 
   final String id;
   final String title;
+
   /// Absolute backdrop URL from pack meta.
   final String backdropUrl;
+
   /// Absolute poster fallback when backdrop empty.
   final String? posterUrl;
+
   /// Absolute logo URL from pack meta.
   final String? logoUrl;
   final String overview;
@@ -247,14 +250,17 @@ class CinematicHero extends StatefulWidget {
     BuildContext context,
     CinematicHeroSlide slide, {
     required bool isActive,
-  })? actionRowBuilder;
+  })?
+  actionRowBuilder;
   final Widget Function(BuildContext context, CinematicHeroSlide slide)?
-      upcomingNoticeBuilder;
+  upcomingNoticeBuilder;
   final Widget Function(BuildContext context)? galleryOverlayBuilder;
   final Widget? shimmer;
   final ValueChanged<int>? onIndexChanged;
+
   /// Reports computed backdrop height for shell chrome fade.
   final ValueChanged<double>? onHeight;
+
   /// Host interactive may own the controller; otherwise one is created.
   final PageController? pageController;
 
@@ -278,14 +284,18 @@ class CinematicHeroState extends State<CinematicHero>
   late final PageController _heroController;
   late final bool _ownsController;
   late final AnimationController _heroProgress;
+
   /// Keeps the [PageView] element across compact/bleed parent shape changes so
   /// the controller never briefly has two scroll positions.
-  final GlobalKey _heroPageViewKey = GlobalKey(debugLabel: 'cinematic-hero-page');
+  final GlobalKey _heroPageViewKey = GlobalKey(
+    debugLabel: 'cinematic-hero-page',
+  );
   int _heroIndex = 0;
   double? _heroPageViewportWidth;
   bool _ctaHover = false;
   bool _ctaFocus = false;
   bool _heroAdvancePaused = false;
+
   /// From [ShellPaintScope] via [didChangeDependencies] — null when no scope.
   bool? _paintUseTvFocus;
   bool? _paintScaleOnHover;
@@ -593,7 +603,8 @@ class CinematicHeroState extends State<CinematicHero>
       );
     }
     final screenH = MediaQuery.sizeOf(context).height;
-    final reservedBelow = layout.rowSpacing +
+    final reservedBelow =
+        layout.rowSpacing +
         layout.firstCatalogRowHeight +
         layout.firstCatalogRowHeight * layout.nextRowPeekFraction;
     final target = screenH * layout.heroHeightFraction;
@@ -627,18 +638,23 @@ class CinematicHeroState extends State<CinematicHero>
         onHeight(imageHeight + layout.topBarBleed);
       });
     }
-    final textTop = layout.topBarBleed +
+    final textTop =
+        layout.topBarBleed +
         layout.scaledChrome(layout.resolvedTextColumnTopInset);
     final compactRightInset = compact ? layout.heroCompactRightInset : 48.0;
     final textRight = compact
-        ? layout.scaledChrome(compactRightInset, floor: 12.0, ceil: compactRightInset)
+        ? layout.scaledChrome(
+            compactRightInset,
+            floor: 12.0,
+            ceil: compactRightInset,
+          )
         : layout.scaledChrome(48, floor: 24.0, ceil: 48.0);
     final textBottom = layout.scaledChrome(16, floor: 8.0, ceil: 16.0);
     final textBottomInset = pageBleed
         ? layout.firstCatalogRowHeight +
-            layout.scaledChrome(ShellTokens.homePageBottomSectionTopPadding) +
-            layout.resolvedBleedDownOffset +
-            textBottom
+              layout.scaledChrome(ShellTokens.homePageBottomSectionTopPadding) +
+              layout.resolvedBleedDownOffset +
+              textBottom
         : textBottom;
     final textLeft = layout.scaledChrome(layout.sectionHorizontalPadding);
     final desktopTextWidth = math.min(
@@ -696,9 +712,7 @@ class CinematicHeroState extends State<CinematicHero>
             top: 0,
             bottom: 0,
             right: layout.scaledChrome(16, floor: 8.0, ceil: 20.0),
-            child: Center(
-              child: _buildStepIndicators(),
-            ),
+            child: Center(child: _buildStepIndicators()),
           ),
           if (widget.galleryOverlayBuilder != null)
             Positioned(
@@ -752,84 +766,90 @@ class CinematicHeroState extends State<CinematicHero>
         // Backdrops live outside the looping [PageView] so each slide keeps
         // one mounted image State. Swiping back must not remount → fade-from
         // empty (PageView disposes off-screen pages).
-        return Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.hardEdge,
-          children: [
-            ColoredBox(color: shellBg),
-            AnimatedBuilder(
-              animation: _heroController,
-              builder: (context, _) {
-                final page = _safeHeroPage() ??
-                    (_heroLoopStart + _heroIndex).toDouble();
-                return Stack(
-                  fit: StackFit.expand,
-                  clipBehavior: Clip.hardEdge,
-                  children: [
-                    for (var i = 0; i < items.length; i++)
-                      _persistentSlideBackdropLayer(
-                        slide: items[i],
-                        slideIndex: i,
-                        page: page,
-                        count: items.length,
-                        pageWidth: pageW,
-                        solidLeftWidth: solidLeftWidth,
-                        shellBg: shellBg,
+        // ClipRect, not Stack.clipBehavior: Ken Burns scale and slide
+        // translates paint outside layout bounds, and Stack only clips
+        // positioned children that overflow layout.
+        return ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.hardEdge,
+            children: [
+              ColoredBox(color: shellBg),
+              AnimatedBuilder(
+                animation: _heroController,
+                builder: (context, _) {
+                  final page =
+                      _safeHeroPage() ??
+                      (_heroLoopStart + _heroIndex).toDouble();
+                  return Stack(
+                    fit: StackFit.expand,
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      for (var i = 0; i < items.length; i++)
+                        _persistentSlideBackdropLayer(
+                          slide: items[i],
+                          slideIndex: i,
+                          page: page,
+                          count: items.length,
+                          pageWidth: pageW,
+                          solidLeftWidth: solidLeftWidth,
+                          shellBg: shellBg,
+                        ),
+                    ],
+                  );
+                },
+              ),
+              PageView.builder(
+                key: _heroPageViewKey,
+                clipBehavior: Clip.hardEdge,
+                controller: _heroController,
+                itemCount: _heroLoopLength,
+                onPageChanged: _onHeroPageChanged,
+                itemBuilder: (context, index) {
+                  return Stack(
+                    fit: StackFit.expand,
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: solidLeftWidth,
+                        child: ColoredBox(color: shellBg),
                       ),
-                  ],
-                );
-              },
-            ),
-            PageView.builder(
-              key: _heroPageViewKey,
-              clipBehavior: Clip.hardEdge,
-              controller: _heroController,
-              itemCount: _heroLoopLength,
-              onPageChanged: _onHeroPageChanged,
-              itemBuilder: (context, index) {
-                return Stack(
-                  fit: StackFit.expand,
-                  clipBehavior: Clip.hardEdge,
-                  children: [
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: solidLeftWidth,
-                      child: ColoredBox(color: shellBg),
-                    ),
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: _buildImageGradients(
-                          shellBg,
-                          imageStartFraction: imageStartFraction,
-                          softBottomFade: pageBleed,
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: _buildImageGradients(
+                            shellBg,
+                            imageStartFraction: imageStartFraction,
+                            softBottomFade: pageBleed,
+                          ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      left: solidLeftWidth,
-                      top: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: AnimatedBuilder(
-                        animation: _heroController,
-                        builder: (context, _) {
-                          final page = _safeHeroPage() ?? index.toDouble();
-                          final rightEdgeViewportFraction =
-                              index - page + 1.0;
-                          final opacity = _rightEdgeJoinOpacity(
-                            rightEdgeViewportFraction,
-                          );
-                          return _buildTrailingEdge(opacity: opacity);
-                        },
+                      Positioned(
+                        left: solidLeftWidth,
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: AnimatedBuilder(
+                          animation: _heroController,
+                          builder: (context, _) {
+                            final page = _safeHeroPage() ?? index.toDouble();
+                            final rightEdgeViewportFraction =
+                                index - page + 1.0;
+                            final opacity = _rightEdgeJoinOpacity(
+                              rightEdgeViewportFraction,
+                            );
+                            return _buildTrailingEdge(opacity: opacity);
+                          },
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
         );
       },
     );
@@ -908,8 +928,7 @@ class CinematicHeroState extends State<CinematicHero>
     if (opacity <= 0.001) return const SizedBox.shrink();
     return LayoutBuilder(
       builder: (context, constraints) {
-        final edgeWidth =
-            constraints.maxWidth * _heroSlideEdgeGradientFraction;
+        final edgeWidth = constraints.maxWidth * _heroSlideEdgeGradientFraction;
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -1131,8 +1150,7 @@ class CinematicHeroState extends State<CinematicHero>
     final titleGap = layout.scaledChrome(layout.resolvedTitleMetaGap);
     final actionGap = layout.scaledChrome(layout.resolvedMetaActionsGap);
     final metaSlotHeight = layout.scaledChrome(layout.resolvedMetaSlotHeight);
-    final metaOverviewGap =
-        layout.scaledChrome(layout.resolvedMetaOverviewGap);
+    final metaOverviewGap = layout.scaledChrome(layout.resolvedMetaOverviewGap);
     final actionRowH = layout.tvDensity
         ? ShellTokens.controlHeightTv
         : ShellTokens.shellButtonHeight;
@@ -1226,8 +1244,11 @@ class CinematicHeroState extends State<CinematicHero>
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: _wrapHeroActionRow(
-                  widget.actionRowBuilder
-                          ?.call(context, slide, isActive: isActive) ??
+                  widget.actionRowBuilder?.call(
+                        context,
+                        slide,
+                        isActive: isActive,
+                      ) ??
                       const SizedBox.shrink(),
                 ),
               ),
@@ -1267,16 +1288,17 @@ class CinematicHeroState extends State<CinematicHero>
     final actionGap = tv
         ? layout.scaledChrome(ShellTokens.heroActionGapDesktop)
         : ShellTokens.heroActionGapDesktop;
-    final overviewFontSize =
-        tv ? layout.scaledType(13) : 13.0;
+    final overviewFontSize = tv ? layout.scaledType(13) : 13.0;
     const overviewHeight = 1.35;
     const overviewMaxLinesCap = 3;
     final metaReserve = tv ? layout.scaledChrome(24) : 24.0;
     final overviewLineHeight = overviewFontSize * overviewHeight;
-    final ctaH =
-        tv ? ShellTokens.controlHeightTv : ShellTokens.shellButtonHeight;
+    final ctaH = tv
+        ? ShellTokens.controlHeightTv
+        : ShellTokens.shellButtonHeight;
     // Worst-case chrome so synopsis shrinks/drops before the Column overflows.
-    final fixedChrome = (tv
+    final fixedChrome =
+        (tv
             ? layout.scaledChrome(ShellTokens.heroTitleSlotHeightCompact)
             : ShellTokens.heroTitleSlotHeightCompact) +
         titleMetaGap +
@@ -1287,8 +1309,10 @@ class CinematicHeroState extends State<CinematicHero>
     if (overview.isNotEmpty) {
       final budget = maxHeight - fixedChrome - metaOverviewGap;
       if (budget >= overviewLineHeight) {
-        overviewLines =
-            (budget / overviewLineHeight).floor().clamp(0, overviewMaxLinesCap);
+        overviewLines = (budget / overviewLineHeight).floor().clamp(
+          0,
+          overviewMaxLinesCap,
+        );
         // HeroOverviewText adds a Read More row when truncated — keep room.
         while (overviewLines > 0) {
           final need =
@@ -1382,8 +1406,9 @@ class CinematicHeroState extends State<CinematicHero>
             ),
             decoration: BoxDecoration(
               color: Colors.amber.withValues(alpha: 0.15),
-              borderRadius:
-                  BorderRadius.circular(layout.scaledChrome(20, floor: 10.0, ceil: 20.0)),
+              borderRadius: BorderRadius.circular(
+                layout.scaledChrome(20, floor: 10.0, ceil: 20.0),
+              ),
               border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
             ),
             child: Row(
@@ -1447,10 +1472,7 @@ class CinematicHeroState extends State<CinematicHero>
                       ),
                     ),
                   ],
-                  if (typeBadge != null) ...[
-                    SizedBox(width: gap),
-                    typeBadge,
-                  ],
+                  if (typeBadge != null) ...[SizedBox(width: gap), typeBadge],
                   if ((slide.statusChip ?? '').isNotEmpty &&
                       slide.statusChip != slide.badge) ...[
                     SizedBox(width: gap),
@@ -1523,7 +1545,9 @@ class CinematicHeroState extends State<CinematicHero>
       ),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(layout.scaledChrome(4, floor: 2.0, ceil: 4.0)),
+        borderRadius: BorderRadius.circular(
+          layout.scaledChrome(4, floor: 2.0, ceil: 4.0),
+        ),
       ),
       child: Text(
         label,
@@ -1563,11 +1587,7 @@ class CinematicHeroState extends State<CinematicHero>
           child: SizedBox(
             width: pauseSize,
             height: pauseSize,
-            child: Icon(
-              Icons.pause_rounded,
-              size: pauseSize,
-              color: fill,
-            ),
+            child: Icon(Icons.pause_rounded, size: pauseSize, color: fill),
           ),
         );
       }
@@ -1581,10 +1601,7 @@ class CinematicHeroState extends State<CinematicHero>
           width: active ? activeW : size,
           height: size,
           clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            color: track,
-          ),
+          decoration: BoxDecoration(borderRadius: radius, color: track),
           child: active
               ? AnimatedBuilder(
                   animation: _heroProgress,

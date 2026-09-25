@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/downloads/download_service.dart';
+import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
@@ -34,13 +35,16 @@ import 'package:forja/shared/player/sources/torrent/torrent_source_tiles.dart';
 import 'package:forja/shared/player/sources/torrent/torrent_sources_panel_chrome.dart';
 import 'package:forja/shared/player/sources/torrent/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
 /// Right-side Sources panel in the player - same shell/chrome/tiles as
 /// media-details Sources (torrent search list), not in-torrent file picker.
 class PlayerSourcesPanel {
@@ -227,10 +231,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       enableBlur: false,
       contentPadding: detailsHost
           ? null
-          : TorrentSourcesPanel.contentPaddingOf(
-              context,
-              playerOverlay: true,
-            ),
+          : TorrentSourcesPanel.contentPaddingOf(context, playerOverlay: true),
       child: SourcesPanelTv.wrapBody(
         context: context,
         onClose: widget.onClose,
@@ -336,6 +337,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool _nuvioSelectionHydrated = false;
   Set<String> _nuvioViewFilterScraperIds = {};
   Set<String> _nuvioFetchedScraperIds = {};
+
   /// Soft-cancelled while in-flight — discard late results.
   final Set<String> _nuvioDiscardScraperIds = {};
   bool _nuvioFetching = false;
@@ -351,10 +353,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool _engineSelectionHydrated = false;
   Set<String> _engineViewFilterPluginIds = {};
   Set<String> _engineFetchedPluginIds = {};
+
   /// Soft-cancelled while in-flight — discard late results without abortAll.
   final Set<String> _engineDiscardPluginIds = {};
   Set<String>? _engineVisibleCategories;
   bool _engineFetching = false;
+
   /// Official pack install still running — Forja tab only; other kinds stay live.
   bool _enginePacksLoading = false;
   int _engineFetchGen = 0;
@@ -394,9 +398,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     final inferred = _panelCategoryFromPlayingEnginePlugin();
     if (inferred != null) return inferred;
-    return EngineCategories.panelCategoryFor(
-      mediaType: widget.movie.mediaType,
-    );
+    return EngineCategories.panelCategoryFor(mediaType: widget.movie.mediaType);
   }
 
   /// Anime/drama-only plugins → that bucket. Movie/TV dual plugins fall through
@@ -456,9 +458,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool _enginePluginChipVisible(EnginePlugin plugin) {
     final preferred = widget.preferredEnginePluginId?.trim() ?? '';
     if (preferred.isNotEmpty) {
-      return plugin.enabled &&
-          plugin.isExtractable &&
-          plugin.id == preferred;
+      return plugin.enabled && plugin.isExtractable && plugin.id == preferred;
     }
     return EngineCategories.pluginChipVisible(
       plugin: plugin,
@@ -473,6 +473,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   bool _searching = false;
   bool _stremioFetching = false;
+
   /// Blocks further taps while a source row is handing off to playback.
   /// ValueNotifier — do not setState the whole list when pick starts (issue 352).
   final ValueNotifier<bool> _sourcePickInFlightN = ValueNotifier(false);
@@ -480,9 +481,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   int _stremioGen = 0;
   String? _error;
   bool _pendingScrollToCurrent = true;
+
   /// User wheel/drag on the list — cancel auto scroll-to-playing for this open.
   bool _userDismissedScrollToCurrent = false;
   int _scrollToCurrentAttempts = 0;
+
   /// TV: open claims the kind tab (Forja); ↓ from search may claim the list.
   bool _tvListClaimPending = false;
   VoidCallback? _tvListFocusUp;
@@ -580,7 +583,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   /// Re-read installed torrent indexers after pack install/toggle.
-  Future<void> _refreshTorrentProvidersFromCatalog({bool research = false}) async {
+  Future<void> _refreshTorrentProvidersFromCatalog({
+    bool research = false,
+  }) async {
     if (!mounted) return;
     await syncTorrentSearchCatalog();
     final enabled = enabledTorrentSearchPluginIds();
@@ -616,10 +621,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         setEngineAllMode: (mode) {
           if (mode != null) _engineAllMode = mode;
         },
-        setNuvioViewFilterScraperIds: (ids) =>
-            _nuvioViewFilterScraperIds = ids,
-        setEngineViewFilterPluginIds: (ids) =>
-            _engineViewFilterPluginIds = ids,
+        setNuvioViewFilterScraperIds: (ids) => _nuvioViewFilterScraperIds = ids,
+        setEngineViewFilterPluginIds: (ids) => _engineViewFilterPluginIds = ids,
         setTorrentViewFilterProviderIds: (ids) =>
             _torrentViewFilterProviderIds = ids,
         setUserPickedStremioProvider: (picked) =>
@@ -672,15 +675,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             ..clear()
             ..addAll({
               for (final s in cached)
-                if (s['_addonBaseUrl'] is String)
-                  s['_addonBaseUrl'] as String,
+                if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
             });
           _completedAddonBaseUrls
             ..clear()
             ..addAll(_loadedAddonBaseUrls);
         }
       case 'torrents':
-        final cached = CatalogSourcesSessionCache.readTorrents(_catalogCacheKey);
+        final cached = CatalogSourcesSessionCache.readTorrents(
+          _catalogCacheKey,
+        );
         if (cached != null) {
           _results = cached.results;
           _torrentFetchedProviderIds
@@ -720,18 +724,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   int get _facetContentKey => Object.hash(
-        _kindFilter,
-        _results.length,
-        _stremioStreams.length,
-        _nuvioStreams.length,
-        _engineStreams.length,
-        Object.hashAll(_nuvioSelectedScraperIds),
-        Object.hashAll(_nuvioViewFilterScraperIds),
-        Object.hashAll(_engineSelectedPluginIds),
-        Object.hashAll(_engineViewFilterPluginIds),
-        _nuvioAllMode,
-        _engineAllMode,
-      );
+    _kindFilter,
+    _results.length,
+    _stremioStreams.length,
+    _nuvioStreams.length,
+    _engineStreams.length,
+    Object.hashAll(_nuvioSelectedScraperIds),
+    Object.hashAll(_nuvioViewFilterScraperIds),
+    Object.hashAll(_engineSelectedPluginIds),
+    Object.hashAll(_engineViewFilterPluginIds),
+    _nuvioAllMode,
+    _engineAllMode,
+  );
 
   /// Mutate lists/flags, then paint at most once per [_coalescedPaintDelay].
   void _scheduleCoalescedPaint(VoidCallback apply) {
@@ -859,12 +863,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   int? _currentItemIndex(
     List<TorrentResult> torrents,
     List<Map<String, dynamic>> stremio, {
+    List<Map<String, dynamic>> offline = const [],
     List<Map<String, dynamic>> nuvio = const [],
     List<Map<String, dynamic>> engine = const [],
   }) {
+    final lead = offline.length;
+    for (var i = 0; i < offline.length; i++) {
+      if (_isCurrentStremio(offline[i])) return i;
+    }
     final rowKey = widget.currentPlayingRowKey?.trim() ?? '';
     if (rowKey.isNotEmpty) {
-      final stremioOffset = torrents.length;
+      final stremioOffset = lead + torrents.length;
       final nuvioOffset = stremioOffset + stremio.length;
       final engineOffset = nuvioOffset + nuvio.length;
       for (var i = 0; i < stremio.length; i++) {
@@ -884,9 +893,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
     }
     for (var i = 0; i < torrents.length; i++) {
-      if (_isCurrentMagnet(torrents[i].magnet)) return i;
+      if (_isCurrentMagnet(torrents[i].magnet)) return lead + i;
     }
-    final stremioOffset = torrents.length;
+    final stremioOffset = lead + torrents.length;
     for (var i = 0; i < stremio.length; i++) {
       if (_isCurrentStremio(stremio[i])) return stremioOffset + i;
     }
@@ -995,7 +1004,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   void _scheduleScrollToCurrent() {
     if (!_pendingScrollToCurrent || _userDismissedScrollToCurrent) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_pendingScrollToCurrent || _userDismissedScrollToCurrent) {
+      if (!mounted ||
+          !_pendingScrollToCurrent ||
+          _userDismissedScrollToCurrent) {
         return;
       }
 
@@ -1011,9 +1022,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final engine = _showsEngine
           ? _filteredEngine
           : const <Map<String, dynamic>>[];
+      final offline = _pinnedOfflineStreams(
+        stremio: stremio,
+        nuvio: nuvio,
+        engine: engine,
+      );
       final index = _currentItemIndex(
         torrents,
         stremio,
+        offline: offline,
         nuvio: nuvio,
         engine: engine,
       );
@@ -1087,6 +1104,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required List<Map<String, dynamic>> stremio,
     required List<Map<String, dynamic>> nuvio,
     required List<Map<String, dynamic>> engine,
+    required List<Map<String, dynamic>> offline,
     required int totalCount,
   }) {
     if (!SourcesPanelTv.isTv(context)) return;
@@ -1097,9 +1115,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
       return;
     }
-    final cur = _currentItemIndex(
+    final cur =
+        _currentItemIndex(
           torrents,
           stremio,
+          offline: offline,
           nuvio: nuvio,
           engine: engine,
         ) ??
@@ -1196,13 +1216,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final kind = kindAllowed(_kindFilter)
         ? _kindFilter
         : (cachedUi != null && kindAllowed(cachedUi.kindFilter)
-            ? cachedUi.kindFilter
-            : _resolveInitialKind(
-                hasTorrent: torrentOn,
-                hasStremio: hasStremio,
-                hasNuvio: hasNuvio,
-                hasEngine: hasEngine,
-              ));
+              ? cachedUi.kindFilter
+              : _resolveInitialKind(
+                  hasTorrent: torrentOn,
+                  hasStremio: hasStremio,
+                  hasNuvio: hasNuvio,
+                  hasEngine: hasEngine,
+                ));
 
     List<Map<String, dynamic>> addons = const [];
     if (stremioOn && kind == 'stremio') {
@@ -1273,7 +1293,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final nuvioEnabled = enabledNuvioScraperIds(nuvioAddons);
       if (!_nuvioSelectionHydrated) {
         _nuvioSelectedScraperIds = nuvioSelected;
-        _nuvioAllMode = cachedUi?.nuvioAllMode ??
+        _nuvioAllMode =
+            cachedUi?.nuvioAllMode ??
             nuvioFullAllSelected(
               enabledIds: nuvioEnabled,
               selectedIds: nuvioSelected,
@@ -1301,7 +1322,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             _enginePanelCategory,
           ),
         );
-        _engineAllMode = cachedUi?.engineAllMode ??
+        _engineAllMode =
+            cachedUi?.engineAllMode ??
             engineFullAllSelected(
               enabledIds: engineScope.isNotEmpty ? engineScope : engineEnabled,
               selectedIds: engineSelected,
@@ -1330,10 +1352,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                   panelCategory: _enginePanelCategory,
                 )
                 .then((ids) {
-              if (!mounted) return;
-              if (ids.isEmpty) return;
-              setState(() => _engineViewFilterPluginIds = ids);
-            }),
+                  if (!mounted) return;
+                  if (ids.isEmpty) return;
+                  setState(() => _engineViewFilterPluginIds = ids);
+                }),
           );
         }
       } else if (_engineAllMode &&
@@ -1346,10 +1368,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 panelCategory: _enginePanelCategory,
               )
               .then((ids) {
-            if (!mounted) return;
-            if (ids.isEmpty) return;
-            setState(() => _engineViewFilterPluginIds = ids);
-          }),
+                if (!mounted) return;
+                if (ids.isEmpty) return;
+                setState(() => _engineViewFilterPluginIds = ids);
+              }),
         );
       }
       if (!_nuvioSelectionHydrated) {
@@ -1360,10 +1382,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             NuvioService.instance
                 .loadSourcesViewFilterScraperIds(enabledIds: nuvioEnabled)
                 .then((ids) {
-              if (!mounted) return;
-              if (ids.isEmpty) return;
-              setState(() => _nuvioViewFilterScraperIds = ids);
-            }),
+                  if (!mounted) return;
+                  if (ids.isEmpty) return;
+                  setState(() => _nuvioViewFilterScraperIds = ids);
+                }),
           );
         }
       } else if (_nuvioAllMode &&
@@ -1373,10 +1395,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           NuvioService.instance
               .loadSourcesViewFilterScraperIds(enabledIds: nuvioEnabled)
               .then((ids) {
-            if (!mounted) return;
-            if (ids.isEmpty) return;
-            setState(() => _nuvioViewFilterScraperIds = ids);
-          }),
+                if (!mounted) return;
+                if (ids.isEmpty) return;
+                setState(() => _nuvioViewFilterScraperIds = ids);
+              }),
         );
       }
       if (_engineSelectionHydrated) {
@@ -1426,8 +1448,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     open: widget.open,
     malId: widget.malId,
     audioCategory: widget.animeAudioCategory,
-    episodeVideoId:
-        widget.episodeVideoId,
+    episodeVideoId: widget.episodeVideoId,
   );
 
   /// Hydrate from session TTL cache or fetch - only for the active kind.
@@ -1710,9 +1731,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       'stremio' => '',
       'nuvio' => 'all_nuvio',
       'engine' => 'all_engine',
-      'torrents' => _enabledTorrentProviders.isEmpty
-          ? TorrentSearchProviders.noneId
-          : TorrentSearchProviders.allId,
+      'torrents' =>
+        _enabledTorrentProviders.isEmpty
+            ? TorrentSearchProviders.noneId
+            : TorrentSearchProviders.allId,
       _ => TorrentSearchProviders.noneId,
     };
   }
@@ -1744,8 +1766,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         engineAllMode: _engineAllMode,
         nuvioViewFilterScraperIds: Set<String>.from(_nuvioViewFilterScraperIds),
         engineViewFilterPluginIds: Set<String>.from(_engineViewFilterPluginIds),
-        torrentViewFilterProviderIds:
-            Set<String>.from(_torrentViewFilterProviderIds),
+        torrentViewFilterProviderIds: Set<String>.from(
+          _torrentViewFilterProviderIds,
+        ),
         userPickedKind: _userPickedKind,
         userPickedStremioProvider: _userPickedStremioProvider,
         searchQuery: _searchQuery,
@@ -1974,10 +1997,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               (id) => TorrentSearchProviders.matchesTorrentRow(id, r),
             );
           }
-          return TorrentSearchProviders.matchesTorrentRow(
-            _selectedSourceId,
-            r,
-          );
+          return TorrentSearchProviders.matchesTorrentRow(_selectedSourceId, r);
         });
     var out = List<TorrentResult>.from(list);
     if (TorrentSearchProviders.sourcesPanelMergeBest(
@@ -2015,8 +2035,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return true;
     }
     if (_hasActiveStreamNameFilters) {
-      final name =
-          '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
+      final name = '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
       if (!TorrentMetaParser.parse(name).matchesFiltersForName(
         name,
         searchQuery: _searchQuery,
@@ -2047,10 +2066,26 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
   }
 
-  String get _downloadMediaId => mediaIdForDownloadMovie(
-        imdbId: widget.movie.imdbId,
-        id: widget.movie.id,
-      );
+  String get _downloadMediaId =>
+      mediaIdForDownloadMovie(imdbId: widget.movie.imdbId, id: widget.movie.id);
+
+  /// Saved and in-progress downloads for this title, before provider search.
+  ///
+  /// Dropped once a visible provider row already represents the same task.
+  List<Map<String, dynamic>> _pinnedOfflineStreams({
+    required List<Map<String, dynamic>> stremio,
+    required List<Map<String, dynamic>> nuvio,
+    required List<Map<String, dynamic>> engine,
+  }) {
+    if (!PlatformInfo.offlineDownloadsEnabled) return const [];
+    return offlineStreamsAheadOfProviderSearch(
+      tasks: DownloadService.instance.tasksNotifier.value,
+      mediaId: _downloadMediaId,
+      season: widget.season,
+      episode: widget.episode,
+      visibleProviderStreams: [...stremio, ...nuvio, ...engine],
+    ).where(_matchesStreamFilters).toList();
+  }
 
   List<Map<String, dynamic>> get _filteredStremio {
     return _stremioStreams.where((s) {
@@ -2259,17 +2294,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             ? const <String>{}
             : {
                 for (final id in _nuvioSelectedScraperIds)
-                  if (!_nuvioFetchedScraperIds.contains(id))
-                    'nuvio:$id',
+                  if (!_nuvioFetchedScraperIds.contains(id)) 'nuvio:$id',
               };
       case 'engine':
         return {
           for (final id in _engineLoadingPluginIds) EngineIds.pluginChip(id),
         };
       case 'stremio':
-        return !_stremioFetching
-            ? const <String>{}
-            : {_selectedSourceId};
+        return !_stremioFetching ? const <String>{} : {_selectedSourceId};
       default:
         return const <String>{};
     }
@@ -2393,7 +2425,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     EngineService.instance.cancelTorrentSearch();
     final replace =
-        _results.isEmpty || !TorrentSearchProviders.isAllChip(_selectedSourceId);
+        _results.isEmpty ||
+        !TorrentSearchProviders.isAllChip(_selectedSourceId);
     setState(() {
       _searching = true;
       _error = null;
@@ -2412,10 +2445,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           enabledProviders: enabled,
         );
       } else {
-        await _searchForjaMovieProgressive(
-          gen,
-          enabledProviders: enabled,
-        );
+        await _searchForjaMovieProgressive(gen, enabledProviders: enabled);
       }
       if (!mounted || gen != _searchGen) return;
       await _finishTorrentSearch(gen, _results);
@@ -2635,7 +2665,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         ? Map<String, dynamic>.from(addon['manifest'] as Map)
         : null;
     final stremioId = resolveStremioStreamIdFromBag(
-      bag: bag ??
+      bag:
+          bag ??
           StremioBagSlice(
             ids: _sourcesCtx.ids,
             mediaType: widget.movie.mediaType,
@@ -2679,8 +2710,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     });
 
     final type = () {
-      final openType =
-          (widget.open?.extraString('stremioType') ?? '').trim().toLowerCase();
+      final openType = (widget.open?.extraString('stremioType') ?? '')
+          .trim()
+          .toLowerCase();
       if (openType == 'series' || openType == 'tv') return 'series';
       if (openType == 'anime') return 'anime';
       if (openType == 'movie') return 'movie';
@@ -2767,9 +2799,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
     });
 
-    final addonName =
-        widget.open?.extraString('stremioAddonName') ?? 'Addon';
-    var type = widget.open?.extraString('stremioType') ??
+    final addonName = widget.open?.extraString('stremioAddonName') ?? 'Addon';
+    var type =
+        widget.open?.extraString('stremioType') ??
         (widget.movie.mediaType == 'tv' ? 'series' : 'movie');
     var streamId = stremioId;
     if (type == 'series' &&
@@ -3178,7 +3210,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _enginePoolTasks.add(task);
   }
 
-  Future<void> _engineDrainPool({required int gen, required String type}) async {
+  Future<void> _engineDrainPool({
+    required int gen,
+    required String type,
+  }) async {
     while (mounted && gen == _engineFetchGen) {
       while (_enginePoolTasks.isNotEmpty && mounted && gen == _engineFetchGen) {
         await Future.wait(List<Future<void>>.of(_enginePoolTasks));
@@ -3268,14 +3303,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       widget.meta ?? metaItemForMovie(widget.movie);
 
   SourcesRequestContext get _sourcesCtx => buildSourcesRequestContext(
-        movie: widget.movie,
-        meta: _resolvedCatalogMeta,
-        open: widget.open,
-        season: widget.season,
-        episode: widget.episode,
-        episodeVideoId: widget.episodeVideoId,
-        panelCategoryHint: widget.engineCategory,
-      );
+    movie: widget.movie,
+    meta: _resolvedCatalogMeta,
+    open: widget.open,
+    season: widget.season,
+    episode: widget.episode,
+    episodeVideoId: widget.episodeVideoId,
+    panelCategoryHint: widget.engineCategory,
+  );
 
   bool get _torrentEp => metaOpenTorrentEp(widget.open);
 
@@ -3298,8 +3333,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         torrentEp: _torrentEp,
       );
       final results = await Future.wait([
-        for (final pass in passes)
-          jackett.search(baseUrl, apiKey, pass.query),
+        for (final pass in passes) jackett.search(baseUrl, apiKey, pass.query),
       ]);
       final combined = <String, TorrentResult>{};
       for (final batch in results.reversed) {
@@ -3347,12 +3381,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       );
       final results = await Future.wait([
         for (final pass in passes)
-          prowlarr.search(
-            baseUrl,
-            apiKey,
-            pass.query,
-            indexerIds: indexerIds,
-          ),
+          prowlarr.search(baseUrl, apiKey, pass.query, indexerIds: indexerIds),
       ]);
       final combined = <String, TorrentResult>{};
       for (final batch in results.reversed) {
@@ -3366,12 +3395,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final query = _year.isNotEmpty
         ? '${widget.movie.title} $_year'
         : widget.movie.title;
-    return prowlarr.search(
-      baseUrl,
-      apiKey,
-      query,
-      indexerIds: indexerIds,
-    );
+    return prowlarr.search(baseUrl, apiKey, query, indexerIds: indexerIds);
   }
 
   bool _nuvioStreamFromScraper(Map<String, dynamic> s, String scraperId) {
@@ -3506,9 +3530,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       setState(() {
         _torrentFetchedProviderIds.remove(id);
         _results = _results
-            .where(
-              (r) => !TorrentSearchProviders.matchesTorrentRow(id, r),
-            )
+            .where((r) => !TorrentSearchProviders.matchesTorrentRow(id, r))
             .toList();
         if (TorrentSearchProviders.isAllChip(_selectedSourceId) ||
             _selectedSourceId == id) {
@@ -3804,7 +3826,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     } else if (_kindFilter == 'torrents') {
       final toIndexer = id == 'jackett' || id == 'prowlarr';
       final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
-      final singleBuiltin = TorrentSearchProviders.isBuiltinSearchChip(id) &&
+      final singleBuiltin =
+          TorrentSearchProviders.isBuiltinSearchChip(id) &&
           !TorrentSearchProviders.isAllChip(id);
       if (singleBuiltin) {
         setState(() {
@@ -3844,12 +3867,42 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
   }
 
-  Future<void> _selectStremio(Map<String, dynamic> stream) async {
-    if (_sourcePickInFlightN.value) return;
-    if (widget.playbackConfirmed && _isCurrentStremio(stream)) {
-      widget.onClose();
-      return;
+  Future<Map<String, dynamic>?> _streamForPlay(
+    Map<String, dynamic> stream,
+  ) async {
+    if (!PlatformInfo.offlineDownloadsEnabled) return stream;
+    final task = downloadTaskForStream(
+      mediaId: _downloadMediaId,
+      season: widget.season,
+      episode: widget.episode,
+      stream: stream,
+    );
+    final local = await offlineLocalPlayForTask(stream: stream, task: task);
+    if (local == null) return stream;
+    if (!local.ok) {
+      ForjaToast.error(local.error ?? kOfflineDownloadUnreadableMessage);
+      return null;
     }
+    return local.stream;
+  }
+
+  Future<void> _confirmDeleteOffline(DownloadTask task) async {
+    final ok = await showSettingsConfirmDialog(
+      context: context,
+      title: 'Delete download?',
+      body: 'Removes “${task.title}” from this device.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    );
+    if (!ok) return;
+    await DownloadService.instance.deleteDownload(task.id);
+  }
+
+  Future<void> _selectStremio(
+    Map<String, dynamic> stream, {
+    bool fromDisk = true,
+  }) async {
+    if (_sourcePickInFlightN.value) return;
     // Keep Sources open; never push MediaKit for Widevine off Android.
     if (streamDrmBlockedOffAndroid(stream['drm'])) {
       ForjaToast.info(kStreamDrmAndroidOnlyMessage);
@@ -3857,8 +3910,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     _sourcePickInFlightN.value = true;
     try {
+      final playStream = fromDisk ? await _streamForPlay(stream) : stream;
+      if (playStream == null || !mounted) return;
+      final nextUrl = playStream['url']?.toString() ?? '';
+      final playing = widget.currentStreamUrl?.trim() ?? '';
+      final switchingToDisk =
+          fromDisk && nextUrl.startsWith('file://') && playing != nextUrl;
+      final switchingToCloud = !fromDisk && playing.startsWith('file://');
+      if (widget.playbackConfirmed &&
+          _isCurrentStremio(stream) &&
+          !switchingToDisk &&
+          !switchingToCloud) {
+        widget.onClose();
+        return;
+      }
       final precheck = classifyStremioStream(
-        stream,
+        playStream,
         PlatformPlayback.capabilities,
       );
       if (precheck == null) {
@@ -3868,7 +3935,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         if (!mounted) return;
       }
       PlayerSourcesPanel.dismiss(cancelEngine: false);
-      await widget.onStremioSelected(stream);
+      await widget.onStremioSelected(playStream);
     } finally {
       if (mounted) _sourcePickInFlightN.value = false;
     }
@@ -3889,8 +3956,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         : <Map<String, dynamic>>[];
     final nuvio = _showsNuvio ? _filteredNuvio : <Map<String, dynamic>>[];
     final engine = _showsEngine ? _filteredEngine : <Map<String, dynamic>>[];
+    final offline = _pinnedOfflineStreams(
+      stremio: stremio,
+      nuvio: nuvio,
+      engine: engine,
+    );
     final totalCount =
-        torrents.length + stremio.length + nuvio.length + engine.length;
+        offline.length +
+        torrents.length +
+        stremio.length +
+        nuvio.length +
+        engine.length;
 
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4013,6 +4089,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               stremio: stremio,
               nuvio: nuvio,
               engine: engine,
+              offline: offline,
               totalCount: totalCount,
             );
           },
@@ -4023,6 +4100,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             stremio,
             nuvio,
             engine,
+            offline,
             totalCount: totalCount,
           ),
         ),
@@ -4043,10 +4121,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             fit: StackFit.expand,
             children: [
               Positioned.fill(child: child!),
-              const ModalBarrier(
-                dismissible: false,
-                color: Color(0x66000000),
-              ),
+              const ModalBarrier(dismissible: false, color: Color(0x66000000)),
               const Center(
                 child: SizedBox(
                   width: 28,
@@ -4079,11 +4154,114 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   // Stable-ish token so cache line can refresh when panel content changes.
   int get _openToken => identityHashCode(this);
 
+  Widget _streamSourceTile({
+    required Map<String, dynamic> stream,
+    required int listIndex,
+    required int? currentIndex,
+    required bool tv,
+    required bool showAddonName,
+    required VoidCallback? onUp,
+  }) {
+    final title = (stream['title'] ?? stream['name'] ?? 'Unknown Stream')
+        .toString();
+    final description = (stream['description'] ?? '').toString();
+    final presentation = stremioTilePresentation(stream, isResumable: false);
+    final isCurrent = listIndex == currentIndex;
+    final probeKey = CatalogSourcesSessionCache.probeKeyForStream(stream);
+    final downloadsOn = PlatformInfo.offlineDownloadsEnabled;
+    final dlTask = downloadsOn
+        ? downloadTaskForStream(
+            mediaId: _downloadMediaId,
+            season: widget.season,
+            episode: widget.episode,
+            stream: stream,
+          )
+        : null;
+    final dlChrome = downloadsOn
+        ? chromeForDownloadTask(dlTask)
+        : SourceDownloadChrome.none;
+    final dlLabel = dlTask == null
+        ? null
+        : (dlTask.isActive
+              ? '${(dlTask.progressPercent * 100).clamp(0, 100).toStringAsFixed(0)}% · ${dlTask.speedLabel}'
+              : null);
+    return KeyedSubtree(
+      key: _playerStreamTileKey(stream),
+      child: KeyedSubtree(
+        key: isCurrent ? _currentTileKey : null,
+        child: StremioSourceTile(
+          title: title,
+          description: description,
+          leadingIcon: presentation.leadingIcon,
+          leadingColor: presentation.leadingColor,
+          isExternal: presentation.isExternal,
+          addonName: stream['_addonName']?.toString(),
+          showAddonName: showAddonName,
+          sizeText: stream['size']?.toString(),
+          seeders: stream['seeders']?.toString() ?? stream['seeds']?.toString(),
+          stream: stream,
+          highlightStart: isCurrent,
+          tvItemIndex: tv ? listIndex : null,
+          onUpEdge: onUp,
+          probeHealthCache: CatalogSourcesSessionCache.readProbeHealth(
+            probeKey,
+          ),
+          onHoverProbe: presentation.isExternal || probeKey == null
+              ? null
+              : () async {
+                  final ok = await probeSourcesPanelStream(stream);
+                  CatalogSourcesSessionCache.writeProbeHealth(probeKey, ok);
+                  return ok;
+                },
+          onTap: () => _selectStremio(stream),
+          onPlayCloud:
+              downloadsOn &&
+                  dlTask != null &&
+                  dlTask.isCompleted &&
+                  streamHttpUrlForDownload(stream) != null
+              ? () => _selectStremio(stream, fromDisk: false)
+              : null,
+          onPrepareDownload: downloadsOn
+              ? () => prepareStremioStreamDownload(
+                  movie: widget.movie,
+                  stream: stream,
+                  season: widget.season,
+                  episode: widget.episode,
+                )
+              : null,
+          onPauseDownload: dlTask != null && dlTask.isDownloading
+              ? () =>
+                    unawaited(DownloadService.instance.pauseDownload(dlTask.id))
+              : null,
+          onResumeDownload:
+              dlTask != null && dlTask.isActive && !dlTask.isDownloading
+              ? () => unawaited(
+                  DownloadService.instance.resumeDownload(dlTask.id),
+                )
+              : null,
+          onDeleteDownload: dlTask == null
+              ? null
+              : dlTask.isCompleted
+              ? () => unawaited(_confirmDeleteOffline(dlTask))
+              : dlTask.isActive
+              ? () => unawaited(
+                  DownloadService.instance.deleteDownload(dlTask.id),
+                )
+              : null,
+          downloadChrome: dlChrome,
+          downloadProgress: dlTask?.progressPercent ?? 0,
+          downloadStatusLabel: dlLabel,
+        ),
+      ),
+    );
+  }
+
   Widget _buildList(
     List<TorrentResult> torrents,
     List<Map<String, dynamic>> stremio,
     List<Map<String, dynamic>> nuvio,
-    List<Map<String, dynamic>> engine, {
+    List<Map<String, dynamic>> engine,
+    List<Map<String, dynamic>> offline, {
     required int totalCount,
   }) {
     if (_isFetching && totalCount == 0) {
@@ -4122,9 +4300,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final tv = ShellScope.metricsOf(context).usesTvDensity;
       final errBody = Center(
         child: Padding(
-          padding: EdgeInsets.all(
-            tv ? ShellTokens.torrentPanelPaddingTv : 24,
-          ),
+          padding: EdgeInsets.all(tv ? ShellTokens.torrentPanelPaddingTv : 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -4133,9 +4309,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: ForjaShellColors.cinematic.textSecondary,
-                  fontSize: tv
-                      ? ShellTokens.tvBodyFontSize
-                      : 13,
+                  fontSize: tv ? ShellTokens.tvBodyFontSize : 13,
                 ),
               ),
               SizedBox(height: tv ? ShellTokens.torrentPanelChromeGapTv : 12),
@@ -4170,23 +4344,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       );
     }
     if (totalCount == 0) {
-      final emptyMsg = _showsEngine &&
+      final emptyMsg =
+          _showsEngine &&
               !_enginePacksLoading &&
               enabledEnginePluginIds(_enginePacks).isEmpty
           ? 'No Forja plugins installed'
           : _showsStremio && _streamAddons.isEmpty
-              ? 'No Stremio stream addons. Add them in Settings → Addons → Stremio'
-              : _showsNuvio && enabledNuvioScraperIds(_nuvioAddons).isEmpty
-                  ? 'No Nuvio scrapers. Add them in Settings → Addons → Nuvio'
-                  : (_showsNuvio && _nuvioSelectedScraperIds.isEmpty) ||
-                          (_showsEngine && _engineSelectedPluginIds.isEmpty) ||
-                          (_showsStremio && _selectedSourceId.isEmpty) ||
-                          (_showsTorrents &&
-                              TorrentSearchProviders.isNoneChip(
-                                _selectedSourceId,
-                              ))
-                      ? 'Select at least one provider'
-                      : 'No matching sources';
+          ? 'No Stremio stream addons. Add them in Settings → Addons → Stremio'
+          : _showsNuvio && enabledNuvioScraperIds(_nuvioAddons).isEmpty
+          ? 'No Nuvio scrapers. Add them in Settings → Addons → Nuvio'
+          : (_showsNuvio && _nuvioSelectedScraperIds.isEmpty) ||
+                (_showsEngine && _engineSelectedPluginIds.isEmpty) ||
+                (_showsStremio && _selectedSourceId.isEmpty) ||
+                (_showsTorrents &&
+                    TorrentSearchProviders.isNoneChip(_selectedSourceId))
+          ? 'Select at least one provider'
+          : 'No matching sources';
       final emptyBody = Center(
         child: Text(
           emptyMsg,
@@ -4232,6 +4405,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final currentIndex = _currentItemIndex(
       torrents,
       stremio,
+      offline: offline,
       nuvio: nuvio,
       engine: engine,
     );
@@ -4255,8 +4429,19 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           final onUp = i == 0
               ? (_tvListFocusUp ?? SourcesPanelTv.focusProvidersItem)
               : null;
-          if (i < torrents.length) {
-            final r = torrents[i];
+          if (i < offline.length) {
+            return _streamSourceTile(
+              stream: offline[i],
+              listIndex: i,
+              currentIndex: currentIndex,
+              tv: tv,
+              showAddonName: false,
+              onUp: onUp,
+            );
+          }
+          final torrentIndex = i - offline.length;
+          if (torrentIndex < torrents.length) {
+            final r = torrents[torrentIndex];
             final isCurrent = i == currentIndex;
             return KeyedSubtree(
               key: ValueKey(r.magnet.isEmpty ? r.name : r.magnet),
@@ -4273,7 +4458,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             );
           }
 
-          final j = i - torrents.length;
+          final j = torrentIndex - torrents.length;
           final Map<String, dynamic> s;
           if (j < stremio.length) {
             s = stremio[j];
@@ -4282,90 +4467,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           } else {
             s = engine[j - stremio.length - nuvio.length];
           }
-          final title =
-              (s['title'] ?? s['name'] ?? 'Unknown Stream').toString();
-          final description = (s['description'] ?? '').toString();
-          final presentation = stremioTilePresentation(s, isResumable: false);
-          final isCurrent = i == currentIndex;
-          final probeKey = CatalogSourcesSessionCache.probeKeyForStream(s);
-          final downloadsOn = PlatformInfo.offlineDownloadsEnabled;
-          final dlTask = downloadsOn
-              ? downloadTaskForStream(
-                  mediaId: _downloadMediaId,
-                  season: widget.season,
-                  episode: widget.episode,
-                  stream: s,
-                )
-              : null;
-          final dlChrome = downloadsOn
-              ? chromeForDownloadTask(dlTask)
-              : SourceDownloadChrome.none;
-          final dlLabel = dlTask == null
-              ? null
-              : (dlTask.isActive
-                  ? '${(dlTask.progressPercent * 100).clamp(0, 100).toStringAsFixed(0)}% · ${dlTask.speedLabel}'
-                  : null);
-          return KeyedSubtree(
-            key: _playerStreamTileKey(s),
-            child: KeyedSubtree(
-              key: isCurrent ? _currentTileKey : null,
-              child: StremioSourceTile(
-                title: title,
-                description: description,
-                leadingIcon: presentation.leadingIcon,
-                leadingColor: presentation.leadingColor,
-                isExternal: presentation.isExternal,
-                addonName: s['_addonName']?.toString(),
-                showAddonName: showAddonName,
-                sizeText: s['size']?.toString(),
-                seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
-                stream: s,
-                highlightStart: isCurrent,
-                tvItemIndex: tvIndex,
-                onUpEdge: onUp,
-                probeHealthCache:
-                    CatalogSourcesSessionCache.readProbeHealth(probeKey),
-                onHoverProbe: presentation.isExternal || probeKey == null
-                    ? null
-                    : () async {
-                        final ok = await probeSourcesPanelStream(s);
-                        CatalogSourcesSessionCache.writeProbeHealth(
-                          probeKey,
-                          ok,
-                        );
-                        return ok;
-                      },
-                onTap: () => _selectStremio(s),
-                onPrepareDownload: downloadsOn
-                    ? () => prepareStremioStreamDownload(
-                          movie: widget.movie,
-                          stream: s,
-                          season: widget.season,
-                          episode: widget.episode,
-                        )
-                    : null,
-                onPauseDownload: dlTask != null && dlTask.isDownloading
-                    ? () => unawaited(
-                          DownloadService.instance.pauseDownload(dlTask.id),
-                        )
-                    : null,
-                onResumeDownload: dlTask != null &&
-                        dlTask.isActive &&
-                        !dlTask.isDownloading
-                    ? () => unawaited(
-                          DownloadService.instance.resumeDownload(dlTask.id),
-                        )
-                    : null,
-                onDeleteDownload: dlTask != null && dlTask.isActive
-                    ? () => unawaited(
-                          DownloadService.instance.deleteDownload(dlTask.id),
-                        )
-                    : null,
-                downloadChrome: dlChrome,
-                downloadProgress: dlTask?.progressPercent ?? 0,
-                downloadStatusLabel: dlLabel,
-              ),
-            ),
+          return _streamSourceTile(
+            stream: s,
+            listIndex: i,
+            currentIndex: currentIndex,
+            tv: tv,
+            showAddonName: showAddonName,
+            onUp: onUp,
           );
         },
       ),

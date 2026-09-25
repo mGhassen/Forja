@@ -226,6 +226,14 @@ int? parseContentRangeTotal(String? header) {
 const String kOfflineDownloadExpiredMessage =
     'Stream link expired — open Sources and download again';
 
+const String kOfflineDownloadMissingMessage = 'Download file is missing';
+
+const String kOfflineDownloadUnplayableMessage =
+    'Downloaded file can’t be played — delete it and download again';
+
+const String kOfflineDownloadUnreadableMessage =
+    'Downloaded file can’t be played';
+
 /// User-facing reason when a URL cannot be saved offline.
 String? offlineDownloadRejectReason(
   String url, {
