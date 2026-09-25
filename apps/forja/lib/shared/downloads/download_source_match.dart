@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_task.dart';
+import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 
 /// How a Sources stream row paints download chrome.
 enum SourceDownloadChrome { none, downloading, offline }
@@ -123,8 +124,12 @@ Future<OfflineLocalPlay?> offlineLocalPlayForTask({
   final fileUrl = path.startsWith('file://')
       ? path
       : Uri.file(file.path).toString();
+  final catalogUrl = streamHttpUrlForDownload(stream);
+  final rowKey = catalogStreamRowProgressKey(stream);
   final copy = Map<String, dynamic>.from(stream);
   copy['url'] = fileUrl;
+  if (catalogUrl != null) copy[kOfflinePlayCatalogUrlKey] = catalogUrl;
+  if (rowKey.isNotEmpty) copy[kOfflinePlayRowKeyKey] = rowKey;
   copy.remove('headers');
   final hints = copy['behaviorHints'];
   if (hints is Map) {
@@ -233,6 +238,51 @@ bool isOfflineDownloadPlayUrl(
     if (raw.isEmpty) continue;
     final target = localFilePathFromPlayUrl(raw) ?? raw;
     if (_sameLocalPath(path, target)) return true;
+  }
+  return false;
+}
+
+/// Completed download whose file is [url], if any.
+DownloadTask? downloadTaskForLocalPlayUrl(
+  String? url, {
+  Iterable<DownloadTask>? tasks,
+}) {
+  final path = localFilePathFromPlayUrl(url);
+  if (path == null || path.isEmpty) return null;
+  final list = tasks ?? DownloadService.instance.tasksNotifier.value;
+  for (final task in list) {
+    if (!task.isCompleted) continue;
+    final raw = task.targetFilePath.trim();
+    if (raw.isEmpty) continue;
+    final target = localFilePathFromPlayUrl(raw) ?? raw;
+    if (_sameLocalPath(path, target)) return task;
+  }
+  return null;
+}
+
+/// Sources row for the saved file [playUrl] is playing.
+///
+/// Used when the player only has the local path (Downloads → Play). An open
+/// session that still has the remote catalog URL matches through that URL
+/// instead, so quality rows stay distinct.
+bool streamMatchesPlayingOfflineDownload(
+  Map<String, dynamic> stream, {
+  required String? playUrl,
+  Iterable<DownloadTask>? tasks,
+}) {
+  final task = downloadTaskForLocalPlayUrl(playUrl, tasks: tasks);
+  if (task == null) return false;
+  final rowTaskId = stream['_downloadTaskId']?.toString() ?? '';
+  if (rowTaskId.isNotEmpty && rowTaskId == task.id) return true;
+  final taskUrl = task.rawUrl?.trim() ?? '';
+  final streamUrl = streamHttpUrlForDownload(stream) ?? '';
+  if (taskUrl.isNotEmpty && streamUrl == taskUrl) return true;
+  final rowPath = localFilePathFromPlayUrl(stream['url']?.toString());
+  final playPath = localFilePathFromPlayUrl(playUrl);
+  if (rowPath != null &&
+      playPath != null &&
+      _sameLocalPath(rowPath, playPath)) {
+    return true;
   }
   return false;
 }

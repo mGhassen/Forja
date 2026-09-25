@@ -72,13 +72,15 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     final statusId = 'source-stremio-${stream.hashCode}';
     final pick = catalogPanelSelectionFromStream(stream);
     _s._markPlaybackConfirmed(false);
-    _s._catalogStreamRowKey = catalogStreamRowProgressKey(stream);
+    _s._catalogStreamRowKey = playingRowKeyFromStream(stream);
     _s._statusController.clear();
     setState(() {
       _s._hasError = false;
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
-        _s._currentUrl = pick.catalogUrl;
+        final filePlay = stream['url']?.toString() ?? '';
+        _s._currentUrl =
+            filePlay.startsWith('file:') ? filePlay : pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
       _s._catalogAddonName = pick.addonName ??
@@ -167,8 +169,9 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
 
       setState(() {
         _s._currentUrl = resolved.streamUrl;
-        _s._currentPlayingCatalogUrl = durableStreamCatalogUrl(
-              catalogUrl: stream['url']?.toString(),
+        _s._currentPlayingCatalogUrl =
+            playingCatalogUrlForOpenedStream(
+              stream,
               playUrl: resolved.streamUrl,
             ) ??
             resolved.streamUrl;

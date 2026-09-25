@@ -502,7 +502,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     final switchGen = ++_s._fallbackGen;
     _s._opening = true;
     final pick = catalogPanelSelectionFromStream(stream);
-    _s._catalogStreamRowKey = catalogStreamRowProgressKey(stream);
+    _s._catalogStreamRowKey = playingRowKeyFromStream(stream);
     // Drop stuck CHECKING rows so roulette shows this pick, not the old server.
     _s._statusController.clear();
     setState(() {
@@ -510,7 +510,10 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
         // Claim chrome away from the previous CDN before resolve finishes.
-        _s._currentUrl = pick.catalogUrl;
+        // A saved file stays the play URL so Sources keeps the offline state.
+        final filePlay = stream['url']?.toString() ?? '';
+        _s._currentUrl =
+            filePlay.startsWith('file:') ? filePlay : pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
       _s._catalogAddonName = pick.addonName ??
@@ -580,8 +583,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
 
       setState(() {
         _s._currentUrl = resolved.streamUrl;
-        _s._currentPlayingCatalogUrl = durableStreamCatalogUrl(
-              catalogUrl: stream['url']?.toString(),
+        _s._currentPlayingCatalogUrl =
+            playingCatalogUrlForOpenedStream(
+              stream,
               playUrl: resolved.streamUrl,
             ) ??
             resolved.streamUrl;

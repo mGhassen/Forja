@@ -845,6 +845,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       // Local torrent URL: Torrents tab owns the "playing" highlight via
       // infoHash. Do not mark Torrentio/Stremio/Nuvio rows as current.
       if (isLocalTorrentStreamUrl(playUrl)) return false;
+      // Downloads → Play only has the local path. A session opened from
+      // Sources already matched the remote catalog URL above.
+      final catalog = widget.currentPlayingCatalogUrl?.trim() ?? '';
+      final catalogIsRemote =
+          catalog.startsWith('http://') || catalog.startsWith('https://');
+      if (!catalogIsRemote &&
+          streamMatchesPlayingOfflineDownload(stream, playUrl: playUrl)) {
+        return true;
+      }
       // Remote HTTP session: identity is the play URL only — do not treat a
       // different URL as current just because infoHash matches.
       return false;

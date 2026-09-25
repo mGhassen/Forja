@@ -298,6 +298,39 @@ String catalogStreamRowProgressKey(Map<String, dynamic> stream) {
   return '$url|$quality|$name';
 }
 
+/// Remote catalog URL kept when a saved download replaces [url] with a file.
+const kOfflinePlayCatalogUrlKey = '_offlineCatalogUrl';
+
+/// Sources row key kept with [kOfflinePlayCatalogUrlKey].
+const kOfflinePlayRowKeyKey = '_offlineRowKey';
+
+/// HTTP catalog URL stamped on a local-file play map, if any.
+String? offlinePlayCatalogUrl(Map<String, dynamic> stream) {
+  final u = stream[kOfflinePlayCatalogUrlKey]?.toString().trim() ?? '';
+  return u.isEmpty ? null : u;
+}
+
+/// Row key for Sources while this map is playing, including a saved file.
+String playingRowKeyFromStream(Map<String, dynamic> stream) {
+  final stamped = stream[kOfflinePlayRowKeyKey]?.toString().trim() ?? '';
+  if (stamped.isNotEmpty) return stamped;
+  return catalogStreamRowProgressKey(stream);
+}
+
+/// Catalog identity for the Sources panel. A saved file keeps the remote URL
+/// that the row still lists.
+String? playingCatalogUrlForOpenedStream(
+  Map<String, dynamic> stream, {
+  String? playUrl,
+}) {
+  final stamped = offlinePlayCatalogUrl(stream);
+  final raw = stream['url']?.toString();
+  return durableStreamCatalogUrl(
+    catalogUrl: stamped ?? raw,
+    playUrl: playUrl ?? raw,
+  );
+}
+
 String? _pendingMetaStreamRowKey;
 
 /// Bind the catalog row opened next so the first watch-history save records

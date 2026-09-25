@@ -5,6 +5,7 @@ import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/downloads/download_task.dart';
+import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 
 void main() {
   test('completed download plays the on-disk file', () async {
@@ -49,6 +50,16 @@ void main() {
     );
     expect(local?.ok, isTrue);
     expect(local!.stream!['url'], Uri.file(file.path).toString());
+    expect(
+      local.stream![kOfflinePlayCatalogUrlKey],
+      'https://cdn.example/master.m3u8',
+    );
+    expect(
+      local.stream![kOfflinePlayRowKeyKey],
+      catalogStreamRowProgressKey({
+        'url': 'https://cdn.example/master.m3u8',
+      }),
+    );
     expect(local.stream!.containsKey('headers'), isFalse);
     final hints = local.stream!['behaviorHints'] as Map;
     expect(hints.containsKey('proxyHeaders'), isFalse);
@@ -256,6 +267,49 @@ void main() {
       isOfflineDownloadPlayUrl(
         Uri.file('/tmp/forja/other.mp4').toString(),
         tasks: [active],
+      ),
+      isFalse,
+    );
+  });
+
+  test('a saved file selects the stream that was downloaded', () {
+    final task = DownloadTask(
+      id: 'dl-file',
+      title: 'Title',
+      mediaId: '1',
+      type: 'movie',
+      sourceName: 'Castle',
+      rawUrl: 'https://cdn.example/video.mp4',
+      targetFilePath: '/tmp/forja/title.mp4',
+      status: DownloadStatus.completed,
+      createdAt: DateTime.utc(2026, 9, 25),
+    );
+    final fileUrl = Uri.file('/tmp/forja/title.mp4').toString();
+    expect(
+      streamMatchesPlayingOfflineDownload(
+        {'url': 'https://cdn.example/video.mp4', 'name': 'Castle'},
+        playUrl: fileUrl,
+        tasks: [task],
+      ),
+      isTrue,
+    );
+    expect(
+      streamMatchesPlayingOfflineDownload(
+        {
+          'url': fileUrl,
+          'name': 'Castle',
+          '_downloadTaskId': 'dl-file',
+        },
+        playUrl: fileUrl,
+        tasks: [task],
+      ),
+      isTrue,
+    );
+    expect(
+      streamMatchesPlayingOfflineDownload(
+        {'url': 'https://cdn.example/other.mp4', 'name': 'Other'},
+        playUrl: fileUrl,
+        tasks: [task],
       ),
       isFalse,
     );

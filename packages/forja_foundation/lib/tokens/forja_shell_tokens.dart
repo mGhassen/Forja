@@ -85,11 +85,8 @@ abstract final class ShellTokens {
 
   static const double navRailIconSize = 36;
 
-  /// Floor for TV density scale ([shellNavRailIconSize]) before fit-to-height.
+  /// Floor for TV density scale ([shellNavRailIconSize]).
   static const double navRailIconSizeTvMin = 16;
-
-  /// Floor when TV compresses the rail to fit every enabled tab.
-  static const double navRailIconSizeMin = 22;
 
   /// Profile avatar vs nav icon (desktop hover rail).
   static const double navRailProfileAvatarScaleDesktop = 1.65;
@@ -128,7 +125,6 @@ abstract final class ShellTokens {
   static const double navRailLabelLineHeight = 1.2;
   static const double navRailItemSpacing = 28;
   static const double navRailItemSpacingTv = navRailItemSpacing * tvChromeScale;
-  static const double navRailItemSpacingMin = 2;
   static const double navRailLogoGapDesktop = 20;
   static const double navRailLogoGapTv = navRailLogoGapDesktop * tvChromeScale;
   static const double navRailBottomPaddingDesktop = 16;
@@ -137,7 +133,6 @@ abstract final class ShellTokens {
   static const double navRailTopPaddingTv = 8 * tvChromeScale;
   static const double navRailProfileSpacingTv = 4 * tvChromeScale;
   static const double navRailNavPadVTv = 4 * tvChromeScale;
-  static const double navRailNavReserveDesktop = 16;
   static const double navRailScrollPadV = 8;
   static const double navRailLogoHoverScale = 1.04;
   static const double navRailLogoTapPadding = 4;
@@ -149,16 +144,22 @@ abstract final class ShellTokens {
   static const double shellNavMenuButtonHitSize = 34;
   static const double navRailLanMarkGap = 5;
   static const Duration navRailLabelRevealDelay = Duration(milliseconds: 300);
+
   /// Hold a nav tab this long to remount hubs and reload navbar config.
   static const Duration navCompleteReloadHold = Duration(seconds: 4);
+
   /// Start the in-icon water fill while holding toward [navCompleteReloadHold].
   static const Duration navCompleteReloadHoldCue = Duration(milliseconds: 600);
+
   /// Empty (unfilled) icon opacity during the hold fill.
   static const double navCompleteReloadHoldIconDim = 0.4;
+
   /// Wave crest height as a fraction of icon size.
   static const double navCompleteReloadHoldWaveAmplitude = 0.08;
+
   /// Horizontal wave cycles across the icon width.
   static const double navCompleteReloadHoldWaveCycles = 1.6;
+
   /// Looping wave drift period.
   static const Duration navCompleteReloadHoldWavePeriod = Duration(
     milliseconds: 900,
@@ -432,7 +433,9 @@ abstract final class ShellTokens {
   static const Duration heroAutoAdvanceDuration = Duration(seconds: 8);
 
   /// PageView transition when auto-advance / stepFilm animates.
-  static const Duration heroAutoAdvancePageDuration = Duration(milliseconds: 1000);
+  static const Duration heroAutoAdvancePageDuration = Duration(
+    milliseconds: 1000,
+  );
 
   /// Vertical step-indicator stadium (active pill width × height).
   static const double heroStepIndicatorActiveWidth = 18;
@@ -441,6 +444,7 @@ abstract final class ShellTokens {
   static const double heroStepIndicatorGap = 4;
   static const double heroStepIndicatorTrackAlpha = 0.35;
   static const double heroStepIndicatorFillAlpha = 0.95;
+
   /// Pause glyph when View details / pin holds auto-advance.
   static const double heroStepIndicatorPauseSize = 14;
 
@@ -529,19 +533,22 @@ abstract final class ShellTokens {
 
   /// Player transport / top chrome (Exo + MediaKit TV row).
   static const double playerChromeBtnSize = 38;
-  static const double playerChromeBtnSizeTv = playerChromeBtnSize * tvChromeScale;
+  static const double playerChromeBtnSizeTv =
+      playerChromeBtnSize * tvChromeScale;
   static const double playerChromeIconSize = 20;
   static const double playerChromeIconSizeTv =
       playerChromeIconSize * tvChromeScale;
   static const double playerChromeTopBtnSize = 44;
   static const double playerChromeTopBtnSizeTv =
       playerChromeTopBtnSize * tvChromeScale;
+
   /// IPTV / live transport round icons (non-play).
   static const double playerChromeRoundBtnSize = playerChromeTopBtnSize;
   static const double playerChromeRoundBtnSizeTv = playerChromeTopBtnSizeTv;
   static const double playerChromeRoundIconSize = 22;
   static const double playerChromeRoundIconSizeTv =
       playerChromeRoundIconSize * tvChromeScale;
+
   /// IPTV / live primary play/pause circle (larger than round peers).
   static const double playerChromePlayBtnSize = 56;
   static const double playerChromePlayBtnSizeTv =
@@ -559,6 +566,7 @@ abstract final class ShellTokens {
   static const double playerChromeTimeFontSizeTv = tvMetaFontSize;
   static const double playerChromeStatusFontSize = 13;
   static const double playerChromeStatusFontSizeTv = tvBodyFontSize;
+
   /// IPTV live top-bar channel mark + progress-row logo.
   static const double playerChromeLogoSize = 36;
   static const double playerChromeLogoSizeTv =
@@ -577,10 +585,18 @@ abstract final class ShellTokens {
   static const double playerPausedHeroMaxWidth = 520;
   static const double playerPausedHeroMaxWidthTv =
       playerPausedHeroMaxWidth * tvChromeScale;
-  static const EdgeInsets playerPausedHeroPadding =
-      EdgeInsets.fromLTRB(20, 0, 20, 0);
-  static const EdgeInsets playerPausedHeroPaddingTv =
-      EdgeInsets.fromLTRB(12, 0, 12, 0);
+  static const EdgeInsets playerPausedHeroPadding = EdgeInsets.fromLTRB(
+    20,
+    0,
+    20,
+    0,
+  );
+  static const EdgeInsets playerPausedHeroPaddingTv = EdgeInsets.fromLTRB(
+    12,
+    0,
+    12,
+    0,
+  );
 
   /// In-player CHECKING SOURCES / buffering status (right-center, no card).
   static const double playerStatusEdgeInset = 20;
@@ -633,10 +649,12 @@ abstract final class ShellTokens {
   static const double playerChromeSeekTrackHeight = 3.5;
   static const double playerChromeSeekTrackHeightTv =
       playerChromeSeekTrackHeight * tvChromeScale;
+
   /// Drag / armed scrub — thicker than idle.
   static const double playerChromeSeekTrackHeightActive = 6;
   static const double playerChromeSeekTrackHeightActiveTv =
       playerChromeSeekTrackHeightActive * tvChromeScale;
+
   /// TV D-pad focus highlight — between idle and drag.
   static const double playerChromeSeekTrackHeightFocused = 4;
   static const double playerChromeSeekTrackHeightFocusedTv =
@@ -773,8 +791,10 @@ abstract final class ShellTokens {
   static const double sideRailWidthTv = sideRailWidth * tvChromeScale;
   static const double emptyShellSideRailWidth = 72;
   static const double sidePanelWidth = 380;
+
   /// Leanback Portals / side rail — chrome family.
   static const double sidePanelWidthTv = sidePanelWidth * tvChromeScale;
+
   /// Docked side panel vs modal sheet — same gate as [SidePanelOverlay].
   /// Android TV always docks even when the layout strip is under this width.
   static const double sidePanelWideBreakpoint = 900;
@@ -810,11 +830,13 @@ abstract final class ShellTokens {
   static const double sectionSubtitleFontSizeMin = tvMetaFontSize;
 
   static const double torrentPanelPaddingDesktop = 16;
+
   /// Chrome family — matches player side-panel inset weight.
   static const double torrentPanelPaddingTv =
       torrentPanelPaddingDesktop * tvChromeScale;
   static const double torrentPanelTitleFontSizeDesktop = 16;
   static const double torrentPanelTitleFontSizeTv = tvTitleFontSize;
+
   /// Stream / provider row card title (smaller than panel section title).
   static const double torrentPanelRowTitleFontSizeDesktop = 13;
   static const double torrentPanelRowTitleFontSizeTv = tvBodyFontSize;
@@ -834,13 +856,16 @@ abstract final class ShellTokens {
   static const double torrentPanelRowBadgeRadiusTv =
       torrentPanelRowBadgeRadiusDesktop * tvChromeScale;
   static const double torrentPanelChipPadHDesktop = 12;
+
   /// Hand-tuned denser than desktop × chrome — match action chips / search.
   static const double torrentPanelChipPadHTv = actionChipPadHTv;
   static const double torrentPanelChipPadVDesktop = 8;
+
   /// Leanback Sources provider chips — taller than chrome-crush so D-pad pills
   /// stay readable (was 3; text sat on the border).
   static const double torrentPanelChipPadVTv = 6;
   static const double torrentPanelChipFontSizeDesktop = 12;
+
   /// Dense strip type — same ladder rung as action chips (not body).
   static const double torrentPanelChipFontSizeTv = tvMetaFontSize;
   static const double torrentPanelMetaIconSizeDesktop = 14;
@@ -888,9 +913,11 @@ abstract final class ShellTokens {
   static const double torrentPanelSearchPadH = 12;
   static const double torrentPanelSearchPadHTv =
       torrentPanelSearchPadH * tvChromeScale;
+
   /// Vertical pad inside the fixed [torrentPanelSearchHeight] face.
   /// Episodes search still uses this; Sources search uses zero pad + fixed face.
   static const double torrentPanelSearchPadV = 10;
+
   /// Tighter than desktop × chrome — field must fit leanback type without clipping.
   static const double torrentPanelSearchPadVTv = 4;
   static const double torrentPanelSearchRadius = 10;
@@ -901,6 +928,7 @@ abstract final class ShellTokens {
       torrentPanelSearchGap * tvChromeScale;
   static const double torrentPanelFilterIconSize = 18;
   static const double torrentPanelFilterIconSizeTv = actionChipIconSizeTv;
+
   /// Tune button beside Search — same height so the toolbar row stays aligned.
   static const double torrentPanelFilterButtonHeight = torrentPanelSearchHeight;
   static const double torrentPanelFilterButtonHeightTv =
@@ -1027,6 +1055,7 @@ abstract final class ShellTokens {
   static const double eventDenseFontSizeTv = tvTitleFontSize;
   static const double eventDenseMetaFontSize = 12;
   static const double eventDenseMetaFontSizeTv = tvBodyFontSize;
+
   /// Tight line box so title+meta fit [denseListRowExtent] (font metrics alone overflow).
   static const double eventDenseLineHeight = 1.15;
   static const double eventDenseMetaGap = 2;
@@ -1045,18 +1074,21 @@ abstract final class ShellTokens {
   /// [tvBodyFontSize], not [tvChromeScale].
   /// +2 slack covers TextPainter / platform font metrics beyond fontSize×height
   /// (Android Roboto overflowed by 1px with +1).
-  static const double denseListRowExtent = eventDensePadV * 2 +
+  static const double denseListRowExtent =
+      eventDensePadV * 2 +
       eventDenseFontSize * eventDenseLineHeight +
       eventDenseMetaGap +
       eventDenseMetaFontSize * eventDenseLineHeight +
       2;
-  static const double denseListRowExtentTv = eventDensePadVTv * 2 +
+  static const double denseListRowExtentTv =
+      eventDensePadVTv * 2 +
       eventDenseFontSizeTv * eventDenseLineHeight +
       eventDenseMetaGapTv +
       eventDenseMetaFontSizeTv * eventDenseLineHeight +
       2;
   static double denseListRowExtentOf(bool tv) =>
       tv ? denseListRowExtentTv : denseListRowExtent;
+
   /// Row + separator stride for scroll-index math ([ListView.separated]).
   static double denseListStrideOf(bool tv) =>
       denseListRowExtentOf(tv) + denseListSeparator;
@@ -1089,6 +1121,7 @@ abstract final class ShellTokens {
   static const double moodCircleBottomPad = moodCircleLabelGap;
   static const double moodCircleIconSize = 20;
   static const double moodCircleIconSizeActive = 26;
+
   /// Label slot taller than 2× line so wrapped titles do not clip neighbors.
   static const double moodCircleLabelSlotHeight = 34;
 
@@ -1170,8 +1203,7 @@ abstract final class ShellTokens {
   static const double streamLoadingBottomInsetTv =
       streamLoadingBottomInset * tvChromeScale;
   static const double streamLoadingPadH = 24;
-  static const double streamLoadingPadHTv =
-      streamLoadingPadH * tvChromeScale;
+  static const double streamLoadingPadHTv = streamLoadingPadH * tvChromeScale;
   static const double streamLoadingSpinnerStroke = 3;
   static const double streamLoadingSpinnerStrokeTv =
       streamLoadingSpinnerStroke * tvChromeScale;
@@ -1317,11 +1349,13 @@ abstract final class ShellTokens {
   static const double streamLoadingFailureTitleFontSize = 22;
   static const double streamLoadingFailureTitleFontSizeTv = tvTitleFontSize;
   static const double streamLoadingFailureTitleFontSizeCompact = 18;
-  static const double streamLoadingFailureTitleFontSizeCompactTv = tvTitleFontSize;
+  static const double streamLoadingFailureTitleFontSizeCompactTv =
+      tvTitleFontSize;
   static const double streamLoadingFailureDetailFontSize = 14;
   static const double streamLoadingFailureDetailFontSizeTv = tvBodyFontSize;
   static const double streamLoadingFailureDetailFontSizeCompact = 13;
-  static const double streamLoadingFailureDetailFontSizeCompactTv = tvBodyFontSize;
+  static const double streamLoadingFailureDetailFontSizeCompactTv =
+      tvBodyFontSize;
   static const double streamLoadingFailureButtonPadH = 22;
   static const double streamLoadingFailureButtonPadHTv =
       streamLoadingFailureButtonPadH * tvChromeScale;
@@ -1416,9 +1450,11 @@ abstract final class ShellTokens {
   static const double formInputFontSizeLg = 16;
   static const double formInputFontSizeLgTv = tvTitleFontSize;
   static const double formInputIconSizeSm = 18;
-  static const double formInputIconSizeSmTv = formInputIconSizeSm * tvChromeScale;
+  static const double formInputIconSizeSmTv =
+      formInputIconSizeSm * tvChromeScale;
   static const double formInputIconSizeLg = 22;
-  static const double formInputIconSizeLgTv = formInputIconSizeLg * tvChromeScale;
+  static const double formInputIconSizeLgTv =
+      formInputIconSizeLg * tvChromeScale;
   static const double formInputPadHLg = 16;
   static const double formInputPadHLgTv = formInputPadHLg * tvChromeScale;
   static const double formInputPadVLg = 14;
@@ -1433,7 +1469,8 @@ abstract final class ShellTokens {
   static const double filterSheetRadius = 12;
   static const double filterSheetRadiusTv = 10;
   static const double filterSheetHandleWidth = 40;
-  static const double filterSheetHandleWidthTv = filterSheetHandleWidth * tvChromeScale;
+  static const double filterSheetHandleWidthTv =
+      filterSheetHandleWidth * tvChromeScale;
   static const double filterSheetHandleHeight = 4;
   static const double filterSheetHandleHeightTv = 3;
   static const double filterSheetTitleFontSize = 16;
@@ -1445,17 +1482,21 @@ abstract final class ShellTokens {
   static const double filterSheetMetaFontSize = 11;
   static const double filterSheetMetaFontSizeTv = tvMetaFontSize;
   static const double filterSheetIconSize = 24;
-  static const double filterSheetIconSizeTv = filterSheetIconSize * tvChromeScale;
+  static const double filterSheetIconSizeTv =
+      filterSheetIconSize * tvChromeScale;
   static const double filterSheetCheckSize = 22;
-  static const double filterSheetCheckSizeTv = filterSheetCheckSize * tvChromeScale;
+  static const double filterSheetCheckSizeTv =
+      filterSheetCheckSize * tvChromeScale;
   static const double filterSheetPadH = 24;
   static const double filterSheetPadHTv = filterSheetPadH * tvChromeScale;
   static const double filterSheetPadTop = 20;
   static const double filterSheetPadTopTv = filterSheetPadTop * tvChromeScale;
   static const double filterSheetPadBottom = 32;
-  static const double filterSheetPadBottomTv = filterSheetPadBottom * tvChromeScale;
+  static const double filterSheetPadBottomTv =
+      filterSheetPadBottom * tvChromeScale;
   static const double filterSheetTitleGap = 20;
-  static const double filterSheetTitleGapTv = filterSheetTitleGap * tvChromeScale;
+  static const double filterSheetTitleGapTv =
+      filterSheetTitleGap * tvChromeScale;
   static const double filterSheetSubtitleGap = 6;
   static const double filterSheetSubtitleGapTv = 4;
   static const double filterSheetListGap = 16;
@@ -1610,8 +1651,7 @@ abstract final class ShellTokens {
   static const double searchQueryFontSize = 32;
   static const double searchQueryFontSizeTv = tvTitleFontSize;
   static const double searchQueryCursorHeight = 36;
-  static const double searchQueryCursorHeightTv =
-      searchQueryFontSizeTv * 1.15;
+  static const double searchQueryCursorHeightTv = searchQueryFontSizeTv * 1.15;
 
   /// Hub search recent / recommendation rows.
   static const double searchHelperFontSize = 15;
@@ -1647,8 +1687,7 @@ abstract final class ShellTokens {
   static const double searchFilterSubmitGapTv =
       searchFilterSubmitGap * tvChromeScale;
   static const double searchFilterTopPad = 12;
-  static const double searchFilterTopPadTv =
-      searchFilterTopPad * tvChromeScale;
+  static const double searchFilterTopPadTv = searchFilterTopPad * tvChromeScale;
   static const double searchFilterScoreTrackHeight = 28;
   static const double searchFilterScoreTrackHeightTv =
       searchFilterScoreTrackHeight * tvChromeScale;

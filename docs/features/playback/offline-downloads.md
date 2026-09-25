@@ -47,8 +47,8 @@ The header is a storage meter: offline library vs other space on the volume vs f
 On a completed row in Settings, tap **Play**. In Sources, tap the Offline stream
 row. Forja opens the local file in the same player (ExoPlayer and MediaKit stay
 available — pick from the Player menu as usual). While that file is playing,
-the Sources button shows an offline icon before the provider name. Play online
-drops the icon.
+the Sources button shows an offline icon before the provider name, and opening
+Sources selects that stream. Play online drops the icon.
 
 If Play says the file can’t be played, delete that row and download again — the
 saved file is damaged or incomplete.

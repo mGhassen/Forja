@@ -38,7 +38,8 @@ bool shellUsesWideLayout(BuildContext context) {
 
 double shellPosterCardWidth(BuildContext context) {
   if (ShellScope.profileOf(context) == ShellProfile.mobile) {
-    return MediaQuery.sizeOf(context).width > ShellTokens.posterCardWideBreakpoint
+    return MediaQuery.sizeOf(context).width >
+            ShellTokens.posterCardWideBreakpoint
         ? ShellTokens.posterCardWidthDesktop
         : ShellTokens.posterCardWidthMobile;
   }
@@ -150,13 +151,12 @@ double shellCardBorderRadius(BuildContext context) => shellScaled(
   ShellTokens.posterCardRadius,
 ).clamp(ShellTokens.posterCardRadiusMin, ShellTokens.posterCardRadius);
 
-/// Preferred nav icon size. TV density scales down from the desktop token;
-/// [_navRailFitForHeight] may compress further so every tab fits.
-double shellNavRailIconSize(BuildContext context) =>
-    shellScaled(context, ShellTokens.navRailIconSize).clamp(
-      ShellTokens.navRailIconSizeTvMin,
-      ShellTokens.navRailIconSize,
-    );
+/// Preferred nav icon size. TV density scales down from the desktop token.
+/// Extra hubs scroll the rail; size and gap stay at this value.
+double shellNavRailIconSize(BuildContext context) => shellScaled(
+  context,
+  ShellTokens.navRailIconSize,
+).clamp(ShellTokens.navRailIconSizeTvMin, ShellTokens.navRailIconSize);
 
 double shellNavRailLabelFontSize(BuildContext context) {
   if (ShellScope.metricsOf(context).usesTvDensity) {
@@ -166,7 +166,10 @@ double shellNavRailLabelFontSize(BuildContext context) {
 }
 
 /// Label row height — includes [MediaQuery.textScalerOf] (Windows accessibility).
-double shellNavRailLabelSlotHeight(BuildContext context, [double? baseFontSize]) {
+double shellNavRailLabelSlotHeight(
+  BuildContext context, [
+  double? baseFontSize,
+]) {
   final base = baseFontSize ?? ShellTokens.navRailLabelFontSize;
   return MediaQuery.textScalerOf(context).scale(base) *
       ShellTokens.navRailLabelLineHeight;

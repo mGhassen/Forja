@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -24,89 +25,39 @@ import 'package:forja/shell/brand/forja_profile_avatar.dart';
 import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
-double _navRailItemSpacingForHeight({
-  required int itemCount,
-  required double maxHeight,
-  required double preferredSpacing,
-  required double itemContentHeight,
-}) {
-  if (itemCount <= 0) return preferredSpacing;
-  final naturalHeight = itemCount * (itemContentHeight + preferredSpacing);
-  if (naturalHeight <= maxHeight) return preferredSpacing;
-  return math.max(0, (maxHeight - itemCount * itemContentHeight) / itemCount);
-}
 
-double _navRailItemContentHeight({
-  required double iconSize,
-  required double labelSlotHeight,
-}) {
-  return iconSize * ShellTokens.navRailIconHoverScale +
-      ShellTokens.navRailIconUnderlineGap +
-      ShellTokens.shellNavUnderlineHeight +
-      ShellTokens.navRailIconLabelGap +
-      labelSlotHeight;
-}
-
-/// Shrink icons (then spacing) so [itemCount] rail items fit in [maxHeight].
-({double iconSize, double labelSlotHeight, double itemSpacing}) _navRailFitForHeight({
-  required int itemCount,
-  required double maxHeight,
-  required double preferredIconSize,
-  required double preferredLabelSlotHeight,
-  required double preferredSpacing,
-}) {
-  if (itemCount <= 0) {
-    return (
-      iconSize: preferredIconSize,
-      labelSlotHeight: preferredLabelSlotHeight,
-      itemSpacing: preferredSpacing,
-    );
+/// Scroll a focused rail tab into view only when it is clipped.
+void revealNavRailItem(BuildContext context) {
+  final box = context.findRenderObject();
+  if (box is! RenderBox || !box.attached || !box.hasSize) return;
+  final viewport = RenderAbstractViewport.maybeOf(box);
+  final scrollable = Scrollable.maybeOf(context);
+  if (viewport == null || scrollable == null) return;
+  final position = scrollable.position;
+  if (!position.hasContentDimensions || !position.hasPixels) return;
+  final top = viewport.getOffsetToReveal(box, 0.0).offset;
+  final height = box.size.height;
+  final pixels = position.pixels;
+  final view = position.viewportDimension;
+  const slop = 1.0;
+  double? next;
+  if (top < pixels - slop) {
+    next = top;
+  } else if (top + height > pixels + view + slop) {
+    next = top + height - view;
   }
-
-  var iconSize = preferredIconSize;
-  final labelSlotHeight = preferredLabelSlotHeight;
-  double contentHeight() => _navRailItemContentHeight(
-    iconSize: iconSize,
-    labelSlotHeight: labelSlotHeight,
-  );
-
-  var spacing = _navRailItemSpacingForHeight(
-    itemCount: itemCount,
-    maxHeight: maxHeight,
-    preferredSpacing: preferredSpacing,
-    itemContentHeight: contentHeight(),
-  );
-
-  // Prefer keeping desktop-sized icons; only compress when spacing hits ~0.
-  if (itemCount * contentHeight() <= maxHeight) {
-    return (
-      iconSize: iconSize,
-      labelSlotHeight: labelSlotHeight,
-      itemSpacing: spacing,
-    );
+  if (next == null) return;
+  next = next.clamp(position.minScrollExtent, position.maxScrollExtent);
+  if ((next - pixels).abs() < 0.5) return;
+  final policy = ShellScope.maybeOf(context)?.inputPolicy;
+  if (policy != null && policy.instantFocusChrome) {
+    position.jumpTo(next);
+    return;
   }
-
-  final minIcon = ShellTokens.navRailIconSizeMin;
-  // Solve: n * (icon * hoverScale + fixedChrome + minSpacing) <= maxHeight
-  const minSpacing = ShellTokens.navRailItemSpacingMin;
-  final fixedChrome = ShellTokens.navRailIconUnderlineGap +
-      ShellTokens.shellNavUnderlineHeight +
-      ShellTokens.navRailIconLabelGap;
-  final perItemBudget = maxHeight / itemCount;
-  final iconBudget =
-      (perItemBudget - fixedChrome - preferredLabelSlotHeight - minSpacing) /
-      ShellTokens.navRailIconHoverScale;
-  iconSize = iconBudget.clamp(minIcon, preferredIconSize);
-  spacing = _navRailItemSpacingForHeight(
-    itemCount: itemCount,
-    maxHeight: maxHeight,
-    preferredSpacing: preferredSpacing,
-    itemContentHeight: contentHeight(),
-  );
-  return (
-    iconSize: iconSize,
-    labelSlotHeight: labelSlotHeight,
-    itemSpacing: spacing,
+  position.animateTo(
+    next,
+    duration: const Duration(milliseconds: 140),
+    curve: Curves.easeOutCubic,
   );
 }
 
@@ -285,7 +236,8 @@ class _ShellNavRailState extends State<ShellNavRail> {
     if (widget.visibleIds.isEmpty) return;
     // Guest / Settings-only: empty get-started (or Settings hub) owns first
     // focus — cold-start rail steal left RIGHT/Back stuck on the Settings icon.
-    if (widget.visibleIds.length == 1 && widget.visibleIds.first == 'settings') {
+    if (widget.visibleIds.length == 1 &&
+        widget.visibleIds.first == 'settings') {
       _coldStartNavFocusDone = true;
       return;
     }
@@ -339,7 +291,8 @@ class _ShellNavRailState extends State<ShellNavRail> {
               builder: (context) {
                 final id = _navIds[i];
                 final index = _indexForId(id)!;
-                final dest = navDestinationFor(id) ??
+                final dest =
+                    navDestinationFor(id) ??
                     NavDestination(
                       id: id,
                       icon: Icons.apps_outlined,
@@ -388,13 +341,12 @@ class _ShellNavRailState extends State<ShellNavRail> {
                   onExit: (_) => setState(() => _mouseInRail = false),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      const navPadV = ShellTokens.navRailNavPadVTv;
-                      final chromeReserve = isTv
-                          ? navPadV * 2
-                          : ShellTokens.navRailNavReserveDesktop;
-                      final available = math.max(
+                      final padV = isTv
+                          ? ShellTokens.navRailNavPadVTv
+                          : ShellTokens.navRailScrollPadV;
+                      final innerHeight = math.max(
                         0.0,
-                        constraints.maxHeight - chromeReserve,
+                        constraints.maxHeight - padV * 2,
                       );
                       final profileSpacing = isTv
                           ? ShellTokens.navRailProfileSpacingTv
@@ -403,61 +355,17 @@ class _ShellNavRailState extends State<ShellNavRail> {
                         preferredLabelSlot,
                         LanPresenceMark.railSlotHeight(tv: isTv),
                       );
-                      final profileBoost =
-                          shellNavRailProfileAvatarScale(context);
                       final showBoostedProfile =
                           settingsIndex != null && showDesktopProfile;
                       // Peer-size profile only in compact shell (☰ drawer width).
-                      // Wide desktop keeps the large avatar even if tabs compress.
-                      final compactShell =
-                          ShellTokens.usesCompactNavDrawer(context);
-
-                      late final double profileIconSize;
-                      late final ({
-                        double iconSize,
-                        double labelSlotHeight,
-                        double itemSpacing,
-                      }) fit;
-
-                      if (!showBoostedProfile) {
-                        fit = _navRailFitForHeight(
-                          itemCount: _navIds.length +
-                              (settingsIndex == null ? 0 : 1),
-                          maxHeight: available,
-                          preferredIconSize: preferredIconSize,
-                          preferredLabelSlotHeight: preferredLabelSlot,
-                          preferredSpacing: metrics.navRailItemSpacing,
-                        );
-                        profileIconSize = fit.iconSize;
-                      } else if (compactShell) {
-                        fit = _navRailFitForHeight(
-                          itemCount: _navIds.length + 1,
-                          maxHeight: available,
-                          preferredIconSize: preferredIconSize,
-                          preferredLabelSlotHeight: preferredLabelSlot,
-                          preferredSpacing: metrics.navRailItemSpacing,
-                        );
-                        profileIconSize = fit.iconSize;
-                      } else {
-                        // Wide: reserve boosted profile; nav icons may compress.
-                        final boostedPaint = preferredIconSize *
-                            profileBoost *
-                            ShellTokens.navRailIconHoverScale;
-                        final boostedBlock = boostedPaint +
-                            ShellTokens.navRailIconUnderlineGap +
-                            ShellTokens.shellNavUnderlineHeight +
-                            ShellTokens.navRailIconLabelGap +
-                            profileLabelSlot +
-                            profileSpacing;
-                        fit = _navRailFitForHeight(
-                          itemCount: _navIds.length,
-                          maxHeight: math.max(0.0, available - boostedBlock),
-                          preferredIconSize: preferredIconSize,
-                          preferredLabelSlotHeight: preferredLabelSlot,
-                          preferredSpacing: metrics.navRailItemSpacing,
-                        );
-                        profileIconSize = preferredIconSize * profileBoost;
-                      }
+                      final compactShell = ShellTokens.usesCompactNavDrawer(
+                        context,
+                      );
+                      final profileIconSize =
+                          showBoostedProfile && !compactShell
+                          ? preferredIconSize *
+                                shellNavRailProfileAvatarScale(context)
+                          : preferredIconSize;
 
                       // Paint at hover size; idle AnimatedScale downscales —
                       // upscaling a smaller SVG was the stutter/flash.
@@ -465,43 +373,20 @@ class _ShellNavRailState extends State<ShellNavRail> {
                           profileIconSize * ShellTokens.navRailIconHoverScale;
 
                       final navColumn = buildNavColumn(
-                        itemSpacing: fit.itemSpacing,
-                        iconSize: fit.iconSize,
-                        labelSlotHeight: fit.labelSlotHeight,
+                        itemSpacing: metrics.navRailItemSpacing,
+                        iconSize: preferredIconSize,
+                        labelSlotHeight: preferredLabelSlot,
                       );
 
-                      final navArea = isTv
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: navPadV,
-                              ),
-                              child: navColumn,
-                            )
-                          : SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: ShellTokens.navRailScrollPadV,
-                              ),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minHeight: math.max(
-                                    0,
-                                    available -
-                                        (settingsIndex == null
-                                            ? 0.0
-                                            : profilePaintSize +
-                                                ShellTokens
-                                                    .navRailIconUnderlineGap +
-                                                ShellTokens
-                                                    .shellNavUnderlineHeight +
-                                                ShellTokens
-                                                    .navRailIconLabelGap +
-                                                profileLabelSlot +
-                                                profileSpacing),
-                                  ),
-                                ),
-                                child: navColumn,
-                              ),
-                            );
+                      // Fixed icon size and gap. Extra hubs scroll; profile
+                      // stays pinned under this list.
+                      final navArea = SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(vertical: padV),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minHeight: innerHeight),
+                          child: navColumn,
+                        ),
+                      );
 
                       return Column(
                         children: [
@@ -530,7 +415,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                                   customIconSize: showDesktopProfile
                                       ? profileIconSize
                                       : null,
-                                  iconSize: fit.iconSize,
+                                  iconSize: preferredIconSize,
                                   labelFontSize: preferredLabelFont,
                                   labelSlotHeight: profileLabelSlot,
                                   alwaysShowLabel: showDesktopProfile,
@@ -539,9 +424,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                                   selected:
                                       settingsIndex == widget.selectedIndex,
                                   onTap: () {
-                                    widget.onDestinationSelected(
-                                      settingsIndex,
-                                    );
+                                    widget.onDestinationSelected(settingsIndex);
                                   },
                                   itemSpacing: profileSpacing,
                                   railEngaged: _railEngaged,
@@ -623,7 +506,8 @@ class _RailLogoState extends State<_RailLogo> {
     final onTap = widget.onTap;
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final active = onTap != null &&
+    final active =
+        onTap != null &&
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _hover,
@@ -863,11 +747,7 @@ class _NavRailLabel extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        LanPresenceMark(
-          presence: presence,
-          size: markSize,
-          showBar: showBar,
-        ),
+        LanPresenceMark(presence: presence, size: markSize, showBar: showBar),
         const SizedBox(width: ShellTokens.navRailLanMarkGap),
         Flexible(child: label),
       ],
@@ -903,8 +783,10 @@ class _ShellNavRailItem extends StatefulWidget {
   final VoidCallback onFocusChanged;
   final String? label;
   final Widget? icon;
+
   /// LAN server (dot) + session (bar) before the profile label.
   final LanPresence labelPresence;
+
   /// Fitted / preferred glyph size for destination icons.
   final double? iconSize;
   final double? labelFontSize;
@@ -949,6 +831,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     );
     _focusNode = FocusNode(debugLabel: 'nav-${widget.destination.id}');
     ShellTvFocus.registerNav(widget.destination.id, _focusNode);
+    if (widget.selected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        revealNavRailItem(context);
+      });
+    }
   }
 
   @override
@@ -961,6 +849,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       ShellTvFocus.registerNav(widget.destination.id, _focusNode);
       _focusNode.debugLabel = 'nav-${widget.destination.id}';
       _cancelProviderReveal();
+    }
+    if (widget.selected && !oldWidget.selected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        revealNavRailItem(context);
+      });
     }
   }
 
@@ -1089,7 +983,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final labelFont =
         widget.labelFontSize ?? shellNavRailLabelFontSize(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
-    final labelSlot = widget.labelSlotHeight ??
+    final labelSlot =
+        widget.labelSlotHeight ??
         (widget.alwaysShowLabel
             ? math.max(
                 shellNavRailLabelSlotHeight(context, labelFont),
@@ -1123,7 +1018,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final lanShowBar = LanServerService.canRunServer;
     final lanMarkSize = LanPresenceMark.sizeFor(tv: tv);
-    final labelSlotHeight = widget.labelSlotHeight ??
+    final labelSlotHeight =
+        widget.labelSlotHeight ??
         (widget.alwaysShowLabel
             ? math.max(
                 shellNavRailLabelSlotHeight(context, labelFontSize),
@@ -1131,13 +1027,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               )
             : shellNavRailLabelSlotHeight(context, labelFontSize));
     final contentHeight = _contentHeight(context);
-    final underlineWidth = shellScaled(
-      context,
-      ShellTokens.shellNavUnderlineWidth,
-    ).clamp(
-      ShellTokens.shellNavUnderlineWidthMin,
-      ShellTokens.shellNavUnderlineWidth,
-    );
+    final underlineWidth =
+        shellScaled(context, ShellTokens.shellNavUnderlineWidth).clamp(
+          ShellTokens.shellNavUnderlineWidthMin,
+          ShellTokens.shellNavUnderlineWidth,
+        );
     final destinationAccent =
         navDestinationAccentColors[widget.destination.id] ??
         ForjaShellColors.brandGreen;
@@ -1167,7 +1061,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         ? ForjaShellColors.textSecondary
         : ForjaShellColors.iconMuted;
     // Desktop: typewriter on hover. TV: static label when D-pad focus is visible.
-    final showLabel = widget.alwaysShowLabel ||
+    final showLabel =
+        widget.alwaysShowLabel ||
         policy.focusChromeVisible(context, focused: _focused) &&
             !policy.scaleOnHover;
     final labelStyle = GoogleFonts.plusJakartaSans(
@@ -1223,6 +1118,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         onFocusChange: (focused) {
           setState(() => _focused = focused);
           widget.onFocusChanged();
+          if (focused) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              revealNavRailItem(context);
+            });
+          }
         },
         onKeyEvent: (node, event) {
           if (shellTvIsActivateKey(event)) {
@@ -1341,7 +1242,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                       children: [
                         SizedBox(
                           width: railW,
-                          height: renderedIconSize *
+                          height:
+                              renderedIconSize *
                               ShellTokens.navRailIconHoverScale,
                           child: Align(
                             alignment: Alignment.bottomCenter,
@@ -1385,9 +1287,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                             ),
                           ),
                         ),
-                        const SizedBox(
-                          height: ShellTokens.navRailIconLabelGap,
-                        ),
+                        const SizedBox(height: ShellTokens.navRailIconLabelGap),
                         SizedBox(
                           height: labelSlotHeight,
                           width: railW,

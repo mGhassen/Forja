@@ -41,6 +41,34 @@ void main() {
   });
 
   group('catalogStreamRowMatchesPlaying', () {
+    test('matches catalog row while play URL is a saved file', () {
+      const catalog = 'https://cdn.example/ep.m3u8';
+      final row = {
+        'url': catalog,
+        'quality': '1080p',
+        'name': 'Example',
+      };
+      final key = catalogStreamRowProgressKey(row);
+      expect(
+        catalogStreamRowMatchesPlaying(
+          row,
+          playUrl: 'file:///tmp/title.mp4',
+          catalogUrl: catalog,
+          playingRowKey: key,
+        ),
+        isTrue,
+      );
+      expect(
+        catalogStreamRowMatchesPlaying(
+          {...row, 'quality': '720p'},
+          playUrl: 'file:///tmp/title.mp4',
+          catalogUrl: catalog,
+          playingRowKey: key,
+        ),
+        isFalse,
+      );
+    });
+
     test('matches catalog row while play URL is proxy', () {
       const catalog = 'https://cdn.example/ep.m3u8';
       final proxy =

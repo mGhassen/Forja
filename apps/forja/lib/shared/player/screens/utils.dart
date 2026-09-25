@@ -13,6 +13,8 @@ export 'package:forja/shared/playback/probe/playback_stream_guards.dart'
         catalogStreamRowMatchesSavedProgress,
         bindPendingMetaStreamRowKey,
         catalogStreamRowProgressKey,
+        playingCatalogUrlForOpenedStream,
+        playingRowKeyFromStream,
         takePendingMetaStreamRowKey,
         durableStreamCatalogUrl,
         enginePluginIdFromCatalogBase,
@@ -1405,8 +1407,7 @@ String catalogHttpPlayProviderId(Map<String, dynamic> stream) {
 catalogPanelSelectionFromStream(Map<String, dynamic> stream) {
   final base = stream['_addonBaseUrl']?.toString();
   final rawUrl = stream['url']?.toString();
-  final catalogUrl =
-      durableStreamCatalogUrl(catalogUrl: rawUrl, playUrl: rawUrl) ?? rawUrl;
+  final catalogUrl = playingCatalogUrlForOpenedStream(stream) ?? rawUrl;
   final kind = (base != null && base.startsWith('nuvio:'))
       ? 'nuvio'
       : (base != null && base.startsWith('engine:'))

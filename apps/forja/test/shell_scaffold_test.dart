@@ -200,7 +200,7 @@ void main() {
     expect(find.byType(ShellBottomNav), findsNothing);
   });
 
-                    testWidgets(
+  testWidgets(
     'ShellScaffold dismisses shell overlay when nav destination selected',
     (tester) async {
       await pumpScaffold(
@@ -228,7 +228,7 @@ void main() {
     },
   );
 
-    testWidgets('ShellNavRail uses fixed width without hover expand', (
+  testWidgets('ShellNavRail uses fixed width without hover expand', (
     tester,
   ) async {
     await pumpScaffold(
@@ -275,8 +275,7 @@ void main() {
           .widget<NavDestinationIcon>(
             find.byWidgetPredicate(
               (widget) =>
-                  widget is NavDestinationIcon &&
-                  widget.destination.id == hubB,
+                  widget is NavDestinationIcon && widget.destination.id == hubB,
             ),
           )
           .color,
@@ -307,8 +306,7 @@ void main() {
     await tester.pumpAndSettle();
 
     Finder homeIconWidget() => find.byWidgetPredicate(
-      (widget) =>
-          widget is NavDestinationIcon && widget.destination.id == hubA,
+      (widget) => widget is NavDestinationIcon && widget.destination.id == hubA,
     );
     final homeImage = find.byIcon(Icons.home_outlined);
     expect(
@@ -389,17 +387,10 @@ void main() {
     expect(underlineColor, navDestinationAccentColors[hubB]);
   });
 
-  testWidgets('TV nav rail fits all enabled tabs without scrolling', (
+  testWidgets('TV nav rail keeps icon size when many tabs are enabled', (
     tester,
   ) async {
-    const manyIds = [
-      hubA,
-      hubC,
-      hubB,
-      'iptv',
-      'live_sports',
-      'settings',
-    ];
+    const manyIds = [hubA, hubC, hubB, 'iptv', 'live_sports', 'settings'];
     await pumpScaffold(
       tester,
       ShellScaffold(
@@ -428,6 +419,17 @@ void main() {
     }
 
     final railContext = tester.element(find.byType(ShellNavRail));
+    final expectedIconSize = shellNavRailIconSize(railContext);
+    for (final id in manyIds) {
+      if (id == 'settings') continue;
+      final icon = tester.widget<NavDestinationIcon>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is NavDestinationIcon && widget.destination.id == id,
+        ),
+      );
+      expect(icon.size, expectedIconSize, reason: '$id icon size');
+    }
     final avatar = tester.widget<ForjaProfileAvatar>(
       find.byType(ForjaProfileAvatar),
     );
@@ -445,6 +447,75 @@ void main() {
             ShellTokens.navRailIconHoverScale,
       ),
     );
+  });
+
+  testWidgets('extra hubs keep icon size and gap and scroll the rail', (
+    tester,
+  ) async {
+    const manyIds = [hubA, hubC, hubB, 'iptv', 'live_sports', 'settings'];
+    await pumpScaffold(
+      tester,
+      ShellScaffold(
+        useNavRail: true,
+        visibleIds: manyIds,
+        selectedIndex: 0,
+        mountedTabIds: manyIds.toSet(),
+        onDestinationSelected: (_) {},
+        tabFor: (id) => Center(child: Text(id)),
+      ),
+      size: const Size(1200, 480),
+      profile: ShellProfile.desktop,
+    );
+    await tester.pumpAndSettle();
+
+    final railContext = tester.element(find.byType(ShellNavRail));
+    final expectedIconSize = shellNavRailIconSize(railContext);
+    NavDestinationIcon iconFor(String id) => tester.widget<NavDestinationIcon>(
+      find.byWidgetPredicate(
+        (widget) => widget is NavDestinationIcon && widget.destination.id == id,
+      ),
+    );
+    expect(iconFor(hubA).size, expectedIconSize);
+    expect(iconFor(hubC).size, expectedIconSize);
+
+    final gap =
+        tester
+            .getCenter(
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is NavDestinationIcon &&
+                    widget.destination.id == hubC,
+              ),
+            )
+            .dy -
+        tester
+            .getCenter(
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is NavDestinationIcon &&
+                    widget.destination.id == hubA,
+              ),
+            )
+            .dy;
+    final metrics = ShellScope.metricsOf(railContext);
+    expect(
+      gap,
+      closeTo(
+        shellNavRailItemContentHeight(railContext, iconSize: expectedIconSize) +
+            metrics.navRailItemSpacing,
+        0.5,
+      ),
+    );
+
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byType(ShellNavRail),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    final avatarTop = tester.getTopLeft(find.byType(ForjaProfileAvatar)).dy;
+    expect(avatarTop, greaterThan(gap));
   });
 
   testWidgets('desktop profile avatar is grey idle and colored on hover', (
@@ -473,10 +544,7 @@ void main() {
     );
     final avatarScale = tester.widget<AnimatedScale>(
       find
-          .ancestor(
-            of: avatarFinder,
-            matching: find.byType(AnimatedScale),
-          )
+          .ancestor(of: avatarFinder, matching: find.byType(AnimatedScale))
           .first,
     );
     expect(avatarScale.scale, 1 / ShellTokens.navRailIconHoverScale);
@@ -595,7 +663,7 @@ void main() {
     expect(railBox.localToGlobal(Offset.zero).dx, systemOverscan);
   });
 
-    testWidgets(
+  testWidgets(
     'ShellScaffold collapses rail gutter when hideGlobalNav is true',
     (tester) async {
       await pumpScaffold(
@@ -610,65 +678,61 @@ void main() {
     },
   );
 
-  testWidgets(
-    'ghost and plainIcon Buttons render',
-    (tester) async {
-      await pumpScaffold(
-        tester,
-        Scaffold(
-          body: Row(
-            children: [
-              Button(
-                variant: ButtonVariant.ghost,
-                label: 'Watch Now',
-                onPressed: () {},
-              ),
-              Button(
-                variant: ButtonVariant.plainIcon,
-                size: ButtonSize.icon,
-                icon: Icons.info_outline,
-                onPressed: () {},
-              ),
-            ],
-          ),
+  testWidgets('ghost and plainIcon Buttons render', (tester) async {
+    await pumpScaffold(
+      tester,
+      Scaffold(
+        body: Row(
+          children: [
+            Button(
+              variant: ButtonVariant.ghost,
+              label: 'Watch Now',
+              onPressed: () {},
+            ),
+            Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
+              icon: Icons.info_outline,
+              onPressed: () {},
+            ),
+          ],
         ),
-        size: const Size(600, 200),
-      );
+      ),
+      size: const Size(600, 200),
+    );
 
-      expect(find.text('Watch Now'), findsOneWidget);
-      expect(find.byType(Button), findsNWidgets(2));
-    },
-  );
+    expect(find.text('Watch Now'), findsOneWidget);
+    expect(find.byType(Button), findsNWidgets(2));
+  });
 
-  testWidgets(
-    'plainIcon close Button has no outlined DecoratedBox border',
-    (tester) async {
-      await pumpScaffold(
-        tester,
-        const Scaffold(
-          body: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Button(
-                variant: ButtonVariant.plainIcon,
-                size: ButtonSize.icon,
-                icon: Icons.tune_rounded,
-              ),
-              Button(
-                variant: ButtonVariant.plainIcon,
-                size: ButtonSize.icon,
-                icon: Icons.close_rounded,
-                compact: true,
-              ),
-            ],
-          ),
+  testWidgets('plainIcon close Button has no outlined DecoratedBox border', (
+    tester,
+  ) async {
+    await pumpScaffold(
+      tester,
+      const Scaffold(
+        body: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
+              icon: Icons.tune_rounded,
+            ),
+            Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
+              icon: Icons.close_rounded,
+              compact: true,
+            ),
+          ],
         ),
-        size: const Size(200, 120),
-      );
+      ),
+      size: const Size(200, 120),
+    );
 
-      expect(find.byType(Button), findsNWidgets(2));
-    },
-  );
+    expect(find.byType(Button), findsNWidgets(2));
+  });
 
   testWidgets('ShellBottomNav is flat without BackdropFilter', (tester) async {
     await pumpScaffold(
@@ -810,9 +874,7 @@ void main() {
       expect(navTabBuilders.containsKey(id), isFalse);
     }
     expect(
-      archivedNavIds.intersection(
-        SettingsService.defaultVisibleNavIds.toSet(),
-      ),
+      archivedNavIds.intersection(SettingsService.defaultVisibleNavIds.toSet()),
       isEmpty,
     );
   });
