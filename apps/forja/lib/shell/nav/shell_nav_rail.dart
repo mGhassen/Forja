@@ -1088,6 +1088,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     );
     final label = widget.label ?? widget.destination.label;
     final chromeAnim = _chromeAnim(policy);
+    // Paint at hover size. Idle scale is idle/hover, so the glyph lands on
+    // iconSize * idleScale. Painting at iconSize then applying that scale
+    // shrank every tab icon.
+    final iconBox = renderedIconSize * ShellTokens.navRailIconHoverScale;
     Widget icon =
         widget.icon ??
         TweenAnimationBuilder<Color?>(
@@ -1098,7 +1102,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
             destination: widget.destination,
             selected: widget.selected,
             color: color ?? iconColor,
-            size: iconSize,
+            size: iconBox,
           ),
         );
     if (widget.icon != null && widget.desaturateCustomIconWhenIdle) {
@@ -1116,7 +1120,6 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         child: icon,
       );
     }
-    final iconBox = renderedIconSize * ShellTokens.navRailIconHoverScale;
     icon = NavReloadHoldIcon(
       icon: icon,
       loading: _reloadHold.loading,

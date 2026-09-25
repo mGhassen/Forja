@@ -379,7 +379,10 @@ void main() {
       tester.element(find.byType(ShellNavRail)),
     );
     expect(expectedIconSize, lessThan(ShellTokens.navRailIconSize));
-    expect(animeIcon.size, expectedIconSize);
+    expect(
+      animeIcon.size,
+      expectedIconSize * ShellTokens.navRailIconHoverScale,
+    );
 
     final underline = find.byKey(ValueKey('nav-$hubB-underline'));
     final underlineColor =
@@ -430,7 +433,11 @@ void main() {
               widget is NavDestinationIcon && widget.destination.id == id,
         ),
       );
-      expect(icon.size, expectedIconSize, reason: '$id icon size');
+      expect(
+        icon.size,
+        expectedIconSize * ShellTokens.navRailIconHoverScale,
+        reason: '$id icon size',
+      );
     }
     final avatar = tester.widget<ForjaProfileAvatar>(
       find.byType(ForjaProfileAvatar),
@@ -477,8 +484,14 @@ void main() {
         (widget) => widget is NavDestinationIcon && widget.destination.id == id,
       ),
     );
-    expect(iconFor(hubA).size, expectedIconSize);
-    expect(iconFor(hubC).size, expectedIconSize);
+    expect(
+      iconFor(hubA).size,
+      expectedIconSize * ShellTokens.navRailIconHoverScale,
+    );
+    expect(
+      iconFor(hubC).size,
+      expectedIconSize * ShellTokens.navRailIconHoverScale,
+    );
 
     final gap =
         tester
