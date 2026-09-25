@@ -33,6 +33,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
     required this.hasEpisodePicker,
     required this.catalogSourceLines,
     required this.streamPickerLines,
+    this.playingOffline = false,
     required this.onPlayPause,
     required this.onRewind10,
     required this.onForward10,
@@ -77,6 +78,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
   final bool hasEpisodePicker;
   final ({String label, String? server})? catalogSourceLines;
   final ({String label, String? server})? streamPickerLines;
+  final bool playingOffline;
 
   final VoidCallback onPlayPause;
   final VoidCallback onRewind10;
@@ -289,6 +291,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                     iconSize: iconSz,
                     label: catalogSourceLines!.label,
                     server: catalogSourceLines!.server,
+                    offline: playingOffline,
                     onPressed: onOpenTorrentSources,
                   ),
                 ),

@@ -171,12 +171,17 @@ mixin _DesktopPlayerTracks
     }
   }
 
+  bool _subtitleAutoCancelled(int gen) =>
+      _s._disposed || !mounted || gen != _s._subtitleAutoGen;
+
   Future<bool> _autoLoadExternalSubtitleCandidates(
     List<Map<String, dynamic>> candidates, {
     bool forcePlayerApply = false,
+    required int gen,
   }) async {
     if (candidates.isEmpty) return false;
     for (var i = 0; i < candidates.length; i++) {
+      if (_subtitleAutoCancelled(gen)) return false;
       final s = candidates[i];
       debugPrint(
         '[DesktopPlayer] auto subtitle → ${s['display'] ?? s['language']}'
@@ -187,6 +192,8 @@ mixin _DesktopPlayerTracks
         s,
         showFailureToast: i == candidates.length - 1,
       )) {
+        if (_subtitleAutoCancelled(gen)) return false;
+        _s._embeddedSubtitleAutoApplied = true;
         return true;
       }
     }
@@ -226,20 +233,24 @@ mixin _DesktopPlayerTracks
       year: release.length >= 4 ? int.tryParse(release.substring(0, 4)) : null,
     );
 
-    stream.listen(
+    final fetchGen = _s._subtitleAutoGen;
+    _s._subtitleFetchSub?.cancel();
+    _s._subtitleFetchSub = stream.listen(
       (subs) {
-        if (mounted) {
-          setState(() => _s._externalSubtitles = [...jellyfinSubs, ...subs]);
-          _maybeAutoPickExternalSubtitle();
-        }
+        if (_subtitleAutoCancelled(fetchGen)) return;
+        setState(() => _s._externalSubtitles = [...jellyfinSubs, ...subs]);
+        unawaited(_maybeAutoPickExternalSubtitle());
       },
       onError: (e) {
         debugPrint('Subtitle fetch error: $e');
-        if (mounted) setState(() => _s._isFetchingSubs = false);
+        if (mounted && fetchGen == _s._subtitleAutoGen) {
+          setState(() => _s._isFetchingSubs = false);
+        }
       },
       onDone: () {
-        if (mounted) setState(() => _s._isFetchingSubs = false);
-        _maybeAutoPickExternalSubtitle();
+        if (_subtitleAutoCancelled(fetchGen)) return;
+        setState(() => _s._isFetchingSubs = false);
+        unawaited(_maybeAutoPickExternalSubtitle());
       },
     );
 
@@ -287,9 +298,47 @@ mixin _DesktopPlayerTracks
     bool forcePlayerApply = false,
   }) async {
     if (_s._disposed || !mounted) return;
+    if (_s._subtitleAutoPickBusy) {
+      _s._subtitleAutoPickQueued = true;
+      if (forcePlayerApply) _s._subtitleAutoForceQueued = true;
+      return;
+    }
+    _s._subtitleAutoPickBusy = true;
+    final gen = _s._subtitleAutoGen;
+    try {
+      await _runMaybeAutoPickExternalSubtitle(
+        forcePlayerApply: forcePlayerApply,
+        gen: gen,
+      );
+    } finally {
+      _s._subtitleAutoPickBusy = false;
+      final again = _s._subtitleAutoPickQueued;
+      final force = _s._subtitleAutoForceQueued;
+      _s._subtitleAutoPickQueued = false;
+      _s._subtitleAutoForceQueued = false;
+      if (again && !_subtitleAutoCancelled(gen)) {
+        unawaited(_maybeAutoPickExternalSubtitle(forcePlayerApply: force));
+      }
+    }
+  }
+
+  Future<void> _runMaybeAutoPickExternalSubtitle({
+    required bool forcePlayerApply,
+    required int gen,
+  }) async {
+    if (_subtitleAutoCancelled(gen)) return;
+    // Already on this sideload. Another sub-add grows mpv's track list and
+    // the tracks listener schedules this again — including after you leave
+    // playback, because in-app mini keeps the player mounted.
+    if (!forcePlayerApply &&
+        _s._selectedExternalSubUrl != null &&
+        _playerHasActiveSubtitle()) {
+      _s._embeddedSubtitleAutoApplied = true;
+      return;
+    }
 
     final preferred = await SettingsService().getPreferredSubtitleLanguage();
-    if (_s._disposed || !mounted) return;
+    if (_subtitleAutoCancelled(gen)) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
     // Seed provider URLs from the playable stream before online scrapers merge.
@@ -316,21 +365,24 @@ mixin _DesktopPlayerTracks
         preferUrlFirst: forcePlayerApply ? _s._selectedExternalSubUrl : null,
       );
       if (providerCandidates.isNotEmpty) {
+        if (_subtitleAutoCancelled(gen)) return;
         if (await _autoLoadExternalSubtitleCandidates(
           providerCandidates,
           forcePlayerApply: forcePlayerApply,
+          gen: gen,
         )) {
           return;
         }
       }
     }
 
+    if (_subtitleAutoCancelled(gen)) return;
     if (!_s._userPickedExternalSubtitle) {
       final embedded =
           embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
       if (embedded.isNotEmpty) {
         await _s._applyAutoSubtitle();
-        if (_s._disposed || !mounted) return;
+        if (_subtitleAutoCancelled(gen)) return;
         if (_s._selectedExternalSubUrl == null && _playerHasActiveSubtitle()) {
           return;
         }
@@ -376,16 +428,19 @@ mixin _DesktopPlayerTracks
     final uiSelected = _s._selectedExternalSubUrl;
     if (uiSelected != null && !forcePlayerApply) {
       if (_playerHasActiveSubtitle()) return;
+      if (_subtitleAutoCancelled(gen)) return;
       await _autoLoadExternalSubtitleCandidates(
         externalSubtitleAutoCandidates(
           preferredLang: preferred,
           subs: subsForAuto,
           preferUrlFirst: uiSelected,
         ),
+        gen: gen,
       );
       return;
     }
 
+    if (_subtitleAutoCancelled(gen)) return;
     await _autoLoadExternalSubtitleCandidates(
       externalSubtitleAutoCandidates(
         preferredLang: preferred,
@@ -393,6 +448,7 @@ mixin _DesktopPlayerTracks
         preferUrlFirst: forcePlayerApply ? uiSelected : null,
       ),
       forcePlayerApply: forcePlayerApply,
+      gen: gen,
     );
   }
 

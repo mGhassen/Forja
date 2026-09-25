@@ -29,21 +29,52 @@ SourceDownloadChrome chromeForDownloadTask(DownloadTask? task) {
   return SourceDownloadChrome.none;
 }
 
+List<String> streamDownloadNames(Map<String, dynamic> stream) {
+  final out = <String>[];
+  for (final key in ['_addonName', 'name', 'title']) {
+    final value = stream[key]?.toString().trim() ?? '';
+    if (value.isEmpty) continue;
+    if (out.any((n) => n.toLowerCase() == value.toLowerCase())) continue;
+    out.add(value);
+  }
+  return out;
+}
+
+/// Provider chip for a Sources row (`engine:castle`, `nuvio:id`).
+List<String> streamDownloadPluginKeys(Map<String, dynamic> stream) {
+  final out = <String>[];
+  void add(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return;
+    if (!downloadLabelIsPluginChip(value)) return;
+    if (out.any((n) => n.toLowerCase() == value.toLowerCase())) return;
+    out.add(value);
+  }
+
+  final engineId = stream['_enginePluginId']?.toString() ?? '';
+  if (engineId.trim().isNotEmpty) add('engine:${engineId.trim()}');
+  final nuvioId = stream['_nuvioScraperId']?.toString() ?? '';
+  if (nuvioId.trim().isNotEmpty) add('nuvio:${nuvioId.trim()}');
+  add(stream['_addonBaseUrl']?.toString() ?? '');
+  return out;
+}
+
 DownloadTask? downloadTaskForStream({
   required String mediaId,
   int? season,
   int? episode,
   required Map<String, dynamic> stream,
 }) {
-  final sourceName =
-      (stream['_addonName'] ?? stream['name'] ?? stream['title'] ?? '')
-          .toString();
+  final names = streamDownloadNames(stream);
   return DownloadService.instance.findTaskForStream(
     mediaId: mediaId,
     season: season,
     episode: episode,
     streamUrl: streamHttpUrlForDownload(stream),
-    sourceName: sourceName.isEmpty ? null : sourceName,
+    sourceName: names.isEmpty ? null : names.first,
+    taskId: stream['_downloadTaskId']?.toString(),
+    names: names,
+    pluginKeys: streamDownloadPluginKeys(stream),
   );
 }
 
@@ -146,16 +177,18 @@ bool providerStreamCoversDownloadTask(
 ) {
   if (stream[kOfflinePinnedStreamKey] == true) return false;
   if (task.mediaId.isEmpty) return false;
-  final url = streamHttpUrlForDownload(stream) ?? '';
-  final taskUrl = task.rawUrl?.trim() ?? '';
-  if (url.isNotEmpty && taskUrl.isNotEmpty && url == taskUrl) return true;
-  final name = (stream['_addonName'] ?? stream['name'] ?? stream['title'] ?? '')
-      .toString()
-      .trim();
-  final source = task.sourceName.trim();
-  return name.isNotEmpty &&
-      source.isNotEmpty &&
-      name.toLowerCase() == source.toLowerCase();
+  final names = streamDownloadNames(stream);
+  return downloadTaskMatchRank(
+        task: task,
+        mediaId: task.mediaId,
+        season: task.season,
+        episode: task.episode,
+        streamUrl: streamHttpUrlForDownload(stream),
+        sourceName: names.isEmpty ? null : names.first,
+        names: names,
+        pluginKeys: streamDownloadPluginKeys(stream),
+      ) !=
+      DownloadTaskMatchRank.none;
 }
 
 /// Active and completed downloads for this title that are not already a row
@@ -181,6 +214,55 @@ List<Map<String, dynamic>> offlineStreamsAheadOfProviderSearch({
     if (pinned != null) out.add(pinned);
   }
   return out;
+}
+
+/// True when [url] is a completed download file on this device.
+///
+/// [tasks] overrides the live queue (tests). Cloud URLs and in-progress
+/// downloads stay false.
+bool isOfflineDownloadPlayUrl(
+  String? url, {
+  Iterable<DownloadTask>? tasks,
+}) {
+  final path = localFilePathFromPlayUrl(url);
+  if (path == null || path.isEmpty) return false;
+  final list = tasks ?? DownloadService.instance.tasksNotifier.value;
+  for (final task in list) {
+    if (!task.isCompleted) continue;
+    final raw = task.targetFilePath.trim();
+    if (raw.isEmpty) continue;
+    final target = localFilePathFromPlayUrl(raw) ?? raw;
+    if (_sameLocalPath(path, target)) return true;
+  }
+  return false;
+}
+
+/// Absolute path for a `file://` play URL or a raw filesystem path.
+String? localFilePathFromPlayUrl(String? url) {
+  final raw = url?.trim() ?? '';
+  if (raw.isEmpty) return null;
+  if (raw.startsWith('file:')) {
+    final uri = Uri.tryParse(raw);
+    if (uri == null || uri.scheme != 'file') return null;
+    try {
+      return uri.toFilePath();
+    } catch (_) {
+      return null;
+    }
+  }
+  if (raw.startsWith('/') || RegExp(r'^[A-Za-z]:[\\/]').hasMatch(raw)) {
+    return raw;
+  }
+  return null;
+}
+
+bool _sameLocalPath(String a, String b) {
+  String norm(String p) =>
+      p.replaceAll('\\', '/').replaceAll(RegExp(r'/+$'), '');
+  final left = norm(a);
+  final right = norm(b);
+  if (Platform.isWindows) return left.toLowerCase() == right.toLowerCase();
+  return left == right;
 }
 
 /// Filter ids for Sources → Filters → Offline.

@@ -324,6 +324,9 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
         hasTorrentSources ? _s._catalogSourcesButtonLabels() : null;
     final streamPickerLines =
         hasStreamPicker ? _s._streamPickerLabels() : null;
+    final playingOffline = isOfflineDownloadPlayUrl(
+      _s._currentUrl ?? widget.mediaPath,
+    );
     final btnSize = 38.0;
     final iconSz = 20.0;
     final compact = MediaQuery.sizeOf(context).width < 700;
@@ -656,6 +659,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                       hasEpisodePicker: hasEpisodePicker,
                       catalogSourceLines: catalogSourceLines,
                       streamPickerLines: streamPickerLines,
+                      playingOffline: playingOffline,
                     )
                   else
                     Row(
@@ -734,6 +738,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                 iconSize: iconSz,
                                 label: catalogSourceLines!.label,
                                 server: catalogSourceLines.server,
+                                offline: playingOffline,
                                 onPressed: _s._showTorrentSourcesPanel,
                               ),
                             if (hasStreamPicker)
@@ -855,6 +860,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
     required bool hasEpisodePicker,
     required ({String label, String? server})? catalogSourceLines,
     required ({String label, String? server})? streamPickerLines,
+    required bool playingOffline,
   }) {
     return PlayerVodTvTransportRow(
       btnSize: btnSize,
@@ -881,6 +887,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
       hasEpisodePicker: hasEpisodePicker,
       catalogSourceLines: catalogSourceLines,
       streamPickerLines: streamPickerLines,
+      playingOffline: playingOffline,
       onPlayPause: () {
         if (_s._isPlayingNotifier.value) {
           _s._player.pause();

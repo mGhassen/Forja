@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
+import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 
@@ -149,5 +150,114 @@ void main() {
       visibleProviderStreams: const [],
     );
     expect(wrongEpisode, isEmpty);
+  });
+
+  test('player chip binds the provider row even when the URL changed', () {
+    final saved = DownloadTask(
+      id: 'dl-castle',
+      title: 'Title',
+      mediaId: 'tt1',
+      type: 'movie',
+      sourceName: 'engine:castle',
+      rawUrl: 'https://cdn.example/old-token.mkv',
+      targetFilePath: '/tmp/title.mkv',
+      status: DownloadStatus.completed,
+      createdAt: DateTime.utc(2026, 9, 25),
+    );
+    final live = {
+      'url': 'https://cdn.example/fresh-token.mkv',
+      'name': 'Castle · Shared',
+      '_addonName': 'Castle · Shared',
+      '_enginePluginId': 'castle',
+      '_addonBaseUrl': 'engine:castle',
+    };
+    expect(providerStreamCoversDownloadTask(live, saved), isTrue);
+    expect(
+      offlineStreamsAheadOfProviderSearch(
+        tasks: [saved],
+        mediaId: 'tt1',
+        season: null,
+        episode: null,
+        visibleProviderStreams: [live],
+      ),
+      isEmpty,
+    );
+  });
+
+  test('a named download does not claim sibling rows', () {
+    final saved = DownloadTask(
+      id: 'dl-shared',
+      title: 'Title',
+      mediaId: 'tt1',
+      type: 'movie',
+      sourceName: 'Castle · Shared',
+      addonName: 'engine:castle',
+      rawUrl: 'https://cdn.example/old.mkv',
+      targetFilePath: '/tmp/title.mkv',
+      status: DownloadStatus.completed,
+      createdAt: DateTime.utc(2026, 9, 25),
+    );
+    expect(
+      providerStreamCoversDownloadTask({
+        'url': 'https://cdn.example/en.mkv',
+        'name': 'Castle · English',
+        '_addonName': 'Castle · English',
+        '_enginePluginId': 'castle',
+      }, saved),
+      isFalse,
+    );
+    expect(
+      providerStreamCoversDownloadTask({
+        'url': 'https://cdn.example/fresh.mkv',
+        'name': 'Castle · Shared',
+        '_addonName': 'Castle · Shared',
+        '_enginePluginId': 'castle',
+      }, saved),
+      isTrue,
+    );
+  });
+
+  test('player source chrome matches a completed file URL', () {
+    final task = DownloadTask(
+      id: 'dl-file',
+      title: 'Title',
+      mediaId: '1',
+      type: 'movie',
+      sourceName: 'Castle',
+      rawUrl: 'https://cdn.example/video.mp4',
+      targetFilePath: '/tmp/forja/title.mp4',
+      status: DownloadStatus.completed,
+      createdAt: DateTime.utc(2026, 9, 25),
+    );
+    final fileUrl = Uri.file('/tmp/forja/title.mp4').toString();
+    expect(
+      isOfflineDownloadPlayUrl(fileUrl, tasks: [task]),
+      isTrue,
+    );
+    expect(
+      isOfflineDownloadPlayUrl(
+        'https://cdn.example/video.mp4',
+        tasks: [task],
+      ),
+      isFalse,
+    );
+    final active = DownloadTask(
+      id: 'dl-active',
+      title: 'Title',
+      mediaId: '1',
+      type: 'movie',
+      sourceName: 'Castle',
+      rawUrl: 'https://cdn.example/video.mp4',
+      targetFilePath: '/tmp/forja/other.mp4',
+      status: DownloadStatus.downloading,
+      createdAt: DateTime.utc(2026, 9, 25),
+    );
+    expect(
+      isOfflineDownloadPlayUrl(
+        Uri.file('/tmp/forja/other.mp4').toString(),
+        tasks: [active],
+      ),
+      isFalse,
+    );
   });
 }

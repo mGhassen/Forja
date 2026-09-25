@@ -12,6 +12,17 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:rust/rust.dart';
 
+/// Row label for a saved file. Prefer the Sources name (`Castle · Shared`).
+/// A provider chip (`engine:castle`) is the fallback when the player has no
+/// row label — Sources then binds every row of that provider to this file.
+String downloadSourceLabel({String? catalogName, String? providerId}) {
+  final label = catalogName?.trim() ?? '';
+  if (label.isNotEmpty && !downloadLabelIsPluginChip(label)) return label;
+  final pid = providerId?.trim() ?? '';
+  if (pid.isNotEmpty) return pid;
+  return 'Stream';
+}
+
 String _downloadTypeForMovie(Movie movie) {
   final mt = movie.mediaType.toLowerCase();
   if (mt == 'tv' || mt == 'series') return 'series';
@@ -235,6 +246,7 @@ Future<DownloadTask?> enqueuePlayerCurrentDownload({
     headers: playHeaders,
     sourceName: playSource,
     providerId: providerId,
+    addonName: pid,
   );
 }
 
@@ -253,6 +265,7 @@ Future<DownloadTask?> enqueueVodDownload({
   Map<String, String>? headers,
   String? sourceName,
   String? providerId,
+  String? addonName,
   bool headersAlreadyResolved = false,
 }) async {
   if (!PlatformInfo.offlineDownloadsEnabled) return null;
@@ -291,6 +304,7 @@ Future<DownloadTask?> enqueueVodDownload({
       url: rawUrl,
       headers: resolved,
       sourceName: sourceName,
+      addonName: addonName ?? providerId,
     );
     final sameSlot = existing != null && existing.id == task.id;
     if (sameSlot && existing.isCompleted) {

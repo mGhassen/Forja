@@ -68,6 +68,7 @@ import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart'
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
@@ -292,6 +293,12 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   /// touch State after the route is gone.
   Timer? _trackAutoSelectTimer;
   Timer? _embeddedSubtitleAutoTimer;
+  StreamSubscription<List<Map<String, dynamic>>>? _subtitleFetchSub;
+  /// Bumped on exit so an in-flight auto-pick cannot attach after leave.
+  int _subtitleAutoGen = 0;
+  bool _subtitleAutoPickBusy = false;
+  bool _subtitleAutoPickQueued = false;
+  bool _subtitleAutoForceQueued = false;
   PlaybackRecovery? _playbackRecovery;
   PostSeekStallWatchdog? _postSeekStall;
   StreamSubscription<bool>? _pipSub;

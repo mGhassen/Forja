@@ -15,6 +15,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/controls/menus/player_menus.dart';
@@ -283,6 +284,12 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   /// touch State after the route is gone.
   Timer? _trackAutoSelectTimer;
   Timer? _embeddedSubtitleAutoTimer;
+  StreamSubscription<List<Map<String, dynamic>>>? _subtitleFetchSub;
+  /// Bumped on exit so an in-flight auto-pick cannot `sub-add` after leave.
+  int _subtitleAutoGen = 0;
+  bool _subtitleAutoPickBusy = false;
+  bool _subtitleAutoPickQueued = false;
+  bool _subtitleAutoForceQueued = false;
   PlaybackRecovery? _playbackRecovery;
   PostSeekStallWatchdog? _postSeekStall;
   bool _autoTracksAppliedForSource = false;

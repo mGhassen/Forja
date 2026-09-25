@@ -1650,6 +1650,16 @@ mixin _DesktopPlayerPlayback
         _s._userPickedExternalSubtitle) {
       return;
     }
+    // A sideload is reported as another embedded track. Treating that growth
+    // as "tracks changed" clears the latch and re-runs auto-pick, which
+    // sub-adds again. That loop keeps going after you leave playback because
+    // in-app mini keeps this screen mounted.
+    if (_s._selectedExternalSubUrl != null) {
+      _s._embeddedSubtitleAutoApplied = true;
+      _s._embeddedSubtitleAutoTimer?.cancel();
+      _s._embeddedSubtitleAutoTimer = null;
+      return;
+    }
     final embedded = embeddedSubtitleTracks(tracks.subtitle);
     if (embedded.isEmpty) return;
     if (embedded.length != _s._embeddedSubtitleTrackCount) {
@@ -1664,7 +1674,11 @@ mixin _DesktopPlayerPlayback
         _s._embeddedSubtitleAutoTimer = null;
         if (_s._disposed ||
             _s._embeddedSubtitleAutoApplied ||
-            _s._userPickedExternalSubtitle) {
+            _s._userPickedExternalSubtitle ||
+            _s._selectedExternalSubUrl != null) {
+          if (_s._selectedExternalSubUrl != null) {
+            _s._embeddedSubtitleAutoApplied = true;
+          }
           return;
         }
         unawaited(_applyLateEmbeddedSubtitle());
@@ -1674,9 +1688,13 @@ mixin _DesktopPlayerPlayback
 
   Future<void> _applyLateEmbeddedSubtitle() async {
     if (_s._disposed || !mounted) return;
+    final gen = _s._subtitleAutoGen;
     await _s._applyAutoSubtitle();
-    if (_s._disposed || !mounted) return;
+    if (_s._disposed || !mounted || gen != _s._subtitleAutoGen) return;
     await _s._maybeAutoPickExternalSubtitle();
+    if (_s._disposed || !mounted || gen != _s._subtitleAutoGen) return;
+    // One attempt per track-list. Do not re-arm if the pick missed.
+    _s._embeddedSubtitleAutoApplied = true;
   }
 
   Future<void> _recoverAudioTrack() async {

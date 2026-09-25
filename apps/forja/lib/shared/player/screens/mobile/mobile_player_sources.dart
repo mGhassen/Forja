@@ -239,6 +239,11 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     _s._trackAutoSelectTimer = null;
     _s._embeddedSubtitleAutoTimer?.cancel();
     _s._embeddedSubtitleAutoTimer = null;
+    _s._subtitleAutoGen++;
+    _s._subtitleAutoPickQueued = false;
+    _s._subtitleAutoForceQueued = false;
+    _s._subtitleFetchSub?.cancel();
+    _s._subtitleFetchSub = null;
     PlayerSubtitleSettingsDialog.dismissIfShowing();
     PlayerStreamMenu.dismiss();
     PlayerPopupPanel.dismiss();

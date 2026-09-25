@@ -614,7 +614,10 @@ mixin _DesktopPlayerLifecycle
       fallbackTitle: widget.title,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
-      sourceName: widget.activeProvider ?? _s._currentProvider ?? 'Stream',
+      sourceName: downloadSourceLabel(
+        catalogName: _s._catalogAddonName,
+        providerId: widget.activeProvider ?? _s._currentProvider,
+      ),
       providerId: widget.activeProvider ?? _s._currentProvider,
     );
   }

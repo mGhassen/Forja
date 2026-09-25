@@ -278,6 +278,9 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         hasTorrentSources ? _s._catalogSourcesButtonLabels() : null;
     final streamPickerLines =
         hasStreamPicker ? _s._streamPickerLabels() : null;
+    final playingOffline = isOfflineDownloadPlayUrl(
+      _s._currentUrl ?? widget.mediaPath,
+    );
     final compact = MediaQuery.sizeOf(context).width < 900;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
@@ -610,6 +613,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                           PlayerSourcesPanelButton(
                             label: catalogSourceLines!.label,
                             server: catalogSourceLines.server,
+                            offline: playingOffline,
                             onPressed: _s._showTorrentSourcesPanel,
                           ),
                           const SizedBox(width: 2),

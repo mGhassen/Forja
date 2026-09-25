@@ -493,6 +493,7 @@ class PlayerSourcesPanelButton extends StatefulWidget {
     super.key,
     required this.label,
     this.server,
+    this.offline = false,
     this.onPressed,
     this.onPressedWithContext,
     this.size = 40,
@@ -508,6 +509,8 @@ class PlayerSourcesPanelButton extends StatefulWidget {
   final String label;
   /// Active mirror / server under [label] (e.g. Videasy → Yoru).
   final String? server;
+  /// Saved file on this device is what is playing.
+  final bool offline;
   final VoidCallback? onPressed;
   final ValueChanged<BuildContext>? onPressedWithContext;
   final double size;
@@ -595,11 +598,15 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Link icon only when provider-only — two-line provider/server
+                // Offline icon when the saved file is playing. Otherwise a
+                // link icon only when provider-only — two-line provider/server
                 // chrome is self-explanatory without it.
-                if (widget.server?.trim().isNotEmpty != true) ...[
+                if (widget.offline ||
+                    widget.server?.trim().isNotEmpty != true) ...[
                   Icon(
-                    Icons.link_rounded,
+                    widget.offline
+                        ? Icons.download_done_rounded
+                        : Icons.link_rounded,
                     color: fg,
                     size: iconSize,
                   ),
@@ -656,9 +663,10 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
             child: painted,
           );
     final server = widget.server?.trim();
-    final tip = server != null && server.isNotEmpty
+    final base = server != null && server.isNotEmpty
         ? 'Sources: ${widget.label} · $server'
         : 'Sources: ${widget.label}';
+    final tip = widget.offline ? '$base · Offline' : base;
     return Tooltip(message: tip, child: button);
   }
 }

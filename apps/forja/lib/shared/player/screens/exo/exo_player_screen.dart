@@ -46,6 +46,7 @@ import 'package:forja/shared/player/screens/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
@@ -1747,7 +1748,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       fallbackTitle: widget.title,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
-      sourceName: widget.activeProvider ?? 'Stream',
+      sourceName: downloadSourceLabel(
+        catalogName: _catalogAddonName,
+        providerId: widget.activeProvider,
+      ),
       providerId: widget.activeProvider,
     );
   }
@@ -2085,6 +2089,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         hasTorrentSources ? _catalogSourcesButtonLabels() : null;
     final streamPickerLines =
         _hasStreamPicker ? _streamPickerLabels() : null;
+    final playingOffline = isOfflineDownloadPlayUrl(
+      _currentUrl ?? widget.mediaPath,
+    );
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
       hasStatusActions: _hasError,
@@ -2371,6 +2378,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       hasEpisodePicker: _hasEpisodePicker,
                       catalogSourceLines: catalogSourceLines,
                       streamPickerLines: streamPickerLines,
+                      playingOffline: playingOffline,
                       onPlayPause: _togglePlayPause,
                       onRewind10: () => unawaited(
                         _seekRelative(const Duration(seconds: -10)),
@@ -2476,6 +2484,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                                 iconSize: iconSz,
                                 label: catalogSourceLines!.label,
                                 server: catalogSourceLines.server,
+                                offline: playingOffline,
                                 onPressed: () =>
                                     unawaited(_showTorrentSourcesPanel()),
                               ),

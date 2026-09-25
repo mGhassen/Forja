@@ -13,6 +13,76 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+/// How tightly a Sources row matches a saved download.
+enum DownloadTaskMatchRank { none, plugin, name, url, task }
+
+bool _sameDownloadLabel(String a, String b) {
+  final left = a.trim();
+  final right = b.trim();
+  return left.isNotEmpty && left.toLowerCase() == right.toLowerCase();
+}
+
+/// Player downloads store `engine:<id>` / `nuvio:<id>` when no row label was kept.
+bool downloadLabelIsPluginChip(String raw) {
+  final t = raw.trim().toLowerCase();
+  return t.startsWith('engine:') || t.startsWith('nuvio:');
+}
+
+/// Rank a task against one Sources row. Higher ranks win inside the same slot.
+DownloadTaskMatchRank downloadTaskMatchRank({
+  required DownloadTask task,
+  required String mediaId,
+  int? season,
+  int? episode,
+  String? streamUrl,
+  String? taskId,
+  String? sourceName,
+  Iterable<String> names = const [],
+  Iterable<String> pluginKeys = const [],
+}) {
+  if (task.mediaId != mediaId) return DownloadTaskMatchRank.none;
+  if (task.season != season || task.episode != episode) {
+    return DownloadTaskMatchRank.none;
+  }
+  final id = taskId?.trim() ?? '';
+  if (id.isNotEmpty && task.id == id) return DownloadTaskMatchRank.task;
+  final url = streamUrl?.trim() ?? '';
+  final taskUrl = task.rawUrl?.trim() ?? '';
+  if (url.isNotEmpty && taskUrl.isNotEmpty && taskUrl == url) {
+    return DownloadTaskMatchRank.url;
+  }
+  final labels = <String>[
+    if (sourceName != null) sourceName,
+    ...names,
+  ];
+  for (final label in labels) {
+    if (_sameDownloadLabel(label, task.sourceName)) {
+      return DownloadTaskMatchRank.name;
+    }
+    final addon = task.addonName;
+    if (addon != null &&
+        !downloadLabelIsPluginChip(addon) &&
+        _sameDownloadLabel(label, addon)) {
+      return DownloadTaskMatchRank.name;
+    }
+  }
+  if (!downloadLabelIsPluginChip(task.sourceName)) {
+    return DownloadTaskMatchRank.none;
+  }
+  for (final key in pluginKeys) {
+    if (_sameDownloadLabel(key, task.sourceName)) {
+      return DownloadTaskMatchRank.plugin;
+    }
+    final addon = task.addonName;
+    if (addon != null &&
+        downloadLabelIsPluginChip(addon) &&
+        _sameDownloadLabel(key, addon)) {
+      return DownloadTaskMatchRank.plugin;
+    }
+  }
+  return DownloadTaskMatchRank.none;
+}
+
 /// Host-owned VOD offline download manager (Phase 1 — HTTP Range + HLS).
 ///
 /// No P2P / debrid / magnet. Empty or non-downloadable URLs are rejected.
@@ -227,32 +297,43 @@ class DownloadService {
     return null;
   }
 
-  /// Match a Sources-panel stream row to a download task (URL first, then name).
+  /// Match a Sources-panel stream row to a download task.
+  ///
+  /// URL first, then the row label, then a provider chip (`engine:castle`)
+  /// saved from the player when the row has no human label stored.
   DownloadTask? findTaskForStream({
     required String mediaId,
     int? season,
     int? episode,
     String? streamUrl,
     String? sourceName,
+    String? taskId,
+    Iterable<String> names = const [],
+    Iterable<String> pluginKeys = const [],
   }) {
-    final url = streamUrl?.trim() ?? '';
-    final name = sourceName?.trim() ?? '';
     DownloadTask? byName;
+    DownloadTask? byPlugin;
     for (final t in tasksNotifier.value) {
-      if (t.mediaId != mediaId) continue;
-      if (t.season != season || t.episode != episode) continue;
       if (!(t.isActive || t.isCompleted)) continue;
-      final taskUrl = t.rawUrl?.trim() ?? '';
-      if (url.isNotEmpty && taskUrl.isNotEmpty && taskUrl == url) {
+      final hit = downloadTaskMatchRank(
+        task: t,
+        mediaId: mediaId,
+        season: season,
+        episode: episode,
+        streamUrl: streamUrl,
+        taskId: taskId,
+        names: names,
+        sourceName: sourceName,
+        pluginKeys: pluginKeys,
+      );
+      if (hit == DownloadTaskMatchRank.task ||
+          hit == DownloadTaskMatchRank.url) {
         return t;
       }
-      if (name.isNotEmpty &&
-          t.sourceName.trim().isNotEmpty &&
-          t.sourceName.trim().toLowerCase() == name.toLowerCase()) {
-        byName ??= t;
-      }
+      if (hit == DownloadTaskMatchRank.name) byName ??= t;
+      if (hit == DownloadTaskMatchRank.plugin) byPlugin ??= t;
     }
-    return byName;
+    return byName ?? byPlugin;
   }
 
   /// Starts an HTTP or HLS download. [url] and [headers] are required.
