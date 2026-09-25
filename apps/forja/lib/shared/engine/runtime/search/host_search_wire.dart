@@ -2151,7 +2151,7 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
     }
     _pagingPage = nextPage;
     _pagingResults = merged;
-    // Next related level hops off the first new card — not the same film.
+    // Last-page related fill uses the first new card when the catalog page is empty.
     if (hopSeed != null) {
       _pagingSeed = _seedJsonFor(hopSeed);
     }
