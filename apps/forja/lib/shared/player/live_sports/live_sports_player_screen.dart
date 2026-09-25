@@ -68,6 +68,7 @@ import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart'
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';

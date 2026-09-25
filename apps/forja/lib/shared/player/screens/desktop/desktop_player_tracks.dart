@@ -467,6 +467,7 @@ mixin _DesktopPlayerTracks
       }),
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
       loadOnlineSubtitle: (s) => _loadOnlineSubtitle(s, userInitiated: true),
+      streamUrl: _s._currentUrl ?? widget.mediaPath,
       onSubtitleSettings: _showSubtitleSettings,
       onSubtitleSelected:
           ({required bool off, String? language, String? title}) {

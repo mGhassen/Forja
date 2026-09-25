@@ -42,6 +42,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
                 'url': e['url']!,
                 'lang': e['lang'] ?? 'und',
                 'label': e['label'] ?? e['lang'] ?? 'und',
+                if ((e['mime'] ?? '').isNotEmpty) 'mime': e['mime']!,
               },
             )
             .toList(),
@@ -90,6 +91,16 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
       _s._externalSubFileCache[url] = uri;
       return pack(uri);
+    }
+
+    if (isLocalHlsPlayUrl(url)) {
+      return {
+        'url': url,
+        'lang': lang,
+        'label': label,
+        'sourceUrl': url,
+        'mime': 'text/vtt',
+      };
     }
 
     if (hasInlineSubtitleContent(s)) {

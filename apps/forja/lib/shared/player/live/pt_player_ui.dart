@@ -286,11 +286,17 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       if (id == null) return;
       final tracks = await ExoPlayerBridge.getTracks(id);
       if (!mounted || !anchorContext.mounted) return;
+      final playUrl =
+          _s._sources.isNotEmpty ? _s._sources[_s._sourceIdx].url : '';
+      final hlsRows = hlsInStreamSubtitleRows(
+        await loadHlsInStreamSubtitles(playUrl),
+      );
+      if (!mounted || !anchorContext.mounted) return;
       await ExoPlayerMenus.showSubtitles(
         context: context,
         tracks: tracks,
         anchorContext: anchorContext,
-        externalSubtitles: _s._externalSubtitles,
+        externalSubtitles: [..._s._externalSubtitles, ...hlsRows],
         selectedExternalSubUrl: _s._selectedExternalSubUrl,
         isFetchingSubs: _s._isFetchingSubs,
         onOff: () async {
@@ -337,6 +343,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         return _s._selectedExternalSubUrl == (s['url'] ?? '').toString();
       },
       onSubtitleSettings: _showSubtitleSettings,
+      streamUrl: _s._sources.isNotEmpty ? _s._sources[_s._sourceIdx].url : null,
       onTitleSearch: widget.onlineSubtitles
           ? () => unawaited(_showTitleSearchDialog())
           : null,
@@ -546,7 +553,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     final label = (s['display'] ?? lang).toString();
     try {
       var uri = url;
-      if (!url.startsWith('file://') && !url.startsWith('/')) {
+      var mime = '';
+      if (isLocalHlsPlayUrl(url)) {
+        mime = 'text/vtt';
+      } else if (!url.startsWith('file://') && !url.startsWith('/')) {
         final cached = _s._externalSubFileCache[url];
         if (cached != null) {
           uri = cached;
@@ -586,7 +596,12 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         uri = Uri.file(url).toString();
       }
       await ExoPlayerBridge.setSubtitles(id, [
-        {'url': uri, 'lang': lang, 'label': label},
+        {
+          'url': uri,
+          'lang': lang,
+          'label': label,
+          if (mime.isNotEmpty) 'mime': mime,
+        },
       ]);
       if (!mounted) return;
       setState(() => _s._selectedExternalSubUrl = url);

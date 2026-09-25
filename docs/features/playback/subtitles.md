@@ -23,7 +23,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## Tips
 
-- In-stream and online tracks share one language folder (English, Français, …) — open the folder to see both (In-stream rows first)
+- In-stream and online tracks share one language folder (English, Français, …) — open the folder to see both (In-stream rows first). In-stream rows fill in while the menu is open, including subtitle groups on the stream.
 - Auto-play picks an in-stream row when the stream has any; online results stay in the list for manual pick
 - **KissKh (Asian Drama):** provider Sub API tracks (decrypted in the pack, attached as sideloads) are preferred over HLS mux “In-stream” — those mux tracks can be mistimed vs kisskh.co
 - On **Android TV**, opening Subtitles lands focus on the header **X** (close) — **←** reaches tune / **Off**; **↓** into the language list

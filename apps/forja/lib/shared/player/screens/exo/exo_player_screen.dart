@@ -39,6 +39,7 @@ import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
 import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
 import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/player/screens/network_playback_recovery.dart';
@@ -1395,11 +1396,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Future<void> _showSubtitlesMenu(BuildContext anchorContext) async {
     final tracks = await _refreshTracks();
     if (!mounted || !anchorContext.mounted) return;
+    final playUrl = _currentUrl ?? widget.mediaPath;
+    final hlsRows = hlsInStreamSubtitleRows(
+      await loadHlsInStreamSubtitles(playUrl),
+    );
+    if (!mounted || !anchorContext.mounted) return;
     await ExoPlayerMenus.showSubtitles(
       context: context,
       tracks: tracks,
       anchorContext: anchorContext,
-      externalSubtitles: _externalSubtitles,
+      externalSubtitles: [..._externalSubtitles, ...hlsRows],
       selectedExternalSubUrl: _selectedExternalSubUrl,
       isFetchingSubs: _isFetchingSubs,
       onOff: _turnOffSubtitles,

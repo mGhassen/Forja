@@ -733,7 +733,9 @@ class ExoPlayerHost(
     private fun subtitleConfiguration(sub: Map<String, String>): MediaItem.SubtitleConfiguration? {
         val subUrl = sub["url"]?.trim().orEmpty()
         if (subUrl.isEmpty()) return null
-        val mime = mimeForSubtitleUrl(subUrl) ?: return null
+        val mime = sub["mime"]?.takeIf { it.isNotBlank() }
+            ?: mimeForSubtitleUrl(subUrl)
+            ?: return null
         val lang = sub["lang"]?.takeIf { it.isNotBlank() } ?: "und"
         val label = sub["label"]?.takeIf { it.isNotBlank() } ?: lang
         return MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl))
@@ -1019,7 +1021,11 @@ class ExoPlayerHost(
             val group = tracks.groups[gi]
             if (group.type != type) continue
             for (ti in 0 until group.length) {
-                if (!group.isTrackSupported(ti)) continue
+                // HLS subtitle groups often report unsupported until a text
+                // track is selected. Keep them in the menu anyway.
+                if (!group.isTrackSupported(ti) && type != C.TRACK_TYPE_TEXT) {
+                    continue
+                }
                 val format = group.getTrackFormat(ti)
                 val id = "$type:$gi:$ti"
                 val label = when (type) {

@@ -164,10 +164,19 @@ pub fn rewrite_hls_playlist_relative(
         full.to_string()
     };
 
-    body.lines()
+    let mut forja_subs = Vec::new();
+    let playlist = body
+        .lines()
         .filter_map(|line| {
             let trimmed = line.trim();
             if is_hls_subtitle_media(trimmed) {
+                if let Some(uri) = hls_quoted_attr(trimmed, "URI") {
+                    let full = resolve_url(&uri, base_path, server_base);
+                    let play = to_rel(&full);
+                    if let Some(sub) = forja_sub_fields(trimmed, play) {
+                        forja_subs.push(sub);
+                    }
+                }
                 return None;
             }
             let line = strip_stream_inf_subtitles_attr(line);
@@ -195,7 +204,8 @@ pub fn rewrite_hls_playlist_relative(
             Some(to_rel(&full))
         })
         .collect::<Vec<_>>()
-        .join("\n")
+        .join("\n");
+    append_forja_sub_comments(playlist, &forja_subs)
 }
 
 pub fn rewrite_hls_playlist(
@@ -218,10 +228,19 @@ pub fn rewrite_hls_playlist(
         decoded_url
     };
 
-    body.lines()
+    let mut forja_subs = Vec::new();
+    let playlist = body
+        .lines()
         .filter_map(|line| {
             let trimmed = line.trim();
             if is_hls_subtitle_media(trimmed) {
+                if let Some(uri) = hls_quoted_attr(trimmed, "URI") {
+                    let full = resolve_url(&uri, base_path, server_base);
+                    let play = build_hls_proxy_url(proxy_base, &full, headers_json, strip);
+                    if let Some(sub) = forja_sub_fields(trimmed, play) {
+                        forja_subs.push(sub);
+                    }
+                }
                 return None;
             }
             let line = strip_stream_inf_subtitles_attr(line);
@@ -259,7 +278,8 @@ pub fn rewrite_hls_playlist(
             ))
         })
         .collect::<Vec<_>>()
-        .join("\n")
+        .join("\n");
+    append_forja_sub_comments(playlist, &forja_subs)
 }
 
 fn is_plain_image_uri(uri: &str) -> bool {
@@ -299,7 +319,57 @@ fn is_hls_subtitle_media(line: &str) -> bool {
     t.to_ascii_uppercase().contains("TYPE=SUBTITLES")
 }
 
-/// lavf waits on HLS `SUBTITLES=` groups (VixSrc ships ~30). In-app Wyzie/sideload covers captions.
+/// `KEY="value"` on an HLS tag. Matching is case-insensitive; the value keeps
+/// the original spelling.
+fn hls_quoted_attr(line: &str, key: &str) -> Option<String> {
+    let lower = line.to_ascii_lowercase();
+    let needle = format!("{}=\"", key.to_ascii_lowercase());
+    let i = lower.find(&needle)?;
+    let start = i + needle.len();
+    let rest = &line[start..];
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
+}
+
+/// lang, display name, play URI. LANGUAGE falls back to NAME.
+fn forja_sub_fields(line: &str, play_uri: String) -> Option<(String, String, String)> {
+    let play_uri = play_uri.trim().to_string();
+    if play_uri.is_empty() {
+        return None;
+    }
+    let name = hls_quoted_attr(line, "NAME")
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "Subtitles".to_string());
+    let lang = hls_quoted_attr(line, "LANGUAGE")
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| name.clone());
+    Some((lang, name, play_uri))
+}
+
+/// Playlist comment the subtitle menu reads. Not an HLS tag, so lavf does not
+/// open every rendition at start.
+fn append_forja_sub_comments(mut body: String, subs: &[(String, String, String)]) -> String {
+    if subs.is_empty() {
+        return body;
+    }
+    if !body.ends_with('\n') {
+        body.push('\n');
+    }
+    for (lang, name, uri) in subs {
+        body.push_str("#FORJA-SUB:lang=");
+        body.push_str(&urlencoding::encode(lang));
+        body.push_str("&name=");
+        body.push_str(&urlencoding::encode(name));
+        body.push_str("&uri=");
+        body.push_str(&urlencoding::encode(uri));
+        body.push('\n');
+    }
+    body
+}
+
+/// lavf waits on HLS `SUBTITLES=` groups (VixSrc ships ~30). Groups stay off the
+/// variant the player demuxes. Renditions are re-emitted as `#FORJA-SUB:` so
+/// the subtitle menu can load one of them.
 fn strip_stream_inf_subtitles_attr(line: &str) -> String {
     let trimmed = line.trim();
     if !trimmed.to_ascii_uppercase().contains("#EXT-X-STREAM-INF:") {
@@ -546,7 +616,7 @@ https://cdn.example/seg.ts
         const BODY: &str = "\
 #EXTM3U
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"audio\",NAME=\"Korean\",URI=\"/playlist/1?type=audio\"
-#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"English\",URI=\"/playlist/1?type=subtitle\"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"English\",LANGUAGE=\"en\",URI=\"/playlist/1?type=subtitle\"
 #EXT-X-STREAM-INF:BANDWIDTH=1000,AUDIO=\"audio\",SUBTITLES=\"subs\"
 /playlist/1?type=video
 ";
@@ -561,6 +631,13 @@ https://cdn.example/seg.ts
         assert!(!out.to_ascii_uppercase().contains("SUBTITLES="), "{out}");
         assert!(out.to_ascii_uppercase().contains("TYPE=AUDIO"), "{out}");
         assert!(out.contains("/hls-proxy?url="), "{out}");
+        assert!(out.contains("#FORJA-SUB:"), "{out}");
+        assert!(out.contains("lang=en"), "{out}");
+        assert!(out.contains("name=English"), "{out}");
+        assert!(
+            out.contains("type%253Dsubtitle") || out.contains("subtitle"),
+            "{out}"
+        );
     }
 
     #[test]
