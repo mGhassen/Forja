@@ -182,9 +182,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         if (!mini && !pipMode && _s._escapeExitArmed)
           const PlayerEscapeExitHint(),
         if (!mini && pipMode) _buildPipRevertOverlay(),
-        if (!mini &&
-            !isStreamLoadingOverlayActive &&
-            !_s._isLoadingNextEp)
+        if (!mini && !_s._isLoadingNextEp)
           PlayerStatusOverlay(
             controller: _s._statusController,
             bufferingListenable: _s._isBufferingNotifier,

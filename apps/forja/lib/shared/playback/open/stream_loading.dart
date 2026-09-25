@@ -9,9 +9,10 @@ export 'package:forja/shared/playback/sources/torrent_loading_sink.dart';
 enum StreamLoadingKind { direct, torrent }
 
 /// Active fullscreen stream-loading overlay (at most one).
+///
+/// Stays set until the player route pops. Do not use it to hide in-player
+/// status text — that hid buffering / checking for the whole watch.
 StreamLoadingSession? _activeStreamLoadingSession;
-
-bool get isStreamLoadingOverlayActive => _activeStreamLoadingSession != null;
 
 /// Holds notifiers + dialog context for one resolve wait.
 class StreamLoadingSession {

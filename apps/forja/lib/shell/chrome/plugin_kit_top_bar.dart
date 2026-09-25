@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
+import 'package:forja/shared/engine/runtime/kit/hub_menu_clearance.dart';
 import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
@@ -98,46 +99,21 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
     return _plugin!.id == pluginId ? _plugin : null;
   }
 
-  /// Layout-only hubs — chrome lives in pack composition root, not shell.
-  bool _layoutOnlyHub(EnginePlugin? plugin) {
-    if (plugin == null) return false;
-    final caps = plugin.capabilities.map((c) => c.toLowerCase()).toSet();
-    if (!caps.contains('nav') || !caps.contains('layout')) return false;
-    const browse = {
-      'rail',
-      'feed',
-      'search',
-      'filters',
-      'host_search',
-      'structured_search',
-      'details',
-    };
-    // feed without rail/filters still browse. layout+feed+liveTv only → body chrome.
-    if (caps.contains('livetv') || caps.contains('listportals')) return true;
-    if (caps.contains('feed') &&
-        !caps.contains('rail') &&
-        !caps.contains('filters') &&
-        !caps.contains('search')) {
-      return true;
-    }
-    return caps.intersection(browse).isEmpty;
-  }
-
   @override
   Widget build(BuildContext context) {
     final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
     if (pluginId == null) return const SizedBox.shrink();
     final plugin = _pluginForTab;
-    if (_layoutOnlyHub(plugin)) return const SizedBox.shrink();
-    final canSearch =
-        plugin?.hasCapability(PackCapabilities.search) ?? false;
-    final canFilters =
-        plugin?.hasCapability(PackCapabilities.filters) ?? false;
     final hasVerticalFilters =
         VerticalFiltersRegistry.specFor(widget.tabId) != null;
-    if (!canSearch && !canFilters && !hasVerticalFilters) {
+    if (!hubShellTopBarVisible(
+      plugin,
+      hasVerticalFilters: hasVerticalFilters,
+    )) {
       return const SizedBox.shrink();
     }
+    final canSearch =
+        plugin?.hasCapability(PackCapabilities.search) ?? false;
     final label =
         PluginNavRegistry.destinations[widget.tabId]?.label ?? 'Search';
     final categories = PackFiltersRegistry.categoriesFor(pluginId);

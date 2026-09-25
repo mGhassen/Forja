@@ -306,7 +306,16 @@ class ShellTvLinearFocusEdges extends InheritedWidget {
       onForwardEdge != oldWidget.onForwardEdge;
 }
 
-/// Settings detail: ← → category rail via [ShellTvLinearFocusEdges.onBackwardEdge].
+/// Arrow that points at the Settings category list.
+///
+/// Left to right: the list is on the left. Right to left: it is on the right.
+bool _isTowardSettingsCategories(BuildContext context, LogicalKeyboardKey key) {
+  final rtl = Directionality.of(context) == TextDirection.rtl;
+  return key ==
+      (rtl ? LogicalKeyboardKey.arrowRight : LogicalKeyboardKey.arrowLeft);
+}
+
+/// Settings detail: the arrow toward the category list runs [onBackwardEdge].
 ///
 /// Call **after** [shellTvHandleRowArrows] **and** spatial [FocusNode.focusInDirection]
 /// so a left neighbor (Stremio Sources ↔ Live Sports chips, pack side actions)
@@ -317,7 +326,7 @@ KeyEventResult shellTvSettingsBackwardEdge({
   required KeyEvent event,
 }) {
   if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-  if (event.logicalKey != LogicalKeyboardKey.arrowLeft) {
+  if (!_isTowardSettingsCategories(context, event.logicalKey)) {
     return KeyEventResult.ignored;
   }
   final handler = ShellTvLinearFocusEdges.maybeOf(context)?.onBackwardEdge;
@@ -350,7 +359,8 @@ KeyEventResult shellTvLinearMenuArrows({
 
   final edges = ShellTvLinearFocusEdges.maybeOf(context);
   // Settings page: ← → category (or close drill), not previous row.
-  if (key == LogicalKeyboardKey.arrowLeft && edges?.onBackwardEdge != null) {
+  if (_isTowardSettingsCategories(context, key) &&
+      edges?.onBackwardEdge != null) {
     return edges!.onBackwardEdge!()
         ? KeyEventResult.handled
         : KeyEventResult.ignored;
@@ -382,7 +392,7 @@ KeyEventResult shellTvLinearMenuArrows({
       if (!moved) {
         if (!movedAny) {
           // ↑/↓ at the list edge stay in-page. Only ←/→ may run edge exits.
-          if (key == LogicalKeyboardKey.arrowLeft &&
+          if (_isTowardSettingsCategories(context, key) &&
               edges?.onBackwardEdge != null) {
             return edges!.onBackwardEdge!()
                 ? KeyEventResult.handled

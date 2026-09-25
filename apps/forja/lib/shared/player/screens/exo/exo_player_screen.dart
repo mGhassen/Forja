@@ -2686,7 +2686,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     ),
                   ),
                 ),
-              if (!isStreamLoadingOverlayActive && !_loadingNextEp)
+              if (!_loadingNextEp)
                 PlayerStatusOverlay(
                   controller: _statusController,
                   bufferingListenable: _isBufferingNotifier,

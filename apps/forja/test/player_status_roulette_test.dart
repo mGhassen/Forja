@@ -72,4 +72,41 @@ void main() {
     expect(label.style?.fontSize, ShellTokens.playerStatusLabelFontSizeTv);
     expect(find.text('0 / 1'), findsOneWidget);
   });
+
+  testWidgets('right-center overlay paints the active status label', (
+    tester,
+  ) async {
+    final controller = PlayerStatusController()
+      ..upsert(
+        'source-0',
+        'VidLink',
+        kind: StatusRouletteKind.loading,
+      );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      _wrap(
+        tv: false,
+        child: SizedBox.expand(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              PlayerStatusOverlay(controller: controller),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final label = find.text('VidLink');
+    expect(label, findsOneWidget);
+    final rect = tester.getRect(label);
+    final view = tester.getSize(find.byType(Scaffold));
+    expect(rect.width, greaterThan(8));
+    expect(rect.height, greaterThan(8));
+    expect(rect.right, greaterThan(view.width * 0.7));
+    expect(rect.center.dy, greaterThan(view.height * 0.3));
+    expect(rect.center.dy, lessThan(view.height * 0.7));
+  });
 }

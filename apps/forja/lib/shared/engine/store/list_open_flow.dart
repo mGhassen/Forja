@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/downloads/download_library_panel.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
@@ -14,7 +15,6 @@ bool kitListUsesOpenBinding({required bool? callerHasDetails}) =>
     callerHasDetails == false;
 
 /// `open.surface` on a kit.list row, including one nested under `meta`.
-@visibleForTesting
 String? kitListItemSurface(Map<String, dynamic> item) {
   final row = kitListOpenRow(item);
   final open = row['open'];
@@ -65,7 +65,7 @@ Future<void> openKitListItem(
   String? shellTabId,
   bool forcePick = false,
 }) async {
-  // Saved-library rows open the host page. Feed binding is for bookmarks
+  // Saved-library rows open the right panel. Feed binding is for bookmarks
   // that still need a details hub.
   if (kitListItemSurface(item) == 'offline') {
     final meta = PackPaintArtifact.metaItemOf(
@@ -74,11 +74,13 @@ Future<void> openKitListItem(
       meta: item['meta'],
     );
     if (meta == null || !context.mounted) return;
-    await openMetaItem(
-      context,
-      pluginId: pluginId,
-      item: meta,
-      shellTabId: shellTabId,
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (routeContext) => DownloadLibrarySidePanel(
+          seed: meta,
+          onClosed: () => Navigator.of(routeContext).pop(),
+        ),
+      ),
     );
     return;
   }

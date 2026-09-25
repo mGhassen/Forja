@@ -56,6 +56,32 @@ void main() {
     );
     expect(rows.single['title'], 'S02E03 · Castle');
   });
+
+  test('imdb row id is the download media id', () {
+    final item = MetaItem(
+      id: 'tt22526100',
+      type: 'movie',
+      name: 'The Love Hypothesis',
+      open: const MetaOpen(surface: 'offline', id: 'tt22526100'),
+    );
+    expect(mediaIdForMetaItem(item), 'tt22526100');
+  });
+
+  test('saved file is listed when the page id differs but the title matches', () {
+    final rows = downloadedTitleStreams(
+      tasks: [
+        _task(
+          mediaId: 'tt22526100',
+          season: null,
+          episode: null,
+          at: DateTime.utc(2026),
+        ),
+      ],
+      mediaId: '999001',
+      title: 'Show',
+    );
+    expect(rows, hasLength(1));
+  });
 }
 
 DownloadTask _task({

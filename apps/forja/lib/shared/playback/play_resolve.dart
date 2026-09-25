@@ -80,7 +80,7 @@ Movie _playMovieFor(MetaItem item) {
   final poster = item.poster.trim();
   final backdrop = item.background.trim();
   final logo = item.logo.trim();
-  final imdb = item.ids['imdb']?.toString();
+  final imdb = imdbIdOnMeta(item);
   return Movie(
     id: catalogMovieIdForPlay(item),
     imdbId: (imdb != null && imdb.startsWith('tt')) ? imdb : null,

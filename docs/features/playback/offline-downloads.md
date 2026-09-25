@@ -42,10 +42,10 @@ The header is a storage meter: offline library vs other space on the volume vs f
 
 ## Downloads tab
 
-Each finished title is a poster card. Open it to see the page that was saved
-with the download (description, cast, backdrop). Series and anime show only
-the episodes that finished. **Play** starts the first saved file: the film,
-or the earliest episode. The button next to Play lists those saved files.
+Each finished title is a poster card. Open it in the panel beside the grid.
+That panel shows the saved description and, for a series, the episodes that
+finished. **Play** starts the first saved file. The white button lists those
+saved files as cards.
 
 ## Offline play
 

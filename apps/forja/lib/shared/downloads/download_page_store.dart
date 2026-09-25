@@ -53,9 +53,10 @@ String downloadTypeForMovie(Movie? movie) {
 }
 
 String mediaIdForMetaItem(MetaItem item) {
+  final imdb = imdbIdOnMeta(item);
   final movie = metaItemToMovie(item);
-  if (movie == null) return item.id;
-  return mediaIdForDownloadMovie(imdbId: movie.imdbId, id: movie.id);
+  if (movie == null) return imdb ?? item.id;
+  return mediaIdForDownloadMovie(imdbId: imdb ?? movie.imdbId, id: movie.id);
 }
 
 /// First finished file: lowest season, then episode, then earliest finish.

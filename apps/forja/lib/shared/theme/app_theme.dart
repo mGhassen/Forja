@@ -682,6 +682,13 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
           // Clip so the left accent + ink fill follow [borderRadius].
           // (Directional Border + borderRadius is illegal in BoxDecoration.)
           final radius = BorderRadius.circular(widget.borderRadius);
+          final rtl = Directionality.of(context) == TextDirection.rtl;
+          final accent = BorderSide(
+            color: chromeActive
+                ? ForjaShellColors.brandGreen
+                : Colors.transparent,
+            width: 2.5,
+          );
           content = ClipRRect(
             borderRadius: radius,
             child: AnimatedContainer(
@@ -693,12 +700,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
                     ? ForjaShellColors.inkHover
                     : Colors.transparent,
                 border: Border(
-                  left: BorderSide(
-                    color: chromeActive
-                        ? ForjaShellColors.brandGreen
-                        : Colors.transparent,
-                    width: 2.5,
-                  ),
+                  left: rtl ? BorderSide.none : accent,
+                  right: rtl ? accent : BorderSide.none,
                 ),
               ),
               child: content,

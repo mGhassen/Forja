@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/downloads/download_library_panel.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_hero.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play.dart';
@@ -1916,15 +1917,17 @@ class PackPaintTree extends StatelessWidget {
             layoutWidth: constraints.maxWidth,
             androidTv: ShellTokens.isAndroidTvDevice,
           );
-          // Same resolver as onListItemTap — empty open + match surface still
-          // wants the side panel (do not require openMode == 'panel' literally).
+          final selectedOffline =
+              selected != null && kitListItemSurface(selected) == 'offline';
           final showPanel = selected != null &&
-              resolveKitListTapOpen(
-                    openMode: openMode,
-                    hasMatchOpenSurface: matchOpenSurface,
-                    canShowSidePanel: canShowSidePanel,
-                  ) ==
-                  KitListTapOpen.panel;
+              (selectedOffline
+                  ? canShowSidePanel
+                  : resolveKitListTapOpen(
+                        openMode: openMode,
+                        hasMatchOpenSurface: matchOpenSurface,
+                        canShowSidePanel: canShowSidePanel,
+                      ) ==
+                      KitListTapOpen.panel);
           final gap = PackPaintArtifact.packLength(context, spec['gap']);
           final pad = PackPaintArtifact.packLength(context, spec['pad']);
           final cardWidth = PackPaintArtifact.packLength(context, spec['cardWidth']);
@@ -1939,6 +1942,17 @@ class PackPaintTree extends StatelessWidget {
           }
 
           void openMatchDetails(Map<String, dynamic> item) {
+            if (kitListItemSurface(item) == 'offline') {
+              unawaited(
+                openKitListItem(
+                  context,
+                  pluginId: pluginId,
+                  item: item,
+                  shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+                ),
+              );
+              return;
+            }
             unawaited(
               KitEntryDetailsPage.open(
                 context,
@@ -1959,6 +1973,12 @@ class PackPaintTree extends StatelessWidget {
           }
 
           void onListItemTap(Map<String, dynamic> item) {
+            if (kitListItemSurface(item) == 'offline' &&
+                canShowSidePanel &&
+                chrome != null) {
+              chrome.onSelectListItem(item);
+              return;
+            }
             // Live Sports (openSetting / panelTabs): never fall through to
             // open.surface:live — that only re-requests this hub tab (no-op).
             final tapOpen = resolveKitListTapOpen(
@@ -1969,6 +1989,7 @@ class PackPaintTree extends StatelessWidget {
             switch (tapOpen) {
               case KitListTapOpen.panel:
                 chrome!.onSelectListItem(item);
+                if (kitListItemSurface(item) == 'offline') return;
                 final hubTab = (tabId ?? '').trim();
                 if (hubTab.isNotEmpty &&
                     ShellPaintScope.useTvFocusOf(context)) {
@@ -1999,6 +2020,12 @@ class PackPaintTree extends StatelessWidget {
           }
 
           void onListItemOpenWith(Map<String, dynamic> item) {
+            if (kitListItemSurface(item) == 'offline') {
+              if (canShowSidePanel) {
+                chrome?.onSelectListItem(item);
+                return;
+              }
+            }
             // Side-panel / match-open hosts keep primary open; Open-with is
             // feed poster grids only (RFC-108).
             if (matchOpenSurface) return;
@@ -2283,6 +2310,13 @@ class PackPaintTree extends StatelessWidget {
           Widget? panel;
           if (showPanel) {
             final entry = _listEntryFromItem(selected);
+            if (entry.meta.open?.surface == 'offline') {
+              panel = DownloadLibrarySidePanel(
+                key: ValueKey('offline-library-${entry.meta.id}'),
+                seed: entry.meta,
+                onClosed: () => chrome?.onSelectListItem(null),
+              );
+            } else {
             final hubTab = (tabId ?? '').trim();
             panel = KitResolvePanelHost.instance.buildSidePanel(
               context: context,
@@ -2311,6 +2345,7 @@ class PackPaintTree extends StatelessWidget {
                       );
                     },
             );
+            }
           }
           final body = SizedBox(
             width: constraints.maxWidth,

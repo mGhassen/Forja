@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 6 / 6** fix · **2 / 3** acceptance |
+| **Progress** | **Complete · 8 / 8** fix · **2 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,8 @@
 | 4 | I381-T04 | TV rail: toward-page arrow enters the page; away-page arrow stays trapped | ✅ |
 | 5 | I381-T05 | Navbar follows Settings → Features **Navbar side**, not the open hub | ✅ |
 | 6 | I381-T06 | Pack layout `dir` stays on that pack's page only | ✅ |
+| 7 | I381-T07 | Icon scale filter paints in a local layer so a right-side rail does not flash | ✅ |
+| 8 | I381-T08 | Settings hub uses the same app direction (category list on the start edge) | ✅ |
 
 ---
 

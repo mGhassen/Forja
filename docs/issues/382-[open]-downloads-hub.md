@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** tasks · **6 / 6** acceptance |
+| **Progress** | **7 / 7** tasks · **7 / 7** acceptance |
 | **Current slice** | Hub, snapshot, offline details, Downloaded tab, green Play |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
@@ -26,6 +26,7 @@
 | 4 | I382-T04 | Sources Downloaded tab and green Play of the first finished file | ✅ |
 | 5 | I382-T05 | Feature guide, changelog, RFC-117 rows | ✅ |
 | 6 | I382-T06 | Card tap opens the saved page; the file button lists saved files only | ✅ |
+| 7 | I382-T07 | Card docks a side panel: saved info, finished episodes, Play, file cards only | ✅ |
 
 ---
 
@@ -39,6 +40,7 @@
 | 4 | I382-A04 | Sources opens on a Downloaded tab that lists the saved files | ✅ |
 | 5 | I382-A05 | Green Play on that page starts the first finished file | ✅ |
 | 6 | I382-A06 | Tapping a card opens that saved page. The file button lists only the saved file cards | ✅ |
+| 7 | I382-A07 | The card docks a side panel with saved info and finished episodes. Play starts the first file. The white button lists file cards only | ✅ |
 
 ---
 

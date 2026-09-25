@@ -248,7 +248,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                     ),
                   ),
 
-                if (!isStreamLoadingOverlayActive && !_s._isLoadingNextEp)
+                if (!_s._isLoadingNextEp)
                   PlayerStatusOverlay(
                     controller: _s._statusController,
                     bufferingListenable: _s._isBufferingNotifier,

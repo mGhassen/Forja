@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -26,7 +25,8 @@ void upsertStreamOpenStatus(
   PlayerStatusController controller,
   StreamOpenStatusStage stage,
 ) {
-  if (isStreamLoadingOverlayActive) return;
+  // The stream-loading session stays alive until the player route pops.
+  // Skipping updates here hid Checking / Preparing for the whole watch.
   controller.upsert(
     kStreamOpenStatusId,
     streamOpenStatusLabel(stage),

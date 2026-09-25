@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dar
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
+import 'package:forja/shared/engine/runtime/kit/hub_menu_clearance.dart';
 import 'package:forja/shared/engine/runtime/kit/hub_page_focus.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
@@ -27,6 +28,7 @@ import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -1616,6 +1618,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final fullPage = _fullPageBody();
     if (fullPage != null) return fullPage;
     final sections = _composeSections();
+    final leadingInset = _leadingSectionTopInset(context);
     // Build ~2 viewports below the fold so Mood / Because register for D-pad
     // before ↓ reaches Popular's last on-screen neighbor.
     final cacheExtent = MediaQuery.sizeOf(context).height * 2;
@@ -1626,7 +1629,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       sections: sections,
       sectionSliver: (context, section, index) {
         final gap = index == 0
-            ? 0.0
+            ? leadingInset
             : ShellTokens.homeRowSpacing;
         return SliverToBoxAdapter(
           child: gap <= 0
@@ -1702,6 +1705,93 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _sectionStructureSig = structureSig;
       _rowPrefetch.reset();
     }
+    final resolved = _heroAndBleed();
+    final heroSpec = resolved.hero;
+    final bleedSpec = resolved.bleed;
+
+    final out = <Widget>[];
+    for (final w in _widgets) {
+      if (!_includeInPage(w, bleedSpec)) continue;
+      final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+      if (type == LayoutTypes.hero &&
+          identical(w, heroSpec) &&
+          bleedSpec != null) {
+        // Featured (etc.) rides inside the hero as pageBottomChild — tall
+        // backdrop + soft fade, not a sibling section below a short hero.
+        out.add(
+          KeyedSubtree(
+            key: ValueKey('hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}'),
+            child: PackPaintTree(
+              spec: w,
+              pluginId: widget.pluginId,
+              packSourceUrl: widget.packSourceUrl,
+              tabId: _pageKey,
+              pageBottomChild: PackPaintTree(
+                spec: Map<String, dynamic>.from(bleedSpec),
+                pluginId: widget.pluginId,
+                packSourceUrl: widget.packSourceUrl,
+                tabId: _pageKey,
+              ),
+            ),
+          ),
+        );
+        continue;
+      }
+      out.add(
+        KeyedSubtree(
+          key: ValueKey('hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}'),
+          child: PackPaintTree(
+            spec: w,
+            pluginId: widget.pluginId,
+            packSourceUrl: widget.packSourceUrl,
+            tabId: _pageKey,
+          ),
+        ),
+      );
+    }
+    return out;
+  }
+
+  /// Overlay menu height for the first painted section.
+  ///
+  /// A leading hero stays at 0 — its backdrop runs under the menu and its
+  /// text column already clears [catalogHomeTopBarHeight].
+  double _leadingSectionTopInset(BuildContext context) {
+    final scope = ShellScope.maybeOf(context);
+    final shellMenu = scope?.config.showKitTopBar ?? false;
+    final packs = PluginRegistry.instance.peekPacks();
+    final plugin = packs == null
+        ? null
+        : PluginRegistry.pluginFromPacks(packs, widget.pluginId);
+    final menuVisible = shellMenu &&
+        hubShellTopBarVisible(
+          plugin,
+          hasVerticalFilters:
+              VerticalFiltersRegistry.specFor(_pageKey) != null,
+        );
+    final leading = _firstPaintedSpec();
+    final leadingHero = leading != null &&
+        LayoutTypes.normalize((leading['type'] ?? '').toString(), leading) ==
+            LayoutTypes.hero;
+    final menuHeight = menuVisible
+        ? MediaQuery.paddingOf(context).top + catalogHomeTopBarHeight(context)
+        : 0.0;
+    return hubFirstSectionTopInset(
+      menuVisible: menuVisible,
+      leadingIsHero: leadingHero,
+      menuHeight: menuHeight,
+    );
+  }
+
+  Map<String, dynamic>? _firstPaintedSpec() {
+    final bleedSpec = _heroAndBleed().bleed;
+    for (final w in _widgets) {
+      if (_includeInPage(w, bleedSpec)) return w;
+    }
+    return null;
+  }
+
+  ({Map<String, dynamic>? hero, Map<String, dynamic>? bleed}) _heroAndBleed() {
     Map<String, dynamic>? heroSpec;
     String? bleedKey;
     for (final w in _widgets) {
@@ -1748,57 +1838,25 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         if (bleedSpec != null) break;
       }
     }
+    return (hero: heroSpec, bleed: bleedSpec);
+  }
 
-    final out = <Widget>[];
-    for (final w in _widgets) {
-      final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
-      if (type == LayoutTypes.verticalFilters) continue;
-      if (!_chromeShowsWidget(w)) continue;
-      if (identical(w, bleedSpec) &&
-          bleedSpec != null &&
-          bleedSpec['hideWhenBleed'] == true) {
-        continue;
-      }
-      if (w['hideWhenTypeFilter'] == true && _chromeHidesTypeFilterRail()) {
-        continue;
-      }
-      if (type == LayoutTypes.hero &&
-          identical(w, heroSpec) &&
-          bleedSpec != null) {
-        // Featured (etc.) rides inside the hero as pageBottomChild — tall
-        // backdrop + soft fade, not a sibling section below a short hero.
-        out.add(
-          KeyedSubtree(
-            key: ValueKey('hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}'),
-            child: PackPaintTree(
-              spec: w,
-              pluginId: widget.pluginId,
-              packSourceUrl: widget.packSourceUrl,
-              tabId: _pageKey,
-              pageBottomChild: PackPaintTree(
-                spec: Map<String, dynamic>.from(bleedSpec),
-                pluginId: widget.pluginId,
-                packSourceUrl: widget.packSourceUrl,
-                tabId: _pageKey,
-              ),
-            ),
-          ),
-        );
-        continue;
-      }
-      out.add(
-        KeyedSubtree(
-          key: ValueKey('hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}'),
-          child: PackPaintTree(
-            spec: w,
-            pluginId: widget.pluginId,
-            packSourceUrl: widget.packSourceUrl,
-            tabId: _pageKey,
-          ),
-        ),
-      );
+  bool _includeInPage(
+    Map<String, dynamic> w,
+    Map<String, dynamic>? bleedSpec,
+  ) {
+    final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+    if (type == LayoutTypes.verticalFilters) return false;
+    if (!_chromeShowsWidget(w)) return false;
+    if (identical(w, bleedSpec) &&
+        bleedSpec != null &&
+        bleedSpec['hideWhenBleed'] == true) {
+      return false;
     }
-    return out;
+    if (w['hideWhenTypeFilter'] == true && _chromeHidesTypeFilterRail()) {
+      return false;
+    }
+    return true;
   }
 }
 

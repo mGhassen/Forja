@@ -37,6 +37,18 @@ int catalogMovieIdForPlay(MetaItem item) {
   return catalogSyntheticMovieId(item);
 }
 
+String? _ttMediaId(String? raw) {
+  final value = raw?.trim() ?? '';
+  return value.startsWith('tt') ? value : null;
+}
+
+/// IMDb id on a catalog row: `ids.imdb`, then the row id, then `open.id`.
+String? imdbIdOnMeta(MetaItem item) {
+  return _ttMediaId(item.ids['imdb']?.toString()) ??
+      _ttMediaId(item.id) ??
+      _ttMediaId(item.open?.id);
+}
+
 /// Declared series episode total for My List / Simkl Completed.
 ///
 /// Prefer [MetaItem.episodes], then pack `facts.episodeCount`. Never invent
@@ -63,7 +75,7 @@ Movie? metaItemToMovie(MetaItem item) {
     final poster = item.poster.trim();
     final backdrop = item.background.trim();
     final logo = item.logo.trim();
-    final imdb = item.ids['imdb']?.toString();
+    final imdb = imdbIdOnMeta(item);
     return Movie(
       id: movieId,
       imdbId: (imdb != null && imdb.startsWith('tt')) ? imdb : null,
@@ -101,7 +113,7 @@ Movie? metaItemToMovie(MetaItem item) {
     mediaType = 'tv';
   }
 
-  final imdb = item.ids['imdb']?.toString();
+  final imdb = imdbIdOnMeta(item);
   return Movie(
     id: id,
     imdbId: (imdb != null && imdb.startsWith('tt')) ? imdb : null,

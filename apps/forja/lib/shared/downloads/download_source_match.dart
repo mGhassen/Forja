@@ -209,14 +209,22 @@ String downloadFileLabel(DownloadTask task) {
 }
 
 /// Finished files for a title, oldest episode first.
+///
+/// [mediaId] is the id stored at enqueue (usually IMDb). When that misses,
+/// [title] still finds the file if the details page is holding a different id.
 List<Map<String, dynamic>> downloadedTitleStreams({
   required Iterable<DownloadTask> tasks,
   required String mediaId,
+  String? title,
 }) {
-  if (mediaId.isEmpty) return const [];
+  final id = mediaId.trim();
+  final name = title?.trim().toLowerCase() ?? '';
   final hits = [
     for (final task in tasks)
-      if (task.mediaId == mediaId && task.isCompleted) task,
+      if (task.isCompleted &&
+          ((id.isNotEmpty && task.mediaId == id) ||
+              (name.isNotEmpty && task.title.trim().toLowerCase() == name)))
+        task,
   ];
   hits.sort((a, b) {
     final season = (a.season ?? 0).compareTo(b.season ?? 0);

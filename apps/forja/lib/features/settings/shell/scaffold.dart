@@ -18,6 +18,7 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:rust/rust.dart';
 import 'package:forja_foundation/widgets/chrome/shell_tab_header.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -323,7 +324,8 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     }
 
     if (split) {
-      return TvFocusGraph(
+      return _settingsDirection(
+        TvFocusGraph(
         tabId: 'settings',
         child: SafeArea(
           child: Row(
@@ -415,16 +417,18 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
             ],
           ),
         ),
+      ),
       );
     }
 
-    return SafeArea(
+    return _settingsDirection(
+      SafeArea(
       child: _wrapCompactTvFocus(
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(
+              padding: EdgeInsetsDirectional.fromSTEB(
                 ShellTokens.usesCompactNavDrawer(context)
                     ? ShellTokens.compactChromeLeadingInset(context)
                     : SettingsTokens.pagePaddingOf(context),
@@ -483,8 +487,24 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
           ],
         ),
       ),
+      ),
     );
   }
+}
+
+/// Settings follows the app navbar side. Pack page direction does not.
+Widget _settingsDirection(Widget child) {
+  return ValueListenableBuilder<String>(
+    valueListenable: SettingsService.shellWritingDirection,
+    builder: (context, direction, _) {
+      return Directionality(
+        textDirection: direction == SettingsService.shellWritingRtl
+            ? TextDirection.rtl
+            : TextDirection.ltr,
+        child: child,
+      );
+    },
+  );
 }
 
 class _CategorySidebar extends ConsumerWidget {
@@ -516,7 +536,7 @@ class _CategorySidebar extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(
+              padding: EdgeInsetsDirectional.fromSTEB(
                 ShellTokens.usesCompactNavDrawer(context)
                     ? ShellTokens.compactChromeLeadingInset(context)
                     : 16,

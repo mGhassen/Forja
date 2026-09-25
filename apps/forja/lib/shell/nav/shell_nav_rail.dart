@@ -1267,18 +1267,25 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                               ShellTokens.navRailIconHoverScale,
                           child: Align(
                             alignment: Alignment.bottomCenter,
-                            child: AnimatedScale(
-                              alignment: Alignment.bottomCenter,
-                              scale: _scaleFor(policy),
-                              duration: chromeAnim,
-                              curve: Curves.easeOutCubic,
-                              // Bilinear — Impeller defaults can nearest-neighbor
-                              // the focus grow and make pack PNGs look 8-bit.
-                              filterQuality: FilterQuality.medium,
-                              child: SizedBox(
-                                width: iconBox,
-                                height: iconBox,
-                                child: Center(child: icon),
+                            child: RepaintBoundary(
+                              // AnimatedScale's filter bakes in the paint
+                              // offset. On the right edge of a wide window
+                              // that offset is large and Impeller flashes the
+                              // glyph for the whole scale. A boundary keeps
+                              // the filter local.
+                              child: AnimatedScale(
+                                alignment: Alignment.bottomCenter,
+                                scale: _scaleFor(policy),
+                                duration: chromeAnim,
+                                curve: Curves.easeOutCubic,
+                                // Bilinear — Impeller defaults can nearest-neighbor
+                                // the focus grow and make pack PNGs look 8-bit.
+                                filterQuality: FilterQuality.medium,
+                                child: SizedBox(
+                                  width: iconBox,
+                                  height: iconBox,
+                                  child: Center(child: icon),
+                                ),
                               ),
                             ),
                           ),

@@ -2138,8 +2138,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
   }
 
-  String get _downloadMediaId =>
-      mediaIdForDownloadMovie(imdbId: widget.movie.imdbId, id: widget.movie.id);
+  String get _downloadMediaId {
+    final meta = widget.meta;
+    final fromMeta = meta == null ? null : imdbIdOnMeta(meta);
+    return mediaIdForDownloadMovie(
+      imdbId: fromMeta ?? widget.movie.imdbId,
+      id: widget.movie.id,
+    );
+  }
 
   /// Saved and in-progress downloads for this title, before provider search.
   ///
@@ -4051,6 +4057,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         ? downloadedTitleStreams(
             tasks: DownloadService.instance.tasksNotifier.value,
             mediaId: _downloadMediaId,
+            title: widget.movie.title,
           )
         : _pinnedOfflineStreams(
             stremio: stremio,

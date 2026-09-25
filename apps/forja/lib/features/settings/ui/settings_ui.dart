@@ -216,7 +216,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
                     const SizedBox(height: 6),
                     FittedBox(
                       fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
+                      alignment: AlignmentDirectional.centerStart,
                       child: widget.trailing!,
                     ),
                   ],
@@ -225,7 +225,9 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
             ),
             if (!SettingsTokens.useSplitLayout(context))
               Icon(
-                Icons.chevron_right_rounded,
+                Directionality.of(context) == TextDirection.rtl
+                    ? Icons.chevron_left_rounded
+                    : Icons.chevron_right_rounded,
                 color: ink,
                 size: SettingsTokens.categoryIconSizeOf(context),
               ),
@@ -234,6 +236,8 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
       );
     }
 
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final enterDetail = widget.onRightEdge;
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
@@ -247,14 +251,19 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
       listIndex: widget.listIndex,
       // Split sidebar: ← from any category → shell nav (same as IPTV cats).
       // listIndex: 0 alone used to trap ← on Playback / Addons / …
-      navLeftAlways: rail,
+      navLeftAlways: rail && !rtl,
       tvTabId: 'settings',
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex ?? widget.listIndex,
       tvZone: rail ? ShellTvZone.row : ShellTvZone.settings,
       // Item mode snaps the first tile to list top (header stays visible).
       ensureVisibleMode: ShellPaintEnsureVisible.item,
-      onRightEdge: widget.onRightEdge,
+      onLeftEdge: (rail && rtl) ? enterDetail : null,
+      onRightEdge: (rail && rtl)
+          ? () {
+              ShellTvFocusCoordinator.focusActiveNavTab();
+            }
+          : enterDetail,
       focusNode: widget.focusNode,
       onHoverChange: (hovered) {
         if (_hoveredN.value == hovered) return;
