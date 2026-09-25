@@ -180,6 +180,17 @@ void main() {
       expect(kitListUsesOpenBinding(callerHasDetails: true), isFalse);
       expect(kitListUsesOpenBinding(callerHasDetails: null), isFalse);
     });
+
+    test('offline surface is readable from a feed row', () {
+      expect(
+        kitListItemSurface({
+          'meta': {
+            'open': {'surface': 'offline', 'id': 'tt1'},
+          },
+        }),
+        'offline',
+      );
+    });
   });
 
   group('kitListOpenRow', () {

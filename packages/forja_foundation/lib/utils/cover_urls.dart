@@ -29,6 +29,19 @@ String resolveAbsoluteCoverUrl(String raw) {
   return value;
 }
 
+/// Poster or backdrop saved next to an offline download (`file://` or `/path`).
+bool isLocalCoverUrl(String raw) {
+  final value = raw.trim();
+  return value.startsWith('file://') || value.startsWith('/');
+}
+
+/// Filesystem path for [isLocalCoverUrl].
+String localCoverFilePath(String raw) {
+  final value = raw.trim();
+  if (value.startsWith('file://')) return Uri.parse(value).toFilePath();
+  return value;
+}
+
 /// URL safe for Flutter [Image.network] / Android [ImageDecoder].
 ///
 /// TMDB title logos are often `.svg`. Android cannot decode SVG, so http(s)

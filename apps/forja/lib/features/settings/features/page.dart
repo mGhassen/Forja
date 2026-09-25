@@ -368,6 +368,29 @@ class _SettingsNavigationPageBodyState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        ValueListenableBuilder<String>(
+          valueListenable: SettingsService.shellWritingDirection,
+          builder: (context, direction, _) {
+            final rightToLeft =
+                direction == SettingsService.shellWritingRtl;
+            return SettingsSelectRow(
+              title: 'Navbar side',
+              subtitle: 'Choose which side the navbar sits on.',
+              value: rightToLeft ? 'Right to left' : 'Left to right',
+              options: const ['Left to right', 'Right to left'],
+              onChanged: (picked) {
+                if (picked == null) return;
+                unawaited(
+                  _settings.setShellWritingDirection(
+                    picked == 'Right to left'
+                        ? SettingsService.shellWritingRtl
+                        : SettingsService.shellWritingLtr,
+                  ),
+                );
+              },
+            );
+          },
+        ),
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(

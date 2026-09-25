@@ -13,6 +13,16 @@ import 'package:forja_foundation/protocol/protocol.dart';
 bool kitListUsesOpenBinding({required bool? callerHasDetails}) =>
     callerHasDetails == false;
 
+/// `open.surface` on a kit.list row, including one nested under `meta`.
+@visibleForTesting
+String? kitListItemSurface(Map<String, dynamic> item) {
+  final row = kitListOpenRow(item);
+  final open = row['open'];
+  if (open is! Map) return null;
+  final surface = (open['surface'] ?? '').toString().trim();
+  return surface.isEmpty ? null : surface;
+}
+
 /// Flatten kit.list feed row so legacy open binding sees open / title / ids.
 Map<String, dynamic> kitListOpenRow(Map<String, dynamic> item) {
   final row = Map<String, dynamic>.from(item);
@@ -55,6 +65,23 @@ Future<void> openKitListItem(
   String? shellTabId,
   bool forcePick = false,
 }) async {
+  // Saved-library rows open the host page. Feed binding is for bookmarks
+  // that still need a details hub.
+  if (kitListItemSurface(item) == 'offline') {
+    final meta = PackPaintArtifact.metaItemOf(
+      props: PackPaintArtifact.propsOf(item),
+      open: item['open'] ?? item['metaOpen'] ?? item['catalogOpen'],
+      meta: item['meta'],
+    );
+    if (meta == null || !context.mounted) return;
+    await openMetaItem(
+      context,
+      pluginId: pluginId,
+      item: meta,
+      shellTabId: shellTabId,
+    );
+    return;
+  }
   final syncHas = PluginNavRegistry.pluginHasDetailsSync(pluginId);
   final hasDetails =
       syncHas ?? await PluginNavRegistry.pluginHasDetails(pluginId);

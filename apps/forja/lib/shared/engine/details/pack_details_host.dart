@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/downloads/download_page_store.dart';
+import 'package:forja/shared/downloads/download_play.dart';
+import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/engine/details/details_host_wire.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play.dart';
 import 'package:forja/shared/engine/details/details_stremio.dart';
@@ -41,6 +44,7 @@ import 'package:forja/shell/desktop/desktop_selectable_title.dart';
 import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 import 'package:forja_foundation/widgets/details/details_hero.dart';
 import 'package:forja_foundation/blocks/details/details_block.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
@@ -158,6 +162,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     unawaited(_loadWatchedEpisodes());
     unawaited(_loadEpisodeView());
     _loading = !hubMetaTmdbEnriched(widget.item);
+    _noteDownloadPage(widget.item);
     _load();
   }
 
@@ -567,7 +572,55 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     setState(() => _watchProgress = null);
   }
 
+  bool get _offlineLibrary => widget.item.open?.surface == 'offline';
+
+  void _noteDownloadPage(MetaItem item) {
+    DownloadPageStore.note(mediaIdForMetaItem(item), item);
+  }
+
+  void _paintLoaded(
+    MetaItem meta, {
+    required List<KitDetailRailSection> rails,
+    required KitDetailsLayout layout,
+    required List<String> backdrops,
+  }) {
+    final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
+    var firstSeason = seasons.isEmpty ? 1 : seasons.first;
+    var firstEp = 1;
+    if (widget.initialSeason != null &&
+        (seasons.isEmpty || seasons.contains(widget.initialSeason))) {
+      firstSeason = widget.initialSeason!;
+    }
+    final seasonVideos = hubVideosForSeason(meta.videos, firstSeason);
+    firstEp = seasonVideos.isEmpty
+        ? (widget.initialEpisode ?? 1)
+        : (widget.initialEpisode != null &&
+                seasonVideos.any((v) => v.episode == widget.initialEpisode)
+            ? widget.initialEpisode!
+            : (seasonVideos.first.episode ?? 1));
+    setState(() {
+      _detail = meta;
+      _packRails = rails;
+      _layout = layout;
+      _heroBackdrops = backdrops;
+      _loading = false;
+      _error = null;
+      _selectedSeason = firstSeason;
+      _selectedEpisode = firstEp;
+    });
+    _noteDownloadPage(meta);
+  }
+
   Future<void> _load() async {
+    if (_offlineLibrary) {
+      _paintLoaded(
+        widget.item,
+        rails: const [],
+        layout: KitDetailsLayout.classic,
+        backdrops: hubHeroBackdropUrls(widget.item),
+      );
+      return;
+    }
     if (hubMetaIsStremio(widget.item)) {
       setState(() {
         _loading = true;
@@ -577,29 +630,12 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       if (!mounted) return;
       final meta = result.meta;
       final backdrops = hubHeroBackdropUrls(meta);
-      final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
-      var firstSeason = seasons.isEmpty ? 1 : seasons.first;
-      var firstEp = 1;
-      if (widget.initialSeason != null &&
-          (seasons.isEmpty || seasons.contains(widget.initialSeason))) {
-        firstSeason = widget.initialSeason!;
-      }
-      final seasonVideos = hubVideosForSeason(meta.videos, firstSeason);
-      firstEp = seasonVideos.isEmpty
-          ? (widget.initialEpisode ?? 1)
-          : (widget.initialEpisode != null &&
-                  seasonVideos.any((v) => v.episode == widget.initialEpisode)
-              ? widget.initialEpisode!
-              : (seasonVideos.first.episode ?? 1));
-      setState(() {
-        _detail = meta;
-        _packRails = result.rails;
-        _layout = KitDetailsLayout.classic;
-        _heroBackdrops = backdrops;
-        _loading = false;
-        _selectedSeason = firstSeason;
-        _selectedEpisode = firstEp;
-      });
+      _paintLoaded(
+        meta,
+        rails: result.rails,
+        layout: KitDetailsLayout.classic,
+        backdrops: backdrops,
+      );
       unawaited(_loadWatchProgress());
       unawaited(_loadWatchedEpisodes());
       if (widget.autoPlay) {
@@ -631,6 +667,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           if (packRails.isNotEmpty) _packRails = packRails;
           _heroBackdrops = hubHeroBackdropUrls(meta);
         });
+        _noteDownloadPage(meta);
       },
     );
     if (!mounted) return;
@@ -654,29 +691,12 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final layout = parseKitDetailsLayout(env.data);
     final backdrops = hubHeroBackdropUrls(meta);
     if (!mounted) return;
-    final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
-    var firstSeason = seasons.isEmpty ? 1 : seasons.first;
-    var firstEp = 1;
-    if (widget.initialSeason != null &&
-        (seasons.isEmpty || seasons.contains(widget.initialSeason))) {
-      firstSeason = widget.initialSeason!;
-    }
-    final seasonVideos = hubVideosForSeason(meta.videos, firstSeason);
-    firstEp = seasonVideos.isEmpty
-        ? (widget.initialEpisode ?? 1)
-        : (widget.initialEpisode != null &&
-                seasonVideos.any((v) => v.episode == widget.initialEpisode)
-            ? widget.initialEpisode!
-            : (seasonVideos.first.episode ?? 1));
-    setState(() {
-      _detail = meta;
-      _packRails = packRails;
-      _layout = layout;
-      _heroBackdrops = backdrops;
-      _loading = false;
-      _selectedSeason = firstSeason;
-      _selectedEpisode = firstEp;
-    });
+    _paintLoaded(
+      meta,
+      rails: packRails,
+      layout: layout,
+      backdrops: backdrops,
+    );
     unawaited(_loadWatchProgress());
     unawaited(_loadWatchedEpisodes());
     if (widget.autoPlay) {
@@ -798,7 +818,26 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     await _afterPlayClosed();
   }
 
+  Future<void> _playFirstDownload() async {
+    final movie = metaItemToMovie(_show);
+    final mediaId = mediaIdForMetaItem(_show);
+    final task = firstCompletedDownload(
+      DownloadService.instance.tasksNotifier.value,
+      mediaId,
+    );
+    if (task == null) {
+      ForjaToast.info('No saved file');
+      return;
+    }
+    if (!mounted) return;
+    await playCompletedDownloadTask(context, task, movie: movie);
+  }
+
   void _playSelected() {
+    if (_offlineLibrary) {
+      unawaited(_playFirstDownload());
+      return;
+    }
     if (_isMovie || _videos.isEmpty) {
       unawaited(_playEpisode(null));
       return;
@@ -820,7 +859,13 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       extras: _playFilterExtras,
       audioCategory: catalogPlayAudioCategory(_playFilterSelections),
     );
-    unawaited(openSourcesFromContext(context: context, ctx: ctx));
+    unawaited(
+      openSourcesFromContext(
+        context: context,
+        ctx: ctx,
+        filesOnly: _offlineLibrary,
+      ),
+    );
   }
 
   @override
@@ -867,7 +912,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final tvFocus = policy.useFocusableMoodChips;
     final playbackFlags = KitPanelSourceFlagsHooks.watch?.call(ref);
     final isIptv = hubMetaIsIptv(_show);
-    final showCatalogSources = !isIptv && kitHasPanelSources(playbackFlags);
+    final showCatalogSources = _offlineLibrary ||
+        (!isIptv && kitHasPanelSources(playbackFlags));
     final hasEpisodes = videos.isNotEmpty && !_isMovie;
 
     if (policy.heroPlayAutoFocus &&
@@ -1167,6 +1213,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
                               show.open != null)
                       ? _openCatalogSources
                       : null,
+                  secondaryIcon: _offlineLibrary
+                      ? Icons.folder_open_rounded
+                      : Icons.link_rounded,
                   focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                   onUpEdge: heroPopUp,
                   tvTabId: tvFocus ? MediaDetailsTv.tabId : null,

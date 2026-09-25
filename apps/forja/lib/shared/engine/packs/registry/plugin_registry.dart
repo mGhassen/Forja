@@ -85,15 +85,67 @@ class PluginRegistry {
   /// Last [bumpHubFeedEpoch] asked for a network scrape (vs re-reduce from cache).
   static bool get hubFeedEpochForceNetwork => _hubFeedEpochForceNetwork;
 
+  /// Pack wipe / Reload packs. Hubs must not scrape until the tab is opened.
+  static int _hubOpenReloadClock = 0;
+  static int _hubOpenReloadAllEpoch = 0;
+  static final Map<String, int> _hubOpenReloadEpoch = {};
+  static final Map<String, int> _hubOpenReloadSeen = {};
+
+  /// True when pack reload flagged [pluginId] and that hub has not opened since.
+  static bool hubNeedsReloadOnOpen(String pluginId) {
+    final id = pluginId.trim();
+    if (id.isEmpty) return false;
+    final seen = _hubOpenReloadSeen[id] ?? 0;
+    if (_hubOpenReloadAllEpoch > seen) return true;
+    return (_hubOpenReloadEpoch[id] ?? 0) > seen;
+  }
+
+  /// Call when the hub tab is actually shown and the reload starts.
+  static void consumeHubReloadOnOpen(String pluginId) {
+    final id = pluginId.trim();
+    if (id.isEmpty) return;
+    _hubOpenReloadSeen[id] = _hubOpenReloadClock;
+  }
+
+  @visibleForTesting
+  static void debugResetHubOpenReload() {
+    _hubOpenReloadClock = 0;
+    _hubOpenReloadAllEpoch = 0;
+    _hubOpenReloadEpoch.clear();
+    _hubOpenReloadSeen.clear();
+  }
+
+  static void _flagHubsReloadOnOpen({
+    required bool all,
+    required Set<String> pluginIds,
+  }) {
+    _hubOpenReloadClock++;
+    final clock = _hubOpenReloadClock;
+    if (all) {
+      _hubOpenReloadAllEpoch = clock;
+      debugPrint(
+        '[HubReload] flagged all hubs epoch=$clock — reload when opened',
+      );
+      return;
+    }
+    for (final id in pluginIds) {
+      _hubOpenReloadEpoch[id] = clock;
+    }
+    debugPrint(
+      '[HubReload] flagged ${pluginIds.join(', ')} epoch=$clock — reload when opened',
+    );
+  }
+
   static void bumpHubFeedEpoch({
     Iterable<String>? pluginIds,
     bool all = false,
     bool forceNetwork = true,
   }) {
+    Set<String> next = const {};
     if (all) {
       _hubFeedEpochPlugins = {};
     } else {
-      final next = {
+      next = {
         for (final raw in pluginIds ?? const <String>[])
           if (raw.trim().isNotEmpty) raw.trim(),
       };
@@ -101,6 +153,9 @@ class PluginRegistry {
       _hubFeedEpochPlugins = next;
     }
     _hubFeedEpochForceNetwork = forceNetwork;
+    if (forceNetwork) {
+      _flagHubsReloadOnOpen(all: all, pluginIds: next);
+    }
     hubFeedEpoch.value++;
   }
 

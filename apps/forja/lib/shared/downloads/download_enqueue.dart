@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/downloads/download_page_store.dart';
 import 'package:forja/shared/downloads/download_path_helper.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_size_probe.dart';
@@ -21,13 +24,6 @@ String downloadSourceLabel({String? catalogName, String? providerId}) {
   final pid = providerId?.trim() ?? '';
   if (pid.isNotEmpty) return pid;
   return 'Stream';
-}
-
-String _downloadTypeForMovie(Movie movie) {
-  final mt = movie.mediaType.toLowerCase();
-  if (mt == 'tv' || mt == 'series') return 'series';
-  if (mt == 'anime') return 'anime';
-  return 'movie';
 }
 
 String _mediaIdForDownload(Movie movie) {
@@ -161,7 +157,7 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
       await enqueueVodDownload(
         title: movie.title,
         mediaId: _mediaIdForDownload(movie),
-        type: _downloadTypeForMovie(movie),
+        type: downloadTypeForMovie(movie),
         season: season,
         episode: episode,
         posterUrl: movie.posterPath.isNotEmpty ? movie.posterPath : null,
@@ -169,6 +165,7 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
         year: movie.releaseDate.isNotEmpty
             ? movie.releaseDate.split('-').first
             : null,
+        overview: movie.overview.trim().isEmpty ? null : movie.overview.trim(),
         url: url,
         headers: resolved,
         sourceName: sourceName,
@@ -226,10 +223,7 @@ Future<DownloadTask?> enqueuePlayerCurrentDownload({
   final mediaId = movie?.imdbId?.trim().isNotEmpty == true
       ? movie!.imdbId!.trim()
       : (movie?.id.toString() ?? title);
-  final mt = (movie?.mediaType ?? 'movie').toLowerCase();
-  final type = (mt == 'tv' || mt == 'series')
-      ? 'series'
-      : (mt == 'anime' ? 'anime' : 'movie');
+  final type = downloadTypeForMovie(movie);
   return enqueueVodDownload(
     title: title,
     mediaId: mediaId,
@@ -241,6 +235,9 @@ Future<DownloadTask?> enqueuePlayerCurrentDownload({
         movie?.backdropPath.isNotEmpty == true ? movie!.backdropPath : null,
     year: movie?.releaseDate.isNotEmpty == true
         ? movie!.releaseDate.split('-').first
+        : null,
+    overview: movie?.overview.trim().isNotEmpty == true
+        ? movie!.overview.trim()
         : null,
     url: playUrl,
     headers: playHeaders,
@@ -261,6 +258,7 @@ Future<DownloadTask?> enqueueVodDownload({
   String? posterUrl,
   String? backdropUrl,
   String? year,
+  String? overview,
   required String url,
   Map<String, String>? headers,
   String? sourceName,
@@ -331,6 +329,17 @@ Future<DownloadTask?> enqueueVodDownload({
         onAction: openSettingsDownloads,
       );
     }
+    unawaited(
+      DownloadPageStore.capture(
+        mediaId: mediaId,
+        type: type,
+        title: title,
+        posterUrl: posterUrl,
+        backdropUrl: backdropUrl,
+        year: year,
+        overview: overview,
+      ),
+    );
     return task;
   } catch (e) {
     ForjaToast.error(

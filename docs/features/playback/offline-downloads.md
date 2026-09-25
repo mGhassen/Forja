@@ -5,8 +5,9 @@
 ## What it is
 
 Forja can download a resolved HTTP or HLS stream to this device. Manage the
-queue and offline library under **Settings → Downloads**. Torrents and magnets
-are not offline yet.
+queue under **Settings → Downloads**. Finished titles also show on the
+**Downloads** tab: films, series, anime, and Asian dramas, one card each.
+Torrents and magnets are not offline yet.
 
 Offline Downloads is on phone and desktop.
 
@@ -41,6 +42,16 @@ HTTP/HLS media files are saved.
 | **Completed** | Finished files — play offline, delete one, or delete all |
 
 The header is a storage meter: offline library vs other space on the volume vs free, with the downloads folder path underneath. On desktop and phone, **Change** opens a folder picker for where new downloads save; **Default** restores the usual Downloads/Forja (or Documents) folder. Existing completed files stay where they were saved.
+
+## Downloads tab
+
+Each finished title is a poster card. Open it to see the page that was saved
+with the download (description, cast, backdrop). Series and anime show only
+the episodes that finished. **Play** starts the first saved file: the film,
+or the earliest episode. The button next to Play lists those saved files.
+
+A title saved from the player shows its name and art. Download it again from
+the title page to store the description, cast, and backdrop.
 
 ## Offline play
 

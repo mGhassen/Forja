@@ -60,6 +60,7 @@ Future<void> openKitSources({
   String? engineCategory,
   String? preferredEnginePluginId,
   PlaySession? playSession,
+  bool filesOnly = false,
 }) {
   final hooks = buildPlayHooks(
     movie: movie,
@@ -96,10 +97,14 @@ Future<void> openKitSources({
         (preferredPlugin != null && preferredPlugin.isNotEmpty)
             ? preferredPlugin
             : null,
-    preferredKind:
-        (preferredKind != null && preferredKind.isNotEmpty) ? preferredKind : null,
+    preferredKind: filesOnly
+        ? 'downloaded'
+        : ((preferredKind != null && preferredKind.isNotEmpty)
+              ? preferredKind
+              : null),
     animeAudioCategory: audioCategory,
     detailsHost: true,
+    filesOnly: filesOnly,
     onTorrentSelected: (result) async {
       await _playTorrent(
         context: context,

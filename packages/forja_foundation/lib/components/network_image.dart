@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
@@ -130,6 +132,24 @@ class ForjaNetworkImage extends StatelessWidget {
     final loading = placeholder ?? surface;
     final fallback = error ?? loading;
     final paintUrl = paintableNetworkImageUrl(url);
+
+    if (isLocalCoverUrl(url)) {
+      return SizedBox(
+        width: width,
+        height: height,
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Image.file(
+            File(localCoverFilePath(url)),
+            fit: fit,
+            alignment: alignment,
+            filterQuality: filterQuality,
+            gaplessPlayback: true,
+            errorBuilder: (_, _, _) => fallback,
+          ),
+        ),
+      );
+    }
 
     if (!_isAbsolute) {
       return SizedBox(

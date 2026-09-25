@@ -1527,6 +1527,33 @@ class SettingsService {
   Future<void> setThemePreset(String preset) async =>
       kvSetString(_themePresetKey, preset);
 
+  static const String _shellWritingDirectionKey = 'shell_writing_direction';
+  static const String shellWritingLtr = 'ltr';
+  static const String shellWritingRtl = 'rtl';
+
+  /// App navbar side. Pack layout direction does not change this.
+  static final ValueNotifier<String> shellWritingDirection =
+      ValueNotifier<String>(shellWritingLtr);
+
+  static bool get shellWritingIsRtl =>
+      shellWritingDirection.value == shellWritingRtl;
+
+  Future<void> loadShellWritingDirection() async {
+    final raw = (await kvGetString(_shellWritingDirectionKey) ?? '')
+        .trim()
+        .toLowerCase();
+    shellWritingDirection.value =
+        raw == shellWritingRtl ? shellWritingRtl : shellWritingLtr;
+  }
+
+  Future<void> setShellWritingDirection(String direction) async {
+    final next = direction.trim().toLowerCase() == shellWritingRtl
+        ? shellWritingRtl
+        : shellWritingLtr;
+    shellWritingDirection.value = next;
+    await kvSetString(_shellWritingDirectionKey, next);
+  }
+
   static const String _navbarConfigKey = 'navbar_config';
   static const String _navbarTabOrderKey = 'navbar_tab_order';
   static const String _defaultNavTabKey = 'navbar_default_tab';

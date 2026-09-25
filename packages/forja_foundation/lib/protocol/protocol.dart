@@ -1029,6 +1029,7 @@ class MetaNavSpec {
     this.accent,
     this.pageAction,
     this.pageParams = const {},
+    this.hostRequires,
   });
 
   final String tabId;
@@ -1041,6 +1042,9 @@ class MetaNavSpec {
   /// Opaque pack action that returns the hub page tree (`nav.page.action`).
   final String? pageAction;
   final Map<String, dynamic> pageParams;
+
+  /// Host capability the tab needs (`offlineDownloads`). Empty shows always.
+  final String? hostRequires;
 
   static MetaNavSpec? fromPluginNav(
     Map<String, dynamic>? nav, {
@@ -1079,6 +1083,9 @@ class MetaNavSpec {
       accent: nav['accent']?.toString(),
       pageAction: pageAction,
       pageParams: pageParams,
+      hostRequires: (nav['hostRequires'] ?? '').toString().trim().isEmpty
+          ? null
+          : (nav['hostRequires'] ?? '').toString().trim(),
     );
   }
 

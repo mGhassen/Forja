@@ -83,6 +83,30 @@ class CatalogPosterGridLayout {
     );
   }
 
+  /// Top of item [index] inside the scrollable (leading pad + row stride).
+  double itemTop(int index) {
+    if (index < 0) return topPad;
+    final cols = columns < 1 ? 1 : columns;
+    final row = index ~/ cols;
+    return topPad + row * (cardH + gap);
+  }
+
+  /// Scroll offset that keeps an item at the same distance from the viewport top
+  /// after the grid reflows (column count / card height change).
+  static double scrollOffsetKeepingScreenY({
+    required double oldItemTop,
+    required double oldOffset,
+    required double newItemTop,
+    required double maxScrollExtent,
+  }) {
+    final raw = newItemTop - (oldItemTop - oldOffset);
+    if (!raw.isFinite || raw <= 0) return 0;
+    if (!maxScrollExtent.isFinite) return raw;
+    final max = math.max(0.0, maxScrollExtent);
+    if (raw >= max) return max;
+    return raw;
+  }
+
   /// IPTV live channel tiles — denser column count, cells fill the row.
   ///
   /// Matches pre-wipe `maxWidth ~/ minW` packing (not fixed card width with

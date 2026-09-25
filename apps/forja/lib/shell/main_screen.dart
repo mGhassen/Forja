@@ -492,6 +492,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   Future<void> _loadNavbarConfig({bool force = false}) async {
     final gen = ++_navbarLoadGen;
+    await SettingsService().loadShellWritingDirection();
+    if (!mounted || gen != _navbarLoadGen) return;
     var visible = await SettingsService().getNavbarConfig();
     final defaultTab = await SettingsService().getDefaultNavTab();
     if (!mounted || gen != _navbarLoadGen) return;

@@ -26,6 +26,7 @@ import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
+import 'package:forja/shared/engine/runtime/open/offline_library_open.dart';
 import 'package:forja/shared/player/live/hooks/live_kit_hooks_register.dart';
 import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
 import 'package:forja/shared/downloads/download_service.dart';
@@ -152,6 +153,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   BookmarkStore().syncRemoveHandler = syncBookmarkRemoveFromTrackers;
   LiveSurfaceOpen.ensureRegistered();
   HostPlaybackOpen.ensureRegistered();
+  OfflineLibraryOpen.ensureRegistered();
   LiveKitHooksRegister.ensureRegistered();
   unawaited(PortalVaultInventory.ensureMigratedFromStore());
   SettingsKitHooksRegister.ensureRegistered();

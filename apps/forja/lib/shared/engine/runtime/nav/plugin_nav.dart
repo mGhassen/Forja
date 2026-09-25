@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/engine/packs/pack_assets.dart';
 import 'package:forja/shared/engine/packs/forja_host_assets.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_layout_painter.dart';
@@ -327,6 +328,7 @@ abstract final class PluginNavRegistry {
         final m = Map<String, dynamic>.from(raw);
         final rawTabId = m['tabId']?.toString() ?? '';
         if (rawTabId.isEmpty) continue;
+        if (!_navHostAllowed(m['hostRequires']?.toString())) continue;
         final tabId = rawTabId;
         if (dests.containsKey(tabId)) continue;
         final iconAsset = m['iconAsset']?.toString();
@@ -592,6 +594,7 @@ abstract final class PluginNavRegistry {
     final cacheRows = <Map<String, dynamic>>[];
 
     for (final (pack, pl, nav) in hubs) {
+      if (!_navHostAllowed(nav.hostRequires)) continue;
       final railId = hostNavId(
         sourceUrl: pack.sourceUrl,
         authorTabId: nav.tabId,
@@ -642,6 +645,7 @@ abstract final class PluginNavRegistry {
         'icon': nav.icon,
         'iconAsset': iconAsset,
         'packSourceUrl': pack.sourceUrl,
+        if (nav.hostRequires != null) 'hostRequires': nav.hostRequires,
       });
     }
 
@@ -1061,6 +1065,14 @@ abstract final class PluginNavRegistry {
         if (o[pe.key] != pe.value) return false;
       }
     }
+    return true;
+  }
+
+  /// Drop a hub tab when its pack `nav.hostRequires` capability is off.
+  static bool _navHostAllowed(String? hostRequires) {
+    final need = hostRequires?.trim() ?? '';
+    if (need.isEmpty) return true;
+    if (need == 'offlineDownloads') return PlatformInfo.offlineDownloadsEnabled;
     return true;
   }
 }

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 11** components · **15 / 15** acceptance |
-| **Current slice** | Phase 1 shipped — Phase 2/3 deferred |
+| **Progress** | **15 / 17** components · **21 / 21** acceptance |
+| **Current slice** | Phase 1 + Downloads hub shipped — Phase 2/3 deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -30,6 +30,12 @@
 | 9 | R117-C09 | Android TV: no Downloads UI and no download queue at boot | ✅ |
 | 10 | R117-C10 | Sources lists saved / in-progress downloads before provider search | ✅ |
 | 11 | R117-C11 | Details hero has no Download button; enqueue stays on Sources and the player | ✅ |
+| 12 | R117-C12 | Enqueue writes a per-title page snapshot (details JSON, poster, backdrop); drama stays its own type | ✅ |
+| 13 | R117-C13 | `ctx.host.downloads.titles()` lists one card per finished title | ✅ |
+| 14 | R117-C14 | Downloads hub pack paints Film / Series / Anime / Asian Drama; `open.surface: offline` | ✅ |
+| 15 | R117-C15 | Offline details skips the pack fetch and lists only episodes that have a finished file | ✅ |
+| 16 | R117-C16 | Sources **Downloaded** tab + green Play on that page starts the first finished file | ✅ |
+| 17 | R117-C17 | Saved-library card opens that page directly; its file button lists only the saved file cards | ✅ |
 
 ---
 
@@ -52,6 +58,12 @@
 | 13 | R117-A13 | Android TV: no Settings Downloads, details download, Sources download, or player download | ✅ |
 | 14 | R117-A14 | Sources shows saved / in-progress downloads before provider search returns | ✅ |
 | 15 | R117-A15 | Details hero has no Download button | ✅ |
+| 16 | R117-A16 | Saving a title writes the details page plus poster and backdrop next to the files | ✅ |
+| 17 | R117-A17 | Downloads hub shows one card per finished film, series, anime, or drama | ✅ |
+| 18 | R117-A18 | Opening that card paints the saved page offline; episode list is only finished files | ✅ |
+| 19 | R117-A19 | Sources on that page opens on Downloaded and lists the saved files | ✅ |
+| 20 | R117-A20 | Green Play on that page starts the first finished file (film file, or lowest season and episode) | ✅ |
+| 21 | R117-A21 | That card does not ask for a hub. The file button lists only the saved file cards | ✅ |
 
 ---
 
@@ -61,4 +73,8 @@ Host-owned offline Downloads: save a resolved play URL to disk (PlayTorrio-shape
 
 ## Out of scope (v1)
 
-Live Sports · DRM · embed WebView · new shell nav tab · torrent/magnet offline · true OS background · Android TV
+Live Sports · DRM · embed WebView · torrent/magnet offline · true OS background · Android TV
+
+## Downloads hub
+
+Settings → Downloads stays the queue. Finished titles also appear on the Downloads hub (pack layout over `ctx.host.downloads.titles()`). A card opens the saved page. Play starts the first saved file. The file button lists those files. Android TV does not show that tab (`nav.hostRequires: offlineDownloads`). Titles saved before this snapshot still list from the task; the page stays thin until that title is downloaded again while its details page is open.

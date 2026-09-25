@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 
@@ -67,6 +69,17 @@ class _SettledNetworkImageState extends State<SettledNetworkImage> {
   }
 
   Widget _frame(String url) {
+    if (isLocalCoverUrl(url)) {
+      return Image.file(
+        File(localCoverFilePath(url)),
+        fit: widget.fit,
+        alignment: widget.alignment,
+        filterQuality: widget.filterQuality,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) =>
+            widget.errorWidget ?? SettledNetworkImage.empty,
+      );
+    }
     final paintUrl = paintableNetworkImageUrl(url);
     return Image.network(
       paintUrl,
@@ -108,7 +121,16 @@ class _SettledNetworkImageState extends State<SettledNetworkImage> {
       fit: StackFit.expand,
       children: [
         if (_base.isNotEmpty) _frame(_base),
-        if (_incoming != null)
+        if (_incoming != null && isLocalCoverUrl(_incoming!))
+          Image.file(
+            File(localCoverFilePath(_incoming!)),
+            fit: widget.fit,
+            alignment: widget.alignment,
+            filterQuality: widget.filterQuality,
+            gaplessPlayback: true,
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+          ),
+        if (_incoming != null && !isLocalCoverUrl(_incoming!))
           Image.network(
             paintableNetworkImageUrl(_incoming!),
             fit: widget.fit,

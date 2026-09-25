@@ -103,10 +103,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   HubPageFocus _pageFocus = HubPageFocus.empty;
   String? _tvBoundKey;
   bool _listStyleHydrateStarted = false;
-  /// Pack install wiped this hub's cache while the tab was off-screen.
-  /// Soft-reload on next [onShellTabRefresh] (user opens the hub) — do not
-  /// stampede feed/rail/layout for every keep-alive hub on Reload packs.
+  /// Pack install wiped this hub's cache. Soft-reload when the user opens
+  /// the hub — never scrape on the wipe itself.
   bool _pendingHubFeedSoftReload = false;
+  bool _openReloadRunning = false;
+  /// Bumped when a pack reload flags this hub, so an in-flight layout
+  /// waiting on install idle cannot continue and mark the tab fresh.
+  int _layoutGen = 0;
 
   String get _pageKey => widget.tabId?.trim() ?? '';
 
@@ -139,7 +142,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     }
     // Sync shell from EngineCache when boot prefetch / prior visit warmed layout.
     final warmed = _tryApplyCachedLayout();
-    unawaited(_loadPage(keepPainted: warmed));
+    if (PluginRegistry.hubNeedsReloadOnOpen(widget.pluginId)) {
+      _pendingHubFeedSoftReload = true;
+      _refreshForceNetwork = true;
+      unawaited(_reloadFlaggedHubOnOpen());
+    } else {
+      unawaited(_loadPage(keepPainted: warmed));
+    }
   }
 
   @override
@@ -298,18 +307,34 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     });
   }
 
+  void _deferHubUntilOpened({required bool forceNetwork}) {
+    _pendingHubFeedSoftReload = true;
+    if (forceNetwork) {
+      _refreshForceNetwork = true;
+    } else if (!PluginRegistry.hubNeedsReloadOnOpen(widget.pluginId)) {
+      _refreshForceNetwork = false;
+    }
+    _layoutGen++;
+    _pageFeedGen++;
+    markShellTabStale();
+  }
+
+  bool _layoutStillCurrent(int gen) =>
+      mounted &&
+      gen == _layoutGen &&
+      !_pendingHubFeedSoftReload &&
+      shellTabVisible;
+
   void _onHubFeedEpoch() {
     if (!mounted) return;
     if (!PluginRegistry.hubFeedEpochTouches(widget.pluginId)) return;
     final forceNet = PluginRegistry.hubFeedEpochForceNetwork;
     // Pack install / Reload / Update (forceNetwork): flag only — never scrape
-    // catalog/rails here. Soft reload runs on next hub show (refreshIfStale).
+    // catalog/rails here. Soft reload runs when the user opens the hub.
     // Settings tweaks (forceNetwork: false) still soft-reload while this hub
     // is the selected tab so Addons fields rebind without leaving.
     if (forceNet || !shellTabVisible) {
-      _pendingHubFeedSoftReload = true;
-      if (forceNet) _refreshForceNetwork = true;
-      markShellTabStale();
+      _deferHubUntilOpened(forceNetwork: forceNet);
       return;
     }
     unawaited(_applyHubFeedSoftReload(forceNetwork: forceNet));
@@ -321,12 +346,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (!mounted) return;
     // Belt: pack wipe must not scrape while this hub is keep-alive off-screen.
     if (!shellTabVisible) {
-      _pendingHubFeedSoftReload = true;
-      if (forceNetwork == true) _refreshForceNetwork = true;
-      markShellTabStale();
+      _deferHubUntilOpened(forceNetwork: forceNetwork == true);
       return;
     }
     _pendingHubFeedSoftReload = false;
+    _layoutGen++;
     final force = forceNetwork ?? _refreshForceNetwork;
     // Soft: keep painted rails while scripts refresh. Must bump refreshEpoch
     // so PackLoadedPaint rebinds — layout-only soft reload left Home on a
@@ -389,6 +413,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     // and abort in-flight catalog / live scrapes (Stremio rails, Live Sports,
     // Home TMDB pools) so a background hub cannot hammer the network while the
     // user is on another tab (e.g. IPTV).
+    _layoutGen++;
     _pageFeedGen++;
     EngineService.instance.cancelCatalog();
     EngineService.instance.cancelLiveCatalog();
@@ -402,6 +427,45 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   void onShellTabShown() {
     super.onShellTabShown();
     if (mounted) setState(() {});
+    unawaited(_reloadFlaggedHubOnOpen());
+  }
+
+  @override
+  Future<void> refreshIfStale({bool force = false}) async {
+    if (_openReloadRunning) return;
+    if (_pendingHubFeedSoftReload ||
+        PluginRegistry.hubNeedsReloadOnOpen(widget.pluginId)) {
+      await _reloadFlaggedHubOnOpen();
+      return;
+    }
+    await super.refreshIfStale(force: force);
+  }
+
+  /// Pack reload sets the registry flag. Opening this hub consumes it.
+  Future<void> _reloadFlaggedHubOnOpen() async {
+    final flagged = _pendingHubFeedSoftReload ||
+        PluginRegistry.hubNeedsReloadOnOpen(widget.pluginId);
+    if (!flagged || _openReloadRunning) return;
+    if (!shellTabVisible) {
+      _pendingHubFeedSoftReload = true;
+      _refreshForceNetwork = true;
+      markShellTabStale();
+      return;
+    }
+    final packReload = PluginRegistry.hubNeedsReloadOnOpen(widget.pluginId);
+    final force = packReload || _refreshForceNetwork;
+    _openReloadRunning = true;
+    _pendingHubFeedSoftReload = true;
+    _refreshForceNetwork = force;
+    debugPrint(
+      '[HubReload] opened ${widget.pluginId} tab=$_pageKey — reloading',
+    );
+    try {
+      if (packReload) PluginRegistry.consumeHubReloadOnOpen(widget.pluginId);
+      await _applyHubFeedSoftReload(forceNetwork: force);
+    } finally {
+      _openReloadRunning = false;
+    }
   }
 
   @override
@@ -671,6 +735,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   }
 
   Future<void> _loadPage({bool force = false, bool keepPainted = false}) async {
+    final layoutGen = _layoutGen;
+    if (_pendingHubFeedSoftReload || !shellTabVisible) return;
     final action = _pageAction;
     if (action.isEmpty) {
       if (!mounted) return;
@@ -683,11 +749,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       return;
     }
 
-    // Keep-alive off-screen: never start layout/feed network. Pack reload flags
-    // pending soft reload; show → onShellTabRefresh runs the real load.
-    if (!shellTabVisible) {
-      return;
-    }
+    // Keep-alive off-screen, or flagged by pack reload: do not start network.
+    // Opening the hub consumes the flag and loads.
+    if (!_layoutStillCurrent(layoutGen)) return;
 
     // Hub already on screen from cache. Coming back must not start a new
     // catalog load (same as 1.5.36 memoized rails). Re-tap / Refresh passes
@@ -706,13 +770,13 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     }
 
     await PluginInstallCoordinator.instance.waitUntilIdle();
-    if (!mounted) return;
+    if (!_layoutStillCurrent(layoutGen)) return;
 
     final enabled = await PluginNavRegistry.isKitPluginEnabled(
       widget.pluginId,
       packSourceUrl: widget.packSourceUrl,
     );
-    if (!mounted) return;
+    if (!_layoutStillCurrent(layoutGen)) return;
     if (!enabled) {
       setState(() {
         _loading = false;
@@ -741,6 +805,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
     }
 
+    if (!_layoutStillCurrent(layoutGen)) return;
     final envelope = await packOpaqueRun(
       pluginId: widget.pluginId,
       action: action,
@@ -748,7 +813,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       packSourceUrl: widget.packSourceUrl,
       forceRefresh: force,
     );
-    if (!mounted) return;
+    if (!_layoutStillCurrent(layoutGen)) return;
 
     if (!envelope.ok) {
       if (_widgets.isNotEmpty) return;
@@ -876,7 +941,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     required bool forceRefresh,
   }) async {
     final gen = _pageFeedGen;
-    if (!shellTabVisible) {
+    if (_pendingHubFeedSoftReload || !shellTabVisible) {
       return const <String, List<dynamic>>{};
     }
     // Capture chrome filters at fetch start — a mid-flight Films flip must not

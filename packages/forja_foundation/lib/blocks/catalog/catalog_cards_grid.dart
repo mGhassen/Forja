@@ -465,48 +465,33 @@ class CatalogCardsGrid extends StatelessWidget {
           gap: gap,
           pad: pad,
         );
-        return _OwnedScrollHost(
+        return _EventCardsScroll(
+          layout: layout,
+          items: items,
+          selectedItemId: selectedItemId,
           onScrollIntoViewChanged: onScrollIntoViewChanged,
-          scrollToIndex: (scroll, index) {
-            if (!scroll.hasClients || index < 0) return;
-            final cols = layout.columns.clamp(1, 999);
-            final row = index ~/ cols;
-            final rowExtent = layout.cardH + layout.gap;
-            final target = (layout.topPad + row * rowExtent).clamp(
-              0.0,
-              scroll.position.maxScrollExtent,
+          itemBuilder: (context, i) {
+            final item = items[i];
+            final props = catalogItemProps(item);
+            final id = (item['id'] ?? props['id'] ?? '').toString();
+            return InteractiveEventCard(
+              props: props,
+              width: layout.cardW,
+              height: layout.cardH,
+              selected:
+                  selectedItemId != null &&
+                  selectedItemId!.isNotEmpty &&
+                  selectedItemId == id,
+              gridIndex: i,
+              gridColumns: layout.columns,
+              onLeftEdge: _gridOnLeftEdge(i, layout.columns),
+              onRightEdge: _gridOnRightEdge(i, layout.columns),
+              onUpEdge: i < layout.columns
+                  ? _gridOnUpEdge(i, layout.columns)
+                  : null,
+              onTap: onItemTap == null ? null : () => onItemTap!(item),
             );
-            if ((scroll.offset - target).abs() < 0.5) return;
-            scroll.jumpTo(target);
           },
-          builder: (context, controller) => CatalogPosterGrid(
-            controller: controller,
-            layout: layout,
-            itemCount: items.length,
-            useAspectRatio: false,
-            itemBuilder: (context, i) {
-              final item = items[i];
-              final props = catalogItemProps(item);
-              final id = (item['id'] ?? props['id'] ?? '').toString();
-              return InteractiveEventCard(
-                props: props,
-                width: layout.cardW,
-                height: layout.cardH,
-                selected:
-                    selectedItemId != null &&
-                    selectedItemId!.isNotEmpty &&
-                    selectedItemId == id,
-                gridIndex: i,
-                gridColumns: layout.columns,
-                onLeftEdge: _gridOnLeftEdge(i, layout.columns),
-                onRightEdge: _gridOnRightEdge(i, layout.columns),
-                onUpEdge: i < layout.columns
-                    ? _gridOnUpEdge(i, layout.columns)
-                    : null,
-                onTap: onItemTap == null ? null : () => onItemTap!(item),
-              );
-            },
-          ),
         );
       },
     );
@@ -657,6 +642,135 @@ class _OwnedScrollHostState extends State<_OwnedScrollHost> {
 
   @override
   Widget build(BuildContext context) => widget.builder(context, _scroll);
+}
+
+/// Event-card grid scroll. Width changes (streams panel) reflow columns;
+/// the selected card stays at the same place on screen.
+class _EventCardsScroll extends StatefulWidget {
+  const _EventCardsScroll({
+    required this.layout,
+    required this.items,
+    required this.itemBuilder,
+    this.selectedItemId,
+    this.onScrollIntoViewChanged,
+  });
+
+  final CatalogPosterGridLayout layout;
+  final List<Map<String, dynamic>> items;
+  final IndexedWidgetBuilder itemBuilder;
+  final String? selectedItemId;
+  final ValueChanged<void Function(int)?>? onScrollIntoViewChanged;
+
+  @override
+  State<_EventCardsScroll> createState() => _EventCardsScrollState();
+}
+
+class _EventCardsScrollState extends State<_EventCardsScroll> {
+  final ScrollController _scroll = ScrollController();
+
+  void _scrollToIndex(int index) {
+    if (!_scroll.hasClients || index < 0) return;
+    final target = widget.layout.itemTop(index).clamp(
+      0.0,
+      _scroll.position.maxScrollExtent,
+    );
+    if ((_scroll.offset - target).abs() < 0.5) return;
+    _scroll.jumpTo(target);
+  }
+
+  void _offer() => widget.onScrollIntoViewChanged?.call(_scrollToIndex);
+
+  @override
+  void initState() {
+    super.initState();
+    _offer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _EventCardsScroll oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _keepSelectedOnScreen(oldWidget);
+    if (!identical(
+      oldWidget.onScrollIntoViewChanged,
+      widget.onScrollIntoViewChanged,
+    )) {
+      oldWidget.onScrollIntoViewChanged?.call(null);
+      _offer();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.onScrollIntoViewChanged?.call(null);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  static bool _sameMetrics(
+    CatalogPosterGridLayout a,
+    CatalogPosterGridLayout b,
+  ) {
+    return a.columns == b.columns &&
+        (a.cardH - b.cardH).abs() < 0.5 &&
+        (a.gap - b.gap).abs() < 0.5 &&
+        (a.topPad - b.topPad).abs() < 0.5;
+  }
+
+  int _indexOfId(String? raw) {
+    final sel = (raw ?? '').trim();
+    if (sel.isEmpty) return -1;
+    for (var i = 0; i < widget.items.length; i++) {
+      final item = widget.items[i];
+      final props = catalogItemProps(item);
+      final id = (item['id'] ?? props['id'] ?? '').toString();
+      if (id == sel) return i;
+    }
+    return -1;
+  }
+
+  void _keepSelectedOnScreen(_EventCardsScroll oldWidget) {
+    if (_sameMetrics(oldWidget.layout, widget.layout)) return;
+    if (!_scroll.hasClients) return;
+    final pinId = (widget.selectedItemId ?? '').trim().isNotEmpty
+        ? widget.selectedItemId
+        : oldWidget.selectedItemId;
+    final index = _indexOfId(pinId);
+    if (index < 0) return;
+    final oldTop = oldWidget.layout.itemTop(index);
+    final newTop = widget.layout.itemTop(index);
+    final oldOffset = _scroll.offset;
+    final eager = CatalogPosterGridLayout.scrollOffsetKeepingScreenY(
+      oldItemTop: oldTop,
+      oldOffset: oldOffset,
+      newItemTop: newTop,
+      maxScrollExtent: double.infinity,
+    );
+    if ((eager - oldOffset).abs() >= 0.5) {
+      _scroll.position.correctPixels(eager);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final settled = CatalogPosterGridLayout.scrollOffsetKeepingScreenY(
+        oldItemTop: oldTop,
+        oldOffset: oldOffset,
+        newItemTop: newTop,
+        maxScrollExtent: _scroll.position.maxScrollExtent,
+      );
+      if ((_scroll.offset - settled).abs() < 0.5) return;
+      _scroll.jumpTo(settled);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CatalogPosterGrid(
+      controller: _scroll,
+      layout: widget.layout,
+      itemCount: widget.items.length,
+      useAspectRatio: false,
+      itemBuilder: widget.itemBuilder,
+    );
+  }
 }
 
 /// Channel cards + type-to-jump. Competes with category rail via last hover

@@ -7,6 +7,7 @@ export 'package:forja_foundation/blocks/props_map.dart';
 export 'package:forja_foundation/blocks/details/details_block.dart';
 export 'package:forja_foundation/blocks/details/match_details_block.dart';
 export 'package:forja_foundation/blocks/shell/shell_block.dart';
+export 'package:forja_foundation/blocks/shell/shell_nav_placement.dart';
 export 'package:forja_foundation/blocks/shell/empty_shell_frame.dart';
 export 'package:forja_foundation/blocks/shell/catalog_density.dart';
 export 'package:forja_foundation/blocks/search/search_block.dart';

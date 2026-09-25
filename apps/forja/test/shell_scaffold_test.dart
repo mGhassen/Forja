@@ -127,6 +127,8 @@ void main() {
     ShellBus.hubHeroHeightFor(hubA).value = 0;
     ShellBus.hubScrollOffsetFor(hubA).value = 0;
     VerticalFiltersRegistry.menuVisibleFor(hubA).value = false;
+    SettingsService.shellWritingDirection.value =
+        SettingsService.shellWritingLtr;
     ShellBus.requestTab.value = null;
     ShellBus.selectDefaultTabOnNextNavLoad = false;
     ShellBus.shellOverlayHasPage.value = false;
@@ -866,6 +868,42 @@ void main() {
     expect(SettingsService.defaultVisibleNavIds, isEmpty);
     expect(PluginNavRegistry.isContributed('live_sports'), isFalse);
     expect(PluginNavRegistry.coreShellNavIds, isNot(contains('live_sports')));
+  });
+
+  testWidgets('Right to left navbar setting parks the rail on the right', (
+    tester,
+  ) async {
+    SettingsService.shellWritingDirection.value =
+        SettingsService.shellWritingRtl;
+    await pumpScaffold(
+      tester,
+      desktopScaffold(selectedIndex: 0),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+
+    final rail = tester.getRect(find.byKey(const ValueKey('shell-nav-rail')));
+    expect(rail.right, closeTo(1200, 1));
+    expect(rail.left, greaterThan(1000));
+
+    final body = tester.getRect(find.text(hubA));
+    expect(body.right, lessThan(rail.left));
+  });
+
+  testWidgets('Left to right navbar setting keeps the rail on the left', (
+    tester,
+  ) async {
+    SettingsService.shellWritingDirection.value =
+        SettingsService.shellWritingLtr;
+    await pumpScaffold(
+      tester,
+      desktopScaffold(selectedIndex: 1),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+
+    final rail = tester.getRect(find.byKey(const ValueKey('shell-nav-rail')));
+    expect(rail.left, closeTo(0, 1));
   });
 
   test('archived nav ids are not registered in shell', () {

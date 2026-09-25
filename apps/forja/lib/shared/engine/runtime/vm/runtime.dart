@@ -16,6 +16,7 @@ import 'package:forja/shared/engine/unlock/goat_unlock.dart';
 import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
 import 'package:forja/shared/engine/unlock/pack_unlock_files.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
+import 'package:forja/shared/downloads/download_page_store.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
 import 'package:forja/shared/engine/runtime/open/host_engine_request.dart';
 import 'package:forja/shared/engine/models/models.dart';
@@ -386,6 +387,17 @@ class EngineRuntime {
             : <String, dynamic>{};
         final gen = _fetchGeneration;
         unawaited(_dispatchStoreList(id: id, query: query, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('DownloadsTitlesStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final gen = _fetchGeneration;
+        unawaited(_dispatchDownloadsTitles(id: id, gen: gen));
       } catch (_) {}
       return null;
     });
@@ -1431,6 +1443,17 @@ class EngineRuntime {
           }));
         }
       };
+      h.downloads = {
+        titles: function() {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineStoreSeq;
+            globalThis.__engineStorePending[id] = function(env) {
+              resolve(env && Array.isArray(env.rows) ? env.rows : []);
+            };
+            sendMessage('DownloadsTitlesStart', JSON.stringify({ id: id }));
+          });
+        }
+      };
       h.store = {
         list: function(query) {
           return new Promise(function(resolve) {
@@ -2076,6 +2099,21 @@ class EngineRuntime {
       }
     }
     return [Map<String, dynamic>.from(env)];
+  }
+
+  Future<void> _dispatchDownloadsTitles({
+    required int id,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    List<Map<String, dynamic>> rows = const [];
+    try {
+      rows = await DownloadPageStore.titles();
+    } catch (e, st) {
+      _forjaRuntimeLog('downloads.titles failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveStore(id: id, gen: gen, envelope: {'rows': rows});
   }
 
   Future<void> _dispatchStoreList({

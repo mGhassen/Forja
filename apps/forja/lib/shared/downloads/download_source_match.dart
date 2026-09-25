@@ -196,6 +196,50 @@ bool providerStreamCoversDownloadTask(
       DownloadTaskMatchRank.none;
 }
 
+/// Label for a saved file on the Downloaded tab.
+String downloadFileLabel(DownloadTask task) {
+  final source =
+      task.sourceName.trim().isEmpty ? 'Download' : task.sourceName.trim();
+  if (task.season == null && task.episode == null) return source;
+  final episode =
+      'S${(task.season ?? 1).toString().padLeft(2, '0')}E${(task.episode ?? 1).toString().padLeft(2, '0')}';
+  final title = task.episodeTitle?.trim() ?? '';
+  if (title.isNotEmpty) return '$episode · $title · $source';
+  return '$episode · $source';
+}
+
+/// Finished files for a title, oldest episode first.
+List<Map<String, dynamic>> downloadedTitleStreams({
+  required Iterable<DownloadTask> tasks,
+  required String mediaId,
+}) {
+  if (mediaId.isEmpty) return const [];
+  final hits = [
+    for (final task in tasks)
+      if (task.mediaId == mediaId && task.isCompleted) task,
+  ];
+  hits.sort((a, b) {
+    final season = (a.season ?? 0).compareTo(b.season ?? 0);
+    if (season != 0) return season;
+    final episode = (a.episode ?? 0).compareTo(b.episode ?? 0);
+    if (episode != 0) return episode;
+    final aAt = a.completedAt ?? a.createdAt;
+    final bAt = b.completedAt ?? b.createdAt;
+    return aAt.compareTo(bAt);
+  });
+  final out = <Map<String, dynamic>>[];
+  for (final task in hits) {
+    final pinned = offlinePinnedStream(task);
+    if (pinned == null) continue;
+    final label = downloadFileLabel(task);
+    pinned['name'] = label;
+    pinned['title'] = label;
+    pinned['_addonName'] = label;
+    out.add(pinned);
+  }
+  return out;
+}
+
 /// Active and completed downloads for this title that are not already a row
 /// in [visibleProviderStreams].
 List<Map<String, dynamic>> offlineStreamsAheadOfProviderSearch({

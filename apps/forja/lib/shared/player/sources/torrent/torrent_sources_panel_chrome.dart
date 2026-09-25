@@ -16,7 +16,9 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 class TorrentSourcesPanelChrome extends StatefulWidget {
   const TorrentSourcesPanelChrome({
     super.key,
-    required this.kindFilter,
+    required     this.kindFilter,
+    this.listOnly = false,
+    this.showDownloaded = false,
     required this.showTorrents,
     required this.showStremio,
     required this.showNuvio,
@@ -89,6 +91,8 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   });
 
   final String kindFilter;
+  final bool listOnly;
+  final bool showDownloaded;
   final bool showTorrents;
   final bool showStremio;
   final bool showNuvio;
@@ -162,6 +166,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
 
   int get _kindCount {
     var n = 0;
+    if (widget.showDownloaded) n++;
     if (widget.showEngine) n++;
     if (widget.showTorrents) n++;
     if (widget.showStremio) n++;
@@ -169,9 +174,13 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     return n;
   }
 
-  /// Index in [_KindTabs] paint order (Forja → Torrents → Stremio → Nuvio).
+  /// Index in [_KindTabs] paint order (Downloaded → Forja → Torrents → Stremio → Nuvio).
   int get _selectedKindIndex {
     var i = 0;
+    if (widget.showDownloaded) {
+      if (widget.kindFilter == 'downloaded') return i;
+      i++;
+    }
     if (widget.showEngine) {
       if (widget.kindFilter == 'engine') return i;
       i++;
@@ -230,6 +239,10 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
 
   void _claimPanelFocus() {
     if (!mounted || !_tv || !widget.sourcesPanelOpen) return;
+    if (widget.listOnly) {
+      _focusList();
+      return;
+    }
     // Open lands on the selected kind tab (Forja first when that kind is on).
     // ↓ from search / providers still uses [onFocusList] via [_focusList].
     SourcesPanelTv.focusKindItem(index: _selectedKindIndex);
@@ -292,12 +305,19 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     final listTopGap = metrics.usesTvDensity
         ? ShellTokens.torrentPanelListTopGapTv
         : ShellTokens.torrentPanelListTopGapDesktop;
-    widget.onProvideListFocusUp?.call(_focusSearchOrProvidersFromList);
+    widget.onProvideListFocusUp?.call(
+      widget.listOnly ? _focusList : _focusSearchOrProvidersFromList,
+    );
+
+    if (widget.listOnly) {
+      return SizedBox(height: listTopGap);
+    }
 
     // No extra top inset — panel padding owns the edge; a TV-only pad left a
     // dead band above Forja / kind tabs.
     Widget kind = _KindTabs(
       selected: widget.kindFilter,
+      showDownloaded: widget.showDownloaded,
       showTorrents: widget.showTorrents,
       showStremio: widget.showStremio,
       showNuvio: widget.showNuvio,
@@ -435,6 +455,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
 class _KindTabs extends StatelessWidget {
   const _KindTabs({
     required this.selected,
+    this.showDownloaded = false,
     required this.showTorrents,
     required this.showStremio,
     required this.showNuvio,
@@ -446,6 +467,7 @@ class _KindTabs extends StatelessWidget {
   });
 
   final String selected;
+  final bool showDownloaded;
   final bool showTorrents;
   final bool showStremio;
   final bool showNuvio;
@@ -461,6 +483,13 @@ class _KindTabs extends StatelessWidget {
     final magnetSize = ShellScope.metricsOf(context).torrentPanelMetaIconSize;
     final options =
         <({String id, String label, IconData? iconData, Widget? icon})>[
+          if (showDownloaded)
+            (
+              id: 'downloaded',
+              label: 'Downloaded',
+              iconData: Icons.download_rounded,
+              icon: null,
+            ),
           if (showEngine)
             (
               id: 'engine',

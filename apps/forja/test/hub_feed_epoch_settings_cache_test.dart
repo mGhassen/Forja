@@ -12,6 +12,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     EngineCache.instance.wipeAll();
+    PluginRegistry.debugResetHubOpenReload();
   });
 
   group('bumpHubFeedEpoch forceNetwork', () {
@@ -27,6 +28,23 @@ void main() {
         forceNetwork: false,
       );
       expect(PluginRegistry.hubFeedEpochForceNetwork, isFalse);
+      expect(PluginRegistry.hubNeedsReloadOnOpen('hub-a'), isFalse);
+    });
+
+    test('pack wipe flags the hub to reload on next open', () {
+      PluginRegistry.bumpHubFeedEpoch(pluginIds: ['hub-a']);
+      expect(PluginRegistry.hubNeedsReloadOnOpen('hub-a'), isTrue);
+      expect(PluginRegistry.hubNeedsReloadOnOpen('hub-b'), isFalse);
+      PluginRegistry.consumeHubReloadOnOpen('hub-a');
+      expect(PluginRegistry.hubNeedsReloadOnOpen('hub-a'), isFalse);
+    });
+
+    test('pack wipe of every hub flags hubs that have not opened', () {
+      PluginRegistry.bumpHubFeedEpoch(all: true);
+      expect(PluginRegistry.hubNeedsReloadOnOpen('hub-a'), isTrue);
+      PluginRegistry.consumeHubReloadOnOpen('hub-a');
+      expect(PluginRegistry.hubNeedsReloadOnOpen('hub-a'), isFalse);
+      expect(PluginRegistry.hubNeedsReloadOnOpen('hub-b'), isTrue);
     });
   });
 

@@ -51,6 +51,7 @@ class KitDetailsPlayRow extends StatelessWidget {
     required this.label,
     this.onPlay,
     this.onOpenSources,
+    this.secondaryIcon = Icons.link_rounded,
     this.enabled = true,
     this.focusNode,
     this.autoFocus = false,
@@ -63,6 +64,7 @@ class KitDetailsPlayRow extends StatelessWidget {
   final String label;
   final VoidCallback? onPlay;
   final VoidCallback? onOpenSources;
+  final IconData secondaryIcon;
   final bool enabled;
   final FocusNode? focusNode;
   final bool autoFocus;
@@ -90,7 +92,7 @@ class KitDetailsPlayRow extends StatelessWidget {
         const SizedBox(width: 10),
         HeroPillPlayButton(
           label: label,
-          icon: Icons.link_rounded,
+          icon: secondaryIcon,
           tone: HeroPillPlayTone.streaming,
           onTap: enabled ? onOpenSources : null,
           onUpEdge: tv ? onUpEdge : null,

@@ -116,6 +116,9 @@ class PlayerSourcesPanel {
 
     /// Movies / hub details on TV: frosted side panel, not player dialog.
     bool detailsHost = false,
+
+    /// Saved-file list only: downloaded stream cards, no kind tabs or chips.
+    bool filesOnly = false,
   }) {
     playerMenuCaptureReturnFocus(context);
     dismiss();
@@ -148,6 +151,7 @@ class PlayerSourcesPanel {
           preferredEnginePluginId: preferredEnginePluginId,
           animeAudioCategory: animeAudioCategory,
           detailsHost: detailsHost,
+          filesOnly: filesOnly,
           onTorrentSelected: onTorrentSelected,
           onStremioSelected: onStremioSelected,
           onClose: dismiss,
@@ -183,6 +187,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.preferredEnginePluginId,
     this.animeAudioCategory,
     this.detailsHost = false,
+    this.filesOnly = false,
   });
 
   final Movie movie;
@@ -203,6 +208,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? preferredEnginePluginId;
   final String? animeAudioCategory;
   final bool detailsHost;
+  final bool filesOnly;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -255,6 +261,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           preferredEnginePluginId: widget.preferredEnginePluginId,
           animeAudioCategory: widget.animeAudioCategory,
           detailsHost: detailsHost,
+          filesOnly: widget.filesOnly,
           onTorrentSelected: widget.onTorrentSelected,
           onStremioSelected: widget.onStremioSelected,
           onClose: widget.onClose,
@@ -287,6 +294,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.preferredEnginePluginId,
     this.animeAudioCategory,
     this.detailsHost = false,
+    this.filesOnly = false,
   });
 
   final Movie movie;
@@ -307,6 +315,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? preferredEnginePluginId;
   final String? animeAudioCategory;
   final bool detailsHost;
+  final bool filesOnly;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -534,10 +543,34 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool get _showsStremio => _kindFilter == 'stremio';
   bool get _showsNuvio => _kindFilter == 'nuvio';
   bool get _showsEngine => _kindFilter == 'engine';
+  bool get _showsDownloaded => _kindFilter == 'downloaded';
+
+  bool get _titleHasCompletedDownloads {
+    if (!PlatformInfo.offlineDownloadsEnabled) return false;
+    final id = _downloadMediaId;
+    if (id.isEmpty) return false;
+    for (final task in DownloadService.instance.tasksNotifier.value) {
+      if (task.mediaId == id && task.isCompleted) return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
     super.initState();
+    if (widget.filesOnly) {
+      _kindFilter = 'downloaded';
+      _showTorrents = false;
+      _showStremio = false;
+      _showNuvio = false;
+      _showEngine = false;
+      if (PlatformInfo.offlineDownloadsEnabled) {
+        DownloadService.instance.tasksNotifier.addListener(_onDownloadsChanged);
+        unawaited(DownloadService.instance.initialize());
+      }
+      _offerListScrollIntoView();
+      return;
+    }
     PluginRegistry.changeNotifier.addListener(_onTorrentPackChanged);
     if (PlatformInfo.offlineDownloadsEnabled) {
       DownloadService.instance.tasksNotifier.addListener(_onDownloadsChanged);
@@ -549,7 +582,20 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _onDownloadsChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    if (widget.filesOnly) {
+      setState(() {});
+      return;
+    }
+    if (_kindFilter == 'downloaded' && !_titleHasCompletedDownloads) {
+      _kindFilter = _resolveInitialKind(
+        hasTorrent: _showTorrents,
+        hasStremio: _showStremio,
+        hasNuvio: _showNuvio,
+        hasEngine: _showEngine,
+      );
+    }
+    setState(() {});
   }
 
   void _offerListScrollIntoView() {
@@ -610,6 +656,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   void _seedOptimisticChrome() {
     final cachedUi = CatalogSourcesSessionCache.readUi(_catalogCacheKey);
     bool kindAllowed(String k) => switch (k) {
+      'downloaded' => _titleHasCompletedDownloads,
       'torrents' => _showTorrents,
       'stremio' => _showStremio,
       'nuvio' => _showNuvio,
@@ -658,6 +705,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         hasNuvio: _showNuvio,
         hasEngine: _showEngine,
       );
+    }
+    if (widget.preferredKind == 'downloaded' && _titleHasCompletedDownloads) {
+      _kindFilter = 'downloaded';
     }
 
     // Paint cached rows immediately (chips still wait on pack/addon lists).
@@ -1184,6 +1234,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _showNuvio = nuvioOn;
       _showEngine = engineOn;
       bool kindAllowed(String k) => switch (k) {
+        'downloaded' => _titleHasCompletedDownloads,
         'torrents' => torrentOn,
         'stremio' => stremioOn,
         'nuvio' => nuvioOn,
@@ -1222,6 +1273,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
     final cachedUi = CatalogSourcesSessionCache.readUi(_catalogCacheKey);
     bool kindAllowed(String k) => switch (k) {
+      'downloaded' => _titleHasCompletedDownloads,
       'torrents' => torrentOn,
       'stremio' => hasStremio,
       'nuvio' => hasNuvio,
@@ -1769,6 +1821,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _savePanelUiCache() {
+    if (widget.filesOnly) return;
     _stashPanelSourceIdForKind(_kindFilter);
     CatalogSourcesSessionCache.writeUi(
       _catalogCacheKey,
@@ -1842,6 +1895,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required bool hasEngine,
   }) {
     final preferred = _effectivePreferredKind();
+    if (preferred == 'downloaded' && _titleHasCompletedDownloads) {
+      return 'downloaded';
+    }
     if (preferred == 'engine' && hasEngine) return 'engine';
     if (preferred == 'torrents' && hasTorrent) return 'torrents';
     if (preferred == 'stremio' && hasStremio) return 'stremio';
@@ -1861,7 +1917,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (base != null && base.startsWith('engine:')) return 'engine';
     if (base != null && base.startsWith('nuvio:')) return 'nuvio';
     final preferred = widget.preferredKind;
-    if (preferred == 'nuvio' ||
+    if (preferred == 'downloaded' ||
+        preferred == 'nuvio' ||
         preferred == 'engine' ||
         preferred == 'stremio' ||
         preferred == 'torrents') {
@@ -3977,17 +4034,29 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   @override
   Widget build(BuildContext context) {
-    final torrents = _showsTorrents ? _filteredTorrents : <TorrentResult>[];
-    final stremio = _showsStremio
-        ? _visibleStremioStreams
-        : <Map<String, dynamic>>[];
-    final nuvio = _showsNuvio ? _filteredNuvio : <Map<String, dynamic>>[];
-    final engine = _showsEngine ? _filteredEngine : <Map<String, dynamic>>[];
-    final offline = _pinnedOfflineStreams(
-      stremio: stremio,
-      nuvio: nuvio,
-      engine: engine,
-    );
+    final downloadedOnly = _showsDownloaded;
+    final torrents = downloadedOnly || !_showsTorrents
+        ? <TorrentResult>[]
+        : _filteredTorrents;
+    final stremio = downloadedOnly || !_showsStremio
+        ? <Map<String, dynamic>>[]
+        : _visibleStremioStreams;
+    final nuvio = downloadedOnly || !_showsNuvio
+        ? <Map<String, dynamic>>[]
+        : _filteredNuvio;
+    final engine = downloadedOnly || !_showsEngine
+        ? <Map<String, dynamic>>[]
+        : _filteredEngine;
+    final offline = downloadedOnly
+        ? downloadedTitleStreams(
+            tasks: DownloadService.instance.tasksNotifier.value,
+            mediaId: _downloadMediaId,
+          )
+        : _pinnedOfflineStreams(
+            stremio: stremio,
+            nuvio: nuvio,
+            engine: engine,
+          );
     final totalCount =
         offline.length +
         torrents.length +
@@ -4000,13 +4069,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       children: [
         TorrentSourcesPanelChrome(
           kindFilter: _kindFilter,
+          listOnly: widget.filesOnly,
+          showDownloaded: widget.filesOnly ? false : _titleHasCompletedDownloads,
           showTorrents: _showTorrents,
           showStremio: _showStremio,
           showNuvio: _showNuvio,
           showEngine: _showEngine,
           onKindChanged: _onKindChanged,
           resultCount: totalCount,
-          isFetching: _isFetching,
+          isFetching: _showsDownloaded ? false : _isFetching,
           onCancelFetch: () {
             _searchGen++;
             _abortStremioStreamFetch();
@@ -4026,7 +4097,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               _enginePoolTasks.clear();
             });
           },
-          providerOptions: _providerOptions,
+          providerOptions: _showsDownloaded ? const [] : _providerOptions,
           selectedSourceId: _selectedSourceId,
           nuvioSelectedScraperIds: _nuvioSelectedScraperIds,
           engineSelectedPluginIds: _engineSelectedPluginIds,
@@ -4386,6 +4457,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 (_showsTorrents &&
                     TorrentSearchProviders.isNoneChip(_selectedSourceId))
           ? 'Select at least one provider'
+          : _showsDownloaded
+          ? 'No saved files'
           : 'No matching sources';
       final emptyBody = Center(
         child: Text(

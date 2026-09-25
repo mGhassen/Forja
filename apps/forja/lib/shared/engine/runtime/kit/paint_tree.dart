@@ -2278,16 +2278,13 @@ class PackPaintTree extends StatelessWidget {
             grid = buildGrid();
           }
 
-          Widget body = SizedBox(
-            width: constraints.maxWidth,
-            height: constraints.maxHeight,
-            child: grid,
-          );
-
+          // Always a Row so opening the dock does not remount the grid
+          // (a new ScrollController would jump back to the top).
+          Widget? panel;
           if (showPanel) {
             final entry = _listEntryFromItem(selected);
             final hubTab = (tabId ?? '').trim();
-            final panel = KitResolvePanelHost.instance.buildSidePanel(
+            panel = KitResolvePanelHost.instance.buildSidePanel(
               context: context,
               entry: entry,
               layoutWidgets: [
@@ -2314,18 +2311,18 @@ class PackPaintTree extends StatelessWidget {
                       );
                     },
             );
-            body = SizedBox(
-              width: constraints.maxWidth,
-              height: constraints.maxHeight,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(flex: 60, child: grid),
-                  Expanded(flex: 40, child: panel),
-                ],
-              ),
-            );
           }
+          final body = SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: showPanel ? 60 : 1, child: grid),
+                if (panel != null) Expanded(flex: 40, child: panel),
+              ],
+            ),
+          );
 
           final hoist = _hoistSourceFromPage(context);
           if (hoist != null && (tabId ?? '').isNotEmpty) {

@@ -23,6 +23,7 @@ import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/brand/forja_profile_avatar.dart';
 import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
+import 'package:forja_foundation/blocks/shell/shell_nav_placement.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
@@ -138,6 +139,7 @@ class ShellNavRail extends StatefulWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     this.hideLogo = false,
+    this.pageDirection = TextDirection.ltr,
   });
 
   final List<String> visibleIds;
@@ -146,6 +148,9 @@ class ShellNavRail extends StatefulWidget {
 
   /// Get-started empty shell — keep profile, hide top Forja logo.
   final bool hideLogo;
+
+  /// Writing direction of the selected hub. Moves D-pad "into the page".
+  final TextDirection pageDirection;
 
   @override
   State<ShellNavRail> createState() => _ShellNavRailState();
@@ -310,6 +315,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                   labelSlotHeight: labelSlotHeight,
                   railEngaged: _railEngaged,
                   onFocusChanged: _syncFocusInRail,
+                  pageDirection: widget.pageDirection,
                 );
               },
             ),
@@ -398,6 +404,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                               builder: (context, lanPresence, _) {
                                 return _ShellNavRailItem(
                                   key: const ValueKey('nav-rail-settings'),
+                                  pageDirection: widget.pageDirection,
                                   destination: navDestinations['settings']!,
                                   label: showDesktopProfile
                                       ? _profileLabel
@@ -773,6 +780,7 @@ class _ShellNavRailItem extends StatefulWidget {
     this.customIconSize,
     this.alwaysShowLabel = false,
     this.desaturateCustomIconWhenIdle = false,
+    this.pageDirection = TextDirection.ltr,
   });
 
   final NavDestination destination;
@@ -794,6 +802,7 @@ class _ShellNavRailItem extends StatefulWidget {
   final double? customIconSize;
   final bool alwaysShowLabel;
   final bool desaturateCustomIconWhenIdle;
+  final TextDirection pageDirection;
 
   @override
   State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
@@ -1170,8 +1179,13 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
           if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
           if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
             final arrow = event.logicalKey;
-            if (arrow == LogicalKeyboardKey.arrowRight) {
-              if (_hasVerticalFilters &&
+            final placement = ShellNavPlacement(
+              textDirection: widget.pageDirection,
+            );
+            if (placement.isTowardPage(arrow)) {
+              // Provider strip sits on the physical left, next to an LTR rail.
+              if (!placement.isRtl &&
+                  _hasVerticalFilters &&
                   VerticalFiltersRegistry.menuVisibleFor(
                     widget.destination.id,
                   ).value &&
@@ -1183,13 +1197,19 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
             }
             if (arrow == LogicalKeyboardKey.arrowUp ||
                 arrow == LogicalKeyboardKey.arrowDown ||
-                arrow == LogicalKeyboardKey.arrowLeft) {
-              if (arrow == LogicalKeyboardKey.arrowLeft &&
+                placement.isAwayFromPage(arrow)) {
+              if (!placement.isRtl &&
+                  arrow == LogicalKeyboardKey.arrowLeft &&
                   ShellTvFocus.miniRegistered &&
                   ShellTvFocus.tryFocusMiniFromNav()) {
                 return KeyEventResult.handled;
               }
-              if (ShellTvFocusCoordinator.handleNavKey(arrow)) {
+              // Coordinator treats left as the trapped edge and right as
+              // "return to the page". Map the physical away-key onto left.
+              final navKey = placement.isAwayFromPage(arrow)
+                  ? LogicalKeyboardKey.arrowLeft
+                  : arrow;
+              if (ShellTvFocusCoordinator.handleNavKey(navKey)) {
                 return KeyEventResult.handled;
               }
               return KeyEventResult.handled;

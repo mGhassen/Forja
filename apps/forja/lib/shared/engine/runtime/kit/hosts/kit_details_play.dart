@@ -39,6 +39,7 @@ Future<void> runPlayFromContext({
 Future<void> openSourcesFromContext({
   required BuildContext context,
   required PlayContext ctx,
+  bool filesOnly = false,
 }) {
   final session = _sessionFromContext(ctx);
   return openKitSources(
@@ -58,6 +59,7 @@ Future<void> openSourcesFromContext({
         ? ctx.selectedPluginIds!.first
         : null,
     playSession: session,
+    filesOnly: filesOnly,
   );
 }
 
