@@ -369,6 +369,8 @@ Future<void> _playStremio({
         providerId: catalogHttpPlayProviderId(stream),
         catalogUrl: stream['url']?.toString() ?? proxied.url,
         drm: drm,
+        probe: stream['probe']?.toString(),
+        pngStrip: stream['pngStrip']?.toString(),
       );
       await _openKitPlayer(
         context: context,

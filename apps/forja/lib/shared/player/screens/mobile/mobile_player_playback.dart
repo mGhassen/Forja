@@ -230,6 +230,7 @@ mixin _MobilePlayerPlayback
             catalogUrl: catalogUrl,
             headers: hdrs,
             providerId: pid,
+            pngStrip: source.pngStrip,
           );
           var branchOk = false;
           while (true) {

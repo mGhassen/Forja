@@ -177,26 +177,15 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       async {
     var openUrl = normalizePlaybackStreamUrl(widget.mediaPath);
     final rawHeaders = widget.headers ?? const <String, String>{};
-    final proxied1shows = await proxy1showsHlsIfNeeded(
+    final proxiedExt = await proxyExtensionlessHlsIfNeeded(
       streamUrl: openUrl,
       headers: rawHeaders,
       providerId: widget.activeProvider,
     );
-    openUrl = proxied1shows.url;
-    final proxiedExt = await proxyExtensionlessHlsIfNeeded(
-      streamUrl: openUrl,
-      headers: proxied1shows.headers.isEmpty
-          ? rawHeaders
-          : proxied1shows.headers,
-      providerId: widget.activeProvider,
-    );
     openUrl = proxiedExt.url;
     final catalogForHeaders = hlsProxyTargetUrl(openUrl) ?? openUrl;
-    final mwVaultProxy = isMwVaultProxyPlayUrl(openUrl);
-    final hdrs =
-        (isLocalLoopbackPlayUrl(openUrl) &&
-            (is1showsCdnStreamUrl(catalogForHeaders) ||
-                shouldProxyExtensionlessHls(catalogForHeaders)))
+    final hdrs = (isLocalLoopbackPlayUrl(openUrl) &&
+            shouldProxyExtensionlessHls(catalogForHeaders))
         ? const <String, String>{}
         : resolvePlaybackHttpHeaders(
             widget.headers,
@@ -207,8 +196,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
         (openUrl.startsWith('http://') || openUrl.startsWith('https://')) &&
         !isLocalTorrentStreamUrl(openUrl) &&
         !isLocalLoopbackPlayUrl(openUrl);
-    final attachHeaders =
-        !mwVaultProxy && hdrs.isNotEmpty && isRemoteHttp;
+    final attachHeaders = hdrs.isNotEmpty && isRemoteHttp;
     return (
       url: openUrl,
       headers: attachHeaders ? hdrs : null,

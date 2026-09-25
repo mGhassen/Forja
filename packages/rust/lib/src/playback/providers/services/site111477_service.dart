@@ -63,6 +63,7 @@ class Site111477Service {
           url: m.fileUrl,
           title: m.fileName,
           type: _describeMatch(m),
+          probe: 'skip',
         ),
     ];
   }

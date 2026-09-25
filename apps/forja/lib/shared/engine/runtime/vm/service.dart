@@ -15,7 +15,6 @@ import 'package:forja/shared/engine/runtime/vm/runtime.dart';
 import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
 import 'package:forja/shared/engine/packs/settings/pack_connected_auth_service.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
-import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -465,11 +464,7 @@ class EngineService {
       return null;
     }
     final plugin = hit.plugin;
-    final overlay =
-        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
-    final config = <String, dynamic>{
-      ...mergeEngineConfig(plugin.config, overlay),
-    };
+    final config = Map<String, dynamic>.from(plugin.config);
     final packSettings = await PackAddonSettingsSpec.fromPlugin(plugin)
         ?.loadConfigOverlay();
     if (packSettings != null && packSettings.isNotEmpty) {
@@ -678,7 +673,7 @@ class EngineService {
     }
     final plugin = hit.plugin;
     final overlay =
-        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+        const <String, dynamic>{};
     var config = mergeEngineConfig(plugin.config, overlay);
     if (pluginId == 'torrentio') {
       final stremioBase = await SettingsService().resolveTorrentioStremioAddonBase();
@@ -762,7 +757,7 @@ class EngineService {
     }
     final plugin = hit.plugin;
     final overlay =
-        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+        const <String, dynamic>{};
     var config = mergeEngineConfig(plugin.config, overlay);
     final packSettings = await PackAddonSettingsSpec.loadExtractConfigOverlay(
       extractPluginId: plugin.id,
@@ -1021,7 +1016,7 @@ class EngineService {
     }
 
     final overlay =
-        ProviderRuntimeConfig.instance.engine[active.id] ?? const {};
+        const <String, dynamic>{};
     var config = injectExtractCtxIntoConfig(
       active,
       extractCtx,
@@ -1183,7 +1178,7 @@ class EngineService {
         : hit.pack.isPluginActive(plugin);
     if (!active) return [];
     final overlay =
-        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+        const <String, dynamic>{};
     final config = {
       ...mergeEngineConfig(plugin.config, overlay),
       'pluginId': plugin.id,
@@ -1338,7 +1333,7 @@ class EngineService {
     }
 
     final overlay =
-        ProviderRuntimeConfig.instance.engine[catalogPlugin.id] ?? const {};
+        const <String, dynamic>{};
     var config = mergeEngineConfig(catalogPlugin.config, overlay);
 
     if (extraConfig.isNotEmpty) {
@@ -1711,7 +1706,7 @@ class EngineService {
 
     final mediaType = _normalizeEngineMediaType(type);
     final overlay =
-        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+        const <String, dynamic>{};
     var config = injectExtractCtxIntoConfig(
       plugin,
       extractCtx,

@@ -1,20 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/playback/open/stream_media_classifier.dart';
 import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
-import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 
 void main() {
-  setUp(() {
-    ProviderRuntimeConfig.instance.debugSetSnapshot(
-      ProviderRuntimeSnapshot.builtins(),
-    );
-  });
-
   group('StreamOpenPipeline', () {
     test('pngWrapTs → strip first; openFailed → direct', () async {
       final pipe = await StreamOpenPipeline.start(
         catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'megaplay',
+        providerId: 'src',
+        pngStrip: 'auto',
         mediaClassOverride: StreamMediaClass.pngWrapTs,
         buildStripProxy: (u, _) =>
             'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
@@ -35,7 +29,8 @@ void main() {
     test('plainMedia → direct first; fail → strip', () async {
       final pipe = await StreamOpenPipeline.start(
         catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'megaplay',
+        providerId: 'src',
+        pngStrip: 'auto',
         mediaClassOverride: StreamMediaClass.plainMedia,
         buildStripProxy: (u, _) => 'http://127.0.0.1:9/proxy?u=$u',
       );
@@ -54,7 +49,8 @@ void main() {
     test('imageNoTs exhausts without open', () async {
       final pipe = await StreamOpenPipeline.start(
         catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'megaplay',
+        providerId: 'src',
+        pngStrip: 'auto',
         mediaClassOverride: StreamMediaClass.imageNoTs,
         buildStripProxy: (u, _) =>
             'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
@@ -65,7 +61,8 @@ void main() {
     test('httpBlocked exhausts without open', () async {
       final pipe = await StreamOpenPipeline.start(
         catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'megaplay',
+        providerId: 'src',
+        pngStrip: 'auto',
         mediaClassOverride: StreamMediaClass.httpBlocked,
       );
       expect(await pipe.next(), isNull);
@@ -76,7 +73,8 @@ void main() {
       () async {
         final pipe = await StreamOpenPipeline.start(
           catalogUrl: 'https://cdn.example/x/master.m3u8',
-          providerId: 'megaplay',
+          providerId: 'src',
+        pngStrip: 'auto',
           mediaClassOverride: StreamMediaClass.pngWrapTs,
           buildStripProxy: (_, _) => '',
         );
@@ -90,7 +88,8 @@ void main() {
     test('progressive → direct only', () async {
       final pipe = await StreamOpenPipeline.start(
         catalogUrl: 'https://cdn.example/video.mp4',
-        providerId: 'megaplay',
+        providerId: 'src',
+        pngStrip: 'auto',
         mediaClassOverride: StreamMediaClass.plainMedia,
       );
       expect((await pipe.next())?.action, StreamOpenAction.openDirect);
@@ -101,7 +100,7 @@ void main() {
     test('never profile → direct only', () async {
       final pipe = await StreamOpenPipeline.start(
         catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'vidnest:animepahe',
+        providerId: 'src',
         mediaClassOverride: StreamMediaClass.pngWrapTs,
       );
       expect((await pipe.next())?.action, StreamOpenAction.openDirect);
@@ -112,7 +111,8 @@ void main() {
     test('vidrock pngWrapTs → openPngStrip first', () async {
       final pipe = await StreamOpenPipeline.start(
         catalogUrl: 'https://cdn1.ngcorp.dad/e/abc/master.m3u8',
-        providerId: 'engine:vidrock',
+        providerId: 'src',
+        pngStrip: 'auto',
         mediaClassOverride: StreamMediaClass.pngWrapTs,
         buildStripProxy: (u, _) =>
             'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
@@ -128,7 +128,7 @@ void main() {
         final pipe = await StreamOpenPipeline.start(
           catalogUrl:
               'https://vixsrc.to/playlist/174559?b=1&token=abc&expires=1&h=1',
-          providerId: 'engine:vixsrc',
+          providerId: 'src',
         );
         expect(pipe.isHls, isTrue);
         expect(pipe.mediaClass, StreamMediaClass.plainMedia);

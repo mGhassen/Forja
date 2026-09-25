@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/playback/open/stream_media_classifier.dart';
-import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
+import 'package:forja/shared/playback/sources/stream_playback_knobs.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:rust/rust.dart';
 
@@ -54,7 +54,7 @@ class StreamOpenPipeline {
 
   final String catalogUrl;
   final String? providerId;
-  final AnimePngStripMode pngMode;
+  final PngStripMode pngMode;
   final StreamMediaClass mediaClass;
   final bool isHls;
   final bool isProgressive;
@@ -72,6 +72,7 @@ class StreamOpenPipeline {
     required String catalogUrl,
     Map<String, String>? headers,
     String? providerId,
+    String? pngStrip,
     @visibleForTesting StreamMediaClass? mediaClassOverride,
     @visibleForTesting
     String Function(String url, Map<String, String> headers)? buildStripProxy,
@@ -84,9 +85,7 @@ class StreamOpenPipeline {
       streamUrl: catalog,
       providerId: providerId,
     );
-    final mode = ProviderRuntimeConfig.instance
-        .animePlaybackProfile(providerId ?? '')
-        .pngStrip;
+    final mode = pngStripModeFrom(pngStrip);
 
     final lower = catalog.toLowerCase();
     final isHls = urlLooksLikeHls(catalog);
@@ -100,7 +99,7 @@ class StreamOpenPipeline {
     StreamMediaClass mediaClass = StreamMediaClass.unknown;
     if (mediaClassOverride != null) {
       mediaClass = mediaClassOverride;
-    } else if (isHls && mode != AnimePngStripMode.never) {
+    } else if (isHls && mode != PngStripMode.never) {
       mediaClass = await StreamMediaClassifier.classifyPlaylist(catalog, hdrs);
     } else if (isHls) {
       mediaClass = StreamMediaClass.plainMedia;
@@ -188,7 +187,7 @@ class StreamOpenPipeline {
   StreamOpenAction? decideForTest() => _decide();
 
   StreamOpenAction? _decide() {
-    if (pngMode == AnimePngStripMode.never) {
+    if (pngMode == PngStripMode.never) {
       return _once(StreamOpenAction.openDirect);
     }
 
@@ -196,7 +195,7 @@ class StreamOpenPipeline {
       return _once(StreamOpenAction.openDirect);
     }
 
-    if (pngMode == AnimePngStripMode.force) {
+    if (pngMode == PngStripMode.force) {
       if (!_tried.contains(StreamOpenAction.openPngStrip)) {
         return StreamOpenAction.openPngStrip;
       }

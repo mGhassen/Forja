@@ -8,7 +8,7 @@ alwaysApply: false
 
 Parent: [pack-product host](./forja-pack-product-host.mdc) · skill **forja-pack-product-host**
 
-`apps/forja/lib/shared/playback/**` orchestrates **playback for any title**: stream probe, engine auto-play race, torrent/Stremio resolve, home TMDB watch history, provider runtime config, stream guards.
+`apps/forja/lib/shared/playback/**` orchestrates **playback for any title**: stream probe, engine auto-play race, torrent/Stremio resolve, home TMDB watch history, stream guards.
 
 Not for hub pack logic, `open.surface` routing, or upstream catalog ids.
 
@@ -34,7 +34,6 @@ Not for hub pack logic, `open.surface` routing, or upstream catalog ids.
 
 | Item | Why |
 |------|-----|
-| `provider_runtime_config.dart` hostnames | Stream **provider** URLs, not hub catalog packs |
 | `engine_auto_play.dart` | Calls engine; no surface→id mapping here |
 
 ## Before changing this folder

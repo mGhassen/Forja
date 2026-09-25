@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -319,9 +318,7 @@ class LivePluginEngine {
     final plugin = await EngineService.instance.pluginById(pluginId);
     if (plugin == null) return const {};
     _cachePluginMeta(plugin);
-    final overlay =
-        ProviderRuntimeConfig.instance.engine[pluginId] ?? const {};
-    return mergeEngineConfig(plugin.config, overlay);
+    return Map<String, dynamic>.from(plugin.config);
   }
 
   /// Site origin from plugin/catalog `webOrigin` / `origin` / `api` host.

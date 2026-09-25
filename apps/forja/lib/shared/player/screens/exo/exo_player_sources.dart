@@ -236,26 +236,19 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     int index, [
     String? providerId,
   ]) async {
-    final pid = providerId ?? _s._currentProvider ?? '';
     try {
       var openUrl = source.url;
       Map<String, String>? headers = source.headers ?? widget.headers;
 
-      if (animeHlsNeedsPngStripFor(openUrl, sourceKey: pid)) {
-        final stripped = await applyAnimePngStripIfNeeded(
-          StreamSource(
-            url: openUrl,
-            title: source.title,
-            type: source.type,
-            headers: headers,
-          ),
-          sourceKey: pid,
+      if (hlsNeedsPngStripFor(openUrl, pngStrip: source.pngStrip)) {
+        final stripped = await applyPngStripIfNeeded(
+          source.copyWith(url: openUrl, headers: headers),
         );
         openUrl = stripped.url;
         headers = stripped.headers;
       }
 
-      return await probeStreamSourceUrl(openUrl, headers, sourceKey: pid);
+      return await probeStreamSourceUrl(openUrl, headers, probe: source.probe);
     } catch (_) {
       return false;
     }
@@ -301,15 +294,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       var openUrl = source.url;
       Map<String, String>? headers = source.headers ?? widget.headers;
 
-      if (animeHlsNeedsPngStripFor(openUrl, sourceKey: providerId)) {
-        final stripped = await applyAnimePngStripIfNeeded(
-          StreamSource(
-            url: openUrl,
-            title: source.title,
-            type: source.type,
-            headers: headers,
-          ),
-          sourceKey: providerId,
+      if (hlsNeedsPngStripFor(openUrl, pngStrip: source.pngStrip)) {
+        final stripped = await applyPngStripIfNeeded(
+          source.copyWith(url: openUrl, headers: headers),
         );
         openUrl = stripped.url;
         headers = stripped.headers;
@@ -318,7 +305,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       final reachable = await probeStreamSourceUrl(
         openUrl,
         headers,
-        sourceKey: providerId,
+        probe: source.probe,
       );
       if (!mounted || _s._disposed || switchGen != _s._fallbackGen) return;
       if (!reachable) {

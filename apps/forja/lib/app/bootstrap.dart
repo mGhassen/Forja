@@ -55,7 +55,6 @@ import 'package:forja/shared/services/app/tmdb_user_region.dart';
 import 'package:forja/shared/network/legacy_android_tls.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
 import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
-import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
@@ -164,7 +163,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Always rotate the access JWT on cold start when a session exists. Skew /
   // gotrue discard can leave a locally "valid" AT that PostgREST rejects.
   await SyncService.instance.refreshSession(force: true);
-  unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
   unawaited(_migrateAnimeTitleLanguageToPack());
   if (Platform.isAndroid) {
     TvRemoteDebug.install();
@@ -298,7 +296,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   registerTorrentSearchBridge();
   registerDebridPackBridge();
   _warnIfRustMissing();
-  ProviderRuntimeConfig.instance.pushToRust();
   await PlatformChannel.seedPlatformDefaultsAfterEngine();
   _wireLanPlaybackBridge();
   // LAN restore waits for post-splash torrent/proxy warm — see ProfileEngineWarm.

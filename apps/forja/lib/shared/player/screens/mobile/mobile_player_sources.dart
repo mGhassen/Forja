@@ -552,7 +552,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     Map<String, String>? headers = source.headers ?? widget.headers;
     var resolved = source;
 
-    if (pid == 'service111477') {
+    if (source.probe?.trim().toLowerCase() == 'skip') {
       final ok = await validateStreamSourceForCheck(
         providerId: pid,
         source: source,
@@ -562,22 +562,20 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       return (openUrl: source.url, headers: headers, resolved: source);
     }
 
-    if (animeHlsNeedsPngStripFor(openUrl, sourceKey: pid)) {
-      final stripped = await applyAnimePngStripIfNeeded(
-        StreamSource(
-          url: openUrl,
-          title: source.title,
-          type: source.type,
-          headers: headers,
-        ),
-        sourceKey: pid,
+    if (hlsNeedsPngStripFor(openUrl, pngStrip: source.pngStrip)) {
+      final stripped = await applyPngStripIfNeeded(
+        source.copyWith(url: openUrl, headers: headers),
       );
       openUrl = stripped.url;
       headers = stripped.headers;
       resolved = stripped;
     }
 
-    final ok = await probeStreamSourceUrl(openUrl, headers, sourceKey: pid);
+    final ok = await probeStreamSourceUrl(
+      openUrl,
+      headers,
+      probe: source.probe,
+    );
     if (!ok) return null;
     return (openUrl: openUrl, headers: headers, resolved: resolved);
   }
