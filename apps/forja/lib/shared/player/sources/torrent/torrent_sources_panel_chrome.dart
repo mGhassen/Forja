@@ -492,35 +492,37 @@ class _KindTabs extends StatelessWidget {
         ];
     if (options.isEmpty) return const SizedBox.shrink();
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: cinematic.borderSubtle.withValues(alpha: 0.7),
-            width: 1,
+    return SizedBox(
+      width: double.infinity,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: cinematic.borderSubtle.withValues(alpha: 0.7),
+              width: 1,
+            ),
           ),
         ),
-      ),
-      child: DesktopSwipeBackIgnore(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+        child: DesktopSwipeBackIgnore(
           child: Row(
             children: [
               for (var i = 0; i < options.length; i++)
-                _KindTab(
-                  label: options[i].label,
-                  icon: options[i].icon,
-                  iconData: options[i].iconData,
-                  selected: selected == options[i].id,
-                  loading: isFetching && selected == options[i].id,
-                  tvItemIndex: i,
-                  onTap: () => onChanged(options[i].id),
-                  onReload: onReloadKind == null || selected != options[i].id
-                      ? null
-                      : () => onReloadKind!(options[i].id),
-                  onCancel: onCancelFetch == null || selected != options[i].id
-                      ? null
-                      : onCancelFetch,
+                Expanded(
+                  child: _KindTab(
+                    label: options[i].label,
+                    icon: options[i].icon,
+                    iconData: options[i].iconData,
+                    selected: selected == options[i].id,
+                    loading: isFetching && selected == options[i].id,
+                    tvItemIndex: i,
+                    onTap: () => onChanged(options[i].id),
+                    onReload: onReloadKind == null || selected != options[i].id
+                        ? null
+                        : () => onReloadKind!(options[i].id),
+                    onCancel: onCancelFetch == null || selected != options[i].id
+                        ? null
+                        : onCancelFetch,
+                  ),
                 ),
             ],
           ),
@@ -599,9 +601,8 @@ class _KindTabState extends State<_KindTab> {
   Widget _buildTabFace(
     bool hovered,
     bool reloadHovered,
-    bool busyHovered, {
-    required bool showReload,
-  }) {
+    bool busyHovered,
+  ) {
     final metrics = ShellScope.metricsOf(context);
     final cinematic = ForjaShellColors.cinematic;
     final selected = widget.selected;
@@ -643,7 +644,7 @@ class _KindTabState extends State<_KindTab> {
         height: 1.0,
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (widget.icon != null || widget.iconData != null) ...[
             AnimatedScale(
@@ -659,7 +660,13 @@ class _KindTabState extends State<_KindTab> {
             ),
             SizedBox(width: iconGap),
           ],
-          Text(widget.label),
+          Flexible(
+            child: Text(
+              widget.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           if (widget.loading) ...[
             const SizedBox(width: 4),
             ForjaBusyCancelGlyph(
@@ -677,12 +684,9 @@ class _KindTabState extends State<_KindTab> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      padding: EdgeInsets.fromLTRB(
-        tabPadH,
-        0,
-        showReload ? 6 : tabPadH,
-        0,
-      ),
+      width: double.infinity,
+      alignment: Alignment.center,
+      padding: EdgeInsets.fromLTRB(tabPadH, 0, tabPadH, 0),
       transform: Matrix4.translationValues(
         0,
         (hovered || tabFocusStyled || _reloadFocused) && !selected ? -0.5 : 0,
@@ -805,28 +809,29 @@ class _KindTabState extends State<_KindTab> {
           final showReload = widget.onReload != null &&
               (hovered || _focused || _reloadFocused || reloadHovered);
           return Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              shellFocusableTap(
-                context: context,
-                focusNode: _tabFocus,
-                onTap: widget.onTap,
-                borderRadius: 0,
-                scaleOnFocus: 1.0,
-                suppressInkHover: true,
-                listIndex: widget.tvItemIndex,
-                tvTabId: SourcesPanelTv.tabId,
-                tvRowId: SourcesPanelTv.kindRowId,
-                tvItemIndex: widget.tvItemIndex,
-                onRightEdge: !tv || !showReload
-                    ? null
-                    : () => _reloadFocus.requestFocus(),
-                onFocusChange: (focused) => setState(() => _focused = focused),
-                child: _buildTabFace(
-                  hovered,
-                  reloadHovered,
-                  busyHovered,
-                  showReload: showReload,
+              Expanded(
+                child: shellFocusableTap(
+                  context: context,
+                  focusNode: _tabFocus,
+                  onTap: widget.onTap,
+                  borderRadius: 0,
+                  scaleOnFocus: 1.0,
+                  suppressInkHover: true,
+                  listIndex: widget.tvItemIndex,
+                  tvTabId: SourcesPanelTv.tabId,
+                  tvRowId: SourcesPanelTv.kindRowId,
+                  tvItemIndex: widget.tvItemIndex,
+                  onRightEdge: !tv || !showReload
+                      ? null
+                      : () => _reloadFocus.requestFocus(),
+                  onFocusChange: (focused) =>
+                      setState(() => _focused = focused),
+                  child: _buildTabFace(
+                    hovered,
+                    reloadHovered,
+                    busyHovered,
+                  ),
                 ),
               ),
               _buildReloadBtn(

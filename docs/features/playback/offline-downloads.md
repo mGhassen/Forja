@@ -22,8 +22,8 @@ Offline Downloads is on phone and desktop.
   Filters include **Offline** / **Online**. Row tap on a saved stream plays
   the file on this device, including a file saved from the player. The cloud
   button is the network stream.
-- **Player** — use the download icon in the top bar to save the stream you’re
-  watching (phone and desktop).
+- **Player** — use the download icon in the top-right corner to save the stream
+  you’re watching (phone and desktop).
 
 Hover a stream row and tap Download — the card switches to a confirm face
 (like IPTV portal delete / share), shows the stream size (exact for files,
