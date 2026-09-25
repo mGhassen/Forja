@@ -947,16 +947,20 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       }
       return idle;
     }
+    // Pack icons are also painted at hover size. Hover is 1 so the bitmap
+    // is never enlarged. A filtered upscale bakes in the paint offset and
+    // Impeller flashes and slides the glyph when the rail is on the right.
     if (itemActive) {
-      return _pressed ? big * ShellTokens.navRailIconPressScale : big;
+      return _pressed ? ShellTokens.navRailIconPressScale : 1;
     }
+    final idle = small / big;
     // TV: selected stays big, idle stays small — no rail-engage shrink cascade.
     if (policy.instantFocusChrome) {
-      return widget.selected ? big : small;
+      return widget.selected ? 1 : idle;
     }
     // Desktop: selected tab stays enlarged while browsing page content.
-    if (!widget.railEngaged) return widget.selected ? big : small;
-    return small;
+    if (!widget.railEngaged) return widget.selected ? 1 : idle;
+    return idle;
   }
 
   Duration _chromeAnim(ShellInputPolicy policy) => policy.instantFocusChrome
@@ -1112,9 +1116,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         child: icon,
       );
     }
-    final iconBox = widget.customIconSize != null
-        ? renderedIconSize * ShellTokens.navRailIconHoverScale
-        : renderedIconSize;
+    final iconBox = renderedIconSize * ShellTokens.navRailIconHoverScale;
     icon = NavReloadHoldIcon(
       icon: icon,
       loading: _reloadHold.loading,
@@ -1283,19 +1285,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                           child: Align(
                             alignment: Alignment.bottomCenter,
                             child: RepaintBoundary(
-                              // AnimatedScale's filter bakes in the paint
-                              // offset. On the right edge of a wide window
-                              // that offset is large and Impeller flashes the
-                              // glyph for the whole scale. A boundary keeps
-                              // the filter local.
                               child: AnimatedScale(
                                 alignment: Alignment.bottomCenter,
                                 scale: _scaleFor(policy),
                                 duration: chromeAnim,
                                 curve: Curves.easeOutCubic,
-                                // Bilinear — Impeller defaults can nearest-neighbor
-                                // the focus grow and make pack PNGs look 8-bit.
-                                filterQuality: FilterQuality.medium,
                                 child: SizedBox(
                                   width: iconBox,
                                   height: iconBox,

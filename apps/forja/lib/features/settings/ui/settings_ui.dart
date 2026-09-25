@@ -1125,7 +1125,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
                   48 + _imeScrollPad + tvBottomSlack,
                 ),
                 child: Align(
-                  alignment: Alignment.topLeft,
+                  alignment: AlignmentDirectional.topStart,
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
                       maxWidth: SettingsTokens.detailMaxWidthOf(context),
@@ -1169,7 +1169,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
                             .clamp(0.0, SettingsTokens.detailMaxWidthOf(context))
                             .toDouble();
                         return Align(
-                          alignment: Alignment.topLeft,
+                          alignment: AlignmentDirectional.topStart,
                           child: SizedBox(
                             width: width,
                             height: constraints.maxHeight,
@@ -2297,9 +2297,9 @@ class SettingsFilledButton extends StatelessWidget {
         child: child,
       );
       if (expand) return tap;
-      // Hug + left-align (docs). centerRight stacked Discover under the status
-      // refresh on LAN and made spatial ↑/↓ bounce between them.
-      return Align(alignment: Alignment.centerLeft, child: tap);
+      // Hug the start edge. A physical right align stacked Discover under the
+      // status refresh on LAN and made spatial ↑/↓ bounce between them.
+      return Align(alignment: AlignmentDirectional.centerStart, child: tap);
     }
     final button = Button(
       label: label,
@@ -2315,7 +2315,7 @@ class SettingsFilledButton extends StatelessWidget {
       variant: _variant,
     );
     if (expand) return button;
-    return Align(alignment: Alignment.centerLeft, child: button);
+    return Align(alignment: AlignmentDirectional.centerStart, child: button);
   }
 }
 
