@@ -726,6 +726,7 @@ class SyncService {
       accountId: accountId,
       profileId: profileId,
     );
+    SettingsService.forgetIdentitySessionCache();
     await PortalStore.migrateLegacyInventoryIfNeeded();
     await ProviderScoreMemory.syncIdentityScope();
   }
@@ -734,6 +735,23 @@ class SyncService {
   /// Launching guest is launching a profile — same as [selectProfile] for pack init.
   Future<void> useGuestPluginDiskScope() =>
       _syncPluginDiskScope(accountId: null, profileId: null);
+
+  /// Engine store for a restored sign-in, or null when there is no saved profile.
+  ///
+  /// Guest (`accounts/local`) is only for a real signed-out launch. A persisted
+  /// session with a saved profile id must open that file before the shell reads
+  /// the navbar.
+  Future<String?> engineStorePathForCurrentSession() async {
+    final userId = session?.user.id;
+    if (userId == null) return null;
+    final prefs = await SharedPreferences.getInstance();
+    final profileId = prefs.getString('$_activeProfileKeyPrefix$userId')?.trim();
+    if (profileId == null || profileId.isEmpty) return null;
+    return Engine.storagePathForIdentity(
+      accountId: userId.replaceAll(RegExp(r'[^\w\-.]'), '_'),
+      profileId: profileId.replaceAll(RegExp(r'[^\w\-.]'), '_'),
+    );
+  }
 
   /// Bind pack disk for the launched profile before pack I/O.
   ///

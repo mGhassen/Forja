@@ -1866,6 +1866,17 @@ class SettingsService {
         .toList();
   }
 
+  /// Drop in-memory settings that belong to the previous identity.
+  ///
+  /// [getNavbarConfig] returns [_navbarVisibleMemory] without re-reading KV.
+  /// A profile rebind must clear it or the next rail paint keeps the previous
+  /// store (guest on a signed-in cold start, or the last profile on switch).
+  static void forgetIdentitySessionCache() {
+    _navbarVisibleMemory = null;
+    _addonFeatureMemory.clear();
+    _crashReportingMemory = null;
+  }
+
   /// Test-only: reset exclusive lock and session rail mirror between stores.
   @visibleForTesting
   static void resetNavbarLockForTest() {

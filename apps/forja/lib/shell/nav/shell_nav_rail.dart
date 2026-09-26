@@ -351,10 +351,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
                       final padV = isTv
                           ? ShellTokens.navRailNavPadVTv
                           : ShellTokens.navRailScrollPadV;
-                      final innerHeight = math.max(
-                        0.0,
-                        constraints.maxHeight - padV * 2,
-                      );
                       final profileSpacing = isTv
                           ? ShellTokens.navRailProfileSpacingTv
                           : metrics.navRailItemSpacing;
@@ -385,19 +381,34 @@ class _ShellNavRailState extends State<ShellNavRail> {
                         labelSlotHeight: preferredLabelSlot,
                       );
 
-                      // Fixed icon size and gap. Extra hubs scroll; profile
-                      // stays pinned under this list.
-                      final navArea = SingleChildScrollView(
-                        padding: EdgeInsets.symmetric(vertical: padV),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(minHeight: innerHeight),
-                          child: navColumn,
-                        ),
+                      final oneItem = shellNavRailItemContentHeight(
+                        context,
+                        iconSize: preferredIconSize,
+                        labelFontSize: preferredLabelFont,
+                        labelSlotHeight: preferredLabelSlot,
                       );
+                      final navExtent =
+                          _navIds.length * (oneItem + metrics.navRailItemSpacing);
 
                       return Column(
                         children: [
-                          Expanded(child: navArea),
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, navBox) {
+                                // Fixed icon size and gap. Extra hubs scroll;
+                                // the profile stays pinned. When the icons
+                                // fit, skip the scroll view so desktop does
+                                // not paint a bar, and center them.
+                                if (navExtent <= navBox.maxHeight) {
+                                  return navColumn;
+                                }
+                                return SingleChildScrollView(
+                                  padding: EdgeInsets.symmetric(vertical: padV),
+                                  child: navColumn,
+                                );
+                              },
+                            ),
+                          ),
                           if (settingsIndex != null)
                             ValueListenableBuilder<LanPresence>(
                               valueListenable:

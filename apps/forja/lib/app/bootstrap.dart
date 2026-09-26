@@ -287,8 +287,17 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Profile-gated engines (Nuvio, LocalServer, TorrentStream, TMDB)
   // warm after profile settings are known - see ProfileEngineWarm / SplashScreen.
 
-  // Hydrate theme preset before first frame
-  await Engine.init();
+  // Hydrate theme preset before first frame.
+  // Engine.init's default file is the guest profile. A restored sign-in must
+  // open that profile's store before defaults, theme, or MainScreen — otherwise
+  // the first navbar read is the guest rail.
+  final signedInStore = await SyncService.instance
+      .engineStorePathForCurrentSession();
+  if (signedInStore != null) {
+    debugPrint('[Boot] opening signed-in profile store');
+  }
+  await Engine.init(storagePath: signedInStore);
+  await SyncService.instance.ensurePluginDiskScopeForCurrentSession();
   registerTorrentSearchBridge();
   registerDebridPackBridge();
   _warnIfRustMissing();
