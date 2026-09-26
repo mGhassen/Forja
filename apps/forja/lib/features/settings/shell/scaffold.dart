@@ -551,141 +551,53 @@ class _CategorySidebar extends ConsumerWidget {
               ),
             ),
             Expanded(
-              child: _CenteredOrScroll(
+              child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
-                children: [
-                  for (var index = 0; index < categories.length; index++)
-                    _settingsCategoryTile(
-                      categories[index],
-                      index: index,
-                      selected: categories[index].id == selectedId,
-                      packUpdateCount: packUpdateCount,
-                      categoryRowId: categoryRowId,
-                      firstTileFocusNode: firstTileFocusNode,
-                      onSelect: onSelect,
-                      onEnterDetail: onEnterDetail,
-                    ),
-                ],
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final c = categories[index];
+                  final showPackAlert = c.id == SettingsCategoryId.forjaPacks &&
+                      packUpdateCount > 0;
+                  return SettingsCategoryTile(
+                    icon: c.icon,
+                    leading: showPackAlert
+                        ? const PackUpdateAlertIcon(
+                            size: ShellTokens.packUpdateSettingsIconSize,
+                          )
+                        : null,
+                    trailing: showPackAlert
+                        ? const PackUpdateMenuBadge()
+                        : null,
+                    title: c.title,
+                    subtitle: c.subtitle,
+                    selected: c.id == selectedId,
+                    adminOnly: c.adminOnly,
+                    listIndex: index,
+                    // Pin default/restore focus on the *selected* tile — never
+                    // index 0 (Profile). Resume focus dump onto hub-0 was
+                    // selecting Profile via onFocusSelect.
+                    focusNode: c.id == selectedId ? firstTileFocusNode : null,
+                    tvRowId: categoryRowId,
+                    tvItemIndex: categoryRowId != null ? index : null,
+                    onRightEdge: onEnterDetail == null
+                        ? null
+                        : () => onEnterDetail!(c.id),
+                    // ↑/↓ selects only; OK / Right enters the independent detail pane.
+                    onFocusSelect:
+                        onEnterDetail == null ? null : () => onSelect(c.id),
+                    onTap: () {
+                      if (onEnterDetail != null) {
+                        onEnterDetail!(c.id);
+                      } else {
+                        onSelect(c.id);
+                      }
+                    },
+                  );
+                },
               ),
             ),
             const SettingsSidebarFooter(),
           ],
-        );
-      },
-    );
-  }
-}
-
-Widget _settingsCategoryTile(
-  SettingsCategoryMeta c, {
-  required int index,
-  required bool selected,
-  required int packUpdateCount,
-  required String? categoryRowId,
-  required FocusNode? firstTileFocusNode,
-  required ValueChanged<String> onSelect,
-  required ValueChanged<String>? onEnterDetail,
-}) {
-  final showPackAlert =
-      c.id == SettingsCategoryId.forjaPacks && packUpdateCount > 0;
-  return SettingsCategoryTile(
-    icon: c.icon,
-    leading: showPackAlert
-        ? const PackUpdateAlertIcon(size: ShellTokens.packUpdateSettingsIconSize)
-        : null,
-    trailing: showPackAlert ? const PackUpdateMenuBadge() : null,
-    title: c.title,
-    subtitle: c.subtitle,
-    selected: selected,
-    adminOnly: c.adminOnly,
-    listIndex: index,
-    // Pin default/restore focus on the *selected* tile — never index 0
-    // (Profile). Resume focus dump onto hub-0 was selecting Profile.
-    focusNode: selected ? firstTileFocusNode : null,
-    tvRowId: categoryRowId,
-    tvItemIndex: categoryRowId != null ? index : null,
-    onRightEdge: onEnterDetail == null ? null : () => onEnterDetail(c.id),
-    // ↑/↓ selects only; OK / Right enters the independent detail pane.
-    onFocusSelect: onEnterDetail == null ? null : () => onSelect(c.id),
-    onTap: () {
-      if (onEnterDetail != null) {
-        onEnterDetail(c.id);
-      } else {
-        onSelect(c.id);
-      }
-    },
-  );
-}
-
-/// Centers [children] in the viewport. Scrolls — and shows a bar — only when
-/// they are taller than the space.
-class _CenteredOrScroll extends StatefulWidget {
-  const _CenteredOrScroll({
-    required this.children,
-    required this.padding,
-  });
-
-  final List<Widget> children;
-  final EdgeInsets padding;
-
-  @override
-  State<_CenteredOrScroll> createState() => _CenteredOrScrollState();
-}
-
-class _CenteredOrScrollState extends State<_CenteredOrScroll> {
-  final ScrollController _scroll = ScrollController();
-  bool _canScroll = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(_syncBar);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncBar());
-  }
-
-  @override
-  void didUpdateWidget(covariant _CenteredOrScroll oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncBar());
-  }
-
-  @override
-  void dispose() {
-    _scroll.removeListener(_syncBar);
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  void _syncBar() {
-    if (!mounted || !_scroll.hasClients) return;
-    final can = _scroll.position.maxScrollExtent > 1;
-    if (can == _canScroll) return;
-    setState(() => _canScroll = can);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final minH = (constraints.maxHeight - widget.padding.vertical)
-            .clamp(0.0, double.infinity);
-        final view = SingleChildScrollView(
-          controller: _scroll,
-          padding: widget.padding,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: minH),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: widget.children,
-            ),
-          ),
-        );
-        // Auto desktop bars stay hidden until the rows actually overflow.
-        if (_canScroll) return view;
-        return ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-          child: view,
         );
       },
     );
