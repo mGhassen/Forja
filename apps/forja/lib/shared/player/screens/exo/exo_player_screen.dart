@@ -1398,7 +1398,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (!mounted || !anchorContext.mounted) return;
     final playUrl = _currentUrl ?? widget.mediaPath;
     final hlsRows = hlsInStreamSubtitleRows(
-      await loadHlsInStreamSubtitles(playUrl),
+      await loadHlsInStreamSubtitles(
+        playUrl,
+        headers: _sources.isNotEmpty
+            ? _sources[_sourceIndex].headers
+            : widget.headers,
+      ),
     );
     if (!mounted || !anchorContext.mounted) return;
     await ExoPlayerMenus.showSubtitles(

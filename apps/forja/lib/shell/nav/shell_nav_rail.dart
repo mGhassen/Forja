@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -843,6 +844,27 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     _focusNode.requestFocus();
   }
 
+  /// Press chrome. [GestureDetector.dispose] fires [onTapCancel] while
+  /// [BuildOwner.finalizeTree] holds the tree lock — a direct [setState] there
+  /// asserts. Clear the flag now and rebuild on the next unlocked frame.
+  /// Press chrome. [GestureDetector.dispose] fires [onTapCancel] while
+  /// [BuildOwner.finalizeTree] holds the tree lock — a direct [setState] there
+  /// asserts. Clear the flag now and rebuild on the next unlocked frame.
+  void _setPressed(bool pressed) {
+    if (_pressed == pressed) return;
+    if (!mounted ||
+        SchedulerBinding.instance.schedulerPhase ==
+            SchedulerPhase.persistentCallbacks) {
+      _pressed = pressed;
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return;
+    }
+    setState(() => _pressed = pressed);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1260,11 +1282,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                 onPointerUp: _reloadHold.pointerUp,
                 onPointerCancel: _reloadHold.pointerCancel,
                 child: GestureDetector(
-                  onTapDown: (_) => setState(() => _pressed = true),
-                  onTapUp: (_) => setState(() => _pressed = false),
+                  onTapDown: (_) => _setPressed(true),
+                  onTapUp: (_) => _setPressed(false),
                   // Do not cancel the 4s reload hold here — long-press (Home
                   // watch services) wins the arena and would abort the hold.
-                  onTapCancel: () => setState(() => _pressed = false),
+                  onTapCancel: () => _setPressed(false),
                   onTap: () {
                     if (_reloadHold.consumeCompleted()) return;
                     if (_mouseDownDidNavigate) {

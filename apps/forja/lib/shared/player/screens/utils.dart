@@ -33,6 +33,7 @@ import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/screens/peakstorm_hls_trim.dart';
 import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
+import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
@@ -514,6 +515,7 @@ Future<String> openPlayerStream(
     }
   }
   if (mpvStart != null) await _mpvStartAt(player, mpvStart);
+  await applyIpv4HttpProxy(player, playUrl);
   final isFile = playUrl.startsWith('file://');
   final isTrimLoopback = isLocalLoopbackPlayUrl(playUrl);
   final attachHeaders = hdrs.isNotEmpty &&

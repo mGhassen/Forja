@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/nav/shell_nav_rail.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
@@ -140,6 +141,53 @@ void main() {
       _navItemScale(tester, 'search').scale,
       ShellTokens.navRailIconHoverScale,
     );
+  });
+
+  testWidgets('nav press cancel during filter wrap does not throw', (
+    tester,
+  ) async {
+    const tabId = 'rail-tab';
+    addTearDown(() => VerticalFiltersRegistry.unregister(tabId));
+    Widget rail() {
+      return _wrapProfile(
+        profile: ShellProfile.desktop,
+        child: ShellNavRail(
+          visibleIds: const [tabId, 'settings'],
+          selectedIndex: 0,
+          onDestinationSelected: (_) {},
+        ),
+      );
+    }
+
+    await tester.pumpWidget(rail());
+    final item = find.byKey(const ValueKey('nav-rail-$tabId'));
+    expect(item, findsOneWidget);
+    final gesture = await tester.startGesture(tester.getCenter(item));
+    addTearDown(gesture.removePointer);
+
+    VerticalFiltersRegistry.register(
+      const VerticalFiltersSpec(
+        widgetId: 'filters',
+        tabId: tabId,
+        pluginId: 'test-provider-a',
+        packSourceUrl: '',
+        showSelectedInTopBar: false,
+        options: [
+          VerticalFilterOption(
+            id: 'a',
+            label: 'A',
+            logo: 'https://example.com/a.png',
+            tileColor: Color(0xFF000000),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpWidget(rail());
+    await tester.pump();
+
+    await gesture.up();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('tv nav rail scales on keyboard focus (R28-A09)',

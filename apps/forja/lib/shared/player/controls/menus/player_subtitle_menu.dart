@@ -10,6 +10,18 @@ import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 
+/// Headers mpv already uses for this play URL (Referer, Cookie, User-Agent).
+Map<String, String>? currentPlaybackHttpHeaders(Player player) {
+  final playlist = player.state.playlist;
+  final medias = playlist.medias;
+  if (medias.isEmpty) return null;
+  var index = playlist.index;
+  if (index < 0 || index >= medias.length) index = 0;
+  final headers = medias[index].httpHeaders;
+  if (headers == null || headers.isEmpty) return null;
+  return Map<String, String>.from(headers);
+}
+
 /// Fired when the user picks Off, an embedded track, or an external file.
 typedef PlayerSubtitleSelectionCallback = void Function({
   required bool off,
@@ -300,7 +312,10 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
   }
 
   Future<void> _loadHls() async {
-    final subs = await loadHlsInStreamSubtitles(widget.streamUrl);
+    final subs = await loadHlsInStreamSubtitles(
+      widget.streamUrl,
+      headers: currentPlaybackHttpHeaders(widget.player),
+    );
     if (!mounted || subs.isEmpty) return;
     setState(() => _hls = subs);
   }
@@ -475,7 +490,10 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
   }
 
   Future<void> _loadHls() async {
-    final subs = await loadHlsInStreamSubtitles(widget.streamUrl);
+    final subs = await loadHlsInStreamSubtitles(
+      widget.streamUrl,
+      headers: currentPlaybackHttpHeaders(widget.player),
+    );
     if (!mounted) return;
     final key = widget.langKey;
     setState(() {

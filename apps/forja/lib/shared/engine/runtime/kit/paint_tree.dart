@@ -1917,17 +1917,17 @@ class PackPaintTree extends StatelessWidget {
             layoutWidth: constraints.maxWidth,
             androidTv: ShellTokens.isAndroidTvDevice,
           );
-          final selectedOffline =
-              selected != null && kitListItemSurface(selected) == 'offline';
+          // Opt-in only. A list mounts the saved-files panel when it sets `panel: 'offline'`.
+          final offlinePanel =
+              (spec['panel'] ?? '').toString().trim().toLowerCase() ==
+                  'offline';
           final showPanel = selected != null &&
-              (selectedOffline
-                  ? canShowSidePanel
-                  : resolveKitListTapOpen(
-                        openMode: openMode,
-                        hasMatchOpenSurface: matchOpenSurface,
-                        canShowSidePanel: canShowSidePanel,
-                      ) ==
-                      KitListTapOpen.panel);
+              resolveKitListTapOpen(
+                    openMode: openMode,
+                    hasMatchOpenSurface: matchOpenSurface,
+                    canShowSidePanel: canShowSidePanel,
+                  ) ==
+                  KitListTapOpen.panel;
           final gap = PackPaintArtifact.packLength(context, spec['gap']);
           final pad = PackPaintArtifact.packLength(context, spec['pad']);
           final cardWidth = PackPaintArtifact.packLength(context, spec['cardWidth']);
@@ -1941,16 +1941,23 @@ class PackPaintTree extends StatelessWidget {
             ]);
           }
 
-          void openMatchDetails(Map<String, dynamic> item) {
-            if (kitListItemSurface(item) == 'offline') {
-              unawaited(
-                openKitListItem(
-                  context,
-                  pluginId: pluginId,
-                  item: item,
-                  shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+          void openOfflineLibrary(Map<String, dynamic> item) {
+            if (!context.mounted) return;
+            unawaited(
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (routeContext) => DownloadLibrarySidePanel(
+                    seed: _listEntryFromItem(item).meta,
+                    onClosed: () => Navigator.of(routeContext).pop(),
+                  ),
                 ),
-              );
+              ),
+            );
+          }
+
+          void openMatchDetails(Map<String, dynamic> item) {
+            if (offlinePanel) {
+              openOfflineLibrary(item);
               return;
             }
             unawaited(
@@ -1973,12 +1980,6 @@ class PackPaintTree extends StatelessWidget {
           }
 
           void onListItemTap(Map<String, dynamic> item) {
-            if (kitListItemSurface(item) == 'offline' &&
-                canShowSidePanel &&
-                chrome != null) {
-              chrome.onSelectListItem(item);
-              return;
-            }
             // Live Sports (openSetting / panelTabs): never fall through to
             // open.surface:live — that only re-requests this hub tab (no-op).
             final tapOpen = resolveKitListTapOpen(
@@ -1989,7 +1990,7 @@ class PackPaintTree extends StatelessWidget {
             switch (tapOpen) {
               case KitListTapOpen.panel:
                 chrome!.onSelectListItem(item);
-                if (kitListItemSurface(item) == 'offline') return;
+                if (offlinePanel) return;
                 final hubTab = (tabId ?? '').trim();
                 if (hubTab.isNotEmpty &&
                     ShellPaintScope.useTvFocusOf(context)) {
@@ -2020,11 +2021,13 @@ class PackPaintTree extends StatelessWidget {
           }
 
           void onListItemOpenWith(Map<String, dynamic> item) {
-            if (kitListItemSurface(item) == 'offline') {
+            if (offlinePanel) {
               if (canShowSidePanel) {
                 chrome?.onSelectListItem(item);
                 return;
               }
+              openOfflineLibrary(item);
+              return;
             }
             // Side-panel / match-open hosts keep primary open; Open-with is
             // feed poster grids only (RFC-108).
@@ -2310,7 +2313,7 @@ class PackPaintTree extends StatelessWidget {
           Widget? panel;
           if (showPanel) {
             final entry = _listEntryFromItem(selected);
-            if (entry.meta.open?.surface == 'offline') {
+            if (offlinePanel) {
               panel = DownloadLibrarySidePanel(
                 key: ValueKey('offline-library-${entry.meta.id}'),
                 seed: entry.meta,

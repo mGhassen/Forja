@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/downloads/download_library_panel.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
@@ -65,25 +64,6 @@ Future<void> openKitListItem(
   String? shellTabId,
   bool forcePick = false,
 }) async {
-  // Saved-library rows open the right panel. Feed binding is for bookmarks
-  // that still need a details hub.
-  if (kitListItemSurface(item) == 'offline') {
-    final meta = PackPaintArtifact.metaItemOf(
-      props: PackPaintArtifact.propsOf(item),
-      open: item['open'] ?? item['metaOpen'] ?? item['catalogOpen'],
-      meta: item['meta'],
-    );
-    if (meta == null || !context.mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (routeContext) => DownloadLibrarySidePanel(
-          seed: meta,
-          onClosed: () => Navigator.of(routeContext).pop(),
-        ),
-      ),
-    );
-    return;
-  }
   final syncHas = PluginNavRegistry.pluginHasDetailsSync(pluginId);
   final hasDetails =
       syncHas ?? await PluginNavRegistry.pluginHasDetails(pluginId);
