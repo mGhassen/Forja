@@ -347,9 +347,6 @@ class StatusRouletteView extends StatelessWidget {
     final checkedCount = entries
         .where((e) => e.kind != StatusRouletteKind.loading)
         .length;
-    final readyCount = entries
-        .where((e) => e.kind == StatusRouletteKind.success)
-        .length;
     final totalCount = entries.length;
     final progress = totalCount > 0 ? checkedCount / totalCount : 0.0;
     final workActive = active.kind == StatusRouletteKind.loading;
@@ -360,9 +357,6 @@ class StatusRouletteView extends StatelessWidget {
     final headerSize = tv
         ? ShellTokens.playerStatusHeaderFontSizeTv
         : ShellTokens.playerStatusHeaderFontSize;
-    final metaSize = tv
-        ? ShellTokens.playerStatusMetaFontSizeTv
-        : ShellTokens.playerStatusMetaFontSize;
     final slotHeight = tv
         ? ShellTokens.playerStatusRouletteSlotHeightTv
         : ShellTokens.playerStatusRouletteSlotHeight;
@@ -372,20 +366,12 @@ class StatusRouletteView extends StatelessWidget {
     final progressGap = tv
         ? ShellTokens.playerStatusProgressGapTv
         : ShellTokens.playerStatusProgressGap;
-    final metaGap = tv
-        ? ShellTokens.playerStatusMetaGapTv
-        : ShellTokens.playerStatusMetaGap;
     final barHeight = tv
         ? ShellTokens.playerStatusProgressHeightTv
         : ShellTokens.playerStatusProgressHeight;
     final barWidth = tv
         ? ShellTokens.playerStatusProgressWidthTv
         : ShellTokens.playerStatusProgressWidth;
-
-    final metaLabel = totalCount > 0
-        ? '$checkedCount / $totalCount'
-            '${readyCount > 0 ? '  ·  $readyCount ready' : ''}'
-        : 'Starting…';
 
     return SizedBox(
       width: columnWidth,
@@ -485,18 +471,6 @@ class StatusRouletteView extends StatelessWidget {
                   color: AppTheme.primaryColor,
                 ),
               ),
-            ),
-          ),
-          SizedBox(height: metaGap),
-          Text(
-            metaLabel,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: ForjaShellColors.cinematic.textSecondary
-                  .withValues(alpha: 0.85),
-              fontSize: metaSize,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Poppins',
             ),
           ),
         ],

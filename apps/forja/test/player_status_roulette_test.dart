@@ -46,7 +46,7 @@ void main() {
 
     expect(find.text('Checking sources'), findsOneWidget);
     expect(find.text('Megaplay'), findsOneWidget);
-    expect(find.text('0 / 2'), findsOneWidget);
+    expect(find.text('0 / 2'), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
@@ -70,7 +70,7 @@ void main() {
 
     final label = tester.widget<Text>(find.text('Megaplay'));
     expect(label.style?.fontSize, ShellTokens.playerStatusLabelFontSizeTv);
-    expect(find.text('0 / 1'), findsOneWidget);
+    expect(find.text('0 / 1'), findsNothing);
   });
 
   testWidgets('right-center overlay paints the active status label', (
