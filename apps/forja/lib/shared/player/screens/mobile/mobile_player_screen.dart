@@ -67,6 +67,7 @@ import 'package:forja/shared/player/controls/menus/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
+import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/play_hooks.dart';

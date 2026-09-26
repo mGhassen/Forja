@@ -35,6 +35,10 @@ Filename status tag must match `**Status:**` in the body. Same turn: rename + bo
 
 Product strings say what the thing does **now**. No "only / no longer / formerly", no architecture lectures, no stale provider lists.
 
+### Answer the question — [answer-the-question.mdc](.cursor/rules/answer-the-question.mdc)
+
+The first sentence is the answer. Then stop. Do not explain anything the user did not ask.
+
 ### Writing — [simple-writing.mdc](.cursor/rules/simple-writing.mdc) · skill `forja-simple-writing`
 
 Short sentences. One claim each. Lead with the answer. Banned: contrarian openers, "Not X — Y" cadence, hedge fog ("should work", "mostly fixed"), empty scaffolding ("Here's how…"), list inflation, bold/emoji theater.

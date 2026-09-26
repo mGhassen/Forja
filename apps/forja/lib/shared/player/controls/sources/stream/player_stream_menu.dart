@@ -12,6 +12,8 @@ import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.
 import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/sources/torrent/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/sources/torrent/torrent_sources_panel.dart';
+import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:rust/rust.dart';
@@ -217,9 +219,21 @@ class PlayerStreamMenu {
                       : s;
                 }
               }
+              var label = _streamRowLabel(
+                entry.value,
+                serverLabel: serverLabel,
+              );
+              final saved = downloadTaskForLocalPlayUrl(url);
+              String? offlineCaption;
+              if (saved != null && saved.isCompleted) {
+                final named = offlineDownloadRowLabel(saved);
+                if (named.isNotEmpty) label = named;
+                offlineCaption = 'Offline';
+              }
               return _FlatMenuRow(
-                label: _streamRowLabel(entry.value, serverLabel: serverLabel),
+                label: label,
                 meta: entry.value.type.toUpperCase(),
+                offlineCaption: offlineCaption,
                 selected: isCurrent,
                 isPlaying: isPlaying,
                 mediaPlaying: isPlaying && state.mediaPlaying,

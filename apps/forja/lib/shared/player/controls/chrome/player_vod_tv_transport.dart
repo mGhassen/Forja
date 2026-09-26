@@ -309,6 +309,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                     iconSize: iconSz - 2,
                     label: streamPickerLines!.label,
                     server: streamPickerLines!.server,
+                    offline: playingOffline,
                     onPressedWithContext: onOpenStreamPicker,
                   ),
                 ),

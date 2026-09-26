@@ -618,6 +618,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                           PlayerStreamPickerButton(
                             label: streamPickerLines!.label,
                             server: streamPickerLines.server,
+                            offline: playingOffline,
                             onPressedWithContext: (ctx) => _s._showStreamMenu(ctx),
                           ),
                           const SizedBox(width: 6),

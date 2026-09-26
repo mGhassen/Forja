@@ -743,6 +743,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                 iconSize: iconSz - 2,
                                 label: streamPickerLines!.label,
                                 server: streamPickerLines.server,
+                                offline: playingOffline,
                                 onPressedWithContext: (ctx) =>
                                     _s._showStreamMenu(ctx),
                               ),

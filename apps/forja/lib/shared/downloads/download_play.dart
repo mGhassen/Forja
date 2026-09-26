@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/downloads/download_task.dart';
@@ -40,6 +41,8 @@ Future<void> playCompletedDownloadTask(
         voteAverage: 0,
         releaseDate: task.year ?? '',
       );
+  final named = offlineDownloadRowLabel(task);
+  final lower = task.targetFilePath.toLowerCase();
   await AppRouter.openPlayer(
     context,
     streamUrl: url,
@@ -47,9 +50,22 @@ Future<void> playCompletedDownloadTask(
         ? task.episodeTitle!.trim()
         : task.title,
     movie: playMovie,
+    headers: task.headers,
     selectedSeason: task.season,
     selectedEpisode: task.episode,
     activeProvider: 'offline',
+    sources: [
+      StreamSource(
+        url: url,
+        title: named,
+        type: lower.contains('.m3u8')
+            ? 'hls'
+            : lower.contains('.mkv')
+                ? 'mkv'
+                : 'mp4',
+        headers: task.headers,
+      ),
+    ],
     streamsPrevalidated: true,
     pinSource: true,
   );

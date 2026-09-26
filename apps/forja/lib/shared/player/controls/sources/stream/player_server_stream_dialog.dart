@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
@@ -518,11 +519,15 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                   ? PlayerSourceStatus.active
                   : (_urlStatuses[source.url] ?? PlayerSourceStatus.unchecked);
               final type = source.type.trim().toUpperCase();
+              final saved = offlineDownloadRowLabelForPlayUrl(source.url);
+              final label = (saved != null && saved.isNotEmpty)
+                  ? saved
+                  : (source.title.trim().isEmpty
+                        ? 'Stream ${i + 1}'
+                        : source.title);
               return PlayerPopupListTile(
                 key: ValueKey('stream-${source.url}'),
-                label: source.title.trim().isEmpty
-                    ? 'Stream ${i + 1}'
-                    : source.title,
+                label: label,
                 badge: type.isEmpty ? null : type,
                 badgeColor: playerSourceBadgeColor(type),
                 selected: playing,

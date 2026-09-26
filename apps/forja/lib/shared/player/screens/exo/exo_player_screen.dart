@@ -46,6 +46,7 @@ import 'package:forja/shared/player/screens/network_playback_recovery.dart';
 import 'package:forja/shared/player/screens/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -2475,6 +2476,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                                 iconSize: iconSz - 2,
                                 label: streamPickerLines!.label,
                                 server: streamPickerLines.server,
+                                offline: playingOffline,
                                 onPressedWithContext: (ctx) =>
                                     unawaited(_showSourcesDialog(ctx)),
                               ),

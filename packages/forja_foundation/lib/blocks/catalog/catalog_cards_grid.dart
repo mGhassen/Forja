@@ -351,7 +351,7 @@ class CatalogCardsGrid extends StatelessWidget {
 
   static String _itemId(Map<String, dynamic> item) {
     final props = catalogItemProps(item);
-    for (final key in [props['streamId'], props['id']]) {
+    for (final key in [props['streamId'], props['id'], item['id']]) {
       final v = (key ?? '').toString().trim();
       if (v.isNotEmpty) return v;
     }
@@ -549,7 +549,11 @@ class CatalogCardsGrid extends StatelessWidget {
             final itemLandscape = aspectRaw == 'landscape' || landscape;
             final badge = (props['badge'] ?? '').toString();
             final subtitle = (props['subtitle'] ?? '').toString();
+            final id = CatalogCardsGrid._itemId(item);
             return InteractivePosterCard(
+              selected: selectedItemId != null &&
+                  selectedItemId!.isNotEmpty &&
+                  selectedItemId == id,
               imageUrl:
                   (props['imageUrl'] ??
                           props['posterUrl'] ??

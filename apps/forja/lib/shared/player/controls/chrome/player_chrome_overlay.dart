@@ -304,6 +304,7 @@ class PlayerStreamPickerButton extends StatefulWidget {
     super.key,
     required this.label,
     this.server,
+    this.offline = false,
     required this.onPressedWithContext,
     this.enabled = true,
     this.size = 40,
@@ -319,6 +320,8 @@ class PlayerStreamPickerButton extends StatefulWidget {
   final String label;
   /// Active mirror / server under [label] (e.g. Videasy → Yoru).
   final String? server;
+  /// Saved file on this device is what is playing.
+  final bool offline;
   final ValueChanged<BuildContext>? onPressedWithContext;
   final bool enabled;
   final double size;
@@ -411,7 +414,9 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.layers_outlined,
+                  widget.offline
+                      ? Icons.download_done_rounded
+                      : Icons.layers_outlined,
                   color: iconColor,
                   size: iconSize,
                 ),
@@ -480,9 +485,10 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
             child: painted,
           );
     final server = widget.server?.trim();
-    final tip = server != null && server.isNotEmpty
+    final base = server != null && server.isNotEmpty
         ? 'Source: ${widget.label} · $server'
         : 'Source: ${widget.label}';
+    final tip = widget.offline ? '$base · Offline' : base;
     return Tooltip(message: tip, child: button);
   }
 }

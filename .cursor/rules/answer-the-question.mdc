@@ -1,0 +1,18 @@
+---
+description: Answer only what was asked. Concise, first sentence is the answer.
+alwaysApply: true
+---
+
+# Answer the question
+
+The first sentence is the answer. Then stop.
+
+Do not explain paths, architecture, or background the user did not ask for.
+
+| Asked | Answer |
+|---|---|
+| Yes / no, or "is this handled?" | Yes or no. One line of proof only if needed. |
+| Why | The reason, in one or two sentences. |
+| Do X | Do it. Report the result. |
+
+If a longer explanation is useful, wait until they ask.

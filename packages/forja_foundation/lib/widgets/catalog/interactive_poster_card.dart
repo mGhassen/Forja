@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -47,6 +48,7 @@ class InteractivePosterCard extends StatefulWidget {
     this.metaFontSize,
     this.motion,
     this.scaleOnFocus,
+    this.selected = false,
   });
 
   final String imageUrl;
@@ -78,6 +80,9 @@ class InteractivePosterCard extends StatefulWidget {
   final double? metaFontSize;
   final ForjaMotionPreset? motion;
   final double? scaleOnFocus;
+
+  /// Open in a docked details panel — ring stays after the tap.
+  final bool selected;
 
   static double cardWidth(
     BuildContext context, {
@@ -292,7 +297,20 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
       onKeyEvent: widget.onLongPress != null ? _onTvKey : null,
       child: ListenableBuilder(
         listenable: _hoveredN,
-        builder: (context, _) => paintCard(hovered: _hoveredN.value),
+        builder: (context, _) {
+          final painted = paintCard(hovered: _hoveredN.value);
+          if (!widget.selected) return painted;
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(
+                color: ForjaShellColors.brandGreen,
+                width: 2,
+              ),
+            ),
+            child: painted,
+          );
+        },
       ),
     );
 

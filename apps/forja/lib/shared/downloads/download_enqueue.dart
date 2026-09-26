@@ -6,6 +6,7 @@ import 'package:forja/shared/downloads/download_page_store.dart';
 import 'package:forja/shared/downloads/download_path_helper.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_size_probe.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/open_settings_downloads.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
@@ -22,6 +23,60 @@ String downloadSourceLabel({String? catalogName, String? providerId}) {
   final pid = providerId?.trim() ?? '';
   if (pid.isNotEmpty) return pid;
   return 'Stream';
+}
+
+bool _downloadNameIsPlaceholder(String raw) {
+  switch (raw.trim().toLowerCase()) {
+    case '':
+    case 'stream':
+    case 'download':
+    case 'offline':
+    case 'file':
+      return true;
+    default:
+      return false;
+  }
+}
+
+/// Provider on the first line, stream under it — the same split as the
+/// player source button (`VidSrc` / `Astra`).
+({String label, String? server}) offlineDownloadButtonLines(DownloadTask task) {
+  final raw = task.sourceName.trim();
+  final addon = task.addonName?.trim() ?? '';
+  final hint = addon.isEmpty ? null : StreamProviderDisplay.playerLabel(addon);
+  if (!_downloadNameIsPlaceholder(raw)) {
+    return splitSourceButtonLines(raw, providerHint: hint);
+  }
+  if (hint != null &&
+      hint.isNotEmpty &&
+      !_downloadNameIsPlaceholder(hint)) {
+    return (label: hint, server: null);
+  }
+  return (label: 'Download', server: null);
+}
+
+/// One line for a source row: `VidSrc · Astra`.
+String offlineDownloadRowLabel(DownloadTask task) {
+  final lines = offlineDownloadButtonLines(task);
+  final server = lines.server?.trim();
+  if (server != null && server.isNotEmpty) {
+    return '${lines.label} · $server';
+  }
+  return lines.label;
+}
+
+({String label, String? server})? offlineDownloadButtonLinesForPlayUrl(
+  String? url,
+) {
+  final task = downloadTaskForLocalPlayUrl(url);
+  if (task == null) return null;
+  return offlineDownloadButtonLines(task);
+}
+
+String? offlineDownloadRowLabelForPlayUrl(String? url) {
+  final task = downloadTaskForLocalPlayUrl(url);
+  if (task == null) return null;
+  return offlineDownloadRowLabel(task);
 }
 
 String _mediaIdForDownload(Movie movie) {

@@ -421,6 +421,10 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
   }
 
   ({String label, String? server}) _streamPickerLabels() {
+    final offline = offlineDownloadButtonLinesForPlayUrl(
+      _s._currentUrl ?? widget.mediaPath,
+    );
+    if (offline != null) return offline;
     final provider = _providerDisplayLabel();
     final sourceTitle = _playingSourceTitle();
     if (provider != null) {

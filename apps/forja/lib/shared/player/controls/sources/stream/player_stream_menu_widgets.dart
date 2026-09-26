@@ -301,6 +301,7 @@ class _FlatMenuRow extends StatefulWidget {
   const _FlatMenuRow({
     required this.label,
     this.meta,
+    this.offlineCaption,
     this.selected = false,
     this.isPlaying = false,
     this.status,
@@ -312,6 +313,8 @@ class _FlatMenuRow extends StatefulWidget {
 
   final String label;
   final String? meta;
+  /// Saved-file marker under [label] — the row still names the source.
+  final String? offlineCaption;
   final bool selected;
   final bool isPlaying;
   final bool mediaPlaying;
@@ -484,25 +487,42 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
                 const SizedBox(width: 6),
               ],
               Expanded(
-                child: Text(
-                  widget.label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: failed
-                        ? Colors.white.withValues(alpha: 0.38)
-                        : widget.isPlaying
-                            ? Colors.white
-                            : widget.selected
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: failed
+                            ? Colors.white.withValues(alpha: 0.38)
+                            : widget.isPlaying
                                 ? Colors.white
-                                : Colors.white.withValues(alpha: 0.82),
-                    fontSize: 13,
-                    fontWeight: widget.isPlaying || widget.selected
-                        ? FontWeight.w600
-                        : FontWeight.w500,
-                    decoration: failed ? TextDecoration.lineThrough : null,
-                    decorationColor: Colors.white38,
-                  ),
+                                : widget.selected
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.82),
+                        fontSize: 13,
+                        fontWeight: widget.isPlaying || widget.selected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        decoration: failed ? TextDecoration.lineThrough : null,
+                        decorationColor: Colors.white38,
+                      ),
+                    ),
+                    if ((widget.offlineCaption ?? '').trim().isNotEmpty)
+                      Text(
+                        widget.offlineCaption!.trim(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: ForjaShellColors.brandGreen,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                      ),
+                  ],
                 ),
               ),
               SizedBox(

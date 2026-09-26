@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** tasks · **7 / 7** acceptance |
+| **Progress** | **9 / 9** tasks · **8 / 8** acceptance |
 | **Current slice** | Hub, snapshot, offline details, Downloaded tab, green Play |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
@@ -28,6 +28,7 @@
 | 6 | I382-T06 | Card tap opens the saved page; the file button lists saved files only | ✅ |
 | 7 | I382-T07 | Card docks a side panel: saved info, finished episodes, Play, file cards only | ✅ |
 | 8 | I382-T08 | Kind menu and posters sit below the window bar and share the same left edge | ✅ |
+| 9 | I382-T09 | Panel is the open film: marked poster, Play on the art, saved rows name the provider and stream. Player source button and list keep that identity with the offline icon | ✅ |
 
 ---
 
@@ -42,6 +43,7 @@
 | 5 | I382-A05 | Green Play on that page starts the first finished file | ✅ |
 | 6 | I382-A06 | Tapping a card opens that saved page. The file button lists only the saved file cards | ✅ |
 | 7 | I382-A07 | The card docks a side panel with saved info and finished episodes. Play starts the first file. The white button lists file cards only | ✅ |
+| 8 | I382-A08 | The open poster stays marked. The panel shows the film, Play on the poster, and each saved file’s provider and stream. Playing that file keeps the same source on the player button and in the source list, with the offline icon | ✅ |
 
 ---
 
