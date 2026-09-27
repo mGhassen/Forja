@@ -27,10 +27,11 @@ bool hostAddrsNeedIpv4Dial(List<InternetAddress> addrs) {
 bool _isNat64(InternetAddress a) =>
     a.address.toLowerCase().startsWith(kNat64WellKnownPrefix);
 
-/// Point mpv at a local CONNECT proxy that dials IPv4, or clear it.
+/// Point mpv at a local CONNECT proxy that races A and NAT64 AAAA, or clear it.
 ///
-/// libmpv/ffmpeg takes the first DNS answer. On this network that is a dead
-/// NAT64 AAAA, so HTTPS opens sit in buffering until the open wait fails.
+/// libmpv/ffmpeg takes one DNS answer and keeps it. On this network that is
+/// sometimes a dead NAT64 AAAA and sometimes a dead A — the other one answers.
+/// HTTPS opens then sit in buffering until the open wait fails.
 Future<void> applyIpv4HttpProxy(Player player, String playUrl) async {
   if (player.platform is! NativePlayer) return;
   final native = player.platform as NativePlayer;
@@ -57,7 +58,7 @@ Future<String?> _proxyForHttps(String playUrl) async {
   if (!hostAddrsNeedIpv4Dial(addrs)) return null;
   final endpoint = await Ipv4ConnectProxy.instance.endpoint();
   if (kDebugMode) {
-    debugPrint('[Player] IPv4 dial for ${uri.host}');
+    debugPrint('[Player] dual-stack dial for ${uri.host}');
   }
   return endpoint;
 }
@@ -150,18 +151,8 @@ class _ConnectSession {
 
   Future<void> _openUpstream(String host, int port) async {
     try {
-      final addrs = await InternetAddress.lookup(
-        host,
-        type: InternetAddressType.IPv4,
-      );
-      if (addrs.isEmpty) {
-        throw const SocketException('no ipv4');
-      }
-      final upstream = await Socket.connect(
-        addrs.first,
-        port,
-        timeout: const Duration(seconds: 8),
-      );
+      final addrs = await InternetAddress.lookup(host);
+      final upstream = await connectFirstAddress(addrs, port);
       if (_closed) {
         upstream.destroy();
         return;
@@ -193,6 +184,43 @@ class _ConnectSession {
     _upstream?.destroy();
     client.destroy();
   }
+}
+
+/// First [addrs] entry that accepts TCP. A refused or timed-out address does
+/// not block one that connects.
+@visibleForTesting
+Future<Socket> connectFirstAddress(
+  List<InternetAddress> addrs,
+  int port, {
+  Duration timeout = const Duration(seconds: 8),
+}) {
+  if (addrs.isEmpty) {
+    return Future.error(const SocketException('no address'));
+  }
+  final winner = Completer<Socket>();
+  var pending = addrs.length;
+  Object? lastError;
+  for (final addr in addrs) {
+    Socket.connect(addr, port, timeout: timeout).then(
+      (socket) {
+        if (winner.isCompleted) {
+          socket.destroy();
+          return;
+        }
+        winner.complete(socket);
+      },
+      onError: (Object error) {
+        lastError = error;
+        pending--;
+        if (pending == 0 && !winner.isCompleted) {
+          winner.completeError(
+            lastError ?? const SocketException('connect failed'),
+          );
+        }
+      },
+    );
+  }
+  return winner.future;
 }
 
 int _headerEnd(List<int> bytes) {

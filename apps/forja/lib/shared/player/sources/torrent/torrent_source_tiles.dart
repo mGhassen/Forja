@@ -1393,6 +1393,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
     final rowId = widget.tvRowId ?? SourcesPanelTv.listRowId;
     return shellFocusableTap(
       context: context,
+      // Download / cloud / delete sit on this same row. Mouse-down on the
+      // whole card was starting playback before those buttons saw the click.
+      mouseDownActivates: false,
       onTap: () {
         if (_downloadConfirming) {
           _cancelDownloadConfirm();

@@ -101,6 +101,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       currentSourceTitle: _playingSourceTitle(),
       catalogAddonName: _s._catalogAddonName,
       open: session?.effectiveOpen,
+      pluginId: session?.pluginId,
+      metaId: session?.meta?.id,
       malId: session?.malId,
       audioCategory: session?.audioCategory,
       episodeVideoId: session?.episodeVideoIdFor(ep),
@@ -461,6 +463,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       meta: session?.meta,
       malId: session?.malId,
       episodeVideoId: session?.episodeVideoIdFor(epNum),
+      pluginId: session?.pluginId,
       engineCategory: session != null
           ? engineCategoryForSession(session, movie)
           : null,

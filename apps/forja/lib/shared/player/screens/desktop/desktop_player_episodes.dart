@@ -731,6 +731,7 @@ mixin _DesktopPlayerEpisodes
       meta: session?.meta,
       malId: session?.malId,
       episodeVideoId: session?.episodeVideoIdFor(epNum),
+      pluginId: session?.pluginId,
       engineCategory: session != null
           ? engineCategoryForSession(session, movie)
           : null,

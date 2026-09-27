@@ -31,7 +31,25 @@ void main() {
     );
   });
 
-  test('CONNECT proxy dials IPv4 and tunnels bytes', () async {
+  test('connectFirstAddress skips a refused address', () async {
+    final origin = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final socket = await connectFirstAddress(
+      [
+        InternetAddress('127.0.0.2'),
+        InternetAddress.loopbackIPv4,
+      ],
+      origin.port,
+    );
+    final incoming = origin.first.timeout(const Duration(seconds: 3));
+    socket.add('ping'.codeUnits);
+    final got = await incoming;
+    expect(got.remoteAddress.address, InternetAddress.loopbackIPv4.address);
+    socket.destroy();
+    got.destroy();
+    await origin.close();
+  });
+
+  test('CONNECT proxy dials and tunnels bytes', () async {
     final origin = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final endpoint = await Ipv4ConnectProxy.instance.endpoint();
     final proxy = Uri.parse(endpoint);

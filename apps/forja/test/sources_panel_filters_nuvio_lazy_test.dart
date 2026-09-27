@@ -519,6 +519,42 @@ void main() {
         'drama:88:E2',
       );
     });
+
+    test('green Play and player Sources share the hub plugin cache key', () {
+      const open = MetaOpen(surface: 'hub', id: '42');
+      final play = CatalogSourcesSessionCache.cacheKey(
+        mediaId: 1,
+        mediaType: 'tv',
+        season: 1,
+        episode: 3,
+        open: open,
+        pluginId: 'hub-plugin',
+        metaId: '42',
+        audioCategory: 'sub',
+      );
+      final panel = CatalogSourcesSessionCache.cacheKey(
+        mediaId: 1,
+        mediaType: 'tv',
+        season: 1,
+        episode: 3,
+        open: open,
+        pluginId: 'hub-plugin',
+        metaId: '42',
+        audioCategory: 'sub',
+      );
+      expect(play, panel);
+      expect(play, 'hub-plugin:42:E3:sub');
+      expect(
+        CatalogSourcesSessionCache.cacheKey(
+          mediaId: 1,
+          mediaType: 'tv',
+          episode: 3,
+          open: open,
+          audioCategory: 'sub',
+        ),
+        isNot(play),
+      );
+    });
   });
 
   group('Torrent session cache', () {

@@ -102,6 +102,9 @@ class PlayerSourcesPanel {
     int? malId,
     String? episodeVideoId,
 
+    /// Hub plugin that wrote the Sources session cache during green Play.
+    String? pluginId,
+
     /// Soft Forja category for this panel: movie | tv | anime | drama | arabic.
     String? engineCategory,
 
@@ -153,6 +156,7 @@ class PlayerSourcesPanel {
           meta: meta,
           malId: malId,
           episodeVideoId: episodeVideoId,
+          pluginId: pluginId,
           engineCategory: engineCategory,
           preferredEnginePluginId: preferredEnginePluginId,
           animeAudioCategory: animeAudioCategory,
@@ -190,6 +194,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.meta,
     this.malId,
     this.episodeVideoId,
+    this.pluginId,
     this.engineCategory,
     this.preferredEnginePluginId,
     this.animeAudioCategory,
@@ -211,6 +216,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final MetaItem? meta;
   final int? malId;
   final String? episodeVideoId;
+  final String? pluginId;
   final String? engineCategory;
   final String? preferredEnginePluginId;
   final String? animeAudioCategory;
@@ -264,6 +270,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           meta: widget.meta,
           malId: widget.malId,
           episodeVideoId: widget.episodeVideoId,
+          pluginId: widget.pluginId,
           engineCategory: widget.engineCategory,
           preferredEnginePluginId: widget.preferredEnginePluginId,
           animeAudioCategory: widget.animeAudioCategory,
@@ -297,6 +304,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.meta,
     this.malId,
     this.episodeVideoId,
+    this.pluginId,
     this.engineCategory,
     this.preferredEnginePluginId,
     this.animeAudioCategory,
@@ -318,6 +326,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final MetaItem? meta;
   final int? malId;
   final String? episodeVideoId;
+  final String? pluginId;
   final String? engineCategory;
   final String? preferredEnginePluginId;
   final String? animeAudioCategory;
@@ -1526,6 +1535,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     season: widget.season,
     episode: widget.episode,
     open: widget.open,
+    pluginId: widget.pluginId,
+    metaId: widget.meta?.id,
     malId: widget.malId,
     audioCategory: widget.animeAudioCategory,
     episodeVideoId: widget.episodeVideoId,

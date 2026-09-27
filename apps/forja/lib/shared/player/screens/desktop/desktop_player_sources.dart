@@ -472,6 +472,8 @@ mixin _DesktopPlayerSources
       currentSourceTitle: _playingSourceTitle(),
       catalogAddonName: _s._catalogAddonName,
       open: session?.effectiveOpen,
+      pluginId: session?.pluginId,
+      metaId: session?.meta?.id,
       malId: session?.malId,
       audioCategory: session?.audioCategory,
       episodeVideoId: session?.episodeVideoIdFor(ep),

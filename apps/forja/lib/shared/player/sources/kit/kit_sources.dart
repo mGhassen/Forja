@@ -91,6 +91,7 @@ Future<void> openKitSources({
     meta: resolvedMeta,
     malId: malId,
     episodeVideoId: (epVid != null && epVid.isNotEmpty) ? epVid : null,
+    pluginId: session?.pluginId,
     engineCategory: engineCategory ??
         engineCategoryForSession(session, movie),
     preferredEnginePluginId:
