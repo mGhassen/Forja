@@ -561,10 +561,15 @@ async fn native_fetch(
 }
 
 pub async fn extract(req: ExtractRequest) -> ExtractResult {
+    extract_in_job(req, 0).await
+}
+
+/// Same as [extract], but `ctx.emit` rows land on [crate::extract_events] for `job_id`.
+pub async fn extract_in_job(req: ExtractRequest, job_id: u64) -> ExtractResult {
     let timeout = Duration::from_millis(req.timeout_ms.max(1_000));
     let token = utils::engine_cancel::cancellation_token();
     tokio::select! {
-        r = tokio::time::timeout(timeout, extract_inner(req)) => match r {
+        r = tokio::time::timeout(timeout, extract_inner(req, job_id)) => match r {
             Ok(r) => r,
             Err(_) => ExtractResult {
                 streams: vec![],
@@ -614,7 +619,7 @@ fn with_tmdb_api_key(mut meta: Value) -> Value {
     meta
 }
 
-async fn extract_inner(req: ExtractRequest) -> ExtractResult {
+async fn extract_inner(req: ExtractRequest, job_id: u64) -> ExtractResult {
     if cancelled() {
         return ExtractResult {
             streams: vec![],
@@ -659,7 +664,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
     let allow_host = req.allow_host_fallback;
 
     let result = async_with!(ctx => |ctx| {
-        run_in_ctx(ctx, plugin_id, code, meta, plugin_label, hops, hop_depth, allow_host).await
+        run_in_ctx(ctx, plugin_id, code, meta, plugin_label, hops, hop_depth, allow_host, job_id).await
     })
     .await;
 
@@ -699,6 +704,7 @@ async fn run_in_ctx<'js>(
     hops: std::sync::Arc<Vec<HopScript>>,
     hop_depth: u32,
     allow_host: bool,
+    job_id: u64,
 ) -> Result<(Vec<Value>, Option<String>, Vec<String>), String> {
     let fetch_fn = Function::new(ctx.clone(), Async(native_fetch))
         .map_err(|e| e.to_string())?
@@ -917,6 +923,16 @@ async fn run_in_ctx<'js>(
         .set("__native_set_interval", set_interval)
         .map_err(|e| e.to_string())?;
 
+    let emit_fn = Function::new(ctx.clone(), move |row: String| {
+        crate::extract_events::push(job_id, row);
+    })
+    .map_err(|e| e.to_string())?
+    .with_name("__native_emit")
+    .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set("__native_emit", emit_fn)
+        .map_err(|e| e.to_string())?;
+
     ctx.eval::<(), _>(HOST_JS)
         .catch(&ctx)
         .map_err(|e| e.to_string())?;
@@ -987,6 +1003,10 @@ async fn run_in_ctx<'js>(
     pluginId: meta.pluginId || '',
     log: function(msg) {{ console.log('[' + pluginLabel + '] ' + String(msg == null ? '' : msg)); }},
     error: function(msg) {{ console.error('[' + pluginLabel + '] Error: ' + String(msg == null ? '' : msg)); }},
+    emit: function(row) {{
+      if (row == null || typeof row !== 'object') return;
+      try {{ __native_emit(JSON.stringify(row)); }} catch (e) {{}}
+    }},
     fetch: globalThis.fetch,
     chromeFetch: globalThis.__engineChromeFetch || globalThis.fetch,
     html: globalThis.__engineHtml,
@@ -1069,6 +1089,37 @@ function extract(ctx) {
         assert_eq!(b.streams.len(), 1);
         assert!(a.error.is_none());
         assert!(b.error.is_none());
+    }
+
+    #[tokio::test]
+    async fn emit_rows_before_done() {
+        let code = r#"
+function extract(ctx) {
+  ctx.emit({ url: 'https://example.com/a.m3u8', name: 'A' });
+  ctx.emit({ url: 'https://example.com/b.m3u8', name: 'B' });
+  return Promise.resolve([{ url: 'https://example.com/a.m3u8', name: 'A' }]);
+}
+"#;
+        let job_id = 119_001u64;
+        let r = extract_in_job(
+            ExtractRequest {
+                plugin_id: "emit".into(),
+                code: code.into(),
+                ctx: serde_json::json!({ "tmdbId": "1", "type": "movie", "title": "x" }),
+                timeout_ms: 5_000,
+                allow_host_fallback: false,
+                hops: vec![],
+                hop_depth: 0,
+            },
+            job_id,
+        )
+        .await;
+        assert!(r.error.is_none());
+        assert_eq!(r.streams.len(), 1);
+        let events = crate::extract_events::take(job_id);
+        assert!(events.contains("https://example.com/a.m3u8"), "{events}");
+        assert!(events.contains("https://example.com/b.m3u8"), "{events}");
+        assert_eq!(crate::extract_events::take(job_id), "[]");
     }
 
     #[tokio::test]

@@ -100,6 +100,10 @@ class RustLib {
     return _readString(ptr);
   }
 
+  /// JSON array of `ctx.emit` rows drained since the last poll. `[]` when empty.
+  String engineTakeJobEvents(int jobId) =>
+      _readString(_native.ffi_engine_take_job_events(jobId));
+
   int add(int a, int b) => _native.ffi_add(a, b);
 
   bool episodeMatches(String filename, int season, int episode) {
@@ -636,6 +640,11 @@ final class _FfiNative {
             'ffi_engine_take_job_result',
           )
           .asFunction(),
+      ffi_engine_take_job_events = lib
+          .lookup<ffi.NativeFunction<_EngineTakeJobNative>>(
+            'ffi_engine_take_job_events',
+          )
+          .asFunction(),
       ffi_add = lib
           .lookup<ffi.NativeFunction<_AddNative>>('ffi_add')
           .asFunction(),
@@ -1061,6 +1070,7 @@ final class _FfiNative {
   final void Function() ffi_engine_clear_shutdown;
   final int Function(int, ffi.Pointer<ffi.Char>) ffi_engine_submit_job;
   final ffi.Pointer<ffi.Char> Function(int) ffi_engine_take_job_result;
+  final ffi.Pointer<ffi.Char> Function(int) ffi_engine_take_job_events;
   final int Function(int, int) ffi_add;
   final bool Function(ffi.Pointer<ffi.Char>, int, int) ffi_episode_matches;
   final int Function(ffi.Pointer<ffi.Char>, int, int)

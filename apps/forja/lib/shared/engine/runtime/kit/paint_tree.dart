@@ -2311,9 +2311,13 @@ class PackPaintTree extends StatelessWidget {
           // Always a Row so opening the dock does not remount the grid
           // (a new ScrollController would jump back to the top).
           Widget? panel;
+          String? dockKey;
+          final pageDock =
+              offlinePanel ? TabsCardsDockHost.maybeOf(context) : null;
           if (showPanel) {
             final entry = _listEntryFromItem(selected);
             if (offlinePanel) {
+              dockKey = entry.meta.id;
               panel = DownloadLibrarySidePanel(
                 key: ValueKey('offline-library-${entry.meta.id}'),
                 seed: entry.meta,
@@ -2350,13 +2354,23 @@ class PackPaintTree extends StatelessWidget {
             );
             }
           }
+          if (pageDock != null) {
+            if (pageDock.key != dockKey) {
+              final dock = pageDock;
+              final next = panel;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                dock.present(dockKey, next);
+              });
+            }
+            panel = null;
+          }
           final body = SizedBox(
             width: constraints.maxWidth,
             height: constraints.maxHeight,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(flex: showPanel ? 60 : 1, child: grid),
+                Expanded(flex: showPanel && panel != null ? 60 : 1, child: grid),
                 if (panel != null) Expanded(flex: 40, child: panel),
               ],
             ),

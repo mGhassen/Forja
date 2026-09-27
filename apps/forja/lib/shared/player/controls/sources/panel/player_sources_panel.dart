@@ -16,6 +16,7 @@ import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/sources/stream_orchestrator.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
@@ -379,7 +380,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   int _engineFetchGen = 0;
   final Set<String> _engineInFlightPluginIds = {};
   final Set<Future<void>> _enginePoolTasks = {};
-  int _enginePoolLimit = kEngineSourcesBatchDesktop;
+  int _enginePoolLimit = 1;
+  Timer? _engineRowFlush;
+  final List<Map<String, dynamic>> _enginePendingRows = [];
 
   /// Coalesce progressive list paints (torrent batches / Forja plugins).
   Timer? _coalescedPaintTimer;
@@ -822,6 +825,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   void dispose() {
     _coalescedPaintTimer?.cancel();
     _coalescedPaintTimer = null;
+    _engineRowFlush?.cancel();
+    _engineRowFlush = null;
+    _enginePendingRows.clear();
     PluginRegistry.changeNotifier.removeListener(_onTorrentPackChanged);
     DownloadService.instance.tasksNotifier.removeListener(_onDownloadsChanged);
     _savePanelUiCache();
@@ -3181,7 +3187,46 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _enginePoolTasks.clear();
     _engineDiscardPluginIds.clear();
     EngineService.instance.cancelPending();
+    _engineRowFlush?.cancel();
+    _enginePendingRows.clear();
     if (clearFetched) _engineFetchedPluginIds.clear();
+  }
+
+  void _queueEngineRow(String pluginId, Map<String, dynamic> row, int gen) {
+    if (!mounted || gen != _engineFetchGen) return;
+    if (!_engineSelectedPluginIds.contains(pluginId)) return;
+    final url = row['url']?.toString() ?? '';
+    if (url.isEmpty) return;
+    final already = _engineStreams
+            .where((s) => engineStreamBelongsToPlugin(s, pluginId))
+            .length +
+        _enginePendingRows
+            .where((s) => engineStreamBelongsToPlugin(s, pluginId))
+            .length;
+    if (already >= StreamOrchestrator.rowsPerPluginCap) return;
+    if (_engineStreams.any((s) => s['url']?.toString() == url) ||
+        _enginePendingRows.any((s) => s['url']?.toString() == url)) {
+      return;
+    }
+    _enginePendingRows.add(row);
+    _engineRowFlush ??= Timer(const Duration(milliseconds: 50), () {
+      _engineRowFlush = null;
+      if (!mounted) {
+        _enginePendingRows.clear();
+        return;
+      }
+      final batch = List<Map<String, dynamic>>.of(_enginePendingRows);
+      _enginePendingRows.clear();
+      setState(() {
+        for (final row in batch) {
+          final rowUrl = row['url']?.toString() ?? '';
+          if (_engineStreams.any((s) => s['url']?.toString() == rowUrl)) {
+            continue;
+          }
+          _engineStreams.add(row);
+        }
+      });
+    });
   }
 
   Future<void> _runAndApplyEnginePlugin({
@@ -3192,19 +3237,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final engine = _sourcesCtx.engine;
     EngineExtractResult? batch;
     try {
-      batch = await EngineService.instance.runPluginIsolated(
+      batch = await StreamOrchestrator.instance.schedule(
+        sessionKey: _catalogCacheKey,
         pluginId: pluginId,
-        tmdbId: engine?.tmdbId ?? '',
-        type: engine?.resolveType ?? type,
-        season: _engineNeedsEpisode ? widget.season : null,
-        episode: _engineNeedsEpisode ? widget.episode : null,
-        title: widget.movie.title,
-        year: _year,
-        movie: widget.movie,
-        open: widget.open,
-        episodeVideoId: widget.episodeVideoId,
-        audioCategory: widget.animeAudioCategory,
-        allowHostFallback: false,
+        job: () => EngineService.instance.runPluginIsolated(
+          pluginId: pluginId,
+          tmdbId: engine?.tmdbId ?? '',
+          type: engine?.resolveType ?? type,
+          season: _engineNeedsEpisode ? widget.season : null,
+          episode: _engineNeedsEpisode ? widget.episode : null,
+          title: widget.movie.title,
+          year: _year,
+          movie: widget.movie,
+          open: widget.open,
+          episodeVideoId: widget.episodeVideoId,
+          audioCategory: widget.animeAudioCategory,
+          allowHostFallback: false,
+          onRow: (row) => _queueEngineRow(pluginId, row, gen),
+        ),
       );
     } catch (e) {
       debugPrint('[engine] plugin $pluginId failed: $e');
@@ -3333,7 +3383,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _engineFetching = true;
     final gen = ++_engineFetchGen;
     _enginePoolLimit = engineSourcesBatchLimit(
-      tv: SourcesPanelTv.isTv(context),
+      selected: _engineSelectedPluginIds.length,
     );
     setState(() {
       if (reset) {

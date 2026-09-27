@@ -248,6 +248,16 @@ class DownloadPageStore {
     } else if (_isLocalPath((existingMap?['background'] ?? '').toString())) {
       meta['background'] = existingMap!['background'];
     }
+    final logoFile = await _saveImage(
+      url: (meta['logo'] ?? '').toString(),
+      dir: dir,
+      name: 'logo',
+    );
+    if (logoFile != null) {
+      meta['logo'] = logoFile.path;
+    } else if (_isLocalPath((existingMap?['logo'] ?? '').toString())) {
+      meta['logo'] = existingMap!['logo'];
+    }
 
     final envelope = {
       'downloadType': type,
@@ -282,6 +292,7 @@ class DownloadPageStore {
       final kind = downloadHubKind(storedType);
       final name = (metaMap?['name'] ?? task.title).toString().trim();
       final poster = (metaMap?['poster'] ?? task.posterUrl ?? '').toString();
+      final logo = (metaMap?['logo'] ?? '').toString();
       final year = (metaMap?['releaseInfo'] ?? task.year ?? '').toString();
       rows.add({
         'id': entry.key,
@@ -289,6 +300,7 @@ class DownloadPageStore {
         'kind': kind,
         'name': name.isEmpty ? task.title : name,
         'poster': poster,
+        if (logo.isNotEmpty) 'logo': logo,
         'releaseInfo': year,
         'year': year,
         'open': {

@@ -78,7 +78,8 @@ class _ShellScaffoldState extends State<ShellScaffold> {
   }
 
   void _onNavSelected(int index) {
-    popShellOverlayUntilRoot();
+    // Overlay dismiss lives in [MainScreen._selectTab] so a same-tab tap can
+    // tell "close the title" from "re-tap to reload the hub".
     widget.onDestinationSelected(index);
     if (_compactNav(context)) {
       Navigator.of(context).pop();

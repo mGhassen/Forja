@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 
@@ -100,5 +102,20 @@ void main() {
       expect(h.containsKey('user-agent'), isFalse);
       expect(h.containsKey('origin'), isFalse);
     });
+  });
+
+  test('local file URLs skip the HTTP probe', () async {
+    final dir = await Directory.systemTemp.createTemp('forja-probe-');
+    final file = File('${dir.path}/saved.mp4');
+    await file.writeAsBytes(const [0x47, 0x40, 0x11, 0x10]);
+    expect(await probeStreamSourceUrl(Uri.file(file.path).toString(), null), isTrue);
+    expect(
+      await probeStreamSourceUrl(
+        Uri.file('${file.path}.missing').toString(),
+        null,
+      ),
+      isFalse,
+    );
+    await dir.delete(recursive: true);
   });
 }

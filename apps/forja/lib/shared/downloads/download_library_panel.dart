@@ -11,6 +11,7 @@ import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/components/select.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -34,6 +35,7 @@ class DownloadLibrarySidePanel extends StatefulWidget {
 
 class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
   late MetaItem _meta;
+  int? _season;
 
   @override
   void initState() {
@@ -48,6 +50,7 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.seed.id != widget.seed.id) {
       _meta = widget.seed;
+      _season = null;
       unawaited(_loadSnapshot());
     }
   }
@@ -157,12 +160,42 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
     ].join(' · ');
   }
 
+  bool get _isSeries =>
+      _filesForTitle.any((task) => task.season != null || task.episode != null);
+
+  List<int> get _seasons {
+    final seasons = <int>{
+      for (final task in _filesForTitle)
+        if (task.season != null || task.episode != null) task.season ?? 1,
+    }.toList()
+      ..sort();
+    return seasons;
+  }
+
+  int? get _activeSeason {
+    final seasons = _seasons;
+    if (seasons.isEmpty) return null;
+    final current = _season;
+    if (current != null && seasons.contains(current)) return current;
+    return seasons.first;
+  }
+
+  List<DownloadTask> get _visibleFiles {
+    if (!_isSeries) return _filesForTitle;
+    final season = _activeSeason;
+    return [
+      for (final task in _filesForTitle)
+        if ((task.season ?? 1) == season) task,
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final pad = ShellTokens.shellProviderRailPadH;
     return ColoredBox(
       color: ForjaShellColors.bgDark,
       child: SafeArea(
+        top: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -173,7 +206,7 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
                 children: [
                   _overview(),
                   SizedBox(height: pad),
-                  _sources(),
+                  _sources(pad),
                 ],
               ),
             ),
@@ -185,43 +218,27 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
 
   Widget _hero(double pad) {
     final title = _meta.name.trim().isEmpty ? 'Saved' : _meta.name.trim();
-    final poster = _meta.poster.trim().isNotEmpty
-        ? _meta.poster.trim()
-        : _meta.background.trim();
     final backdrop = _meta.background.trim().isNotEmpty
         ? _meta.background.trim()
-        : poster;
-    const backdropH = 132.0;
-    const posterW = 108.0;
-    const posterH = 162.0;
+        : _meta.poster.trim();
+    final logo = _meta.logo.trim();
+    const backdropH = 280.0;
     final meta = _metaLine;
     return SizedBox(
-      height: backdropH + posterH - 52,
+      height: backdropH,
       child: Stack(
-        clipBehavior: Clip.none,
+        fit: StackFit.expand,
         children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: backdropH,
-            child: _still(backdrop),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: backdropH,
-            child: const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x66000000),
-                    ForjaShellColors.bgDark,
-                  ],
-                ),
+          _still(backdrop),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x66000000),
+                  ForjaShellColors.bgDark,
+                ],
               ),
             ),
           ),
@@ -236,37 +253,34 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
           ),
           Positioned(
             left: pad,
-            top: backdropH - 52,
-            width: posterW,
-            height: posterH,
-            child: _poster(poster),
-          ),
-          Positioned(
-            left: pad + posterW - 28,
-            top: backdropH - 52 + posterH - 40,
-            child: _playOnPoster(),
-          ),
-          Positioned(
-            left: pad + posterW + 16,
             right: pad,
-            top: backdropH - 8,
-            bottom: 8,
+            bottom: 16,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text(
-                  title,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: ForjaShellColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                      ),
-                ),
+                if (logo.isNotEmpty)
+                  SizedBox(
+                    height: 72,
+                    width: 220,
+                    child: ForjaNetworkImage(
+                      url: logo,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.bottomLeft,
+                    ),
+                  )
+                else
+                  Text(
+                    title,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: ForjaShellColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          height: 1.15,
+                        ),
+                  ),
                 if (meta.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
                     meta,
                     maxLines: 2,
@@ -293,51 +307,6 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
     return ForjaNetworkImage(url: url, fit: BoxFit.cover);
   }
 
-  Widget _poster(String url) {
-    final frame = ClipRRect(
-      borderRadius: BorderRadius.circular(ShellTokens.posterCardRadiusMin + 4),
-      child: url.isEmpty
-          ? const ColoredBox(color: ForjaShellColors.surfaceElevated)
-          : ForjaNetworkImage(url: url, fit: BoxFit.cover),
-    );
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(
-          ShellTokens.posterCardRadiusMin + 6,
-        ),
-        border: Border.all(color: ForjaShellColors.bgDark, width: 2),
-      ),
-      child: frame,
-    );
-  }
-
-  Widget _playOnPoster() {
-    final first = _filesForTitle.isEmpty ? null : _filesForTitle.first;
-    return shellFocusableTap(
-      context: context,
-      onTap: () => unawaited(_play(first)),
-      borderRadius: 22,
-      child: const Tooltip(
-        message: 'Play',
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: ForjaShellColors.brandGreen,
-              shape: BoxShape.circle,
-            ),
-              child: Icon(
-              Icons.play_arrow_rounded,
-              color: Colors.black,
-              size: 26,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _overview() {
     final overview = _meta.description.trim();
     if (overview.isEmpty) return const SizedBox.shrink();
@@ -353,21 +322,37 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
     );
   }
 
-  Widget _sources() {
-    final files = _filesForTitle;
+  Widget _sources(double pad) {
+    final files = _visibleFiles;
+    final seasons = _seasons;
+    final season = _activeSeason;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          files.length == 1 ? 'Saved' : 'Saved · ${files.length}',
-          style: const TextStyle(
-            color: ForjaShellColors.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
+        if (_isSeries && season != null) ...[
+          Select<int>(
+            value: season,
+            options: [
+              for (final number in seasons)
+                SelectOption(value: number, label: 'Season $number'),
+            ],
+            onChanged: (next) {
+              if (next == null || next == _season) return;
+              setState(() => _season = next);
+            },
           ),
-        ),
-        const SizedBox(height: 8),
+          SizedBox(height: pad),
+        ] else
+          Text(
+            files.length == 1 ? 'Saved' : 'Saved · ${files.length}',
+            style: const TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+          ),
+        if (!_isSeries) const SizedBox(height: 8),
         if (files.isEmpty)
           const Text(
             'No saved file',
@@ -392,7 +377,7 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
         ? _episodeLabel(
             task.season ?? 1,
             task.episode ?? 1,
-            task.episodeTitle?.trim() ?? '',
+            _episodeTitle(task),
           )
         : source;
     final subtitle = [
@@ -453,6 +438,18 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
         ),
       ),
     );
+  }
+
+  String _episodeTitle(DownloadTask task) {
+    final direct = task.episodeTitle?.trim() ?? '';
+    if (direct.isNotEmpty) return direct;
+    for (final video in _meta.videos) {
+      if (video.season == task.season && video.episode == task.episode) {
+        final title = video.title.trim();
+        if (title.isNotEmpty) return title;
+      }
+    }
+    return '';
   }
 
   String _episodeLabel(int season, int episode, String title) {

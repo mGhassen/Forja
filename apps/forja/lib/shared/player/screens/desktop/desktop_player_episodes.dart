@@ -766,6 +766,11 @@ mixin _DesktopPlayerEpisodes
 
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
+    // This row is the user's pick. A failure stays here — no other stream.
+    _s._sourcePinned = true;
+    unawaited(SettingsService().setPlayerAutoSource(false));
+    _s._pendingRemountSeek = null;
+    _s._postSeekStall?.clearPendingSeek();
     final switchGen = ++_s._fallbackGen;
     // Fence stop/open so the error listener does not abort this switch.
     _s._isInitPlaybackRunning = true;

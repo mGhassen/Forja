@@ -70,6 +70,10 @@ fn engine_take_job_result(job_id: u64) -> Option<String> {
     engine_jobs::take_result(job_id)
 }
 
+fn engine_take_job_events(job_id: u64) -> String {
+    engine_jobs::take_events(job_id)
+}
+
 fn add(a: i64, b: i64) -> i64 {
     a + b
 }

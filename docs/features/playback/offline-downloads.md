@@ -43,15 +43,16 @@ The header is a storage meter: offline library vs other space on the volume vs f
 ## Downloads tab
 
 Each finished title is a poster card. Open it and that card stays marked.
-The panel beside the grid is that film: backdrop, poster, year, and a short
-synopsis. **Play** sits on the poster and starts the first saved file. Under
-the synopsis, each saved file shows the provider and stream it was downloaded
-from. Tap a row to play that file.
+The panel starts at the top of the page, beside the kind menu, with a rounded
+top-left. It shows the backdrop, the title logo when there is one, the year,
+and a short synopsis. A series lists saved episodes under a season menu. Each
+saved file shows the provider and stream it was downloaded from. Tap a row to
+play that file.
 
 ## Offline play
 
 On a completed row in Settings, tap **Play**. In Sources, tap the Offline stream
-row. From Downloads, tap Play on the poster or a saved row. Forja opens the
+row. From Downloads, tap a saved row. Forja opens the
 local file in the same player (ExoPlayer and MediaKit stay available — pick
 from the Player menu as usual). While that file is playing, the source button
 shows an offline icon, the provider, and the stream name. Opening the source

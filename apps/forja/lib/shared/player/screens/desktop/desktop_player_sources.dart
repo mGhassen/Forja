@@ -185,7 +185,13 @@ mixin _DesktopPlayerSources
     setState(() => _s._currentSources = merged);
     _s._syncCurrentSourceIndexFromPlayUrl();
     _notifySourceMenuChanged();
+    // Initial open only. A row the user already picked (or one that failed)
+    // must not start a different stream when more results arrive.
     if (!_s._playbackConfirmed &&
+        !_s._hasError &&
+        !_s._sourcePinned &&
+        !_s._providerPinned &&
+        !widget.pinSource &&
         !_s._isInitPlaybackRunning &&
         merged.length > prevLen &&
         _s._currentFallbackSourceIndex < merged.length) {

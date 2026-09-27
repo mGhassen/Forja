@@ -3,6 +3,7 @@ import 'dart:io' show File;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
@@ -3077,6 +3078,12 @@ Future<bool> probeStreamSourceUrl(
 }) async {
   final normalized = normalizePlaybackStreamUrl(url);
   if (normalized.isEmpty) return false;
+  // Saved downloads are local files. An HTTP HEAD on `file://` always fails
+  // and blocks switching to the Offline row.
+  final localPath = localFilePathFromPlayUrl(normalized);
+  if (localPath != null) {
+    return File(localPath).exists();
+  }
   if (hlsProxyStripIsPng(normalized)) return true;
   final catalog = hlsProxyTargetUrl(normalized) ?? normalized;
   final hdrs = resolvePlaybackHttpHeaders(headers, streamUrl: catalog);

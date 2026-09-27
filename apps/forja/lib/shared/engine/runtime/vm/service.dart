@@ -1596,6 +1596,7 @@ class EngineService {
     String? year,
     String? audioCategory,
     bool allowHostFallback = false,
+    void Function(Map<String, dynamic> row)? onRow,
   }) async {
     final resolved = resolveEngineExtractInputs(
       type: type,
@@ -1632,6 +1633,7 @@ class EngineService {
       extractCtx: extractCtx,
       audioCategory: audioCategory,
       allowHostFallback: allowHostFallback,
+      onRow: onRow,
     );
     if (viaRust != null) return viaRust;
     if (genAtStart != _extractGeneration) {
@@ -1691,6 +1693,7 @@ class EngineService {
     required Map<String, dynamic> extractCtx,
     String? audioCategory,
     bool allowHostFallback = false,
+    void Function(Map<String, dynamic> row)? onRow,
   }) async {
     final gen = _extractGeneration;
     if (!Engine.isReady) return null;
@@ -1779,9 +1782,11 @@ class EngineService {
       ' mappedEp=$mappedEpisode',
     );
     final sw = Stopwatch()..start();
+    final seenEmit = <String>{};
+    final emitRow = onRow;
     late final String rawJson;
     try {
-      rawJson = await EngineJobs.run(EngineAsyncJob.engineJsExtract, {
+      rawJson = await EngineJobs.runWatching(EngineAsyncJob.engineJsExtract, {
         'plugin_id': plugin.id,
         'code': code,
         'ctx': ctx,
@@ -1789,7 +1794,29 @@ class EngineService {
         'allow_host_fallback': allowHostFallback,
         'hops': hopPayload,
         'hop_depth': 0,
-      });
+      }, onRow: emitRow == null
+          ? null
+          : (raw) {
+              final url = (raw['url'] ?? '').toString().trim();
+              if (url.isEmpty || !seenEmit.add(url)) return;
+              if (isTorrentStreamUrl(url)) return;
+              final mapped = mapEngineStream(
+                raw: raw,
+                plugin: plugin,
+                mediaTitle: title,
+                year: year,
+                type: mediaType,
+                season: season,
+                episode: episode,
+              );
+              if (mapped == null) return;
+              final filtered = filterStreamsByAudioCategory(
+                [mapped],
+                audioCategory,
+              );
+              if (filtered.isEmpty) return;
+              emitRow(filtered.first);
+            });
     } catch (e) {
       debugPrint('[engine] ${plugin.id} enginejs submit failed: $e');
       return null;

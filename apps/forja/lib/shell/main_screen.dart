@@ -268,9 +268,12 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellTvFocus.currentNavTabId = _currentTabId;
   }
 
-  void _selectTab(int index) {
+  void _selectTab(int index, {bool fromOverlay = false}) {
     // Match nav-rail taps: dismiss details / hub overlays so the tab is visible
     // (e.g. Who's watching → Account settings via [ShellBus.requestTab]).
+    // A same-tab tap that only closed that overlay must not force-reload the
+    // hub (Home TMDB layout + rails). Re-tap with nothing open still reloads.
+    final dismissedOverlay = fromOverlay || shellOverlayCanPop();
     popShellOverlayUntilRoot();
     final previousId = _currentTabId;
     final id = _visibleIds[index];
@@ -278,7 +281,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (previousId != null && previousId != id) {
       _notifyTabHidden(previousId);
       VerticalFiltersRegistry.onLeaveTab(previousId);
-    } else if (sameTab) {
+    } else if (sameTab && !dismissedOverlay) {
       VerticalFiltersRegistry.onNavRepress(id);
     }
     // Same-tab Home re-select must not dismiss the provider panel.
@@ -305,7 +308,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
       if (_currentTabId != id) return;
       _notifyTabShown(id);
       // Re-tap active tab = force reload (hubs / IPTV / …).
-      _refreshTabIfStale(id, force: sameTab);
+      // Closing details / search by tapping the current tab is not a reload.
+      _refreshTabIfStale(id, force: sameTab && !dismissedOverlay);
     });
   }
 
@@ -711,12 +715,13 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   void _onShellLogoTap() {
     if (!mounted) return;
+    final hadOverlay = shellOverlayCanPop();
     popShellOverlayUntilRoot();
     if (!_hasFeatureTabs) {
       _returnToEmptyFeaturesHome();
       return;
     }
-    unawaited(_selectDefaultFeatureTab());
+    unawaited(_selectDefaultFeatureTab(fromOverlay: hadOverlay));
   }
 
   void _returnToEmptyFeaturesHome() {
@@ -730,7 +735,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _syncCurrentNavTab();
   }
 
-  Future<void> _selectDefaultFeatureTab() async {
+  Future<void> _selectDefaultFeatureTab({bool fromOverlay = false}) async {
     if (!mounted) return;
     final defaultTab = await SettingsService().getDefaultNavTab();
     if (!mounted) return;
@@ -742,7 +747,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       target = featureIds.isNotEmpty ? featureIds.first : 'settings';
     }
     final idx = _visibleIds.indexOf(target);
-    if (idx >= 0) _selectTab(idx);
+    if (idx >= 0) _selectTab(idx, fromOverlay: fromOverlay);
   }
 
   void _openFeaturesFromEmptyState() {
@@ -879,7 +884,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             visibleIds: _visibleIds,
             selectedIndex: _selectedIndex,
             mountedTabIds: _mountedTabIds,
-            onDestinationSelected: _selectTab,
+            onDestinationSelected: (index) => _selectTab(index),
             tabFor: _shellTabFor,
             shellHeader: _shellHeader(),
             shellTopBar: shellTopBar,

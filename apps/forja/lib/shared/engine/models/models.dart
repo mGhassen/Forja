@@ -821,11 +821,10 @@ String? nextEnginePluginId({
   return null;
 }
 
-const kEngineSourcesBatchDesktop = 10;
-const kEngineSourcesBatchTv = 5;
-
-int engineSourcesBatchLimit({required bool tv}) =>
-    tv ? kEngineSourcesBatchTv : kEngineSourcesBatchDesktop;
+/// Every selected Forja provider starts together. Rust runs one fresh
+/// QuickJS runtime per plugin. Desktop and TV use the same rule.
+int engineSourcesBatchLimit({required int selected}) =>
+    selected < 1 ? 1 : selected;
 
 List<String> nextEnginePluginBatch({
   required Iterable<String> orderedIds,

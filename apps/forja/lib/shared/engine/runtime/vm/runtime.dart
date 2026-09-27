@@ -1656,6 +1656,7 @@ class EngineRuntime {
       return h;
     })(),
     hop: globalThis.__engineHop,
+    emit: function(row) {},
     crypto: Object.assign({}, globalThis.CryptoJS || {}, {
       encodePipe: function(payload) {
         var raw = typeof payload === 'string' ? payload : JSON.stringify(payload == null ? {} : payload);

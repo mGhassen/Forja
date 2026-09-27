@@ -1326,26 +1326,17 @@ void main() {
       );
     });
 
-    test('All pool is 10 desktop and 5 TV', () {
-      expect(engineSourcesBatchLimit(tv: false), 10);
-      expect(engineSourcesBatchLimit(tv: true), 5);
+    test('Forja extract starts every selected provider', () {
+      expect(engineSourcesBatchLimit(selected: 12), 12);
+      expect(engineSourcesBatchLimit(selected: 0), 1);
       expect(
         nextEnginePluginBatch(
           orderedIds: List<String>.generate(12, (i) => '$i'),
           selectedIds: {for (var i = 0; i < 12; i++) '$i'},
           fetchedIds: const {},
-          limit: engineSourcesBatchLimit(tv: false),
+          limit: engineSourcesBatchLimit(selected: 12),
         ),
-        hasLength(10),
-      );
-      expect(
-        nextEnginePluginBatch(
-          orderedIds: List<String>.generate(12, (i) => '$i'),
-          selectedIds: {for (var i = 0; i < 12; i++) '$i'},
-          fetchedIds: const {},
-          limit: engineSourcesBatchLimit(tv: true),
-        ),
-        hasLength(5),
+        hasLength(12),
       );
     });
 

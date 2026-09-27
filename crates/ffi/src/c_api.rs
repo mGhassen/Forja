@@ -70,6 +70,11 @@ pub unsafe extern "C" fn ffi_engine_take_job_result(job_id: u64) -> *mut c_char 
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_engine_take_job_events(job_id: u64) -> *mut c_char {
+    to_c_string(crate::engine_take_job_events(job_id))
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_add(a: i64, b: i64) -> i64 {
     crate::add(a, b)
 }

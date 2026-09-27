@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/sources/stream_orchestrator.dart';
 import 'package:forja/shared/playback/probe/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/playback/kit_episodes.dart';
@@ -174,7 +175,7 @@ class EngineAutoPlayPick {
 }
 
 /// Green Play Forja Auto — same as movies/TV green Forja Play:
-/// session-cache seed, Sources → Forja pool (5 TV / 10 desktop), first UP wins
+/// session-cache seed, every selected provider at once, first UP wins
 /// (cancel rest). Not extract-all-then-probe-all; not webstreaming sequential.
 ///
 /// Used by movies/TV details, Anime, and Asian Drama — one path, not copies.
@@ -268,10 +269,12 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
 
   final poolTasks = <Future<void>>{};
   var fetchGen = 0;
-  var poolLimit = kEngineSourcesBatchDesktop;
+  var poolLimit = 1;
   final inFlight = <String>{};
   var streams = <Map<String, dynamic>>[];
   var fetchedIds = <String>{};
+  final probedUrls = <String>{};
+  final probeChains = <String, Future<void>>{};
   var sawPlatformBlockedDrmOnly = false;
 
   void abortPool() {
@@ -522,6 +525,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     ) async {
       if (playAborted() || race.isCompleted) return;
       if (!pluginIds.contains(pluginId)) return;
+      if (statusById[pluginId] == StreamProviderProbeStatus.success) return;
 
       final rows = preferSavedEngineStreamRow(
         sortEngineMetaStreamRows(pluginStreams),
@@ -537,13 +541,6 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
         return;
       }
 
-      // Mid-race pin: ignore other plugins' hits until the pin fails.
-      if (pinActive && pluginId != pinPlugin) {
-        statusById[pluginId] = StreamProviderProbeStatus.pending;
-        publishProbes();
-        return;
-      }
-
       probingIds.add(pluginId);
       probingCount++;
       statusById[pluginId] = StreamProviderProbeStatus.trying;
@@ -553,7 +550,8 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       try {
         for (final row in rows) {
           if (playAborted() || race.isCompleted) break;
-          if (pinActive && pluginId != pinPlugin) break;
+          final rowUrl = row['url']?.toString() ?? '';
+          if (rowUrl.isNotEmpty && !probedUrls.add(rowUrl)) continue;
           final probed = await buildProbedEngineCatalogSources(
             profile: profile,
             settings: settings,
@@ -562,7 +560,6 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
             preferFirst: row,
           );
           if (probed.isEmpty) continue;
-          if (pinActive && pluginId != pinPlugin) break;
           statusById[pluginId] = StreamProviderProbeStatus.success;
           publishProbes();
           if (!race.isCompleted) {
@@ -605,19 +602,33 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       );
       EngineExtractResult? batch;
       try {
-        batch = await EngineService.instance.runPluginIsolated(
+        batch = await StreamOrchestrator.instance.schedule(
+          sessionKey: cacheKey,
           pluginId: pluginId,
-          tmdbId: src.engine?.tmdbId ?? '',
-          type: src.engine?.resolveType ?? resolveType,
-          season: season,
-          episode: episode,
-          title: movie.title,
-          year: year,
-          movie: movie,
-          open: activeSession.effectiveOpen,
-          episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
-          audioCategory: audioCategory ?? activeSession.audioCategory,
-          allowHostFallback: false,
+          job: () => EngineService.instance.runPluginIsolated(
+            pluginId: pluginId,
+            tmdbId: src.engine?.tmdbId ?? '',
+            type: src.engine?.resolveType ?? resolveType,
+            season: season,
+            episode: episode,
+            title: movie.title,
+            year: year,
+            movie: movie,
+            open: activeSession.effectiveOpen,
+            episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
+            audioCategory: audioCategory ?? activeSession.audioCategory,
+            allowHostFallback: false,
+            onRow: (row) {
+              if (playAborted() || race.isCompleted || gen != fetchGen) return;
+              final prev = probeChains[pluginId] ?? Future<void>.value();
+              probeChains[pluginId] = prev.then((_) async {
+                if (playAborted() || race.isCompleted) return;
+                streams.add(row);
+                publishCache();
+                await onPluginDone(pluginId, [row]);
+              });
+            },
+          ),
         );
       } catch (e) {
         debugPrint('[engine-auto] plugin $pluginId failed: $e');
@@ -628,6 +639,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       }
       fetchedIds.add(pluginId);
       inFlight.remove(pluginId);
+      await probeChains[pluginId];
       streams.removeWhere((s) => engineStreamBelongsToPlugin(s, pluginId));
       final raw = batch?.streams ?? const <Map<String, dynamic>>[];
       if (streamsArePlatformBlockedDrmOnly(raw)) {
@@ -644,13 +656,15 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       );
     }
 
+    String? soloId;
+
     void fillPool(int gen) {
       if (playAborted() || gen != fetchGen || race.isCompleted) return;
       final slots = poolLimit - inFlight.length;
       if (slots <= 0) return;
-      final pinId = pinPlugin;
-      final raceIds =
-          pinActive && pinId != null && pinId.isNotEmpty ? [pinId] : pluginIds;
+      final raceIds = soloId != null && pluginIds.contains(soloId)
+          ? <String>[soloId!]
+          : pluginIds;
       final next = nextEnginePluginBatch(
         orderedIds: raceIds,
         selectedIds: raceIds.toSet(),
@@ -691,6 +705,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
 
       pinPlugin = trimmed;
       pinActive = true;
+      soloId = trimmed;
       pluginIds = [
         trimmed,
         ...pluginIds.where((other) => other != trimmed),
@@ -721,6 +736,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
           if (pinActive && pinPlugin == trimmed) {
             // Pin had rows but every probe failed — resume the full race.
             pinActive = false;
+            soloId = null;
           }
           if (!race.isCompleted && !playAborted()) {
             fillPool(fetchGen);
@@ -754,23 +770,8 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       await onPluginDone(id, cachedRows);
     }
 
-    if (pinActive && !race.isCompleted && !playAborted() && pinPlugin != null) {
-      final pinId = pinPlugin!;
-      if (!fetchedIds.contains(pinId) && !inFlight.contains(pinId)) {
-        final gen = ++fetchGen;
-        inFlight.add(pinId);
-        try {
-          await runAndApply(pinId, gen);
-        } finally {
-          inFlight.remove(pinId);
-        }
-      }
-    }
-
     if (!race.isCompleted && !playAborted()) {
-      poolLimit = engineSourcesBatchLimit(
-        tv: context.mounted && SourcesPanelTv.isTv(context),
-      );
+      poolLimit = engineSourcesBatchLimit(selected: pluginIds.length);
       var gen = ++fetchGen;
       fillPool(gen);
       while (!playAborted() && !race.isCompleted) {
@@ -781,6 +782,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
             !inFlight.contains(pinPlugin) &&
             !probingIds.contains(pinPlugin)) {
           pinActive = false;
+          soloId = null;
           gen = ++fetchGen;
           fillPool(gen);
         }
