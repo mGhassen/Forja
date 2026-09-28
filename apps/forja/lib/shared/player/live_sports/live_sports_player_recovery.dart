@@ -45,16 +45,32 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
       '[IPTV] live glitch ($reason) — '
       '${grace.inMilliseconds}ms grace (lavf reconnect)',
     );
+    // keep-open pauses at EOF. A frozen clock looks unrecovered and stop+open
+    // restarts the panel archive (~15s already watched).
+    unawaited(_enginePlay());
     _s._liveGraceTimer = Timer(grace, () {
       if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
-      final sPlaying = _s._playing;
       final pos = _s._position;
-      final recovered = sPlaying && pos > _s._liveGraceStartPos;
-      if (recovered) {
+      final action = iptvLiveGraceAction(
+        playing: _s._playing,
+        position: pos,
+        startPosition: _s._liveGraceStartPos,
+        playheadRecentlyMoved: _playheadRecentlyMoved,
+      );
+      if (action == IptvLiveGraceAction.hold) {
         debugPrint(
           '[IPTV] live glitch recovered '
           '(${_s._liveGraceStartPos.inSeconds}s → ${pos.inSeconds}s) — no reopen',
         );
+        _clearBufferingChrome();
+        return;
+      }
+      if (action == IptvLiveGraceAction.snapArchive) {
+        debugPrint(
+          '[IPTV] live glitch rewound '
+          '(${_s._liveGraceStartPos.inSeconds}s → ${pos.inSeconds}s) — skip archive',
+        );
+        unawaited(_skipReconnectArchive());
         _clearBufferingChrome();
         return;
       }
@@ -77,9 +93,9 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
       }
       return;
     }
+    _cancelIptvLiveGoLiveTimers();
     _s._lastGoLiveAt = DateTime.now();
     _s._liveGoLiveAttempt = 1;
-    _s._liveStableTimer?.cancel();
     final maxAttempts = _s._atvMediaKit
         ? _LiveSportsPlayerScreenState._maxLiveGoLiveAttemptsAtv
         : _LiveSportsPlayerScreenState._maxLiveGoLiveAttempts;
@@ -91,69 +107,84 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     }
     debugPrint('[IPTV] goLive attempt 1/$maxAttempts ($reason)');
     await _goLiveReopen();
-    _s._liveGoLiveTimer?.cancel();
-    _s._liveGoLiveTimer = Timer(poll, () => _checkIptvLiveGoLive(maxAttempts, poll));
+    _scheduleIptvLiveGoLivePoll(maxAttempts, poll);
   }
 
-  void _checkIptvLiveGoLive(int maxAttempts, Duration poll) {
-    if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
-    // Poll: playing + position>0 — stable 1.5s is armed from playing.
-    final playing = _s._playing && _s._position > Duration.zero;
-    if (playing) {
-      _armIptvLiveGoLiveStable(maxAttempts, poll);
-      return;
-    }
-    if (_s._liveGoLiveAttempt >= maxAttempts) {
-      debugPrint('[IPTV] goLive exhausted — ended');
-      if (mounted) {
-        setState(() => _s._statusBanner = 'Stream ended');
-      }
-      return;
-    }
-    _s._liveGoLiveAttempt++;
-    debugPrint('[IPTV] goLive attempt ${_s._liveGoLiveAttempt}/$maxAttempts');
-    unawaited(_goLiveReopen());
+  void _cancelIptvLiveGoLiveTimers() {
+    _s._liveGraceTimer?.cancel();
+    _s._liveGraceTimer = null;
+    _s._liveGoLiveTimer?.cancel();
+    _s._liveGoLiveTimer = null;
+    _s._liveStableTimer?.cancel();
+    _s._liveStableTimer = null;
+  }
+
+  void _scheduleIptvLiveGoLivePoll(int maxAttempts, Duration poll) {
+    _s._liveGoLiveTimer?.cancel();
     _s._liveGoLiveTimer = Timer(
       poll,
       () => _checkIptvLiveGoLive(maxAttempts, poll),
     );
   }
 
+  void _checkIptvLiveGoLive(int maxAttempts, Duration poll) {
+    if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+    if (_s._statusBanner != 'Reconnecting…') return;
+    if (_recoveryInFlight) {
+      _scheduleIptvLiveGoLivePoll(maxAttempts, poll);
+      return;
+    }
+    final playing = _s._playing && _s._position > Duration.zero;
+    if (playing) {
+      _armIptvLiveGoLiveStable();
+      _scheduleIptvLiveGoLivePoll(maxAttempts, poll);
+      return;
+    }
+    if (_s._liveGoLiveAttempt >= maxAttempts) {
+      _scheduleIptvLiveColdRetry();
+      return;
+    }
+    _s._liveGoLiveAttempt++;
+    debugPrint('[IPTV] goLive attempt ${_s._liveGoLiveAttempt}/$maxAttempts');
+    unawaited(_goLiveReopen());
+    _scheduleIptvLiveGoLivePoll(maxAttempts, poll);
+  }
+
+  void _scheduleIptvLiveColdRetry() {
+    debugPrint('[IPTV] goLive burst failed — cold retry');
+    _s._liveGoLiveTimer?.cancel();
+    _s._liveStableTimer?.cancel();
+    _s._liveStableTimer = null;
+    if (mounted) {
+      setState(
+        () => _s._statusBanner =
+            'Stream offline - retrying every ${_LiveSportsPlayerScreenState._coldRetryInterval.inSeconds}s…',
+      );
+    }
+    _s._liveGoLiveTimer = Timer(
+      _LiveSportsPlayerScreenState._coldRetryInterval,
+      () {
+        if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+        unawaited(_tryIptvLiveGoLive(reason: 'cold retry'));
+      },
+    );
+  }
+
   /// After playing=true during reconnect, require 1.5s + position>0.
-  void _armIptvLiveGoLiveStable([int? maxAttempts, Duration? poll]) {
-    final max = maxAttempts ??
-        (_s._atvMediaKit
-            ? _LiveSportsPlayerScreenState._maxLiveGoLiveAttemptsAtv
-            : _LiveSportsPlayerScreenState._maxLiveGoLiveAttempts);
-    final window = poll ??
-        (_s._atvMediaKit
-            ? _LiveSportsPlayerScreenState._liveGoLivePollWindowAtv
-            : _LiveSportsPlayerScreenState._liveGoLivePollWindow);
+  /// Confirm only — the poll timer owns the next open.
+  void _armIptvLiveGoLiveStable() {
     _s._liveStableTimer?.cancel();
     _s._liveStableTimer = Timer(
       _LiveSportsPlayerScreenState._liveStableWindow,
       () {
         if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
         if (_s._statusBanner != 'Reconnecting…') return;
-        if (!_s._playing || _s._position <= Duration.zero) {
-          debugPrint('[IPTV] goLive unstable — retry/end');
-          if (_s._liveGoLiveAttempt >= max) {
-            if (mounted) {
-              setState(() => _s._statusBanner = 'Stream ended');
-            }
-            return;
-          }
-          _s._liveGoLiveAttempt++;
-          unawaited(_goLiveReopen());
-          _s._liveGoLiveTimer = Timer(
-            window,
-            () => _checkIptvLiveGoLive(max, window),
-          );
-          return;
-        }
+        if (!_s._playing || _s._position <= Duration.zero) return;
         debugPrint('[IPTV] goLive succeeded');
         _s._liveGoLiveAttempt = 0;
         _s._liveGoLiveTimer?.cancel();
+        _s._liveGoLiveTimer = null;
+        _s._liveStableTimer = null;
         _clearBufferingChrome();
         if (mounted) {
           setState(() => _s._statusBanner = null);
@@ -174,7 +205,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     }
   }
 
-  /// `goLive`: stop + open same CDN URL (no continuity proxy).
+  /// `goLive`: stop, wait for the panel slot, open the same CDN URL once.
   Future<void> _goLiveReopen() async {
     if (_s._disposed || _recoveryInFlight) return;
     _recoveryInFlight = true;
@@ -185,16 +216,68 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
           await player.stop();
         } catch (_) {}
       }
-      final src = _s._sources.isEmpty
-          ? null
-          : _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)];
-      if (src == null) return;
+      if (_s._sources.isEmpty) return;
+      await Future<void>.delayed(
+        _LiveSportsPlayerScreenState._liveGoLiveSlotGap,
+      );
+      if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+      final src = _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)];
       await _engineOpenSource(src, forceLiveRefresh: false);
-      if (_s._userPlayWhenReady) {
+      await _skipReconnectArchive();
+      if (_s._userPlayWhenReady && mounted && !_s._disposed) {
         await _enginePlay();
       }
     } finally {
       _recoveryInFlight = false;
+    }
+  }
+
+  /// New live GET starts in the provider archive. Seek to the newest buffered
+  /// packet. No drop-buffers (that looped empty cushions, issue 148).
+  Future<void> _skipReconnectArchive() async {
+    final epoch = _s._liveEdgeSnapEpoch;
+    final player = _s._player;
+    if (player == null || !_s._playerAlive) return;
+    var superseded = false;
+    try {
+      try {
+        await player.pause();
+      } catch (_) {}
+      for (var i = 0; i < 8; i++) {
+        if (!mounted || _s._disposed || _s._liveEdgeSnapEpoch != epoch) {
+          superseded = true;
+          return;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        if (!mounted || _s._disposed || _s._liveEdgeSnapEpoch != epoch) {
+          superseded = true;
+          return;
+        }
+        final p = _s._player?.platform;
+        if (p is! NativePlayer) return;
+        try {
+          final raw = await p.getProperty('demuxer-cache-duration');
+          final ahead = double.tryParse(raw.toString()) ?? 0;
+          final skip = iptvReconnectArchiveSkipSeconds(ahead);
+          if (skip <= 0) continue;
+          _armTransientHwDecodeIgnore();
+          debugPrint(
+            '[IPTV Player] reconnect skip archive ${skip.toStringAsFixed(1)}s',
+          );
+          await p.command(['seek', skip.toStringAsFixed(3), 'relative']);
+          return;
+        } catch (_) {
+          return;
+        }
+      }
+    } finally {
+      if (!superseded &&
+          mounted &&
+          !_s._disposed &&
+          _s._userPlayWhenReady &&
+          _s._liveEdgeSnapEpoch == epoch) {
+        await _enginePlay();
+      }
     }
   }
 

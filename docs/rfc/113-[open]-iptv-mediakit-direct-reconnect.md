@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **14 / 14** components · **2 / 10** acceptance (manual QA) |
-| **Current slice** | Full Forja MediaKit live: decode/controller + lavf + grace/goLive |
+| **Progress** | **16 / 16** components · **2 / 12** acceptance (manual QA) |
+| **Current slice** | Full Forja MediaKit live: decode/controller + lavf + serialized goLive |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -33,6 +33,8 @@
 | 12 | R113-C12 | Live `demuxer-lavf-o` `+igndts` (DAI pts&lt;dts) — Forja live path; restores issue 273 | ✅ |
 | 13 | R113-C13 | Live lavf: always `reconnect=1…delay_max=5` (ipdigi) — supersedes C08 HLS `reconnect=0` ([357](../../issues/357-[open]-iptv-vod-mediakit-ipdigi-parity.md)) | ✅ |
 | 14 | R113-C14 | MediaKit: never grace/goLive from mpv log premature-EOF / reset — lavf owns; only `completed`/`error` ([362](../../issues/fixed/362-[fixed]-iptv-mediakit-log-eof-grace-storm.md)) | ✅ |
+| 15 | R113-C15 | goLive: 2s slot after stop; stable timer confirms only; one poll; cold retry on burst fail — no Stream ended ([387](../../issues/387-[open]-iptv-golive-double-open-ends.md)) | ✅ |
+| 16 | R113-C16 | Live EOF: resume during grace; a backward jump or goLive skips the panel archive instead of replaying it ([388](../../issues/388-[open]-iptv-reconnect-replays-archive.md)) | ✅ |
 
 ---
 
@@ -50,6 +52,8 @@
 | 8 | R113-A08 | Android Impeller off globally (manifest); MediaKit video paints phone+TV | ⬜ |
 | 9 | R113-A09 | MediaKit live underrun does not soft-reopen via watchdog — grace/goLive only | ⬜ |
 | 10 | R113-A10 | Live lavf string matches ipdigi on HLS + progressive (`reconnect=1…delay_max=5`) — [357](../../issues/357-[open]-iptv-vod-mediakit-ipdigi-parity.md) A03 | ⬜ |
+| 11 | R113-A11 | Real `completed`: one reopen after the slot gap; a refused open cold-retries every 15s instead of Stream ended ([387](../../issues/387-[open]-iptv-golive-double-open-ends.md)) | ⬜ |
+| 12 | R113-A12 | Desktop Xtream `.ts`: after `completed` → goLive, playback does not replay the previous ~15s ([388](../../issues/388-[open]-iptv-reconnect-replays-archive.md)) | ⬜ |
 
 ---
 
@@ -69,3 +73,5 @@ Replace Forja’s MediaKit Xtream/M3U **continuity proxy** with CDN-direct live 
 - Issue 155 — ATV OOM risk with fat demuxer; soak A04
 - Issue 215 — glyph risk on leanback Skia; soak A08
 - RFC-107 — Exo/AVPlayer/VLC stay; MediaKit live path changes here
+- Issue 387 — goLive slot gap, one opener, 15s cold retry
+- Issue 388 — reconnect skip of the panel archive after EOF / goLive

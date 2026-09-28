@@ -28,6 +28,7 @@ import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/player/live/hls_play_url.dart';
+import 'package:forja/shared/player/live/iptv_live_grace.dart';
 import 'package:forja/shared/player/live/player_stats_panel.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
@@ -72,7 +73,9 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shell/desktop/desktop_window_geometry.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -1003,6 +1006,9 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   static const int _maxLiveGoLiveAttemptsAtv = 1;
   static const Duration _liveGoLiveThrottle = Duration(seconds: 3);
   static const Duration _liveStableWindow = Duration(milliseconds: 1500);
+
+  /// After stop, before the next open, so a 1-connection panel drops the old socket.
+  static const Duration _liveGoLiveSlotGap = Duration(seconds: 2);
 
   Timer? _liveGraceTimer;
   Timer? _liveGoLiveTimer;

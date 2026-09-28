@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
-import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 
@@ -456,9 +455,8 @@ class _CompactEpgRow extends StatelessWidget {
 
 /// Bottom-right programme guide overlay for the IPTV player.
 ///
-/// Dark frosted glass (blur + light tint), soft outer feather, no stroke —
-/// same family as portal probe / Sources glass. Small temporary card only;
-/// full-height channel guide stays flat translucent (no blur over video).
+/// Translucent dark fill so the video shows through. Full-height channel
+/// guide stays on [GuideChromeStyle.surfaceGlass].
 ///
 /// [maxWidth] must already be densified by the caller ([GuideChromeStyle.len] /
 /// [GuideChromeStyle.floatingEpgMaxWidthOf] / peek [epgPeekWidthOf]) — do not
@@ -472,9 +470,6 @@ class GuideFloatingEpg extends StatelessWidget {
 
   final Future<List<GuideEpgProgramme>> future;
   final double maxWidth;
-
-  /// Matches the historical floating EPG frost strength.
-  static const double _blurSigma = 22;
 
   @override
   Widget build(BuildContext context) {
@@ -498,11 +493,12 @@ class GuideFloatingEpg extends StatelessWidget {
             ),
           ],
         ),
-        child: ForjaFrostedPanel(
-          enableBlur: true,
-          blurSigma: _blurSigma,
+        child: ClipRRect(
           borderRadius: r,
-          child: GuideEpgCard(future: future, floating: true),
+          child: ColoredBox(
+            color: GuideChromeStyle.floatingEpgFill,
+            child: GuideEpgCard(future: future, floating: true),
+          ),
         ),
       ),
     );

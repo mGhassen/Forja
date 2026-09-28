@@ -27,9 +27,12 @@ abstract final class GuideChromeStyle {
   static Color get border => cinematic.borderSubtle;
   static Color get surface => cinematic.menuSurface;
   /// Flat translucent dark fill for full-height player guide / search shells.
-  /// Floating EPG uses [ForjaFrostedPanel] blur instead — see [GuideFloatingEpg].
   static Color get surfaceGlass =>
       cinematic.menuSurface.withValues(alpha: 0.82);
+
+  /// Player programme card — video shows through.
+  static Color get floatingEpgFill =>
+      cinematic.menuSurface.withValues(alpha: 0.62);
 
   /// Desktop floating programme card max width (player chrome).
   static const double floatingEpgMaxWidth = 540;

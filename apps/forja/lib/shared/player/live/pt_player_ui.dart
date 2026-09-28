@@ -1884,23 +1884,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               ),
             ),
             if ((_s._logoUrl ?? '').trim().isNotEmpty) ...[
-              SizedBox(
-                width: ShellPaintScope.usesTvDensityOf(context)
-                    ? ShellTokens.playerChromeLogoSizeTv
-                    : ShellTokens.playerChromeLogoSize,
-                height: ShellPaintScope.usesTvDensityOf(context)
-                    ? ShellTokens.playerChromeLogoSizeTv
-                    : ShellTokens.playerChromeLogoSize,
-                child: ForjaNetworkImage(
-                  key: ValueKey(_s._logoUrl!.trim()),
-                  url: _s._logoUrl!.trim(),
-                  fit: BoxFit.contain,
-                  useOldImageOnUrlChange: false,
-                  // Chrome / video show through — no elevated square under logos.
-                  paintUnderlay: false,
-                  error: const SizedBox.shrink(),
-                ),
-              ),
+              _buildTopChannelLogo(),
               SizedBox(
                 width: ShellTokens.chromeScale(
                   10,
@@ -1989,6 +1973,28 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   // ───────────────────────────────────────────────────────────────────────
   //  VOD SEEKBAR - only shown when duration > 0 (Xtream movies / series)
   // ───────────────────────────────────────────────────────────────────────
+  /// Title-row channel mark. A square slot crushes wide logos to a speck.
+  Widget _buildTopChannelLogo() {
+    final url = paintableNetworkImageUrl(_s._logoUrl!.trim());
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return const SizedBox.shrink();
+    }
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final height = tv
+        ? ShellTokens.playerChromeTopBtnSizeTv
+        : ShellTokens.playerChromeTopBtnSize;
+    return Image(
+      key: ValueKey(url),
+      image: CachedNetworkImageProvider(url),
+      height: height,
+      fit: BoxFit.contain,
+      alignment: Alignment.centerLeft,
+      filterQuality: FilterQuality.medium,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    );
+  }
+
   Widget _buildChannelLogo(bool compact) {
     if ((_s._logoUrl ?? '').isEmpty) return const SizedBox.shrink();
     final tv = ShellPaintScope.usesTvDensityOf(context);
@@ -1999,23 +2005,43 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         : (tv
             ? ShellTokens.playerChromeProgressLogoSizeTv
             : ShellTokens.playerChromeProgressLogoSize);
-    // Wordmarks are wide. A square slot scales them down to a thin strip.
-    final height = size * 1.25;
-    final width = height * 2.5;
+    // Hug the artwork. A fixed wide slot letterboxes a square logo.
+    final height = size * 0.78;
+    final url = paintableNetworkImageUrl(_s._logoUrl!);
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return const SizedBox.shrink();
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(
-        ShellTokens.chromeScale(8, tv: tv),
+        ShellTokens.chromeScale(6, tv: tv),
       ),
-      child: ForjaNetworkImage(
-        key: ValueKey(_s._logoUrl!),
-        url: _s._logoUrl!,
-        width: width,
+      child: Image(
+        key: ValueKey(url),
+        image: CachedNetworkImageProvider(url),
         height: height,
         fit: BoxFit.contain,
-        useOldImageOnUrlChange: false,
-        paintUnderlay: false,
-        error: const SizedBox.shrink(),
+        alignment: Alignment.centerLeft,
+        filterQuality: FilterQuality.medium,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
       ),
+    );
+  }
+
+  /// Tighter inset on the logo side of the progress row.
+  EdgeInsets _progressChromePadding(bool compact, {required double vertical}) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final end = ShellTokens.chromeScale(compact ? 16 : 24, tv: tv);
+    final start = (_s._logoUrl ?? '').isNotEmpty
+        ? ShellTokens.chromeScale(compact ? 14 : 16, tv: tv)
+        : end;
+    return EdgeInsets.fromLTRB(start, vertical, end, vertical);
+  }
+
+  Widget _progressLogoGap(bool compact) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    return SizedBox(
+      width: ShellTokens.chromeScale(compact ? 4 : 6, tv: tv),
     );
   }
 
@@ -2047,17 +2073,15 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         ? ShellTokens.playerChromeStatusFontSizeTv
         : (compact ? 12.0 : 13.0);
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: tv),
+      padding: _progressChromePadding(
+        compact,
         vertical: ShellTokens.chromeScale(compact ? 6 : 8, tv: tv),
       ),
       child: Row(
         children: [
           if ((_s._logoUrl ?? '').isNotEmpty) ...[
             _buildChannelLogo(compact),
-            SizedBox(
-              width: ShellTokens.chromeScale(compact ? 10 : 16, tv: tv),
-            ),
+            _progressLogoGap(compact),
           ],
           Container(
             width: ShellTokens.chromeScale(8, tv: tv),
@@ -2097,17 +2121,15 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     final future = _floatingEpgFuture();
     final tv = ShellPaintScope.usesTvDensityOf(context);
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: tv),
+      padding: _progressChromePadding(
+        compact,
         vertical: ShellTokens.chromeScale(compact ? 2 : 4, tv: tv),
       ),
       child: Row(
         children: [
           if ((_s._logoUrl ?? '').isNotEmpty) ...[
             _buildChannelLogo(compact),
-            SizedBox(
-              width: ShellTokens.chromeScale(compact ? 10 : 16, tv: tv),
-            ),
+            _progressLogoGap(compact),
           ],
           Expanded(
             child: future == null
@@ -2276,11 +2298,8 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             ),
           );
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: ShellTokens.chromeScale(
-          compact ? 16 : 24,
-          tv: ShellPaintScope.usesTvDensityOf(context),
-        ),
+      padding: _progressChromePadding(
+        compact,
         vertical: ShellTokens.chromeScale(
           compact ? 2 : 4,
           tv: ShellPaintScope.usesTvDensityOf(context),
@@ -2290,12 +2309,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         children: [
           if ((_s._logoUrl ?? '').isNotEmpty) ...[
             _buildChannelLogo(compact),
-            SizedBox(
-              width: ShellTokens.chromeScale(
-                compact ? 10 : 16,
-                tv: ShellPaintScope.usesTvDensityOf(context),
-              ),
-            ),
+            _progressLogoGap(compact),
           ],
           Expanded(child: track),
           SizedBox(
@@ -2417,11 +2431,8 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     }
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: ShellTokens.chromeScale(
-          compact ? 16 : 24,
-          tv: ShellPaintScope.usesTvDensityOf(context),
-        ),
+      padding: _progressChromePadding(
+        compact,
         vertical: ShellTokens.chromeScale(
           compact ? 2 : 4,
           tv: ShellPaintScope.usesTvDensityOf(context),
@@ -2431,12 +2442,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         children: [
           if ((_s._logoUrl ?? '').isNotEmpty) ...[
             _buildChannelLogo(compact),
-            SizedBox(
-              width: ShellTokens.chromeScale(
-                compact ? 10 : 16,
-                tv: ShellPaintScope.usesTvDensityOf(context),
-              ),
-            ),
+            _progressLogoGap(compact),
           ],
           Expanded(child: slider),
           SizedBox(

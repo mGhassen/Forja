@@ -28,6 +28,7 @@ import 'package:forja/shared/engine/portals/guide/guide.dart';
 import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
+import 'package:forja/shared/player/live/iptv_live_grace.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart'
     show
         LivePlaySource,
@@ -656,6 +657,9 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   static const int _maxLiveGoLiveAttemptsAtv = 1;
   static const Duration _liveGoLiveThrottle = Duration(seconds: 3);
   static const Duration _liveStableWindow = Duration(milliseconds: 1500);
+
+  /// After stop, before the next open, so a 1-connection panel drops the old socket.
+  static const Duration _liveGoLiveSlotGap = Duration(seconds: 2);
 
   Timer? _liveGraceTimer;
   Timer? _liveGoLiveTimer;
