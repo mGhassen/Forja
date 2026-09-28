@@ -1,23 +1,35 @@
-//! System DNS with Cloudflare DoH (`1.1.1.1`) fallback.
+//! System DNS and Cloudflare DoH (`1.1.1.1`) in parallel.
 //!
-//! Phone hotspots often break Android Private DNS / the carrier DNS forwarder
-//! while raw IP connectivity still works. Pack install already does this in
-//! Dart (`PackHttp`); engine / IPTV / catalog HTTP need the same path.
+//! Android Private DNS (strict `dns.google`) can hang `getaddrinfo` for its
+//! whole deadline while raw IP still works. Waiting for that failure before
+//! DoH stalls every catalog request. The probe that returns addresses first
+//! wins. A hung system lookup does not block DoH. Results are cached, and
+//! identical in-flight lookups share one probe.
+//!
+//! Dart pack HTTP uses the same rule (`PackHttp`).
 
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
-use std::sync::{Arc, LazyLock};
-use std::time::Duration;
+use std::sync::{Arc, LazyLock, Mutex};
+use std::time::{Duration, Instant};
 
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use serde::Deserialize;
 
-/// Cap system lookup — Android TV / hotspot can hang forever on getaddrinfo.
+/// Cap a single system lookup — Android TV / emulator can hang forever on getaddrinfo.
+/// Callers do not wait this out once DoH has addresses.
 pub const SYSTEM_DNS_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// After a system-DNS timeout, skip further system probes for this long.
+const SYSTEM_DNS_SKIP: Duration = Duration::from_secs(120);
+
+/// Reuse a successful lookup. Short enough that a network change recovers.
+const DNS_CACHE_TTL: Duration = Duration::from_secs(60);
 
 /// Cloudflare DNS-over-HTTPS JSON API — literal IP so we do not need recursive DNS.
 pub const DOH_URL: &str = "https://1.1.1.1/dns-query";
 
-/// reqwest resolver: system DNS first, then DoH.
+/// reqwest resolver: system DNS and DoH together. First addresses win.
 #[derive(Debug, Clone, Copy)]
 pub struct DohFallbackResolver {
     /// When true, only A records (AF_INET) — IPTV Windows DNS64 (issue 261).
@@ -53,7 +65,116 @@ impl Resolve for DohFallbackResolver {
     }
 }
 
-/// Resolve `host` via system DNS (timed), then Cloudflare DoH.
+struct Flight {
+    cache: HashMap<String, (Instant, Vec<SocketAddr>)>,
+    locks: HashMap<String, Arc<tokio::sync::Mutex<()>>>,
+    skip_system_until: Option<Instant>,
+}
+
+static FLIGHT: LazyLock<Mutex<Flight>> = LazyLock::new(|| {
+    Mutex::new(Flight {
+        cache: HashMap::new(),
+        locks: HashMap::new(),
+        skip_system_until: None,
+    })
+});
+
+#[derive(Debug)]
+enum Probe {
+    Pending,
+    Ready(Vec<SocketAddr>),
+    Failed,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum DnsChoice {
+    Use(Vec<SocketAddr>),
+    Wait,
+    GiveUp,
+}
+
+/// System addresses win when they exist. Otherwise a DoH answer is usable
+/// even while system DNS is still hung. An empty DoH answer waits for system
+/// (LAN names that public DNS does not know).
+fn choose_dns(system: &Probe, doh: &Probe) -> DnsChoice {
+    if let Probe::Ready(addrs) = system {
+        if !addrs.is_empty() {
+            return DnsChoice::Use(addrs.clone());
+        }
+    }
+    if let Probe::Ready(addrs) = doh {
+        if !addrs.is_empty() {
+            return DnsChoice::Use(addrs.clone());
+        }
+        if matches!(system, Probe::Pending) {
+            return DnsChoice::Wait;
+        }
+    }
+    if matches!(system, Probe::Pending) || matches!(doh, Probe::Pending) {
+        return DnsChoice::Wait;
+    }
+    DnsChoice::GiveUp
+}
+
+fn cache_key(host: &str, ipv4_only: bool) -> String {
+    format!(
+        "{}|{}",
+        if ipv4_only { "4" } else { "6" },
+        host.to_ascii_lowercase()
+    )
+}
+
+fn cache_get(key: &str) -> Option<Vec<SocketAddr>> {
+    let mut flight = FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
+    let Some((expires, addrs)) = flight.cache.get(key) else {
+        return None;
+    };
+    if Instant::now() >= *expires {
+        flight.cache.remove(key);
+        return None;
+    }
+    Some(addrs.clone())
+}
+
+fn cache_put(key: &str, addrs: &[SocketAddr]) {
+    if addrs.is_empty() {
+        return;
+    }
+    let mut flight = FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
+    flight
+        .cache
+        .insert(key.to_owned(), (Instant::now() + DNS_CACHE_TTL, addrs.to_vec()));
+}
+
+fn host_lock(key: &str) -> Arc<tokio::sync::Mutex<()>> {
+    let mut flight = FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
+    flight
+        .locks
+        .entry(key.to_owned())
+        .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+        .clone()
+}
+
+fn system_skipped() -> bool {
+    let flight = FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
+    match flight.skip_system_until {
+        Some(until) => Instant::now() < until,
+        None => false,
+    }
+}
+
+fn note_system_ok() {
+    let mut flight = FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
+    flight.skip_system_until = None;
+}
+
+fn note_system_timeout() {
+    let mut flight = FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
+    flight.skip_system_until = Some(Instant::now() + SYSTEM_DNS_SKIP);
+}
+
+/// Resolve `host`. System DNS and Cloudflare DoH run together; the first
+/// non-empty answer wins. A recent system-DNS timeout skips the hung probe.
 pub async fn resolve_host(
     host: &str,
     ipv4_only: bool,
@@ -77,20 +198,73 @@ pub async fn resolve_host(
         };
     }
 
-    match system_lookup(host, ipv4_only).await {
-        Ok(addrs) if !addrs.is_empty() => return Ok(addrs),
-        Ok(_) => {}
-        Err(_) => {}
+    let key = cache_key(host, ipv4_only);
+    if let Some(hit) = cache_get(&key) {
+        return Ok(hit);
+    }
+    let lock = host_lock(&key);
+    let _guard = lock.lock().await;
+    if let Some(hit) = cache_get(&key) {
+        return Ok(hit);
+    }
+    let addrs = resolve_raced(host, ipv4_only).await?;
+    cache_put(&key, &addrs);
+    Ok(addrs)
+}
+
+async fn resolve_raced(host: &str, ipv4_only: bool) -> Result<Vec<SocketAddr>, std::io::Error> {
+    if system_skipped() {
+        let via = lookup_doh(host, ipv4_only).await.unwrap_or_default();
+        if !via.is_empty() {
+            return Ok(via);
+        }
     }
 
-    let via_doh = lookup_doh(host, ipv4_only).await?;
-    if via_doh.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::AddrNotAvailable,
-            format!("no addresses for {host} (system DNS + DoH)"),
-        ));
+    let host_owned = host.to_owned();
+    let (tx, sys_rx) = tokio::sync::oneshot::channel();
+    tokio::spawn(async move {
+        let result = system_lookup(&host_owned, ipv4_only).await;
+        match &result {
+            Ok(addrs) if !addrs.is_empty() => note_system_ok(),
+            Err(e) if e.kind() == std::io::ErrorKind::TimedOut => note_system_timeout(),
+            _ => {}
+        }
+        let _ = tx.send(result);
+    });
+
+    let doh_fut = lookup_doh(host, ipv4_only);
+    tokio::pin!(sys_rx);
+    tokio::pin!(doh_fut);
+
+    let mut sys_probe = Probe::Pending;
+    let mut doh_probe = Probe::Pending;
+
+    loop {
+        tokio::select! {
+            r = &mut sys_rx, if matches!(sys_probe, Probe::Pending) => {
+                sys_probe = match r {
+                    Ok(Ok(addrs)) if !addrs.is_empty() => Probe::Ready(addrs),
+                    _ => Probe::Failed,
+                };
+            }
+            r = &mut doh_fut, if matches!(doh_probe, Probe::Pending) => {
+                doh_probe = match r {
+                    Ok(addrs) => Probe::Ready(addrs),
+                    Err(_) => Probe::Failed,
+                };
+            }
+        }
+        match choose_dns(&sys_probe, &doh_probe) {
+            DnsChoice::Use(addrs) => return Ok(addrs),
+            DnsChoice::Wait => continue,
+            DnsChoice::GiveUp => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::AddrNotAvailable,
+                    format!("no addresses for {host} (system DNS + DoH)"),
+                ));
+            }
+        }
     }
-    Ok(via_doh)
 }
 
 async fn system_lookup(host: &str, ipv4_only: bool) -> Result<Vec<SocketAddr>, std::io::Error> {
@@ -324,5 +498,36 @@ mod tests {
         let addrs = resolve_host("localhost", true).await.expect("localhost");
         assert!(addrs.iter().all(|a| a.is_ipv4()));
         assert!(!addrs.is_empty());
+    }
+
+    fn v4(octets: [u8; 4]) -> Vec<SocketAddr> {
+        vec![SocketAddr::new(IpAddr::V4(Ipv4Addr::from(octets)), 0)]
+    }
+
+    #[test]
+    fn doh_answer_does_not_wait_for_hung_system_dns() {
+        let doh = Probe::Ready(v4([1, 1, 1, 1]));
+        match choose_dns(&Probe::Pending, &doh) {
+            DnsChoice::Use(addrs) => assert_eq!(addrs[0].ip(), IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1))),
+            other => panic!("expected DoH, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn system_addresses_beat_doh() {
+        let system = Probe::Ready(v4([10, 0, 0, 2]));
+        let doh = Probe::Ready(v4([1, 1, 1, 1]));
+        match choose_dns(&system, &doh) {
+            DnsChoice::Use(addrs) => assert_eq!(addrs[0].ip(), IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2))),
+            other => panic!("expected system, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn empty_doh_waits_for_system_dns() {
+        assert_eq!(
+            choose_dns(&Probe::Pending, &Probe::Ready(Vec::new())),
+            DnsChoice::Wait
+        );
     }
 }

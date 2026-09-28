@@ -8,19 +8,26 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
 
-/// System DNS first, Cloudflare DoH (`1.1.1.1`) when lookup fails.
+/// System DNS and Cloudflare DoH (`1.1.1.1`) in parallel.
 ///
-/// Hotspots often break the phone DNS forwarder while browsers still work via
-/// DoH. Hitting DoH by literal IP bootstraps without system DNS.
+/// Android Private DNS can hang [InternetAddress.lookup] for its whole
+/// deadline while raw IP still works. The probe that returns addresses first
+/// wins. A hung system lookup does not block DoH. Results are cached, and
+/// identical in-flight lookups share one probe.
 ///
 /// Used for pack install, flutter_js host HTTP, and (via Android
 /// [HttpOverrides]) every Dart [HttpClient] including Supabase sync.
 abstract final class PackHttp {
   static const Duration defaultTimeout = Duration(seconds: 45);
 
-  /// Cap system DNS — Android TV/emulator can hang forever on lookup.
-  /// On timeout / failure we fall through to DoH.
+  /// Cap one system lookup — Android TV/emulator can hang forever on lookup.
+  /// A DoH answer is returned without waiting this out.
   static const Duration systemDnsTimeout = Duration(seconds: 5);
+
+  /// After a system-DNS timeout, skip further system probes for this long.
+  static const Duration systemDnsSkip = Duration(seconds: 120);
+
+  static const Duration dnsCacheTtl = Duration(seconds: 60);
 
   /// Cloudflare DNS-over-HTTPS (JSON) — IP so we do not need recursive DNS.
   static const String dohUrl = 'https://1.1.1.1/dns-query';
@@ -33,12 +40,35 @@ abstract final class PackHttp {
   @visibleForTesting
   static Future<List<InternetAddress>> Function(String host)? debugResolve;
 
+  /// Test hook for the system-DNS probe. Unset uses [InternetAddress.lookup].
+  @visibleForTesting
+  static Future<List<InternetAddress>> Function(String host)? debugSystemLookup;
+
+  /// Test hook for the DoH probe. Unset uses [lookupDoh].
+  @visibleForTesting
+  static Future<List<InternetAddress>> Function(String host)? debugDoh;
+
+  static final Map<String, List<InternetAddress>> _dnsCache = {};
+  static final Map<String, DateTime> _dnsCacheUntil = {};
+  static final Map<String, Future<List<InternetAddress>>> _dnsInFlight = {};
+  static DateTime? _skipSystemDnsUntil;
+
+  @visibleForTesting
+  static void debugResetDnsCache() {
+    _dnsCache.clear();
+    _dnsCacheUntil.clear();
+    _dnsInFlight.clear();
+    _skipSystemDnsUntil = null;
+    debugSystemLookup = null;
+    debugDoh = null;
+  }
+
   /// Wire system→DoH resolve into an existing [HttpClient] (SNI preserved).
   static void attachDohResolver(HttpClient client) {
     client.connectionFactory = _connect;
   }
 
-  /// Shared client: resolve each host via [resolveHost] (system → DoH).
+  /// Shared client: resolve each host via [resolveHost] (system and DoH).
   static http.Client ioClient() {
     final client = HttpClient();
     attachDohResolver(client);
@@ -149,36 +179,143 @@ abstract final class PackHttp {
     }
   }
 
-  /// System [InternetAddress.lookup], then DoH A (then AAAA) via `1.1.1.1`.
-  static Future<List<InternetAddress>> resolveHost(String host) async {
+  /// System lookup and DoH together. The first non-empty answer wins.
+  static Future<List<InternetAddress>> resolveHost(String host) {
     final debug = debugResolve;
     if (debug != null) return debug(host);
 
     // IP literals must not hit system DNS — Android hangs on lookup("1.1.1.1")
     // when Private DNS is broken, then DoH recurses into itself.
     final lit = parseLiteralIp(host);
-    if (lit != null) return [lit];
+    if (lit != null) return Future.value([lit]);
 
+    final key = host.trim().toLowerCase();
+    final until = _dnsCacheUntil[key];
+    final cached = _dnsCache[key];
+    if (until != null &&
+        cached != null &&
+        DateTime.now().isBefore(until) &&
+        cached.isNotEmpty) {
+      return Future.value(cached);
+    }
+    final inflight = _dnsInFlight[key];
+    if (inflight != null) return inflight;
+
+    final fut = _resolveAndCache(key, host);
+    _dnsInFlight[key] = fut;
+    return fut.whenComplete(() {
+      if (identical(_dnsInFlight[key], fut)) _dnsInFlight.remove(key);
+    });
+  }
+
+  static bool get _systemDnsSkipped {
+    final until = _skipSystemDnsUntil;
+    return until != null && DateTime.now().isBefore(until);
+  }
+
+  static void _noteSystemOk() {
+    _skipSystemDnsUntil = null;
+  }
+
+  static void _noteSystemTimeout(String host, Object error) {
+    final already = _systemDnsSkipped;
+    _skipSystemDnsUntil = DateTime.now().add(systemDnsSkip);
+    if (already) return;
+    debugPrint(
+      '[PackHttp] system DNS timed out ($host): $error — using DoH, '
+      'skipping system DNS for ${systemDnsSkip.inSeconds}s',
+    );
+  }
+
+  static Future<List<InternetAddress>?> _systemProbe(String host) async {
+    final debug = debugSystemLookup;
     try {
-      final addrs = await InternetAddress.lookup(host).timeout(
-        systemDnsTimeout,
-      );
-      if (addrs.isNotEmpty) return addrs;
+      final addrs = debug != null
+          ? await debug(host)
+          : await InternetAddress.lookup(host).timeout(systemDnsTimeout);
+      if (addrs.isNotEmpty) _noteSystemOk();
+      return addrs;
     } on TimeoutException catch (e) {
-      debugPrint('[PackHttp] system DNS timed out ($host): $e — trying DoH');
+      _noteSystemTimeout(host, e);
+      return null;
     } on SocketException catch (e) {
-      debugPrint('[PackHttp] system DNS failed ($host): $e — trying DoH');
+      debugPrint('[PackHttp] system DNS failed ($host): $e');
+      return null;
     } catch (e) {
-      debugPrint('[PackHttp] system DNS failed ($host): $e — trying DoH');
+      debugPrint('[PackHttp] system DNS failed ($host): $e');
+      return null;
+    }
+  }
+
+  static Future<List<InternetAddress>> _dohProbe(String host) async {
+    final debug = debugDoh;
+    if (debug != null) return debug(host);
+    final via = await lookupDoh(host);
+    if (via.isNotEmpty) {
+      debugPrint(
+        '[PackHttp] DoH resolved $host → ${via.map((a) => a.address).join(', ')}',
+      );
+    }
+    return via;
+  }
+
+  static Future<List<InternetAddress>> _resolveAndCache(
+    String key,
+    String host,
+  ) async {
+    final addrs = await _resolveRaced(host);
+    if (addrs.isNotEmpty) {
+      _dnsCache[key] = addrs;
+      _dnsCacheUntil[key] = DateTime.now().add(dnsCacheTtl);
+    }
+    return addrs;
+  }
+
+  static Future<List<InternetAddress>> _resolveRaced(String host) async {
+    if (_systemDnsSkipped) {
+      final via = await _dohProbe(host);
+      if (via.isNotEmpty) return via;
     }
 
-    final viaDoh = await lookupDoh(host);
-    if (viaDoh.isNotEmpty) {
-      debugPrint(
-        '[PackHttp] DoH resolved $host → ${viaDoh.map((a) => a.address).join(', ')}',
-      );
+    final sysDone = Completer<List<InternetAddress>?>();
+    final dohDone = Completer<List<InternetAddress>>();
+    unawaited(
+      _systemProbe(host).then((addrs) {
+        if (!sysDone.isCompleted) sysDone.complete(addrs);
+      }),
+    );
+    unawaited(
+      _dohProbe(host).then((addrs) {
+        if (!dohDone.isCompleted) dohDone.complete(addrs);
+      }).catchError((Object e) {
+        debugPrint('[PackHttp] DoH failed ($host): $e');
+        if (!dohDone.isCompleted) dohDone.complete(const <InternetAddress>[]);
+      }),
+    );
+
+    while (true) {
+      if (!sysDone.isCompleted && !dohDone.isCompleted) {
+        await Future.any<void>([
+          sysDone.future.then((_) {}),
+          dohDone.future.then((_) {}),
+        ]);
+        continue;
+      }
+      if (sysDone.isCompleted) {
+        final sys = await sysDone.future;
+        if (sys != null && sys.isNotEmpty) return sys;
+      }
+      if (dohDone.isCompleted) {
+        final doh = await dohDone.future;
+        if (doh.isNotEmpty) return doh;
+        if (!sysDone.isCompleted) {
+          final sys = await sysDone.future;
+          if (sys != null && sys.isNotEmpty) return sys;
+        }
+        return const [];
+      }
+      await dohDone.future;
     }
-    return viaDoh;
   }
 
   /// Cloudflare DNS-over-HTTPS JSON API (bootstrapped at `1.1.1.1`).
