@@ -165,11 +165,12 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     final seekbar = _showProgressChrome
         ? ShellTokens.chromeScale(compact ? 48.0 : 56.0, tv: tv)
         : 0.0;
+    // Clear the progress-row logo, then sit a little higher than the controls.
     return safeBottom +
         barPad +
         barHeight +
         seekbar +
-        ShellTokens.chromeScale(12, tv: tv);
+        ShellTokens.chromeScale(56, tv: tv);
   }
 
   void _showStatsMenu(BuildContext anchorContext) {
@@ -1998,6 +1999,9 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         : (tv
             ? ShellTokens.playerChromeProgressLogoSizeTv
             : ShellTokens.playerChromeProgressLogoSize);
+    // Wordmarks are wide. A square slot scales them down to a thin strip.
+    final height = size * 1.25;
+    final width = height * 2.5;
     return ClipRRect(
       borderRadius: BorderRadius.circular(
         ShellTokens.chromeScale(8, tv: tv),
@@ -2005,8 +2009,8 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       child: ForjaNetworkImage(
         key: ValueKey(_s._logoUrl!),
         url: _s._logoUrl!,
-        width: size,
-        height: size,
+        width: width,
+        height: height,
         fit: BoxFit.contain,
         useOldImageOnUrlChange: false,
         paintUnderlay: false,
