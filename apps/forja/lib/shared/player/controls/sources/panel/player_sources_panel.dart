@@ -39,6 +39,8 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/downloads/download_task.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -133,40 +135,62 @@ class PlayerSourcesPanel {
     final overlay = Overlay.of(context);
     _completer = Completer<void>();
     final direction = Directionality.of(context);
+    final hostScope = ShellScope.maybeOf(context);
+    final useTv = ShellTokens.isTvLayout(context) ||
+        hostScope?.profile == ShellProfile.tv;
 
-    // OverlayEntry is a sibling of the details route, so it does not inherit
-    // the pack Directionality. Copy it so an RTL details page docks this
-    // panel on the left.
+    // OverlayEntry is a sibling of the route, so it does not inherit the
+    // player ShellScope or pack Directionality. Keep the opener's profile,
+    // and force leanback density on Android TV even if that opener was
+    // captured as desktop before TV detection settled.
+    Widget shell(Widget panel) {
+      if (useTv) {
+        return ShellScope(
+          profile: ShellProfile.tv,
+          config: shellPlatformConfigFor(ShellProfile.tv),
+          child: panel,
+        );
+      }
+      if (hostScope != null) {
+        return ShellScope(
+          profile: hostScope.profile,
+          config: hostScope.config,
+          child: panel,
+        );
+      }
+      return ShellScopeBuilder(builder: (_, _) => panel);
+    }
+
     _entry = OverlayEntry(
       builder: (_) => Directionality(
         textDirection: direction,
-        child: ShellScopeBuilder(
-        builder: (context, _) => _PlayerSourcesOverlay(
-          movie: movie,
-          season: season,
-          episode: episode,
-          currentMagnet: currentMagnet,
-          currentStreamUrl: currentStreamUrl,
-          currentPlayingCatalogUrl: currentPlayingCatalogUrl,
-          currentPlayingRowKey: currentPlayingRowKey,
-          playbackConfirmed: playbackConfirmed,
-          preferredKind: preferredKind,
-          currentAddonBaseUrl: currentAddonBaseUrl,
-          open: open,
-          meta: meta,
-          malId: malId,
-          episodeVideoId: episodeVideoId,
-          pluginId: pluginId,
-          engineCategory: engineCategory,
-          preferredEnginePluginId: preferredEnginePluginId,
-          animeAudioCategory: animeAudioCategory,
-          detailsHost: detailsHost,
-          filesOnly: filesOnly,
-          onTorrentSelected: onTorrentSelected,
-          onStremioSelected: onStremioSelected,
-          onClose: dismiss,
+        child: shell(
+          _PlayerSourcesOverlay(
+            movie: movie,
+            season: season,
+            episode: episode,
+            currentMagnet: currentMagnet,
+            currentStreamUrl: currentStreamUrl,
+            currentPlayingCatalogUrl: currentPlayingCatalogUrl,
+            currentPlayingRowKey: currentPlayingRowKey,
+            playbackConfirmed: playbackConfirmed,
+            preferredKind: preferredKind,
+            currentAddonBaseUrl: currentAddonBaseUrl,
+            open: open,
+            meta: meta,
+            malId: malId,
+            episodeVideoId: episodeVideoId,
+            pluginId: pluginId,
+            engineCategory: engineCategory,
+            preferredEnginePluginId: preferredEnginePluginId,
+            animeAudioCategory: animeAudioCategory,
+            detailsHost: detailsHost,
+            filesOnly: filesOnly,
+            onTorrentSelected: onTorrentSelected,
+            onStremioSelected: onStremioSelected,
+            onClose: dismiss,
+          ),
         ),
-      ),
       ),
     );
 

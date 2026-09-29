@@ -42,7 +42,7 @@ The header is a storage meter: offline library vs other space on the volume vs f
 
 ## Downloads tab
 
-Each finished title is a poster card. Open it and that card stays marked.
+Each finished title is a poster card. It appears when the save finishes, including when Downloads is already open. Open it and that card stays marked.
 The panel starts at the top of the page, beside the kind menu, with a rounded
 top-left. It shows the backdrop, the title logo when there is one, the year,
 and a short synopsis. A series lists saved episodes under a season menu. Each

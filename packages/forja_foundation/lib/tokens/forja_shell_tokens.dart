@@ -1842,21 +1842,28 @@ abstract final class ShellTokens {
   /// Set at boot by [PlatformChannel.initialize] when native leanback reports TV.
   static bool nativeAndroidTvDetected = false;
 
-  /// Android TV / leanback: native leanback detection or 1080p+ landscape panel.
+  /// Android TV / leanback: native leanback detection or a landscape TV panel.
   static bool get isAndroidTvDevice {
     if (!Platform.isAndroid) return false;
     if (nativeAndroidTvDetected) return true;
     final physical = _androidTvPhysicalSize();
     if (physical == null) return false;
-    return physical.shortestSide >= 1080 && physical.width > physical.height;
+    if (physical.width <= physical.height) return false;
+    // 16:9 TV panels only — a 16:10 tablet (1280×800) stays off this path.
+    if (physical.width / physical.height < 1.7) return false;
+    // 1080p, or 720p (1280×720) when the leanback channel did not answer.
+    return physical.shortestSide >= 720 && physical.longestSide >= 1280;
   }
 
   static bool isTvLayout(BuildContext context) {
     if (isAndroidTvDevice) return true;
     if (!Platform.isAndroid) return false;
     final size = MediaQuery.sizeOf(context);
+    if (size.width <= size.height) return false;
+    // 1080p at xhdpi is 960×540 — shortest side is under the 600 tablet gate.
+    if (size.width >= 960 && size.height >= 480) return true;
     if (size.shortestSide < 600) return false;
-    return size.longestSide >= 960 && size.width > size.height;
+    return size.longestSide >= 960;
   }
 
   static Size? _androidTvPhysicalSize() {

@@ -49,7 +49,9 @@ abstract final class PlatformChannel {
     final views = SchedulerBinding.instance.platformDispatcher.views;
     if (views.isEmpty) return false;
     final physical = views.first.physicalSize;
-    return physical.shortestSide >= 1080 && physical.width > physical.height;
+    if (physical.width <= physical.height) return false;
+    if (physical.width / physical.height < 1.7) return false;
+    return physical.shortestSide >= 720 && physical.longestSide >= 1280;
   }
 
   static Future<void> initialize() async {

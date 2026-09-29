@@ -58,6 +58,31 @@ void main() {
     expect(width, lessThan(ShellTokens.playerSidePanelWidth));
   });
 
+  testWidgets('TV side panel stays leanback width under the phone cutoff', (
+    tester,
+  ) async {
+    late double width;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(640, 360)),
+          child: shellPaintHostScope(
+            inputPolicy: ShellInputPolicy.tv,
+            metrics: ShellMetrics.tv,
+            child: Builder(
+              builder: (context) {
+                width = TorrentSourcesPanel.panelWidthOf(context);
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(width, ShellTokens.playerSidePanelWidthTv);
+    expect(width, lessThan(640 * 0.92));
+  });
+
   testWidgets('filter panel width densifies under TV ShellPaintScope', (
     tester,
   ) async {

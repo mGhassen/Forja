@@ -93,6 +93,12 @@ class DownloadService {
 
   final ValueNotifier<List<DownloadTask>> tasksNotifier =
       ValueNotifier<List<DownloadTask>>([]);
+
+  /// Finished-title set changed (a save completed, or a completed file left
+  /// that set). The Downloads hub reloads from this so a keep-alive tab does
+  /// not stay on the empty grid.
+  static final ValueNotifier<int> libraryRevision = ValueNotifier<int>(0);
+
   bool _isInitialized = false;
   Completer<void>? _initCompleter;
 
@@ -222,13 +228,17 @@ class DownloadService {
     final idx = current.indexWhere((t) => t.id == updated.id);
     final prev = idx != -1 ? current[idx] : null;
     final statusChanged = prev == null || prev.status != updated.status;
+    final libraryChanged = statusChanged &&
+        (updated.isCompleted || (prev?.isCompleted ?? false));
     // Byte progress while downloading — keep UI live, throttle disk JSON.
     final progressOnly =
         !statusChanged && updated.status == DownloadStatus.downloading;
 
+    var wrote = false;
     if (idx != -1) {
       current[idx] = updated;
       tasksNotifier.value = current;
+      wrote = true;
       if (progressOnly) {
         _scheduleProgressPersist();
       } else {
@@ -239,6 +249,7 @@ class DownloadService {
       // HTTP/HLS transfer was still running.
       current.insert(0, updated);
       tasksNotifier.value = current;
+      wrote = true;
       _persistTasksNow();
       debugPrint(
         '[DownloadService] Re-attached orphaned task ${updated.id} '
@@ -246,6 +257,9 @@ class DownloadService {
       );
     }
     _updateWakelockState();
+    if (wrote && libraryChanged) {
+      libraryRevision.value++;
+    }
   }
 
   void _updateWakelockState() {

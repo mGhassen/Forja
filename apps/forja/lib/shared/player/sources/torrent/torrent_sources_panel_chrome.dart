@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/sources/torrent/torrent_source_filters.dart';
 import 'package:forja_foundation/widgets/feedback/loading_dots.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -589,23 +593,76 @@ class _KindTab extends StatefulWidget {
 }
 
 class _KindTabState extends State<_KindTab> {
+  static const _reloadHold = Duration(seconds: 2);
+
   final _tabFocus = FocusNode(debugLabel: 'sources-kind-tab');
-  final _reloadFocus = FocusNode(debugLabel: 'sources-kind-reload');
 
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   final ValueNotifier<bool> _reloadHoveredN = ValueNotifier(false);
   final ValueNotifier<bool> _busyHoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _reloadFocused = false;
+  bool _holding = false;
+  bool _longPressFired = false;
+  Timer? _holdTimer;
+  LogicalKeyboardKey? _holdActivateKey;
 
   @override
   void dispose() {
+    _holdTimer?.cancel();
     _hoveredN.dispose();
     _reloadHoveredN.dispose();
     _busyHoveredN.dispose();
     _tabFocus.dispose();
-    _reloadFocus.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _KindTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.onReload == null) _clearHold();
+  }
+
+  void _clearHold() {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    _holdActivateKey = null;
+    _holding = false;
+    _longPressFired = false;
+  }
+
+  void _startHold() {
+    if (widget.onReload == null) return;
+    _holdTimer?.cancel();
+    _longPressFired = false;
+    setState(() => _holding = true);
+    _holdTimer = Timer(_reloadHold, () {
+      if (!mounted) return;
+      _longPressFired = true;
+      setState(() => _holding = false);
+      widget.onReload?.call();
+    });
+  }
+
+  /// TV: → stays on the next category tab. Hold OK 2s to reload this one.
+  KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
+    if (widget.onReload == null) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (!shellTvIsActivateLogicalKey(key)) return KeyEventResult.ignored;
+    if (event is KeyDownEvent) {
+      _holdActivateKey = key;
+      _startHold();
+      return KeyEventResult.handled;
+    }
+    if (event is KeyRepeatEvent && _holdActivateKey == key) {
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent && _holdActivateKey == key) {
+      final fired = _longPressFired;
+      setState(_clearHold);
+      if (!fired) widget.onTap();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   void _setHovered(bool hovered) {
@@ -629,7 +686,6 @@ class _KindTabState extends State<_KindTab> {
 
   Widget _buildTabFace(
     bool hovered,
-    bool reloadHovered,
     bool busyHovered,
   ) {
     final metrics = ShellScope.metricsOf(context);
@@ -637,17 +693,14 @@ class _KindTabState extends State<_KindTab> {
     final selected = widget.selected;
     final policy = ShellScope.inputPolicyOf(context);
     final tv = SourcesPanelTv.isTv(context);
-    // Tab label greens only when the tab itself is focused — not the reload.
     final tabFocusStyled = policy.focusStyled(context, focused: _focused);
-    final emphasize = selected || hovered || tabFocusStyled || _reloadFocused;
-    final color = _reloadFocused
-        ? cinematic.textPrimary
-        : (hovered || tabFocusStyled)
-            ? ForjaShellColors.brandGreen
-            : (selected ? cinematic.textPrimary : cinematic.textSecondary);
+    final emphasize = selected || hovered || tabFocusStyled;
+    final color = (hovered || tabFocusStyled)
+        ? ForjaShellColors.brandGreen
+        : (selected ? cinematic.textPrimary : cinematic.textSecondary);
     final indicatorColor = selected
         ? ForjaShellColors.brandGreen
-        : (hovered || tabFocusStyled || _reloadFocused
+        : (hovered || tabFocusStyled
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
               : Colors.transparent);
     final tabFont = metrics.torrentPanelRowTitleFontSize;
@@ -718,7 +771,7 @@ class _KindTabState extends State<_KindTab> {
       padding: EdgeInsets.fromLTRB(tabPadH, 0, tabPadH, 0),
       transform: Matrix4.translationValues(
         0,
-        (hovered || tabFocusStyled || _reloadFocused) && !selected ? -0.5 : 0,
+        (hovered || tabFocusStyled) && !selected ? -0.5 : 0,
         0,
       ),
       transformAlignment: Alignment.center,
@@ -748,12 +801,12 @@ class _KindTabState extends State<_KindTab> {
     final selected = widget.selected;
     final indicatorColor = selected
         ? ForjaShellColors.brandGreen
-        : (hovered || _focused || _reloadFocused
+        : (hovered || _focused
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
               : Colors.transparent);
-    // Reload greens only when it owns focus/hover — idle next to a focused tab
-    // stays muted so the label alone reads as the focus target.
-    final reloadColor = (_reloadFocused || reloadHovered)
+    // Reload greens on hover, or while OK is held on TV. Idle next to a
+    // focused tab stays muted so the label alone reads as the focus target.
+    final reloadColor = (_holding || reloadHovered)
         ? ForjaShellColors.brandGreen
         : cinematic.textSecondary;
     final reloadIconSize = ShellScope.metricsOf(context).torrentPanelMetaIconSize;
@@ -783,7 +836,7 @@ class _KindTabState extends State<_KindTab> {
             opacity: 1,
             duration: const Duration(milliseconds: 160),
             child: AnimatedRotation(
-              turns: reloadHovered || _reloadFocused ? 0.5 : 0,
+              turns: reloadHovered || _holding ? 0.5 : 0,
               duration: const Duration(milliseconds: 320),
               curve: Curves.easeOutCubic,
               child: Icon(
@@ -796,24 +849,10 @@ class _KindTabState extends State<_KindTab> {
         ),
       ),
     );
-    if (!tv) {
-      return GestureDetector(
-        onTap: widget.onReload,
-        behavior: HitTestBehavior.opaque,
-        child: reloadIcon,
-      );
-    }
-    return shellFocusableTap(
-      context: context,
-      focusNode: _reloadFocus,
+    // Not a D-pad stop. → moves to the next tab; hold OK 2s reloads.
+    return GestureDetector(
       onTap: widget.onReload,
-      borderRadius: 0,
-      scaleOnFocus: 1.0,
-      suppressInkHover: true,
-      showFocusFill: false,
-      showFocusBorder: false,
-      onLeftEdge: () => _tabFocus.requestFocus(),
-      onFocusChange: (focused) => setState(() => _reloadFocused = focused),
+      behavior: HitTestBehavior.opaque,
       child: reloadIcon,
     );
   }
@@ -836,14 +875,15 @@ class _KindTabState extends State<_KindTab> {
           final reloadHovered = _reloadHoveredN.value;
           final busyHovered = _busyHoveredN.value;
           final showReload = widget.onReload != null &&
-              (hovered || _focused || _reloadFocused || reloadHovered);
+              (hovered || _focused || _holding || reloadHovered);
+          final holdReload = tv && widget.onReload != null;
           return Row(
             children: [
               Expanded(
                 child: shellFocusableTap(
                   context: context,
                   focusNode: _tabFocus,
-                  onTap: widget.onTap,
+                  onTap: holdReload ? null : widget.onTap,
                   borderRadius: 0,
                   scaleOnFocus: 1.0,
                   suppressInkHover: true,
@@ -851,14 +891,15 @@ class _KindTabState extends State<_KindTab> {
                   tvTabId: SourcesPanelTv.tabId,
                   tvRowId: SourcesPanelTv.kindRowId,
                   tvItemIndex: widget.tvItemIndex,
-                  onRightEdge: !tv || !showReload
-                      ? null
-                      : () => _reloadFocus.requestFocus(),
-                  onFocusChange: (focused) =>
-                      setState(() => _focused = focused),
+                  onKeyEvent: holdReload ? _onTvKey : null,
+                  onFocusChange: (focused) {
+                    setState(() {
+                      _focused = focused;
+                      if (!focused) _clearHold();
+                    });
+                  },
                   child: _buildTabFace(
                     hovered,
-                    reloadHovered,
                     busyHovered,
                   ),
                 ),

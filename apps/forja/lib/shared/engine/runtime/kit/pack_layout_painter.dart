@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
@@ -112,6 +113,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   /// Bumped when a pack reload flags this hub, so an in-flight layout
   /// waiting on install idle cannot continue and mark the tab fresh.
   int _layoutGen = 0;
+  /// A save finished before this hub's layout was known. Reload once the
+  /// offline grid is in the tree.
+  bool _downloadLibraryDirty = false;
 
   String get _pageKey => widget.tabId?.trim() ?? '';
 
@@ -132,6 +136,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     _scroll.addListener(_publishScroll);
     PluginRegistry.hubFeedEpoch.addListener(_onHubFeedEpoch);
     listFeedEpochListenable.addListener(_onListFeedEpoch);
+    DownloadService.libraryRevision.addListener(_onDownloadLibrary);
     // Reset chrome scroll fade after mount — never from dispose (finalizeTree
     // locks the tree; notifying KitChromeTopBar asserts and can blank the hub).
     final tab = widget.tabId?.trim();
@@ -224,6 +229,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     _filterListenable?.removeListener(_onChromeFiltersChanged);
     PluginRegistry.hubFeedEpoch.removeListener(_onHubFeedEpoch);
     listFeedEpochListenable.removeListener(_onListFeedEpoch);
+    DownloadService.libraryRevision.removeListener(_onDownloadLibrary);
     _scroll.removeListener(_publishScroll);
     _scroll.dispose();
     _selectedListItem.dispose();
@@ -390,6 +396,38 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _scroll.jumpTo(0);
     }
     await _loadPage(force: force, keepPainted: !clearPaint);
+  }
+
+  bool _layoutIsOfflineLibrary() {
+    var found = false;
+    walkLayoutWidgets(_widgets, (spec) {
+      if (found) return;
+      if ((spec['panel'] ?? '').toString().trim() == 'offline') {
+        found = true;
+      }
+    });
+    return found;
+  }
+
+  /// Keep-alive hubs do not refetch just because the tab is shown again.
+  /// A finished save has to bump this hub or the grid stays empty.
+  void _onDownloadLibrary() {
+    if (!mounted) return;
+    if (!_layoutIsOfflineLibrary()) {
+      _downloadLibraryDirty = true;
+      return;
+    }
+    _reloadOfflineLibrary();
+  }
+
+  void _reloadOfflineLibrary() {
+    if (!mounted || !_layoutIsOfflineLibrary()) return;
+    _downloadLibraryDirty = false;
+    if (!shellTabVisible) {
+      _deferHubUntilOpened(forceNetwork: true);
+      return;
+    }
+    unawaited(_applyHubFeedSoftReload(forceNetwork: true));
   }
 
   /// Bookmark / Simkl list write — only hubs with a status-tab list (My List).
@@ -604,6 +642,16 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _pageFeedError = feedError;
       _rowPrefetch.reset();
       initLayoutTabSelections(_layoutSelections, widgets);
+      if (_downloadLibraryDirty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_downloadLibraryDirty) return;
+          if (!_layoutIsOfflineLibrary()) {
+            _downloadLibraryDirty = false;
+            return;
+          }
+          _reloadOfflineLibrary();
+        });
+      }
       // Remembered view (List/Cards/EPG) wins over pack default (seeded above).
       final remembered = _viewStyle.trim();
       if (remembered == 'list' ||

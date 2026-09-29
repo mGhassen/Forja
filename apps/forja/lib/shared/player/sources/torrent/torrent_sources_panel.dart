@@ -37,13 +37,18 @@ class TorrentSourcesPanel extends StatelessWidget {
 
   static double panelWidthOf(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
+    final tv = ShellTokens.isTvLayout(context) ||
+        ShellPaintScope.usesTvDensityOf(context);
+    // Leanback keeps the side-panel width. The phone 92% sheet is for a
+    // narrow window that is not a TV (a 720p TV is under that cutoff).
+    if (tv) {
+      final width = ShellTokens.playerSidePanelWidthTv;
+      return screenWidth < width ? screenWidth : width;
+    }
     if (screenWidth < ShellTokens.playerSidePanelNarrowMaxWidth) {
       return screenWidth * 0.92;
     }
-    return ShellTokens.chromeScale(
-      ShellTokens.playerSidePanelWidth,
-      tv: ShellPaintScope.usesTvDensityOf(context),
-    );
+    return ShellTokens.playerSidePanelWidth;
   }
 
   static double filterPanelWidthOf(BuildContext context) {
