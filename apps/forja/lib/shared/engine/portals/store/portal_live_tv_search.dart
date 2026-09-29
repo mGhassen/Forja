@@ -180,7 +180,7 @@ abstract final class PortalLiveTvSearch {
         return raw is List ? raw.length : 0;
       }();
       debugPrint(
-        '[PortalLiveTvSearch] start portal=${verified.key} '
+        '[PortalLiveTvSearch] start url=${portal.url} '
         'title="${game['title']}" teams="${game['homeTeam']}"/'
         '"${game['awayTeam']}" broadcasts=$broadcastCount',
       );
@@ -210,9 +210,11 @@ abstract final class PortalLiveTvSearch {
       final fastRaw = await runLiveSportsFetchJson(
         jsonEncode({...requestBase, 'skip_epg': true}),
       );
-      if (dead()) return const [];
       final fastParsed = _decode(fastRaw);
-      if (_cancelled(fastParsed)) return const [];
+      if (_cancelled(fastParsed)) {
+        debugPrint('[PortalLiveTvSearch] fast cancelled');
+        return accumulated;
+      }
       if (fastParsed.containsKey('error')) {
         debugPrint('[PortalLiveTvSearch] fast error: ${fastParsed['error']}');
       } else {
@@ -223,6 +225,15 @@ abstract final class PortalLiveTvSearch {
         merge(fast);
         trackExclude(fast);
         debugPrint('[PortalLiveTvSearch] fast hits=${fast.length}');
+      }
+      if (dead()) return accumulated;
+      // Guide names already hit. Don't hold the panel for a full EPG scan.
+      if (accumulated.isNotEmpty) {
+        debugPrint('[PortalLiveTvSearch] done hits=${accumulated.length}');
+        final enriched = await _ensureLogos(accumulated, verified.key);
+        if (dead()) return enriched;
+        _cachePut(cacheKey, enriched);
+        return enriched;
       }
 
       var epgOffset = 0;

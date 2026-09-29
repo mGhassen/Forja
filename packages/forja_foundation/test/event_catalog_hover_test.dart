@@ -1,83 +1,65 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
-import 'package:forja_foundation/widgets/catalog/event_catalog_hover.dart';
+import 'package:forja_foundation/widgets/catalog/event_card.dart';
 
 void main() {
-  testWidgets('catalog list stays hidden until 2s hover', (tester) async {
-    var armed = false;
-    Future<void> pump() {
-      return tester.pumpWidget(
-        MaterialApp(
-          home: EventCatalogHover(
-            catalogs: const ['PPV', 'ESPN'],
-            armed: armed,
-            child: const SizedBox(width: 120, height: 48, child: Text('Match')),
-          ),
-        ),
-      );
-    }
-
-    await pump();
-    expect(find.text('PPV'), findsNothing);
-
-    armed = true;
-    await pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('PPV'), findsNothing);
-
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Catalogs'), findsOneWidget);
-    expect(find.text('PPV'), findsOneWidget);
-    expect(find.text('ESPN'), findsOneWidget);
-
-    armed = false;
-    await pump();
-    await tester.pump();
-    expect(find.text('PPV'), findsNothing);
-  });
-
-  testWidgets('schedule list shows merged catalogs after a 2s hover', (
+  testWidgets('merged catalogs replace the inside of the event card', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(800, 600));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 480,
-            height: 320,
-            child: CatalogCardsGrid(
-              cardKind: 'list',
-              items: const [
-                {
-                  'id': 'm1',
-                  'paint': {
-                    'props': {
-                      'title': 'Arsenal vs Chelsea',
-                      'catalogs': ['PPV', 'StreamFree'],
-                    },
-                  },
-                },
-              ],
-            ),
-          ),
+      const MaterialApp(
+        home: EventCard(
+          title: 'Finland vs Belarus',
+          width: 280,
+          height: 160,
+          homeTeam: 'Finland',
+          awayTeam: 'Belarus',
+          live: true,
+          categoryLabel: 'Football',
+          viewers: 468,
+          showCatalogs: true,
+          catalogs: [
+            'Streamed',
+            'PPV',
+            'Live Soccer TV',
+            'LiveOnSat',
+            'StreamFree',
+            'Streamic',
+            'WatchFooty',
+          ],
         ),
       ),
     );
 
-    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    await gesture.addPointer();
-    await gesture.moveTo(tester.getCenter(find.text('Arsenal vs Chelsea')));
-    await tester.pump();
-    await tester.pump();
-    expect(find.text('StreamFree'), findsNothing);
-
-    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('Finland vs Belarus'), findsNothing);
+    expect(find.text('FOOTBALL'), findsNothing);
+    expect(find.text('● LIVE'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(EventCard),
+        matching: find.byType(ListView),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('PPV'), findsOneWidget);
-    expect(find.text('StreamFree'), findsOneWidget);
+    expect(find.text('WatchFooty'), findsOneWidget);
+  });
+
+  testWidgets('event card keeps the match face until catalogs are shown', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: EventCard(
+          title: 'Finland vs Belarus',
+          width: 280,
+          height: 160,
+          catalogs: ['PPV', 'StreamFree'],
+        ),
+      ),
+    );
+
+    expect(find.text('Finland vs Belarus'), findsOneWidget);
+    expect(find.text('PPV'), findsNothing);
   });
 }

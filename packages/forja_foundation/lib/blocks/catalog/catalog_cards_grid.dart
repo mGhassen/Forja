@@ -437,7 +437,6 @@ class CatalogCardsGrid extends StatelessWidget {
             meta: meta,
             airing: live,
             viewers: viewers,
-            catalogs: eventCatalogLabels(props['catalogs']),
             selected:
                 selectedItemId != null &&
                 selectedItemId!.isNotEmpty &&
@@ -1367,9 +1366,12 @@ class InteractiveEventCard extends StatefulWidget {
 class _InteractiveEventCardState extends State<InteractiveEventCard> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
+  bool _showCatalogs = false;
+  Timer? _catalogTimer;
 
   @override
   void dispose() {
+    _catalogTimer?.cancel();
     _hoveredN.dispose();
     super.dispose();
   }
@@ -1377,6 +1379,22 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
   void _setHovered(bool h) {
     if (_hoveredN.value == h) return;
     _hoveredN.value = h;
+    _armCatalogs(h || _focused);
+  }
+
+  void _armCatalogs(bool armed) {
+    final catalogs = eventCatalogLabels(widget.props['catalogs']);
+    if (!armed || catalogs.isEmpty) {
+      _catalogTimer?.cancel();
+      _catalogTimer = null;
+      if (_showCatalogs) setState(() => _showCatalogs = false);
+      return;
+    }
+    if (_showCatalogs || _catalogTimer != null) return;
+    _catalogTimer = Timer(EventCardTokens.catalogHoverDelay, () {
+      if (!mounted) return;
+      setState(() => _showCatalogs = true);
+    });
   }
 
   Widget _buildPaint(bool hovered) {
@@ -1425,13 +1443,11 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
               iconSize: playIcon,
             )
           : null,
+      catalogs: eventCatalogLabels(props['catalogs']),
+      showCatalogs: _showCatalogs,
     );
 
-    return EventCatalogHover(
-      catalogs: eventCatalogLabels(props['catalogs']),
-      armed: hovered || _focused,
-      child: paint,
-    );
+    return paint;
   }
 
   @override
@@ -1448,7 +1464,10 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
       onUpEdge: widget.onUpEdge,
-      onFocusChange: (f) => setState(() => _focused = f),
+      onFocusChange: (f) {
+        setState(() => _focused = f);
+        _armCatalogs(_hoveredN.value || f);
+      },
       onHoverChange: _setHovered,
       child: ListenableBuilder(
         listenable: _hoveredN,
@@ -1465,7 +1484,6 @@ class _HoverDenseTile extends StatefulWidget {
     required this.airing,
     required this.viewers,
     required this.selected,
-    this.catalogs = const [],
     this.listIndex,
     this.onLeftEdge,
     this.onRightEdge,
@@ -1478,7 +1496,6 @@ class _HoverDenseTile extends StatefulWidget {
   final bool airing;
   final int viewers;
   final bool selected;
-  final List<String> catalogs;
   final int? listIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -1509,19 +1526,15 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
     });
   }
 
-  Widget _buildTile(bool hovered) => EventCatalogHover(
-    catalogs: widget.catalogs,
-    armed: hovered || _focused,
-    child: EventDenseTile(
-      title: widget.title,
-      meta: widget.meta,
-      airing: widget.airing,
-      viewers: widget.viewers,
-      selected: widget.selected,
-      hovered: hovered,
-      focused: _focused,
-      onTap: null,
-    ),
+  Widget _buildTile(bool hovered) => EventDenseTile(
+    title: widget.title,
+    meta: widget.meta,
+    airing: widget.airing,
+    viewers: widget.viewers,
+    selected: widget.selected,
+    hovered: hovered,
+    focused: _focused,
+    onTap: null,
   );
 
   @override

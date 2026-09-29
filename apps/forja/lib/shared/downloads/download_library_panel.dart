@@ -388,6 +388,7 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
       context: context,
       onTap: () => unawaited(_play(task)),
       borderRadius: 10,
+      scaleOnFocus: 1.0,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: ForjaShellColors.surfaceElevated,

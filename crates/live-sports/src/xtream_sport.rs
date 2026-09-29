@@ -343,7 +343,7 @@ fn skeleton_candidate(
     s: &Value,
     cats: &HashMap<String, String>,
 ) -> Option<Candidate> {
-    let stream_id = field_str(s, &["stream_id"]);
+    let stream_id = field_str(s, &["stream_id", "streamId", "id"]);
     if stream_id.is_empty() {
         return None;
     }

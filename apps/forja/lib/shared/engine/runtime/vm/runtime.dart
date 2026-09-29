@@ -2821,18 +2821,10 @@ class EngineRuntime {
 
   static const _hostJs = r'''
 (function(){
-  if (typeof atob === 'undefined') {
-    globalThis.atob = function(input) {
-      var str = String(input).replace(/[\t\n\f\r ]+/g, '');
-      var map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-      var output = '', bc = 0, bs = 0, buffer, idx = 0;
-      for (; (buffer = str.charAt(idx++)); ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer, bc++ % 4)
-        ? output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))) : 0) {
-        buffer = map.indexOf(buffer);
-      }
-      return output;
-    };
-  }
+  // atob lives in engine polyfills (installed after this script). A host
+  // copy that maps '=' (index 64) as data appends a junk byte on padded
+  // payloads. Streamed GOAT bodies are 263 bytes — that byte makes
+  // set_stream_jw reject.
   if (typeof btoa === 'undefined') {
     globalThis.btoa = function(input) {
       var str = String(input), output = '', map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';

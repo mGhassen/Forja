@@ -4,8 +4,10 @@ use axum::{
     http::{header, HeaderMap, Method, StatusCode},
     response::Response,
 };
+use flate2::read::{GzDecoder, ZlibDecoder};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::io::Read;
 
 use crate::{forward_response, parse_custom_headers, ProxyState};
 
@@ -22,6 +24,12 @@ pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
     }
     if raw[0] != 0x89 || raw[1] != 0x50 || raw[2] != 0x4E || raw[3] != 0x47 {
         return raw.to_vec();
+    }
+    // Daddy / Streamic: MPEG-TS gzipped into RGB pixels (magic TIKTIKPX),
+    // not appended after IEND. Must run before the IEND scan — compressed
+    // IDAT can contain the ASCII "IEND" and that scan would return junk.
+    if let Some(ts) = png_pixel_ts(raw) {
+        return ts;
     }
     let mut idx = None;
     for i in 8..raw.len().saturating_sub(8) {
@@ -56,6 +64,138 @@ pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
         return raw[252..].to_vec();
     }
     raw.to_vec()
+}
+
+/// `TIKTIKPX` — MPEG-TS gzip stored in reconstructed RGB (Streamic / daddy).
+const TIKTIK_PX: &[u8] = b"TIKTIKPX";
+
+fn paeth(a: u8, b: u8, c: u8) -> u8 {
+    let a = a as i16;
+    let b = b as i16;
+    let c = c as i16;
+    let p = a + b - c;
+    let pa = (p - a).abs();
+    let pb = (p - b).abs();
+    let pc = (p - c).abs();
+    if pa <= pb && pa <= pc {
+        a as u8
+    } else if pb <= pc {
+        b as u8
+    } else {
+        c as u8
+    }
+}
+
+/// Decode a PNG whose RGB pixels start with `TIKTIKPX`, a big-endian length,
+/// and a gzip of MPEG-TS. Matches the daddy player `unwrapPixels` path.
+fn png_pixel_ts(raw: &[u8]) -> Option<Vec<u8>> {
+    if raw.len() < 8 || raw[0] != 0x89 || raw[1] != 0x50 {
+        return None;
+    }
+    let mut off = 8usize;
+    let mut w = 0u32;
+    let mut h = 0u32;
+    let mut depth = 0u8;
+    let mut ctype = 0u8;
+    let mut interlace = 0u8;
+    let mut idat = Vec::new();
+    while off + 8 <= raw.len() {
+        let len = u32::from_be_bytes(raw.get(off..off + 4)?.try_into().ok()?) as usize;
+        if off + 12 + len > raw.len() {
+            return None;
+        }
+        let typ = raw.get(off + 4..off + 8)?;
+        let data = raw.get(off + 8..off + 8 + len)?;
+        if typ == b"IHDR" {
+            if data.len() < 13 {
+                return None;
+            }
+            w = u32::from_be_bytes(data[0..4].try_into().ok()?);
+            h = u32::from_be_bytes(data[4..8].try_into().ok()?);
+            depth = data[8];
+            ctype = data[9];
+            interlace = data[12];
+        } else if typ == b"IDAT" {
+            idat.extend_from_slice(data);
+        } else if typ == b"IEND" {
+            break;
+        }
+        off += 12 + len;
+    }
+    if w == 0 || h == 0 || depth != 8 || interlace != 0 || (ctype != 2 && ctype != 6) {
+        return None;
+    }
+    let bpp: usize = if ctype == 6 { 4 } else { 3 };
+    let stride = (w as usize).checked_mul(bpp)?;
+    let rgb_len = (w as usize).checked_mul(h as usize)?.checked_mul(3)?;
+    // Live segments are a few MB. Reject anything that would balloon.
+    if stride == 0 || rgb_len == 0 || rgb_len > 32 * 1024 * 1024 {
+        return None;
+    }
+    let mut inflated = Vec::new();
+    ZlibDecoder::new(&idat[..])
+        .read_to_end(&mut inflated)
+        .ok()?;
+    let mut rgb = vec![0u8; rgb_len];
+    let mut src = 0usize;
+    let mut dst = 0usize;
+    let mut prev = vec![0u8; stride];
+    for _y in 0..h as usize {
+        if src + 1 + stride > inflated.len() {
+            return None;
+        }
+        let filter = inflated[src];
+        src += 1;
+        let row = &inflated[src..src + stride];
+        src += stride;
+        let mut recon = vec![0u8; stride];
+        for i in 0..stride {
+            let left = if i >= bpp { recon[i - bpp] } else { 0 };
+            let up = prev[i];
+            let up_left = if i >= bpp { prev[i - bpp] } else { 0 };
+            let mut v = row[i] as u16;
+            match filter {
+                0 => {}
+                1 => v += left as u16,
+                2 => v += up as u16,
+                3 => v += (left as u16 + up as u16) >> 1,
+                4 => v += paeth(left, up, up_left) as u16,
+                _ => return None,
+            }
+            recon[i] = (v & 255) as u8;
+        }
+        if ctype == 2 {
+            rgb[dst..dst + stride].copy_from_slice(&recon);
+            dst += stride;
+        } else {
+            let mut i = 0;
+            while i + 3 < stride {
+                rgb[dst] = recon[i];
+                rgb[dst + 1] = recon[i + 1];
+                rgb[dst + 2] = recon[i + 2];
+                dst += 3;
+                i += 4;
+            }
+        }
+        prev = recon;
+    }
+    if rgb.len() < 12 || &rgb[..8] != TIKTIK_PX {
+        return None;
+    }
+    let n = u32::from_be_bytes(rgb.get(8..12)?.try_into().ok()?) as usize;
+    if n == 0 || 12 + n > rgb.len() {
+        return None;
+    }
+    let gz = rgb.get(12..12 + n)?;
+    if gz.len() < 2 || gz[0] != 0x1f || gz[1] != 0x8b {
+        return None;
+    }
+    let mut ts = Vec::new();
+    GzDecoder::new(gz).read_to_end(&mut ts).ok()?;
+    if ts.first() != Some(&0x47) {
+        return None;
+    }
+    Some(ts)
 }
 
 /// True when bytes are a PNG that wraps MPEG-TS (Megaplay anti-scraper).
@@ -473,7 +613,19 @@ pub async fn hls_proxy_handler(
         }
     }
 
-    let req = build_hls_upstream_request(&state, method.clone(), &target_url, &custom, &headers)?;
+    // Picture-shelled segments (strip=png) must be fetched whole. A Range
+    // probe returns a partial PNG that cannot be inflated.
+    let mut fetch_headers = headers.clone();
+    if strip == Some("png") {
+        fetch_headers.remove(header::RANGE);
+    }
+    let req = build_hls_upstream_request(
+        &state,
+        method.clone(),
+        &target_url,
+        &custom,
+        &fetch_headers,
+    )?;
     let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
 
     let status = resp.status();
@@ -537,8 +689,14 @@ pub async fn hls_proxy_handler(
         } else {
             "application/octet-stream"
         };
+        // Unwrapped bodies are the full segment, not the client's Range.
+        let out_status = if status.is_success() {
+            StatusCode::OK
+        } else {
+            status
+        };
         return Response::builder()
-            .status(status)
+            .status(out_status)
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .header(header::ACCEPT_RANGES, "bytes")
             .header(header::CONNECTION, "keep-alive")
@@ -772,6 +930,59 @@ https://cdn.example/lumeflow/y.png
         assert!(hls_playlist_is_image_bait(
             "#EXTM3U\n#EXTINF:4,\nhttps://cdn.example/anon/seg.png\n"
         ));
+    }
+
+    #[test]
+    fn strip_png_unwraps_tiktok_pixel_gzip() {
+        let ts = {
+            let mut v = vec![0x47u8];
+            v.extend(std::iter::repeat_n(0u8, 187));
+            v.push(0x47);
+            v
+        };
+        let gz = {
+            use flate2::write::GzEncoder;
+            use flate2::Compression;
+            use std::io::Write;
+            let mut enc = GzEncoder::new(Vec::new(), Compression::default());
+            enc.write_all(&ts).unwrap();
+            enc.finish().unwrap()
+        };
+        let mut rgb = b"TIKTIKPX".to_vec();
+        rgb.extend_from_slice(&(gz.len() as u32).to_be_bytes());
+        rgb.extend_from_slice(&gz);
+        while rgb.len() % 3 != 0 {
+            rgb.push(0);
+        }
+        let width = (rgb.len() / 3) as u32;
+        let mut ihdr = Vec::new();
+        ihdr.extend_from_slice(&width.to_be_bytes());
+        ihdr.extend_from_slice(&1u32.to_be_bytes());
+        ihdr.extend_from_slice(&[8, 2, 0, 0, 0]);
+        let mut scan = vec![0u8];
+        scan.extend_from_slice(&rgb);
+        let idat = {
+            use flate2::write::ZlibEncoder;
+            use flate2::Compression;
+            use std::io::Write;
+            let mut enc = ZlibEncoder::new(Vec::new(), Compression::default());
+            enc.write_all(&scan).unwrap();
+            enc.finish().unwrap()
+        };
+        let mut png = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        let chunk = |typ: &[u8], data: &[u8]| {
+            let mut c = Vec::new();
+            c.extend_from_slice(&(data.len() as u32).to_be_bytes());
+            c.extend_from_slice(typ);
+            c.extend_from_slice(data);
+            c.extend_from_slice(&[0, 0, 0, 0]);
+            c
+        };
+        png.extend(chunk(b"IHDR", &ihdr));
+        png.extend(chunk(b"IDAT", &idat));
+        png.extend(chunk(b"IEND", b""));
+        let out = strip_png_wrapper(&png);
+        assert_eq!(out, ts);
     }
 
     #[test]

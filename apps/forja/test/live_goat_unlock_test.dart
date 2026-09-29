@@ -70,6 +70,23 @@ void main() {
     });
   });
 
+  group('LiveGoatUnlock playlist probe', () {
+    test('skips dart http probe for indianservers playlists', () {
+      expect(
+        LiveGoatUnlock.dartHttpProbeFalseNegative(
+          'https://shiva.indianservers.st/secure/tok/1/2/uefa_fin/index.m3u8',
+        ),
+        isTrue,
+      );
+      expect(
+        LiveGoatUnlock.dartHttpProbeFalseNegative(
+          'https://lb17.strmd.st/secure/tok/rtmp/stream/id/1/playlist.m3u8',
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('LiveGoatUnlock sniff host gates', () {
     test('isEmbedIndiaUrl recognizes embedindia host', () {
       expect(

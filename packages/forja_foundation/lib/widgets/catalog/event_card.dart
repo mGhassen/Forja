@@ -35,6 +35,8 @@ class EventCard extends StatelessWidget {
     this.padV = EventCardTokens.padV,
     this.tvDensity = false,
     this.playOverlay,
+    this.catalogs = const [],
+    this.showCatalogs = false,
   });
 
   final String title;
@@ -64,6 +66,11 @@ class EventCard extends StatelessWidget {
   /// Optional play glyph (host [ShellCardPlayOverlay]).
   final Widget? playOverlay;
 
+  /// Catalog names merged into this event. Shown in place of the match face
+  /// when [showCatalogs] is set.
+  final List<String> catalogs;
+  final bool showCatalogs;
+
   bool get _hasTeams =>
       homeTeam != null &&
       homeTeam!.isNotEmpty &&
@@ -73,6 +80,7 @@ class EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final poster = resolveAbsoluteCoverUrl(posterUrl);
+    final reveal = showCatalogs && catalogs.isNotEmpty;
     // One paint tree for desktop + TV (TV sizes via densityScale at call sites).
     final card = AnimatedContainer(
       duration: ForjaMotionTheme.of(context).fillOnly.duration,
@@ -128,56 +136,69 @@ class EventCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: _hasTeams
-                        ? Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _TeamBadge(
-                                  badge: resolveAbsoluteCoverUrl(homeBadgeUrl),
-                                  name: homeTeam!,
-                                  showName: false,
-                                  badgeFontSize: badgeFontSize,
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
+                  if (reveal)
+                    Expanded(
+                      child: _EventCatalogList(
+                        catalogs: catalogs,
+                        fontSize: titleFontSize,
+                      ),
+                    )
+                  else ...[
+                    Expanded(
+                      child: _hasTeams
+                          ? Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _TeamBadge(
+                                    badge: resolveAbsoluteCoverUrl(
+                                      homeBadgeUrl,
+                                    ),
+                                    name: homeTeam!,
+                                    showName: false,
+                                    badgeFontSize: badgeFontSize,
                                   ),
-                                  child: Text(
-                                    'VS',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.7,
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    child: Text(
+                                      'VS',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        fontSize: metaFontSize + 1,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.5,
                                       ),
-                                      fontSize: metaFontSize + 1,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.5,
                                     ),
                                   ),
-                                ),
-                                _TeamBadge(
-                                  badge: resolveAbsoluteCoverUrl(awayBadgeUrl),
-                                  name: awayTeam!,
-                                  showName: false,
-                                  badgeFontSize: badgeFontSize,
-                                ),
-                              ],
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                  _TitleStack(
-                    title: title,
-                    schedule: scheduleLabel.isEmpty ? null : scheduleLabel,
-                    rightPadding: viewers > 0 ? 52 : 0,
-                    titleFontSize: titleFontSize,
-                    metaFontSize: metaFontSize,
-                  ),
+                                  _TeamBadge(
+                                    badge: resolveAbsoluteCoverUrl(
+                                      awayBadgeUrl,
+                                    ),
+                                    name: awayTeam!,
+                                    showName: false,
+                                    badgeFontSize: badgeFontSize,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    _TitleStack(
+                      title: title,
+                      schedule: scheduleLabel.isEmpty ? null : scheduleLabel,
+                      rightPadding: viewers > 0 ? 52 : 0,
+                      titleFontSize: titleFontSize,
+                      metaFontSize: metaFontSize,
+                    ),
+                  ],
                 ],
               ),
             ),
-            if (live && playOverlay != null)
+            if (!reveal && live && playOverlay != null)
               Center(
                 child: SizedBox(
                   width: playOverlaySize,
@@ -185,7 +206,7 @@ class EventCard extends StatelessWidget {
                   child: playOverlay,
                 ),
               ),
-            if (categoryLabel.isNotEmpty)
+            if (!reveal && categoryLabel.isNotEmpty)
               Positioned(
                 top: 8,
                 left: 8,
@@ -194,10 +215,11 @@ class EventCard extends StatelessWidget {
                   live: false,
                 ),
               ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: CrossfadeSwap(
+            if (!reveal)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: CrossfadeSwap(
                 child: KeyedSubtree(
                   key: ValueKey(live ? 'live' : timeLabel),
                   child: live
@@ -208,7 +230,7 @@ class EventCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (viewers > 0) _ViewerBadge(viewers: viewers),
+            if (!reveal && viewers > 0) _ViewerBadge(viewers: viewers),
           ],
         ),
       ),
@@ -217,6 +239,58 @@ class EventCard extends StatelessWidget {
     final sized = SizedBox(width: width, height: height, child: card);
     if (onTap == null) return sized;
     return GestureDetector(onTap: onTap, child: sized);
+  }
+}
+
+/// Merged catalog names, scrolling inside the event card.
+class _EventCatalogList extends StatefulWidget {
+  const _EventCatalogList({required this.catalogs, required this.fontSize});
+
+  final List<String> catalogs;
+  final double fontSize;
+
+  @override
+  State<_EventCatalogList> createState() => _EventCatalogListState();
+}
+
+class _EventCatalogListState extends State<_EventCatalogList> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scrollbar(
+      controller: _scroll,
+      thumbVisibility: true,
+      child: ListView.builder(
+        controller: _scroll,
+        primary: false,
+        padding: const EdgeInsets.only(right: 8),
+        itemCount: widget.catalogs.length,
+        itemBuilder: (context, i) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Text(
+              widget.catalogs[i],
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: widget.fontSize,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.none,
+                height: 1.2,
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 

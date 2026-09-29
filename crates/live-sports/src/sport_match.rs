@@ -298,11 +298,21 @@ fn team_match_tokens(team: &str) -> Vec<String> {
     if lower.is_empty() {
         return vec![];
     }
-    let mut out = Vec::new();
-    if lower.len() >= 4 && !is_generic_team_token(&lower) {
-        out.push(lower.clone());
+    // `Al-Khor` and `Al Khor` are the same club. Hyphens are not spaces today,
+    // so the token `al-khor` never hits an EPG line written `Al Khor`.
+    let folded: String = lower
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { ' ' })
+        .collect();
+    let folded = folded.split_whitespace().collect::<Vec<_>>().join(" ");
+    if folded.is_empty() {
+        return vec![];
     }
-    for w in lower.split_whitespace() {
+    let mut out = Vec::new();
+    if !folded.contains(' ') && folded.len() >= 4 && !is_generic_team_token(&folded) {
+        out.push(folded.clone());
+    }
+    for w in folded.split_whitespace() {
         if is_token(w) && !is_generic_team_token(w) {
             out.push(w.to_string());
         }
@@ -519,12 +529,30 @@ pub fn indices_for_epg(game: &MatchGame, candidates: &[Candidate], max: usize) -
 
 /// Generic IPTV label normalize — site-specific scrubbing belongs in live pack JS
 /// (`cleanChannelName` on catalog rows before `broadcastChannels` is emitted).
+/// `MTV3` and `TV1` are the same labels as `MTV 3` and `TV 1`.
+fn split_alpha_num(raw: &str) -> String {
+    let chars: Vec<char> = raw.chars().collect();
+    let mut out = String::with_capacity(raw.len() + 4);
+    for (i, c) in chars.iter().enumerate() {
+        if i > 0 {
+            let prev = chars[i - 1];
+            let boundary = (prev.is_ascii_alphabetic() && c.is_ascii_digit())
+                || (prev.is_ascii_digit() && c.is_ascii_alphabetic());
+            if boundary {
+                out.push(' ');
+            }
+        }
+        out.push(*c);
+    }
+    out
+}
+
 fn normalize_broadcast_channel_label(raw: &str) -> String {
-    let mut s = raw.to_lowercase();
+    let mut s = split_alpha_num(&raw.to_lowercase());
     for sep in ['|', '·'] {
         s = s.replace(sep, " ");
     }
-    for suffix in [" uhd", " hd", " 4k"] {
+    for suffix in [" uhd", " hd", " fhd", " 4k", " sd"] {
         if let Some(stripped) = s.strip_suffix(suffix) {
             s = stripped.to_string();
         }
@@ -560,10 +588,15 @@ fn broadcast_significant_tokens(label: &str) -> Vec<String> {
 
 /// Guide listed only a network name (`DAZN`, `Viaplay`) with no product/number.
 /// Those explode into every numbered IPTV clone — require programme confirmation.
-/// Multi-token / numbered hints (`DAZN 4`, `Sky Sports Main Event`) stay strong.
+/// Multi-token / numbered hints (`DAZN 4`, `MTV3`, `YLE TV1`) stay strong.
+/// A leftover lone number (`TV1` → `1` after `tv` is dropped) is not strong:
+/// it would hit every channel that contains a 1.
 fn hint_is_bare_brand(tokens: &[String]) -> bool {
     match tokens {
-        [t] => !t.is_empty() && !t.chars().all(|c| c.is_ascii_digit()),
+        [t] => !t.is_empty() && !t.chars().any(|c| c.is_ascii_digit()),
+        toks if !toks.is_empty() && toks.iter().all(|t| t.chars().all(|c| c.is_ascii_digit())) => {
+            true
+        }
         _ => false,
     }
 }
@@ -677,10 +710,16 @@ fn broadcast_hit_kind_on_label(bc: &str, channel_label: &str) -> Option<Broadcas
         return None;
     }
     let tokens = broadcast_significant_tokens(bc);
-    if hint_is_bare_brand(&tokens) {
-        Some(BroadcastHitKind::WeakBrand)
-    } else {
+    if !hint_is_bare_brand(&tokens) {
+        return Some(BroadcastHitKind::Strong);
+    }
+    // "Viaplay" / "Nelonen" may show the one channel that is that name.
+    // "Viaplay SE 07" and "DAZN CA 04" stay weak and need the programme guide.
+    let channel = broadcast_significant_tokens(channel_label);
+    if channel == tokens {
         Some(BroadcastHitKind::Strong)
+    } else {
+        Some(BroadcastHitKind::WeakBrand)
     }
 }
 
@@ -1321,6 +1360,91 @@ mod tests {
                 epg_channel_id: String::new(),
             })
             .collect()
+    }
+
+    #[test]
+    fn numbered_guide_names_match_without_epg() {
+        let mut g = game();
+        g.home_team = "Finland".into();
+        g.away_team = "Belarus".into();
+        g.title = "Finland vs Belarus".into();
+        g.broadcast_channels = vec!["MTV3".into(), "YLE TV1".into(), "Viaplay".into()];
+        let cands = vec![
+            Candidate {
+                name: "FI | MTV3 HD".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/mtv.m3u8".into(),
+                category_label: "Finland".into(),
+                logo: String::new(),
+                stream_id: "mtv".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "YLE 1 FHD".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/yle.m3u8".into(),
+                category_label: "Finland".into(),
+                logo: String::new(),
+                stream_id: "yle".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "Viaplay HD".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/via.m3u8".into(),
+                category_label: "Finland".into(),
+                logo: String::new(),
+                stream_id: "via".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "Viaplay SE 07".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/via7.m3u8".into(),
+                category_label: "Sweden".into(),
+                logo: String::new(),
+                stream_id: "via7".into(),
+                epg_channel_id: String::new(),
+            },
+        ];
+        let hits = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::StrongOnly);
+        let names: Vec<&str> = hits
+            .iter()
+            .filter_map(|h| h.get("name").and_then(|v| v.as_str()))
+            .collect();
+        assert!(names.contains(&"FI | MTV3 HD"), "{names:?}");
+        assert!(names.contains(&"YLE 1 FHD"), "{names:?}");
+        assert!(names.contains(&"Viaplay HD"), "{names:?}");
+        assert!(
+            !names.contains(&"Viaplay SE 07"),
+            "bare Viaplay must not dump numbered clones: {names:?}"
+        );
+    }
+
+    #[test]
+    fn hyphenated_team_matches_spaced_epg() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "Al-Khor vs Umm Salal",
+            "homeTeam": "",
+            "awayTeam": ""
+        }));
+        assert!(g.is_team_game());
+        let cands = vec![Candidate {
+            name: "beIN Sports".into(),
+            description: "Al Khor vs Umm Salal".into(),
+            start_timestamp: None,
+            stream_url: "https://x/bein.m3u8".into(),
+            category_label: "Sports".into(),
+            logo: String::new(),
+            stream_id: "bein".into(),
+            epg_channel_id: String::new(),
+        }];
+        let hits = match_streams(&g, &cands, &[]);
+        assert_eq!(hits.len(), 1, "hyphen in the club name must still match: {hits:?}");
     }
 
     #[test]

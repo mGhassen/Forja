@@ -389,12 +389,21 @@ class LiveGoatUnlock {
     };
   }
 
+  /// `*.indianservers.st` nginx 403s `package:http`. The same URL is a real
+  /// playlist in the embed page, and MediaKit opens it direct.
+  @visibleForTesting
+  static bool dartHttpProbeFalseNegative(String url) {
+    final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+    return host.contains('indianservers.st');
+  }
+
   static Future<String?> _acceptPlayableGasmUrl(
     String? url, {
     required Map<String, String> headers,
   }) async {
     final u = (url ?? '').trim();
     if (u.isEmpty) return null;
+    if (dartHttpProbeFalseNegative(u)) return u;
     return _selectPlayableM3u8(u, headers);
   }
 
