@@ -46,8 +46,8 @@ Each finished title is a poster card. It appears when the save finishes, includi
 The panel starts at the top of the page, beside the kind menu, with a rounded
 top-left. It shows the backdrop, the title logo when there is one, the year,
 and a short synopsis. A series lists saved episodes under a season menu. Each
-saved file shows the provider and stream it was downloaded from. Tap a row to
-play that file.
+saved file shows the provider and stream it was downloaded from. Hover
+highlights the row the same way as Sources. Tap a row to play that file.
 
 ## Offline play
 
@@ -61,6 +61,9 @@ list shows that same source, marked Offline. Play online drops the icon.
 Play strips an image shell that some streams wrap around the video. If Play
 still says the file can’t be played, delete that row and download again — the
 saved file is damaged or incomplete.
+
+A saved stream keeps its in-stream subtitles. They show in the subtitle menu
+when you play that file.
 
 ## Tips
 

@@ -8,6 +8,7 @@ import 'package:forja/shared/downloads/download_path_helper.dart';
 import 'package:forja/shared/downloads/download_speed_sampler.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/hls_download_engine.dart';
+import 'package:forja/shared/downloads/hls_subtitle_sidecar.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -1148,6 +1149,7 @@ class DownloadService {
         await partFile.delete();
       } catch (_) {}
     }
+    await deleteHlsSubtitleSidecar(task.targetFilePath);
     final metaFile = File('${task.targetFilePath}.hls_meta.json');
     if (await metaFile.exists()) {
       try {
@@ -1164,6 +1166,7 @@ class DownloadService {
 
     await cancelDownload(taskId);
 
+    await deleteHlsSubtitleSidecar(task.targetFilePath);
     final targetFile = File(task.targetFilePath);
     if (await targetFile.exists()) {
       try {

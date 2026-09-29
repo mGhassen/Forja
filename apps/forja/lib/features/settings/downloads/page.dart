@@ -9,6 +9,7 @@ import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_path_helper.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
+import 'package:forja/shared/downloads/hls_subtitle_sidecar.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -150,6 +151,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
     }
     final streamUrl =
         path.startsWith('file://') ? path : Uri.file(path).toString();
+    final savedSubs = await offlineSavedSubtitleRows(file.path);
     if (!mounted) return;
     await AppRouter.openPlayer(
       context,
@@ -169,6 +171,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
       activeProvider: 'offline',
       streamsPrevalidated: true,
       pinSource: true,
+      externalSubtitles: savedSubs.isEmpty ? null : savedSubs,
     );
   }
 

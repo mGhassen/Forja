@@ -7,6 +7,17 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:rust/rust.dart';
 
+List<Map<String, dynamic>>? _savedSubtitleRows(Map<String, dynamic> stream) {
+  final raw = stream['subtitles'];
+  if (raw is! List || raw.isEmpty) return null;
+  final out = <Map<String, dynamic>>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    out.add(Map<String, dynamic>.from(item));
+  }
+  return out.isEmpty ? null : out;
+}
+
 /// Opens a finished download in the player.
 Future<void> playCompletedDownloadTask(
   BuildContext context,
@@ -68,5 +79,6 @@ Future<void> playCompletedDownloadTask(
     ],
     streamsPrevalidated: true,
     pinSource: true,
+    externalSubtitles: _savedSubtitleRows(local.stream!),
   );
 }

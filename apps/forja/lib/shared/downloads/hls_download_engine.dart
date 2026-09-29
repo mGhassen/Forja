@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
+import 'package:forja/shared/downloads/hls_subtitle_sidecar.dart';
 import 'package:forja/shared/downloads/download_speed_sampler.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:pointycastle/export.dart' as pc;
@@ -201,6 +202,19 @@ class HlsDownloadEngine {
         try {
           await metaFile.delete();
         } catch (_) {}
+      }
+
+      try {
+        await saveHlsInStreamSubtitles(
+          videoPath: task.targetFilePath,
+          playlist: initialManifestText,
+          playlistUri: initialUri,
+          variantUri: mediaPlaylistUri,
+          fetchText: (uri) => _fetchText(uri, headers),
+          isPausedOrCanceled: isPausedOrCanceled,
+        );
+      } catch (e) {
+        debugPrint('[HlsDownloadEngine] subtitle save failed: $e');
       }
 
       final completedBytes = await File(task.targetFilePath).length();

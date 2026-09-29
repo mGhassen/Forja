@@ -8,6 +8,8 @@ import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/components/network_image.dart';
@@ -384,60 +386,10 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
       if (episode && source.isNotEmpty) source,
       if (size.isNotEmpty) size,
     ].join(' · ');
-    return shellFocusableTap(
-      context: context,
+    return _DownloadSourceRow(
+      title: title,
+      subtitle: subtitle,
       onTap: () => unawaited(_play(task)),
-      borderRadius: 10,
-      scaleOnFocus: 1.0,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: ForjaShellColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: ForjaShellColors.borderSubtle),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.play_arrow_rounded,
-                color: ForjaShellColors.brandGreen,
-                size: 22,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: ForjaShellColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        height: 1.25,
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: ForjaShellColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -458,5 +410,128 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
         'S${season.toString().padLeft(2, '0')}E${episode.toString().padLeft(2, '0')}';
     if (title.isEmpty) return code;
     return '$code · $title';
+  }
+}
+
+/// Same hover as a Sources row: fill and border, no size change.
+class _DownloadSourceRow extends StatefulWidget {
+  const _DownloadSourceRow({
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  State<_DownloadSourceRow> createState() => _DownloadSourceRowState();
+}
+
+class _DownloadSourceRowState extends State<_DownloadSourceRow> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  var _focused = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  bool _active(bool hovered) {
+    return ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: hovered,
+      focused: _focused,
+      context: context,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 10,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      suppressInkHover: true,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => _hoveredN.value = hovered,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => _hoveredN.value = true,
+        onExit: (_) => _hoveredN.value = false,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final active = _active(_hoveredN.value);
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOut,
+              decoration: BoxDecoration(
+                color: active
+                    ? ForjaShellColors.chipSelectedBg
+                    : ForjaShellColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: active
+                      ? ForjaShellColors.chipSelectedBorder
+                      : ForjaShellColors.borderSubtle,
+                  width: active ? 1.5 : 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.play_arrow_rounded,
+                      color: ForjaShellColors.brandGreen,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: ForjaShellColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              height: 1.25,
+                            ),
+                          ),
+                          if (widget.subtitle.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              widget.subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: ForjaShellColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 }

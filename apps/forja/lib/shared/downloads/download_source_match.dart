@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:forja/shared/downloads/download_guards.dart';
+import 'package:forja/shared/downloads/hls_subtitle_sidecar.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
@@ -213,6 +214,8 @@ Future<OfflineLocalPlay?> offlineLocalPlayForTask({
   copy['url'] = fileUrl;
   if (catalogUrl != null) copy[kOfflinePlayCatalogUrlKey] = catalogUrl;
   if (rowKey.isNotEmpty) copy[kOfflinePlayRowKeyKey] = rowKey;
+  final savedSubs = await offlineSavedSubtitleRows(file.path);
+  if (savedSubs.isNotEmpty) copy['subtitles'] = savedSubs;
   copy.remove('headers');
   final hints = copy['behaviorHints'];
   if (hints is Map) {
