@@ -49,3 +49,4 @@ An emulator whose Private DNS never answers will fail lookup again. That is the 
 - [298](298-[fixed]-android-tv-hotspot-dns-unreachable.md) — added the fallback
 - [389](389-[fixed]-android-dns-blocks-catalog.md) · [392](392-[fixed]-android-playback-dns.md) · [393](393-[fixed]-android-tv-dns-skip-expires.md)
 - Windows IPv4-only portals stay: [261](261-[fixed]-windows-iptv-portal-unreachable-dns64.md)
+- Real IPv6 is included: [395](395-[fixed]-iptv-playback-real-ipv6.md)

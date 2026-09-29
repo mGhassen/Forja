@@ -119,7 +119,7 @@ List<BuiltInPlayerEngine> get builtInPlayerEngineOptionsForUi {
 }
 
 /// Preferred IPTV live engine for an HLS URL on this OS (before availability
-/// probes). Non-HLS progressive TS should stay on MediaKit.
+/// probes). Callers that have a saved engine must use that instead.
 BuiltInPlayerEngine preferredIptvHlsEngine() {
   if (kIsWeb) return BuiltInPlayerEngine.mediaKit;
   if (Platform.isAndroid) return BuiltInPlayerEngine.exoPlayer;

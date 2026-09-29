@@ -28,6 +28,27 @@ bool hostAddrsNeedIpv4Dial(List<InternetAddress> addrs) {
 bool _isNat64(InternetAddress a) =>
     a.address.toLowerCase().startsWith(kNat64WellKnownPrefix);
 
+/// Real IPv4 and real IPv6. A `64:ff9b` translation is dropped when a real
+/// address exists, and kept when it is the only address.
+@visibleForTesting
+List<InternetAddress> routableAddrs(List<InternetAddress> addrs) {
+  final v4 = <InternetAddress>[];
+  final realV6 = <InternetAddress>[];
+  final nat64 = <InternetAddress>[];
+  for (final a in addrs) {
+    if (a.type == InternetAddressType.IPv4) {
+      v4.add(a);
+    } else if (_isNat64(a)) {
+      nat64.add(a);
+    } else if (a.type == InternetAddressType.IPv6) {
+      realV6.add(a);
+    }
+  }
+  if (v4.isNotEmpty) return [...v4, ...realV6];
+  if (realV6.isNotEmpty) return realV6;
+  return nat64;
+}
+
 /// Why MediaKit should open through the loopback proxy.
 enum PlaybackProxyReason {
   none,
@@ -292,10 +313,7 @@ class _ConnectSession {
   Future<void> _openUpstream(PlaybackProxyRequest request) async {
     try {
       final looked = await InternetAddress.lookup(request.host);
-      final v4 = looked
-          .where((a) => a.type == InternetAddressType.IPv4)
-          .toList();
-      final addrs = v4.isNotEmpty ? v4 : looked;
+      final addrs = routableAddrs(looked);
       final upstream = await connectFirstAddress(addrs, request.port);
       if (_closed) {
         upstream.destroy();

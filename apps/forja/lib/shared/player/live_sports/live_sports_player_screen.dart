@@ -14,7 +14,6 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';
@@ -23,6 +22,7 @@ import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.da
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
+import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/engine/portals/guide/guide.dart';
@@ -1062,7 +1062,8 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     }
   }
 
-  /// Pick engine for this open: prefs + TS→MediaKit + VLC availability.
+  /// Pick engine for this open: Settings (or an explicit force), then VLC
+  /// availability. Stream type does not override the saved engine.
   Future<BuiltInPlayerEngine> _resolveBootEngine() async {
     final forced = widget.forceBuiltInEngine;
     var engine = forced ??
@@ -1071,15 +1072,6 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         );
     if (!engine.isAvailableOnCurrentPlatform) {
       engine = BuiltInPlayerEngine.mediaKit;
-    }
-    final url = _sources.isNotEmpty ? _sources.first.url : '';
-    final isHls = iptvUrlLooksLikeHls(url);
-    // Progressive MPEG-TS / non-HLS live → MediaKit + continuity proxy only.
-    if (!widget.vodPlayback && !isHls) {
-      debugPrint(
-        '[IPTV Player] engine=mediakit (progressive TS / non-HLS)',
-      );
-      return BuiltInPlayerEngine.mediaKit;
     }
     if (engine == BuiltInPlayerEngine.vlc &&
         !await VlcPlayerBridge.isAvailable()) {
@@ -1263,24 +1255,12 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         (lower.contains('source error') && lower.contains('m3u8'));
   }
 
-  /// After format / hard-open errors, try the other engine once.
-  /// Live: one failover hop (platform HLS → MediaKit). VOD may still swap Exo↔MK.
+  /// Live only: one failover hop after a format / hard-open error.
+  /// Movies and series stay on the engine from Settings.
   Future<void> _autoSwapEngineForFormatError(String reason) async {
     if (_disposed || _formatEngineSwapped || kIsWeb) return;
-    if (!widget.vodPlayback) {
-      await _failoverIptvEngineOnce(reason);
-      return;
-    }
-    if (!Platform.isAndroid) return;
-    _formatEngineSwapped = true;
-    final next = _exoBackend
-        ? BuiltInPlayerEngine.mediaKit
-        : BuiltInPlayerEngine.exoPlayer;
-    debugPrint('[IPTV] format error → auto-swap to $next ($reason)');
-    if (mounted) {
-      setState(() => _statusBanner = 'Trying ${next.displayName}…');
-    }
-    await _switchBuiltInEngine(next, persist: false);
+    if (widget.vodPlayback) return;
+    await _failoverIptvEngineOnce(reason);
   }
 
   /// One-hop live HLS failover then stop (plan R107-A07).

@@ -5,6 +5,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 
 void main() {
+  test('real IPv6 is kept and a translation is dropped when IPv4 exists', () {
+    final out = routableAddrs([
+      InternetAddress('64:ff9b::c000:201'),
+      InternetAddress('192.0.2.1'),
+      InternetAddress('2001:db8::1'),
+    ]);
+    expect(out.map((a) => a.address), ['192.0.2.1', '2001:db8::1']);
+  });
+
+  test('a real IPv6 address is kept on its own', () {
+    final out = routableAddrs([InternetAddress('2001:db8::1')]);
+    expect(out.single.address, '2001:db8::1');
+  });
+
   test('NAT64 AAAA plus IPv4 needs an IPv4 dial', () {
     expect(
       hostAddrsNeedIpv4Dial([

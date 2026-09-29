@@ -43,4 +43,5 @@
 ### Related
 
 - [261](fixed/261-[fixed]-windows-iptv-portal-unreachable-dns64.md) — incomplete first slice
+- [395](fixed/395-[fixed]-iptv-playback-real-ipv6.md) — real IPv6 is kept; `64:ff9b` still yields to a real address
 - [iptv-xtream](../../features/live/iptv-xtream.md)

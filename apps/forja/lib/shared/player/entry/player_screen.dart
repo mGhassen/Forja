@@ -195,19 +195,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
       }
     }
 
-    final unfit = builtInPlayerEngineUnsuitableReason(
-      engine,
-      surface: BuiltInPlayerMenuSurface.catalogVod,
-      streamUrl: _sessionStreamUrl,
-      torrentLocalhost: isLocalTorrentStreamUrl(_sessionStreamUrl),
-      needsWidevine: _sessionNeedsWidevine(),
-      separateAudioUrl:
-          widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
-    );
-    if (unfit != null) {
-      engine = BuiltInPlayerEngine.mediaKit;
-    }
-
     if (!mounted) return;
 
     setState(() {

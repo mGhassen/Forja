@@ -364,25 +364,6 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
       _logHealthyHold(reason);
       return;
     }
-    // VOD Exo extractor/HTTP death → MediaKit once (don't reopen Exo forever).
-    if (!userInitiated &&
-        !_livePlaybackProfile &&
-        _s._exoBackend &&
-        !_s._formatEngineSwapped &&
-        iptvIsHardOpenFail(reason)) {
-      unawaited(_s._autoSwapEngineForFormatError(reason));
-      return;
-    }
-    if (!userInitiated &&
-        !_livePlaybackProfile &&
-        _s._exoBackend &&
-        _s._formatEngineSwapped &&
-        iptvIsHardOpenFail(reason)) {
-      if (mounted) {
-        setState(() => _s._statusBanner = 'Playback failed');
-      }
-      return;
-    }
     final now = DateTime.now();
     if (_s._lastRecoveryAt != null &&
         now.difference(_s._lastRecoveryAt!) <

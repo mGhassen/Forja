@@ -7,10 +7,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   Future<void> _applyMpvTunables();
   Future<void> _tuneAtvMediaKitAfterOpen();
   Future<void> _tuneDesktopMediaKitAfterOpen();
-  Future<void> _applyStreamLavfReconnect(
-    NativePlayer p, {
-    String? streamUrl,
-  });
+  Future<void> _applyStreamLavfReconnect(NativePlayer p, {String? streamUrl});
   void _startWatchdog();
   void _noteFeedProgress(int markMs, {int? positionMs});
   Future<void> _triggerRecovery({
@@ -36,9 +33,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
 
   bool get _useSoftwareDecode {
     // MediaKit live: never force TextureSW / hwdec=no.
-    if (_livePlaybackProfile &&
-        _s._mediaKitBackend &&
-        !_s.widget.vodPlayback) {
+    if (_livePlaybackProfile && _s._mediaKitBackend && !_s.widget.vodPlayback) {
       return false;
     }
     return _s._softwareDecodeForced ||
@@ -124,7 +119,9 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
 
   Future<void> _bootAvPlayer() async {
     _s._avViewId = _LiveSportsPlayerScreenState._nextNativeViewId++;
-    _s._avEventSub = AvPlayerBridge.eventsFor(_s._avViewId!).listen(_onNativeEngineEvent);
+    _s._avEventSub = AvPlayerBridge.eventsFor(
+      _s._avViewId!,
+    ).listen(_onNativeEngineEvent);
     if (mounted) setState(() => _s._playerReady = true);
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _s._disposed) return;
@@ -139,8 +136,9 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     _s._vlcViewId = _LiveSportsPlayerScreenState._nextNativeViewId++;
     _s._vlcTextureId = await VlcPlayerBridge.create(_s._vlcViewId!);
     if (_s._disposed) return;
-    _s._vlcEventSub =
-        VlcPlayerBridge.eventsFor(_s._vlcViewId!).listen(_onNativeEngineEvent);
+    _s._vlcEventSub = VlcPlayerBridge.eventsFor(
+      _s._vlcViewId!,
+    ).listen(_onNativeEngineEvent);
     if (mounted) setState(() => _s._playerReady = true);
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _s._disposed) return;
@@ -400,20 +398,6 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       case 'error':
         final msg = event['message']?.toString() ?? 'Playback error';
         debugPrint('[IPTV Exo] error: $msg');
-        // VOD: Media3 AAC/MP4 extractor deaths ("Source error") are not fixed by
-        // reopening Exo — swap to MediaKit once, never hard-loop Exo.
-        if (!_livePlaybackProfile &&
-            (iptvIsHardOpenFail(msg) ||
-                _LiveSportsPlayerScreenState._isUnrecognizedFormatError(msg))) {
-          if (!_s._formatEngineSwapped) {
-            unawaited(_s._autoSwapEngineForFormatError(msg));
-            return;
-          }
-          if (mounted) {
-            setState(() => _s._statusBanner = 'Playback failed');
-          }
-          return;
-        }
         _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
         break;
       case 'renderedFirstFrame':
@@ -428,7 +412,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         }
         _s._exoCueTexts.value = [
           for (final e in raw)
-            if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+            if (e != null && e.toString().trim().isNotEmpty)
+              e.toString().trim(),
         ];
         break;
       case 'tracksChanged':
@@ -462,8 +447,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   /// phone cold-open waits for layout then re-asserts FIT.
   void _maybeRemountExoFitOnce() {
     if (_s._exoFitRemountDone || _s._disposed) return;
-    final needRemount =
-        _s._exoFitRemountAfterMediaKit || Platform.isAndroid;
+    final needRemount = _s._exoFitRemountAfterMediaKit || Platform.isAndroid;
     if (!needRemount) return;
     _s._exoFitRemountDone = true;
     final afterMediaKit = _s._exoFitRemountAfterMediaKit;
@@ -488,8 +472,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     debugPrint(
       reopen
           ? (afterMediaKit
-              ? '[IPTV] remount+reopen Exo TextureView after MediaKit surface race'
-              : '[IPTV] remount+reopen Exo TextureView after ATV cold-open first frame')
+                ? '[IPTV] remount+reopen Exo TextureView after MediaKit surface race'
+                : '[IPTV] remount+reopen Exo TextureView after ATV cold-open first frame')
           : '[IPTV] remount Exo TextureView after Android cold-open first frame',
     );
     if (afterMediaKit) {
@@ -672,11 +656,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         final np = player.platform;
         // v1.5.36: headers + Media(httpHeaders) + lavf direct.
         if (np is NativePlayer) {
-          await applyMediaHttpHeaders(
-            player,
-            headers,
-            streamUrl: playUrl,
-          );
+          await applyMediaHttpHeaders(player, headers, streamUrl: playUrl);
         }
         await applyIpv4HttpProxy(player, playUrl);
         await player.open(Media(playUrl, httpHeaders: headers));
@@ -993,20 +973,6 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       }
       debugPrint('[IPTV Player] error: $msg');
       final lower = msg.toLowerCase();
-      if (!_s._formatEngineSwapped &&
-          !_livePlaybackProfile &&
-          iptvIsHardOpenFail(msg)) {
-        unawaited(_s._autoSwapEngineForFormatError(msg));
-        return;
-      }
-      // Live: never auto-swap engines (Reload / empty reopen often throws
-      // "failed to recognize file format" and silently flipped MediaKit→Exo).
-      if (!_s._formatEngineSwapped &&
-          !_livePlaybackProfile &&
-          _LiveSportsPlayerScreenState._isUnrecognizedFormatError(msg)) {
-        unawaited(_s._autoSwapEngineForFormatError(msg));
-        return;
-      }
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {
@@ -1034,9 +1000,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         return;
       }
       // VOD MediaKit mid-stream: ignore non-fatal error strings (ipdigi).
-      if (_s.widget.vodPlayback &&
-          _s._mediaKitBackend &&
-          _playbackStarted) {
+      if (_s.widget.vodPlayback && _s._mediaKitBackend && _playbackStarted) {
         return;
       }
       _triggerRecovery(reason: 'error: $msg');
@@ -1069,7 +1033,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
             _s._mediaKitBackend &&
             !_s.widget.vodPlayback) {
           _armTransientHwDecodeIgnore();
-          final pastCold = DateTime.now().difference(_s._openedAt) >=
+          final pastCold =
+              DateTime.now().difference(_s._openedAt) >=
               const Duration(seconds: 8);
           if (!pastCold) {
             if (_streamWorking) {
@@ -1136,19 +1101,22 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       '[IPTV Player] socket trouble ($what) - '
       'allowing ${_LiveSportsPlayerScreenState._ffmpegReconnectGrace.inSeconds}s',
     );
-    Future.delayed(_LiveSportsPlayerScreenState._ffmpegReconnectGrace, () async {
-      _s._socketTroublePending = false;
-      if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
-      if (_s._openedAt != openedAt) return;
-      if (_streamWorking) {
-        _logHealthyHold('socket after grace');
-        return;
-      }
-      await _triggerRecovery(
-        reason: 'socket dead, cache empty: $what',
-        forceHard: true,
-      );
-    });
+    Future.delayed(
+      _LiveSportsPlayerScreenState._ffmpegReconnectGrace,
+      () async {
+        _s._socketTroublePending = false;
+        if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+        if (_s._openedAt != openedAt) return;
+        if (_streamWorking) {
+          _logHealthyHold('socket after grace');
+          return;
+        }
+        await _triggerRecovery(
+          reason: 'socket dead, cache empty: $what',
+          forceHard: true,
+        );
+      },
+    );
   }
 
   /// Probe whether mpv reports a seekable DVR window for the current source.
@@ -1178,7 +1146,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
 
   /// Soft reconnects on the same URL before hopping to the next Sources row.
   /// Live Sports Providers / Stremio never auto-hop — user picks Source.
-  int get _retriesBeforeSourceRotate => _LiveSportsPlayerScreenState._maxRetries;
+  int get _retriesBeforeSourceRotate =>
+      _LiveSportsPlayerScreenState._maxRetries;
 
   /// Pin the selected Providers / Stremio row — never rotate `_sourceIdx`.
   bool get _pinLiveProvidersSource {
@@ -1363,7 +1332,9 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   /// tier of [_triggerRecovery] so the user's Reload actually reconnects.
   Future<void> _escalateReloadIfStalled() async {
     final before = _s._lastPos;
-    await Future<void>.delayed(_LiveSportsPlayerScreenState._reloadEscalateAfter);
+    await Future<void>.delayed(
+      _LiveSportsPlayerScreenState._reloadEscalateAfter,
+    );
     if (!mounted || _s._disposed || !_s._playerAlive) return;
     if (!_s._userPlayWhenReady) return;
     if (_s._playing && _s._lastPos != before) return;

@@ -7,10 +7,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   Future<void> _applyMpvTunables();
   Future<void> _tuneAtvMediaKitAfterOpen();
   Future<void> _tuneDesktopMediaKitAfterOpen();
-  Future<void> _applyStreamLavfReconnect(
-    NativePlayer p, {
-    String? streamUrl,
-  });
+  Future<void> _applyStreamLavfReconnect(NativePlayer p, {String? streamUrl});
   void _startWatchdog();
   void _noteFeedProgress(int markMs, {int? positionMs});
   Future<void> _triggerRecovery({
@@ -36,9 +33,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
 
   bool get _useSoftwareDecode {
     // MediaKit live: never force TextureSW / hwdec=no.
-    if (_livePlaybackProfile &&
-        _s._mediaKitBackend &&
-        !_s.widget.vodPlayback) {
+    if (_livePlaybackProfile && _s._mediaKitBackend && !_s.widget.vodPlayback) {
       return false;
     }
     return _s._softwareDecodeForced ||
@@ -123,7 +118,9 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
 
   Future<void> _bootAvPlayer() async {
     _s._avViewId = _PtPlayerScreenState._nextNativeViewId++;
-    _s._avEventSub = AvPlayerBridge.eventsFor(_s._avViewId!).listen(_onNativeEngineEvent);
+    _s._avEventSub = AvPlayerBridge.eventsFor(
+      _s._avViewId!,
+    ).listen(_onNativeEngineEvent);
     if (mounted) setState(() => _s._playerReady = true);
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _s._disposed) return;
@@ -138,8 +135,9 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     _s._vlcViewId = _PtPlayerScreenState._nextNativeViewId++;
     _s._vlcTextureId = await VlcPlayerBridge.create(_s._vlcViewId!);
     if (_s._disposed) return;
-    _s._vlcEventSub =
-        VlcPlayerBridge.eventsFor(_s._vlcViewId!).listen(_onNativeEngineEvent);
+    _s._vlcEventSub = VlcPlayerBridge.eventsFor(
+      _s._vlcViewId!,
+    ).listen(_onNativeEngineEvent);
     if (mounted) setState(() => _s._playerReady = true);
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _s._disposed) return;
@@ -399,20 +397,6 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       case 'error':
         final msg = event['message']?.toString() ?? 'Playback error';
         debugPrint('[IPTV Exo] error: $msg');
-        // VOD: Media3 AAC/MP4 extractor deaths ("Source error") are not fixed by
-        // reopening Exo — swap to MediaKit once, never hard-loop Exo.
-        if (!_livePlaybackProfile &&
-            (iptvIsHardOpenFail(msg) ||
-                _PtPlayerScreenState._isUnrecognizedFormatError(msg))) {
-          if (!_s._formatEngineSwapped) {
-            unawaited(_s._autoSwapEngineForFormatError(msg));
-            return;
-          }
-          if (mounted) {
-            setState(() => _s._statusBanner = 'Playback failed');
-          }
-          return;
-        }
         _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
         break;
       case 'renderedFirstFrame':
@@ -427,7 +411,8 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         }
         _s._exoCueTexts.value = [
           for (final e in raw)
-            if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+            if (e != null && e.toString().trim().isNotEmpty)
+              e.toString().trim(),
         ];
         break;
       case 'tracksChanged':
@@ -461,8 +446,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   /// phone cold-open waits for layout then re-asserts FIT.
   void _maybeRemountExoFitOnce() {
     if (_s._exoFitRemountDone || _s._disposed) return;
-    final needRemount =
-        _s._exoFitRemountAfterMediaKit || Platform.isAndroid;
+    final needRemount = _s._exoFitRemountAfterMediaKit || Platform.isAndroid;
     if (!needRemount) return;
     _s._exoFitRemountDone = true;
     final afterMediaKit = _s._exoFitRemountAfterMediaKit;
@@ -487,8 +471,8 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     debugPrint(
       reopen
           ? (afterMediaKit
-              ? '[IPTV] remount+reopen Exo TextureView after MediaKit surface race'
-              : '[IPTV] remount+reopen Exo TextureView after ATV cold-open first frame')
+                ? '[IPTV] remount+reopen Exo TextureView after MediaKit surface race'
+                : '[IPTV] remount+reopen Exo TextureView after ATV cold-open first frame')
           : '[IPTV] remount Exo TextureView after Android cold-open first frame',
     );
     if (afterMediaKit) {
@@ -618,10 +602,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       var playUrl = candidate.url;
       // MediaKit/mpv only: pin one media playlist. AVPlayer/VLC/Exo do native ABR.
       if (_s._mediaKitBackend && iptvUrlLooksLikeHls(playUrl)) {
-        playUrl = await iptvResolveHlsPlayUrl(
-          url: playUrl,
-          headers: headers,
-        );
+        playUrl = await iptvResolveHlsPlayUrl(url: playUrl, headers: headers);
       }
 
       if (_s._exoBackend) {
@@ -680,11 +661,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         if (np is NativePlayer && liveMk) {
           await _applyStreamLavfReconnect(np, streamUrl: playUrl);
         } else if (np is NativePlayer) {
-          await applyMediaHttpHeaders(
-            player,
-            headers,
-            streamUrl: playUrl,
-          );
+          await applyMediaHttpHeaders(player, headers, streamUrl: playUrl);
         }
         // Forja live: Media(url) only — no httpHeaders / panel UA.
         await applyIpv4HttpProxy(player, playUrl);
@@ -998,25 +975,10 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       }
       debugPrint('[IPTV Player] error: $msg');
       final lower = msg.toLowerCase();
-      if (!_s._formatEngineSwapped &&
-          !_livePlaybackProfile &&
-          iptvIsHardOpenFail(msg)) {
-        unawaited(_s._autoSwapEngineForFormatError(msg));
-        return;
-      }
-      // Live: never auto-swap engines (Reload / empty reopen often throws
-      // "failed to recognize file format" and silently flipped MediaKit→Exo).
-      if (!_s._formatEngineSwapped &&
-          !_livePlaybackProfile &&
-          _PtPlayerScreenState._isUnrecognizedFormatError(msg)) {
-        unawaited(_s._autoSwapEngineForFormatError(msg));
-        return;
-      }
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {
-        if (_livePlaybackProfile &&
-            _s._mediaKitBackend) {
+        if (_livePlaybackProfile && _s._mediaKitBackend) {
           _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         } else {
           _noteSocketTrouble(msg);
@@ -1035,15 +997,12 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         );
         return;
       }
-      if (_livePlaybackProfile &&
-          _s._mediaKitBackend) {
+      if (_livePlaybackProfile && _s._mediaKitBackend) {
         _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         return;
       }
       // VOD MediaKit mid-stream: ignore non-fatal error strings (ipdigi).
-      if (_s.widget.vodPlayback &&
-          _s._mediaKitBackend &&
-          _playbackStarted) {
+      if (_s.widget.vodPlayback && _s._mediaKitBackend && _playbackStarted) {
         return;
       }
       _triggerRecovery(reason: 'error: $msg');
@@ -1122,8 +1081,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       _triggerRecovery(reason: 'connection dropped: $what', forceHard: true);
       return;
     }
-    if (_livePlaybackProfile &&
-        _s._mediaKitBackend) {
+    if (_livePlaybackProfile && _s._mediaKitBackend) {
       _scheduleIptvLiveGraceRecovery(reason: 'socket $what');
       return;
     }
@@ -1338,8 +1296,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     _s._retryAttempt = 0;
     _resetStalkerHardFails();
     _s._userPlayWhenReady = true;
-    if (_s._mediaKitBackend &&
-        _livePlaybackProfile) {
+    if (_s._mediaKitBackend && _livePlaybackProfile) {
       await _goLiveReopen();
       return;
     }

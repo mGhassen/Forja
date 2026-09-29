@@ -509,10 +509,7 @@ Future<String> openPlayerStream(
         detail: _shortPeakstormUrl(openUrl),
       );
     } else {
-      logPeakstormResume(
-        'trim failed — mpv start fallback',
-        target: resumeAt,
-      );
+      logPeakstormResume('trim failed — mpv start fallback', target: resumeAt);
     }
   }
   if (mpvStart != null) await _mpvStartAt(player, mpvStart);
@@ -524,14 +521,9 @@ Future<String> openPlayerStream(
   await applyIpv4HttpProxy(player, proxyUrl);
   final isFile = playUrl.startsWith('file://');
   final isTrimLoopback = isLocalLoopbackPlayUrl(playUrl);
-  final attachHeaders = hdrs.isNotEmpty &&
-      (isRemoteHttp || isFile || isTrimLoopback);
-  await player.open(
-    Media(
-      playUrl,
-      httpHeaders: attachHeaders ? hdrs : null,
-    ),
-  );
+  final attachHeaders =
+      hdrs.isNotEmpty && (isRemoteHttp || isFile || isTrimLoopback);
+  await player.open(Media(playUrl, httpHeaders: attachHeaders ? hdrs : null));
   if (mpvStart != null) {
     logPeakstormResume(
       'openPlayerStream startAt',
@@ -555,7 +547,8 @@ Future<String> openPlayerStream(
       'openPlayerStream trimmed open',
       state: player.state,
       target: resumeAt,
-      detail: playUrl.startsWith('http://127.0.0.1') ||
+      detail:
+          playUrl.startsWith('http://127.0.0.1') ||
               playUrl.startsWith('http://localhost')
           ? 'loopback'
           : null,
@@ -828,18 +821,14 @@ bool localTorrentSeekNeedsRemount({
 bool torrentSeekRemountSettled(PlayerState state, Duration target) {
   final pos = state.position;
   const slop = Duration(seconds: 12);
-  if (target > const Duration(seconds: 5) &&
-      pos < const Duration(seconds: 2)) {
+  if (target > const Duration(seconds: 5) && pos < const Duration(seconds: 2)) {
     return false;
   }
   if ((pos - target).abs() > slop) return false;
   return hasDecodedVideo(state) || state.buffering || state.playing;
 }
 
-String? localTorrentStreamUrlForSeek({
-  String? streamUrl,
-  String? mediaPath,
-}) {
+String? localTorrentStreamUrlForSeek({String? streamUrl, String? mediaPath}) {
   if (streamUrl != null && isLocalTorrentStreamUrl(streamUrl)) return streamUrl;
   if (mediaPath != null && isLocalTorrentStreamUrl(mediaPath)) return mediaPath;
   return null;
@@ -859,7 +848,9 @@ int torrentByteOffsetForDuration(
 
 /// Debounced scrub/hover prefetch into the Rust torrent engine.
 class TorrentSeekPrefetchScheduler {
-  TorrentSeekPrefetchScheduler({this.debounce = const Duration(milliseconds: 250)});
+  TorrentSeekPrefetchScheduler({
+    this.debounce = const Duration(milliseconds: 250),
+  });
 
   final Duration debounce;
   Timer? _timer;
@@ -1271,10 +1262,9 @@ Future<String?> materializeInlineSubtitleFile(Map<String, dynamic> s) async {
   if (text == null || text.trim().isEmpty) return null;
   try {
     final dir = await getTemporaryDirectory();
-    final safeLang = (s['language'] ?? s['lang'] ?? 'sub').toString().replaceAll(
-      RegExp(r'[^A-Za-z0-9_-]'),
-      '_',
-    );
+    final safeLang = (s['language'] ?? s['lang'] ?? 'sub')
+        .toString()
+        .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
     final isVtt =
         text.trimLeft().startsWith('WEBVTT') ||
         (s['url']?.toString().toLowerCase().contains('.vtt') ?? false);
@@ -1791,7 +1781,8 @@ Future<void> seekPlayerPreservingProgress(
     }
     if (ok) {
       final nearEnd =
-          dur > Duration.zero && target >= dur - const Duration(milliseconds: 500);
+          dur > Duration.zero &&
+          target >= dur - const Duration(milliseconds: 500);
       if (!player.state.playing && !nearEnd) {
         await player.play();
       }
@@ -1862,7 +1853,8 @@ bool remountPlaybackResumed(
   if (peakstorm) {
     if (state.buffering) return false;
     if (previousPosition != null &&
-        state.position <= previousPosition + const Duration(milliseconds: 300)) {
+        state.position <=
+            previousPosition + const Duration(milliseconds: 300)) {
       return false;
     }
     return true;
@@ -2114,11 +2106,7 @@ Future<void> _waitForMpvStartApplied(
   while (DateTime.now().isBefore(deadline)) {
     final pos = player.state.position;
     if ((pos - startAt).abs() <= const Duration(seconds: 8)) {
-      if (remountPlaybackResumed(
-        player.state,
-        startAt,
-        streamUrl: streamUrl,
-      )) {
+      if (remountPlaybackResumed(player.state, startAt, streamUrl: streamUrl)) {
         return;
       }
     }
@@ -2202,7 +2190,8 @@ Future<bool> remountPlayerStreamAtPosition(
           'remount ok',
           state: state,
           target: seekTarget,
-          detail: 'stable=$stableChecks · trim=$usedTrim · ui=${playerUiPosition(pos).inSeconds}s',
+          detail:
+              'stable=$stableChecks · trim=$usedTrim · ui=${playerUiPosition(pos).inSeconds}s',
         );
         return true;
       }
@@ -2213,11 +2202,7 @@ Future<bool> remountPlayerStreamAtPosition(
   }
   final ok = usedTrim
       ? await peakstormTrimPlaybackVerified(player)
-      : remountPlaybackResumed(
-          player.state,
-          seekTarget,
-          streamUrl: openUrl,
-        );
+      : remountPlaybackResumed(player.state, seekTarget, streamUrl: openUrl);
   if (!ok && peakstormFmp4HlsAvoidHardSeek(openUrl)) {
     logPeakstormResume(
       'remount failed',
@@ -2781,9 +2766,7 @@ SubtitleTrack? findSubtitleTrack(List<SubtitleTrack> tracks, String id) {
 
 /// Embedded (in-stream) subtitle tracks — excludes Off/auto and sideloaded URIs.
 List<SubtitleTrack> embeddedSubtitleTracks(Iterable<SubtitleTrack> tracks) {
-  return tracks
-      .where((t) => !isSideloadedExternalSubtitleTrack(t))
-      .toList();
+  return tracks.where((t) => !isSideloadedExternalSubtitleTrack(t)).toList();
 }
 
 /// In-stream tracks for the subtitle menu — hides mpv copies of active external subs.
@@ -2905,8 +2888,7 @@ bool hlsNeedsPngStripFor(String url, {String? pngStrip}) {
   if (u.isEmpty) return false;
   if (u.toLowerCase().contains('/hls-proxy')) {
     final target = hlsProxyTargetUrl(u);
-    return target != null &&
-        hlsNeedsPngStripFor(target, pngStrip: pngStrip);
+    return target != null && hlsNeedsPngStripFor(target, pngStrip: pngStrip);
   }
   if (pngStripModeFrom(pngStrip) != PngStripMode.force) return false;
   return u.contains('.m3u8');
@@ -3060,12 +3042,7 @@ Future<bool> _probeHlsMasterOnly(
 
 Future<bool> _probeHeadOrRange(String catalog, Map<String, String> hdrs) async {
   try {
-    var res = await engineHttp(
-      'HEAD',
-      catalog,
-      headers: hdrs,
-      timeoutSecs: 8,
-    );
+    var res = await engineHttp('HEAD', catalog, headers: hdrs, timeoutSecs: 8);
     if (res.status >= 200 && res.status < 400) return true;
     res = await engineHttp(
       'GET',
