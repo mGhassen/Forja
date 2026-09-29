@@ -48,3 +48,4 @@ Lookup now runs system DNS and DoH together. The first non-empty answer is used 
 
 - [298](298-[fixed]-android-tv-hotspot-dns-unreachable.md) — earlier sequential fallback
 - [393](393-[fixed]-android-tv-dns-skip-expires.md) — 2-minute skip re-armed the timeout
+- Removed: [394](394-[fixed]-remove-cloudflare-doh.md) — platform DNS only

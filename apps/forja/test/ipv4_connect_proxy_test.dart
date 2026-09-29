@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 
 void main() {
@@ -105,29 +104,22 @@ void main() {
     expect(req.toLowerCase(), isNot(contains('proxy-connection')));
   });
 
-  test('system DNS failure asks for the DoH proxy', () async {
-    PackHttp.debugResetDnsCache();
+  test('system DNS failure does not use the proxy', () async {
     debugResetPlaybackProxy();
     debugPlaybackSystemLookup = (_) async {
       throw const SocketException('no address');
     };
-    addTearDown(() {
-      debugResetPlaybackProxy();
-      PackHttp.debugResetDnsCache();
-    });
-    final proxy = await playbackHttpProxyFor('https://cdn.example/a.m3u8');
-    expect(proxy, startsWith('http://127.0.0.1:'));
-    expect(PackHttp.systemDnsUnhealthy, isTrue);
+    addTearDown(debugResetPlaybackProxy);
+    expect(
+      await playbackHttpProxyFor('https://cdn.example/a.m3u8'),
+      isNull,
+    );
   });
 
   test('healthy IPv4 DNS does not use the proxy', () async {
-    PackHttp.debugResetDnsCache();
     debugResetPlaybackProxy();
     debugPlaybackSystemLookup = (_) async => [InternetAddress('52.84.45.6')];
-    addTearDown(() {
-      debugResetPlaybackProxy();
-      PackHttp.debugResetDnsCache();
-    });
+    addTearDown(debugResetPlaybackProxy);
     expect(
       await playbackHttpProxyFor('https://cdn.example/a.m3u8'),
       isNull,

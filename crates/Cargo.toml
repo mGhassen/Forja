@@ -31,10 +31,10 @@ members = [
 ]
 
 [workspace.package]
-version = "1.3.2"
+version = "1.3.3"
 edition = "2021"
 license = "GPL-2.0-only"
-repository = "https://github.com/forja/forja"
+repository = "https://github.com/mGhassen/Forja"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

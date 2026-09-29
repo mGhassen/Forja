@@ -46,3 +46,4 @@
 
 - [389](389-[fixed]-android-dns-blocks-catalog.md) — race + 2-minute skip
 - [392](392-[fixed]-android-playback-dns.md) — playback DoH
+- Removed: [394](394-[fixed]-remove-cloudflare-doh.md) — platform DNS only

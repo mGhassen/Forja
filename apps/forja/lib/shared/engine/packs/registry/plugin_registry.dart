@@ -211,7 +211,6 @@ class PluginRegistry {
   Future<http.Response> _httpGet(Uri uri) async {
     final c = debugHttpClient;
     if (c != null) return c.get(uri);
-    // System DNS first; DoH via 1.1.1.1 when lookup fails (hotspot DNS).
     return PackHttp.get(uri);
   }
 

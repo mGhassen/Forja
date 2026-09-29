@@ -589,8 +589,6 @@ class ExoPlayerHost(
     }
 
     private fun buildHttpFactory(headers: Map<String, String>): HttpDataSource.Factory {
-        // OkHttp Dns races system lookup with Cloudflare DoH. DefaultHttpDataSource
-        // uses HttpURLConnection, which has no DNS hook and dies when getaddrinfo fails.
         val httpFactory = OkHttpDataSource.Factory(ForjaPlaybackHttp.client)
         val requestHeaders = headers.toMutableMap()
         val userAgent = requestHeaders.remove("User-Agent")

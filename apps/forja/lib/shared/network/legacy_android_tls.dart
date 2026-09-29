@@ -1,6 +1,4 @@
-/// Trust ISRG Let's Encrypt roots on Android ≤7.0 system CA stores, and
-/// fall through to Cloudflare DoH when system DNS fails (phone hotspots /
-/// broken Private DNS — same path as pack install).
+/// Trust ISRG Let's Encrypt roots on Android ≤7.0 system CA stores.
 ///
 /// Dart [HttpClient] on Android uses the **platform** trust store (not Mozilla).
 /// After Let's Encrypt dropped the DST Root CA X3 cross-sign, Android 7.0 and
@@ -16,7 +14,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 
 /// ISRG Root X1 (RSA) - https://letsencrypt.org/certs/isrgrootx1.pem
 const String kIsrgRootX1Pem = r'''-----BEGIN CERTIFICATE-----
@@ -73,9 +70,7 @@ tL4ndQavEi51mI38AjEAi/V3bNTIZargCyzuFJ0nN6T5U6VR5CmD1/iQMVtCnwr1
 void installLegacyAndroidTlsTrust() {
   if (kIsWeb || !Platform.isAndroid) return;
   HttpOverrides.global = _LegacyAndroidTlsHttpOverrides();
-  debugPrint(
-    '[TLS] Android: ISRG Root X1/X2 + DoH DNS fallback on HttpClient',
-  );
+  debugPrint('[TLS] Android: ISRG Root X1/X2 on HttpClient');
 }
 
 class _LegacyAndroidTlsHttpOverrides extends HttpOverrides {
@@ -88,10 +83,6 @@ class _LegacyAndroidTlsHttpOverrides extends HttpOverrides {
     } catch (e) {
       debugPrint('[TLS] Android: failed to add ISRG roots: $e');
     }
-    final client = super.createHttpClient(ctx);
-    // Supabase / updater / sync use stock HttpClient — same hotspot DNS hole
-    // as packs before PackHttp. Attach DoH so profile sync works too.
-    PackHttp.attachDohResolver(client);
-    return client;
+    return super.createHttpClient(ctx);
   }
 }

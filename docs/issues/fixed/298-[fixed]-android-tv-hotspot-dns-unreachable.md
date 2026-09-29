@@ -51,5 +51,6 @@ Pack install already fell back to Cloudflare DoH (`PackHttp`). Engine / IPTV / f
 ## Related
 
 - Pack install DoH: changelog 1.5.x · `PackHttp`
+- Removed: [394](394-[fixed]-remove-cloudflare-doh.md) — platform DNS only
 - Playback (ExoPlayer + MediaKit) on the same broken resolver: [392](392-[fixed]-android-playback-dns.md)
 - Windows IPTV DNS64 (IPv4-only): [261](261-[fixed]-windows-iptv-portal-unreachable-dns64.md) · [269](../269-[open]-windows-iptv-portal-af-inet-dns64.md)

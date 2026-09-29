@@ -46,4 +46,5 @@ Catalog HTTP already fell back to DNS-over-HTTPS. Playback did not. ExoPlayer us
 ## Related
 
 - Catalog / hotspot DNS: [298](298-[fixed]-android-tv-hotspot-dns-unreachable.md) · [389](389-[fixed]-android-dns-blocks-catalog.md)
+- Removed: [394](394-[fixed]-remove-cloudflare-doh.md) — platform DNS only; MediaKit proxy stays for DNS64
 - NAT64 dial: `Ipv4ConnectProxy`

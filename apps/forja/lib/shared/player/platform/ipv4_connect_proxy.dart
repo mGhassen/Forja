@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 import 'package:media_kit/media_kit.dart';
 
 /// DNS64 well-known prefix (RFC 6052). These AAAA records are a translated
@@ -33,20 +32,15 @@ bool _isNat64(InternetAddress a) =>
 enum PlaybackProxyReason {
   none,
   nat64,
-  dns,
 }
 
-/// [lookupFailed] when system DNS throws or returns nothing.
-/// [dns] covers http and https — libmpv has no resolver hook.
-/// [nat64] covers both schemes so ffmpeg does not dial the translated AAAA.
+/// [nat64] covers http and https so ffmpeg does not dial the translated AAAA.
 @visibleForTesting
 PlaybackProxyReason playbackProxyReason({
   required String scheme,
-  required bool lookupFailed,
   required List<InternetAddress> addrs,
 }) {
   if (scheme != 'http' && scheme != 'https') return PlaybackProxyReason.none;
-  if (lookupFailed || addrs.isEmpty) return PlaybackProxyReason.dns;
   if (hostAddrsNeedIpv4Dial(addrs)) return PlaybackProxyReason.nat64;
   return PlaybackProxyReason.none;
 }
@@ -62,10 +56,9 @@ void debugResetPlaybackProxy() {
 
 /// Point mpv at a local proxy that dials a working address, or clear it.
 ///
-/// libmpv/ffmpeg calls system `getaddrinfo` and keeps one answer. That is
-/// either a dead NAT64 AAAA, or no address at all when system DNS is down.
-/// The proxy resolves with [PackHttp.resolveHost] (system and DoH) and tunnels
-/// HTTPS (`CONNECT`) or forwards plain HTTP.
+/// libmpv/ffmpeg calls system `getaddrinfo` and can keep a DNS64 AAAA.
+/// The proxy dials the IPv4 address and tunnels HTTPS (`CONNECT`) or forwards
+/// plain HTTP.
 Future<void> applyIpv4HttpProxy(Player player, String playUrl) async {
   if (player.platform is! NativePlayer) return;
   final native = player.platform as NativePlayer;
@@ -91,35 +84,20 @@ Future<String?> playbackHttpProxyFor(String playUrl) async {
     return null;
   }
 
-  if (PackHttp.systemDnsUnhealthy) {
-    if (kDebugMode) {
-      debugPrint('[Player] system DNS unhealthy — DoH proxy for ${uri.host}');
-    }
-    return Ipv4ConnectProxy.instance.endpoint();
-  }
-
   List<InternetAddress> addrs = const [];
-  var failed = false;
   final lookup = debugPlaybackSystemLookup ?? InternetAddress.lookup;
   try {
-    addrs = await lookup(uri.host).timeout(PackHttp.systemDnsTimeout);
-  } on TimeoutException catch (e) {
-    failed = true;
-    PackHttp.markSystemDnsUnhealthy(uri.host, e);
+    addrs = await lookup(uri.host);
   } catch (e) {
-    failed = true;
-    PackHttp.markSystemDnsUnhealthy(uri.host, e);
+    if (kDebugMode) {
+      debugPrint('[Player] DNS lookup failed for ${uri.host}: $e');
+    }
+    return null;
   }
 
-  final reason = playbackProxyReason(
-    scheme: uri.scheme,
-    lookupFailed: failed,
-    addrs: addrs,
-  );
+  final reason = playbackProxyReason(scheme: uri.scheme, addrs: addrs);
   if (reason == PlaybackProxyReason.none) return null;
-  if (kDebugMode && reason == PlaybackProxyReason.dns) {
-    debugPrint('[Player] system DNS failed for ${uri.host} — DoH proxy');
-  } else if (kDebugMode && reason == PlaybackProxyReason.nat64) {
+  if (kDebugMode) {
     debugPrint('[Player] dual-stack dial for ${uri.host}');
   }
   return Ipv4ConnectProxy.instance.endpoint();
@@ -313,7 +291,11 @@ class _ConnectSession {
 
   Future<void> _openUpstream(PlaybackProxyRequest request) async {
     try {
-      final addrs = await PackHttp.resolveHost(request.host);
+      final looked = await InternetAddress.lookup(request.host);
+      final v4 = looked
+          .where((a) => a.type == InternetAddressType.IPv4)
+          .toList();
+      final addrs = v4.isNotEmpty ? v4 : looked;
       final upstream = await connectFirstAddress(addrs, request.port);
       if (_closed) {
         upstream.destroy();
