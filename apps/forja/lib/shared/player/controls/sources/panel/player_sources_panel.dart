@@ -4373,14 +4373,28 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             stream: stream,
           )
         : null;
+    final ownsDownload = dlTask != null &&
+        streamRowOwnsDownloadTask(
+          task: dlTask,
+          mediaId: _downloadMediaId,
+          season: widget.season,
+          episode: widget.episode,
+          stream: stream,
+        );
+    final sameFile =
+        dlTask != null && streamSharesDownloadedFile(stream, dlTask);
     final dlChrome = downloadsOn
-        ? chromeForDownloadTask(dlTask)
+        ? chromeForStreamDownload(
+            task: dlTask,
+            ownsRow: ownsDownload,
+            sameFile: sameFile && !ownsDownload,
+          )
         : SourceDownloadChrome.none;
-    final dlLabel = dlTask == null
-        ? null
-        : (dlTask.isActive
-              ? '${(dlTask.progressPercent * 100).clamp(0, 100).toStringAsFixed(0)}% · ${dlTask.speedLabel}'
-              : null);
+    final dlLabel = dlTask != null &&
+            dlTask.isActive &&
+            (ownsDownload || sameFile)
+        ? '${(dlTask.progressPercent * 100).clamp(0, 100).toStringAsFixed(0)}% · ${dlTask.speedLabel}'
+        : null;
     return KeyedSubtree(
       key: _playerStreamTileKey(stream),
       child: KeyedSubtree(
@@ -4412,7 +4426,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           onTap: () => _selectStremio(stream),
           onPlayCloud:
               downloadsOn &&
-                  dlTask != null &&
+                  ownsDownload &&
                   dlTask.isCompleted &&
                   streamHttpUrlForDownload(stream) != null
               ? () => _selectStremio(stream, fromDisk: false)
@@ -4425,17 +4439,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                   episode: widget.episode,
                 )
               : null,
-          onPauseDownload: dlTask != null && dlTask.isDownloading
+          onPauseDownload: ownsDownload && dlTask.isDownloading
               ? () =>
                     unawaited(DownloadService.instance.pauseDownload(dlTask.id))
               : null,
           onResumeDownload:
-              dlTask != null && dlTask.isActive && !dlTask.isDownloading
+              ownsDownload && dlTask.isActive && !dlTask.isDownloading
               ? () => unawaited(
                   DownloadService.instance.resumeDownload(dlTask.id),
                 )
               : null,
-          onDeleteDownload: dlTask == null
+          onDeleteDownload: !ownsDownload
               ? null
               : dlTask.isCompleted
               ? () => unawaited(_confirmDeleteOffline(dlTask))
@@ -4493,7 +4507,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       );
     }
     if (_error != null && totalCount == 0) {
-      final tv = ShellScope.metricsOf(context).usesTvDensity;
+      final tv = ShellScope.metricsOf(context).usesTvDensity ||
+          ShellTokens.isTvLayout(context);
       final errBody = Center(
         child: Padding(
           padding: EdgeInsets.all(tv ? ShellTokens.torrentPanelPaddingTv : 24),
@@ -4564,7 +4579,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           textAlign: TextAlign.center,
           style: TextStyle(
             color: ForjaShellColors.cinematic.textSecondary,
-            fontSize: ShellScope.metricsOf(context).usesTvDensity
+            fontSize:
+                ShellScope.metricsOf(context).usesTvDensity ||
+                    ShellTokens.isTvLayout(context)
                 ? ShellTokens.tvBodyFontSize
                 : 13,
           ),
@@ -4621,7 +4638,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         primary: false,
         padding: const EdgeInsets.only(bottom: 8),
         itemCount: totalCount,
-        separatorBuilder: (_, _) => const SizedBox(height: 6),
+        separatorBuilder: (_, _) => SizedBox(
+          height: ShellTokens.chromeScale(
+            6,
+            tv: ShellTokens.isTvLayout(context) ||
+                ShellScope.metricsOf(context).usesTvDensity,
+          ),
+        ),
         itemBuilder: (context, i) {
           final tvIndex = tv ? i : null;
           final onUp = i == 0

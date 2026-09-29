@@ -11,6 +11,32 @@ class PortalsPanelTvFocus {
   PortalsPanelTvFocus({required this.tabId, this.rowHeight});
 
   final String tabId;
+
+  /// Top-bar Portals chip slot. Header ↑ must land here, not on the shelf.
+  static final Map<String, ({String rowId, int index})> _chipSlot = {};
+
+  static void bindChip({
+    required String tabId,
+    required String rowId,
+    required int index,
+  }) {
+    final tab = tabId.trim();
+    final row = rowId.trim();
+    if (tab.isEmpty || row.isEmpty || index < 0) return;
+    _chipSlot[tab] = (rowId: row, index: index);
+  }
+
+  static void unbindChip({
+    required String tabId,
+    required String rowId,
+    required int index,
+  }) {
+    final tab = tabId.trim();
+    final slot = _chipSlot[tab];
+    if (slot == null) return;
+    if (slot.rowId != rowId.trim() || slot.index != index) return;
+    _chipSlot.remove(tab);
+  }
   double? rowHeight;
   final listScroll = ScrollController();
 
@@ -295,9 +321,12 @@ class PortalsPanelTvFocus {
   }
 
   void exitUpToChip() {
-    // Prefer remembered top-bar Portals chip / chrome.
-    if (ShellTvFocusCoordinator.focusRowItemRemembered(tabId, 'chrome')) {
-      return;
-    }
+    final slot = _chipSlot[tabId];
+    if (slot == null) return;
+    ShellTvFocusCoordinator.focusRowItemRemembered(
+      tabId,
+      slot.rowId,
+      index: slot.index,
+    );
   }
 }

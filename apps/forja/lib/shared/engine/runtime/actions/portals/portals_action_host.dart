@@ -200,6 +200,7 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
   @override
   void initState() {
     super.initState();
+    _bindChip();
     _health = PortalHealthTracker(onChanged: () {
       if (mounted) setState(() {});
     });
@@ -217,7 +218,35 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
   }
 
   @override
+  void didUpdateWidget(covariant _PortalsTopBarChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tabId != widget.tabId ||
+        oldWidget.rowId != widget.rowId ||
+        oldWidget.itemIndex != widget.itemIndex) {
+      PortalsPanelTvFocus.unbindChip(
+        tabId: oldWidget.tabId,
+        rowId: oldWidget.rowId,
+        index: oldWidget.itemIndex,
+      );
+      _bindChip();
+    }
+  }
+
+  void _bindChip() {
+    PortalsPanelTvFocus.bindChip(
+      tabId: widget.tabId,
+      rowId: widget.rowId,
+      index: widget.itemIndex,
+    );
+  }
+
+  @override
   void dispose() {
+    PortalsPanelTvFocus.unbindChip(
+      tabId: widget.tabId,
+      rowId: widget.rowId,
+      index: widget.itemIndex,
+    );
     _health.dispose();
     super.dispose();
   }

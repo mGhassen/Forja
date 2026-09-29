@@ -840,6 +840,14 @@ abstract final class ShellTokens {
   /// Stream / provider row card title (smaller than panel section title).
   static const double torrentPanelRowTitleFontSizeDesktop = 13;
   static const double torrentPanelRowTitleFontSizeTv = tvBodyFontSize;
+
+  /// Stream cards are a dense list, not body copy. Kind tabs stay on the body ladder.
+  static const double torrentPanelStreamTitleFontSizeTv = 7;
+  static const double torrentPanelStreamStatusFontSizeTv = 6;
+
+  /// Probe / play status stripe on the left of a stream card.
+  static const double torrentPanelProbeBarWidthDesktop = 4;
+  static const double torrentPanelProbeBarWidthTv = 1;
   static const double torrentPanelRowPadHDesktop = 12;
   static const double torrentPanelRowPadHTv =
       torrentPanelRowPadHDesktop * tvChromeScale;

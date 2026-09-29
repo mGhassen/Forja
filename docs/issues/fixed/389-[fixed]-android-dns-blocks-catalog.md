@@ -40,10 +40,11 @@ On the Android TV emulator, Private DNS is strict (`private_dns_mode=hostname`, 
 
 Issue 298 capped that hang at 5 seconds and only then tried Cloudflare DoH, on every new connection, with no memory. A category change starts a fresh client per rail, so every rail and every poster paid the 5 seconds again. Rails that fetch twice sat around 11 seconds. The hub stayed blank for that wait.
 
-Lookup now runs system DNS and DoH together. The first non-empty answer is used and reused for 60 seconds. Same-host lookups that are already running share that probe. After a system-DNS timeout, further probes skip system DNS for 2 minutes unless DoH has no answer (LAN names).
+Lookup now runs system DNS and DoH together. The first non-empty answer is used and reused for 60 seconds. Same-host lookups that are already running share that probe. After a system-DNS timeout, further probes skip system DNS unless DoH has no answer (LAN names). The skip used to last 2 minutes and then the hung lookup started again — [393](393-[fixed]-android-tv-dns-skip-expires.md).
 
 ---
 
 ## Related
 
 - [298](298-[fixed]-android-tv-hotspot-dns-unreachable.md) — earlier sequential fallback
+- [393](393-[fixed]-android-tv-dns-skip-expires.md) — 2-minute skip re-armed the timeout

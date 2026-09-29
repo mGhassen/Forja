@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **24 / 27** tasks (2 deferred) · **20 / 20** acceptance |
+| **Progress** | **25 / 28** tasks (2 deferred) · **21 / 21** acceptance |
 | **Current slice** | Phase 1 + integrity follow-ups ([377](377-[open]-vod-offline-play-corrupt-file-stream-hop.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -47,6 +47,7 @@
 | 25 | I365-T25 | Player Sources button shows an offline icon while the saved file is playing | ✅ |
 | 26 | I365-T26 | Sources row saved from the player (`engine:<id>` chip) plays the file on tap; cloud stays online | ✅ |
 | 27 | I365-T27 | Player chrome has no Download button; enqueue stays on Sources | ✅ |
+| 28 | I365-T28 | Same play URL paints stripes only on the row that was downloaded; copies get green status text | ✅ |
 
 ---
 
@@ -74,6 +75,7 @@
 | 18 | I365-A18 | Player Sources button shows an offline icon while the saved file is playing; Play online drops it | ✅ |
 | 19 | I365-A19 | A source saved from the player still plays the file when its live URL changed; cloud plays online | ✅ |
 | 20 | I365-A20 | Player chrome has no Download button | ✅ |
+| 21 | I365-A21 | Same-file Sources rows show green status text only; stripes stay on the downloaded row | ✅ |
 
 ---
 

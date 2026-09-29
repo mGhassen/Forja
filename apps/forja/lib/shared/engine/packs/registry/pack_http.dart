@@ -13,7 +13,8 @@ import 'package:http/io_client.dart';
 /// Android Private DNS can hang [InternetAddress.lookup] for its whole
 /// deadline while raw IP still works. The probe that returns addresses first
 /// wins. A hung system lookup does not block DoH. Results are cached, and
-/// identical in-flight lookups share one probe.
+/// identical in-flight lookups share one probe. After one system-DNS timeout,
+/// further probes skip system DNS until a later lookup succeeds.
 ///
 /// Used for pack install, flutter_js host HTTP, and (via Android
 /// [HttpOverrides]) every Dart [HttpClient] including Supabase sync.
@@ -23,9 +24,6 @@ abstract final class PackHttp {
   /// Cap one system lookup — Android TV/emulator can hang forever on lookup.
   /// A DoH answer is returned without waiting this out.
   static const Duration systemDnsTimeout = Duration(seconds: 5);
-
-  /// After a system-DNS timeout, skip further system probes for this long.
-  static const Duration systemDnsSkip = Duration(seconds: 120);
 
   static const Duration dnsCacheTtl = Duration(seconds: 60);
 
@@ -51,14 +49,20 @@ abstract final class PackHttp {
   static final Map<String, List<InternetAddress>> _dnsCache = {};
   static final Map<String, DateTime> _dnsCacheUntil = {};
   static final Map<String, Future<List<InternetAddress>>> _dnsInFlight = {};
-  static DateTime? _skipSystemDnsUntil;
+
+  /// Set on the first system-DNS timeout and kept for the process.
+  ///
+  /// A 2-minute window re-armed `InternetAddress.lookup` on Android TV.
+  /// That call keeps running inside netd after the Dart timeout, and the
+  /// next catalog fetch then dies at its own deadline (`HTTP 0`).
+  static bool _systemDnsDead = false;
 
   @visibleForTesting
   static void debugResetDnsCache() {
     _dnsCache.clear();
     _dnsCacheUntil.clear();
     _dnsInFlight.clear();
-    _skipSystemDnsUntil = null;
+    _systemDnsDead = false;
     debugSystemLookup = null;
     debugDoh = null;
   }
@@ -208,31 +212,28 @@ abstract final class PackHttp {
     });
   }
 
-  static bool get _systemDnsSkipped {
-    final until = _skipSystemDnsUntil;
-    return until != null && DateTime.now().isBefore(until);
-  }
+  static bool get _systemDnsSkipped => _systemDnsDead;
 
-  /// True for [systemDnsSkip] after a system lookup times out or fails hard.
+  /// True after a system lookup times out, until a later lookup succeeds.
   static bool get systemDnsUnhealthy => _systemDnsSkipped;
 
-  /// Playback learned system DNS is dead. Further probes skip it for
-  /// [systemDnsSkip], same as a [InternetAddress.lookup] timeout.
+  /// Playback learned system DNS is dead. Further probes skip it for this
+  /// process, same as an [InternetAddress.lookup] timeout.
   static void markSystemDnsUnhealthy(String host, Object error) {
     _noteSystemTimeout(host, error);
   }
 
   static void _noteSystemOk() {
-    _skipSystemDnsUntil = null;
+    _systemDnsDead = false;
   }
 
   static void _noteSystemTimeout(String host, Object error) {
-    final already = _systemDnsSkipped;
-    _skipSystemDnsUntil = DateTime.now().add(systemDnsSkip);
+    final already = _systemDnsDead;
+    _systemDnsDead = true;
     if (already) return;
     debugPrint(
       '[PackHttp] system DNS timed out ($host): $error — using DoH, '
-      'skipping system DNS for ${systemDnsSkip.inSeconds}s',
+      'skipping system DNS for this session',
     );
   }
 

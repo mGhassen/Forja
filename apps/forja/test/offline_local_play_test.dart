@@ -314,4 +314,97 @@ void main() {
       isFalse,
     );
   });
+
+  test('same play URL does not stripe sibling rows', () {
+    final task = DownloadTask(
+      id: 'dl-mega',
+      title: 'Liar Game',
+      mediaId: 'tt1',
+      type: 'tv',
+      season: 1,
+      episode: 1,
+      sourceName: 'HiAnime · MegaPlay',
+      rawUrl: 'https://cdn.example/ep.m3u8',
+      targetFilePath: '/tmp/ep.m3u8',
+      status: DownloadStatus.downloading,
+      createdAt: DateTime.utc(2026, 9, 25),
+    );
+    final saved = Map<String, dynamic>.from({
+      'url': task.rawUrl,
+      'title': 'Liar Game',
+      'name': 'HiAnime · MegaPlay',
+      '_addonName': 'HiAnime · MegaPlay',
+    });
+    final sibling = {
+      'url': task.rawUrl,
+      'title': 'Liar Game',
+      'name': 'Anikoto · HD-1',
+      '_addonName': 'Anikoto · HD-1',
+    };
+    expect(
+      streamRowOwnsDownloadTask(
+        task: task,
+        mediaId: 'tt1',
+        season: 1,
+        episode: 1,
+        stream: saved,
+      ),
+      isTrue,
+    );
+    expect(
+      streamRowOwnsDownloadTask(
+        task: task,
+        mediaId: 'tt1',
+        season: 1,
+        episode: 1,
+        stream: sibling,
+      ),
+      isFalse,
+    );
+    expect(
+      chromeForStreamDownload(
+        task: task,
+        ownsRow: true,
+        sameFile: false,
+      ),
+      SourceDownloadChrome.downloading,
+    );
+    expect(
+      chromeForStreamDownload(
+        task: task,
+        ownsRow: false,
+        sameFile: true,
+      ),
+      SourceDownloadChrome.sameFile,
+    );
+    final done = DownloadTask(
+      id: task.id,
+      title: task.title,
+      mediaId: task.mediaId,
+      type: task.type,
+      season: task.season,
+      episode: task.episode,
+      sourceName: task.sourceName,
+      rawUrl: task.rawUrl,
+      targetFilePath: task.targetFilePath,
+      status: DownloadStatus.completed,
+      createdAt: task.createdAt,
+    );
+    expect(
+      chromeForStreamDownload(
+        task: done,
+        ownsRow: true,
+        sameFile: false,
+      ),
+      SourceDownloadChrome.offline,
+    );
+    expect(
+      chromeForStreamDownload(
+        task: done,
+        ownsRow: false,
+        sameFile: true,
+      ),
+      SourceDownloadChrome.sameFile,
+    );
+  });
 }

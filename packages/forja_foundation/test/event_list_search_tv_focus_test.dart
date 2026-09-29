@@ -58,6 +58,105 @@ Widget _tvTap({
 }
 
 void main() {
+  testWidgets('open field drops the search-icon TV slot', (tester) async {
+    final indexes = <String, int?>{};
+    Widget tap({
+      required BuildContext context,
+      required Widget child,
+      VoidCallback? onTap,
+      double borderRadius = 12,
+      double scaleOnFocus = 1,
+      VoidCallback? onLeftEdge,
+      VoidCallback? onUpEdge,
+      VoidCallback? onDownEdge,
+      VoidCallback? onRightEdge,
+      ValueChanged<bool>? onFocusChange,
+      ValueChanged<bool>? onHoverChange,
+      FocusNode? focusNode,
+      bool autoFocus = false,
+      int? listIndex,
+      bool navLeftAlways = false,
+      int? gridIndex,
+      int? gridColumns,
+      String? tvTabId,
+      String? tvRowId,
+      int? tvItemIndex,
+      ShellPaintTvZone? tvZone,
+      ShellPaintEnsureVisible ensureVisibleMode = ShellPaintEnsureVisible.row,
+      bool showFocusBorder = false,
+      bool showFocusFill = true,
+      bool showFocusRail = false,
+      bool suppressInkHover = false,
+      bool allowNestedFocus = false,
+      FocusOnKeyEventCallback? onKeyEvent,
+      bool mouseDownActivates = true,
+    }) {
+      final label = focusNode?.debugLabel ?? '';
+      if (label.isNotEmpty) indexes[label] = tvItemIndex;
+      return _tvTap(
+        context: context,
+        child: child,
+        onTap: onTap,
+        borderRadius: borderRadius,
+        scaleOnFocus: scaleOnFocus,
+        onLeftEdge: onLeftEdge,
+        onUpEdge: onUpEdge,
+        onDownEdge: onDownEdge,
+        onRightEdge: onRightEdge,
+        onFocusChange: onFocusChange,
+        onHoverChange: onHoverChange,
+        focusNode: focusNode,
+        autoFocus: autoFocus,
+        listIndex: listIndex,
+        navLeftAlways: navLeftAlways,
+        gridIndex: gridIndex,
+        gridColumns: gridColumns,
+        tvTabId: tvTabId,
+        tvRowId: tvRowId,
+        tvItemIndex: tvItemIndex,
+        tvZone: tvZone,
+        ensureVisibleMode: ensureVisibleMode,
+        showFocusBorder: showFocusBorder,
+        showFocusFill: showFocusFill,
+        showFocusRail: showFocusRail,
+        suppressInkHover: suppressInkHover,
+        allowNestedFocus: allowNestedFocus,
+        onKeyEvent: onKeyEvent,
+        mouseDownActivates: mouseDownActivates,
+      );
+    }
+
+    final searchKey = GlobalKey<EventListSearchState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShellPaintScope(
+          useTvFocus: true,
+          scaleOnHover: false,
+          usesTvDensity: true,
+          focusStyled: (_, {required focused}) => focused,
+          focusableTapBuilder: tap,
+          child: Scaffold(
+            body: Center(
+              child: EventListSearch(
+                key: searchKey,
+                query: '',
+                onQueryChanged: (_) {},
+                tvItemIndex: 3,
+                debugLabel: 'slot-search',
+                openFieldSlot: ({required focusNode, required child}) => child,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(indexes['slot-search-tool'], 3);
+
+    searchKey.currentState!.openSearch();
+    await tester.pump();
+    expect(indexes['slot-search-tool'], isNull);
+  });
+
   testWidgets('TV: closing expanded search returns focus to the search icon', (
     tester,
   ) async {

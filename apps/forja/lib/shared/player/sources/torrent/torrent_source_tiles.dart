@@ -14,6 +14,17 @@ import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+/// Paint density for a source card. [ShellScope] can stay desktop while the
+/// panel width already follows [ShellTokens.isTvLayout] — rows then stay at
+/// the desktop 13px sheet inside a leanback-width panel.
+bool _sourcesLeanback(BuildContext context) {
+  if (ShellScope.maybeOf(context)?.metrics.usesTvDensity == true) return true;
+  if (ShellPaintScope.usesTvDensityOf(context)) return true;
+  return ShellTokens.isTvLayout(context);
+}
+
 class TorrentSourceTile extends StatelessWidget {
   const TorrentSourceTile({
     super.key,
@@ -399,7 +410,9 @@ class StremioSourceTile extends StatelessWidget {
           ? Icon(
               leadingIcon,
               color: leadingColor,
-              size: ShellScope.metricsOf(context).torrentPanelLeadingIconSize,
+              size: _sourcesLeanback(context)
+                  ? ShellTokens.torrentPanelLeadingIconSizeTv
+                  : ShellScope.metricsOf(context).torrentPanelLeadingIconSize,
             )
           : null,
       accentBorder: isExternal ? leadingColor.withValues(alpha: 0.25) : null,
@@ -593,7 +606,10 @@ class _SourceBadgeCard extends StatefulWidget {
 class _SourceBadgeCardState extends State<_SourceBadgeCard>
     with SingleTickerProviderStateMixin {
   static const _hoverProbeDelay = Duration(milliseconds: 400);
-  static const _probeBarWidth = 4.0;
+
+  double _probeBarWidth(BuildContext context) => _sourcesLeanback(context)
+      ? ShellTokens.torrentPanelProbeBarWidthTv
+      : ShellTokens.torrentPanelProbeBarWidthDesktop;
 
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
@@ -830,7 +846,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
             probing ? 'DOWNLOAD' : 'DOWNLOAD OFFLINE?',
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
-              fontSize: 10,
+              fontSize: _sourcesLeanback(context)
+                  ? ShellTokens.torrentPanelStreamStatusFontSizeTv
+                  : 10,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.6,
             ),
@@ -896,10 +914,21 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
 
   Widget _buildFace(bool hovered) {
     final metrics = ShellScope.metricsOf(context);
-    final padV = metrics.torrentPanelRowPadV;
-    final titleSize = metrics.torrentPanelRowTitleFontSize;
-    final badgeGap = metrics.usesTvDensity ? 4.0 : 6.0;
-    final titleGap = metrics.usesTvDensity ? 5.0 : 8.0;
+    final tv = _sourcesLeanback(context);
+    final padV = tv
+        ? ShellTokens.torrentPanelRowPadVTv
+        : metrics.torrentPanelRowPadV;
+    final padH = tv
+        ? ShellTokens.torrentPanelRowPadHTv
+        : metrics.torrentPanelRowPadH;
+    final titleSize = tv
+        ? ShellTokens.torrentPanelStreamTitleFontSizeTv
+        : metrics.torrentPanelRowTitleFontSize;
+    final metaSize = tv
+        ? ShellTokens.torrentPanelStreamStatusFontSizeTv
+        : metrics.torrentPanelMetaFontSize;
+    final badgeGap = tv ? 4.0 : 6.0;
+    final titleGap = tv ? 5.0 : 8.0;
     final cinematic = ForjaShellColors.cinematic;
     final selected = widget.selected;
     final accentFg = ForjaShellColors.brandGreen;
@@ -957,13 +986,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                 (canPlayCloud ? 1 : 0) +
                 (canDropOffline ? 1 : 0) +
                 (hasMagnet ? 1 : 0);
-    final hit = metrics.usesTvDensity ? 36.0 : 40.0;
-    final actionPadH = metrics.usesTvDensity ? 8.0 : 10.0;
+    final hit = ShellTokens.chromeScale(40, tv: tv);
+    final actionPadH = ShellTokens.chromeScale(10, tv: tv);
     final actionWidth = railIconCount > 0
         ? (hit * railIconCount) + (actionPadH * 2)
         : 0.0;
     final railAnim = const Duration(milliseconds: 180);
-    final iconSize = metrics.usesTvDensity ? 18.0 : 20.0;
+    final iconSize = ShellTokens.chromeScale(20, tv: tv);
     final prep = _downloadPrep;
     final canYes = prep != null && prep.canConfirm;
 
@@ -971,7 +1000,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
         ? _downloadConfirmFace(
             titleSize: titleSize,
             metaColor: metaColor,
-            metaFontSize: metrics.torrentPanelMetaFontSize,
+            metaFontSize: metaSize,
           )
         : Column(
             mainAxisSize: MainAxisSize.min,
@@ -1033,7 +1062,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: metaColor,
-                    fontSize: metrics.torrentPanelMetaFontSize,
+                    fontSize: metaSize,
                   ),
                 ),
               ] else if (widget.footer != null) ...[
@@ -1046,7 +1075,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                   'Playing',
                   style: TextStyle(
                     color: accentFg,
-                    fontSize: metrics.torrentPanelMetaFontSize,
+                    fontSize: metaSize,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1056,9 +1085,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
 
     Widget main = Padding(
       padding: EdgeInsets.fromLTRB(
-        metrics.torrentPanelRowPadH,
+        padH,
         padV,
-        metrics.torrentPanelRowPadH,
+        padH,
         padV,
       ),
       child: Row(
@@ -1077,7 +1106,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                   widget.downloadChrome != SourceDownloadChrome.none)) ...[
             SizedBox(width: titleGap),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 120),
+              constraints: BoxConstraints(
+                maxWidth: ShellTokens.chromeScale(120, tv: tv),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -1086,7 +1117,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                     Icon(
                       Icons.check_rounded,
                       color: ForjaShellColors.brandGreen,
-                      size: metrics.torrentPanelLeadingIconSize,
+                      size: tv
+                          ? ShellTokens.torrentPanelLeadingIconSizeTv
+                          : metrics.torrentPanelLeadingIconSize,
                     ),
                   if (hasProvider)
                     ...providerLines.asMap().entries.map((entry) {
@@ -1101,7 +1134,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                           textAlign: TextAlign.right,
                           style: TextStyle(
                             color: metaColor,
-                            fontSize: metrics.torrentPanelMetaFontSize,
+                            fontSize: metaSize,
                             fontWeight: FontWeight.w500,
                             height: 1.25,
                           ),
@@ -1109,7 +1142,11 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                       );
                     }),
                   if (widget.downloadChrome ==
-                      SourceDownloadChrome.downloading) ...[
+                          SourceDownloadChrome.downloading ||
+                      (widget.downloadChrome == SourceDownloadChrome.sameFile &&
+                          (widget.downloadStatusLabel ?? '')
+                              .trim()
+                              .isNotEmpty)) ...[
                     if (hasProvider || selected) const SizedBox(height: 2),
                     Text(
                       (widget.downloadStatusLabel ?? '').trim().isEmpty
@@ -1120,14 +1157,17 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         color: ForjaShellColors.brandGreen,
-                        fontSize: metrics.torrentPanelMetaFontSize,
+                        fontSize: metaSize,
                         fontWeight: FontWeight.w600,
                         height: 1.1,
                       ),
                     ),
                   ],
-                  if (widget.downloadChrome ==
-                      SourceDownloadChrome.offline) ...[
+                  if (widget.downloadChrome == SourceDownloadChrome.offline ||
+                      (widget.downloadChrome == SourceDownloadChrome.sameFile &&
+                          (widget.downloadStatusLabel ?? '')
+                              .trim()
+                              .isEmpty)) ...[
                     if (hasProvider || selected) const SizedBox(height: 2),
                     Text(
                       'Offline',
@@ -1136,7 +1176,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         color: ForjaShellColors.brandGreen,
-                        fontSize: metrics.torrentPanelMetaFontSize,
+                        fontSize: metaSize,
                         fontWeight: FontWeight.w600,
                         height: 1.1,
                       ),
@@ -1149,7 +1189,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                       children: [
                         Icon(
                           Icons.visibility_outlined,
-                          size: metrics.torrentPanelMetaFontSize,
+                          size: metaSize,
                           color: metaColor.withValues(
                             alpha: selected ? 0.85 : 0.75,
                           ),
@@ -1159,7 +1199,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                           '${widget.viewerCount}',
                           style: TextStyle(
                             color: metaColor,
-                            fontSize: metrics.torrentPanelMetaFontSize,
+                            fontSize: metaSize,
                             fontWeight: FontWeight.w500,
                             height: 1.1,
                           ),
@@ -1174,7 +1214,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                       children: [
                         Icon(
                           Icons.arrow_upward_rounded,
-                          size: metrics.torrentPanelMetaFontSize,
+                          size: metaSize,
                           color: seedColor,
                         ),
                         const SizedBox(width: 2),
@@ -1182,7 +1222,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                           widget.seeders!,
                           style: TextStyle(
                             color: seedColor,
-                            fontSize: metrics.torrentPanelMetaFontSize,
+                            fontSize: metaSize,
                             fontWeight: FontWeight.w600,
                             height: 1.1,
                           ),
@@ -1346,7 +1386,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(width: _probeBarWidth),
+                SizedBox(width: _probeBarWidth(context)),
                 Expanded(child: main),
                 if (railIconCount > 0)
                   ClipRect(
@@ -1376,7 +1416,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
               left: 0,
               top: 0,
               bottom: 0,
-              width: _probeBarWidth,
+              width: _probeBarWidth(context),
               child: ColoredBox(color: leftBarColor),
             ),
           ],
@@ -1465,6 +1505,7 @@ class _LanguageFlagBadges extends StatelessWidget {
   Widget build(BuildContext context) {
     if (codes.isEmpty) return const SizedBox.shrink();
     final metrics = ShellScope.metricsOf(context);
+    final tv = _sourcesLeanback(context);
 
     if (StreamProviderDisplay.supportsFlagEmoji) {
       final flags = StreamProviderDisplay.flagsDisplayForCodes(codes);
@@ -1472,7 +1513,9 @@ class _LanguageFlagBadges extends StatelessWidget {
       return Text(
         flags,
         style: TextStyle(
-          fontSize: metrics.torrentPanelChipFontSize,
+          fontSize: tv
+              ? ShellTokens.torrentPanelStreamStatusFontSizeTv
+              : metrics.torrentPanelChipFontSize,
           height: 1.1,
         ),
       );
@@ -1503,7 +1546,7 @@ class _SourceMetaBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final metrics = ShellScope.metricsOf(context);
-    final tv = metrics.usesTvDensity;
+    final tv = _sourcesLeanback(context);
     late final Color fg;
     late final Color bg;
     late final Color border;
@@ -1549,7 +1592,9 @@ class _SourceMetaBadge extends StatelessWidget {
         badge.label,
         style: TextStyle(
           color: fg,
-          fontSize: metrics.torrentPanelChipFontSize,
+          fontSize: tv
+              ? ShellTokens.torrentPanelStreamStatusFontSizeTv
+              : metrics.torrentPanelChipFontSize,
           fontWeight: FontWeight.w600,
           height: 1.1,
         ),

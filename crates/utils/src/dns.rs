@@ -4,7 +4,8 @@
 //! whole deadline while raw IP still works. Waiting for that failure before
 //! DoH stalls every catalog request. The probe that returns addresses first
 //! wins. A hung system lookup does not block DoH. Results are cached, and
-//! identical in-flight lookups share one probe.
+//! identical in-flight lookups share one probe. After one system-DNS timeout,
+//! further probes skip system DNS until a later lookup succeeds.
 //!
 //! Dart pack HTTP uses the same rule (`PackHttp`).
 
@@ -20,8 +21,9 @@ use serde::Deserialize;
 /// Callers do not wait this out once DoH has addresses.
 pub const SYSTEM_DNS_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// After a system-DNS timeout, skip further system probes for this long.
-const SYSTEM_DNS_SKIP: Duration = Duration::from_secs(120);
+/// After one system-DNS timeout, skip further system probes until a later
+/// lookup succeeds. A 2-minute window started `getaddrinfo` again; on Android
+/// TV that call stays inside netd and the next catalog fetch dies at its deadline.
 
 /// Reuse a successful lookup. Short enough that a network change recovers.
 const DNS_CACHE_TTL: Duration = Duration::from_secs(60);
@@ -68,14 +70,14 @@ impl Resolve for DohFallbackResolver {
 struct Flight {
     cache: HashMap<String, (Instant, Vec<SocketAddr>)>,
     locks: HashMap<String, Arc<tokio::sync::Mutex<()>>>,
-    skip_system_until: Option<Instant>,
+    skip_system: bool,
 }
 
 static FLIGHT: LazyLock<Mutex<Flight>> = LazyLock::new(|| {
     Mutex::new(Flight {
         cache: HashMap::new(),
         locks: HashMap::new(),
-        skip_system_until: None,
+        skip_system: false,
     })
 });
 
@@ -156,25 +158,25 @@ fn host_lock(key: &str) -> Arc<tokio::sync::Mutex<()>> {
 }
 
 fn system_skipped() -> bool {
-    let flight = FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
-    match flight.skip_system_until {
-        Some(until) => Instant::now() < until,
-        None => false,
-    }
+    FLIGHT
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .skip_system
 }
 
 fn note_system_ok() {
     let mut flight = FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
-    flight.skip_system_until = None;
+    flight.skip_system = false;
 }
 
 fn note_system_timeout() {
     let mut flight = FLIGHT.lock().unwrap_or_else(|e| e.into_inner());
-    flight.skip_system_until = Some(Instant::now() + SYSTEM_DNS_SKIP);
+    flight.skip_system = true;
 }
 
 /// Resolve `host`. System DNS and Cloudflare DoH run together; the first
-/// non-empty answer wins. A recent system-DNS timeout skips the hung probe.
+/// non-empty answer wins. A system-DNS timeout skips the hung probe until
+/// a later lookup succeeds.
 pub async fn resolve_host(
     host: &str,
     ipv4_only: bool,

@@ -18,7 +18,8 @@ import java.util.concurrent.TimeoutException
  * System DNS and Cloudflare DoH (`1.1.1.1`) in parallel.
  *
  * Same rules as Dart [PackHttp]: first non-empty answer wins, IPv4 preferred,
- * results cached 60s, system lookup skipped for 2 minutes after a timeout.
+ * results cached 60s. After one system-DNS timeout, further probes skip
+ * system DNS until a later lookup succeeds.
  * The DoH client connects to `1.1.1.1` by address so a broken system resolver
  * cannot recurse into itself.
  */
@@ -26,7 +27,6 @@ object ForjaDohDns : Dns {
     private const val TAG = "ForjaExo"
     private const val SYSTEM_TIMEOUT_MS = 5_000L
     private const val DOH_TIMEOUT_MS = 8_000L
-    private const val SKIP_SYSTEM_MS = 120_000L
     private const val CACHE_MS = 60_000L
 
     private val pool = Executors.newCachedThreadPool()
@@ -34,7 +34,7 @@ object ForjaDohDns : Dns {
     private val inflight = ConcurrentHashMap<String, Future<List<InetAddress>>>()
 
     @Volatile
-    private var skipSystemUntilMs = 0L
+    private var skipSystem = false
 
     private val oneOneOneOne: InetAddress =
         InetAddress.getByAddress(byteArrayOf(1, 1, 1, 1))
@@ -156,20 +156,20 @@ object ForjaDohDns : Dns {
         }
     }
 
-    private fun systemSkipped(): Boolean = System.currentTimeMillis() < skipSystemUntilMs
+    private fun systemSkipped(): Boolean = skipSystem
 
     private fun noteSystemOk() {
-        skipSystemUntilMs = 0L
+        skipSystem = false
     }
 
     private fun noteSystemTimeout(host: String, error: String) {
-        val already = systemSkipped()
-        skipSystemUntilMs = System.currentTimeMillis() + SKIP_SYSTEM_MS
+        val already = skipSystem
+        skipSystem = true
         if (already) return
         Log.i(
             TAG,
             "system DNS timed out ($host): $error — using DoH, " +
-                "skipping system DNS for ${SKIP_SYSTEM_MS / 1000}s",
+                "skipping system DNS for this session",
         )
     }
 

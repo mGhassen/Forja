@@ -6,7 +6,10 @@ import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 
 /// How a Sources stream row paints download chrome.
-enum SourceDownloadChrome { none, downloading, offline }
+///
+/// [sameFile] is another row whose play URL is the file already saved or
+/// saving. It gets the green status text only — no fill and no stripes.
+enum SourceDownloadChrome { none, downloading, offline, sameFile }
 
 /// Extract a durable HTTP(S) play URL from a catalog/stream map, if any.
 String? streamHttpUrlForDownload(Map<String, dynamic> stream) {
@@ -27,6 +30,54 @@ SourceDownloadChrome chromeForDownloadTask(DownloadTask? task) {
   if (task == null) return SourceDownloadChrome.none;
   if (task.isCompleted) return SourceDownloadChrome.offline;
   if (task.isActive) return SourceDownloadChrome.downloading;
+  return SourceDownloadChrome.none;
+}
+
+/// True when this row is the one that was saved — task id or source label.
+///
+/// A shared play URL is not ownership. Those rows use [SourceDownloadChrome.sameFile].
+bool streamRowOwnsDownloadTask({
+  required DownloadTask task,
+  required String mediaId,
+  int? season,
+  int? episode,
+  required Map<String, dynamic> stream,
+}) {
+  final names = streamDownloadNames(stream);
+  final rank = downloadTaskMatchRank(
+    task: task,
+    mediaId: mediaId,
+    season: season,
+    episode: episode,
+    taskId: stream['_downloadTaskId']?.toString(),
+    sourceName: names.isEmpty ? null : names.first,
+    names: names,
+  );
+  return rank == DownloadTaskMatchRank.task ||
+      rank == DownloadTaskMatchRank.name;
+}
+
+/// True when [stream] lists the same HTTP file as [task], and is not that row.
+bool streamSharesDownloadedFile(
+  Map<String, dynamic> stream,
+  DownloadTask task,
+) {
+  final url = streamHttpUrlForDownload(stream)?.trim() ?? '';
+  final taskUrl = task.rawUrl?.trim() ?? '';
+  return url.isNotEmpty && taskUrl.isNotEmpty && url == taskUrl;
+}
+
+/// Stripes only on the row that was downloaded. Same-file copies get text.
+SourceDownloadChrome chromeForStreamDownload({
+  required DownloadTask? task,
+  required bool ownsRow,
+  required bool sameFile,
+}) {
+  if (task == null) return SourceDownloadChrome.none;
+  if (ownsRow) return chromeForDownloadTask(task);
+  if (sameFile && (task.isCompleted || task.isActive)) {
+    return SourceDownloadChrome.sameFile;
+  }
   return SourceDownloadChrome.none;
 }
 

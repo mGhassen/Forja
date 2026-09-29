@@ -37,6 +37,7 @@ class EventListSearch extends StatefulWidget {
     this.onLeftEdge,
     this.onRightEdge,
     this.onDownEdge,
+    this.openFieldSlot,
   });
 
   final String query;
@@ -77,6 +78,14 @@ class EventListSearch extends StatefulWidget {
   final VoidCallback? onRightEdge;
   final VoidCallback? onDownEdge;
 
+  /// Host wraps the open field so that TV row slot stays on the input.
+  /// Collapsed search icon keeps [tvItemIndex] only while this is unset or
+  /// the field is closed.
+  final Widget Function({
+    required FocusNode focusNode,
+    required Widget child,
+  })? openFieldSlot;
+
   @override
   State<EventListSearch> createState() => EventListSearchState();
 }
@@ -89,6 +98,7 @@ class EventListSearchState extends State<EventListSearch>
   late final AnimationController _anim;
   late final Animation<double> _expand;
   bool _open = false;
+  bool _fieldFocused = false;
   bool _toolFocused = false;
   final ValueNotifier<bool> _toolHoveredN = ValueNotifier(false);
   bool _closeFocused = false;
@@ -115,6 +125,7 @@ class EventListSearchState extends State<EventListSearch>
     );
     _toolFocus = FocusNode(debugLabel: '${widget.debugLabel}-tool');
     _closeFocus = FocusNode(debugLabel: '${widget.debugLabel}-close');
+    _focus.addListener(_onFieldFocus);
     _focus.onKeyEvent = (node, event) {
       if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
         return KeyEventResult.ignored;
@@ -165,11 +176,22 @@ class EventListSearchState extends State<EventListSearch>
     _ctrl.dispose();
     _toolHoveredN.dispose();
     _closeHoveredN.dispose();
+    _focus.removeListener(_onFieldFocus);
     _toolFocus.dispose();
     _closeFocus.dispose();
     if (_ownsFocus) _focus.dispose();
     super.dispose();
   }
+
+  void _onFieldFocus() {
+    final focused = _focus.hasFocus;
+    if (_fieldFocused == focused || !mounted) return;
+    setState(() => _fieldFocused = focused);
+  }
+
+  /// Open input owns the TV slot; the circle icon must not keep it.
+  bool get _fieldOwnsTvSlot =>
+      widget.openFieldSlot != null && (_open || widget.alwaysOpen);
 
   void _setToolHovered(bool h) {
     if (_toolHoveredN.value == h) return;
@@ -348,7 +370,7 @@ class EventListSearchState extends State<EventListSearch>
       suppressInkHover: true,
       showFocusFill: false,
       focusNode: _toolFocus,
-      tvItemIndex: widget.tvItemIndex,
+      tvItemIndex: _fieldOwnsTvSlot ? null : widget.tvItemIndex,
       tvZone: ShellPaintTvZone.topBar,
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
@@ -409,12 +431,18 @@ class EventListSearchState extends State<EventListSearch>
     final closePad = ShellTokens.chromeScale(6, tv: tv);
     final closeRadius = ShellTokens.chromeScale(16, tv: tv);
 
-    return Container(
+    final fieldFocused = _tv && _fieldFocused;
+    final chrome = Container(
       height: widget.collapsedSize,
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(widget.collapsedSize / 2),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        border: Border.all(
+          color: fieldFocused
+              ? ForjaShellColors.brandGreen
+              : Colors.white.withValues(alpha: 0.18),
+          width: fieldFocused ? 1.5 : 1,
+        ),
       ),
       padding: EdgeInsets.only(left: pad, right: pad),
       child: Row(
@@ -464,5 +492,8 @@ class EventListSearchState extends State<EventListSearch>
         ],
       ),
     );
+    final slot = widget.openFieldSlot;
+    if (slot == null || !_fieldOwnsTvSlot) return chrome;
+    return slot(focusNode: _focus, child: chrome);
   }
 }
