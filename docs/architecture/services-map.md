@@ -56,11 +56,11 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | Item | Crate / FFI | Dart after |
 |------|-------------|------------|
 | KissKh catalog API | `crates/kisskh` · `kisskh_catalog_json` | `kisskh_service.dart` — history + models + `KissKhExtractor` (C3) |
-| Anime extractors (archived) | `crates/archive/anime/extractors/*` | Superseded by `plugins/providers/**` JS |
+| Anime extractors | Pack JS `extract(ctx)` | Rust anime extractors removed |
 | Live sports fetch | `crates/live-sports` · `live_sports_fetch_json` | IPTV portal sports match + pack resolve — no host Live Sports screen |
 | IPTV Reddit scraper | `crates/iptv` (`reddit_catalog` + `portal_extract`) · `scrape_page` | Thin `IptvScraper` host glue |
 
-| Anime Anikoto resolve (archived) | `crates/archive/anime/resolve/*` | Superseded by provider packs |
+| Anime resolve | Provider packs | Rust anime resolve removed |
 
 ### ✅ Correct today — do not move
 
@@ -79,7 +79,7 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | IPTV probe | `runIptvProbeStreamJson` → `iptv` | Engine |
 | IPTV Reddit catalog | `runIptvRedditCatalogJson` → `iptv` | Engine |
 | KissKh catalog | `runKisskhCatalogJson` → `kisskh` | Engine |
-| Anime extractors + resolve | `runAnimeExtractorJson` → `anime` | Engine |
+| Anime extract | Pack `extract(ctx)` in the JS host | Engine runner, not site scrapers |
 | Live Sports APIs | `runLiveSportsFetchJson` → `live-sports` | Engine |
 | Manga catalog | `runMangaCatalogJson` → `manga` | Engine |
 | LibGen books | `runBooksCatalogJson` → `books` | Engine |
@@ -204,7 +204,7 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 | `DebridPackBridge` | `playback/torrent/debrid_pack_bridge.dart` | C2 magnet→URL via pack | ✅ Host bridge |
 | `TorrentStreamService` | `playback/torrent/torrent_stream_service.dart` | C7 torrent playback | ✅ Engine |
 | `LocalServerService` | `playback/proxy/local_server_service.dart` | C7 loopback | ✅ Engine |
-| `Site111477Service` | `playback/providers/services/site111477_service.dart` | C2 index + C7 proxy glue | ✅ Engine |
+| `site111477_proxy` | `playback/proxy/site111477_proxy.dart` | C7 seek proxy | ✅ Engine |
 | `DeviceCapabilitiesService` | `playback/platform/device_capabilities_service.dart` | C6 probe | ✅ FFI helper |
 
 ---

@@ -368,16 +368,6 @@ class RustLib {
     return _readString(_native.ffi_indexer_request_json(ptr));
   });
 
-  String site111477IndexRequestJson(String requestJson) => using((arena) {
-    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_site111477_index_request_json(ptr));
-  });
-
-  String megaResolveJson(String embedUrl) => using((arena) {
-    final ptr = embedUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_mega_resolve_json(ptr));
-  });
-
   String metadataRequestJson(String requestJson) => using((arena) {
     final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     return _readString(_native.ffi_metadata_request_json(ptr));
@@ -841,16 +831,6 @@ final class _FfiNative {
             'ffi_indexer_request_json',
           )
           .asFunction(),
-      ffi_site111477_index_request_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_site111477_index_request_json',
-          )
-          .asFunction(),
-      ffi_mega_resolve_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_mega_resolve_json',
-          )
-          .asFunction(),
       ffi_metadata_request_json = lib
           .lookup<ffi.NativeFunction<_StringInOutNative>>(
             'ffi_metadata_request_json',
@@ -1180,10 +1160,6 @@ final class _FfiNative {
   ffi_media_extra_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_indexer_request_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_site111477_index_request_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_mega_resolve_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_metadata_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

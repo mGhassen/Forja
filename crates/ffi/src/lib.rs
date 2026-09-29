@@ -3,8 +3,6 @@ mod engine_jobs;
 #[cfg(feature = "lan-server")]
 mod engine_lan;
 #[cfg(feature = "local-proxy")]
-mod engine_mega;
-#[cfg(feature = "local-proxy")]
 mod engine_proxy;
 #[cfg(feature = "local-proxy")]
 mod engine_seek111477;
@@ -767,30 +765,6 @@ fn seek111477_purge_cache_json(cache_dir: String) -> String {
     {
         let _ = cache_dir;
         r#"{"error":"local_proxy_unavailable"}"#.into()
-    }
-}
-
-fn site111477_index_request_json(json: String) -> String {
-    #[cfg(feature = "local-proxy")]
-    {
-        proxy::index111477::request_json_blocking(&json)
-    }
-    #[cfg(not(feature = "local-proxy"))]
-    {
-        let _ = json;
-        r#"{"error":"local_proxy_unavailable"}"#.into()
-    }
-}
-
-fn mega_resolve_json(embed_url: String) -> String {
-    #[cfg(feature = "local-proxy")]
-    {
-        engine_mega::mega_resolve_json(&RUNTIME, embed_url)
-    }
-    #[cfg(not(feature = "local-proxy"))]
-    {
-        let _ = embed_url;
-        r#"{"url":null,"size":null,"error":"local_proxy_unavailable"}"#.into()
     }
 }
 

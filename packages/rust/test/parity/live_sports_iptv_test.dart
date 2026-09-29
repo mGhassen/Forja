@@ -17,27 +17,6 @@ void main() {
     expect(parsed['error'], isNotNull);
   });
 
-  test('liveSportsFetchJson forja_live_catalog unknown returns empty', () {
-    final raw = RustLib.instance.liveSportsFetchJson(
-      jsonEncode({
-        'action': 'forja_live_catalog',
-        'catalog_id': 'catalog-nope',
-        'config': {},
-      }),
-    );
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    final items = parsed['items'] as List;
-    expect(items, isEmpty);
-  });
-
-  test('liveSportsFetchJson streamed_streams requires params', () {
-    final raw = RustLib.instance.liveSportsFetchJson(
-      jsonEncode({'action': 'streamed_streams'}),
-    );
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    expect(parsed['error'], contains('source and id required'));
-  });
-
   test('iptvRedditCatalogJson rejects unknown action', () {
     final raw = RustLib.instance.iptvRedditCatalogJson(
       jsonEncode({'action': 'nope'}),

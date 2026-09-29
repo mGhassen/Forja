@@ -24,14 +24,13 @@ members = [
     "archive/manga",
     "archive/catalog",
     "archive/anilist",
-    "archive/anime",
     "archive/host-http",
     "archive/media-extra",
     "archive/trakt",
 ]
 
 [workspace.package]
-version = "1.3.4"
+version = "2.0.0"
 edition = "2021"
 license = "GPL-2.0-only"
 repository = "https://github.com/mGhassen/Forja"

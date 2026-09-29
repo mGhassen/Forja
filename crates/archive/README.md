@@ -16,7 +16,6 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 | `manga/` | Manga tab |
 | `catalog/` | Similar tab (`bestsimilar.com`) |
 | `anilist/` | Legacy AniList GraphQL (hub browse is `plugins/hubs/anime`) |
-| `anime/` | Legacy Rust anime extractors/resolve (`anime_extractors`) — JS providers own extract now |
 | `host-http/` | Rich HTTP (retries, binary) via `hostHttp()` |
 | `media-extra/` | Lyrics + paper2audio via `mediaExtraRequest()` |
 | `trakt/` | Trakt.tv API client (Simkl is the active tracker) |

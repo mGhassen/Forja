@@ -55,18 +55,10 @@ Future<String> runIndexerRequestJson(String requestJson) =>
       'requestJson': requestJson,
     });
 
-Future<String> runSite111477IndexRequestJson(String requestJson) =>
-    EngineWorkerPool.run(EngineJobKind.site111477IndexRequest, {
-      'requestJson': requestJson,
-    });
-
 Future<String> runSeek111477StartJson(String requestJson) => EngineJobs.run(
   EngineAsyncJob.seek111477Start,
   {'requestJson': requestJson},
 );
-
-Future<String> runMegaResolveJson(String embedUrl) =>
-    EngineWorkerPool.run(EngineJobKind.megaResolve, {'embedUrl': embedUrl});
 
 Future<String> runMetadataRequestJson(String requestJson) =>
     EngineWorkerPool.run(EngineJobKind.metadataRequest, {
