@@ -28,9 +28,11 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.text.CueGroup
 import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
 import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LivePlaybackSpeedControl
@@ -457,6 +459,11 @@ class ExoPlayerHost(
         }
         val mediaSourceFactory = DefaultMediaSourceFactory(context)
             .setDataSourceFactory(dataSourceFactory)
+            .setDrmSessionManagerProvider { mediaItem ->
+                val drm = DefaultDrmSessionManagerProvider()
+                drm.setDrmHttpDataSourceFactory(httpFactory)
+                drm.get(mediaItem)
+            }
 
         val builder = mediaItemBuilder(url, subtitles, options)
 
@@ -581,8 +588,10 @@ class ExoPlayerHost(
         )
     }
 
-    private fun buildHttpFactory(headers: Map<String, String>): DefaultHttpDataSource.Factory {
-        val httpFactory = DefaultHttpDataSource.Factory()
+    private fun buildHttpFactory(headers: Map<String, String>): HttpDataSource.Factory {
+        // OkHttp Dns races system lookup with Cloudflare DoH. DefaultHttpDataSource
+        // uses HttpURLConnection, which has no DNS hook and dies when getaddrinfo fails.
+        val httpFactory = OkHttpDataSource.Factory(ForjaPlaybackHttp.client)
         val requestHeaders = headers.toMutableMap()
         val userAgent = requestHeaders.remove("User-Agent")
             ?: requestHeaders.remove("user-agent")

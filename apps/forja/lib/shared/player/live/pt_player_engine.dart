@@ -687,6 +687,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
           );
         }
         // Forja live: Media(url) only — no httpHeaders / panel UA.
+        await applyIpv4HttpProxy(player, playUrl);
         if (liveMk) {
           await player.open(Media(playUrl));
         } else {

@@ -112,6 +112,8 @@ dependencies {
     // Widevine / DRM lives inside media3-exoplayer (no media3-exoplayer-drm artifact).
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-datasource:$media3Version")
+    implementation("androidx.media3:media3-datasource-okhttp:$media3Version")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // StandaloneDatabaseProvider for the VOD disk cache. media3-datasource only
     // pulls this at runtime scope, so it must be declared to compile against.
     implementation("androidx.media3:media3-database:$media3Version")

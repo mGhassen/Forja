@@ -233,6 +233,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     );
     final remote =
         videoUrl.startsWith('http://') || videoUrl.startsWith('https://');
+    await applyIpv4HttpProxy(player, videoUrl);
     await player.open(
       Media(videoUrl, httpHeaders: remote ? hdrs : null),
       play: play,

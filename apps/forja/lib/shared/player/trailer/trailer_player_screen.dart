@@ -14,6 +14,7 @@ import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';

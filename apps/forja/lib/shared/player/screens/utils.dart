@@ -516,7 +516,12 @@ Future<String> openPlayerStream(
     }
   }
   if (mpvStart != null) await _mpvStartAt(player, mpvStart);
-  await applyIpv4HttpProxy(player, playUrl);
+  // A trimmed playlist is a local file; segments still name the CDN.
+  final proxyUrl =
+      playUrl.startsWith('file://') || isLocalLoopbackPlayUrl(playUrl)
+      ? openUrl
+      : playUrl;
+  await applyIpv4HttpProxy(player, proxyUrl);
   final isFile = playUrl.startsWith('file://');
   final isTrimLoopback = isLocalLoopbackPlayUrl(playUrl);
   final attachHeaders = hdrs.isNotEmpty &&

@@ -13,6 +13,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';

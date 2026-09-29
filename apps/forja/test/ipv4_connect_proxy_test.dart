@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 
 void main() {
@@ -73,5 +75,99 @@ void main() {
     expect(got, contains('hello-from-origin'));
     incoming.destroy();
     await origin.close();
+  });
+
+  test('HTTP proxy rewrites an absolute GET and forwards the body', () async {
+    final origin = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(origin.close);
+    final endpoint = await Ipv4ConnectProxy.instance.endpoint();
+    final proxy = Uri.parse(endpoint);
+    final client = await Socket.connect(proxy.host, proxy.port);
+    addTearDown(client.destroy);
+    client.add(
+      'GET http://127.0.0.1:${origin.port}/seg.ts?n=1 HTTP/1.1\r\n'
+              'Host: 127.0.0.1:${origin.port}\r\n'
+              'Proxy-Connection: keep-alive\r\n'
+              '\r\n'
+          .codeUnits,
+    );
+    final incoming = await origin.first.timeout(const Duration(seconds: 3));
+    addTearDown(incoming.destroy);
+    final req = String.fromCharCodes(
+      await incoming.fold<List<int>>(<int>[], (a, b) {
+        a.addAll(b);
+        if (String.fromCharCodes(a).contains('\r\n\r\n')) incoming.destroy();
+        return a;
+      }).timeout(const Duration(seconds: 3)),
+    );
+    expect(req, startsWith('GET /seg.ts?n=1 HTTP/1.1\r\n'));
+    expect(req, contains('Host: 127.0.0.1:${origin.port}'));
+    expect(req.toLowerCase(), isNot(contains('proxy-connection')));
+  });
+
+  test('system DNS failure asks for the DoH proxy', () async {
+    PackHttp.debugResetDnsCache();
+    debugResetPlaybackProxy();
+    debugPlaybackSystemLookup = (_) async {
+      throw const SocketException('no address');
+    };
+    addTearDown(() {
+      debugResetPlaybackProxy();
+      PackHttp.debugResetDnsCache();
+    });
+    final proxy = await playbackHttpProxyFor('https://cdn.example/a.m3u8');
+    expect(proxy, startsWith('http://127.0.0.1:'));
+    expect(PackHttp.systemDnsUnhealthy, isTrue);
+  });
+
+  test('healthy IPv4 DNS does not use the proxy', () async {
+    PackHttp.debugResetDnsCache();
+    debugResetPlaybackProxy();
+    debugPlaybackSystemLookup = (_) async => [InternetAddress('52.84.45.6')];
+    addTearDown(() {
+      debugResetPlaybackProxy();
+      PackHttp.debugResetDnsCache();
+    });
+    expect(
+      await playbackHttpProxyFor('https://cdn.example/a.m3u8'),
+      isNull,
+    );
+    expect(
+      await playbackHttpProxyFor('http://cdn.example/live.ts'),
+      isNull,
+    );
+  });
+
+  test('NAT64 https and http both use the proxy', () async {
+    debugResetPlaybackProxy();
+    debugPlaybackSystemLookup = (_) async => [
+      InternetAddress('52.84.45.6'),
+      InternetAddress('64:ff9b::3454:2d06'),
+    ];
+    addTearDown(debugResetPlaybackProxy);
+    expect(
+      await playbackHttpProxyFor('https://cdn.example/a.m3u8'),
+      startsWith('http://127.0.0.1:'),
+    );
+    expect(
+      await playbackHttpProxyFor('http://cdn.example/live.ts'),
+      startsWith('http://127.0.0.1:'),
+    );
+  });
+
+  test('absolute HTTP rewrite drops the proxy request line', () {
+    final parsed = parsePlaybackProxyHead(
+      'GET http://cdn.example/a/b.ts?x=1 HTTP/1.1\r\n'
+      'Host: cdn.example\r\n'
+      'Range: bytes=0-\r\n',
+    );
+    expect(parsed, isNotNull);
+    expect(parsed!.tunnel, isFalse);
+    expect(parsed.host, 'cdn.example');
+    expect(parsed.port, 80);
+    final head = utf8.decode(parsed.upstreamHead);
+    expect(head, startsWith('GET /a/b.ts?x=1 HTTP/1.1\r\n'));
+    expect(head, contains('Range: bytes=0-\r\n'));
+    expect(head, contains('Connection: close\r\n'));
   });
 }

@@ -678,6 +678,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
             streamUrl: playUrl,
           );
         }
+        await applyIpv4HttpProxy(player, playUrl);
         await player.open(Media(playUrl, httpHeaders: headers));
         if (np is NativePlayer) {
           await _applyStreamLavfReconnect(np, streamUrl: playUrl);

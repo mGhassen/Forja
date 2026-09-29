@@ -213,6 +213,15 @@ abstract final class PackHttp {
     return until != null && DateTime.now().isBefore(until);
   }
 
+  /// True for [systemDnsSkip] after a system lookup times out or fails hard.
+  static bool get systemDnsUnhealthy => _systemDnsSkipped;
+
+  /// Playback learned system DNS is dead. Further probes skip it for
+  /// [systemDnsSkip], same as a [InternetAddress.lookup] timeout.
+  static void markSystemDnsUnhealthy(String host, Object error) {
+    _noteSystemTimeout(host, error);
+  }
+
   static void _noteSystemOk() {
     _skipSystemDnsUntil = null;
   }
