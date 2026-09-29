@@ -132,8 +132,13 @@ pub async fn ext_proxy_handler(
     }
 
     let target_url = format!("{}{rel}", session.base);
-    let req =
-        build_hls_upstream_request(&state, method.clone(), &target_url, &session.headers, &headers)?;
+    let req = build_hls_upstream_request(
+        &state,
+        method.clone(),
+        &target_url,
+        &session.headers,
+        &headers,
+    )?;
     let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
 
     let status = resp.status();

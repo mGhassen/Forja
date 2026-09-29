@@ -117,11 +117,7 @@ pub async fn toky_proxy_handler(
             .collect::<Vec<_>>()
             .join("\n");
 
-        return Ok((
-            [(header::CONTENT_TYPE, "application/x-mpegURL")],
-            rewritten,
-        )
-            .into_response());
+        return Ok(([(header::CONTENT_TYPE, "application/x-mpegURL")], rewritten).into_response());
     }
 
     let content_type = resp

@@ -22,6 +22,11 @@ pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
     if raw.len() < 16 {
         return raw.to_vec();
     }
+    // embedindia PPV: a 13-byte VP8L still, then an EXIF chunk that is raw
+    // MPEG-TS. The web player reads that chunk. MediaKit sees WEBP and EOFs.
+    if let Some(ts) = strip_riff_chunk_ts(raw) {
+        return ts;
+    }
     if raw[0] != 0x89 || raw[1] != 0x50 || raw[2] != 0x4E || raw[3] != 0x47 {
         return raw.to_vec();
     }
@@ -33,11 +38,7 @@ pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
     }
     let mut idx = None;
     for i in 8..raw.len().saturating_sub(8) {
-        if raw[i] == 0x49
-            && raw[i + 1] == 0x45
-            && raw[i + 2] == 0x4E
-            && raw[i + 3] == 0x44
-        {
+        if raw[i] == 0x49 && raw[i + 1] == 0x45 && raw[i + 2] == 0x4E && raw[i + 3] == 0x44 {
             idx = Some(i + 8);
             break;
         }
@@ -64,6 +65,29 @@ pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
         return raw[252..].to_vec();
     }
     raw.to_vec()
+}
+
+/// RIFF/WEBP whose chunk payload is MPEG-TS (sync `0x47` every 188 bytes).
+/// embedindia writes the TS into an `EXIF` chunk after a tiny `VP8L` still.
+fn strip_riff_chunk_ts(raw: &[u8]) -> Option<Vec<u8>> {
+    if raw.len() < 12 || &raw[..4] != b"RIFF" || &raw[8..12] != b"WEBP" {
+        return None;
+    }
+    let mut off = 12usize;
+    while off + 8 <= raw.len() {
+        let size = u32::from_le_bytes(raw.get(off + 4..off + 8)?.try_into().ok()?) as usize;
+        let start = off + 8;
+        let end = start.checked_add(size)?;
+        if end > raw.len() {
+            return None;
+        }
+        let payload = raw.get(start..end)?;
+        if payload.len() >= 188 && payload[0] == 0x47 && payload.get(188) == Some(&0x47) {
+            return Some(payload.to_vec());
+        }
+        off = end + (size & 1);
+    }
+    None
 }
 
 /// `TIKTIKPX` — MPEG-TS gzip stored in reconstructed RGB (Streamic / daddy).
@@ -218,8 +242,7 @@ fn resolve_url(relative: &str, base_path: &str, server_base: &str) -> String {
     } else if let Some(rest) = trimmed.strip_prefix("//") {
         // Protocol-relative (`//cdn.example/seg`) — must NOT be treated as a
         // path under server_base (that produced `https://hostA//hostB/…`).
-        let scheme = if base_path.starts_with("https://") || server_base.starts_with("https://")
-        {
+        let scheme = if base_path.starts_with("https://") || server_base.starts_with("https://") {
             "https"
         } else {
             "http"
@@ -279,11 +302,7 @@ pub fn build_hls_proxy_url(
 
 /// Rewrite playlist URIs to paths relative to [session_base] so `/ext/{id}/…`
 /// relative resolution keeps cookies on nested playlists and segments.
-pub fn rewrite_hls_playlist_relative(
-    body: &str,
-    decoded_url: &str,
-    session_base: &str,
-) -> String {
+pub fn rewrite_hls_playlist_relative(body: &str, decoded_url: &str, session_base: &str) -> String {
     let slash = decoded_url.rfind('/').unwrap_or(0);
     let base_path = &decoded_url[..=slash];
     let server_base = if let Some(scheme_end) = decoded_url.find("://") {
@@ -395,12 +414,8 @@ pub fn rewrite_hls_playlist(
                         let Some(end) = rest.find('"') else { break };
                         let uri = &rest[..end];
                         let full = resolve_url(uri, base_path, server_base);
-                        let replacement = build_hls_proxy_url(
-                            proxy_base,
-                            &full,
-                            headers_json,
-                            strip,
-                        );
+                        let replacement =
+                            build_hls_proxy_url(proxy_base, &full, headers_json, strip);
                         let new_token = format!("URI=\"{replacement}\"");
                         out.replace_range(start..start + 5 + end + 1, &new_token);
                         search_from = start + new_token.len();
@@ -410,12 +425,7 @@ pub fn rewrite_hls_playlist(
                 return Some(line.to_string());
             }
             let full = resolve_url(trimmed, base_path, server_base);
-            Some(build_hls_proxy_url(
-                proxy_base,
-                &full,
-                headers_json,
-                strip,
-            ))
+            Some(build_hls_proxy_url(proxy_base, &full, headers_json, strip))
         })
         .collect::<Vec<_>>()
         .join("\n");
@@ -537,15 +547,84 @@ fn strip_quoted_attr(line: &str, attr: &str) -> String {
     format!("{}{}", &line[..start], &rest[end + 1..])
 }
 
-fn header_ci<'a>(
-    custom_headers: &'a HashMap<String, String>,
-    name: &str,
-) -> Option<&'a str> {
+fn header_ci<'a>(custom_headers: &'a HashMap<String, String>, name: &str) -> Option<&'a str> {
     let want = name.to_ascii_lowercase();
     custom_headers
         .iter()
         .find(|(k, _)| k.eq_ignore_ascii_case(&want))
         .map(|(_, v)| v.as_str())
+}
+
+/// Playlist host. rustls and Chrome impersonation are nginx-403'd.
+fn host_needs_chrome_tls(target_url: &str) -> bool {
+    reqwest::Url::parse(target_url)
+        .ok()
+        .and_then(|u| {
+            u.host_str()
+                .map(|h| h.to_ascii_lowercase().contains("indianservers.st"))
+        })
+        .unwrap_or(false)
+}
+
+/// rustls, Dart, and Chrome-impersonation are nginx-403'd. CPython's LibreSSL is not.
+fn libressl_fetch_bytes(
+    target_url: &str,
+    custom_headers: &HashMap<String, String>,
+) -> Result<(StatusCode, String, Vec<u8>), StatusCode> {
+    let script = r#"
+import json, sys, urllib.request, urllib.error
+req = json.load(sys.stdin)
+r = urllib.request.Request(req["url"], headers=req.get("headers") or {})
+try:
+    with urllib.request.urlopen(r, timeout=20) as resp:
+        body = resp.read()
+        ctype = resp.headers.get("Content-Type") or ""
+        sys.stdout.buffer.write(str(resp.status).encode() + b"\n")
+        sys.stdout.buffer.write(ctype.encode() + b"\n")
+        sys.stdout.buffer.write(body)
+except urllib.error.HTTPError as e:
+    body = e.read()
+    ctype = e.headers.get("Content-Type") or ""
+    sys.stdout.buffer.write(str(e.code).encode() + b"\n")
+    sys.stdout.buffer.write(ctype.encode() + b"\n")
+    sys.stdout.buffer.write(body)
+"#;
+    let payload = serde_json::json!({
+        "url": target_url,
+        "headers": custom_headers,
+    });
+    let mut child = std::process::Command::new("python3")
+        .arg("-c")
+        .arg(script)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    {
+        let stdin = child.stdin.as_mut().ok_or(StatusCode::BAD_GATEWAY)?;
+        use std::io::Write;
+        stdin
+            .write_all(payload.to_string().as_bytes())
+            .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    }
+    let out = child
+        .wait_with_output()
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    if !out.status.success() && out.stdout.is_empty() {
+        return Err(StatusCode::BAD_GATEWAY);
+    }
+    let mut lines = out.stdout.splitn(3, |b| *b == b'\n');
+    let status_raw = lines.next().unwrap_or_default();
+    let ctype_raw = lines.next().unwrap_or_default();
+    let body = lines.next().unwrap_or_default().to_vec();
+    let status_num: u16 = String::from_utf8_lossy(status_raw)
+        .trim()
+        .parse()
+        .unwrap_or(0);
+    let status = StatusCode::from_u16(status_num).unwrap_or(StatusCode::BAD_GATEWAY);
+    let content_type = String::from_utf8_lossy(ctype_raw).trim().to_lowercase();
+    Ok((status, content_type, body))
 }
 
 pub(crate) fn build_hls_upstream_request(
@@ -584,6 +663,86 @@ pub(crate) fn build_hls_upstream_request(
     Ok(req)
 }
 
+async fn finish_hls_proxy_body(
+    state: &ProxyState,
+    status: StatusCode,
+    content_type: &str,
+    bytes: Vec<u8>,
+    target_url: &str,
+    headers_json: &str,
+    strip: Option<&str>,
+) -> Result<Response, StatusCode> {
+    let looks_like_playlist_url = content_type.contains("mpegurl")
+        || content_type.contains("x-mpegurl")
+        || target_url.contains(".m3u8")
+        || target_url.contains("/playlist/");
+    if looks_like_playlist_url {
+        let body = String::from_utf8_lossy(&bytes).into_owned();
+        let trimmed = body.trim_start();
+        if !status.is_success() || !trimmed.starts_with("#EXTM3U") {
+            let out_status = if status.is_success() {
+                StatusCode::BAD_GATEWAY
+            } else {
+                status
+            };
+            return Response::builder()
+                .status(out_status)
+                .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        let effective_strip = if strip == Some("png") || hls_playlist_is_image_bait(&body) {
+            Some("png")
+        } else {
+            strip
+        };
+        let port = *state.listen_port.read().await;
+        let proxy_base = format!("http://127.0.0.1:{port}/hls-proxy");
+        let rewritten = rewrite_hls_playlist(
+            &body,
+            target_url,
+            &proxy_base,
+            headers_json,
+            effective_strip,
+        );
+        return Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .body(Body::from(rewritten))
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    if strip == Some("png") {
+        let stripped = strip_png_wrapper(&bytes);
+        let content_type = if stripped.first() == Some(&0x47) {
+            "video/mp2t"
+        } else {
+            "application/octet-stream"
+        };
+        let out_status = if status.is_success() {
+            StatusCode::OK
+        } else {
+            status
+        };
+        return Response::builder()
+            .status(out_status)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .header(header::ACCEPT_RANGES, "bytes")
+            .header(header::CONNECTION, "keep-alive")
+            .header(header::CONTENT_TYPE, content_type)
+            .header(header::CONTENT_LENGTH, stripped.len())
+            .body(Body::from(stripped))
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    Response::builder()
+        .status(status)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .body(Body::from(bytes))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 pub async fn hls_proxy_handler(
     State(state): State<ProxyState>,
     Query(query): Query<HlsProxyQuery>,
@@ -619,13 +778,26 @@ pub async fn hls_proxy_handler(
     if strip == Some("png") {
         fetch_headers.remove(header::RANGE);
     }
-    let req = build_hls_upstream_request(
-        &state,
-        method.clone(),
-        &target_url,
-        &custom,
-        &fetch_headers,
-    )?;
+    if host_needs_chrome_tls(&target_url) {
+        let url = target_url.clone();
+        let headers = custom.clone();
+        let (status, content_type, bytes) =
+            tokio::task::spawn_blocking(move || libressl_fetch_bytes(&url, &headers))
+                .await
+                .map_err(|_| StatusCode::BAD_GATEWAY)??;
+        return finish_hls_proxy_body(
+            &state,
+            status,
+            &content_type,
+            bytes,
+            &target_url,
+            headers_json,
+            strip,
+        )
+        .await;
+    }
+    let req =
+        build_hls_upstream_request(&state, method.clone(), &target_url, &custom, &fetch_headers)?;
     let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
 
     let status = resp.status();
@@ -670,8 +842,13 @@ pub async fn hls_proxy_handler(
         };
         let port = *state.listen_port.read().await;
         let proxy_base = format!("http://127.0.0.1:{port}/hls-proxy");
-        let rewritten =
-            rewrite_hls_playlist(&body, &target_url, &proxy_base, headers_json, effective_strip);
+        let rewritten = rewrite_hls_playlist(
+            &body,
+            &target_url,
+            &proxy_base,
+            headers_json,
+            effective_strip,
+        );
         return Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
@@ -785,7 +962,10 @@ https://cdn.example/seg.ts
             "{}",
             None,
         );
-        assert!(!out.to_ascii_uppercase().contains("TYPE=SUBTITLES"), "{out}");
+        assert!(
+            !out.to_ascii_uppercase().contains("TYPE=SUBTITLES"),
+            "{out}"
+        );
         assert!(!out.to_ascii_uppercase().contains("SUBTITLES="), "{out}");
         assert!(out.to_ascii_uppercase().contains("TYPE=AUDIO"), "{out}");
         assert!(out.contains("/hls-proxy?url="), "{out}");
@@ -854,10 +1034,7 @@ https://cdn.example/seg.ts
         let out = collapse_double_authority(
             "https://hls20.cdnvideo11.shop//hls19.videotradercdn.site/segment/x.png",
         );
-        assert_eq!(
-            out,
-            "https://hls19.videotradercdn.site/segment/x.png"
-        );
+        assert_eq!(out, "https://hls19.videotradercdn.site/segment/x.png");
     }
 
     #[test]
@@ -930,6 +1107,41 @@ https://cdn.example/lumeflow/y.png
         assert!(hls_playlist_is_image_bait(
             "#EXTM3U\n#EXTINF:4,\nhttps://cdn.example/anon/seg.png\n"
         ));
+    }
+
+    #[test]
+    fn strip_png_unwraps_webp_exif_mpeg_ts() {
+        let mut ts = vec![0x47u8, 0x40, 0x00, 0x10];
+        ts.resize(188, 0);
+        ts.push(0x47);
+        ts.resize(376, 0x11);
+        let chunk = |typ: &[u8], data: &[u8]| {
+            let mut c = Vec::new();
+            c.extend_from_slice(typ);
+            c.extend_from_slice(&(data.len() as u32).to_le_bytes());
+            c.extend_from_slice(data);
+            if data.len() % 2 == 1 {
+                c.push(0);
+            }
+            c
+        };
+        let vp8l = chunk(
+            b"VP8L",
+            &[
+                0x2f, 0, 0, 0, 0x10, 0x07, 0x10, 0x11, 0x11, 0x88, 0x88, 0xfe, 0x07,
+            ],
+        );
+        let exif = chunk(b"EXIF", &ts);
+        let mut raw = Vec::new();
+        raw.extend_from_slice(b"RIFF");
+        let payload_len = (4 + vp8l.len() + exif.len()) as u32;
+        raw.extend_from_slice(&payload_len.to_le_bytes());
+        raw.extend_from_slice(b"WEBP");
+        raw.extend_from_slice(&vp8l);
+        raw.extend_from_slice(&exif);
+        let out = strip_png_wrapper(&raw);
+        assert_eq!(out, ts);
+        assert_eq!(out.first(), Some(&0x47));
     }
 
     #[test]

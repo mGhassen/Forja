@@ -26,7 +26,7 @@ void main() {
   });
 
   group('liveEngineOpenDirect', () {
-    test('trusts pluginDirect except wfty / amazonaws; force indianservers', () {
+    test('trusts pluginDirect except wfty / amazonaws / indianservers', () {
       expect(
         liveEngineOpenDirect(
           'https://lb1.strmd.st/secure/tok/delta/stream/foo/1/playlist.m3u8',
@@ -55,13 +55,12 @@ void main() {
         ),
         isFalse,
       );
-      // Transport: rustls proxy 403 — open direct even if pack omits the flag.
       expect(
         liveEngineOpenDirect(
           'https://lb3.indianservers.st/secure/tok/fiba-africa/index.m3u8',
-          pluginDirect: false,
+          pluginDirect: true,
         ),
-        isTrue,
+        isFalse,
       );
     });
 

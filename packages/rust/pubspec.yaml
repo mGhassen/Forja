@@ -1,6 +1,6 @@
 name: rust
 description: Dart FFI bindings to the Forja Rust engine
-version: 2.0.1
+version: 2.0.2
 publish_to: none
 
 environment:

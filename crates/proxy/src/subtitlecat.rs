@@ -19,12 +19,9 @@ pub struct SubtitlecatQuery {
 }
 
 static NUM_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[0-9 \r]*$").unwrap());
-static TS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^[0-9,: ]*-->[0-9,: \r]*$").unwrap());
-static FONT_OPEN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)<font[^>]*>").unwrap());
-static FONT_CLOSE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)</font>").unwrap());
+static TS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[0-9,: ]*-->[0-9,: \r]*$").unwrap());
+static FONT_OPEN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)<font[^>]*>").unwrap());
+static FONT_CLOSE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)</font>").unwrap());
 
 pub async fn subtitlecat_translate_handler(
     State(state): State<ProxyState>,
@@ -43,8 +40,7 @@ pub async fn subtitlecat_translate_handler(
 
     match translate_srt(&state, &query.orig, &query.tl).await {
         Ok(srt) => {
-            let disposition =
-                format!("inline; filename=\"{name}-{}.srt\"", query.tl);
+            let disposition = format!("inline; filename=\"{name}-{}.srt\"", query.tl);
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, "application/x-subrip; charset=utf-8")

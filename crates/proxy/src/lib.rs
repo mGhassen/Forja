@@ -13,13 +13,13 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-mod hls;
-pub mod ext;
-pub mod seek111477;
-mod toky;
 mod comic;
+pub mod ext;
+mod hls;
 mod jellyfin;
+pub mod seek111477;
 mod subtitlecat;
+mod toky;
 
 #[derive(Clone)]
 pub struct ProxyState {
@@ -116,10 +116,7 @@ pub fn proxy_router(state: ProxyState) -> Router {
 
 fn proxy_media_routes() -> Router<ProxyState> {
     Router::new()
-        .route(
-            "/proxy",
-            get(query_proxy_handler).head(query_proxy_handler),
-        )
+        .route("/proxy", get(query_proxy_handler).head(query_proxy_handler))
         .route(
             "/hls-proxy",
             get(hls::hls_proxy_handler).head(hls::hls_proxy_handler),
@@ -158,10 +155,7 @@ fn parse_custom_headers(raw: Option<&str>) -> HashMap<String, String> {
     serde_json::from_str(raw).unwrap_or_default()
 }
 
-fn header_ci<'a>(
-    custom_headers: &'a HashMap<String, String>,
-    name: &str,
-) -> Option<&'a str> {
+fn header_ci<'a>(custom_headers: &'a HashMap<String, String>, name: &str) -> Option<&'a str> {
     custom_headers
         .iter()
         .find(|(k, _)| k.eq_ignore_ascii_case(name))
@@ -211,7 +205,10 @@ fn forward_response(resp: reqwest::Response) -> Result<Response, StatusCode> {
     let mut builder = Response::builder()
         .status(status)
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, HEAD, OPTIONS, POST")
+        .header(
+            header::ACCESS_CONTROL_ALLOW_METHODS,
+            "GET, HEAD, OPTIONS, POST",
+        )
         .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "*")
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONNECTION, "keep-alive");
@@ -230,9 +227,7 @@ fn forward_response(resp: reqwest::Response) -> Result<Response, StatusCode> {
         }
     }
 
-    let stream = resp
-        .bytes_stream()
-        .map_err(std::io::Error::other);
+    let stream = resp.bytes_stream().map_err(std::io::Error::other);
     builder
         .body(Body::from_stream(stream))
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -299,6 +294,9 @@ mod tests {
     #[test]
     fn parses_custom_headers_json() {
         let map = parse_custom_headers(Some(r#"{"Referer":"https://example.com/"}"#));
-        assert_eq!(map.get("Referer").map(String::as_str), Some("https://example.com/"));
+        assert_eq!(
+            map.get("Referer").map(String::as_str),
+            Some("https://example.com/")
+        );
     }
 }

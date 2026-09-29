@@ -9,9 +9,7 @@ use crate::ProxyState;
 fn comic_target_url(raw: Option<&str>) -> Option<String> {
     let query = raw?;
     let rest = query.strip_prefix("url=")?;
-    urlencoding::decode(rest)
-        .ok()
-        .map(|s| s.into_owned())
+    urlencoding::decode(rest).ok().map(|s| s.into_owned())
 }
 
 fn comic_referer(target_url: &str) -> &'static str {

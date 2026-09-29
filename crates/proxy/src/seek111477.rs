@@ -17,8 +17,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::fs::{self, OpenOptions};
-use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio::io::SeekFrom;
+use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::{Notify, RwLock};
 
 const CHUNK_SIZE: u64 = 4 * 1024 * 1024;
@@ -136,8 +136,7 @@ impl Seek111477Proxy {
 
         let downloader = spawn_downloader(state.clone());
 
-        let deadline =
-            tokio::time::Instant::now() + Duration::from_millis(FIRST_BYTE_TIMEOUT_MS);
+        let deadline = tokio::time::Instant::now() + Duration::from_millis(FIRST_BYTE_TIMEOUT_MS);
         while !has_byte(&state, 0).await {
             if state.stopping.load(Ordering::Relaxed) {
                 return Err("stopped before first byte".into());
@@ -354,7 +353,10 @@ async fn try_unlock_download_lock(
         .post(&unlock_url)
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::REFERER, page_url)
-        .header(header::ORIGIN, format!("{}://{}", page.scheme(), page.host_str().unwrap_or("")))
+        .header(
+            header::ORIGIN,
+            format!("{}://{}", page.scheme(), page.host_str().unwrap_or("")),
+        )
         .json(&body);
     for (k, v) in &state.extra_headers {
         // Don't override Content-Type / Referer we set for unlock.
@@ -366,10 +368,7 @@ async fn try_unlock_download_lock(
     }
     let resp = req.send().await.map_err(|e| format!("unlock POST: {e}"))?;
     let status = resp.status().as_u16();
-    let data: serde_json::Value = resp
-        .json()
-        .await
-        .map_err(|e| format!("unlock JSON: {e}"))?;
+    let data: serde_json::Value = resp.json().await.map_err(|e| format!("unlock JSON: {e}"))?;
     if status >= 200 && status < 300 && data.get("ok").and_then(|v| v.as_bool()) == Some(true) {
         *state.target_url.write().await = lock.retry_url;
         return Ok(true);
@@ -503,9 +502,7 @@ async fn chunk_expected_size(state: &SharedState, idx: u32) -> u32 {
 }
 
 fn chunk_path(state: &SharedState, idx: u32) -> PathBuf {
-    state
-        .cache_key_dir
-        .join(format!("chunk_{idx:07}.bin"))
+    state.cache_key_dir.join(format!("chunk_{idx:07}.bin"))
 }
 
 async fn has_byte(state: &SharedState, pos: u64) -> bool {
@@ -518,7 +515,13 @@ async fn has_byte(state: &SharedState, pos: u64) -> bool {
     }
     let idx = chunk_index(pos);
     let off = (pos - chunk_start(idx)) as u32;
-    let bytes = state.chunk_bytes.read().await.get(&idx).copied().unwrap_or(0);
+    let bytes = state
+        .chunk_bytes
+        .read()
+        .await
+        .get(&idx)
+        .copied()
+        .unwrap_or(0);
     bytes > off
 }
 
@@ -573,7 +576,10 @@ fn spawn_downloader(state: Arc<SharedState>) -> tokio::task::JoinHandle<()> {
                 return;
             }
             let url = state.target_url.read().await.clone();
-            let mut req = state.client.get(&url).header("Range", format!("bytes={write_offset}-"));
+            let mut req = state
+                .client
+                .get(&url)
+                .header("Range", format!("bytes={write_offset}-"));
             for (k, v) in &state.extra_headers {
                 req = req.header(k, v);
             }
@@ -681,9 +687,7 @@ async fn serve_root(
     } else {
         (0, total.saturating_sub(1), StatusCode::OK)
     };
-    state
-        .current_read_offset
-        .store(start, Ordering::Relaxed);
+    state.current_read_offset.store(start, Ordering::Relaxed);
     if *method == axum::http::Method::HEAD {
         return Response::builder()
             .status(status)
@@ -705,11 +709,14 @@ async fn serve_root(
         let path = chunk_path(&state, idx);
         let c_start = chunk_start(idx);
         let off = pos - c_start;
-        let mut file = fs::File::open(&path).await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+        let mut file = fs::File::open(&path)
+            .await
+            .map_err(|_| StatusCode::BAD_GATEWAY)?;
         file.seek(SeekFrom::Start(off))
             .await
             .map_err(|_| StatusCode::BAD_GATEWAY)?;
-        let max_in_chunk = (chunk_expected_size(state.as_ref(), idx).await as u64).saturating_sub(off);
+        let max_in_chunk =
+            (chunk_expected_size(state.as_ref(), idx).await as u64).saturating_sub(off);
         let want = (end - pos + 1).min(max_in_chunk).min(256 * 1024);
         let mut buf = vec![0u8; want as usize];
         let n = file
@@ -743,4 +750,3 @@ fn parse_range(hdr: &str, total: u64) -> Option<(u64, u64)> {
     }
     Some((start, end.min(total - 1)))
 }
-
