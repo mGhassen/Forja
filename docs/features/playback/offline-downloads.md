@@ -58,7 +58,8 @@ from the Player menu as usual). While that file is playing, the source button
 shows an offline icon, the provider, and the stream name. Opening the source
 list shows that same source, marked Offline. Play online drops the icon.
 
-If Play says the file can’t be played, delete that row and download again — the
+Play strips an image shell that some streams wrap around the video. If Play
+still says the file can’t be played, delete that row and download again — the
 saved file is damaged or incomplete.
 
 ## Tips

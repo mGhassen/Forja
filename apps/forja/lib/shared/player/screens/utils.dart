@@ -444,6 +444,29 @@ Duration playerUiDuration(Duration raw) {
   return offset + raw;
 }
 
+/// A local file that starts with an MPEG-TS sync byte can still be named
+/// `.mp4`. Force that demuxer, and clear it on every other open.
+Future<void> _pinLocalMpegTsDemuxer(Player player, String playUrl) async {
+  if (player.platform is! NativePlayer) return;
+  final native = player.platform as NativePlayer;
+  var format = '';
+  if (playUrl.startsWith('file://')) {
+    try {
+      final file = File(Uri.parse(playUrl).toFilePath());
+      final raf = await file.open();
+      try {
+        final head = await raf.read(1);
+        if (head.isNotEmpty && head[0] == 0x47) format = 'mpegts';
+      } finally {
+        await raf.close();
+      }
+    } catch (_) {}
+  }
+  try {
+    await native.setProperty('demuxer-lavf-format', format);
+  } catch (_) {}
+}
+
 /// Normalize URL + headers, apply mpv UA/referrer, open via media_kit.
 Future<String> openPlayerStream(
   Player player, {
@@ -523,6 +546,7 @@ Future<String> openPlayerStream(
   final isTrimLoopback = isLocalLoopbackPlayUrl(playUrl);
   final attachHeaders =
       hdrs.isNotEmpty && (isRemoteHttp || isFile || isTrimLoopback);
+  await _pinLocalMpegTsDemuxer(player, playUrl);
   await player.open(Media(playUrl, httpHeaders: attachHeaders ? hdrs : null));
   if (mpvStart != null) {
     logPeakstormResume(

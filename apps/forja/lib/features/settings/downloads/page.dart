@@ -8,6 +8,7 @@ import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_path_helper.dart';
 import 'package:forja/shared/downloads/download_service.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -142,19 +143,9 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
       ForjaToast.error(kOfflineDownloadMissingMessage);
       return;
     }
-    try {
-      final raf = await file.open();
-      try {
-        final head = await raf.read(512);
-        if (!looksLikeMediaContainerBytes(head)) {
-          ForjaToast.error(kOfflineDownloadUnplayableMessage);
-          return;
-        }
-      } finally {
-        await raf.close();
-      }
-    } catch (_) {
-      ForjaToast.error(kOfflineDownloadUnreadableMessage);
+    final blocked = await offlineFilePlayError(file);
+    if (blocked != null) {
+      ForjaToast.error(blocked);
       return;
     }
     final streamUrl =

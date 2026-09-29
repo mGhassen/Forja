@@ -139,6 +139,86 @@ bool looksLikeMediaContainerBytes(List<int> bytes) {
   return hasMagicAt(offset);
 }
 
+/// True when [bytes] start with a PNG signature.
+bool looksLikePngBytes(List<int> bytes) {
+  return bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47;
+}
+
+/// One HLS segment: drop a PNG shell and return the media after it.
+///
+/// Same cases as the play proxy: payload after IEND, or a fixed 252-byte
+/// header before MPEG-TS. Unchanged when the bytes are not a PNG.
+List<int> stripPngWrappedSegment(List<int> raw) {
+  if (raw.length < 16 || !looksLikePngBytes(raw)) return raw;
+  int? iendEnd;
+  for (var i = 8; i < raw.length - 8; i++) {
+    if (raw[i] == 0x49 &&
+        raw[i + 1] == 0x45 &&
+        raw[i + 2] == 0x4E &&
+        raw[i + 3] == 0x44) {
+      iendEnd = i + 8;
+      break;
+    }
+  }
+  if (iendEnd != null) {
+    final start = iendEnd;
+    for (var p = start; p < raw.length - 188; p++) {
+      if (raw[p] == 0x47 && raw[p + 188] == 0x47) return raw.sublist(p);
+    }
+    for (var p = start; p < raw.length; p++) {
+      if (raw[p] == 0x47) return raw.sublist(p);
+    }
+    if (start < raw.length) return raw.sublist(start);
+  }
+  if (raw.length > 252 + 188 && raw[252] == 0x47 && raw[252 + 188] == 0x47) {
+    return raw.sublist(252);
+  }
+  return raw;
+}
+
+/// A saved HLS file is many PNG-wrapped segments one after another.
+List<int> stripConcatenatedPngMedia(List<int> bytes) {
+  if (!looksLikePngBytes(bytes)) return bytes;
+  final out = <int>[];
+  var i = 0;
+  while (i < bytes.length) {
+    final pngHere = _pngAt(bytes, i);
+    final next = _nextPng(bytes, pngHere ? i + 8 : i + 1);
+    final end = next < 0 ? bytes.length : next;
+    if (end <= i) break;
+    if (pngHere) {
+      out.addAll(stripPngWrappedSegment(bytes.sublist(i, end)));
+    } else {
+      out.addAll(bytes.sublist(i, end));
+    }
+    i = end;
+  }
+  return out;
+}
+
+bool _pngAt(List<int> bytes, int offset) {
+  if (offset < 0 || offset + 8 > bytes.length) return false;
+  return bytes[offset] == 0x89 &&
+      bytes[offset + 1] == 0x50 &&
+      bytes[offset + 2] == 0x4E &&
+      bytes[offset + 3] == 0x47 &&
+      bytes[offset + 4] == 0x0D &&
+      bytes[offset + 5] == 0x0A &&
+      bytes[offset + 6] == 0x1A &&
+      bytes[offset + 7] == 0x0A;
+}
+
+int _nextPng(List<int> bytes, int from) {
+  for (var i = from; i + 8 <= bytes.length; i++) {
+    if (_pngAt(bytes, i)) return i;
+  }
+  return -1;
+}
+
 /// Preferred file extension from a `Content-Disposition` filename, or null.
 String? extensionFromContentDisposition(String? header) {
   if (header == null || header.isEmpty) return null;

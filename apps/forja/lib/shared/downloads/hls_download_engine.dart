@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_speed_sampler.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:pointycastle/export.dart' as pc;
@@ -129,6 +130,10 @@ class HlsDownloadEngine {
             segment.encryptionKey!,
             segment.iv,
           );
+        }
+        final stripped = stripPngWrappedSegment(chunkBytes);
+        if (stripped.length < chunkBytes.length && stripped.isNotEmpty) {
+          chunkBytes = Uint8List.fromList(stripped);
         }
 
         sink.add(chunkBytes);

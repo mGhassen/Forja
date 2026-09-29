@@ -77,6 +77,56 @@ void main() {
       );
     });
 
+    test('strips a 252-byte PNG shell and a second concatenated segment', () {
+      List<int> segment() {
+        final raw = List<int>.filled(252 + 188 + 1, 0);
+        raw[0] = 0x89;
+        raw[1] = 0x50;
+        raw[2] = 0x4E;
+        raw[3] = 0x47;
+        raw[4] = 0x0D;
+        raw[5] = 0x0A;
+        raw[6] = 0x1A;
+        raw[7] = 0x0A;
+        raw[252] = 0x47;
+        raw[252 + 188] = 0x47;
+        return raw;
+      }
+
+      final one = stripPngWrappedSegment(segment());
+      expect(one.first, 0x47);
+      expect(looksLikeMediaContainerBytes(one), isTrue);
+
+      final both = stripConcatenatedPngMedia([...segment(), ...segment()]);
+      expect(both.where((b) => b == 0x89).isEmpty, isTrue);
+      expect(both.where((b) => b == 0x47).length, 4);
+      expect(looksLikeMediaContainerBytes(both), isTrue);
+    });
+
+    test('skips a false sync byte after IEND and cuts at 252', () {
+      final raw = List<int>.filled(252 + 188 + 1, 0);
+      raw[0] = 0x89;
+      raw[1] = 0x50;
+      raw[2] = 0x4E;
+      raw[3] = 0x47;
+      raw[4] = 0x0D;
+      raw[5] = 0x0A;
+      raw[6] = 0x1A;
+      raw[7] = 0x0A;
+      // IEND at 62, then 0x47 that is not a TS packet.
+      raw[62] = 0x49;
+      raw[63] = 0x45;
+      raw[64] = 0x4E;
+      raw[65] = 0x44;
+      raw[70] = 0x47;
+      raw[252] = 0x47;
+      raw[252 + 188] = 0x47;
+      final one = stripPngWrappedSegment(raw);
+      expect(one.length, raw.length - 252);
+      expect(one[0], 0x47);
+      expect(one[188], 0x47);
+    });
+
     test('rejects leading zeros / SegmentInfo-only (corrupt resume)', () {
       expect(looksLikeMediaContainerBytes([0, 0, 0, 0, 0, 0, 0, 0]), isFalse);
       // Matroska SegmentInfo without EBML is not playable.

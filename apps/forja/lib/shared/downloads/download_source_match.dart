@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_service.dart';
@@ -130,6 +131,48 @@ DownloadTask? downloadTaskForStream({
   );
 }
 
+/// Rewrite a saved file whose segments are each a PNG shell over media.
+///
+/// Returns true when the file on disk now starts with a playable container.
+Future<bool> unwrapPngWrappedMediaFile(File file) async {
+  final raw = await file.readAsBytes();
+  final stripped = await Isolate.run(() => stripConcatenatedPngMedia(raw));
+  if (stripped.length >= raw.length) return false;
+  if (!looksLikeMediaContainerBytes(stripped)) return false;
+  final tmp = File('${file.path}.media');
+  await tmp.writeAsBytes(stripped, flush: true);
+  try {
+    if (await file.exists()) await file.delete();
+    await tmp.rename(file.path);
+  } catch (_) {
+    await tmp.copy(file.path);
+    try {
+      await tmp.delete();
+    } catch (_) {}
+  }
+  return true;
+}
+
+/// Null when [file] can be opened. Reads the head, then closes, then unwraps.
+Future<String?> offlineFilePlayError(File file) async {
+  try {
+    final raf = await file.open();
+    late final List<int> head;
+    try {
+      head = await raf.read(512);
+    } finally {
+      await raf.close();
+    }
+    if (looksLikeMediaContainerBytes(head)) return null;
+    if (looksLikePngBytes(head) && await unwrapPngWrappedMediaFile(file)) {
+      return null;
+    }
+    return kOfflineDownloadUnplayableMessage;
+  } catch (_) {
+    return kOfflineDownloadUnreadableMessage;
+  }
+}
+
 /// A finished download rewritten as a local play map, or why it cannot play.
 class OfflineLocalPlay {
   const OfflineLocalPlay._({this.stream, this.error});
@@ -157,20 +200,9 @@ Future<OfflineLocalPlay?> offlineLocalPlayForTask({
   if (!await file.exists()) {
     return const OfflineLocalPlay._(error: kOfflineDownloadMissingMessage);
   }
-  try {
-    final raf = await file.open();
-    try {
-      final head = await raf.read(512);
-      if (!looksLikeMediaContainerBytes(head)) {
-        return const OfflineLocalPlay._(
-          error: kOfflineDownloadUnplayableMessage,
-        );
-      }
-    } finally {
-      await raf.close();
-    }
-  } catch (_) {
-    return const OfflineLocalPlay._(error: kOfflineDownloadUnreadableMessage);
+  final blocked = await offlineFilePlayError(file);
+  if (blocked != null) {
+    return OfflineLocalPlay._(error: blocked);
   }
   final fileUrl = path.startsWith('file://')
       ? path

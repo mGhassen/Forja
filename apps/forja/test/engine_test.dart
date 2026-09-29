@@ -2373,7 +2373,6 @@ void main() {
           'catalog-streamfree',
           'catalog-watchfooty',
           'catalog-streamic',
-          'catalog-espn',
           'catalog-liveonsat',
           'catalog-livesoccertv',
         ];
@@ -2425,10 +2424,6 @@ void main() {
         expect(
           await loadForjaHqFile('live/streamed.js'),
           contains("action !== 'resolve'"),
-        );
-        expect(
-          await loadForjaHqFile('catalog/espn.js'),
-          contains('LEAGUE_ENDPOINTS'),
         );
         expect(
           LiveSportCapabilities.normalizePluginId('live-streamed'),
