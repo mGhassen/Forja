@@ -5,6 +5,7 @@ import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Display names from pack `props.catalogs` (`["PPV", "ESPN"]` or `{name}`).
 List<String> eventCatalogLabels(Object? raw) {
@@ -46,6 +47,7 @@ class EventCatalogHover extends StatefulWidget {
 
 class _EventCatalogHoverState extends State<EventCatalogHover> {
   final LayerLink _link = LayerLink();
+  final GlobalKey _targetKey = GlobalKey();
   Timer? _timer;
   OverlayEntry? _entry;
 
@@ -109,17 +111,25 @@ class _EventCatalogHoverState extends State<EventCatalogHover> {
       _entry = null;
     }
     final entry = OverlayEntry(
-      builder: (context) {
+      builder: (overlayContext) {
+        final onRight = _placeOnRight(overlayContext);
         return CompositedTransformFollower(
           link: _link,
           showWhenUnlinked: false,
-          targetAnchor: Alignment.bottomLeft,
-          followerAnchor: Alignment.topLeft,
-          offset: const Offset(0, EventCardTokens.catalogHoverGap),
+          targetAnchor: onRight ? Alignment.topRight : Alignment.topLeft,
+          followerAnchor: onRight ? Alignment.topLeft : Alignment.topRight,
+          offset: Offset(
+            onRight
+                ? EventCardTokens.catalogHoverGap
+                : -EventCardTokens.catalogHoverGap,
+            0,
+          ),
           child: UnconstrainedBox(
-            alignment: Alignment.topLeft,
+            alignment: onRight ? Alignment.topLeft : Alignment.topRight,
             child: IgnorePointer(
-              child: _EventCatalogHoverCard(catalogs: widget.catalogs),
+              child: SelectionContainer.disabled(
+                child: _EventCatalogHoverCard(catalogs: widget.catalogs),
+              ),
             ),
           ),
         );
@@ -148,9 +158,35 @@ class _EventCatalogHoverState extends State<EventCatalogHover> {
     if (entry != null && entry.mounted) entry.remove();
   }
 
+  /// Room to the right of the match → panel sits there. Otherwise to the left.
+  bool _placeOnRight(BuildContext overlayContext) {
+    final target = _targetKey.currentContext?.findRenderObject();
+    final overlay = Overlay.maybeOf(overlayContext)?.context.findRenderObject();
+    if (target is! RenderBox ||
+        overlay is! RenderBox ||
+        !target.hasSize ||
+        !overlay.attached ||
+        !target.attached) {
+      return true;
+    }
+    try {
+      final origin = target.localToGlobal(Offset.zero, ancestor: overlay);
+      final need = EventCardTokens.catalogHoverMaxWidth +
+          EventCardTokens.catalogHoverGap;
+      final rightSpace = overlay.size.width - origin.dx - target.size.width;
+      if (rightSpace >= need) return true;
+      return rightSpace >= origin.dx;
+    } catch (_) {
+      return true;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return CompositedTransformTarget(link: _link, child: widget.child);
+    return CompositedTransformTarget(
+      link: _link,
+      child: SizedBox(key: _targetKey, child: widget.child),
+    );
   }
 }
 
@@ -175,48 +211,55 @@ class _EventCatalogHoverCard extends StatelessWidget {
       EventCardTokens.catalogHoverLabelGap,
       tv: tv,
     );
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: ForjaShellColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(EventCardTokens.catalogHoverRadius),
-        border: Border.all(color: ForjaShellColors.borderSubtle),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(pad),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: EventCardTokens.catalogHoverMaxWidth,
+    final titleStyle = GoogleFonts.plusJakartaSans(
+      color: ForjaShellColors.textSecondary,
+      fontSize: titleSize,
+      fontWeight: FontWeight.w600,
+      height: 1.2,
+      letterSpacing: 0.4,
+      decoration: TextDecoration.none,
+    );
+    final labelStyle = GoogleFonts.plusJakartaSans(
+      color: ForjaShellColors.textPrimary,
+      fontSize: labelSize,
+      fontWeight: FontWeight.w500,
+      height: 1.2,
+      decoration: TextDecoration.none,
+    );
+    return Material(
+      type: MaterialType.transparency,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: ForjaShellColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(
+            EventCardTokens.catalogHoverRadius,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Catalogs',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
-                ),
-              ),
-              SizedBox(height: labelGap),
-              for (final name in catalogs)
-                Padding(
-                  padding: EdgeInsets.only(top: labelGap),
-                  child: Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ForjaShellColors.textPrimary,
-                      fontSize: labelSize,
-                      fontWeight: FontWeight.w600,
-                      height: 1.2,
+          border: Border.all(color: ForjaShellColors.borderSubtle),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(pad),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: EventCardTokens.catalogHoverMaxWidth,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Catalogs', style: titleStyle),
+                SizedBox(height: labelGap * 2),
+                for (var i = 0; i < catalogs.length; i++)
+                  Padding(
+                    padding: EdgeInsets.only(top: i == 0 ? 0 : labelGap),
+                    child: Text(
+                      catalogs[i],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: labelStyle,
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

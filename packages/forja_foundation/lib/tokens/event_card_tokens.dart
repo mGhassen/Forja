@@ -43,7 +43,7 @@ abstract final class EventCardTokens {
   static const double catalogHoverMaxWidth = 220;
   static const double catalogHoverPad = 10;
   static const double catalogHoverRadius = 10;
-  static const double catalogHoverGap = 6;
+  static const double catalogHoverGap = 10;
   static const double catalogHoverTitleSize = 10;
   static const double catalogHoverLabelSize = 12;
   static const double catalogHoverLabelGap = 4;
