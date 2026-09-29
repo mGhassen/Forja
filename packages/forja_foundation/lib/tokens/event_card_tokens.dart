@@ -38,6 +38,16 @@ abstract final class EventCardTokens {
   static const double paintFallbackWidth = 220;
   static const double paintFallbackHeight = 124;
 
+  /// Hover / D-pad dwell before the merged-catalog list appears.
+  static const Duration catalogHoverDelay = Duration(seconds: 2);
+  static const double catalogHoverMaxWidth = 220;
+  static const double catalogHoverPad = 10;
+  static const double catalogHoverRadius = 10;
+  static const double catalogHoverGap = 6;
+  static const double catalogHoverTitleSize = 10;
+  static const double catalogHoverLabelSize = 12;
+  static const double catalogHoverLabelGap = 4;
+
   static bool _tv(BuildContext context) =>
       ShellPaintScope.usesTvDensityOf(context);
 

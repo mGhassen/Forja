@@ -20,6 +20,7 @@ class CatalogDenseList extends StatelessWidget {
     this.bottomPadding = 0,
     this.separatorColor,
     this.wrapScroll,
+    this.persistentScrollbar = false,
   });
 
   final int itemCount;
@@ -31,6 +32,9 @@ class CatalogDenseList extends StatelessWidget {
   final double bottomPadding;
   final Color? separatorColor;
   final Widget Function(Widget child)? wrapScroll;
+
+  /// Live Sports schedule — thumb stays visible on desktop and TV.
+  final bool persistentScrollbar;
 
   /// TV D-pad: nudge scroll only when [index] is clipped — same contract as
   /// IPTV [CatalogCategoryRail]. Always-pin-to-top jumps the list under a
@@ -85,6 +89,7 @@ class CatalogDenseList extends StatelessWidget {
         bottomPadding: bottomPadding,
         separatorColor: separatorColor,
         wrapScroll: wrapScroll,
+        persistentScrollbar: persistentScrollbar,
       );
     }
     return _CatalogDenseListOwnedScroll(
@@ -96,6 +101,7 @@ class CatalogDenseList extends StatelessWidget {
       bottomPadding: bottomPadding,
       separatorColor: separatorColor,
       wrapScroll: wrapScroll,
+      persistentScrollbar: persistentScrollbar,
     );
   }
 
@@ -110,6 +116,7 @@ class CatalogDenseList extends StatelessWidget {
     double bottomPadding = 0,
     Color? separatorColor,
     Widget Function(Widget child)? wrapScroll,
+    bool persistentScrollbar = false,
   }) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final rowExtent = ShellTokens.denseListRowExtentOf(tv);
@@ -135,7 +142,12 @@ class CatalogDenseList extends StatelessWidget {
     );
     final wrap = wrapScroll;
     final child = wrap == null ? list : wrap(list);
-    return LiveTvScrollbar(controller: scroll, child: child);
+    return LiveTvScrollbar(
+      controller: scroll,
+      enabled: persistentScrollbar ? true : null,
+      thumbVisibility: persistentScrollbar ? true : null,
+      child: child,
+    );
   }
 }
 
@@ -150,6 +162,7 @@ class _CatalogDenseListOwnedScroll extends StatefulWidget {
     required this.bottomPadding,
     required this.separatorColor,
     required this.wrapScroll,
+    required this.persistentScrollbar,
   });
 
   final int itemCount;
@@ -160,6 +173,7 @@ class _CatalogDenseListOwnedScroll extends StatefulWidget {
   final double bottomPadding;
   final Color? separatorColor;
   final Widget Function(Widget child)? wrapScroll;
+  final bool persistentScrollbar;
 
   @override
   State<_CatalogDenseListOwnedScroll> createState() =>
@@ -189,6 +203,7 @@ class _CatalogDenseListOwnedScrollState
       bottomPadding: widget.bottomPadding,
       separatorColor: widget.separatorColor,
       wrapScroll: widget.wrapScroll,
+      persistentScrollbar: widget.persistentScrollbar,
     );
   }
 }

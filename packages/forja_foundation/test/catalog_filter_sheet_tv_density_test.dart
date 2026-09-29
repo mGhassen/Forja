@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -62,6 +63,37 @@ void main() {
 
     final title = tester.widget<Text>(find.text('Catalog'));
     expect(title.style?.fontSize, ShellTokens.filterSheetTitleFontSize);
+  });
+
+  testWidgets('CatalogFilterSheet options are square list rows', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        tv: true,
+        child: CatalogFilterSheet(
+          current: 'all',
+          options: const [
+            (id: 'all', label: 'All', subtitle: null),
+            (id: 'espn', label: 'ESPN', subtitle: null),
+          ],
+        ),
+      ),
+    );
+
+    final materials = tester
+        .widgetList<Material>(find.byType(Material))
+        .where((m) => m.shape is RoundedRectangleBorder);
+    expect(materials, isNotEmpty);
+    for (final material in materials) {
+      final shape = material.shape! as RoundedRectangleBorder;
+      expect(shape.borderRadius, BorderRadius.zero);
+    }
+    final bars = tester.widgetList<ColoredBox>(find.byType(ColoredBox));
+    expect(
+      bars.where((b) => b.color == ForjaShellColors.brandGreen),
+      isNotEmpty,
+    );
   });
 
   testWidgets(

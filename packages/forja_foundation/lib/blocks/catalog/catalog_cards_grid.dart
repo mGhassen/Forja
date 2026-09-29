@@ -14,6 +14,7 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_epg_guide.dart';
+import 'package:forja_foundation/widgets/catalog/event_catalog_hover.dart';
 import 'package:forja_foundation/widgets/catalog/event_card.dart';
 import 'package:forja_foundation/widgets/catalog/event_dense_tile.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
@@ -412,6 +413,7 @@ class CatalogCardsGrid extends StatelessWidget {
       },
       builder: (context, controller) => CatalogDenseList(
         controller: controller,
+        persistentScrollbar: true,
         itemCount: items.length,
         leading: inset,
         trailing: trail,
@@ -435,6 +437,7 @@ class CatalogCardsGrid extends StatelessWidget {
             meta: meta,
             airing: live,
             viewers: viewers,
+            catalogs: eventCatalogLabels(props['catalogs']),
             selected:
                 selectedItemId != null &&
                 selectedItemId!.isNotEmpty &&
@@ -776,12 +779,17 @@ class _EventCardsScrollState extends State<_EventCardsScroll> {
 
   @override
   Widget build(BuildContext context) {
-    return CatalogPosterGrid(
+    return LiveTvScrollbar(
       controller: _scroll,
-      layout: widget.layout,
-      itemCount: widget.items.length,
-      useAspectRatio: false,
-      itemBuilder: widget.itemBuilder,
+      enabled: true,
+      thumbVisibility: true,
+      child: CatalogPosterGrid(
+        controller: _scroll,
+        layout: widget.layout,
+        itemCount: widget.items.length,
+        useAspectRatio: false,
+        itemBuilder: widget.itemBuilder,
+      ),
     );
   }
 }
@@ -1419,7 +1427,11 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
           : null,
     );
 
-    return paint;
+    return EventCatalogHover(
+      catalogs: eventCatalogLabels(props['catalogs']),
+      armed: hovered || _focused,
+      child: paint,
+    );
   }
 
   @override
@@ -1453,6 +1465,7 @@ class _HoverDenseTile extends StatefulWidget {
     required this.airing,
     required this.viewers,
     required this.selected,
+    this.catalogs = const [],
     this.listIndex,
     this.onLeftEdge,
     this.onRightEdge,
@@ -1465,6 +1478,7 @@ class _HoverDenseTile extends StatefulWidget {
   final bool airing;
   final int viewers;
   final bool selected;
+  final List<String> catalogs;
   final int? listIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -1495,15 +1509,19 @@ class _HoverDenseTileState extends State<_HoverDenseTile> {
     });
   }
 
-  Widget _buildTile(bool hovered) => EventDenseTile(
-    title: widget.title,
-    meta: widget.meta,
-    airing: widget.airing,
-    viewers: widget.viewers,
-    selected: widget.selected,
-    hovered: hovered,
-    focused: _focused,
-    onTap: null,
+  Widget _buildTile(bool hovered) => EventCatalogHover(
+    catalogs: widget.catalogs,
+    armed: hovered || _focused,
+    child: EventDenseTile(
+      title: widget.title,
+      meta: widget.meta,
+      airing: widget.airing,
+      viewers: widget.viewers,
+      selected: widget.selected,
+      hovered: hovered,
+      focused: _focused,
+      onTap: null,
+    ),
   );
 
   @override

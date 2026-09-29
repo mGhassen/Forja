@@ -202,6 +202,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
         final map = Map<String, dynamic>.from(row);
         map['pluginId'] ??= plugin.id;
         map['livePluginId'] ??= plugin.id;
+        map['catalogName'] ??= name;
         final id = map['id']?.toString().trim() ?? '';
         if (id.isEmpty || !seen.add(id)) continue;
         raw.add(map);
@@ -217,6 +218,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
           final map = Map<String, dynamic>.from(row);
           map['pluginId'] ??= plugin.id;
           map['livePluginId'] ??= plugin.id;
+          map['catalogName'] ??= name;
           collected.add(map);
           final id = map['id']?.toString().trim() ?? '';
           if (id.isEmpty || !seen.add(id)) continue;

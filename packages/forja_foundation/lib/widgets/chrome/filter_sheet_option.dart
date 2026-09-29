@@ -87,6 +87,7 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
     final metaSize = tv
         ? ShellTokens.filterSheetMetaFontSizeTv
         : ShellTokens.filterSheetMetaFontSize;
+    final square = radius <= 0;
     final tile = ListTile(
       dense: tv,
       visualDensity: tv ? VisualDensity.compact : VisualDensity.standard,
@@ -126,6 +127,37 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
           : const SizedBox.shrink(),
       onTap: widget.tvFocus ? null : widget.onSelected,
     );
+
+    // radius 0 — schedule List line: square fill, green bar when selected.
+    // Color lives on Material so ListTile ink is not hidden by a DecoratedBox.
+    if (square) {
+      final bar = ShellTokens.chromeScale(3, tv: tv);
+      return Padding(
+        padding: widget.padding,
+        child: Material(
+          color: widget.selected
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
+              : highlight
+                  ? ForjaShellColors.inkHover
+                  : Colors.transparent,
+          shape: const RoundedRectangleBorder(),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ColoredBox(
+                  color: widget.selected
+                      ? ForjaShellColors.brandGreen
+                      : Colors.transparent,
+                  child: SizedBox(width: bar),
+                ),
+                Expanded(child: tile),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: widget.padding,
@@ -168,7 +200,9 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
     return FocusableTap(
       onTap: widget.onSelected,
       focusNode: widget.focusNode,
-      borderRadius: BorderRadius.circular(widget.radius),
+      borderRadius: widget.radius <= 0
+          ? BorderRadius.zero
+          : BorderRadius.circular(widget.radius),
       child: painted,
     );
   }

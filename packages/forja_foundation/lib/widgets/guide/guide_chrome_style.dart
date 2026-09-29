@@ -118,6 +118,8 @@ abstract final class GuideChromeStyle {
 /// Thin green position scroller for **list** chrome (categories, channels,
 /// schedules, Portals, guide). Shows while scrolling, then fades. No-op off TV
 /// — desktop uses [ForjaScrollBehavior].
+///
+/// Live Sports schedule passes [thumbVisibility] so the thumb stays on.
 class LiveTvScrollbar extends StatelessWidget {
   const LiveTvScrollbar({
     super.key,
@@ -125,11 +127,13 @@ class LiveTvScrollbar extends StatelessWidget {
     required this.child,
     /// When set, overrides [ShellPaintScope.usesTvDensityOf].
     this.enabled,
+    this.thumbVisibility,
   });
 
   final ScrollController controller;
   final Widget child;
   final bool? enabled;
+  final bool? thumbVisibility;
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +142,7 @@ class LiveTvScrollbar extends StatelessWidget {
     return RawScrollbar(
       controller: controller,
       interactive: false,
+      thumbVisibility: thumbVisibility,
       thickness: ForjaScrollbarStyle.thickness,
       radius: ForjaScrollbarStyle.radius,
       mainAxisMargin: ForjaScrollbarStyle.mainAxisMargin,

@@ -5,6 +5,38 @@ import 'package:forja_foundation/widgets/catalog/event_card.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 
 void main() {
+  testWidgets('schedule list and cards keep a visible scrollbar', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    Future<void> pump(String kind) {
+      return tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 480,
+              height: 320,
+              child: CatalogCardsGrid(
+                cardKind: kind,
+                items: [
+                  for (var i = 0; i < 40; i++)
+                    {'id': 'm$i', 'title': 'Match $i'},
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    for (final kind in ['event', 'list']) {
+      await pump(kind);
+      await tester.pump();
+      final bar = tester.widget<RawScrollbar>(find.byType(RawScrollbar));
+      expect(bar.thumbVisibility, isTrue, reason: kind);
+    }
+  });
+
   test('scroll offset keeps the item at the same screen Y after reflow', () {
     expect(
       CatalogPosterGridLayout.scrollOffsetKeepingScreenY(

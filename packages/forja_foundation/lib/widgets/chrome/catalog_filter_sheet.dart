@@ -12,9 +12,14 @@ Future<String?> showCatalogFilterSheet(
   bool tvFocus = false,
   bool autofocusFirst = false,
   Widget Function(Widget body)? wrapBody,
+  Widget Function(
+    Widget options, {
+    required int itemCount,
+  })? wrapOptions,
   Widget Function({
     required Widget child,
     required VoidCallback onTap,
+    required int index,
     ValueChanged<bool>? onFocusChange,
     ValueChanged<bool>? onHoverChange,
     FocusNode? focusNode,
@@ -23,6 +28,8 @@ Future<String?> showCatalogFilterSheet(
   return showModalBottomSheet<String>(
     context: context,
     backgroundColor: ForjaShellColors.surfaceElevated,
+    // Line rows — square sheet, same as schedule List cards.
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
     isScrollControlled: true,
     constraints: ShellPaintScope.usesTvDensityOf(context)
         ? const BoxConstraints(maxWidth: ShellTokens.filterSheetMaxWidthTv)
@@ -33,6 +40,7 @@ Future<String?> showCatalogFilterSheet(
       tvFocus: tvFocus,
       autofocusFirst: autofocusFirst,
       wrapBody: wrapBody,
+      wrapOptions: wrapOptions,
       optionInteractiveBuilder: optionInteractiveBuilder,
     ),
   );
@@ -46,6 +54,7 @@ class CatalogFilterSheet extends StatefulWidget {
     this.tvFocus = false,
     this.autofocusFirst = false,
     this.wrapBody,
+    this.wrapOptions,
     this.optionInteractiveBuilder,
     this.radius,
     this.fontSize,
@@ -57,9 +66,16 @@ class CatalogFilterSheet extends StatefulWidget {
   final bool tvFocus;
   final bool autofocusFirst;
   final Widget Function(Widget body)? wrapBody;
+
+  /// Host TV row around the option list (vertical D-pad).
+  final Widget Function(
+    Widget options, {
+    required int itemCount,
+  })? wrapOptions;
   final Widget Function({
     required Widget child,
     required VoidCallback onTap,
+    required int index,
     ValueChanged<bool>? onFocusChange,
     ValueChanged<bool>? onHoverChange,
     FocusNode? focusNode,
@@ -92,6 +108,57 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
     super.dispose();
   }
 
+  Widget _options(
+    BuildContext context, {
+    required String selectedId,
+    required double radius,
+    required double fontSize,
+  }) {
+    final host = widget.optionInteractiveBuilder;
+    Widget options = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < widget.options.length; i++)
+          FilterSheetOption(
+            label: widget.options[i].label,
+            subtitle: widget.options[i].subtitle,
+            selected: widget.options[i].id == selectedId,
+            icon: widget.options[i].id == 'all'
+                ? Icons.grid_view_rounded
+                : Icons.video_library_rounded,
+            onSelected: () => Navigator.pop(context, widget.options[i].id),
+            tvFocus: widget.tvFocus,
+            focusNode: i == 0 ? _firstFocus : null,
+            interactiveBuilder: host == null
+                ? null
+                : ({
+                    required child,
+                    required onTap,
+                    onFocusChange,
+                    onHoverChange,
+                    focusNode,
+                  }) =>
+                    host(
+                      child: child,
+                      onTap: onTap,
+                      index: i,
+                      onFocusChange: onFocusChange,
+                      onHoverChange: onHoverChange,
+                      focusNode: focusNode,
+                    ),
+            radius: radius,
+            fontSize: fontSize,
+          ),
+      ],
+    );
+    final wrap = widget.wrapOptions;
+    if (wrap != null) {
+      options = wrap(options, itemCount: widget.options.length);
+    }
+    return options;
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedId = widget.current.isEmpty || widget.current == 'all'
@@ -116,8 +183,8 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
       final optionSize = tv
           ? ShellTokens.filterSheetOptionFontSizeTv
           : (widget.fontSize ?? ShellTokens.filterSheetOptionFontSize);
-      final radius = widget.radius ??
-          (tv ? ShellTokens.filterSheetRadiusTv : ShellTokens.filterSheetRadius);
+      // Square line rows (schedule List). Explicit [radius] still overrides.
+      final radius = widget.radius ?? 0;
       final padding = widget.padding ??
           EdgeInsets.fromLTRB(
             tv ? ShellTokens.filterSheetPadHTv : ShellTokens.filterSheetPadH,
@@ -186,22 +253,12 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
                       ? ShellTokens.filterSheetListGapTv
                       : ShellTokens.filterSheetListGap,
                 ),
-                for (var i = 0; i < widget.options.length; i++)
-                  FilterSheetOption(
-                    label: widget.options[i].label,
-                    subtitle: widget.options[i].subtitle,
-                    selected: widget.options[i].id == selectedId,
-                    icon: widget.options[i].id == 'all'
-                        ? Icons.grid_view_rounded
-                        : Icons.video_library_rounded,
-                    onSelected: () =>
-                        Navigator.pop(context, widget.options[i].id),
-                    tvFocus: widget.tvFocus,
-                    focusNode: i == 0 ? _firstFocus : null,
-                    interactiveBuilder: widget.optionInteractiveBuilder,
-                    radius: radius,
-                    fontSize: optionSize,
-                  ),
+                _options(
+                  context,
+                  selectedId: selectedId,
+                  radius: radius,
+                  fontSize: optionSize,
+                ),
               ],
             ),
           ),

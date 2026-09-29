@@ -12,7 +12,6 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
 
 /// Catalog + Status×Horizon schedule sheets for Live Sports top bar.
@@ -39,6 +38,8 @@ void registerLiveScheduleChromeHooks() {
     required options,
   }) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    const tabId = 'live_sports_catalog_sheet';
+    const rowId = 'catalog-options';
     return showCatalogFilterSheet(
       context,
       current: current,
@@ -55,10 +56,21 @@ void registerLiveScheduleChromeHooks() {
                 ),
               )
           : null,
+      wrapOptions: tv
+          ? (options, {required itemCount}) => TvKitRow(
+                tabId: tabId,
+                rowId: rowId,
+                sortOrder: 0,
+                itemCount: itemCount,
+                orientation: ShellTvRowOrientation.vertical,
+                child: options,
+              )
+          : null,
       optionInteractiveBuilder: tv
           ? ({
               required child,
               required onTap,
+              required index,
               onFocusChange,
               onHoverChange,
               focusNode,
@@ -66,12 +78,12 @@ void registerLiveScheduleChromeHooks() {
               shellFocusableTap(
                 context: context,
                 onTap: onTap,
-                borderRadius: ShellTokens.filterSheetRadiusTv,
+                borderRadius: 0,
                 scaleOnFocus: 1.0,
-                showFocusRail: true,
-                tvZone: ShellTvZone.topBar,
-                tvTabId: 'live_sports_catalog_sheet',
-                tvRowId: 'catalog-options',
+                tvZone: ShellTvZone.row,
+                tvTabId: tabId,
+                tvRowId: rowId,
+                tvItemIndex: index,
                 focusNode: focusNode,
                 onFocusChange: onFocusChange,
                 onHoverChange: onHoverChange,
