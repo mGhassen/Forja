@@ -31,10 +31,7 @@ BoxDecoration shellChipDecoration({
   return BoxDecoration(
     color: fill,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(
-      color: border,
-      width: accentHover ? 1.5 : 1,
-    ),
+    border: Border.all(color: border, width: accentHover ? 1.5 : 1),
   );
 }
 
@@ -48,12 +45,13 @@ Widget shellRoundedInkHost({
   EdgeInsetsGeometry? padding,
   bool suppressInkHover = false,
 }) {
-  final hoverColor =
-      suppressInkHover ? Colors.transparent : ForjaShellColors.inkHover;
-  final splashColor =
-      suppressInkHover ? Colors.transparent : ForjaShellColors.inkSplash;
-  final highlightColor =
-      suppressInkHover ? Colors.transparent : null;
+  final hoverColor = suppressInkHover
+      ? Colors.transparent
+      : ForjaShellColors.inkHover;
+  final splashColor = suppressInkHover
+      ? Colors.transparent
+      : ForjaShellColors.inkSplash;
+  final highlightColor = suppressInkHover ? Colors.transparent : null;
   final focusColor = suppressInkHover ? Colors.transparent : null;
   final borderRadius = BorderRadius.circular(radius);
   Widget body = child;
@@ -110,8 +108,10 @@ Widget shellRoundedInkHost({
 /// Rounded hover/focus overlay for [MenuItemButton] and compact list rows.
 ButtonStyle shellMenuItemStyle({
   double radius = ShellTokens.shellChipRadius,
-  EdgeInsetsGeometry padding =
-      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+  EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
+    horizontal: 12,
+    vertical: 10,
+  ),
 }) {
   return ButtonStyle(
     padding: WidgetStatePropertyAll(padding),
@@ -262,7 +262,8 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
   KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
     if (widget.onLongPress == null) return KeyEventResult.ignored;
     final key = event.logicalKey;
-    final isActivate = key == LogicalKeyboardKey.select ||
+    final isActivate =
+        key == LogicalKeyboardKey.select ||
         key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter ||
         key == LogicalKeyboardKey.space ||
@@ -291,30 +292,36 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     final selected = widget.selected;
     final tv = ShellPaintScope.useTvFocusOf(context);
     final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
-    final focusStyled =
-        ShellPaintScope.focusStyledOf(context, focused: _focused);
-    final accent = widget.accentHover && (hovered || focusStyled);
-    final showReload = widget.onReload != null &&
-        (!scaleOnHover || hovered || focusStyled);
+    final focusStyled = ShellPaintScope.focusStyledOf(
+      context,
+      focused: _focused,
+    );
+    // Leanback: green border on the focused pill even when the caller did not
+    // opt into desktop accent hover (Open with hub chips, filter chips).
+    final accent =
+        (widget.accentHover && (hovered || focusStyled)) || (tv && focusStyled);
+    final showReload =
+        widget.onReload != null && (!scaleOnHover || hovered || focusStyled);
     final cinematic = ForjaShellColors.cinematic;
     final fg = accent
         ? ForjaShellColors.brandGreen
         : selected
-            ? cinematic.textPrimary
-            : cinematic.textSecondary;
+        ? cinematic.textPrimary
+        : cinematic.textSecondary;
     final reloadColor = (reloadHovered || focusStyled)
         ? ForjaShellColors.brandGreen
         : fg;
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
-    final labelFontSize = tvDensity &&
-            widget.fontSize == ShellTokens.shellChipFontSize
+    final labelFontSize =
+        tvDensity && widget.fontSize == ShellTokens.shellChipFontSize
         ? ShellTokens.shellChipFontSizeTv
         : widget.fontSize;
-    final iconSize = tvDensity &&
-            widget.iconSize == ShellTokens.shellChipIconSize
+    final iconSize =
+        tvDensity && widget.iconSize == ShellTokens.shellChipIconSize
         ? ShellTokens.shellChipIconSizeTv
         : widget.iconSize;
-    final padding = tvDensity &&
+    final padding =
+        tvDensity &&
             widget.padding ==
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 8)
         ? const EdgeInsets.symmetric(
@@ -328,15 +335,13 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     final gapTight = tvDensity
         ? ShellTokens.shellChipGapTightTv
         : ShellTokens.shellChipGapTight;
-    final radius = tvDensity &&
-            widget.radius == ShellTokens.shellChipRadiusPill
+    final radius = tvDensity && widget.radius == ShellTokens.shellChipRadiusPill
         ? ShellTokens.shellChipRadiusPillTv
         : widget.radius;
 
     // Cap trailing glyphs to the label size so reload / loading … never grow
     // the pill above idle height (especially on leanback type ladder).
-    final trailingSize =
-        iconSize > labelFontSize ? labelFontSize : iconSize;
+    final trailingSize = iconSize > labelFontSize ? labelFontSize : iconSize;
 
     return AnimatedContainer(
       duration: tv
@@ -368,11 +373,10 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
                 color: fg,
                 fontSize: labelFontSize,
                 height: 1.0,
-                fontWeight:
-                    selected || accent ? FontWeight.w600 : FontWeight.w500,
-              ).copyWith(
-                leadingDistribution: TextLeadingDistribution.even,
-              ),
+                fontWeight: selected || accent
+                    ? FontWeight.w600
+                    : FontWeight.w500,
+              ).copyWith(leadingDistribution: TextLeadingDistribution.even),
               strutStyle: StrutStyle(
                 fontSize: labelFontSize,
                 height: 1.0,
@@ -428,17 +432,14 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
     final tv = useTv;
     final borderRadius = BorderRadius.circular(widget.radius);
-    final trackHover = widget.accentHover ||
+    final trackHover =
+        widget.accentHover ||
         widget.onReload != null ||
         widget.onLongPress != null;
     final leanback = tv && !scaleOnHover;
 
     final face = ListenableBuilder(
-      listenable: Listenable.merge([
-        _hoveredN,
-        _busyHoveredN,
-        _reloadHoveredN,
-      ]),
+      listenable: Listenable.merge([_hoveredN, _busyHoveredN, _reloadHoveredN]),
       builder: (context, _) => _buildFace(
         _hoveredN.value,
         _busyHoveredN.value,
@@ -465,7 +466,9 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         onRightEdge: widget.onRightEdge,
         ensureVisibleMode: widget.ensureVisibleMode,
         onKeyEvent: leanback && widget.onLongPress != null ? _onTvKey : null,
-        onFocusChange: widget.accentHover ||
+        onFocusChange:
+            useTv ||
+                widget.accentHover ||
                 widget.onReload != null ||
                 widget.onLongPress != null
             ? (focused) {

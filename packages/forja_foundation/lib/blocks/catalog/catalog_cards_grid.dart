@@ -143,6 +143,7 @@ class CatalogCardsGrid extends StatelessWidget {
     this.landEpoch,
     this.onHoldJumpToCategory,
     this.preferCategoryFocusOnLand = true,
+
     /// Read live at land epoch (static host flag may change without rebuild).
     this.preferCategoryFocusNow,
     this.onRequestFocusAt,
@@ -522,11 +523,13 @@ class CatalogCardsGrid extends StatelessWidget {
     // Beside a category rail the split pad is 8. A kind-menu page has no
     // rail, so posters share the menu's inset.
     final menuPage = TabsCardsPageScope.of(context);
-    final leading = pad ??
+    final leading =
+        pad ??
         (menuPage
             ? ShellTokens.compactChromeLeadingInset(context)
             : ShellTokens.catalogSplitGridLeadingPad);
-    final trailing = pad ??
+    final trailing =
+        pad ??
         (menuPage
             ? ShellTokens.bodyHorizontalPadding
             : ShellTokens.catalogSplitGridTrailingPad);
@@ -541,53 +544,69 @@ class CatalogCardsGrid extends StatelessWidget {
           leading: leading,
           trailing: trailing,
         );
-        return CatalogPosterGrid(
-          layout: layout,
-          itemCount: items.length,
-          itemBuilder: (context, i) {
-            final item = items[i];
-            final props = catalogItemProps(item);
-            final aspectRaw = (props['aspect'] ?? '').toString().toLowerCase();
-            final itemLandscape = aspectRaw == 'landscape' || landscape;
-            final badge = (props['badge'] ?? '').toString();
-            final subtitle = (props['subtitle'] ?? '').toString();
-            final id = CatalogCardsGrid._itemId(item);
-            return InteractivePosterCard(
-              selected: selectedItemId != null &&
-                  selectedItemId!.isNotEmpty &&
-                  selectedItemId == id,
-              imageUrl:
-                  (props['imageUrl'] ??
-                          props['posterUrl'] ??
-                          props['logoUrl'] ??
-                          '')
-                      .toString(),
-              title: (props['title'] ?? '').toString(),
-              subtitle: subtitle.isEmpty ? null : subtitle,
-              rating: props['rating'] is num
-                  ? (props['rating'] as num).toDouble()
-                  : null,
-              badge: badge.isEmpty ? null : badge,
-              listPinBuilder: itemAccessory == null
-                  ? null
-                  : ({required bool active}) =>
-                        itemAccessory!(context, item, active: active),
-              onTap: () => onItemTap?.call(item),
-              onLongPress: onItemLongPress == null
-                  ? null
-                  : () => onItemLongPress!(item),
-              aspect: itemLandscape
-                  ? PosterAspect.landscape
-                  : PosterAspect.portrait,
-              width: layout.cardW,
-              height: layout.cardH,
-              gridIndex: i,
-              gridColumns: layout.columns,
-              onLeftEdge: _gridOnLeftEdge(i, layout.columns),
-              onRightEdge: _gridOnRightEdge(i, layout.columns),
-              onUpEdge: i < layout.columns
-                  ? _gridOnUpEdge(i, layout.columns)
-                  : null,
+        return _OwnedScrollHost(
+          onScrollIntoViewChanged: onScrollIntoViewChanged,
+          scrollToIndex: (scroll, index) {
+            if (!scroll.hasClients || index < 0) return;
+            final max = scroll.position.maxScrollExtent;
+            final target = layout.itemTop(index).clamp(0.0, max);
+            if ((scroll.offset - target).abs() < 0.5) return;
+            scroll.jumpTo(target);
+          },
+          builder: (context, scroll) {
+            return CatalogPosterGrid(
+              controller: scroll,
+              layout: layout,
+              itemCount: items.length,
+              itemBuilder: (context, i) {
+                final item = items[i];
+                final props = catalogItemProps(item);
+                final aspectRaw = (props['aspect'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                final itemLandscape = aspectRaw == 'landscape' || landscape;
+                final badge = (props['badge'] ?? '').toString();
+                final subtitle = (props['subtitle'] ?? '').toString();
+                final id = CatalogCardsGrid._itemId(item);
+                return InteractivePosterCard(
+                  selected:
+                      selectedItemId != null &&
+                      selectedItemId!.isNotEmpty &&
+                      selectedItemId == id,
+                  imageUrl:
+                      (props['imageUrl'] ??
+                              props['posterUrl'] ??
+                              props['logoUrl'] ??
+                              '')
+                          .toString(),
+                  title: (props['title'] ?? '').toString(),
+                  subtitle: subtitle.isEmpty ? null : subtitle,
+                  rating: props['rating'] is num
+                      ? (props['rating'] as num).toDouble()
+                      : null,
+                  badge: badge.isEmpty ? null : badge,
+                  listPinBuilder: itemAccessory == null
+                      ? null
+                      : ({required bool active}) =>
+                            itemAccessory!(context, item, active: active),
+                  onTap: () => onItemTap?.call(item),
+                  onLongPress: onItemLongPress == null
+                      ? null
+                      : () => onItemLongPress!(item),
+                  aspect: itemLandscape
+                      ? PosterAspect.landscape
+                      : PosterAspect.portrait,
+                  width: layout.cardW,
+                  height: layout.cardH,
+                  gridIndex: i,
+                  gridColumns: layout.columns,
+                  onLeftEdge: _gridOnLeftEdge(i, layout.columns),
+                  onRightEdge: _gridOnRightEdge(i, layout.columns),
+                  onUpEdge: i < layout.columns
+                      ? _gridOnUpEdge(i, layout.columns)
+                      : null,
+                );
+              },
             );
           },
         );
@@ -685,10 +704,9 @@ class _EventCardsScrollState extends State<_EventCardsScroll> {
 
   void _scrollToIndex(int index) {
     if (!_scroll.hasClients || index < 0) return;
-    final target = widget.layout.itemTop(index).clamp(
-      0.0,
-      _scroll.position.maxScrollExtent,
-    );
+    final target = widget.layout
+        .itemTop(index)
+        .clamp(0.0, _scroll.position.maxScrollExtent);
     if ((_scroll.offset - target).abs() < 0.5) return;
     _scroll.jumpTo(target);
   }
@@ -1211,8 +1229,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     final cardW = CatalogChannelCard.cardWidth(context);
     final cardH = CatalogChannelCard.cardHeight(context);
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final gap = widget.gap ??
-        ShellTokens.chromeScale(10.0, tv: tv);
+    final gap = widget.gap ?? ShellTokens.chromeScale(10.0, tv: tv);
     final leading = widget.pad ?? ShellTokens.catalogSplitGridLeadingPad;
     final trailing = widget.pad ?? ShellTokens.catalogSplitGridTrailingPad;
 

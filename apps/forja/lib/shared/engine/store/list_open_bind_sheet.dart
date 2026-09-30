@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_picker.dart';
 import 'package:forja/shared/engine/store/list_open_title_rank.dart';
@@ -17,12 +18,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Result of the single Open-in bind sheet.
 class ListOpenBindResult {
-  const ListOpenBindResult({
-    required this.candidate,
-    this.hit,
-  });
+  const ListOpenBindResult({required this.candidate, this.hit});
 
   final ListOpenCandidate candidate;
+
   /// Set when the hub needed a title match; null for compatible direct open.
   final MetaItem? hit;
 }
@@ -73,7 +72,10 @@ class _ListOpenBindSheet extends StatefulWidget {
 class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   late ListOpenCandidate _hub;
   late final TextEditingController _query;
+  late final List<FocusNode> _chipNodes;
   final FocusNode _queryFocus = FocusNode();
+  final FocusNode _openFocus = FocusNode();
+  final List<FocusNode> _hitNodes = [];
   Timer? _debounce;
   int _searchGen = 0;
   bool _searching = false;
@@ -90,10 +92,19 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   void initState() {
     super.initState();
     _hub = _pickInitialHub();
+    _chipNodes = List.generate(
+      widget.candidates.length,
+      (i) => FocusNode(debugLabel: 'list-open-hub-$i'),
+    );
     _query = TextEditingController(text: widget.sourceMeta.name.trim());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _onHubReady();
+      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      final i = widget.candidates.indexWhere(
+        (c) => c.pluginId == _hub.pluginId,
+      );
+      if (i >= 0) _chipNodes[i].requestFocus();
     });
   }
 
@@ -115,13 +126,44 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     _debounce?.cancel();
     _query.dispose();
     _queryFocus.dispose();
+    _openFocus.dispose();
+    for (final node in _chipNodes) {
+      node.dispose();
+    }
+    for (final node in _hitNodes) {
+      node.dispose();
+    }
     super.dispose();
+  }
+
+  void _fitHitFocus(int count) {
+    while (_hitNodes.length > count) {
+      _hitNodes.removeLast().dispose();
+    }
+    while (_hitNodes.length < count) {
+      _hitNodes.add(FocusNode(debugLabel: 'list-open-hit-${_hitNodes.length}'));
+    }
+  }
+
+  void _focusSelectedChip() {
+    final i = widget.candidates.indexWhere((c) => c.pluginId == _hub.pluginId);
+    if (i < 0 || i >= _chipNodes.length) return;
+    _chipNodes[i].requestFocus();
+  }
+
+  void _focusBelowHubs() {
+    if (_hub.compatible) {
+      _openFocus.requestFocus();
+      return;
+    }
+    _queryFocus.requestFocus();
   }
 
   void _selectHub(ListOpenCandidate hub) {
     if (_hub.pluginId == hub.pluginId) return;
     setState(() {
       _hub = hub;
+      _fitHitFocus(0);
       _hits = const [];
       _error = null;
       _searching = false;
@@ -151,6 +193,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     final q = _query.text.trim();
     if (q.isEmpty) {
       setState(() {
+        _fitHitFocus(0);
         _hits = const [];
         _searching = false;
         _error = 'Type a title to search';
@@ -170,6 +213,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     if (!mounted || gen != _searchGen) return;
     setState(() {
       _searching = false;
+      _fitHitFocus(hits.length);
       _hits = hits;
       _error = hits.isEmpty ? 'No matches in ${_hub.label}' : null;
     });
@@ -180,15 +224,13 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   }
 
   void _confirmHit(MetaItem hit) {
-    Navigator.of(context).pop(
-      ListOpenBindResult(candidate: _hub, hit: hit),
-    );
+    Navigator.of(context).pop(ListOpenBindResult(candidate: _hub, hit: hit));
   }
 
   bool _isBest(MetaItem hit, int index) {
     if (index != 0 || _hits.isEmpty) return false;
-    final qYear = listOpenParseYear(_yearHint) ??
-        listOpenParseYear(_query.text);
+    final qYear =
+        listOpenParseYear(_yearHint) ?? listOpenParseYear(_query.text);
     final hYear = listOpenParseYear(
       hit.releaseInfo.isNotEmpty ? hit.releaseInfo : hit.premiereDate,
     );
@@ -210,19 +252,30 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final tv = policy.browseTextUntilActivate;
+    final density = ShellScope.metricsOf(context).usesTvDensity;
+    final leanback = policy.browseTextUntilActivate;
+    final dpad = policy.useFocusableMoodChips;
     final poster = widget.sourceMeta.poster.trim();
     final release = _yearHint;
+    final screen = MediaQuery.sizeOf(context);
+    double px(double desktop) =>
+        density ? desktop * ShellTokens.tvChromeScale : desktop;
+    double type(double desktop) =>
+        density ? ShellTokens.tvTypeSize(desktop) : desktop;
+    final sheetW = density ? (screen.width * 0.34).clamp(240.0, 360.0) : 480.0;
+    final sheetH = density ? (screen.height * 0.58).clamp(280.0, 420.0) : 560.0;
 
     return Dialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      insetPadding: EdgeInsets.symmetric(horizontal: px(24), vertical: px(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(px(14)),
+      ),
       child: SizedBox(
-        width: 480,
-        height: 560,
+        width: sheetW,
+        height: sheetH,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+          padding: EdgeInsets.fromLTRB(px(18), px(16), px(18), px(14)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -233,26 +286,38 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                       widget.title,
                       style: GoogleFonts.plusJakartaSans(
                         color: ForjaShellColors.textPrimary,
-                        fontSize: 18,
+                        fontSize: type(18),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: px(8),
+                        vertical: px(4),
+                      ),
+                      minimumSize: Size(px(48), px(28)),
+                    ),
                     child: Text(
                       'Cancel',
-                      style: TextStyle(color: ForjaShellColors.textSecondary),
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: type(14),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: px(12)),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _PosterThumb(url: poster),
-                  const SizedBox(width: 12),
+                  _PosterThumb(url: poster, density: density),
+                  SizedBox(width: px(12)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,17 +330,17 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.plusJakartaSans(
                             color: ForjaShellColors.textPrimary,
-                            fontSize: 15,
+                            fontSize: type(15),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         if (release.isNotEmpty) ...[
-                          const SizedBox(height: 4),
+                          SizedBox(height: px(4)),
                           Text(
                             release,
                             style: TextStyle(
                               color: ForjaShellColors.textSecondary,
-                              fontSize: 12,
+                              fontSize: type(12),
                             ),
                           ),
                         ],
@@ -284,48 +349,85 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: px(14)),
               Text(
                 'Hub',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
-                  fontSize: 11,
+                  fontSize: type(11),
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.4,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: px(8)),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: px(8),
+                runSpacing: px(8),
                 children: [
-                  for (final c in widget.candidates)
+                  for (var i = 0; i < widget.candidates.length; i++)
                     ForjaShellChip(
-                      label: c.label,
-                      selected: c.pluginId == _hub.pluginId,
-                      onTap: () => _selectHub(c),
-                      loading: _searching && c.pluginId == _hub.pluginId,
+                      label: widget.candidates[i].label,
+                      selected: widget.candidates[i].pluginId == _hub.pluginId,
+                      focusNode: _chipNodes[i],
+                      onTap: () => _selectHub(widget.candidates[i]),
+                      loading:
+                          _searching &&
+                          widget.candidates[i].pluginId == _hub.pluginId,
+                      onLeftEdge: !dpad
+                          ? null
+                          : i == 0
+                          ? () {}
+                          : () => _chipNodes[i - 1].requestFocus(),
+                      onRightEdge: !dpad
+                          ? null
+                          : i == widget.candidates.length - 1
+                          ? () {}
+                          : () => _chipNodes[i + 1].requestFocus(),
+                      onDownEdge: dpad ? _focusBelowHubs : null,
+                      onUpEdge: dpad ? () {} : null,
                     ),
                 ],
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: px(14)),
               if (_hub.compatible) ...[
                 _CompatibleOpenBody(
                   hubLabel: _hub.label,
                   onOpen: _confirmCompatible,
-                  tv: tv,
+                  dpad: dpad,
+                  density: density,
+                  focusNode: _openFocus,
+                  onUp: _focusSelectedChip,
                 ),
                 const Spacer(),
               ] else ...[
-
                 _SearchField(
                   controller: _query,
                   focusNode: _queryFocus,
-                  tv: tv,
+                  leanback: leanback,
+                  density: density,
                   onChanged: (_) => _scheduleSearch(),
                   onSubmitted: (_) => _runSearch(),
+                  onKeyEvent: dpad
+                      ? (node, event) {
+                          if (event is! KeyDownEvent) {
+                            return KeyEventResult.ignored;
+                          }
+                          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                            if (_hitNodes.isEmpty) {
+                              return KeyEventResult.ignored;
+                            }
+                            _hitNodes.first.requestFocus();
+                            return KeyEventResult.handled;
+                          }
+                          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                            _focusSelectedChip();
+                            return KeyEventResult.handled;
+                          }
+                          return KeyEventResult.ignored;
+                        }
+                      : null,
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: px(10)),
                 Expanded(
                   child: _HitsBody(
                     searching: _searching,
@@ -333,7 +435,10 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                     hits: _hits,
                     isBest: _isBest,
                     onPick: _confirmHit,
-                    tv: tv,
+                    dpad: dpad,
+                    density: density,
+                    focusNodes: _hitNodes,
+                    onUpFromFirst: () => _queryFocus.requestFocus(),
                   ),
                 ),
               ],
@@ -346,17 +451,21 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
 }
 
 class _PosterThumb extends StatelessWidget {
-  const _PosterThumb({required this.url});
+  const _PosterThumb({required this.url, this.density = false});
 
   final String url;
+  final bool density;
 
   @override
   Widget build(BuildContext context) {
+    final w = density ? 52 * ShellTokens.tvChromeScale : 52.0;
+    final h = density ? 78 * ShellTokens.tvChromeScale : 78.0;
+    final radius = density ? 8 * ShellTokens.tvChromeScale : 8.0;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(radius),
       child: SizedBox(
-        width: 52,
-        height: 78,
+        width: w,
+        height: h,
         child: url.isEmpty
             ? ColoredBox(
                 color: Colors.white.withValues(alpha: 0.06),
@@ -387,21 +496,33 @@ class _CompatibleOpenBody extends StatelessWidget {
   const _CompatibleOpenBody({
     required this.hubLabel,
     required this.onOpen,
-    required this.tv,
+    required this.dpad,
+    required this.density,
+    required this.focusNode,
+    required this.onUp,
   });
 
   final String hubLabel;
   final VoidCallback onOpen;
-  final bool tv;
+  final bool dpad;
+  final bool density;
+  final FocusNode focusNode;
+  final VoidCallback onUp;
 
   @override
   Widget build(BuildContext context) {
+    double px(double desktop) =>
+        density ? desktop * ShellTokens.tvChromeScale : desktop;
+    final type = density ? ShellTokens.tvTypeSize(14) : 14.0;
+    final radius = px(10);
     final child = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: px(14), vertical: px(10)),
       decoration: BoxDecoration(
         color: ForjaShellColors.brandGreen.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ForjaShellColors.brandGreen.withValues(alpha: 0.45)),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: ForjaShellColors.brandGreen.withValues(alpha: 0.45),
+        ),
       ),
       child: Row(
         children: [
@@ -410,26 +531,37 @@ class _CompatibleOpenBody extends StatelessWidget {
             color: ForjaShellColors.brandGreen,
             size: ShellPaintScope.iconOf(context, 20),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: px(10)),
           Expanded(
             child: Text(
               'Open in $hubLabel',
               style: GoogleFonts.plusJakartaSans(
                 color: ForjaShellColors.textPrimary,
-                fontSize: 14,
+                fontSize: type,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: ForjaShellColors.brandGreen),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: ForjaShellColors.brandGreen,
+            size: ShellPaintScope.iconOf(context, 20),
+          ),
         ],
       ),
     );
-    if (tv) {
+    if (dpad) {
       return shellFocusableTap(
         context: context,
         onTap: onOpen,
-        borderRadius: 10,
+        borderRadius: radius,
+        focusNode: focusNode,
+        scaleOnFocus: 1,
+        showFocusBorder: true,
+        onUpEdge: onUp,
+        onDownEdge: () {},
+        onLeftEdge: () {},
+        onRightEdge: () {},
         child: child,
       );
     }
@@ -437,7 +569,7 @@ class _CompatibleOpenBody extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onOpen,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(radius),
         child: child,
       ),
     );
@@ -448,79 +580,97 @@ class _SearchField extends StatelessWidget {
   const _SearchField({
     required this.controller,
     required this.focusNode,
-    required this.tv,
+    required this.leanback,
+    required this.density,
     required this.onChanged,
     required this.onSubmitted,
+    this.onKeyEvent,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
-  final bool tv;
+  final bool leanback;
+  final bool density;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
-
-  InputDecoration get _decoration => InputDecoration(
-        hintText: 'Search title',
-        hintStyle: TextStyle(
-          color: ForjaShellColors.textSecondary,
-          fontSize: tv
-              ? ShellTokens.formInputHintFontSizeTv
-              : ShellTokens.formInputHintFontSize,
-        ),
-        prefixIcon: Icon(
-          Icons.search,
-          color: ForjaShellColors.iconMuted,
-          size: tv
-              ? ShellTokens.formInputIconSizeTv
-              : ShellTokens.formInputIconSize,
-        ),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.06),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: ForjaShellColors.borderSubtle),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: ForjaShellColors.borderSubtle),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: ForjaShellColors.brandGreen),
-        ),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: tv
-              ? ShellTokens.formInputPadHSmTv
-              : ShellTokens.formInputPadHSm,
-          vertical: tv
-              ? ShellTokens.formInputPadVSmTv
-              : ShellTokens.formInputPadVSm,
-        ),
-        isDense: true,
-      );
+  final FocusOnKeyEventCallback? onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
+    final tv = density;
     final fontSize = tv
         ? ShellTokens.formInputFontSizeTv
         : ShellTokens.formInputFontSize;
-    final style = TextStyle(color: ForjaShellColors.textPrimary, fontSize: fontSize);
-    if (tv) {
+    final icon = tv
+        ? ShellTokens.formInputIconSizeTv
+        : ShellTokens.formInputIconSize;
+    final slot = tv ? ShellTokens.controlHeightTv : 40.0;
+    final style = TextStyle(
+      color: ForjaShellColors.textPrimary,
+      fontSize: fontSize,
+    );
+    final decoration = InputDecoration(
+      hintText: 'Search title',
+      hintStyle: TextStyle(
+        color: ForjaShellColors.textSecondary,
+        fontSize: tv
+            ? ShellTokens.formInputHintFontSizeTv
+            : ShellTokens.formInputHintFontSize,
+      ),
+      prefixIcon: Icon(
+        Icons.search,
+        color: ForjaShellColors.iconMuted,
+        size: icon,
+      ),
+      prefixIconConstraints: BoxConstraints(
+        minWidth: slot,
+        maxWidth: slot,
+        minHeight: slot,
+        maxHeight: slot,
+      ),
+      isCollapsed: false,
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.06),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tv ? 8 : 10),
+        borderSide: BorderSide(color: ForjaShellColors.borderSubtle),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tv ? 8 : 10),
+        borderSide: BorderSide(color: ForjaShellColors.borderSubtle),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tv ? 8 : 10),
+        borderSide: BorderSide(color: ForjaShellColors.brandGreen),
+      ),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: tv
+            ? ShellTokens.formInputPadHSmTv
+            : ShellTokens.formInputPadHSm,
+        vertical: tv
+            ? ShellTokens.formInputPadVSmTv
+            : ShellTokens.formInputPadVSm,
+      ),
+      isDense: true,
+    );
+    if (leanback) {
       return TvBrowseTextField(
         controller: controller,
         focusNode: focusNode,
         onChanged: onChanged,
         onSubmitted: onSubmitted,
-        decoration: _decoration,
+        onKeyEvent: onKeyEvent,
+        decoration: decoration,
         style: style,
         browsePlaceholder: 'Search title — OK to type',
+        caretHeight: fontSize,
       );
     }
     return TextField(
       controller: controller,
       focusNode: focusNode,
       style: style,
-      decoration: _decoration,
+      decoration: decoration,
       textInputAction: TextInputAction.search,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
@@ -535,7 +685,10 @@ class _HitsBody extends StatelessWidget {
     required this.hits,
     required this.isBest,
     required this.onPick,
-    required this.tv,
+    required this.dpad,
+    required this.density,
+    required this.focusNodes,
+    required this.onUpFromFirst,
   });
 
   final bool searching;
@@ -543,7 +696,10 @@ class _HitsBody extends StatelessWidget {
   final List<MetaItem> hits;
   final bool Function(MetaItem hit, int index) isBest;
   final ValueChanged<MetaItem> onPick;
-  final bool tv;
+  final bool dpad;
+  final bool density;
+  final List<FocusNode> focusNodes;
+  final VoidCallback onUpFromFirst;
 
   @override
   Widget build(BuildContext context) {
@@ -560,11 +716,15 @@ class _HitsBody extends StatelessWidget {
       );
     }
     if (error != null && hits.isEmpty) {
+      final type = density ? ShellTokens.tvTypeSize(13) : 13.0;
       return Center(
         child: Text(
           error!,
           textAlign: TextAlign.center,
-          style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: 13),
+          style: TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: type,
+          ),
         ),
       );
     }
@@ -572,12 +732,15 @@ class _HitsBody extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    double px(double desktop) =>
+        density ? desktop * ShellTokens.tvChromeScale : desktop;
+    double type(double desktop) =>
+        density ? ShellTokens.tvTypeSize(desktop) : desktop;
+
     return ListView.separated(
       itemCount: hits.length,
-      separatorBuilder: (_, _) => Divider(
-        height: 1,
-        color: ForjaShellColors.borderSubtle,
-      ),
+      separatorBuilder: (_, _) =>
+          Divider(height: 1, color: ForjaShellColors.borderSubtle),
       itemBuilder: (context, i) {
         final hit = hits[i];
         final best = isBest(hit, i);
@@ -585,23 +748,23 @@ class _HitsBody extends StatelessWidget {
             ? hit.releaseInfo.trim()
             : hit.premiereDate.trim();
         final row = Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: EdgeInsets.symmetric(vertical: px(8)),
           child: Row(
             children: [
-              _PosterThumb(url: hit.poster.trim()),
-              const SizedBox(width: 10),
+              _PosterThumb(url: hit.poster.trim(), density: density),
+              SizedBox(width: px(10)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (best)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
+                        padding: EdgeInsets.only(bottom: px(2)),
                         child: Text(
                           'Best match',
                           style: TextStyle(
                             color: ForjaShellColors.brandGreen,
-                            fontSize: 10,
+                            fontSize: type(10),
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.3,
                           ),
@@ -613,17 +776,17 @@ class _HitsBody extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
                         color: ForjaShellColors.textPrimary,
-                        fontSize: 13,
+                        fontSize: type(13),
                         fontWeight: best ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
                     if (year.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      SizedBox(height: px(2)),
                       Text(
                         year,
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary,
-                          fontSize: 11,
+                          fontSize: type(11),
                         ),
                       ),
                     ],
@@ -632,6 +795,7 @@ class _HitsBody extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
+                size: ShellPaintScope.iconOf(context, 20),
                 color: best
                     ? ForjaShellColors.brandGreen
                     : ForjaShellColors.iconMuted,
@@ -644,21 +808,32 @@ class _HitsBody extends StatelessWidget {
             ? Container(
                 decoration: BoxDecoration(
                   color: ForjaShellColors.brandGreen.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(px(8)),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 6),
+                padding: EdgeInsets.symmetric(horizontal: px(6)),
                 child: row,
               )
             : Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
+                padding: EdgeInsets.symmetric(horizontal: px(6)),
                 child: row,
               );
 
-        if (tv) {
+        if (dpad && i < focusNodes.length) {
           return shellFocusableTap(
             context: context,
             onTap: () => onPick(hit),
-            borderRadius: 8,
+            borderRadius: px(8),
+            focusNode: focusNodes[i],
+            scaleOnFocus: 1,
+            showFocusBorder: true,
+            onUpEdge: i == 0
+                ? onUpFromFirst
+                : () => focusNodes[i - 1].requestFocus(),
+            onDownEdge: i == hits.length - 1
+                ? () {}
+                : () => focusNodes[i + 1].requestFocus(),
+            onLeftEdge: () {},
+            onRightEdge: () {},
             child: decorated,
           );
         }
@@ -666,7 +841,7 @@ class _HitsBody extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () => onPick(hit),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(px(8)),
             child: decorated,
           ),
         );

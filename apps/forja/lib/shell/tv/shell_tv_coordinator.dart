@@ -616,7 +616,8 @@ abstract final class ShellTvFocusCoordinator {
     if (!VerticalFiltersRegistry.menuVisibleFor(tabId).value) return false;
     final primary = FocusManager.instance.primaryFocus;
     if (primary == null) return false;
-    final inRail = identical(primary, ShellTvFocus.verticalFilterRailFirst) ||
+    final inRail =
+        identical(primary, ShellTvFocus.verticalFilterRailFirst) ||
         ShellTvFocus.verticalFilterRailById.values.any(
           (n) => identical(n, primary),
         );
@@ -1016,11 +1017,9 @@ abstract final class ShellTvFocusCoordinator {
       return;
     }
 
-    final leaveSnap =
-        (_navLeaveTabId == tabId) ? _navLeaveSnapshot : null;
+    final leaveSnap = (_navLeaveTabId == tabId) ? _navLeaveSnapshot : null;
     final snapshot = leaveSnap ?? _tabMemory[tabId];
-    var trackingMemory =
-        snapshot != null && snapshot.zone != ShellTvZone.nav;
+    var trackingMemory = snapshot != null && snapshot.zone != ShellTvZone.nav;
 
     bool landed() {
       if (!trackingMemory || snapshot == null) return _pageHasFocus();
@@ -1047,8 +1046,7 @@ abstract final class ShellTvFocusCoordinator {
             snap.zone == ShellTvZone.grid ||
             snap.zone == ShellTvZone.chipStrip) {
           final rowId = snap.rowId;
-          final rowAlive =
-              rowId != null && _rowHandle(tabId, rowId) != null;
+          final rowAlive = rowId != null && _rowHandle(tabId, rowId) != null;
           if (!rowAlive) {
             _tabMemory.remove(tabId);
             if (_navLeaveTabId == tabId) {
@@ -1533,12 +1531,27 @@ abstract final class ShellTvFocusCoordinator {
     if (nextIndex == currentIndex) {
       return rowDelta > 0;
     }
+    _invokeRowScroll(tabId, rowId, nextIndex);
     if (focusRowItemExact(tabId, rowId, nextIndex)) return true;
     final step = nextIndex > currentIndex ? -1 : 1;
     for (var i = nextIndex; i != currentIndex; i += step) {
       if (focusRowItemExact(tabId, rowId, i)) return true;
     }
-    return false;
+    if (!_rowScrollIntoView.containsKey(_rowOwnerKey(tabId, rowId))) {
+      return false;
+    }
+    var tries = 0;
+    void attempt() {
+      if (focusRowItemExact(tabId, rowId, nextIndex)) return;
+      _invokeRowScroll(tabId, rowId, nextIndex);
+      if (focusRowItemExact(tabId, rowId, nextIndex)) return;
+      if (tries++ < 8) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    return true;
   }
 
   static void onRowItemFocused({
@@ -1598,14 +1611,18 @@ abstract final class ShellTvFocusCoordinator {
         ];
         for (final candidate in atOrder) {
           if (candidate.sortOrder < 0) {
-            final target =
-                candidate.lastFocusedIndex.clamp(0, candidate.itemCount - 1);
+            final target = candidate.lastFocusedIndex.clamp(
+              0,
+              candidate.itemCount - 1,
+            );
             if (focusRowItem(tabId, candidate.rowId, target)) return true;
             return focusHero(revealFull: true, tabId: tabId);
           }
           if (candidate.itemCount <= 0) continue;
-          final target =
-              candidate.lastFocusedIndex.clamp(0, candidate.itemCount - 1);
+          final target = candidate.lastFocusedIndex.clamp(
+            0,
+            candidate.itemCount - 1,
+          );
           if (focusRowItem(tabId, candidate.rowId, target)) return true;
         }
         cursor = prevSort;
@@ -1703,8 +1720,10 @@ abstract final class ShellTvFocusCoordinator {
   }) {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null || handle.itemCount <= 0) return false;
-    final target =
-        (index ?? handle.lastFocusedIndex).clamp(0, handle.itemCount - 1);
+    final target = (index ?? handle.lastFocusedIndex).clamp(
+      0,
+      handle.itemCount - 1,
+    );
     if (focusRowItemExact(tabId, rowId, target)) return true;
 
     _invokeRowScroll(tabId, rowId, target);
@@ -2249,11 +2268,10 @@ void shellTvRevealCatalogRowFocus(
   // (topInset 0) so Home Featured under the hero does not jump.
   final inDetails =
       context.findAncestorWidgetOfExactType<MediaDetailsTvScope>() != null;
-  final minTop = viewportH *
+  final minTop =
+      viewportH *
       (topInsetFraction ??
-          (inDetails
-              ? ShellTokens.tvDetailsRowFocusTopInsetFraction
-              : 0.0));
+          (inDetails ? ShellTokens.tvDetailsRowFocusTopInsetFraction : 0.0));
 
   var delta = 0.0;
   if (cardBottom > maxBottom) {

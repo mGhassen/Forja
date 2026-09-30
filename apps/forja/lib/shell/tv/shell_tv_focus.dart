@@ -98,9 +98,7 @@ abstract final class ShellTvFocus {
       ShellTvFocusCoordinator.discardCapturedOverlayReturnFocus();
 
   static bool focusVerticalFilterById(String tabId, String? optionId) {
-    final node = optionId == null
-        ? null
-        : verticalFilterRailById[optionId];
+    final node = optionId == null ? null : verticalFilterRailById[optionId];
     final target = (node != null && node.canRequestFocus)
         ? node
         : verticalFilterRailFirst;
@@ -210,8 +208,7 @@ abstract final class ShellTvFocus {
   static bool tryFocusMiniFromTopBar() =>
       focusMini(door: InAppMiniChromeDoor.topBar);
 
-  static bool tryFocusMiniFromNav() =>
-      focusMini(door: InAppMiniChromeDoor.nav);
+  static bool tryFocusMiniFromNav() => focusMini(door: InAppMiniChromeDoor.nav);
 
   static bool tryFocusMiniFromHeroLast() =>
       focusMini(door: InAppMiniChromeDoor.heroLast);
@@ -371,14 +368,15 @@ KeyEventResult shellTvLinearMenuArrows({
         : KeyEventResult.ignored;
   }
 
-  final backward = key == LogicalKeyboardKey.arrowUp ||
-      key == LogicalKeyboardKey.arrowLeft;
-  final forward = key == LogicalKeyboardKey.arrowDown ||
+  final backward =
+      key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowLeft;
+  final forward =
+      key == LogicalKeyboardKey.arrowDown ||
       key == LogicalKeyboardKey.arrowRight;
   if (!backward && !forward) return KeyEventResult.ignored;
 
-  final vertical = key == LogicalKeyboardKey.arrowUp ||
-      key == LogicalKeyboardKey.arrowDown;
+  final vertical =
+      key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown;
   final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
 
   final scope = FocusScope.of(context);
@@ -429,7 +427,8 @@ KeyEventResult shellTvHandleRowArrows({
 }) {
   if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
   final key = event.logicalKey;
-  final rowBound = tvMeta != null &&
+  final rowBound =
+      tvMeta != null &&
       tvMeta.rowId != null &&
       (tvMeta.zone == ShellTvZone.row ||
           tvMeta.zone == ShellTvZone.chipStrip ||
@@ -451,10 +450,8 @@ KeyEventResult shellTvHandleRowArrows({
       // False (unregistered neighbor) must not swallow — spatial / trap next.
       return left() ? KeyEventResult.handled : KeyEventResult.ignored;
     }
-    if (tvMeta?.zone == ShellTvZone.chipStrip || rowBound) {
-      return KeyEventResult.handled;
-    }
-    if (gridBound) return KeyEventResult.handled;
+    // chipStrip without a registered row (dialogs) falls through to spatial.
+    if (rowBound || gridBound) return KeyEventResult.handled;
     return KeyEventResult.ignored;
   }
   if (key == LogicalKeyboardKey.arrowUp) {
@@ -502,10 +499,7 @@ KeyEventResult shellTvHandleRowArrows({
     if (right != null) {
       return right() ? KeyEventResult.handled : KeyEventResult.ignored;
     }
-    if (tvMeta?.zone == ShellTvZone.chipStrip || rowBound) {
-      return KeyEventResult.handled;
-    }
-    if (gridBound) return KeyEventResult.handled;
+    if (rowBound || gridBound) return KeyEventResult.handled;
     return KeyEventResult.ignored;
   }
   return KeyEventResult.ignored;
@@ -538,7 +532,8 @@ KeyEventResult shellTvSpatialFocusArrows({
     direction = TraversalDirection.down;
   }
   if (direction == null) return KeyEventResult.ignored;
-  final vertical = direction == TraversalDirection.up ||
+  final vertical =
+      direction == TraversalDirection.up ||
       direction == TraversalDirection.down;
   final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
   var n = FocusManager.instance.primaryFocus ?? node;
@@ -564,7 +559,8 @@ KeyEventResult shellTvTrapRowGeometry({
   final rowBound = tvMeta?.rowId != null && !grid;
   final chip = tvMeta?.zone == ShellTvZone.chipStrip;
 
-  if (trapHorizontal || rowBound || chip) {
+  // Orphan chips (no row id) keep spatial ←/→. Registered strips still trap.
+  if (trapHorizontal || rowBound || (chip && tvMeta?.rowId != null)) {
     if (key == LogicalKeyboardKey.arrowLeft ||
         key == LogicalKeyboardKey.arrowRight) {
       return KeyEventResult.handled;
