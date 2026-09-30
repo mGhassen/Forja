@@ -18,9 +18,15 @@ void main() {
     );
   });
 
-  test('normalizeCoverUrl leaves non-TMDB hosts unchanged', () {
-    const proxy = 'https://serveproxy.com/?url=https://x/y.jpg';
-    expect(normalizeCoverUrl(proxy), proxy);
+  test('normalizeCoverUrl unwraps serveproxy to the image URL', () {
+    expect(
+      normalizeCoverUrl('https://serveproxy.com/?url=https://x/y.jpg'),
+      'https://x/y.jpg',
+    );
+    expect(
+      normalizeCoverUrl('https://example.com/poster.jpg'),
+      'https://example.com/poster.jpg',
+    );
     expect(normalizeCoverUrl(''), '');
   });
 }

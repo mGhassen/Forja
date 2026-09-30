@@ -16,31 +16,42 @@ class ForjaImageCacheManager extends CacheManager with ImageCacheManager {
   factory ForjaImageCacheManager() => _instance;
 
   ForjaImageCacheManager._()
-      : super(Config(key, repo: ForjaCacheIndex(databaseName: key)));
+    : super(Config(key, repo: ForjaCacheIndex(databaseName: key)));
 }
 
-class ForjaCacheIndex extends CacheInfoRepository
-    with CacheInfoRepositoryHelperMethods {
+class ForjaCacheIndex extends CacheInfoRepository {
   ForjaCacheIndex({required String databaseName})
-      : _disk = CacheObjectProvider(databaseName: databaseName);
+    : _disk = CacheObjectProvider(databaseName: databaseName);
 
   final CacheObjectProvider _disk;
   final Map<String, CacheObject> _byKey = {};
   final Set<String> _dirty = {};
   Timer? _flushTimer;
   Future<void> _diskTail = Future<void>.value();
+  Completer<bool>? _openCompleter;
+  var _openCount = 0;
 
   @override
   Future<bool> open() async {
-    if (!shouldOpenOnNewConnection()) {
-      return openCompleter!.future;
+    _openCount++;
+    final existing = _openCompleter;
+    if (existing != null) return existing.future;
+    final open = Completer<bool>();
+    _openCompleter = open;
+    try {
+      await _disk.open();
+      await _disk.db?.rawQuery('PRAGMA journal_mode=WAL');
+      for (final object in await _disk.getAllObjects()) {
+        _byKey[object.key] = object;
+      }
+      open.complete(true);
+    } catch (error, stack) {
+      open.completeError(error, stack);
+      _openCompleter = null;
+      _openCount = 0;
+      rethrow;
     }
-    await _disk.open();
-    await _disk.db?.rawQuery('PRAGMA journal_mode=WAL');
-    for (final object in await _disk.getAllObjects()) {
-      _byKey[object.key] = object;
-    }
-    return opened();
+    return true;
   }
 
   @override
@@ -52,7 +63,8 @@ class ForjaCacheIndex extends CacheInfoRepository
     return _byKey[key];
   }
 
-  Future<bool> get _ready => openCompleter?.future ?? Future<bool>.value(false);
+  Future<bool> get _ready =>
+      _openCompleter?.future ?? Future<bool>.value(false);
 
   @override
   Future<CacheObject> insert(
@@ -76,7 +88,10 @@ class ForjaCacheIndex extends CacheInfoRepository
   }
 
   @override
-  Future<int> update(CacheObject cacheObject, {bool setTouchedToNow = true}) async {
+  Future<int> update(
+    CacheObject cacheObject, {
+    bool setTouchedToNow = true,
+  }) async {
     final touched = setTouchedToNow ? DateTime.now() : cacheObject.touched;
     final next = CacheObject(
       cacheObject.url,
@@ -156,10 +171,14 @@ class ForjaCacheIndex extends CacheInfoRepository
   Future<List<CacheObject>> getObjectsOverCapacity(int capacity) async {
     await _ready;
     final cutoff = DateTime.now().subtract(const Duration(days: 1));
-    final old = _byKey.values
-        .where((object) => object.touched != null && object.touched!.isBefore(cutoff))
-        .toList()
-      ..sort((a, b) => b.touched!.compareTo(a.touched!));
+    final old =
+        _byKey.values
+            .where(
+              (object) =>
+                  object.touched != null && object.touched!.isBefore(cutoff),
+            )
+            .toList()
+          ..sort((a, b) => b.touched!.compareTo(a.touched!));
     if (old.length <= capacity) return const [];
     return old.skip(capacity).take(100).toList(growable: false);
   }
@@ -169,13 +188,18 @@ class ForjaCacheIndex extends CacheInfoRepository
     await _ready;
     final cutoff = DateTime.now().subtract(maxAge);
     return _byKey.values
-        .where((object) => object.touched != null && object.touched!.isBefore(cutoff))
+        .where(
+          (object) =>
+              object.touched != null && object.touched!.isBefore(cutoff),
+        )
         .toList(growable: false);
   }
 
   @override
   Future<bool> close() async {
-    if (!shouldClose()) return false;
+    _openCount--;
+    if (_openCount > 0) return false;
+    _openCompleter = null;
     _flushTimer?.cancel();
     final keys = _dirty.toList(growable: false);
     _dirty.clear();
