@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:sqflite/sqflite.dart';
@@ -17,6 +18,92 @@ class ForjaImageCacheManager extends CacheManager with ImageCacheManager {
 
   ForjaImageCacheManager._()
     : super(Config(key, repo: ForjaCacheIndex(databaseName: key)));
+
+  final Map<String, Future<FileInfo>> _avifRewrite = {};
+
+  @override
+  Future<FileInfo?> getFileFromCache(
+    String key, {
+    bool ignoreMemCache = false,
+  }) async {
+    final info = await super.getFileFromCache(
+      key,
+      ignoreMemCache: ignoreMemCache,
+    );
+    if (info == null) return null;
+    return _rasterStill(info);
+  }
+
+  @override
+  Stream<FileResponse> getFileStream(
+    String url, {
+    String? key,
+    Map<String, String>? headers,
+    bool withProgress = false,
+  }) {
+    return super
+        .getFileStream(
+          url,
+          key: key,
+          headers: headers,
+          withProgress: withProgress,
+        )
+        .asyncMap((response) async {
+          if (response is FileInfo) return _rasterStill(response);
+          return response;
+        });
+  }
+
+  /// Android decodes AVIF with the AV1 video codec. Rewrite the cached file
+  /// to PNG once so the next paint is a still image.
+  Future<FileInfo> _rasterStill(FileInfo info) {
+    final path = info.file.path;
+    final pending = _avifRewrite[path];
+    if (pending != null) return pending;
+    final run = _rewriteAvif(info);
+    _avifRewrite[path] = run;
+    return run.whenComplete(() => _avifRewrite.remove(path));
+  }
+
+  Future<FileInfo> _rewriteAvif(FileInfo info) async {
+    final file = info.file;
+    if (!await file.exists()) return info;
+    final head = <int>[];
+    await for (final chunk in file.openRead(0, 32)) {
+      head.addAll(chunk);
+      if (head.length >= 12) break;
+    }
+    if (!_isAvif(head)) return info;
+    final bytes = await file.readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    try {
+      final frame = await codec.getNextFrame();
+      try {
+        final png = await frame.image.toByteData(
+          format: ui.ImageByteFormat.png,
+        );
+        if (png == null) return info;
+        await file.writeAsBytes(png.buffer.asUint8List(), flush: true);
+      } finally {
+        frame.image.dispose();
+      }
+    } finally {
+      codec.dispose();
+    }
+    return info;
+  }
+}
+
+bool _isAvif(List<int> head) {
+  if (head.length < 12) return false;
+  return head[4] == 0x66 &&
+      head[5] == 0x74 &&
+      head[6] == 0x79 &&
+      head[7] == 0x70 &&
+      head[8] == 0x61 &&
+      head[9] == 0x76 &&
+      head[10] == 0x69 &&
+      head[11] == 0x66;
 }
 
 class ForjaCacheIndex extends CacheInfoRepository {
