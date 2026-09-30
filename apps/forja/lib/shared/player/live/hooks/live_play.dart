@@ -32,10 +32,16 @@ Future<void> openForjaLiveNativePlayer(
   if (!context.mounted) return;
 
   final kind = liveSourceKind ?? sources.first.liveSourceKind;
-  final sportsSurface = !vodPlayback &&
-      (engineContext == BuiltInPlayerContext.live ||
-          kind == PortalLiveSourceKind.stremio ||
-          kind == PortalLiveSourceKind.liveEngine);
+  final resolvedContext = forjaNativePlayerContext(
+    vodPlayback: vodPlayback,
+    engineContext: engineContext,
+    kind: kind,
+  );
+  final sportsSurface = forjaNativePlayerIsSports(
+    vodPlayback: vodPlayback,
+    engineContext: resolvedContext,
+    kind: kind,
+  );
 
   try {
     if (PlatformInfo.isAndroidTv) {
@@ -80,7 +86,7 @@ Future<void> openForjaLiveNativePlayer(
           logoUrl: logoUrl,
           channelGuide: guide,
           titleTracksSource: titleTracksSource,
-          engineContext: engineContext,
+          engineContext: resolvedContext,
           liveSourceKind: kind,
           liveEngineResolveSource: liveEngineResolveSource,
           vodPlayback: vodPlayback,
@@ -99,6 +105,37 @@ Future<void> openForjaLiveNativePlayer(
     }
     await PtPlayerScreen.open(context, player);
   } catch (_) {}
+}
+
+/// Xtream / Stalker portal streams always use the IPTV player.
+/// Live Sports is Stremio, live-engine, or an explicit live context.
+bool forjaNativePlayerIsSports({
+  required bool vodPlayback,
+  required BuiltInPlayerContext engineContext,
+  required PortalLiveSourceKind? kind,
+}) {
+  if (vodPlayback) return false;
+  if (kind == PortalLiveSourceKind.iptvXtream ||
+      kind == PortalLiveSourceKind.iptvStalker) {
+    return false;
+  }
+  return engineContext == BuiltInPlayerContext.live ||
+      kind == PortalLiveSourceKind.stremio ||
+      kind == PortalLiveSourceKind.liveEngine;
+}
+
+/// Portal live opens with IPTV engine prefs. VOD keeps the caller's context.
+BuiltInPlayerContext forjaNativePlayerContext({
+  required bool vodPlayback,
+  required BuiltInPlayerContext engineContext,
+  required PortalLiveSourceKind? kind,
+}) {
+  if (!vodPlayback &&
+      (kind == PortalLiveSourceKind.iptvXtream ||
+          kind == PortalLiveSourceKind.iptvStalker)) {
+    return BuiltInPlayerContext.iptv;
+  }
+  return engineContext;
 }
 
 /// Opens a live player now; swaps in [guideFuture] without remounting playback.

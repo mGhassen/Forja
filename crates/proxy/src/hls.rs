@@ -6,8 +6,10 @@ use axum::{
 };
 use flate2::read::{GzDecoder, ZlibDecoder};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::io::Read;
+use std::sync::Arc;
+use std::time::Duration;
 
 use crate::{forward_response, parse_custom_headers, ProxyState};
 
@@ -367,6 +369,48 @@ pub fn rewrite_hls_playlist_relative(body: &str, decoded_url: &str, session_base
     append_forja_sub_comments(playlist, &forja_subs)
 }
 
+/// Master playlists that also list a real `.m3u8` / `.ts` sometimes pad with
+/// still-image URIs. Strict players (AVPlayer) abort the item on the first
+/// 403. All-image playlists stay intact — those filenames are the media.
+fn drop_mixed_image_decoys(body: &str) -> String {
+    let has_real = body.lines().any(|line| {
+        let trimmed = line.trim();
+        !trimmed.is_empty() && !trimmed.starts_with('#') && !is_plain_image_uri(trimmed)
+    });
+    if !has_real {
+        return body.to_string();
+    }
+    let lines: Vec<&str> = body.lines().collect();
+    let mut drop = vec![false; lines.len()];
+    for (i, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') || !is_plain_image_uri(trimmed) {
+            continue;
+        }
+        drop[i] = true;
+        let mut j = i;
+        while j > 0 {
+            j -= 1;
+            let prev = lines[j].trim();
+            if prev.is_empty() {
+                continue;
+            }
+            let upper = prev.to_ascii_uppercase();
+            if upper.starts_with("#EXTINF:") || upper.starts_with("#EXT-X-STREAM-INF:") {
+                drop[j] = true;
+            }
+            break;
+        }
+    }
+    lines
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| !drop[*i])
+        .map(|(_, line)| *line)
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 pub fn rewrite_hls_playlist(
     body: &str,
     decoded_url: &str,
@@ -374,6 +418,8 @@ pub fn rewrite_hls_playlist(
     headers_json: &str,
     strip: Option<&str>,
 ) -> String {
+    let filtered = drop_mixed_image_decoys(body);
+    let body = filtered.as_str();
     let slash = decoded_url.rfind('/').unwrap_or(0);
     let base_path = &decoded_url[..=slash];
     let server_base = if let Some(scheme_end) = decoded_url.find("://") {
@@ -459,6 +505,291 @@ pub fn hls_playlist_is_image_bait(body: &str) -> bool {
         }
     }
     uris > 0
+}
+
+/// Last [n] media segment URLs in a playlist. Skips variant playlists.
+pub fn hls_tail_media_urls(body: &str, playlist_url: &str, n: usize) -> Vec<String> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let slash = playlist_url.rfind('/').unwrap_or(0);
+    let base_path = &playlist_url[..=slash];
+    let server_base = if let Some(scheme_end) = playlist_url.find("://") {
+        let rest = &playlist_url[scheme_end + 3..];
+        if let Some(path_start) = rest.find('/') {
+            &playlist_url[..scheme_end + 3 + path_start]
+        } else {
+            playlist_url
+        }
+    } else {
+        playlist_url
+    };
+    let mut urls = Vec::new();
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let lower = trimmed.to_ascii_lowercase();
+        if lower.contains(".m3u8") {
+            continue;
+        }
+        urls.push(resolve_url(trimmed, base_path, server_base));
+    }
+    if urls.len() > n {
+        urls.split_off(urls.len() - n)
+    } else {
+        urls
+    }
+}
+
+const AHEAD_MAX_SEGS: usize = 8;
+const AHEAD_MAX_BYTES: usize = 64 * 1024 * 1024;
+
+struct ReadySeg {
+    status: StatusCode,
+    content_type: String,
+    bytes: Vec<u8>,
+}
+
+struct SegSlot {
+    tx: tokio::sync::watch::Sender<Option<Result<Arc<ReadySeg>, ()>>>,
+    // Sender drops the value if every receiver is gone. Keep one alive.
+    _rx: tokio::sync::watch::Receiver<Option<Result<Arc<ReadySeg>, ()>>>,
+}
+
+impl SegSlot {
+    fn pending() -> Arc<Self> {
+        let (tx, rx) = tokio::sync::watch::channel(None);
+        Arc::new(Self { tx, _rx: rx })
+    }
+
+    async fn wait_ready(&self) -> Option<Arc<ReadySeg>> {
+        let mut rx = self.tx.subscribe();
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(25);
+        loop {
+            if let Some(value) = rx.borrow().clone() {
+                return value.ok();
+            }
+            if tokio::time::timeout_at(deadline, rx.changed()).await.is_err() {
+                return None;
+            }
+        }
+    }
+
+    fn finish(&self, seg: Arc<ReadySeg>) {
+        let _ = self.tx.send(Some(Ok(seg)));
+    }
+
+    fn miss(&self) {
+        let _ = self.tx.send(Some(Err(())));
+    }
+}
+
+struct HlsAheadInner {
+    order: VecDeque<String>,
+    total: usize,
+    slots: HashMap<String, Arc<SegSlot>>,
+}
+
+#[derive(Clone)]
+pub struct HlsAheadCache {
+    inner: Arc<tokio::sync::Mutex<HlsAheadInner>>,
+}
+
+impl Default for HlsAheadCache {
+    fn default() -> Self {
+        Self {
+            inner: Arc::new(tokio::sync::Mutex::new(HlsAheadInner {
+                order: VecDeque::new(),
+                total: 0,
+                slots: HashMap::new(),
+            })),
+        }
+    }
+}
+
+enum AheadBegin {
+    Ready(Arc<ReadySeg>),
+    Wait(Arc<SegSlot>),
+    Owner(Arc<SegSlot>),
+}
+
+impl HlsAheadCache {
+    async fn begin(&self, url: &str) -> AheadBegin {
+        let mut guard = self.inner.lock().await;
+        if let Some(slot) = guard.slots.get(url).cloned() {
+            let value = slot.tx.borrow().clone();
+            match value {
+                Some(Ok(seg)) => return AheadBegin::Ready(seg),
+                None => return AheadBegin::Wait(slot),
+                Some(Err(())) => {
+                    guard.slots.remove(url);
+                }
+            }
+        }
+        let slot = SegSlot::pending();
+        guard.slots.insert(url.to_string(), Arc::clone(&slot));
+        AheadBegin::Owner(slot)
+    }
+
+    async fn store(&self, url: &str, slot: &SegSlot, seg: Arc<ReadySeg>) {
+        slot.finish(Arc::clone(&seg));
+        let mut guard = self.inner.lock().await;
+        guard.total = guard.total.saturating_add(seg.bytes.len());
+        guard.order.push_back(url.to_string());
+        while guard.order.len() > AHEAD_MAX_SEGS || guard.total > AHEAD_MAX_BYTES {
+            let Some(old) = guard.order.pop_front() else {
+                break;
+            };
+            if old == url && guard.order.is_empty() {
+                guard.order.push_front(old);
+                break;
+            }
+            if let Some(old_slot) = guard.slots.remove(&old) {
+                if let Some(Ok(prev)) = old_slot.tx.borrow().clone() {
+                    guard.total = guard.total.saturating_sub(prev.bytes.len());
+                }
+            }
+        }
+    }
+
+    fn abandon(&self, url: &str, slot: &SegSlot) {
+        slot.miss();
+        let cache = self.clone();
+        let url = url.to_string();
+        tokio::spawn(async move {
+            let mut guard = cache.inner.lock().await;
+            if guard.slots.get(&url).is_some_and(|s| {
+                matches!(s.tx.borrow().clone(), Some(Err(())))
+            }) {
+                guard.slots.remove(&url);
+            }
+        });
+    }
+}
+
+fn stripped_segment_response(seg: &ReadySeg) -> Result<Response, StatusCode> {
+    Response::builder()
+        .status(seg.status)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONNECTION, "keep-alive")
+        .header(header::CONTENT_TYPE, seg.content_type.as_str())
+        .header(header::CONTENT_LENGTH, seg.bytes.len())
+        .body(Body::from(seg.bytes.clone()))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn fetch_upstream_bytes(
+    state: &ProxyState,
+    target_url: &str,
+    custom: &HashMap<String, String>,
+) -> Result<(StatusCode, String, Vec<u8>), StatusCode> {
+    if host_needs_chrome_tls(target_url) {
+        let url = target_url.to_string();
+        let headers = custom.clone();
+        return tokio::task::spawn_blocking(move || libressl_fetch_bytes(&url, &headers))
+            .await
+            .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    }
+    let req = build_hls_upstream_request(
+        state,
+        Method::GET,
+        target_url,
+        custom,
+        &HeaderMap::new(),
+    )?;
+    let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+    let status = resp.status();
+    let content_type = resp
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let bytes = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?.to_vec();
+    Ok((status, content_type, bytes))
+}
+
+/// Download and unwrap one image-shelled segment. Concurrent callers share one fetch.
+async fn ensure_stripped_segment(
+    state: &ProxyState,
+    target_url: &str,
+    custom: &HashMap<String, String>,
+) -> Result<Arc<ReadySeg>, StatusCode> {
+    match state.hls_ahead.begin(target_url).await {
+        AheadBegin::Ready(seg) => return Ok(seg),
+        AheadBegin::Wait(slot) => {
+            if let Some(seg) = slot.wait_ready().await {
+                return Ok(seg);
+            }
+        }
+        AheadBegin::Owner(slot) => {
+            return fetch_and_store_segment(state, target_url, custom, slot).await;
+        }
+    }
+    match state.hls_ahead.begin(target_url).await {
+        AheadBegin::Ready(seg) => Ok(seg),
+        AheadBegin::Wait(slot) => slot.wait_ready().await.ok_or(StatusCode::BAD_GATEWAY),
+        AheadBegin::Owner(slot) => fetch_and_store_segment(state, target_url, custom, slot).await,
+    }
+}
+
+async fn fetch_and_store_segment(
+    state: &ProxyState,
+    target_url: &str,
+    custom: &HashMap<String, String>,
+    slot: Arc<SegSlot>,
+) -> Result<Arc<ReadySeg>, StatusCode> {
+    let fetched = fetch_upstream_bytes(state, target_url, custom).await;
+    let (status, _content_type, bytes) = match fetched {
+        Ok(v) => v,
+        Err(code) => {
+            state.hls_ahead.abandon(target_url, &slot);
+            return Err(code);
+        }
+    };
+    if !status.is_success() {
+        state.hls_ahead.abandon(target_url, &slot);
+        return Err(status);
+    }
+    let stripped = strip_png_wrapper(&bytes);
+    let content_type = if stripped.first() == Some(&0x47) {
+        "video/mp2t".to_string()
+    } else {
+        "application/octet-stream".to_string()
+    };
+    let seg = Arc::new(ReadySeg {
+        status: StatusCode::OK,
+        content_type,
+        bytes: stripped,
+    });
+    state.hls_ahead.store(target_url, &slot, Arc::clone(&seg)).await;
+    Ok(seg)
+}
+
+fn schedule_png_ahead(
+    state: &ProxyState,
+    body: &str,
+    playlist_url: &str,
+    headers_json: &str,
+    strip: Option<&str>,
+) {
+    if strip != Some("png") {
+        return;
+    }
+    let urls = hls_tail_media_urls(body, playlist_url, 4);
+    if urls.is_empty() {
+        return;
+    }
+    let state = state.clone();
+    let custom = parse_custom_headers(Some(headers_json));
+    tokio::spawn(async move {
+        for url in urls {
+            let _ = ensure_stripped_segment(&state, &url, &custom).await;
+        }
+    });
 }
 
 fn is_hls_subtitle_media(line: &str) -> bool {
@@ -793,6 +1124,7 @@ async fn finish_hls_proxy_body(
             headers_json,
             effective_strip,
         );
+        schedule_png_ahead(state, &body, target_url, headers_json, effective_strip);
         return playlist_response(rewritten, range);
     }
     if strip == Some("png") {
@@ -839,6 +1171,16 @@ pub async fn hls_proxy_handler(
     let custom = parse_custom_headers(query.headers.as_deref());
     let headers_json = query.headers.as_deref().unwrap_or("{}");
     let strip = query.strip.as_deref();
+
+    // Image-shelled segments are downloaded whole. Serve a copy already
+    // unwrapped when the playlist prefetch finished it.
+    if strip == Some("png")
+        && !target_url.to_ascii_lowercase().contains(".m3u8")
+        && !target_url.to_ascii_lowercase().contains("/playlist/")
+    {
+        let seg = ensure_stripped_segment(&state, &target_url, &custom).await?;
+        return stripped_segment_response(&seg);
+    }
 
     // DASH via query-proxy cannot resolve relative SegmentTemplate (query is
     // dropped). Redirect into a path session so IINA/VLC/etc. keep cookies.
@@ -938,6 +1280,7 @@ pub async fn hls_proxy_handler(
             headers_json,
             effective_strip,
         );
+        schedule_png_ahead(&state, &body, &target_url, headers_json, effective_strip);
         return playlist_response(rewritten, client_range.as_deref());
     }
 
@@ -1165,6 +1508,29 @@ https://cdn.example/seg.ts
     }
 
     #[test]
+    fn mixed_master_drops_image_decoys() {
+        const BODY: &str = "\
+#EXTM3U
+#EXTINF:4,
+https://cdn.example/decoy.png
+#EXTINF:4,
+https://lb5.wfty.st/secure/tok/playlist.m3u8
+#EXTINF:4,
+https://cdn.example/bait.jpg
+";
+        let out = rewrite_hls_playlist(
+            BODY,
+            "https://lb5.wfty.st/secure/tok/master.m3u8",
+            "http://127.0.0.1:9/hls-proxy",
+            "{}",
+            Some("png"),
+        );
+        assert!(!out.contains("decoy.png"), "{out}");
+        assert!(!out.contains("bait.jpg"), "{out}");
+        assert!(out.contains("playlist.m3u8"), "{out}");
+    }
+
+    #[test]
     fn image_bait_playlist_rewrites_with_strip_png() {
         const BODY: &str = "\
 #EXTM3U
@@ -1181,6 +1547,29 @@ https://cdn.example/anon/seg.png
         );
         assert!(out.contains("strip=png"), "{out}");
         assert!(out.contains("seg.png"), "{out}");
+    }
+
+    #[test]
+    fn tail_media_urls_keeps_the_last_segments() {
+        const BODY: &str = "\
+#EXTM3U
+#EXTINF:2,
+a.ts
+#EXTINF:2,
+b.ts
+#EXTINF:2,
+https://cdn.example/c.png
+#EXT-X-STREAM-INF:BANDWIDTH=1
+nested.m3u8
+";
+        let urls = hls_tail_media_urls(BODY, "https://lb.example/live/playlist.m3u8", 2);
+        assert_eq!(
+            urls,
+            vec![
+                "https://lb.example/live/b.ts".to_string(),
+                "https://cdn.example/c.png".to_string(),
+            ]
+        );
     }
 
     #[test]

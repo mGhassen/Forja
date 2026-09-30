@@ -235,7 +235,14 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
 
   /// New live GET starts in the provider archive. Seek to the newest buffered
   /// packet. No drop-buffers (that looped empty cushions, issue 148).
+  ///
+  /// HLS playlists are that cushion. Seeking by the whole cache lands on the
+  /// live edge and the next image-wrapped segment has nothing ahead of it.
   Future<void> _skipReconnectArchive() async {
+    if (_s._sources.isNotEmpty) {
+      final url = _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)].url;
+      if (iptvUrlLooksLikeHls(url)) return;
+    }
     final epoch = _s._liveEdgeSnapEpoch;
     final player = _s._player;
     if (player == null || !_s._playerAlive) return;

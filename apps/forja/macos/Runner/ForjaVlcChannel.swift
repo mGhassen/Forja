@@ -86,7 +86,11 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
       // libvlc @rpath → libvlccore; load core first with GLOBAL.
       _ = dlopen("\(dir)/libvlccore.dylib", RTLD_NOW | RTLD_GLOBAL)
 
-      guard let handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL) else { continue }
+      guard let handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL) else {
+        let msg = dlerror().map { String(cString: $0) } ?? "unknown"
+        NSLog("[ForjaVLC] dlopen failed %@: %@", path, msg)
+        continue
+      }
       libHandle = handle
       libvlc_new = unsafeBitCast(dlsym(handle, "libvlc_new"), to: LibVlcNew?.self)
       libvlc_release = unsafeBitCast(dlsym(handle, "libvlc_release"), to: LibVlcRelease?.self)

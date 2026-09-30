@@ -193,6 +193,15 @@ final class AvPlayerSession {
     self.plugin = plugin
   }
 
+  /// Headers belong on the upstream CDN, not on the local proxy.
+  private static func headersForAsset(url: URL, headers: [String: String]) -> [String: String] {
+    let host = url.host?.lowercased() ?? ""
+    if host == "127.0.0.1" || host == "localhost" || host == "::1" {
+      return [:]
+    }
+    return headers
+  }
+
   func attach(container: AvPlayerContainerView) {
     self.container = container
     if let player {
@@ -202,13 +211,17 @@ final class AvPlayerSession {
 
   func open(url: URL, headers: [String: String]) {
     disposePlayerOnly()
+    // Loopback play URLs already carry Referer/Cookie in the query. Attaching
+    // those headers to http://127.0.0.1 makes AVFoundation fail later with
+    // "You do not have permission to access the requested resource."
+    let assetHeaders = Self.headersForAsset(url: url, headers: headers)
     let asset: AVURLAsset
-    if headers.isEmpty {
+    if assetHeaders.isEmpty {
       asset = AVURLAsset(url: url)
     } else {
       asset = AVURLAsset(
         url: url,
-        options: ["AVURLAssetHTTPHeaderFieldsKey": headers]
+        options: ["AVURLAssetHTTPHeaderFieldsKey": assetHeaders]
       )
     }
     let item = AVPlayerItem(asset: asset)

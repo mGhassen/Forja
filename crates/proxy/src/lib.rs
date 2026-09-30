@@ -13,6 +13,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use hls::HlsAheadCache;
+
 mod comic;
 pub mod ext;
 mod hls;
@@ -27,6 +29,8 @@ pub struct ProxyState {
     pub routes: Arc<RwLock<HashMap<String, String>>>,
     pub listen_port: Arc<RwLock<u16>>,
     pub sessions: Arc<RwLock<HashMap<String, ext::ExtSession>>>,
+    /// Unwrapped HLS segments fetched ahead of the player (image-shelled live).
+    pub hls_ahead: HlsAheadCache,
 }
 
 impl Default for ProxyState {
@@ -39,6 +43,7 @@ impl Default for ProxyState {
             routes: Arc::new(RwLock::new(HashMap::new())),
             listen_port: Arc::new(RwLock::new(0)),
             sessions: Arc::new(RwLock::new(HashMap::new())),
+            hls_ahead: HlsAheadCache::default(),
         }
     }
 }
