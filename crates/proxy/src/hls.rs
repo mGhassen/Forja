@@ -547,6 +547,92 @@ fn strip_quoted_attr(line: &str, attr: &str) -> String {
     format!("{}{}", &line[..start], &rest[end + 1..])
 }
 
+/// How a client `Range` applies to a rewritten playlist body.
+///
+/// ffmpeg `reconnect_at_eof` asks for `bytes=<playlist length>-` when the
+/// short m3u8 ends. Returning the full playlist again concatenates the same
+/// tags forever (`Will reconnect at <size> … End of file`). A range that
+/// starts at or past the body is not satisfiable.
+enum PlaylistByteRange {
+    Full,
+    Partial { start: u64, end: u64 },
+    Unsatisfiable,
+}
+
+fn playlist_byte_range(header: Option<&str>, total: u64) -> PlaylistByteRange {
+    let Some(hdr) = header.map(str::trim).filter(|s| !s.is_empty()) else {
+        return PlaylistByteRange::Full;
+    };
+    let Some(spec) = hdr.strip_prefix("bytes=") else {
+        return PlaylistByteRange::Full;
+    };
+    let spec = spec.split(',').next().unwrap_or(spec).trim();
+    let Some((a, b)) = spec.split_once('-') else {
+        return PlaylistByteRange::Full;
+    };
+    if a.is_empty() {
+        let Ok(n) = b.parse::<u64>() else {
+            return PlaylistByteRange::Full;
+        };
+        if n == 0 || total == 0 {
+            return PlaylistByteRange::Unsatisfiable;
+        }
+        let start = total.saturating_sub(n);
+        return PlaylistByteRange::Partial {
+            start,
+            end: total - 1,
+        };
+    }
+    let Ok(start) = a.parse::<u64>() else {
+        return PlaylistByteRange::Full;
+    };
+    let end = if b.is_empty() {
+        total.saturating_sub(1)
+    } else {
+        let Ok(end) = b.parse::<u64>() else {
+            return PlaylistByteRange::Full;
+        };
+        end
+    };
+    if total == 0 || start >= total || start > end {
+        return PlaylistByteRange::Unsatisfiable;
+    }
+    PlaylistByteRange::Partial {
+        start,
+        end: end.min(total - 1),
+    }
+}
+
+fn playlist_response(body: String, range: Option<&str>) -> Result<Response, StatusCode> {
+    let bytes = body.into_bytes();
+    let total = bytes.len() as u64;
+    let (status, content_range, out) = match playlist_byte_range(range, total) {
+        PlaylistByteRange::Full => (StatusCode::OK, None, bytes),
+        PlaylistByteRange::Unsatisfiable => (
+            StatusCode::RANGE_NOT_SATISFIABLE,
+            Some(format!("bytes */{total}")),
+            Vec::new(),
+        ),
+        PlaylistByteRange::Partial { start, end } => (
+            StatusCode::PARTIAL_CONTENT,
+            Some(format!("bytes {start}-{end}/{total}")),
+            bytes[start as usize..=end as usize].to_vec(),
+        ),
+    };
+    let mut builder = Response::builder()
+        .status(status)
+        .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_LENGTH, out.len().to_string());
+    if let Some(value) = content_range {
+        builder = builder.header(header::CONTENT_RANGE, value);
+    }
+    builder
+        .body(Body::from(out))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 fn header_ci<'a>(custom_headers: &'a HashMap<String, String>, name: &str) -> Option<&'a str> {
     let want = name.to_ascii_lowercase();
     custom_headers
@@ -671,6 +757,7 @@ async fn finish_hls_proxy_body(
     target_url: &str,
     headers_json: &str,
     strip: Option<&str>,
+    range: Option<&str>,
 ) -> Result<Response, StatusCode> {
     let looks_like_playlist_url = content_type.contains("mpegurl")
         || content_type.contains("x-mpegurl")
@@ -706,12 +793,7 @@ async fn finish_hls_proxy_body(
             headers_json,
             effective_strip,
         );
-        return Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .body(Body::from(rewritten))
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        return playlist_response(rewritten, range);
     }
     if strip == Some("png") {
         let stripped = strip_png_wrapper(&bytes);
@@ -772,6 +854,12 @@ pub async fn hls_proxy_handler(
         }
     }
 
+    // Client Range is applied to the rewritten playlist below. Upstream
+    // fetches of picture-shelled segments still drop Range (partial PNG).
+    let client_range = headers
+        .get(header::RANGE)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned);
     // Picture-shelled segments (strip=png) must be fetched whole. A Range
     // probe returns a partial PNG that cannot be inflated.
     let mut fetch_headers = headers.clone();
@@ -793,6 +881,7 @@ pub async fn hls_proxy_handler(
             &target_url,
             headers_json,
             strip,
+            client_range.as_deref(),
         )
         .await;
     }
@@ -849,12 +938,7 @@ pub async fn hls_proxy_handler(
             headers_json,
             effective_strip,
         );
-        return Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .body(Body::from(rewritten))
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        return playlist_response(rewritten, client_range.as_deref());
     }
 
     if strip == Some("png") {
@@ -889,6 +973,24 @@ pub async fn hls_proxy_handler(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn playlist_range_past_eof_is_unsatisfiable() {
+        let body = "#EXTM3U\n#EXTINF:6,\nseg.ts\n";
+        let total = body.len() as u64;
+        assert!(matches!(
+            playlist_byte_range(Some(&format!("bytes={total}-")), total),
+            PlaylistByteRange::Unsatisfiable
+        ));
+        assert!(matches!(
+            playlist_byte_range(None, total),
+            PlaylistByteRange::Full
+        ));
+        assert!(matches!(
+            playlist_byte_range(Some("bytes=0-3"), total),
+            PlaylistByteRange::Partial { start: 0, end: 3 }
+        ));
+    }
 
     #[test]
     fn header_ci_is_case_insensitive() {

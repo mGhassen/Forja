@@ -28,33 +28,6 @@ Future<String> resolveListOpenMode({
 ValueListenable<int> get packSettingsRevisionListenable =>
     PackSettingsStore.revision;
 
-/// Kit list `playerSetting` field id, bound while that pack's list is painted.
-///
-/// The pack owns the select. Playback reads the stored value at open time.
-abstract final class KitPlayerSetting {
-  static String _pluginId = '';
-  static String _fieldId = '';
-
-  static void bind({required String pluginId, required String fieldId}) {
-    final plugin = pluginId.trim();
-    final field = fieldId.trim();
-    if (plugin.isEmpty || field.isEmpty) return;
-    _pluginId = plugin;
-    _fieldId = field;
-  }
-
-  static Future<String> read({String fallback = 'live_sports'}) async {
-    if (_pluginId.isEmpty || _fieldId.isEmpty) return fallback;
-    final raw = await PackSettingsStore.getString(
-      _pluginId,
-      _fieldId,
-      defaultValue: fallback,
-    );
-    final v = raw.trim().toLowerCase();
-    return v.isEmpty ? fallback : v;
-  }
-}
-
 /// How a schedule/list tap should open after resolving [openMode].
 ///
 /// Live Sports declares `openSetting` / `panelTabs`. Those must never fall
