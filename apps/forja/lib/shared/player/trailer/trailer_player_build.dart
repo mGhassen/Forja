@@ -1016,6 +1016,7 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
                     fit: StackFit.expand,
                     children: [
                       CachedNetworkImage(
+                        cacheManager: ForjaImageCacheManager(),
                         imageUrl: widget.trailer.youtubeThumbnail,
                         fit: BoxFit.cover,
                         errorWidget: (_, _, _) => ColoredBox(

@@ -48,8 +48,21 @@ String localCoverFilePath(String raw) {
 /// paths ending in `.svg` are rewritten to `.png` (same asset on TMDB / our
 /// gateway). Pack-local `file://` / relative SVGs are left alone — paint those
 /// with `SvgPicture`, not [Image.network].
-String paintableNetworkImageUrl(String raw) {
+/// `serveproxy.com/?url=` always answers `image/avif`. Android then decodes
+/// the still with the AV1 video codec. The address after `url=` is the JPEG.
+String directCoverUrl(String raw) {
   final value = raw.trim();
+  final uri = Uri.tryParse(value);
+  if (uri == null || uri.host != 'serveproxy.com') return value;
+  final inner = uri.queryParameters['url']?.trim() ?? '';
+  final decoded = Uri.tryParse(inner);
+  if (decoded == null) return value;
+  if (decoded.scheme != 'http' && decoded.scheme != 'https') return value;
+  return inner;
+}
+
+String paintableNetworkImageUrl(String raw) {
+  final value = directCoverUrl(raw.trim());
   if (value.isEmpty) return value;
   final lower = value.toLowerCase();
   final http = lower.startsWith('http://') || lower.startsWith('https://');

@@ -75,6 +75,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shell/desktop/desktop_window_geometry.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';

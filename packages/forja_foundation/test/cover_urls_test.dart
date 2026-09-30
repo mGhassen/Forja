@@ -18,6 +18,15 @@ void main() {
       );
     });
 
+    test('drops serveproxy so Android decodes the JPEG, not AVIF', () {
+      expect(
+        paintableNetworkImageUrl(
+          'https://serveproxy.com/?url=https://fragrancecdn1.site/poster.jpg',
+        ),
+        'https://fragrancecdn1.site/poster.jpg',
+      );
+    });
+
     test('leaves raster and non-http paths alone', () {
       expect(
         paintableNetworkImageUrl(

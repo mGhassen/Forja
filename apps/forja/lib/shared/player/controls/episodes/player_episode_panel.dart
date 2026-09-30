@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
@@ -1476,6 +1477,7 @@ class _EpisodeRow extends StatelessWidget {
       return [
         if (imageUrl != null)
           CachedNetworkImage(
+            cacheManager: ForjaImageCacheManager(),
             imageUrl: imageUrl,
             fit: BoxFit.cover,
             errorWidget: (_, _, _) => _thumbFallback(),
@@ -1490,6 +1492,7 @@ class _EpisodeRow extends StatelessWidget {
     if (imageUrl != null) {
       return [
         CachedNetworkImage(
+          cacheManager: ForjaImageCacheManager(),
           imageUrl: imageUrl,
           fit: BoxFit.cover,
           errorWidget: (_, _, _) => _thumbFallback(),

@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -410,6 +411,7 @@ class ResolveFailureScaffold extends StatelessWidget {
         children: [
           if (url.isNotEmpty)
             CachedNetworkImage(
+              cacheManager: ForjaImageCacheManager(),
               imageUrl: url,
               fit: BoxFit.cover,
               placeholder: (_, _) => const ColoredBox(color: Colors.black),

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/painting.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
@@ -50,7 +50,7 @@ abstract final class SettingsDataCleaner {
     imageCache.clear();
     imageCache.clearLiveImages();
     try {
-      await DefaultCacheManager().emptyCache();
+      await ForjaImageCacheManager().emptyCache();
     } catch (_) {}
     try {
       await WebViewCleanup.cleanupWebView2Cache();

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 
@@ -101,9 +102,13 @@ class ForjaNetworkImage extends StatelessWidget {
       );
     }
 
-    final provider = CachedNetworkImageProvider(paintUrl);
+    final provider = CachedNetworkImageProvider(
+      paintUrl,
+      cacheManager: ForjaImageCacheManager(),
+    );
     final snap = fadeDuration == Duration.zero || _memoryCached(provider);
     return CachedNetworkImage(
+      cacheManager: ForjaImageCacheManager(),
       imageUrl: paintUrl,
       key: useOldImageOnUrlChange ? null : ValueKey(paintUrl),
       fit: fit,

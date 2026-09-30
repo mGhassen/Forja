@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
@@ -1147,6 +1148,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             children: [
               if (backdropUrl.isNotEmpty)
                 CachedNetworkImage(
+                  cacheManager: ForjaImageCacheManager(),
                   imageUrl: backdropUrl,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(color: Colors.black),
@@ -1172,6 +1174,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                     opacity: _pulseAnimation,
                     child: _logoImageUrl != null
                         ? CachedNetworkImage(
+                            cacheManager: ForjaImageCacheManager(),
                             imageUrl: _logoImageUrl!,
                             width: MediaQuery.of(context).size.width * 0.55,
                             height: MediaQuery.of(context).size.height * 0.28,

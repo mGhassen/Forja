@@ -1185,6 +1185,8 @@ Map<String, dynamic>? mapEngineStream({
       raw['requires_proxy'] == true ||
       (Uri.tryParse(url)?.host.toLowerCase().contains('111477') ?? false);
   final typeHint = (raw['type'] ?? '').toString().trim();
+  final pngStrip = (raw['pngStrip'] ?? '').toString().trim();
+  final probe = (raw['probe'] ?? '').toString().trim();
   return {
     'url': url,
     'title': cardTitle,
@@ -1205,6 +1207,8 @@ Map<String, dynamic>? mapEngineStream({
     if (raw['subtitles'] is List && (raw['subtitles'] as List).isNotEmpty)
       'subtitles': raw['subtitles'],
     if (raw['drm'] is Map) 'drm': raw['drm'],
+    if (pngStrip.isNotEmpty) 'pngStrip': pngStrip,
+    if (probe.isNotEmpty) 'probe': probe,
     '_addonBaseUrl': 'engine:${plugin.id}',
     '_addonName': addonName,
     '_enginePluginId': plugin.id,

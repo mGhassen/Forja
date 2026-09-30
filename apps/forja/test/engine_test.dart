@@ -2723,6 +2723,22 @@ void main() {
       },
     );
 
+    test('keeps pack pngStrip and probe on the stream row', () {
+      final mapped = mapEngineStream(
+        raw: {
+          'url': 'https://cdn.example/a.m3u8',
+          'name': 'Yoru',
+          'pngStrip': 'auto',
+          'probe': 'masterOnly',
+        },
+        plugin: plugin,
+        mediaTitle: 'Sterling Point',
+        type: 'tv',
+      )!;
+      expect(mapped['pngStrip'], 'auto');
+      expect(mapped['probe'], 'masterOnly');
+    });
+
     test('folds HubCloud release title into description for badges', () {
       final mapped = mapEngineStream(
         raw: {

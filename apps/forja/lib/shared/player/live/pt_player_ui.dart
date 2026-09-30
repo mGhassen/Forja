@@ -1985,7 +1985,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         : ShellTokens.playerChromeTopBtnSize;
     return Image(
       key: ValueKey(url),
-      image: CachedNetworkImageProvider(url),
+      image: CachedNetworkImageProvider(
+        url,
+        cacheManager: ForjaImageCacheManager(),
+      ),
       height: height,
       fit: BoxFit.contain,
       alignment: Alignment.centerLeft,
@@ -2017,7 +2020,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       ),
       child: Image(
         key: ValueKey(url),
-        image: CachedNetworkImageProvider(url),
+        image: CachedNetworkImageProvider(
+        url,
+        cacheManager: ForjaImageCacheManager(),
+      ),
         height: height,
         fit: BoxFit.contain,
         alignment: Alignment.centerLeft,

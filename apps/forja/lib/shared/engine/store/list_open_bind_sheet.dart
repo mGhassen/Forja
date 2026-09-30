@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
@@ -476,6 +477,7 @@ class _PosterThumb extends StatelessWidget {
                 ),
               )
             : CachedNetworkImage(
+                cacheManager: ForjaImageCacheManager(),
                 imageUrl: url,
                 fit: BoxFit.cover,
                 errorWidget: (_, _, _) => ColoredBox(
