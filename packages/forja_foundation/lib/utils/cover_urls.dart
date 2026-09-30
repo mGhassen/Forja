@@ -85,7 +85,7 @@ void warmNetworkImage(BuildContext context, String url) {
       stream.removeListener(listener);
       image.dispose();
     },
-    onError: (Object _, StackTrace? __) {
+    onError: (Object _, StackTrace? _) {
       stream.removeListener(listener);
     },
   );

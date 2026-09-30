@@ -872,11 +872,9 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     return _currentSourceIsLive;
   }
 
-  /// Mac, Windows, and Linux. Android stays on hardware decode.
-  bool get _desktopLiveHwDecodeFallback {
-    if (kIsWeb) return false;
-    return Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-  }
+  /// Live Sports stays on hardware. A bad timestamp in one segment used to
+  /// switch the whole stream to software, and 1080p then stalled every piece.
+  bool get _desktopLiveHwDecodeFallback => false;
 
   /// This library is Live Sports only — never IPTV.
   bool get _liveSportsSurface => true;

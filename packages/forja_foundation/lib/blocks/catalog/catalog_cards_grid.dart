@@ -107,7 +107,7 @@ Map<String, dynamic> catalogItemProps(Map<String, dynamic> item) {
     };
     final parts = <String>[
       if (year.isNotEmpty) year,
-      if (typeLabel != null) typeLabel,
+      ?typeLabel,
     ];
     if (parts.isNotEmpty) raw['subtitle'] = parts.join(' • ');
   }

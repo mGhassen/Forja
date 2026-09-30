@@ -52,7 +52,7 @@ DownloadTaskMatchRank downloadTaskMatchRank({
   if (url.isNotEmpty && taskUrl.isNotEmpty && taskUrl == url) {
     return DownloadTaskMatchRank.url;
   }
-  final labels = <String>[if (sourceName != null) sourceName, ...names];
+  final labels = <String>[?sourceName, ...names];
   for (final label in labels) {
     if (_sameDownloadLabel(label, task.sourceName)) {
       return DownloadTaskMatchRank.name;

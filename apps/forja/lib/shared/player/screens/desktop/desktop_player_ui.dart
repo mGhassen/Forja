@@ -3,18 +3,6 @@ part of 'desktop_player_screen.dart';
 mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
-  /// Keep the pointer visible while CHECKING SOURCES / episode load is on screen.
-  bool get _keepPlayerCursorVisible {
-    if (_s._showControls ||
-        _s._isInitPlaybackRunning ||
-        _s._isLoadingNextEp ||
-        _s._hasError ||
-        _s._checkingSourceIndices.isNotEmpty) {
-      return true;
-    }
-    return _s._statusController.entries.any(isStatusRouletteEntry);
-  }
-
   bool get _statusBlocksControlsHide {
     if (_s._isLoadingNextEp || _s._checkingSourceIndices.isNotEmpty) {
       return true;
@@ -36,8 +24,8 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     _syncChromeHideTimer();
   }
 
-  /// Hide chrome and block hover re-show briefly (cursor-none + MouseRegion
-  /// rebuild otherwise re-fires [onHover] and leaves chrome stuck visible).
+  /// Hide chrome and block hover re-show briefly (MouseRegion rebuild
+  /// otherwise re-fires [onHover] and leaves chrome stuck visible).
   /// Auto-hide must not leave Escape armed — first Escape after idle hide
   /// only arms; second exits.
   void _hideChromeIntentional({bool armEscape = false}) {

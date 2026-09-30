@@ -113,13 +113,13 @@ class DetailsHero extends StatelessWidget {
     final rawOverlap = bodyOverlap;
     final overlapsFirstRow = rawOverlap != null && rawOverlap > 0;
     final resolvedOverlap = overlapsFirstRow
-        ? rawOverlap!
+        ? rawOverlap
         : (tvDensity
             ? DetailsTokens.heroBodyOverlapTv
             : DetailsTokens.heroBodyOverlap);
     // Keep title / Play above the overlapping first body row.
     final contentBottom =
-        overlapsFirstRow ? rawOverlap! + bottomInset : bottomInset;
+        overlapsFirstRow ? rawOverlap + bottomInset : bottomInset;
 
     return SizedBox(
       height: h,

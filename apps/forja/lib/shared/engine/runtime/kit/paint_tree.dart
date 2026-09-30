@@ -2485,7 +2485,7 @@ class PackPaintTree extends StatelessWidget {
     if (verb != 'portals') return null;
     final listId = (spec['id'] ?? 'items').toString().trim();
     final tab = (tabId ?? '').trim();
-    final onOpen = () => _togglePortalsPanel(context);
+    void onOpen() => _togglePortalsPanel(context);
     final button = Button(
       label: label,
       icon: Icons.dns_rounded,

@@ -244,7 +244,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   Timer? _hideTimer;
 
   /// After Escape / auto-hide, ignore synthetic MouseRegion hover that fires
-  /// when the cursor flips to [SystemMouseCursors.none] (chrome would snap back).
+  /// on rebuild (chrome would snap back).
   DateTime? _suppressChromeRevealUntil;
   Offset? _lastHoverPos;
 

@@ -123,7 +123,7 @@ Map<String, dynamic> packChromeFeedParams(
   }
   if (catalogMenu.isNotEmpty) {
     debugPrint(
-      '[kit] ${pluginId} feed section=${params['section']} '
+      '[kit] $pluginId feed section=${params['section']} '
       'catalogFilter=${params['catalogFilter']}',
     );
   }

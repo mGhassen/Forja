@@ -74,7 +74,7 @@ void main() {
         home: Scaffold(
           body: LayoutScope(
             selections: const {'kind': 'movie', 'status': 'watching'},
-            onSelect: (_, __, {required toggle}) {},
+            onSelect: (_, _, {required toggle}) {},
             widgetSpecs: const {},
             tabId: 'test-list',
             child: PackPaintTree(

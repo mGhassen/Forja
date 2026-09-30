@@ -2072,7 +2072,7 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
       'query': query,
       'limit': _pageSize,
       'page': page,
-      ?'seed': seed,
+      'seed': seed,
       if (excludeIds.isNotEmpty) 'excludeIds': excludeIds,
     };
     final params = widget.applyChromeFilters
@@ -2184,7 +2184,7 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
         'query': query,
         'limit': 64,
         if (exclude.isNotEmpty) 'exclude': exclude,
-        ?'seed': seed,
+        'seed': seed,
       },
     );
     if (!env.ok) return const [];

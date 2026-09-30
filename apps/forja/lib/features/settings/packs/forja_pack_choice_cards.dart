@@ -4,8 +4,6 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
-    show ShellPaintEnsureVisible;
 
 /// Two quick-action cards: official ForjaHQ install + Community Packs browse.
 ///

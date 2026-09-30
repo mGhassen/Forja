@@ -863,7 +863,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     _scheduleHideControls();
   }
 
-  /// Hide chrome without arming Escape (cursor-none hover must not snap chrome back).
+  /// Hide chrome without arming Escape (a synthetic hover must not snap chrome back).
   void _hideChromeIntentional() {
     _s._hideControlsTimer?.cancel();
     _s._suppressChromeRevealUntil =
@@ -1249,11 +1249,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
           onControlsActivity: _scheduleHideControls,
           child: MouseRegion(
             onHover: (_) => _onPlayerMouseMove(),
-            cursor: (_s._controlsVisible ||
-                        _s._guideVisible ||
-                        _s._searchVisible)
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.none,
+            cursor: SystemMouseCursors.basic,
             child: Stack(
               fit: StackFit.expand,
               children: [

@@ -1837,7 +1837,7 @@ class SyncDomainBridge {
 
     final onPacks = <EnginePack>[
       for (final d in result.turnedOn)
-        if (find(d.manifestUrl) case final pack?) pack,
+        ?find(d.manifestUrl),
     ];
     if (onPacks.isNotEmpty) {
       await PackHubFeatures.refreshAndActivateInstalled(onPacks);

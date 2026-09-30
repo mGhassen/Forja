@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
-import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';

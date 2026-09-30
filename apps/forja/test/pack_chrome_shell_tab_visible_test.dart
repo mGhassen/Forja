@@ -23,7 +23,7 @@ PackChromeScope _chrome({
     onClearCatalog: () {},
     onBumpRefresh: ({bool forceNetwork = true}) {},
     onViewStyle: (_) {},
-    onDynamicBarItems: (_, __) {},
+    onDynamicBarItems: (_, _) {},
     onSelectListItem: (_) {},
     child: child,
   );

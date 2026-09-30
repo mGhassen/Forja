@@ -31,7 +31,7 @@ void main() {
       onClearCatalog: () {},
       onBumpRefresh: ({bool forceNetwork = true}) {},
       onViewStyle: (_) {},
-      onDynamicBarItems: (_, __) {},
+      onDynamicBarItems: (_, _) {},
       onSelectListItem: (_) {},
       child: child,
     );
@@ -75,8 +75,7 @@ void main() {
                 // Exactly one row tall — jumpTo(200) shows only row0.
                 height: 200,
                 child: ListView(
-                  controller: controller,
-                  cacheExtent: 2000,
+                  scrollCacheExtent: ScrollCacheExtent.pixels(2000), controller: controller,
                   children: [
                     const SizedBox(height: 200, child: Text('top')),
                     gate('row0', height: 200, eager: true, activated: activated),
@@ -126,8 +125,7 @@ void main() {
               body: SizedBox(
                 height: 250,
                 child: ListView(
-                  controller: controller,
-                  cacheExtent: 800,
+                  scrollCacheExtent: ScrollCacheExtent.pixels(800), controller: controller,
                   children: [
                     const SizedBox(height: 200, child: Text('top')),
                     gate('because', height: 200, eager: true, activated: activated),

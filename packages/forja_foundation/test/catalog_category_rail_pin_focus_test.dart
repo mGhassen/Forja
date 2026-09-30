@@ -355,7 +355,7 @@ class _SelectScrollRailHostState extends State<_SelectScrollRailHost> {
   late final List<CatalogCategoryItem> _items = [
     for (var i = 0; i < 24; i++)
       CatalogCategoryItem(
-        id: String.fromCharCode(97 + (i % 26)) + '$i',
+        id: '${String.fromCharCode(97 + (i % 26))}$i',
         label: 'Cat $i',
       ),
     const CatalogCategoryItem(id: 'z', label: 'Z'),

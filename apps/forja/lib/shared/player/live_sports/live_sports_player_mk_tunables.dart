@@ -8,7 +8,6 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
     String? streamUrl,
-    bool continuityProxy = false,
   });
   bool get _livePlaybackProfile;
   bool get _liveSportsSurface;
@@ -289,11 +288,8 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
     await p.setProperty('demuxer-readahead-secs', '${profile.readaheadSecs}');
     await p.setProperty('demuxer-max-bytes', '${profile.demuxerMaxBytes}');
     await p.setProperty('demuxer-max-back-bytes', '0');
-    // Wait for a second of media before the first frame, and pause to refill
-    // instead of playing the live edge at 0s.
-    await p.setProperty('cache-pause', 'yes');
-    await p.setProperty('cache-pause-initial', 'yes');
-    await p.setProperty('cache-pause-wait', '1');
+    await p.setProperty('cache-pause', 'no');
+    await p.setProperty('cache-pause-initial', 'no');
     if (_s._atvMediaKit) {
       await p.setProperty('cache-on-disk', 'no');
     }
@@ -415,11 +411,8 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
         await p.setProperty('demuxer-max-bytes', '$coldBytes');
         await p.setProperty('demuxer-max-back-bytes', '0');
         await p.setProperty('audio-buffer', '1.0');
-        // Wait for a second of media before the first frame, and pause to refill
-        // instead of playing the live edge at 0s.
-        await p.setProperty('cache-pause', 'yes');
-        await p.setProperty('cache-pause-initial', 'yes');
-        await p.setProperty('cache-pause-wait', '1');
+        await p.setProperty('cache-pause', 'no');
+        await p.setProperty('cache-pause-initial', 'no');
       } else {
         // IPTV Forja live: 30s / 8s readahead / 128MiB / 64MiB back / cache-pause=no.
         const coldSecs = 30;

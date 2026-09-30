@@ -5,7 +5,6 @@ import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/widgets/catalog/poster_card.dart';
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 Widget _wrapTv(Widget child) {
   return MaterialApp(

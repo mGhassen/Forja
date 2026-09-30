@@ -21,6 +21,21 @@ mixin _LiveSportsPlayerLavf on _LiveSportsPlayerEngineCore {
         continuityProxy: continuityProxy,
       ),
     );
+    // Live HLS segments often start with a bad DTS. discardcorrupt drops that
+    // packet and the picture stalls until the next piece. Ignore the bad DTS
+    // and fetch the next segment while this one plays.
+    if (!_s.widget.vodPlayback &&
+        streamUrl != null &&
+        streamUrl.isNotEmpty &&
+        iptvUrlLooksLikeHls(streamUrl)) {
+      await p.setProperty(
+        'demuxer-lavf-o',
+        'fflags=+genpts+igndts,'
+        'http_multiple=1,'
+        'probesize=5000000,'
+        'analyzeduration=5000000',
+      );
+    }
   }
 
   void _invalidatePendingLiveEdgeSnaps() {

@@ -55,8 +55,7 @@ class CatalogBody extends StatelessWidget {
       return emptyChild ?? const SizedBox.shrink();
     }
     return CustomScrollView(
-      controller: controller,
-      cacheExtent: cacheExtent,
+      scrollCacheExtent: ScrollCacheExtent.pixels(cacheExtent), controller: controller,
       slivers: [
         for (var i = 0; i < sections.length; i++)
           sectionSliver?.call(context, sections[i], i) ??

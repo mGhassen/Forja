@@ -208,15 +208,9 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
           ? stack
           : Material(
               type: MaterialType.transparency,
-              child: ListenableBuilder(
-                listenable: _s._statusController,
-                builder: (context, child) => MouseRegion(
-                  onHover: _s._onPointerHover,
-                  cursor: _s._keepPlayerCursorVisible
-                      ? SystemMouseCursors.basic
-                      : SystemMouseCursors.none,
-                  child: child,
-                ),
+              child: MouseRegion(
+                onHover: _s._onPointerHover,
+                cursor: SystemMouseCursors.basic,
                 child: stack,
               ),
             ),
