@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** tasks · **8 / 9** acceptance |
+| **Progress** | **12 / 12** tasks · **8 / 10** acceptance |
 | **Current slice** | In-progress titles are in the hub list — not checked on a device |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
@@ -30,6 +30,8 @@
 | 8 | I382-T08 | Kind menu and posters sit below the window bar and share the same left edge | ✅ |
 | 9 | I382-T09 | Panel is the open film: marked poster, Play on the art, saved rows name the provider and stream. Player source button and list keep that identity with the offline icon | ✅ |
 | 10 | I382-T10 | A title that is still saving is a hub card, with a live bar, and each file’s progress in the panel | ✅ |
+| 11 | I382-T11 | Snapshot keeps each saved episode’s still and synopsis | ✅ |
+| 12 | I382-T12 | Panel lists each saved episode with its still and synopsis, and that episode’s files underneath | ✅ |
 
 ---
 
@@ -46,6 +48,7 @@
 | 7 | I382-A07 | The card docks a side panel with saved info and finished episodes. Play starts the first file. The white button lists file cards only | ✅ |
 | 8 | I382-A08 | The open poster stays marked. The panel shows the film, Play on the poster, and each saved file’s provider and stream. Playing that file keeps the same source on the player button and in the source list, with the offline icon | ✅ |
 | 9 | I382-A09 | Starting a save shows that title on Downloads without waiting for it to finish, with progress on the poster and on each file | ⬜ |
+| 10 | I382-A10 | A series panel shows each saved episode with its image and synopsis, and the files for that episode under it | ⬜ |
 
 ---
 

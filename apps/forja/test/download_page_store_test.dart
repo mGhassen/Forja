@@ -69,6 +69,58 @@ void main() {
     expect(downloadHubActiveProgress([done], 'tt1'), isNull);
   });
 
+  test('episode snapshot keeps the still and the synopsis', () {
+    final item = MetaItem(
+      id: 'tt1',
+      type: 'tv',
+      name: 'Show',
+      videos: const [
+        MetaVideo(
+          id: 'a',
+          title: 'Departure',
+          season: 1,
+          episode: 3,
+          thumbnail: 'https://img.example/e3.jpg',
+          overview: 'They leave the city.',
+        ),
+      ],
+    );
+    final back = MetaItem.fromJson(item.toJson());
+    expect(back.videos.single.overview, 'They leave the city.');
+    expect(back.videos.single.thumbnail, 'https://img.example/e3.jpg');
+  });
+
+  test('saved files sit under the episode that owns them', () {
+    final slots = savedEpisodeSlots(
+      files: [
+        _task(season: 1, episode: 3, at: DateTime.utc(2026, 1, 2)),
+        _task(
+          season: 1,
+          episode: 3,
+          at: DateTime.utc(2026, 1, 3),
+          title: 'Show - S01E03',
+        ),
+        _task(season: 1, episode: 1, at: DateTime.utc(2026, 1, 1)),
+      ],
+      videos: const [
+        MetaVideo(
+          id: 'e3',
+          title: 'Departure',
+          season: 1,
+          episode: 3,
+          thumbnail: '/tmp/still-s01e03',
+          overview: 'They leave the city.',
+        ),
+      ],
+    );
+    expect(slots.map((slot) => slot.episode).toList(), [1, 3]);
+    expect(slots.last.title, 'Departure');
+    expect(slots.last.overview, 'They leave the city.');
+    expect(slots.last.thumbnail, '/tmp/still-s01e03');
+    expect(slots.last.files, hasLength(2));
+    expect(slots.first.title, 'Episode 1');
+  });
+
   test('imdb row id is the download media id', () {
     final item = MetaItem(
       id: 'tt22526100',

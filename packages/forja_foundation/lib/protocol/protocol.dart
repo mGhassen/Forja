@@ -453,6 +453,7 @@ class MetaVideo {
     this.season,
     this.episode,
     this.thumbnail = '',
+    this.overview = '',
     this.airDate = '',
     this.aired,
     this.containerExt = '',
@@ -463,6 +464,8 @@ class MetaVideo {
   final int? season;
   final int? episode;
   final String thumbnail;
+  /// Episode synopsis from pack details (`videos[].overview`).
+  final String overview;
   /// ISO calendar date (`YYYY-MM-DD`) when the episode airs / aired.
   final String airDate;
   /// When `false`, the episode is scheduled but not playable yet.
@@ -489,6 +492,7 @@ class MetaVideo {
       season: (j['season'] as num?)?.toInt(),
       episode: (j['episode'] as num?)?.toInt(),
       thumbnail: (j['thumbnail'] ?? j['poster'] ?? '').toString(),
+      overview: (j['overview'] ?? j['plot'] ?? '').toString(),
       airDate: (j['airDate'] ?? j['air_date'] ?? j['release_date'] ?? '')
           .toString(),
       aired: j['aired'] is bool ? j['aired'] as bool : null,
@@ -753,6 +757,7 @@ class MetaItem {
                 if (v.season != null) 'season': v.season,
                 if (v.episode != null) 'episode': v.episode,
                 if (v.thumbnail.isNotEmpty) 'thumbnail': v.thumbnail,
+                if (v.overview.isNotEmpty) 'overview': v.overview,
                 if (v.airDate.isNotEmpty) 'airDate': v.airDate,
                 if (v.aired != null) 'aired': v.aired,
                 if (v.containerExt.isNotEmpty) 'containerExt': v.containerExt,

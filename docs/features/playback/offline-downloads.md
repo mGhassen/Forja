@@ -47,11 +47,14 @@ The header is a storage meter: offline library vs other space on the volume vs f
 Each title is a poster card, including one that is still saving. It appears when the save starts, including when Downloads is already open. A saving poster has a progress bar. Open it and that card stays marked. Each file that is still saving shows percent, speed, and a bar.
 The panel starts at the top of the page, beside the kind menu, with a rounded
 top-left. It shows the backdrop, the title logo when there is one, the year,
-and a short synopsis. A series lists its files under a season menu. Each
-saved file is a flat Sources row: the provider and stream, the file size, and
-Offline. Play online and Delete sit on that row. Hover highlights it the same
-way as Sources. Tap the row to play the saved file. Play online opens the
-network stream. Delete removes that file from this device.
+and a short synopsis. A series lists each saved episode the way the player
+does: the image, the title, and a short synopsis, under a season menu. The
+files for that episode sit under it. Each file is a flat Sources row: the
+provider and stream, the file size, and Offline. Play online and Delete sit
+on that row. Hover highlights it the same way as Sources. Tap the row to
+play the saved file. Play online opens the network stream. Delete removes
+that file from this device. Saving an episode also stores that image and the
+episode text, so the panel still shows them without a connection.
 
 ## Offline play
 

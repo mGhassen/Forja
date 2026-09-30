@@ -343,10 +343,18 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
     final files = _visibleFiles;
     final seasons = _seasons;
     final season = _activeSeason;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_isSeries && season != null) ...[
+    if (_isSeries && season != null) {
+      final cover = _meta.background.trim().isNotEmpty
+          ? _meta.background.trim()
+          : _meta.poster.trim();
+      final episodes = savedEpisodeSlots(
+        files: files,
+        videos: _meta.videos,
+        fallbackImage: cover,
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           Select<int>(
             value: season,
             options: [
@@ -359,17 +367,32 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
             },
           ),
           SizedBox(height: pad),
-        ] else
-          Text(
-            _filesHeading(files),
-            style: const TextStyle(
-              color: ForjaShellColors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-            ),
+          if (episodes.isEmpty)
+            const Text(
+              'No saved file',
+              style: TextStyle(color: ForjaShellColors.textSecondary),
+            )
+          else
+            for (var i = 0; i < episodes.length; i++) ...[
+              if (i > 0) SizedBox(height: pad),
+              _episodeBlock(episodes[i]),
+            ],
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _filesHeading(files),
+          style: const TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
           ),
-        if (!_isSeries) const SizedBox(height: 8),
+        ),
+        const SizedBox(height: 8),
         if (files.isEmpty)
           const Text(
             'No saved file',
@@ -384,8 +407,26 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
                   tv: ShellScope.metricsOf(context).usesTvDensity,
                 ),
               ),
-            _sourceRow(files[i]),
+            _fileRow(files[i]),
           ],
+      ],
+    );
+  }
+
+  Widget _episodeBlock(SavedEpisodeSlot episode) {
+    final gap = ShellTokens.chromeScale(
+      6,
+      tv: ShellScope.metricsOf(context).usesTvDensity,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SavedEpisodeHeader(episode: episode),
+        SizedBox(height: gap),
+        for (var i = 0; i < episode.files.length; i++) ...[
+          if (i > 0) SizedBox(height: gap),
+          _fileRow(episode.files[i]),
+        ],
       ],
     );
   }
@@ -398,29 +439,18 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
     return files.length == 1 ? 'Saved' : 'Saved · ${files.length}';
   }
 
-  Widget _sourceRow(DownloadTask task) {
-    final episode = task.season != null || task.episode != null;
-    final source = offlineDownloadRowLabel(task);
+  Widget _fileRow(DownloadTask task) {
+    final title = offlineDownloadRowLabel(task);
     final size = task.totalBytes > 0
         ? DownloadTask.formatBytes(task.totalBytes)
         : '';
-    final title = episode
-        ? _episodeLabel(
-            task.season ?? 1,
-            task.episode ?? 1,
-            _episodeTitle(task),
-          )
-        : source;
-    final footer = episode && source.isNotEmpty && source != title
-        ? source
-        : '';
     if (task.isActive) {
-      return _DownloadActiveRow(task: task, title: title, footer: footer);
+      return _DownloadActiveRow(task: task, title: title, footer: '');
     }
     return _DownloadSourceRow(
       title: title,
       size: size,
-      footer: footer,
+      footer: '',
       onTap: () => unawaited(_play(task)),
       onPlayCloud: downloadTaskHasRemoteStream(task)
           ? () => unawaited(_playCloud(task))
@@ -428,24 +458,127 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
       onDelete: () => unawaited(_confirmDelete(task)),
     );
   }
+}
 
-  String _episodeTitle(DownloadTask task) {
-    final direct = task.episodeTitle?.trim() ?? '';
-    if (direct.isNotEmpty) return direct;
-    for (final video in _meta.videos) {
-      if (video.season == task.season && video.episode == task.episode) {
-        final title = video.title.trim();
-        if (title.isNotEmpty) return title;
-      }
-    }
-    return '';
+/// Episode row for the Downloads panel: still, number, title, and synopsis.
+/// Files for that episode sit underneath.
+class _SavedEpisodeHeader extends StatelessWidget {
+  const _SavedEpisodeHeader({required this.episode});
+
+  final SavedEpisodeSlot episode;
+
+  static const _thumbWidth = 148.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final thumbW = ShellTokens.chromeScale(_thumbWidth, tv: tv);
+    final thumbH = thumbW * 9 / 16;
+    final radius = ShellTokens.chromeScale(6, tv: tv);
+    final titleSize = tv ? ShellTokens.tvBodyFontSize : 14.0;
+    final metaSize = tv ? ShellTokens.tvMetaFontSize : 12.0;
+    final code = 'E${episode.episode}';
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: thumbW,
+          height: thumbH,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _still(episode.thumbnail),
+                Positioned(top: 6, left: 6, child: _EpisodeBadge(label: code)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                episode.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: ForjaShellColors.textPrimary,
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.w600,
+                  height: 1.25,
+                ),
+              ),
+              if (episode.airDate.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  episode.airDate,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: metaSize,
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+              if (episode.overview.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  episode.overview,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: metaSize,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
-  String _episodeLabel(int season, int episode, String title) {
-    final code =
-        'S${season.toString().padLeft(2, '0')}E${episode.toString().padLeft(2, '0')}';
-    if (title.isEmpty) return code;
-    return '$code · $title';
+  Widget _still(String url) {
+    if (url.isEmpty) {
+      return const ColoredBox(color: ForjaShellColors.surfaceElevated);
+    }
+    return ForjaNetworkImage(url: url, fit: BoxFit.cover);
+  }
+}
+
+class _EpisodeBadge extends StatelessWidget {
+  const _EpisodeBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: tv ? 4 : 6,
+        vertical: tv ? 2 : 3,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(tv ? 3 : 4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: tv ? ShellTokens.tvMetaFontSize : 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }
 

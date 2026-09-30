@@ -145,6 +145,91 @@ MetaItem filterMetaToDownloadedEpisodes(
   );
 }
 
+/// One saved episode in the Downloads panel: the still and text, then its files.
+class SavedEpisodeSlot {
+  const SavedEpisodeSlot({
+    required this.season,
+    required this.episode,
+    required this.title,
+    required this.overview,
+    required this.thumbnail,
+    required this.airDate,
+    required this.files,
+  });
+
+  final int season;
+  final int episode;
+  final String title;
+  final String overview;
+  final String thumbnail;
+  final String airDate;
+  final List<DownloadTask> files;
+}
+
+/// Group saved files under the episode they belong to. Video rows supply the
+/// still, title, and synopsis when the snapshot has them.
+List<SavedEpisodeSlot> savedEpisodeSlots({
+  required List<DownloadTask> files,
+  required List<MetaVideo> videos,
+  String fallbackImage = '',
+}) {
+  final byKey = <(int, int), List<DownloadTask>>{};
+  for (final task in files) {
+    if (task.season == null && task.episode == null) continue;
+    final key = (task.season ?? 1, task.episode ?? 1);
+    byKey.putIfAbsent(key, () => []).add(task);
+  }
+  final keys = byKey.keys.toList()
+    ..sort((a, b) {
+      final season = a.$1.compareTo(b.$1);
+      if (season != 0) return season;
+      return a.$2.compareTo(b.$2);
+    });
+  final videoBy = <(int, int), MetaVideo>{};
+  for (final video in videos) {
+    if (video.season == null && video.episode == null) continue;
+    videoBy[(video.season ?? 1, video.episode ?? 1)] = video;
+  }
+  final cover = fallbackImage.trim();
+  return [
+    for (final key in keys)
+      _savedEpisodeSlot(
+        season: key.$1,
+        episode: key.$2,
+        files: byKey[key]!,
+        video: videoBy[key],
+        fallbackImage: cover,
+      ),
+  ];
+}
+
+SavedEpisodeSlot _savedEpisodeSlot({
+  required int season,
+  required int episode,
+  required List<DownloadTask> files,
+  required MetaVideo? video,
+  required String fallbackImage,
+}) {
+  final fromVideo = video?.title.trim() ?? '';
+  final fromTask = files
+      .map((task) => task.episodeTitle?.trim() ?? '')
+      .firstWhere((title) => title.isNotEmpty, orElse: () => '');
+  final title = fromVideo.isNotEmpty
+      ? fromVideo
+      : (fromTask.isNotEmpty ? fromTask : 'Episode $episode');
+  final still = video?.thumbnail.trim() ?? '';
+  final overview = video?.overview.trim() ?? '';
+  return SavedEpisodeSlot(
+    season: season,
+    episode: episode,
+    title: title,
+    overview: overview,
+    thumbnail: still.isNotEmpty ? still : fallbackImage,
+    airDate: video?.airDate.trim() ?? '',
+    files: files,
+  );
+}
+
 bool downloadMetaIsRich(Map<String, dynamic> meta) {
   final description = (meta['description'] ?? '').toString().trim();
   if (description.length > 40) return true;
@@ -292,6 +377,7 @@ class DownloadPageStore {
     } else if (_isLocalPath((existingMap?['logo'] ?? '').toString())) {
       meta['logo'] = existingMap!['logo'];
     }
+    await _localizeEpisodeStills(meta, dir, id);
 
     final envelope = {'downloadType': type, 'meta': meta};
     final file = File(p.join(dir.path, _detailsName));
@@ -350,6 +436,42 @@ class DownloadPageStore {
       return left.compareTo(right);
     });
     return rows;
+  }
+
+  /// Copy episode stills for files that belong to this title. Other episodes
+  /// keep their remote URL until one of them is saved.
+  static Future<void> _localizeEpisodeStills(
+    Map<String, dynamic> meta,
+    Directory dir,
+    String mediaId,
+  ) async {
+    final videos = meta['videos'];
+    if (videos is! List) return;
+    final slots = <(int, int)>{
+      for (final task in DownloadService.instance.tasksNotifier.value)
+        if (task.mediaId == mediaId &&
+            task.showsOnDownloadHub &&
+            (task.season != null || task.episode != null))
+          (task.season ?? 1, task.episode ?? 1),
+    };
+    if (slots.isEmpty) return;
+    for (var i = 0; i < videos.length; i++) {
+      final raw = videos[i];
+      if (raw is! Map) continue;
+      final video = Map<String, dynamic>.from(raw);
+      final season = (video['season'] as num?)?.toInt() ?? 1;
+      final episode = (video['episode'] as num?)?.toInt();
+      if (episode == null || !slots.contains((season, episode))) continue;
+      final saved = await _saveImage(
+        url: (video['thumbnail'] ?? '').toString(),
+        dir: dir,
+        name:
+            'still-s${season.toString().padLeft(2, '0')}e${episode.toString().padLeft(2, '0')}',
+      );
+      if (saved == null) continue;
+      video['thumbnail'] = saved.path;
+      videos[i] = video;
+    }
   }
 
   static bool _isLocalPath(String raw) {
