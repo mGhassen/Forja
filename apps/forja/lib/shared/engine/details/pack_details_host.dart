@@ -654,6 +654,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         _error = null;
       });
     }
+    var railsArrived = false;
     final env = await MetaRuntime.instance.run(
       pluginId: widget.pluginId,
       action: 'details',
@@ -665,6 +666,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         if (!mounted) return;
         final meta = hubMergeDetailsSeed(next.meta ?? widget.item, widget.item);
         final packRails = parseKitDetailRails(next.data);
+        if (packRails.isNotEmpty) railsArrived = true;
         setState(() {
           _detail = meta;
           if (packRails.isNotEmpty) _packRails = packRails;
@@ -690,7 +692,12 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       return;
     }
     final meta = hubMergeDetailsSeed(env.meta ?? widget.item, widget.item);
-    final packRails = parseKitDetailRails(env.data);
+    final loadedRails = parseKitDetailRails(env.data);
+    // Deferred More Like This can land before this paint. Don't replace it
+    // with the first envelope, which has no rails yet.
+    final packRails = loadedRails.isNotEmpty || !railsArrived
+        ? loadedRails
+        : _packRails;
     final layout = parseKitDetailsLayout(env.data);
     final backdrops = hubHeroBackdropUrls(meta);
     if (!mounted) return;
