@@ -4,6 +4,7 @@ import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_tv.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_view.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
@@ -87,17 +88,29 @@ abstract final class PortalsActionHost {
   }
 
   /// Portals chip ↓ — panel open → selected portal (or header when empty);
-  /// panel closed → pack `focusDown` (category rail).
+  /// panel closed → channel grid on this tab, else pack `focusDown`.
   static void invokeChipDownEdge(
     WidgetRef ref, {
     required String tabId,
     required VoidCallback? toCatalog,
   }) {
     if (!ref.read(portalsPanelOpenProvider(tabId))) {
+      if (focusItemsBelowChip(tabId)) return;
       toCatalog?.call();
       return;
     }
     focusPanelFromChipDown(ref, tabId: tabId);
+  }
+
+  /// Panel closed: remembered channel (or catalog tile) under the chip.
+  /// False when that row is not mounted — caller uses pack `focusDown`.
+  static bool focusItemsBelowChip(String tabId) {
+    final tab = tabId.trim();
+    if (tab.isEmpty) return false;
+    return ShellTvFocusCoordinator.focusRowItemRemembered(
+      tab,
+      IptvCatalogLand.itemsRowId,
+    );
   }
 
   static void focusPanelFromChipDown(WidgetRef ref, {required String tabId}) {

@@ -160,12 +160,17 @@ abstract final class ResolveStreamsAdapter {
     final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
         ? source.liveProviderBadge!.trim()
         : (source.pickerSubtitle ?? '').trim();
+    final rail = sourcesBrowseRailLabel(
+      categoryBrowse: _liveTvTab(tabId),
+      category: source.pickerSubtitle,
+      provider: provider,
+    );
     final host = _embedHost(source);
     final probeKey = iptvLiveSourceProbeKey(source);
     return KitSourcesRow(
       id: '${tabId}_$index',
       title: source.pickerTitle,
-      subtitle: provider.isEmpty ? null : provider,
+      subtitle: rail,
       footer: host,
       badges: [
         if (source.liveStreamHd) 'HD',
@@ -181,6 +186,9 @@ abstract final class ResolveStreamsAdapter {
               ),
     );
   }
+
+  static bool _liveTvTab(String tabId) =>
+      tabId == 'liveTv' || tabId == 'live_tv';
 
   static String? _embedHost(LivePlaySource source) {
     final embed = (source.liveEngineEmbedUrl ?? '').trim();

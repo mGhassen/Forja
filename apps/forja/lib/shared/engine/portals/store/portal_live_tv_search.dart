@@ -567,8 +567,9 @@ abstract final class PortalLiveTvSearch {
   static String fixtureKeyForTest(Map<String, dynamic> game) =>
       _fixtureKey(game);
 
-  /// Left rail on Live Sports Live TV. A stored label that is only the
-  /// login is not a portal name — use the site host instead.
+  /// Portal chip on Live TV channel rows (under the title). A stored label
+  /// that is only the login is not a portal name — use the site host instead.
+  /// The category rail uses the IPTV catalog group, not this label.
   @visibleForTesting
   static String portalRailLabelForTest({
     required String url,

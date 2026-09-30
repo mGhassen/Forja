@@ -46,7 +46,6 @@ class CatalogChannelCard extends StatefulWidget {
     this.onTap,
     this.onInteractiveActive,
     this.onHoldJumpToCategory,
-    this.onTvFocusGained,
     this.favoriteBuilder,
     this.onLeftEdge,
     this.onRightEdge,
@@ -95,7 +94,6 @@ class CatalogChannelCard extends StatefulWidget {
 
   /// TV: hold OK ~1s (Favorites / Already watched) — no play.
   final VoidCallback? onHoldJumpToCategory;
-  final VoidCallback? onTvFocusGained;
   final Widget? Function({required bool active})? favoriteBuilder;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -241,7 +239,6 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     }
     _focusedN.value = v;
     widget.onInteractiveActive?.call(v || _hoveredN.value);
-    if (v) widget.onTvFocusGained?.call();
   }
 
   void _cancelOkHold() {

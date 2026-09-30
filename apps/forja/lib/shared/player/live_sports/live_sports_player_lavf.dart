@@ -10,7 +10,10 @@ mixin _LiveSportsPlayerLavf on _LiveSportsPlayerEngineCore {
   void _applyCacheAheadSample(double aheadSecs, {required String source});
 
   Future<void> _applyStreamLavfReconnect(NativePlayer p, {String? streamUrl}) async {
-    await p.setProperty('stream-lavf-o', liveSportsStreamLavfO());
+    await p.setProperty(
+      'stream-lavf-o',
+      liveSportsStreamLavfO(streamUrl: streamUrl),
+    );
   }
 
   void _invalidatePendingLiveEdgeSnaps() {

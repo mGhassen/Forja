@@ -79,5 +79,32 @@ void main() {
         ['1'],
       );
     });
+
+    test('live tv rail is the IPTV category, not the portal host', () {
+      expect(
+        sourcesBrowseRailLabel(
+          categoryBrowse: true,
+          category: 'FR | CANAL',
+          provider: 'tstv8k.com',
+        ),
+        'FR | CANAL',
+      );
+      expect(
+        sourcesBrowseRailLabel(
+          categoryBrowse: true,
+          category: '  ',
+          provider: 'tstv8k.com',
+        ),
+        isNull,
+      );
+      expect(
+        sourcesBrowseRailLabel(
+          categoryBrowse: false,
+          category: 'Sports',
+          provider: 'PPV',
+        ),
+        'PPV',
+      );
+    });
   });
 }

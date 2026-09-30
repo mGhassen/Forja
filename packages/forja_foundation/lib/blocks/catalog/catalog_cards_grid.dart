@@ -868,11 +868,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   /// Same role as category [selectedId] — letter-jump selection chrome + anchor.
   final ValueNotifier<int> _selectedIndexN = ValueNotifier(-1);
 
-  Timer? _logoSettleTimer;
-  bool _allowNewLogos = false;
-  final Set<String> _revealedLogoIds = <String>{};
-  static const _logoSettleDelay = Duration(milliseconds: 500);
-
   bool get _leanbackOnly =>
       ShellPaintScope.usesTvDensityOf(context) &&
       !ShellPaintScope.scaleOnHoverOf(context);
@@ -888,16 +883,10 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
     widget.landEpoch?.addListener(_onLandEpoch);
     _offerScrollIntoView();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_leanbackOnly) {
-        _bumpChannelLogoSettle();
-      } else {
-        setState(() => _allowNewLogos = true);
-      }
       _landSelected(preferCategoryFocus: _preferCategoryFocusLive);
     });
   }
@@ -906,8 +895,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   void dispose() {
     widget.onScrollIntoViewChanged?.call(null);
     widget.landEpoch?.removeListener(_onLandEpoch);
-    _logoSettleTimer?.cancel();
-    _scroll.removeListener(_onScroll);
     _scroll.dispose();
     _selectedIndexN.dispose();
     super.dispose();
@@ -930,11 +917,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     if (!identical(oldWidget.items, widget.items)) {
       _selectedIndexN.value = -1;
       _itemKeys.clear();
-      _revealedLogoIds.clear();
-      if (_leanbackOnly) {
-        _allowNewLogos = false;
-        _bumpChannelLogoSettle(hide: true);
-      }
     }
     if (oldWidget.selectedItemId != widget.selectedItemId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -953,37 +935,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
 
   void _onLandEpoch() {
     _landSelected(preferCategoryFocus: _preferCategoryFocusLive);
-  }
-
-  void _onScroll() {
-    if (!_leanbackOnly) return;
-    _bumpChannelLogoSettle(hide: true);
-  }
-
-  void _revealChannelLogo(String channelId) {
-    final id = channelId.trim();
-    if (id.isEmpty || _revealedLogoIds.contains(id)) return;
-    setState(() => _revealedLogoIds.add(id));
-  }
-
-  void _bumpChannelLogoSettle({bool hide = false}) {
-    if (!_leanbackOnly) return;
-    _logoSettleTimer?.cancel();
-    if (hide) {
-      _allowNewLogos = false;
-    }
-    _logoSettleTimer = Timer(_logoSettleDelay, () {
-      if (!mounted) return;
-      setState(() {
-        _allowNewLogos = true;
-      });
-    });
-  }
-
-  bool _showChannelLogo(String channelId) {
-    if (!_leanbackOnly) return true;
-    final id = channelId.trim();
-    return _revealedLogoIds.contains(id) || _allowNewLogos;
   }
 
   String _titleAt(int i) {
@@ -1221,7 +1172,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         // (focus / hover / letter-jump emphasize only).
         highlighted: panelSelected,
         selectionIndexListenable: _selectedIndexN,
-        showLogo: _showChannelLogo(id),
         listLayout: list,
         width: list ? null : layout?.cardW,
         height: list
@@ -1246,12 +1196,6 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         onInteractiveActive: (active) {
           _onChannelInteractiveActive(i, item, active: active);
         },
-        onTvFocusGained: _leanbackOnly
-            ? () {
-                _revealChannelLogo(id);
-                _bumpChannelLogoSettle();
-              }
-            : null,
         favoriteBuilder: widget.itemAccessory == null
             ? null
             : ({required bool active}) =>

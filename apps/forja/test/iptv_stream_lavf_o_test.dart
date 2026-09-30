@@ -32,11 +32,29 @@ void main() {
   });
 
   group('liveSportsStreamLavfO', () {
-    test('v1.5.36 direct reconnect string', () {
-      final o = liveSportsStreamLavfO();
+    test('progressive keeps reconnect_at_eof', () {
+      final o = liveSportsStreamLavfO(
+        streamUrl: 'http://portal.example:8080/live/user/pass/1.ts',
+      );
       expect(o, contains('reconnect=1'));
+      expect(o, contains('reconnect_at_eof=1'));
       expect(o, contains('reconnect_delay_max=30'));
       expect(o, contains('reconnect_on_http_error=4xx\\,5xx'));
+      expect(liveSportsStreamLavfO(), contains('reconnect_at_eof=1'));
+    });
+
+    test('HLS playlist omits reconnect_at_eof', () {
+      final proxy = liveSportsStreamLavfO(
+        streamUrl:
+            'http://127.0.0.1:9/hls-proxy?url=${Uri.encodeComponent('https://cdn.example/a.m3u8')}',
+      );
+      final direct = liveSportsStreamLavfO(
+        streamUrl: 'https://cdn.example/live/index.m3u8',
+      );
+      expect(proxy.contains('reconnect_at_eof'), isFalse);
+      expect(direct.contains('reconnect_at_eof'), isFalse);
+      expect(proxy, contains('reconnect=1'));
+      expect(proxy, contains('reconnect_on_network_error=1'));
     });
   });
 

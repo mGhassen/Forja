@@ -661,6 +661,11 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
           await applyMediaHttpHeaders(player, headers, streamUrl: playUrl);
         }
         await applyIpv4HttpProxy(player, playUrl);
+        // Before open: HLS must not reconnect_at_eof on the first playlist
+        // read (a ~4KB body otherwise loops at that offset).
+        if (np is NativePlayer) {
+          await _applyStreamLavfReconnect(np, streamUrl: playUrl);
+        }
         await player.open(Media(playUrl, httpHeaders: headers));
         if (np is NativePlayer) {
           await _applyStreamLavfReconnect(np, streamUrl: playUrl);

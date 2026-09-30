@@ -65,6 +65,23 @@ List<SourcesRow> sourcesFilterByCategory(
   ];
 }
 
+/// Left rail when a tab browses by category.
+///
+/// Live TV passes the IPTV catalog group as [category]. The portal host in
+/// [provider] stays off that rail. Other tabs keep [provider].
+String? sourcesBrowseRailLabel({
+  required bool categoryBrowse,
+  String? category,
+  String? provider,
+}) {
+  if (categoryBrowse) {
+    final cat = (category ?? '').trim();
+    return cat.isEmpty ? null : cat;
+  }
+  final name = (provider ?? '').trim();
+  return name.isEmpty ? null : name;
+}
+
 bool sourcesRowMatchesQuery(SourcesRow row, String query) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return true;

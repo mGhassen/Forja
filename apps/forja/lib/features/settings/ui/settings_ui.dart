@@ -1531,9 +1531,11 @@ class SettingsSelectRow extends StatelessWidget {
       ),
     );
 
+    // Desktop already has a DropdownButton. Opening the dialog on the same
+    // press pushes a second route; closing both pops the shell (black window).
     return shellFocusableTap(
       context: context,
-      onTap: () => _openPicker(context),
+      onTap: tv ? () => _openPicker(context) : null,
       onKeyEvent: tv
           ? (node, event) {
               if (shellTvIsActivateKey(event)) {
@@ -1669,7 +1671,15 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
         ),
       );
 
-      void pick() => Navigator.of(context, rootNavigator: true).pop(option);
+      void pick() {
+        final route = ModalRoute.of(context);
+        if (route == null || !route.isCurrent) return;
+        final nav = Navigator.of(context, rootNavigator: true);
+        // Never pop the shell. A second close used to remove the last route
+        // and leave a black window.
+        if (!nav.canPop()) return;
+        nav.pop(option);
+      }
 
       if (!tv) {
         return shellRoundedInkHost(

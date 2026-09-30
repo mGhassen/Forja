@@ -26,6 +26,7 @@ export 'package:forja_foundation/widgets/sources/live_tv_browse.dart'
         sourcesFilterByCategory,
         sourcesRowMatchesQuery,
         sourcesFilterByQuery,
+        sourcesBrowseRailLabel,
         SourcesCategoryRailRow;
 
 typedef KitSourcesTab = SourcesTab;
