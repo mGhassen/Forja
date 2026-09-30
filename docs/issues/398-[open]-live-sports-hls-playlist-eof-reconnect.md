@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **1 / 1** fix · **0 / 1** acceptance |
+| **Progress** | **4 / 4** fix · **0 / 1** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -20,6 +20,9 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I398-T01 | Live Sports HLS (`*.m3u8`, `/hls-proxy`) omits `reconnect_at_eof`; progressive `.ts` keeps it. Set `stream-lavf-o` before open. | ✅ |
+| 2 | I398-T02 | IPTV player (hub player setting IPTV) uses the same HLS omission in `iptvStreamLavfO`, re-applied after `open`. | ✅ |
+| 3 | I398-T03 | Revert I398-T02. IPTV `iptvStreamLavfO` stays on for HLS and progressive. Live Sports player only. | ✅ |
+| 4 | I398-T04 | Live Sports HLS also sets `reconnect=0` and `reconnect_streamed=0`. `reconnect=1` still range-resumes a short playlist when the length is unknown. IPTV string unchanged. | ✅ |
 
 ---
 
@@ -41,11 +44,11 @@ Progressive Xtream `.ts` still uses `reconnect_at_eof`.
 
 ## Symptom fix
 
-`liveSportsStreamLavfO` drops `reconnect_at_eof` when `iptvUrlLooksLikeHls` is true. Applied before `player.open`.
+`liveSportsStreamLavfO` drops `reconnect`, `reconnect_streamed`, and `reconnect_at_eof` for HLS. Network and HTTP error retries stay. IPTV `iptvStreamLavfO` is unchanged.
 
 ## Root fix
 
-Same change. The HLS demuxer must see playlist EOF so it can reload and open segments.
+Same change. Dropping only `reconnect_at_eof` left `reconnect=1`, which still resumes a short playlist at that byte when the length is unknown. Playback on device is still the acceptance check.
 
 ## Workaround
 

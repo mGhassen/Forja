@@ -43,7 +43,7 @@ void main() {
       expect(liveSportsStreamLavfO(), contains('reconnect_at_eof=1'));
     });
 
-    test('HLS playlist omits reconnect_at_eof', () {
+    test('HLS playlist does not resume at EOF', () {
       final proxy = liveSportsStreamLavfO(
         streamUrl:
             'http://127.0.0.1:9/hls-proxy?url=${Uri.encodeComponent('https://cdn.example/a.m3u8')}',
@@ -53,7 +53,9 @@ void main() {
       );
       expect(proxy.contains('reconnect_at_eof'), isFalse);
       expect(direct.contains('reconnect_at_eof'), isFalse);
-      expect(proxy, contains('reconnect=1'));
+      expect(proxy, contains('reconnect=0'));
+      expect(proxy, contains('reconnect_streamed=0'));
+      expect(proxy, isNot(contains('reconnect=1')));
       expect(proxy, contains('reconnect_on_network_error=1'));
     });
   });

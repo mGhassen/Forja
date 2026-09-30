@@ -108,17 +108,26 @@ part 'live_sports_player_ui.dart';
 
 /// Live Sports MediaKit `stream-lavf-o`.
 ///
-/// Progressive live (Xtream `.ts`) keeps `reconnect_at_eof` so a socket close
-/// is stitched inside lavf. HLS playlists are short finite files — that flag
-/// Range-reconnects at the playlist length forever and the demuxer never
-/// loads segments (Streamic /hls-proxy, offset stuck).
+/// Progressive live (Xtream `.ts`) keeps `reconnect` and `reconnect_at_eof` so
+/// a socket close is stitched inside lavf. An HLS playlist is a short finite
+/// body. `reconnect=1` resumes that offset when the length is unknown, and
+/// `reconnect_at_eof` does it when the length is known. Either pin leaves
+/// Streamic `/hls-proxy` stuck at the playlist size. Network and HTTP error
+/// retries stay on.
 @visibleForTesting
 String liveSportsStreamLavfO({String? streamUrl}) {
   final hls = streamUrl != null &&
       streamUrl.isNotEmpty &&
       iptvUrlLooksLikeHls(streamUrl);
+  if (hls) {
+    return 'reconnect=0,'
+        'reconnect_streamed=0,'
+        'reconnect_delay_max=30,'
+        'reconnect_on_network_error=1,'
+        'reconnect_on_http_error=4xx\\,5xx';
+  }
   return 'reconnect=1,'
-      '${hls ? '' : 'reconnect_at_eof=1,'}'
+      'reconnect_at_eof=1,'
       'reconnect_streamed=1,'
       'reconnect_delay_max=30,'
       'reconnect_on_network_error=1,'
