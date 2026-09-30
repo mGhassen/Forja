@@ -203,6 +203,41 @@ void main() {
     expect(query, '');
   });
 
+  testWidgets('desktop Enter commits the typed query', (tester) async {
+    var query = '';
+    final searchKey = GlobalKey<EventListSearchState>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: EventListSearch(
+              key: searchKey,
+              query: '',
+              onQueryChanged: (q) => query = q,
+              debugLabel: 'desktop-search',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    searchKey.currentState!.openSearch();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'desktop-search',
+    );
+    await tester.enterText(find.byType(TextField), 'breakers');
+    await tester.pump();
+    expect(query, isEmpty);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(query, 'breakers');
+  });
+
   testWidgets('TV: closing via × returns focus to the search icon', (
     tester,
   ) async {

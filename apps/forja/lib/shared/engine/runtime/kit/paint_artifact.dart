@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/downloads/download_hub_progress.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_button.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
@@ -23,6 +24,20 @@ import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
+
+String? _offlineLibraryId(Object? open, Object? meta) {
+  final fromOpen = _offlineSurfaceId(open);
+  if (fromOpen != null) return fromOpen;
+  if (meta is Map) return _offlineSurfaceId(meta['open']);
+  return null;
+}
+
+String? _offlineSurfaceId(Object? raw) {
+  if (raw is! Map) return null;
+  if ((raw['surface'] ?? '').toString().trim() != 'offline') return null;
+  final id = (raw['id'] ?? '').toString().trim();
+  return id.isEmpty ? null : id;
+}
 
 /// Shared pack-item → foundation card paint. Rails + kit.list tiles.
 abstract final class PackPaintArtifact {
@@ -111,15 +126,18 @@ abstract final class PackPaintArtifact {
         if (title.isNotEmpty) metaMap['name'] = title;
       }
       if ((metaMap['poster'] ?? '').toString().trim().isEmpty) {
-        final poster =
-            (props['imageUrl'] ?? props['posterUrl'] ?? '').toString().trim();
+        final poster = (props['imageUrl'] ?? props['posterUrl'] ?? '')
+            .toString()
+            .trim();
         if (poster.isNotEmpty) metaMap['poster'] = poster;
       }
       if (metaMap['rating'] == null && props['rating'] is num) {
         metaMap['rating'] = props['rating'];
       }
       if ((metaMap['releaseInfo'] ?? '').toString().trim().isEmpty) {
-        final sub = (props['subtitle'] ?? props['year'] ?? '').toString().trim();
+        final sub = (props['subtitle'] ?? props['year'] ?? '')
+            .toString()
+            .trim();
         if (sub.isNotEmpty) metaMap['releaseInfo'] = sub;
       }
       return MetaItem.fromJson(metaMap);
@@ -135,20 +153,24 @@ abstract final class PackPaintArtifact {
     final metaType = mediaTypeRaw == 'series'
         ? 'tv'
         : (mediaTypeRaw == 'tv' ||
-                mediaTypeRaw == 'movie' ||
-                mediaTypeRaw == 'collections'
-            ? mediaTypeRaw
-            : 'movie');
-    final release = (props['year'] ?? props['subtitle'] ?? '').toString().trim();
+                  mediaTypeRaw == 'movie' ||
+                  mediaTypeRaw == 'collections'
+              ? mediaTypeRaw
+              : 'movie');
+    final release = (props['year'] ?? props['subtitle'] ?? '')
+        .toString()
+        .trim();
     return MetaItem(
       id: (openMap['id'] ?? '').toString(),
       type: metaType,
       name: (props['title'] ?? '').toString(),
       poster: (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
-      background:
-          (props['backdropUrl'] ?? props['backgroundUrl'] ?? '').toString(),
+      background: (props['backdropUrl'] ?? props['backgroundUrl'] ?? '')
+          .toString(),
       description: (props['overview'] ?? props['description'] ?? '').toString(),
-      rating: props['rating'] is num ? (props['rating'] as num).toDouble() : null,
+      rating: props['rating'] is num
+          ? (props['rating'] as num).toDouble()
+          : null,
       releaseInfo: release.length >= 4 ? release.substring(0, 4) : release,
       tmdbMediaType: metaType == 'tv' || metaType == 'movie' ? metaType : null,
       open: MetaOpen.fromJson(openMap),
@@ -164,7 +186,8 @@ abstract final class PackPaintArtifact {
     Object? meta,
     double? cardWidth,
   }) {
-    final w = cardWidth ??
+    final w =
+        cardWidth ??
         InteractivePosterCard.cardWidth(
           context,
           aspect: (props['aspect'] ?? '').toString() == 'landscape'
@@ -215,8 +238,7 @@ abstract final class PackPaintArtifact {
         final rank = props['rank'] is num
             ? (props['rank'] as num).toInt()
             : fallbackRank;
-        final aspectRaw =
-            (props['aspect'] ?? fallbackAspect ?? '').toString();
+        final aspectRaw = (props['aspect'] ?? fallbackAspect ?? '').toString();
         final aspect = aspectRaw == 'landscape'
             ? PosterAspect.landscape
             : PosterAspect.portrait;
@@ -227,7 +249,7 @@ abstract final class PackPaintArtifact {
         final hover = packDouble(props['hoverScale']);
         final focus = packDouble(props['focusScale']);
         // durationMs reserved for motion theme; focusableTap uses preset duration.
-        return InteractivePosterCard(
+        final card = InteractivePosterCard(
           imageUrl: (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
           title: (props['title'] ?? '').toString(),
           subtitle: props['subtitle']?.toString(),
@@ -249,21 +271,29 @@ abstract final class PackPaintArtifact {
           aspect: aspect,
           width: width,
           height: packLength(context, props['height']),
-          borderRadius:
-              packLength(context, props['borderRadius'] ?? props['radius']),
+          borderRadius: packLength(
+            context,
+            props['borderRadius'] ?? props['radius'],
+          ),
           titleFontSize: packLength(context, props['titleFontSize']),
           metaFontSize: packLength(context, props['metaFontSize']),
           motion: motion,
           scaleOnFocus: focus ?? hover,
         );
+        final savingId = _offlineLibraryId(resolvedOpen, resolvedMeta);
+        if (savingId == null) return card;
+        return DownloadHubPosterFrame(mediaId: savingId, child: card);
       case 'eventCard':
       case 'event':
-        final tv = packBool(props['tvDensity']) == true ||
+        final tv =
+            packBool(props['tvDensity']) == true ||
             ShellPaintScope.usesTvDensityOf(context);
         final scale = tv ? ShellTokens.tvChromeScale : 1.0;
-        final w = packLength(context, props['width']) ??
+        final w =
+            packLength(context, props['width']) ??
             EventCardTokens.paintFallbackWidth * scale;
-        final h = packLength(context, props['height']) ??
+        final h =
+            packLength(context, props['height']) ??
             EventCardTokens.paintFallbackHeight * scale;
         return EventCard(
           title: (props['title'] ?? '').toString(),
@@ -275,24 +305,30 @@ abstract final class PackPaintArtifact {
           categoryLabel: (props['categoryLabel'] ?? '').toString(),
           scheduleLabel: (props['scheduleLabel'] ?? '').toString(),
           timeLabel: (props['timeLabel'] ?? '').toString(),
-          viewers:
-              props['viewers'] is num ? (props['viewers'] as num).toInt() : 0,
+          viewers: props['viewers'] is num
+              ? (props['viewers'] as num).toInt()
+              : 0,
           live: props['live'] == true,
           width: w,
           height: h,
           tvDensity: tv,
           borderRadius:
               packLength(context, props['borderRadius'] ?? props['radius']) ??
-                  EventCardTokens.radiusOf(context),
-          titleFontSize: packLength(context, props['titleFontSize']) ??
+              EventCardTokens.radiusOf(context),
+          titleFontSize:
+              packLength(context, props['titleFontSize']) ??
               EventCardTokens.titleFontSizeOf(context),
-          metaFontSize: packLength(context, props['metaFontSize']) ??
+          metaFontSize:
+              packLength(context, props['metaFontSize']) ??
               EventCardTokens.metaFontSizeOf(context),
-          badgeFontSize: packLength(context, props['badgeFontSize']) ??
+          badgeFontSize:
+              packLength(context, props['badgeFontSize']) ??
               EventCardTokens.badgeFontSizeOf(context),
-          playOverlaySize: packLength(context, props['playOverlaySize']) ??
+          playOverlaySize:
+              packLength(context, props['playOverlaySize']) ??
               EventCardTokens.playOverlaySizeOf(context),
-          padV: packLength(context, props['padV']) ??
+          padV:
+              packLength(context, props['padV']) ??
               EventCardTokens.padVOf(context),
           onTap: onTap,
         );
@@ -486,8 +522,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final tabId = LayoutScope.maybeOf(context)?.tabId ??
-        TvFocusGraph.tabIdOf(context);
+    final tabId =
+        LayoutScope.maybeOf(context)?.tabId ?? TvFocusGraph.tabIdOf(context);
     final token = catalogChromeFilterEpoch(tabId);
     if (_reloadToken.isEmpty) {
       _reloadToken = token;
@@ -518,10 +554,10 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     _items = _page1Items(node);
     _page = 1;
     _pageSize = catalogRailPageSizeFrom(node) ?? kMetaRailPageSizeFallback;
-    _maxPages =
-        catalogRailMaxPagesFrom(node) ?? kMetaRailMaxPagesFallback;
+    _maxPages = catalogRailMaxPagesFrom(node) ?? kMetaRailMaxPagesFallback;
     final pageLoad = packLoadSpec(node['pageLoad']);
-    _hasMore = pageLoad != null &&
+    _hasMore =
+        pageLoad != null &&
         _page < _maxPages &&
         (catalogRailHasMoreFrom(node) ??
             (_items.isNotEmpty && _items.length >= _pageSize));
@@ -534,10 +570,14 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     if (ai is! List || bi is! List || ai.length != bi.length) return false;
     for (var i = 0; i < ai.length; i++) {
       final ak = ai[i] is Map
-          ? PackPaintArtifact.paintItemKey(Map<String, dynamic>.from(ai[i] as Map))
+          ? PackPaintArtifact.paintItemKey(
+              Map<String, dynamic>.from(ai[i] as Map),
+            )
           : '$i';
       final bk = bi[i] is Map
-          ? PackPaintArtifact.paintItemKey(Map<String, dynamic>.from(bi[i] as Map))
+          ? PackPaintArtifact.paintItemKey(
+              Map<String, dynamic>.from(bi[i] as Map),
+            )
           : '$i';
       if (ak != bk) return false;
     }
@@ -580,8 +620,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     if (_loadingMore || !_hasMore || page > _maxPages) return;
     setState(() => _loadingMore = true);
     final gen = _loadGen;
-    final tabId = LayoutScope.maybeOf(context)?.tabId ??
-        TvFocusGraph.tabIdOf(context);
+    final tabId =
+        LayoutScope.maybeOf(context)?.tabId ?? TvFocusGraph.tabIdOf(context);
     try {
       final params = <String, dynamic>{
         ...pageLoad.params,
@@ -626,7 +666,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
         _page = page;
         _pageSize = resolvedSize;
         _loadingMore = false;
-        _hasMore = page < _maxPages &&
+        _hasMore =
+            page < _maxPages &&
             (catalogRailHasMoreFrom(data) ?? (batch.length >= resolvedSize));
       });
     } catch (_) {
@@ -679,10 +720,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     return PackPaintArtifact.fromPaint(
       context,
       pluginId: widget.pluginId,
-      paint: {
-        'type': 'posterCard',
-        'props': props,
-      },
+      paint: {'type': 'posterCard', 'props': props},
       open: item['open'],
       meta: item['meta'],
       listIndex: i,
@@ -694,16 +732,19 @@ class _PackPosterRailState extends State<_PackPosterRail> {
   @override
   Widget build(BuildContext context) {
     final title = (node['title'] ?? node['label'] ?? '').toString();
-    final ranked = (node['type'] ?? '').toString() == 'ranked' ||
+    final ranked =
+        (node['type'] ?? '').toString() == 'ranked' ||
         (node['style'] ?? '').toString() == 'numbered';
     final aspectFallback = (node['aspect'] ?? '').toString();
     final rowId = (node['id'] ?? node['rail'] ?? 'rail').toString();
-    final tabId = LayoutScope.maybeOf(context)?.tabId ??
-        TvFocusGraph.tabIdOf(context);
-    final focusUp = LayoutScope.maybeOf(context)
-        ?.resolveFocusEdge((node['focusUp'] ?? '').toString());
-    final focusDown = LayoutScope.maybeOf(context)
-        ?.resolveFocusEdge((node['focusDown'] ?? '').toString(), down: true);
+    final tabId =
+        LayoutScope.maybeOf(context)?.tabId ?? TvFocusGraph.tabIdOf(context);
+    final focusUp = LayoutScope.maybeOf(
+      context,
+    )?.resolveFocusEdge((node['focusUp'] ?? '').toString());
+    final focusDown = LayoutScope.maybeOf(
+      context,
+    )?.resolveFocusEdge((node['focusDown'] ?? '').toString(), down: true);
     // Unique vertical order — shared sortOrder 100 made ↓ trap on the first
     // poster rail (_nextRow needs strictly greater sortOrder). Prefer pack
     // sortOrder; else first-seen paint order for this tab+rowId.
@@ -733,7 +774,8 @@ class _PackPosterRailState extends State<_PackPosterRail> {
     final itemHeight = PackPaintArtifact.packDouble(
       node['itemHeight'] ?? node['height'],
     );
-    final cardH = PackPaintArtifact.packLength(
+    final cardH =
+        PackPaintArtifact.packLength(
           context,
           node['itemHeight'] ?? node['height'],
         ) ??
@@ -775,8 +817,10 @@ class _PackPosterRailState extends State<_PackPosterRail> {
           if (title.isNotEmpty)
             ShellSectionTitle(
               title: title,
-              fontSize:
-                  PackPaintArtifact.packLength(context, node['titleFontSize']),
+              fontSize: PackPaintArtifact.packLength(
+                context,
+                node['titleFontSize'],
+              ),
               padding: EdgeInsetsDirectional.only(
                 start: pad,
                 top: titlePad.top,

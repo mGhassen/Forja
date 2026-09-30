@@ -22,6 +22,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
   void _resetDemuxerProbe();
   bool get _streamWorking;
   bool get _livePlaybackProfile;
+  bool get _desktopLiveHwDecodeFallback;
   bool get _bufferedRecovery;
   bool get _atvHardReseatStreams;
   bool get _playheadRecentlyMoved;
@@ -633,10 +634,54 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     }
   }
 
+  /// Stuck VideoToolbox / hwdec. New player, `hwdec=no`, same URL, once.
+  Future<void> _reopenDesktopLiveSoftwareDecode() async {
+    if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
+    if (_recoveryInFlight) return;
+    _s._softwareDecodeForced = true;
+    _cancelIptvLiveGoLiveTimers();
+    _invalidatePendingLiveEdgeSnaps();
+    _s._retryAttempt = 0;
+    if (mounted) {
+      setState(() => _s._statusBanner = 'Switching to software decode…');
+    }
+    _recoveryInFlight = true;
+    try {
+      debugPrint('[IPTV Player] hw decode failed - software decode');
+      if (!await _recreatePlayer()) return;
+      if (_s._disposed || _s._sources.isEmpty) return;
+      final src = _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)];
+      final opened = await _engineOpenSource(src);
+      if (!opened || _s._disposed) return;
+      _s._userPlayWhenReady = true;
+      _s._openedAt = DateTime.now();
+      _s._lastPos = Duration.zero;
+      _s._lastPosChange = DateTime.now();
+      _s._bufferingSince = null;
+      _s._bufferingClearAt = null;
+      _resetDemuxerProbe();
+      Future<void>.delayed(const Duration(seconds: 2), () {
+        if (!mounted || _s._disposed) return;
+        if (_s._statusBanner != 'Switching to software decode…') return;
+        if (_s._playing) {
+          setState(() => _s._statusBanner = null);
+        }
+      });
+    } finally {
+      _recoveryInFlight = false;
+    }
+  }
+
   Future<void> _forceSoftwareDecode() async {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
-    // MediaKit live never falls back to TextureSW.
-    // Hold when demux feeds; grace→goLive when empty (no soft-reopen storm).
+    if (_livePlaybackProfile &&
+        _s._mediaKitBackend &&
+        !_s.widget.vodPlayback &&
+        _desktopLiveHwDecodeFallback) {
+      await _reopenDesktopLiveSoftwareDecode();
+      return;
+    }
+    // Android live: keep hardware decode.
     if (_livePlaybackProfile &&
         _s._mediaKitBackend &&
         !_s.widget.vodPlayback) {

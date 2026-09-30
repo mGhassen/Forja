@@ -52,10 +52,7 @@ DownloadTaskMatchRank downloadTaskMatchRank({
   if (url.isNotEmpty && taskUrl.isNotEmpty && taskUrl == url) {
     return DownloadTaskMatchRank.url;
   }
-  final labels = <String>[
-    if (sourceName != null) sourceName,
-    ...names,
-  ];
+  final labels = <String>[if (sourceName != null) sourceName, ...names];
   for (final label in labels) {
     if (_sameDownloadLabel(label, task.sourceName)) {
       return DownloadTaskMatchRank.name;
@@ -82,6 +79,50 @@ DownloadTaskMatchRank downloadTaskMatchRank({
     }
   }
   return DownloadTaskMatchRank.none;
+}
+
+/// Task for this exact stream, if one is saved, running, paused, or failed.
+///
+/// Another source for the same episode is a different task.
+DownloadTask? downloadTaskForRawUrl(
+  Iterable<DownloadTask> tasks,
+  String rawUrl,
+) {
+  final url = rawUrl.trim();
+  if (url.isEmpty) return null;
+  DownloadTask? pausedOrFailed;
+  for (final task in tasks) {
+    if ((task.rawUrl?.trim() ?? '') != url) continue;
+    if (task.isCompleted ||
+        task.isDownloading ||
+        task.status == DownloadStatus.queued) {
+      return task;
+    }
+    if ((task.isPaused || task.isFailed) && pausedOrFailed == null) {
+      pausedOrFailed = task;
+    }
+  }
+  return pausedOrFailed;
+}
+
+/// Path for a new save. The source is part of the name so two files for one
+/// episode do not overwrite each other. [taken] is an existing file or task.
+String uniqueDownloadTargetPath({
+  required String directory,
+  required String baseFilename,
+  required String extension,
+  required String sourceName,
+  required bool Function(String path) taken,
+}) {
+  final source = DownloadPathHelper.sanitizeFilename(sourceName);
+  final stem = source.isEmpty ? baseFilename : '${baseFilename}_$source';
+  var path = p.join(directory, '$stem$extension');
+  var n = 2;
+  while (taken(path) && n < 100) {
+    path = p.join(directory, '${stem}_$n$extension');
+    n++;
+  }
+  return path;
 }
 
 /// Host-owned VOD offline download manager (Phase 1 — HTTP Range + HLS).
@@ -111,6 +152,7 @@ class DownloadService {
   final Map<String, StreamSubscription<List<int>>> _httpSubscriptions = {};
   final Map<String, IOSink> _httpFileSinks = {};
   final Set<String> _canceledOrPausedTaskIds = {};
+
   /// Prevents overlapping HTTP writers for the same task (resume vs reconnect).
   final Set<String> _httpExecutors = {};
 
@@ -165,9 +207,7 @@ class DownloadService {
 
       for (final item in jsonList) {
         if (item is Map) {
-          var task = DownloadTask.fromJson(
-            Map<String, dynamic>.from(item),
-          );
+          var task = DownloadTask.fromJson(Map<String, dynamic>.from(item));
           if (task.status == DownloadStatus.downloading ||
               task.status == DownloadStatus.queued) {
             task = task.copyWith(status: DownloadStatus.paused);
@@ -229,8 +269,8 @@ class DownloadService {
     final idx = current.indexWhere((t) => t.id == updated.id);
     final prev = idx != -1 ? current[idx] : null;
     final statusChanged = prev == null || prev.status != updated.status;
-    final libraryChanged = statusChanged &&
-        (updated.isCompleted || (prev?.isCompleted ?? false));
+    final libraryChanged =
+        updated.showsOnDownloadHub != (prev?.showsOnDownloadHub ?? false);
     // Byte progress while downloading — keep UI live, throttle disk JSON.
     final progressOnly =
         !statusChanged && updated.status == DownloadStatus.downloading;
@@ -264,8 +304,9 @@ class DownloadService {
   }
 
   void _updateWakelockState() {
-    final hasActive = tasksNotifier.value
-        .any((t) => t.status == DownloadStatus.downloading);
+    final hasActive = tasksNotifier.value.any(
+      (t) => t.status == DownloadStatus.downloading,
+    );
     if (hasActive) {
       WakelockPlus.enable();
     } else {
@@ -285,31 +326,6 @@ class DownloadService {
       }
     }
     return total;
-  }
-
-  /// Completed task for this media (and optional season/episode), if any.
-  DownloadTask? findCompletedFor(String mediaId, int? season, int? episode) {
-    for (final t in tasksNotifier.value) {
-      if (!t.isCompleted) continue;
-      if (t.mediaId != mediaId) continue;
-      if (t.season != season || t.episode != episode) continue;
-      return t;
-    }
-    return null;
-  }
-
-  /// Active (queued/downloading/paused) or completed task for dedup.
-  DownloadTask? findActiveOrCompleted({
-    required String mediaId,
-    int? season,
-    int? episode,
-  }) {
-    for (final t in tasksNotifier.value) {
-      if (t.mediaId != mediaId) continue;
-      if (t.season != season || t.episode != episode) continue;
-      if (t.isActive || t.isCompleted) return t;
-    }
-    return null;
   }
 
   /// Match a Sources-panel stream row to a download task.
@@ -375,16 +391,13 @@ class DownloadService {
       throw ArgumentError('Empty download URL');
     }
     if (!isDownloadableHttpUrl(rawUrl, headers: headers)) {
-      final reason = offlineDownloadRejectReason(rawUrl, headers: headers) ??
+      final reason =
+          offlineDownloadRejectReason(rawUrl, headers: headers) ??
           'URL is not a downloadable HTTP(S) stream';
       throw ArgumentError(reason);
     }
 
-    final existing = findActiveOrCompleted(
-      mediaId: mediaId,
-      season: season,
-      episode: episode,
-    );
+    final existing = downloadTaskForRawUrl(tasksNotifier.value, rawUrl);
     if (existing != null) {
       if (existing.isCompleted ||
           existing.isDownloading ||
@@ -393,17 +406,13 @@ class DownloadService {
       }
       if (existing.isPaused || existing.isFailed) {
         await resumeDownload(existing.id);
-        return findActiveOrCompleted(
-              mediaId: mediaId,
-              season: season,
-              episode: episode,
-            ) ??
-            existing;
+        return downloadTaskForRawUrl(tasksNotifier.value, rawUrl) ?? existing;
       }
     }
 
     final downloadDir =
-        customDownloadDir ?? await DownloadPathHelper.getDownloadsDirectoryPath();
+        customDownloadDir ??
+        await DownloadPathHelper.getDownloadsDirectoryPath();
     final now = DateTime.now();
     final taskId =
         'dl_${mediaId}_${season ?? 0}_${episode ?? 0}_${now.millisecondsSinceEpoch}';
@@ -424,7 +433,23 @@ class DownloadService {
       targetExt = '.avi';
     }
 
-    final targetPath = p.join(downloadDir, '$baseFilename$targetExt');
+    final targetPath = uniqueDownloadTargetPath(
+      directory: downloadDir,
+      baseFilename: baseFilename,
+      extension: targetExt,
+      sourceName: sourceName ?? '',
+      taken: (path) {
+        if (File(path).existsSync()) return true;
+        for (final task in tasksNotifier.value) {
+          if (task.targetFilePath != path) continue;
+          if (task.isFailed || task.status == DownloadStatus.canceled) {
+            continue;
+          }
+          return true;
+        }
+        return false;
+      },
+    );
 
     final task = DownloadTask(
       id: taskId,
@@ -450,17 +475,15 @@ class DownloadService {
     );
 
     final current = List<DownloadTask>.from(tasksNotifier.value);
-    // Drop stale failed/canceled rows for the same media slot.
     current.removeWhere(
       (t) =>
-          t.mediaId == mediaId &&
-          t.season == season &&
-          t.episode == episode &&
+          (t.rawUrl?.trim() ?? '') == rawUrl &&
           (t.isFailed || t.status == DownloadStatus.canceled),
     );
     current.insert(0, task);
     tasksNotifier.value = current;
     await _persistTasks();
+    libraryRevision.value++;
 
     _executeDownload(task);
     return task;
@@ -486,10 +509,9 @@ class DownloadService {
       );
     } catch (e) {
       if (!_canceledOrPausedTaskIds.contains(task.id)) {
-        _updateTask(task.copyWith(
-          status: DownloadStatus.failed,
-          error: e.toString(),
-        ));
+        _updateTask(
+          task.copyWith(status: DownloadStatus.failed, error: e.toString()),
+        );
       }
     }
   }
@@ -501,7 +523,10 @@ class DownloadService {
     final urlStr = task.rawUrl;
     if (urlStr == null || urlStr.isEmpty) {
       _updateTask(
-        task.copyWith(status: DownloadStatus.failed, error: 'Empty download URL'),
+        task.copyWith(
+          status: DownloadStatus.failed,
+          error: 'Empty download URL',
+        ),
       );
       return;
     }
@@ -546,7 +571,7 @@ class DownloadService {
         request.headers.set(
           'User-Agent',
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         );
       }
 
@@ -573,33 +598,36 @@ class DownloadService {
             code == HttpStatus.notFound ||
             code == HttpStatus.gone) {
           _cleanupHttpTask(task.id);
-          _updateTask(task.copyWith(
-            status: DownloadStatus.failed,
-            error: code == HttpStatus.forbidden ||
-                    code == HttpStatus.unauthorized
-                ? kOfflineDownloadExpiredMessage
-                : 'Server returned HTTP $code: $phrase',
-            speedBytesPerSec: 0.0,
-          ));
+          _updateTask(
+            task.copyWith(
+              status: DownloadStatus.failed,
+              error:
+                  code == HttpStatus.forbidden ||
+                      code == HttpStatus.unauthorized
+                  ? kOfflineDownloadExpiredMessage
+                  : 'Server returned HTTP $code: $phrase',
+              speedBytesPerSec: 0.0,
+            ),
+          );
           if (releaseExecutor) _httpExecutors.remove(task.id);
           return;
         }
-        throw Exception(
-          'Server returned HTTP $code: $phrase',
-        );
+        throw Exception('Server returned HTTP $code: $phrase');
       }
 
-      final contentType =
-          (response.headers.contentType?.mimeType ?? '').toLowerCase();
+      final contentType = (response.headers.contentType?.mimeType ?? '')
+          .toLowerCase();
       if (contentType.contains('dash+xml') ||
           contentType.contains('application/dash')) {
         response.listen((_) {}).cancel();
         _cleanupHttpTask(task.id);
-        _updateTask(task.copyWith(
-          status: DownloadStatus.failed,
-          error: "DASH streams can't be saved offline yet",
-          speedBytesPerSec: 0.0,
-        ));
+        _updateTask(
+          task.copyWith(
+            status: DownloadStatus.failed,
+            error: "DASH streams can't be saved offline yet",
+            speedBytesPerSec: 0.0,
+          ),
+        );
         if (releaseExecutor) _httpExecutors.remove(task.id);
         return;
       }
@@ -646,8 +674,7 @@ class DownloadService {
 
       // Disk may have shrunk under us (overlapping writer / lost flush). Always
       // re-stat before appending so Range offset matches EOF.
-      final diskNow =
-          await activePart.exists() ? await activePart.length() : 0;
+      final diskNow = await activePart.exists() ? await activePart.length() : 0;
 
       if (isPartial) {
         final expectedStart = rangeStart ?? existingBytes;
@@ -705,8 +732,9 @@ class DownloadService {
         throw Exception('Insufficient free disk space on target partition');
       }
 
-      final mode =
-          (existingBytes > 0 && isPartial) ? FileMode.append : FileMode.write;
+      final mode = (existingBytes > 0 && isPartial)
+          ? FileMode.append
+          : FileMode.write;
       final sink = activePart.openWrite(mode: mode);
       _httpFileSinks[activeTask.id] = sink;
       task = activeTask;
@@ -754,13 +782,15 @@ class DownloadService {
                     await _executeHlsDownload(task);
                     return;
                   }
-                  _updateTask(task.copyWith(
-                    status: DownloadStatus.failed,
-                    error: head.toLowerCase().contains('mpd')
-                        ? "DASH streams can't be saved offline yet"
-                        : 'Server returned a playlist/page, not a video file',
-                    speedBytesPerSec: 0.0,
-                  ));
+                  _updateTask(
+                    task.copyWith(
+                      status: DownloadStatus.failed,
+                      error: head.toLowerCase().contains('mpd')
+                          ? "DASH streams can't be saved offline yet"
+                          : 'Server returned a playlist/page, not a video file',
+                      speedBytesPerSec: 0.0,
+                    ),
+                  );
                 }());
                 return;
               }
@@ -780,18 +810,21 @@ class DownloadService {
           if (!windowClosed) return;
 
           final speed = speedSampler.speedBytesPerSec;
-          final remaining =
-              totalBytes > receivedSoFar ? totalBytes - receivedSoFar : 0;
+          final remaining = totalBytes > receivedSoFar
+              ? totalBytes - receivedSoFar
+              : 0;
           final eta = speedSampler.etaSecondsFor(remaining);
 
-          _updateTask(task.copyWith(
-            status: DownloadStatus.downloading,
-            receivedBytes: receivedSoFar,
-            totalBytes: totalBytes > 0 ? totalBytes : receivedSoFar,
-            speedBytesPerSec: speed,
-            etaSeconds: eta,
-            error: null,
-          ));
+          _updateTask(
+            task.copyWith(
+              status: DownloadStatus.downloading,
+              receivedBytes: receivedSoFar,
+              totalBytes: totalBytes > 0 ? totalBytes : receivedSoFar,
+              speedBytesPerSec: speed,
+              etaSeconds: eta,
+              error: null,
+            ),
+          );
         },
         onDone: () async {
           if (abortAfterSniff) {
@@ -827,13 +860,15 @@ class DownloadService {
                 await _executeHlsDownload(task);
                 return;
               }
-              _updateTask(task.copyWith(
-                status: DownloadStatus.failed,
-                error: head.toLowerCase().contains('mpd')
-                    ? "DASH streams can't be saved offline yet"
-                    : 'Server returned a playlist/page, not a video file',
-                speedBytesPerSec: 0.0,
-              ));
+              _updateTask(
+                task.copyWith(
+                  status: DownloadStatus.failed,
+                  error: head.toLowerCase().contains('mpd')
+                      ? "DASH streams can't be saved offline yet"
+                      : 'Server returned a playlist/page, not a video file',
+                  speedBytesPerSec: 0.0,
+                ),
+              );
               if (releaseExecutor) _httpExecutors.remove(task.id);
               return;
             }
@@ -844,31 +879,29 @@ class DownloadService {
           }
 
           // Prefer on-disk length over in-memory counters (lost flush / race).
-          final diskBytes =
-              await outFile.exists() ? await outFile.length() : receivedSoFar;
+          final diskBytes = await outFile.exists()
+              ? await outFile.length()
+              : receivedSoFar;
 
-          if (totalBytes > 0 &&
-              diskBytes < (totalBytes - 256) &&
-              attempt < 5) {
+          if (totalBytes > 0 && diskBytes < (totalBytes - 256) && attempt < 5) {
             debugPrint(
               '[DownloadService] Stream closed prematurely '
               '($diskBytes / $totalBytes bytes). Auto-reconnecting '
               'attempt ${attempt + 1}...',
             );
-            _updateTask(task.copyWith(
-              status: DownloadStatus.downloading,
-              receivedBytes: diskBytes,
-              totalBytes: totalBytes,
-              error: 'Reconnecting remaining data (attempt $attempt)...',
-              speedBytesPerSec: 0.0,
-            ));
+            _updateTask(
+              task.copyWith(
+                status: DownloadStatus.downloading,
+                receivedBytes: diskBytes,
+                totalBytes: totalBytes,
+                error: 'Reconnecting remaining data (attempt $attempt)...',
+                speedBytesPerSec: 0.0,
+              ),
+            );
             await Future.delayed(Duration(seconds: attempt));
             if (!_canceledOrPausedTaskIds.contains(task.id)) {
               await _executeHttpDownload(
-                task.copyWith(
-                  receivedBytes: diskBytes,
-                  totalBytes: totalBytes,
-                ),
+                task.copyWith(receivedBytes: diskBytes, totalBytes: totalBytes),
                 attempt: attempt + 1,
               );
             } else if (releaseExecutor) {
@@ -905,11 +938,13 @@ class DownloadService {
               '[DownloadService] Download network error: $err. '
               'Auto-reconnecting attempt ${attempt + 1}...',
             );
-            _updateTask(task.copyWith(
-              status: DownloadStatus.downloading,
-              error: 'Reconnecting (attempt $attempt)...',
-              speedBytesPerSec: 0.0,
-            ));
+            _updateTask(
+              task.copyWith(
+                status: DownloadStatus.downloading,
+                error: 'Reconnecting (attempt $attempt)...',
+                speedBytesPerSec: 0.0,
+              ),
+            );
             await Future.delayed(Duration(seconds: attempt * 2));
             if (!_canceledOrPausedTaskIds.contains(task.id)) {
               await _executeHttpDownload(
@@ -925,11 +960,13 @@ class DownloadService {
             return;
           }
 
-          _updateTask(task.copyWith(
-            status: DownloadStatus.failed,
-            error: err.toString(),
-            speedBytesPerSec: 0.0,
-          ));
+          _updateTask(
+            task.copyWith(
+              status: DownloadStatus.failed,
+              error: err.toString(),
+              speedBytesPerSec: 0.0,
+            ),
+          );
           if (releaseExecutor) _httpExecutors.remove(task.id);
         },
         cancelOnError: true,
@@ -944,11 +981,13 @@ class DownloadService {
             '[DownloadService] Exception in HTTP download: $e. '
             'Auto-reconnecting attempt ${attempt + 1}...',
           );
-          _updateTask(task.copyWith(
-            status: DownloadStatus.downloading,
-            error: 'Reconnecting (attempt $attempt)...',
-            speedBytesPerSec: 0.0,
-          ));
+          _updateTask(
+            task.copyWith(
+              status: DownloadStatus.downloading,
+              error: 'Reconnecting (attempt $attempt)...',
+              speedBytesPerSec: 0.0,
+            ),
+          );
           await Future.delayed(Duration(seconds: attempt * 2));
           if (!_canceledOrPausedTaskIds.contains(task.id)) {
             if (releaseExecutor) {
@@ -959,11 +998,13 @@ class DownloadService {
             return;
           }
         }
-        _updateTask(task.copyWith(
-          status: DownloadStatus.failed,
-          error: e.toString(),
-          speedBytesPerSec: 0.0,
-        ));
+        _updateTask(
+          task.copyWith(
+            status: DownloadStatus.failed,
+            error: e.toString(),
+            speedBytesPerSec: 0.0,
+          ),
+        );
       }
       if (releaseExecutor) _httpExecutors.remove(task.id);
     }
@@ -988,21 +1029,25 @@ class DownloadService {
       await Future.delayed(const Duration(milliseconds: 200));
 
       if (!await partFile.exists()) {
-        _updateTask(task.copyWith(
-          status: DownloadStatus.failed,
-          error: 'Download file missing',
-        ));
+        _updateTask(
+          task.copyWith(
+            status: DownloadStatus.failed,
+            error: 'Download file missing',
+          ),
+        );
         return;
       }
 
       final partBytes = await partFile.length();
       if (task.totalBytes > 0 && partBytes < task.totalBytes - 256) {
-        _updateTask(task.copyWith(
-          status: DownloadStatus.failed,
-          error: 'Download incomplete — delete and try again',
-          receivedBytes: partBytes,
-          speedBytesPerSec: 0.0,
-        ));
+        _updateTask(
+          task.copyWith(
+            status: DownloadStatus.failed,
+            error: 'Download incomplete — delete and try again',
+            receivedBytes: partBytes,
+            speedBytesPerSec: 0.0,
+          ),
+        );
         return;
       }
 
@@ -1016,24 +1061,28 @@ class DownloadService {
               await partFile.delete();
             } catch (_) {}
             final text = String.fromCharCodes(head).trimLeft().toLowerCase();
-            _updateTask(task.copyWith(
-              status: DownloadStatus.failed,
-              error: text.contains('mpd')
-                  ? "DASH streams can't be saved offline yet"
-                  : 'Server returned a playlist/page, not a video file',
-              speedBytesPerSec: 0.0,
-            ));
+            _updateTask(
+              task.copyWith(
+                status: DownloadStatus.failed,
+                error: text.contains('mpd')
+                    ? "DASH streams can't be saved offline yet"
+                    : 'Server returned a playlist/page, not a video file',
+                speedBytesPerSec: 0.0,
+              ),
+            );
             return;
           }
           if (!looksLikeMediaContainerBytes(head)) {
             try {
               await partFile.delete();
             } catch (_) {}
-            _updateTask(task.copyWith(
-              status: DownloadStatus.failed,
-              error: 'Downloaded file is not a playable video',
-              speedBytesPerSec: 0.0,
-            ));
+            _updateTask(
+              task.copyWith(
+                status: DownloadStatus.failed,
+                error: 'Downloaded file is not a playable video',
+                speedBytesPerSec: 0.0,
+              ),
+            );
             return;
           }
         } finally {
@@ -1046,11 +1095,13 @@ class DownloadService {
         try {
           await partFile.delete();
         } catch (_) {}
-        _updateTask(task.copyWith(
-          status: DownloadStatus.failed,
-          error: 'Download too small to be a video file',
-          speedBytesPerSec: 0.0,
-        ));
+        _updateTask(
+          task.copyWith(
+            status: DownloadStatus.failed,
+            error: 'Download too small to be a video file',
+            speedBytesPerSec: 0.0,
+          ),
+        );
         return;
       }
 
@@ -1064,9 +1115,7 @@ class DownloadService {
       try {
         await partFile.rename(task.targetFilePath);
       } catch (e) {
-        debugPrint(
-          '[DownloadService] Rename failed, using fallback copy: $e',
-        );
+        debugPrint('[DownloadService] Rename failed, using fallback copy: $e');
         await partFile.copy(task.targetFilePath);
         try {
           await partFile.delete();
@@ -1075,21 +1124,25 @@ class DownloadService {
 
       final completedBytes = await File(task.targetFilePath).length();
 
-      _updateTask(task.copyWith(
-        status: DownloadStatus.completed,
-        receivedBytes: completedBytes,
-        totalBytes: completedBytes,
-        speedBytesPerSec: 0.0,
-        etaSeconds: 0,
-        completedAt: DateTime.now(),
-        error: null,
-      ));
+      _updateTask(
+        task.copyWith(
+          status: DownloadStatus.completed,
+          receivedBytes: completedBytes,
+          totalBytes: completedBytes,
+          speedBytesPerSec: 0.0,
+          etaSeconds: 0,
+          completedAt: DateTime.now(),
+          error: null,
+        ),
+      );
     } catch (e) {
       debugPrint('[DownloadService] Error finalizing downloaded file: $e');
-      _updateTask(task.copyWith(
-        status: DownloadStatus.failed,
-        error: 'Failed to save final file: $e',
-      ));
+      _updateTask(
+        task.copyWith(
+          status: DownloadStatus.failed,
+          error: 'Failed to save final file: $e',
+        ),
+      );
     }
   }
 
@@ -1118,11 +1171,13 @@ class DownloadService {
 
     _cleanupHttpTask(taskId);
 
-    _updateTask(task.copyWith(
-      status: DownloadStatus.paused,
-      speedBytesPerSec: 0.0,
-      etaSeconds: null,
-    ));
+    _updateTask(
+      task.copyWith(
+        status: DownloadStatus.paused,
+        speedBytesPerSec: 0.0,
+        etaSeconds: null,
+      ),
+    );
   }
 
   Future<void> resumeDownload(String taskId) async {
@@ -1130,10 +1185,7 @@ class DownloadService {
     final task = _taskById(taskId);
     if (task == null) return;
 
-    _updateTask(task.copyWith(
-      status: DownloadStatus.queued,
-      error: null,
-    ));
+    _updateTask(task.copyWith(status: DownloadStatus.queued, error: null));
     _executeDownload(task);
   }
 

@@ -570,20 +570,73 @@ const BROADCAST_TOKEN_STOP: &[&str] = &[
 ];
 
 fn broadcast_significant_tokens(label: &str) -> Vec<String> {
-    normalize_broadcast_channel_label(label)
-        .split_whitespace()
-        .filter(|w| {
-            if w.is_empty() {
-                return false;
+    let normalized = normalize_broadcast_channel_label(label);
+    let words: Vec<&str> = normalized.split_whitespace().collect();
+    let mut out = Vec::new();
+    for (i, w) in words.iter().enumerate() {
+        if w.is_empty() {
+            continue;
+        }
+        // "TV1" is a channel id. Dropping `tv` and keeping `1` matches every
+        // "Sport 1". Keep the compound next to the bare number so "YLE TV1"
+        // can still hit "YLE 1".
+        if *w == "tv" {
+            if let Some(next) = words.get(i + 1) {
+                if next.chars().all(|c| c.is_ascii_digit()) && !next.is_empty() {
+                    out.push(format!("tv{next}"));
+                }
             }
-            // Keep bare channel numbers ("DAZN 1") — geo stopwords alone must not.
-            if w.chars().all(|c| c.is_ascii_digit()) {
-                return true;
-            }
-            w.len() >= 2 && !BROADCAST_TOKEN_STOP.contains(w)
-        })
-        .map(|w| w.to_string())
-        .collect()
+            continue;
+        }
+        if w.chars().all(|c| c.is_ascii_digit()) {
+            out.push((*w).to_string());
+            continue;
+        }
+        if w.len() >= 2 && !BROADCAST_TOKEN_STOP.contains(w) {
+            out.push((*w).to_string());
+        }
+    }
+    out
+}
+
+fn is_generic_sport_token(token: &str) -> bool {
+    matches!(token, "sport" | "sports" | "sportowe")
+}
+
+fn token_is_digits(token: &str) -> bool {
+    !token.is_empty() && token.chars().all(|c| c.is_ascii_digit())
+}
+
+fn is_tv_compound(token: &str) -> bool {
+    let Some(rest) = token.strip_prefix("tv") else {
+        return false;
+    };
+    token_is_digits(rest)
+}
+
+/// Brand tokens (`polsat`) must all hit. A number constrains the channel only
+/// when that channel itself is numbered (`DAZN 4` ≠ `DAZN 1`). A channel with
+/// no number left after HD/FHD is stripped (`POLSAT SPORT FHD`) still matches.
+fn broadcast_brand_hit(tokens: &[String], channel_label: &str) -> Option<bool> {
+    let brands: Vec<&String> = tokens
+        .iter()
+        .filter(|t| !token_is_digits(t) && !is_tv_compound(t) && !is_generic_sport_token(t))
+        .collect();
+    if brands.is_empty() {
+        return None;
+    }
+    let hay = normalize_broadcast_channel_label(channel_label);
+    if !brands.iter().all(|b| hay.contains(b.as_str())) {
+        return Some(false);
+    }
+    let digits: Vec<&String> = tokens.iter().filter(|t| token_is_digits(t)).collect();
+    let channel_tokens = broadcast_significant_tokens(channel_label);
+    let channel_has_digit = channel_tokens.iter().any(|t| token_is_digits(t));
+    if channel_has_digit && !digits.is_empty() && !digits.iter().all(|d| hay.contains(d.as_str()))
+    {
+        return Some(false);
+    }
+    Some(true)
 }
 
 /// Guide listed only a network name (`DAZN`, `Viaplay`) with no product/number.
@@ -685,9 +738,18 @@ fn channel_embeds_foreign_fixture(game: &MatchGame, c: &Candidate) -> bool {
 fn broadcast_hint_hits_label(bc: &str, channel_label: &str) -> bool {
     let tokens = broadcast_significant_tokens(bc);
     if !tokens.is_empty() {
-        let score = broadcast_token_overlap_score(&tokens, channel_label);
-        if score >= broadcast_tokens_required_hit_count(tokens.len()) {
-            return true;
+        if let Some(hit) = broadcast_brand_hit(&tokens, channel_label) {
+            return hit;
+        } else {
+            let compounds: Vec<&String> = tokens.iter().filter(|t| is_tv_compound(t)).collect();
+            if !compounds.is_empty() {
+                let channel = broadcast_significant_tokens(channel_label);
+                return compounds.iter().all(|c| channel.iter().any(|t| t == *c));
+            }
+            let score = broadcast_token_overlap_score(&tokens, channel_label);
+            if score >= broadcast_tokens_required_hit_count(tokens.len()) {
+                return true;
+            }
         }
     }
     let name = normalize_broadcast_channel_label(channel_label);
@@ -747,10 +809,42 @@ fn broadcast_channel_hit_kind(game: &MatchGame, channel_label: &str) -> Option<B
     best
 }
 
+fn hint_digits_fit_name(bc: &str, name: &str) -> bool {
+    let digits: Vec<String> = broadcast_significant_tokens(bc)
+        .into_iter()
+        .filter(|t| token_is_digits(t))
+        .collect();
+    if digits.is_empty() {
+        return true;
+    }
+    let name_tokens = broadcast_significant_tokens(name);
+    if !name_tokens.iter().any(|t| token_is_digits(t)) {
+        return true;
+    }
+    let hay = normalize_broadcast_channel_label(name);
+    digits.iter().all(|d| hay.contains(d.as_str()))
+}
+
 fn broadcast_channel_candidate_hit_kind(game: &MatchGame, c: &Candidate) -> Option<BroadcastHitKind> {
     let mut best = broadcast_channel_hit_kind(game, &c.name);
     if !c.category_label.trim().is_empty() {
-        if let Some(cat_kind) = broadcast_channel_hit_kind(game, &c.category_label) {
+        let mut cat_kind: Option<BroadcastHitKind> = None;
+        for bc in &game.broadcast_channels {
+            if !hint_digits_fit_name(bc, &c.name) {
+                continue;
+            }
+            let Some(kind) = broadcast_hit_kind_on_label(bc, &c.category_label) else {
+                continue;
+            };
+            cat_kind = match (cat_kind, kind) {
+                (None, k) => Some(k),
+                (Some(BroadcastHitKind::WeakBrand), BroadcastHitKind::Strong) => {
+                    Some(BroadcastHitKind::Strong)
+                }
+                (current, _) => current,
+            };
+        }
+        if let Some(cat_kind) = cat_kind {
             best = match (best, cat_kind) {
                 (None, k) => Some(k),
                 (Some(BroadcastHitKind::WeakBrand), BroadcastHitKind::Strong) => {
@@ -1422,6 +1516,102 @@ mod tests {
         assert!(
             !names.contains(&"Viaplay SE 07"),
             "bare Viaplay must not dump numbered clones: {names:?}"
+        );
+    }
+
+    #[test]
+    fn provider_channel_label_matches_guide_name_without_epg() {
+        let mut g = game();
+        g.home_team = "Zhang Z.".into();
+        g.away_team = "Gea A.".into();
+        g.title = "Zhang Z. - Gea A.".into();
+        g.broadcast_channels = vec![
+            "Polsat Sport 1".into(),
+            "Polsat Sport Premium 1".into(),
+            "Sport TV1".into(),
+        ];
+        let cands = vec![
+            Candidate {
+                name: "PL - POLSAT SPORT FHD".into(),
+                description: "Tenis: Turniej ATP w Pekinie".into(),
+                start_timestamp: None,
+                stream_url: "https://x/polsat.m3u8".into(),
+                category_label: "Sport".into(),
+                logo: String::new(),
+                stream_id: "polsat".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "PT | SPORT TV1 HD".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/sporttv.m3u8".into(),
+                category_label: "Sport".into(),
+                logo: String::new(),
+                stream_id: "sporttv".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "SKY SPORT 1".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/sky.m3u8".into(),
+                category_label: "Sport".into(),
+                logo: String::new(),
+                stream_id: "sky".into(),
+                epg_channel_id: String::new(),
+            },
+        ];
+        let hits = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::StrongOnly);
+        let names: Vec<&str> = hits
+            .iter()
+            .filter_map(|h| h.get("name").and_then(|v| v.as_str()))
+            .collect();
+        assert!(names.contains(&"PL - POLSAT SPORT FHD"), "{names:?}");
+        assert!(names.contains(&"PT | SPORT TV1 HD"), "{names:?}");
+        assert!(!names.contains(&"SKY SPORT 1"), "{names:?}");
+    }
+
+    #[test]
+    fn provider_channel_name_hits_portal_without_number() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "Zhang Z. - Gea A.",
+            "homeTeam": "Zhang Z.",
+            "awayTeam": "Gea A.",
+            "sport": "tenis",
+            "broadcastChannels": ["Polsat Sport 1", "Sport TV1", "Polsat Sport Premium 1"]
+        }));
+        let cands = vec![
+            Candidate {
+                name: "PL - POLSAT SPORT FHD".into(),
+                description: "Tenis: Turniej ATP w Pekinie".into(),
+                start_timestamp: None,
+                stream_url: "https://x/polsat.m3u8".into(),
+                category_label: "Sport".into(),
+                logo: String::new(),
+                stream_id: "polsat".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "CANAL PLUS SPORT".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/canal.m3u8".into(),
+                category_label: "Sport".into(),
+                logo: String::new(),
+                stream_id: "canal".into(),
+                epg_channel_id: String::new(),
+            },
+        ];
+        let hits = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::StrongOnly);
+        let names: Vec<&str> = hits
+            .iter()
+            .filter_map(|h| h.get("name").and_then(|v| v.as_str()))
+            .collect();
+        assert!(names.contains(&"PL - POLSAT SPORT FHD"), "{names:?}");
+        assert!(
+            !names.contains(&"CANAL PLUS SPORT"),
+            "a sport-word must not pull every sports channel: {names:?}"
         );
     }
 

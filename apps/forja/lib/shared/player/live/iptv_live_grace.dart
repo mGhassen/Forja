@@ -1,3 +1,31 @@
+/// What a live MediaKit hardware-decode log line should do.
+enum IptvHwDecodeFailAction {
+  /// One-shot during a known seek or reconnect. Drop the line.
+  ignore,
+
+  /// Cold open. Leave the decoder alone.
+  holdCold,
+
+  /// Desktop, past cold open. Reopen once with software decode.
+  softwareDecode,
+
+  /// Android / TV, past cold open. Grace, then stop+open on hardware.
+  grace,
+}
+
+/// [desktopSoftwareFallback] is Mac, Windows, and Linux only.
+/// Android stays on hardware decode.
+IptvHwDecodeFailAction iptvLiveHwDecodeFailAction({
+  required bool insideIgnoreWindow,
+  required bool pastColdOpen,
+  required bool desktopSoftwareFallback,
+}) {
+  if (insideIgnoreWindow) return IptvHwDecodeFailAction.ignore;
+  if (!pastColdOpen) return IptvHwDecodeFailAction.holdCold;
+  if (desktopSoftwareFallback) return IptvHwDecodeFailAction.softwareDecode;
+  return IptvHwDecodeFailAction.grace;
+}
+
 /// What to do when a live MediaKit glitch's grace window ends.
 enum IptvLiveGraceAction {
   /// Playback moved forward. Leave the demuxer alone.

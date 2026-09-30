@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja/shared/player/live_sports/live_sports_player_screen.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
@@ -10,7 +11,8 @@ import 'package:rust/rust.dart' show BuiltInPlayerContext;
 /// Forja platform service: open the native live player for the right surface.
 ///
 /// Live Sports (`BuiltInPlayerContext.live`, Stremio / liveEngine) →
-/// [LiveSportsPlayerScreen]. IPTV / VOD → [PtPlayerScreen].
+/// [LiveSportsPlayerScreen], or [PtPlayerScreen] when the painted pack's
+/// `playerSetting` is `iptv`. IPTV / VOD → [PtPlayerScreen].
 Future<void> openForjaLiveNativePlayer(
   BuildContext context, {
   required List<LivePlaySource> sources,
@@ -43,7 +45,13 @@ Future<void> openForjaLiveNativePlayer(
     }
     if (!context.mounted) return;
 
-    if (sportsSurface) {
+    final sportsPlayer =
+        sportsSurface ? await KitPlayerSetting.read() : null;
+    if (!context.mounted) return;
+    final useIptvPlayer =
+        sportsPlayer == 'iptv';
+
+    if (sportsSurface && !useIptvPlayer) {
       LiveSportsPlayerScreen buildSports(ChannelGuide? guide) =>
           LiveSportsPlayerScreen(
             sources: sources,
@@ -73,6 +81,9 @@ Future<void> openForjaLiveNativePlayer(
       return;
     }
 
+    final playContext =
+        useIptvPlayer ? BuiltInPlayerContext.iptv : engineContext;
+
     PtPlayerScreen buildIptv(ChannelGuide? guide) => PtPlayerScreen(
           sources: sources,
           title: title,
@@ -80,7 +91,7 @@ Future<void> openForjaLiveNativePlayer(
           logoUrl: logoUrl,
           channelGuide: guide,
           titleTracksSource: titleTracksSource,
-          engineContext: engineContext,
+          engineContext: playContext,
           liveSourceKind: kind,
           liveEngineResolveSource: liveEngineResolveSource,
           vodPlayback: vodPlayback,

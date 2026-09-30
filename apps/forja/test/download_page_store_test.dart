@@ -25,10 +25,7 @@ void main() {
       episode: 1,
       at: DateTime.utc(2026, 1, 1),
     );
-    expect(
-      firstCompletedDownload([early, other, first], 'tt1')?.episode,
-      1,
-    );
+    expect(firstCompletedDownload([early, other, first], 'tt1')?.episode, 1);
   });
 
   test('details keep only downloaded episodes', () {
@@ -41,11 +38,9 @@ void main() {
         MetaVideo(id: 'b', title: 'Two', season: 1, episode: 2),
       ],
     );
-    final filtered = filterMetaToDownloadedEpisodes(
-      item,
-      [_task(season: 1, episode: 2, at: DateTime.utc(2026))],
-      'tt1',
-    );
+    final filtered = filterMetaToDownloadedEpisodes(item, [
+      _task(season: 1, episode: 2, at: DateTime.utc(2026)),
+    ], 'tt1');
     expect(filtered.videos.map((v) => v.episode).toList(), [2]);
   });
 
@@ -55,6 +50,23 @@ void main() {
       mediaId: 'tt1',
     );
     expect(rows.single['title'], 'S02E03 · Castle');
+  });
+
+  test('hub card keeps an in-progress title and strips the episode suffix', () {
+    final saving = _task(
+      season: 1,
+      episode: 3,
+      at: DateTime.utc(2026),
+      status: DownloadStatus.downloading,
+      title: 'Made in Abyss - S01E03',
+      received: 50,
+      total: 100,
+    );
+    expect(saving.showsOnDownloadHub, isTrue);
+    expect(downloadHubCardTitle(saving), 'Made in Abyss');
+    expect(downloadHubActiveProgress([saving], 'tt1')?.fraction, 0.5);
+    final done = _task(season: 1, episode: 1, at: DateTime.utc(2026));
+    expect(downloadHubActiveProgress([done], 'tt1'), isNull);
   });
 
   test('imdb row id is the download media id', () {
@@ -89,18 +101,24 @@ DownloadTask _task({
   int? season,
   int? episode,
   required DateTime at,
+  String title = 'Show',
+  DownloadStatus status = DownloadStatus.completed,
+  int received = 0,
+  int total = 0,
 }) {
   return DownloadTask(
     id: 'd-$season-$episode',
-    title: 'Show',
+    title: title,
     mediaId: mediaId,
     type: 'series',
     season: season,
     episode: episode,
     sourceName: 'Castle',
     targetFilePath: '/tmp/show.mp4',
-    status: DownloadStatus.completed,
+    status: status,
+    receivedBytes: received,
+    totalBytes: total,
     createdAt: at,
-    completedAt: at,
+    completedAt: status == DownloadStatus.completed ? at : null,
   );
 }

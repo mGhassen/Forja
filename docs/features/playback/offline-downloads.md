@@ -23,6 +23,8 @@ Offline Downloads is on phone and desktop.
   Filters include **Offline** / **Online**. Row tap on a saved stream plays
   the file on this device. The cloud button is the network stream.
 
+Each source is its own file. Saving a second source for the same episode keeps both. Downloads lists every saved file under that episode, with the provider and stream. Tapping Download on a source you already saved says it is already saved.
+
 Hover a stream row and tap Download — the card switches to a confirm face
 (like IPTV portal delete / share), shows the stream size (exact for files,
 ~estimate for HLS) and free space, then Yes starts the transfer. Tap the row
@@ -42,12 +44,14 @@ The header is a storage meter: offline library vs other space on the volume vs f
 
 ## Downloads tab
 
-Each finished title is a poster card. It appears when the save finishes, including when Downloads is already open. Open it and that card stays marked.
+Each title is a poster card, including one that is still saving. It appears when the save starts, including when Downloads is already open. A saving poster has a progress bar. Open it and that card stays marked. Each file that is still saving shows percent, speed, and a bar.
 The panel starts at the top of the page, beside the kind menu, with a rounded
 top-left. It shows the backdrop, the title logo when there is one, the year,
-and a short synopsis. A series lists saved episodes under a season menu. Each
-saved file shows the provider and stream it was downloaded from. Hover
-highlights the row the same way as Sources. Tap a row to play that file.
+and a short synopsis. A series lists its files under a season menu. Each
+saved file is a flat Sources row: the provider and stream, the file size, and
+Offline. Play online and Delete sit on that row. Hover highlights it the same
+way as Sources. Tap the row to play the saved file. Play online opens the
+network stream. Delete removes that file from this device.
 
 ## Offline play
 

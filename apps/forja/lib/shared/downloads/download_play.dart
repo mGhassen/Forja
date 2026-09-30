@@ -40,7 +40,8 @@ Future<void> playCompletedDownloadTask(
     ForjaToast.error(kOfflineDownloadMissingMessage);
     return;
   }
-  final playMovie = movie ??
+  final playMovie =
+      movie ??
       Movie(
         id: int.tryParse(task.mediaId) ?? 0,
         title: task.title,
@@ -72,13 +73,68 @@ Future<void> playCompletedDownloadTask(
         type: lower.contains('.m3u8')
             ? 'hls'
             : lower.contains('.mkv')
-                ? 'mkv'
-                : 'mp4',
+            ? 'mkv'
+            : 'mp4',
         headers: task.headers,
       ),
     ],
     streamsPrevalidated: true,
     pinSource: true,
     externalSubtitles: _savedSubtitleRows(local.stream!),
+  );
+}
+
+/// True when this saved file still has an HTTP stream to play online.
+bool downloadTaskHasRemoteStream(DownloadTask task) {
+  final url = task.rawUrl?.trim() ?? '';
+  return url.startsWith('http://') || url.startsWith('https://');
+}
+
+/// Opens the original network stream for a saved file.
+Future<void> playDownloadRemoteStream(
+  BuildContext context,
+  DownloadTask task, {
+  Movie? movie,
+}) async {
+  final url = task.rawUrl?.trim() ?? '';
+  if (!downloadTaskHasRemoteStream(task)) {
+    ForjaToast.error('No online stream');
+    return;
+  }
+  if (!context.mounted) return;
+  final playMovie =
+      movie ??
+      Movie(
+        id: int.tryParse(task.mediaId) ?? 0,
+        title: task.title,
+        mediaType: task.type == 'series' || task.type == 'drama'
+            ? 'tv'
+            : task.type,
+        posterPath: task.posterUrl ?? '',
+        backdropPath: task.backdropUrl ?? '',
+        voteAverage: 0,
+        releaseDate: task.year ?? '',
+      );
+  final named = offlineDownloadRowLabel(task);
+  final lower = url.toLowerCase();
+  await AppRouter.openPlayer(
+    context,
+    streamUrl: url,
+    title: task.episodeTitle?.trim().isNotEmpty == true
+        ? task.episodeTitle!.trim()
+        : task.title,
+    movie: playMovie,
+    headers: task.headers,
+    selectedSeason: task.season,
+    selectedEpisode: task.episode,
+    sources: [
+      StreamSource(
+        url: url,
+        title: named,
+        type: lower.contains('.m3u8') ? 'hls' : 'mp4',
+        headers: task.headers,
+      ),
+    ],
+    streamsPrevalidated: true,
   );
 }

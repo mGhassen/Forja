@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/portals/store/portal_live_tv_search.dart';
+import 'package:forja/shared/engine/unlock/live_broadcast_hints.dart';
+import 'package:forja/shared/engine/unlock/live_broadcast_hints.dart';
 
 void main() {
   test('channelMatchesGame — broadcast name', () {
@@ -37,6 +39,53 @@ void main() {
         },
       ),
       isFalse,
+    );
+  });
+
+  test('portal rail uses a real name, otherwise the site', () {
+    expect(
+      PortalLiveTvSearch.portalRailLabelForTest(
+        url: 'http://tstv.example:80',
+        username: 'LOGINID',
+        label: 'LOGINID',
+      ),
+      'tstv.example',
+    );
+    expect(
+      PortalLiveTvSearch.portalRailLabelForTest(
+        url: 'http://tstv.example:80',
+        username: 'LOGINID',
+        label: 'My Sports',
+      ),
+      'My Sports',
+    );
+  });
+
+  test('provider row labels become channel hints', () {
+    final polsat = LiveBroadcastHints.channelNamesFromLabel(
+      'Source · Polski | Polsat Sport 1 · SD',
+    );
+    expect(polsat, contains('Polsat Sport 1'));
+    expect(polsat, isNot(contains('Polski')));
+    expect(
+      LiveBroadcastHints.channelNamesFromLabel(
+        'Português | Sport TV1 · HD',
+      ),
+      ['Sport TV1'],
+    );
+    LiveBroadcastHints.remember(
+      title: 'Zhang Z. - Gea A.',
+      home: 'Zhang Z.',
+      away: 'Gea A.',
+      labels: const ['Polski | Polsat Sport 1 · HD'],
+    );
+    expect(
+      LiveBroadcastHints.lookup(
+        title: 'Zhang Z. - Gea A.',
+        home: 'Zhang Z.',
+        away: 'Gea A.',
+      ),
+      contains('Polsat Sport 1'),
     );
   });
 

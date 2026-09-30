@@ -606,6 +606,17 @@ bool isSideloadedExternalSubtitleTrack(SubtitleTrack track) {
   return id.startsWith('file://') || id.startsWith('/');
 }
 
+/// File extension for a downloaded subtitle body. WebVTT saved as `.srt` will not open.
+String externalSubtitleFileExtension(List<int> bytes) {
+  final sample = utf8.decode(bytes, allowMalformed: true).trimLeft();
+  if (sample.startsWith('WEBVTT')) return 'vtt';
+  final lower = sample.toLowerCase();
+  if (lower.contains('[script info]') || lower.contains('[v4+ styles]')) {
+    return 'ass';
+  }
+  return 'srt';
+}
+
 /// True when [bytes] look like SRT/VTT/ASS — not HTML/CDN error pages saved as `.srt`.
 bool isPlausibleSubtitleBytes(List<int> bytes) {
   if (bytes.isEmpty) return false;

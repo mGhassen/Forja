@@ -562,7 +562,8 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         .where((c) => c.langCode == languageCode)
         .firstOrNull;
     if (track == null) return;
-    await player.setSubtitleTrack(
+    await setPlayerExternalSubtitle(
+      player,
       SubtitleTrack.uri(
         track.url,
         title: track.langName,

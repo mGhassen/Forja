@@ -14,7 +14,7 @@ Core playback preferences: which backends **Play** tries on the TMDB details scr
 
 - Player engine, audio, subtitles, auto next/skip, content warnings, background play — see rows under **Settings → Addons → Playback**
 - **Play sources** moved: **Direct torrent**, **Stremio**, and **Nuvio** toggles + P2P disclaimer → **Settings → Addons**; pack install → **Settings → Forja Packs** (Forja providers always on)
-- On **Android**, choose **Movies & series engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — for Home, Search, Anime, Asian Drama, and **IPTV Movies/Series** (also changeable from the in-player **Player** menu). When the IPTV tab is visible, **IPTV engine** sets **live channels** only (independent of Movies). **Live Sports** defaults to **ExoPlayer** and remembers its own in-player choice. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps). Streams with a Widevine license (e.g. Shahid) always use ExoPlayer on Android.
+- On **Android**, choose **Movies & series engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — for Home, Search, Anime, Asian Drama, and **IPTV Movies/Series** (also changeable from the in-player **Player** menu). When the IPTV tab is visible, **IPTV engine** sets **live channels** only (independent of Movies). The **Live Sports** player defaults to **ExoPlayer** and remembers its own in-player choice. Live Sports **Setup → System** set to **IPTV** uses the IPTV engine. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps). Streams with a Widevine license (e.g. Shahid) always use ExoPlayer on Android.
 - Set **Preferred audio language**
 - Set **Preferred subtitle language** (default **English**). In-stream mux subs are tried first, then online tracks. Pick **None** to start with subs off
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
@@ -30,6 +30,7 @@ Core playback preferences: which backends **Play** tries on the TMDB details scr
 - Set **IPTV live recovery** under **Settings → Addons → IPTV** when the **IPTV engine** is **ExoPlayer** (Android). **Auto** / **Stable** / **Classic** only affect Exo reconnect. **MediaKit** ignores this setting (ffmpeg reconnect + silent reopen on underrun or hardware-decode death)
 - On **Android TV**, **IPTV match display refresh** is on by default and shown only to **admin** accounts under **Addons → IPTV**. MediaKit only; matches TV refresh rate to channel fps. Applies the next time you open the IPTV player
 - On **Android TV**, **IPTV live buffer** is shown only to **admin** accounts under **Addons → IPTV**. MediaKit only; **Auto** uses a **30s** demuxer window (same on phone/desktop and TV), or pick **15 / 20 / 30 seconds**. Helps underruns, not frame judder. Applies the next time you open the IPTV player
+- Under Live Sports **Setup**, **System** is **Live Sports** or **IPTV**. The next match opens in that player. **IPTV** follows **IPTV engine** under Addons → IPTV. Default is **Live Sports**.
 - Portal URL / username / password for the active Xtream portal are pack settings on the same **Addons → IPTV** page
 - Set **Max stream quality** to limit Auto ranking and HLS start bitrate (**4K** by default; Auto, 1440p, 1080p, 720p, …)
 
@@ -43,7 +44,7 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 - **Green Play** (hero play icon) races Forja providers. Optional preferred list under **Addons** / **Forja Packs** → **Green Play** (search → add). Empty preferred = all enabled Forja plugins. Sources chips stay panel-only.
 - **Max stream quality** caps which sources the engine prefers when ranking (device probe still applies under Auto). Defaults to **4K** (top ladder rung). HLS Auto also uses that cap for start bitrate — Auto is a mid-high soft ceiling for a faster first frame. Lock a Quality chip in the player to force a specific variant.
 - External player is chosen per stream from the in-player **Player** menu on phone and desktop — playback always starts in the built-in player. **Android TV** has no external-app handoff from that menu
-- **Movies & series engine** / **IPTV engine** (Android only) are independent — desktop/iOS always use MediaKit; **ExoPlayer** is the Android default (MediaKit is optional); **Live Sports** defaults to **ExoPlayer** until you pick MediaKit from the in-player **Player** menu
+- **Movies & series engine** / **IPTV engine** (Android only) are independent — desktop/iOS always use MediaKit; **ExoPlayer** is the Android default (MediaKit is optional). The **Live Sports** player defaults to **ExoPlayer** until you pick MediaKit from that player’s menu. **Setup → System** set to **IPTV** uses the IPTV engine instead.
 
 ## Related
 

@@ -264,12 +264,11 @@ Future<DownloadTask?> enqueueVodDownload({
       ForjaToast.error(reject, duration: const Duration(seconds: 4));
       return null;
     }
-    // One offline slot per title (season/episode). A second Sources tap must
-    // not pretend a new transfer started when HdHub (etc.) is already going.
-    final existing = DownloadService.instance.findActiveOrCompleted(
-      mediaId: mediaId,
-      season: season,
-      episode: episode,
+    // The same stream does not start again. A different source for this
+    // episode is a new file.
+    final existing = downloadTaskForRawUrl(
+      DownloadService.instance.tasksNotifier.value,
+      rawUrl,
     );
     final task = await DownloadService.instance.startDownload(
       title: title,

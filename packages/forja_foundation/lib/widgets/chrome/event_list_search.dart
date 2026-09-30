@@ -218,10 +218,24 @@ class EventListSearchState extends State<EventListSearch>
     }
     setState(() => _open = true);
     unawaited(_anim.forward());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _focus.requestFocus();
-    });
+    _scheduleFieldFocus();
+  }
+
+  /// The field is mounted only after the expand animation starts. Retry until
+  /// that [Focus] is in the tree, then keep it selected.
+  void _scheduleFieldFocus() {
+    var tries = 0;
+    void attempt() {
+      if (!mounted || (!_open && !widget.alwaysOpen)) return;
+      if (_focus.context != null) {
+        if (!_focus.hasPrimaryFocus) _focus.requestFocus();
+        return;
+      }
+      if (tries++ >= 12) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
   /// Keep focus on the field (empty search results).
@@ -404,24 +418,35 @@ class EventListSearchState extends State<EventListSearch>
           },
           onEscape: () => _close(clearQuery: true),
         ) ??
-        TextField(
-          controller: _ctrl,
-          focusNode: _focus,
-          textInputAction: TextInputAction.search,
-          onSubmitted: (v) {
-            _commit(v);
+        // Desktop Enter is swallowed by the text-field shortcut
+        // (DoNothingAndStopPropagation) before the IME calls onSubmitted.
+        // Commit here so OK / Return actually searches.
+        CallbackShortcuts(
+          bindings: <ShortcutActivator, VoidCallback>{
+            const SingleActivator(LogicalKeyboardKey.enter): () =>
+                _commit(_ctrl.text),
+            const SingleActivator(LogicalKeyboardKey.numpadEnter): () =>
+                _commit(_ctrl.text),
           },
-          style: TextStyle(color: Colors.white, fontSize: fontSize),
-          cursorColor: ForjaShellColors.brandGreen,
-          decoration: InputDecoration(
-            isDense: true,
-            border: InputBorder.none,
-            hintText: widget.placeholder,
-            hintStyle: TextStyle(
-              color: Colors.white.withValues(alpha: 0.38),
-              fontSize: fontSize,
+          child: TextField(
+            controller: _ctrl,
+            focusNode: _focus,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (v) {
+              _commit(v);
+            },
+            style: TextStyle(color: Colors.white, fontSize: fontSize),
+            cursorColor: ForjaShellColors.brandGreen,
+            decoration: InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              hintText: widget.placeholder,
+              hintStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.38),
+                fontSize: fontSize,
+              ),
+              contentPadding: EdgeInsets.symmetric(vertical: fieldPadV),
             ),
-            contentPadding: EdgeInsets.symmetric(vertical: fieldPadV),
           ),
         );
 
@@ -431,7 +456,8 @@ class EventListSearchState extends State<EventListSearch>
     final closePad = ShellTokens.chromeScale(6, tv: tv);
     final closeRadius = ShellTokens.chromeScale(16, tv: tv);
 
-    final fieldFocused = _tv && _fieldFocused;
+    // Focus owns the selected ring. Hover on other chrome must not clear it.
+    final fieldFocused = _fieldFocused;
     final chrome = Container(
       height: widget.collapsedSize,
       decoration: BoxDecoration(

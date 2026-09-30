@@ -38,7 +38,7 @@ mixin _DesktopPlayerTracks
           title: s['display']?.toString(),
           language: s['language']?.toString(),
         );
-        await _s._player.setSubtitleTrack(track);
+        await setPlayerExternalSubtitle(_s._player, track);
         if (_s._disposed || !mounted) return false;
         _s._updateSubVisibility(track);
         if (mounted) setState(() => _s._selectedExternalSubUrl = url);
@@ -154,8 +154,9 @@ mixin _DesktopPlayerTracks
         RegExp(r'[^A-Za-z0-9_-]'),
         '_',
       );
+      final ext = externalSubtitleFileExtension(res.bodyBytes);
       final file = File(
-        '${dir.path}/forja_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.srt',
+        '${dir.path}/forja_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.$ext',
       );
       await file.writeAsBytes(res.bodyBytes);
       final uri = Uri.file(file.path).toString();

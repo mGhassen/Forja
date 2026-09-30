@@ -59,6 +59,41 @@ String mediaIdForMetaItem(MetaItem item) {
   return mediaIdForDownloadMovie(imdbId: imdb ?? movie.imdbId, id: movie.id);
 }
 
+/// Series title when the task stored `Show - S01E03`.
+String downloadHubCardTitle(DownloadTask task, {String? metaName}) {
+  final fromMeta = metaName?.trim() ?? '';
+  if (fromMeta.isNotEmpty) return fromMeta;
+  final raw = task.title.trim();
+  final stripped = raw.replaceFirst(RegExp(r'\s+-\s+S\d{2}E\d{2}$'), '');
+  return stripped.isEmpty ? raw : stripped;
+}
+
+/// In-progress files for one title. [fraction] is null when size is unknown.
+({int count, double? fraction})? downloadHubActiveProgress(
+  Iterable<DownloadTask> tasks,
+  String mediaId,
+) {
+  final id = mediaId.trim();
+  if (id.isEmpty) return null;
+  final active = [
+    for (final task in tasks)
+      if (task.mediaId == id && task.isActive) task,
+  ];
+  if (active.isEmpty) return null;
+  var total = 0;
+  var received = 0;
+  for (final task in active) {
+    if (task.totalBytes <= 0) continue;
+    total += task.totalBytes;
+    final got = task.receivedBytes;
+    received += got < 0 ? 0 : (got > task.totalBytes ? task.totalBytes : got);
+  }
+  return (
+    count: active.length,
+    fraction: total > 0 ? (received / total).clamp(0.0, 1.0) : null,
+  );
+}
+
 /// First finished file: lowest season, then episode, then earliest finish.
 DownloadTask? firstCompletedDownload(
   Iterable<DownloadTask> tasks,
@@ -83,11 +118,7 @@ DownloadTask? firstCompletedDownload(
   return hits.first;
 }
 
-bool _episodeSaved(
-  Set<(int, int)> slots,
-  int? season,
-  int? episode,
-) {
+bool _episodeSaved(Set<(int, int)> slots, int? season, int? episode) {
   return slots.contains((season ?? 1, episode ?? 1));
 }
 
@@ -151,7 +182,10 @@ class DownloadPageStore {
     return file.parent;
   }
 
-  static Future<File> _detailsFile(String mediaId, {required bool create}) async {
+  static Future<File> _detailsFile(
+    String mediaId, {
+    required bool create,
+  }) async {
     final root = await DownloadPathHelper.getDownloadsDirectoryPath();
     final dir = Directory(p.join(root, 'pages', folderKey(mediaId)));
     if (create && !await dir.exists()) {
@@ -259,10 +293,7 @@ class DownloadPageStore {
       meta['logo'] = existingMap!['logo'];
     }
 
-    final envelope = {
-      'downloadType': type,
-      'meta': meta,
-    };
+    final envelope = {'downloadType': type, 'meta': meta};
     final file = File(p.join(dir.path, _detailsName));
     final tmp = File('${file.path}.tmp');
     await tmp.writeAsString(jsonEncode(envelope));
@@ -274,12 +305,12 @@ class DownloadPageStore {
     await tmp.rename(file.path);
   }
 
-  /// One card per title that has a finished file.
+  /// One card per title that is saving or already finished.
   static Future<List<Map<String, dynamic>>> titles() async {
     await DownloadService.instance.initialize();
     final grouped = <String, DownloadTask>{};
     for (final task in DownloadService.instance.tasksNotifier.value) {
-      if (!task.isCompleted || task.mediaId.trim().isEmpty) continue;
+      if (!task.showsOnDownloadHub) continue;
       grouped.putIfAbsent(task.mediaId, () => task);
     }
     final rows = <Map<String, dynamic>>[];
@@ -290,7 +321,10 @@ class DownloadPageStore {
       final metaMap = meta is Map ? Map<String, dynamic>.from(meta) : null;
       final storedType = (envelope?['downloadType'] ?? task.type).toString();
       final kind = downloadHubKind(storedType);
-      final name = (metaMap?['name'] ?? task.title).toString().trim();
+      final name = downloadHubCardTitle(
+        task,
+        metaName: metaMap?['name']?.toString(),
+      );
       final poster = (metaMap?['poster'] ?? task.posterUrl ?? '').toString();
       final logo = (metaMap?['logo'] ?? '').toString();
       final year = (metaMap?['releaseInfo'] ?? task.year ?? '').toString();
@@ -331,7 +365,9 @@ class DownloadPageStore {
     final raw = url.trim();
     if (raw.isEmpty) return null;
     if (_isLocalPath(raw)) {
-      final path = raw.startsWith('file://') ? Uri.parse(raw).toFilePath() : raw;
+      final path = raw.startsWith('file://')
+          ? Uri.parse(raw).toFilePath()
+          : raw;
       final file = File(path);
       if (await file.exists()) return file;
       return null;
@@ -343,7 +379,9 @@ class DownloadPageStore {
       client.connectionTimeout = const Duration(seconds: 12);
       final request = await client.getUrl(Uri.parse(raw));
       request.followRedirects = true;
-      final response = await request.close().timeout(const Duration(seconds: 20));
+      final response = await request.close().timeout(
+        const Duration(seconds: 20),
+      );
       if (response.statusCode < 200 || response.statusCode >= 300) {
         await response.drain<void>();
         return null;

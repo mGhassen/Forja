@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_page_store.dart';
 import 'package:forja/shared/downloads/download_play.dart';
@@ -93,7 +94,7 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
     };
     final hits = [
       for (final task in DownloadService.instance.tasksNotifier.value)
-        if (task.isCompleted && keys.contains(task.mediaId)) task,
+        if (task.showsOnDownloadHub && keys.contains(task.mediaId)) task,
     ];
     hits.sort((a, b) {
       final season = (a.season ?? 0).compareTo(b.season ?? 0);
@@ -115,6 +116,24 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
     final movie = metaItemToMovie(_meta);
     if (!mounted) return;
     await playCompletedDownloadTask(context, task, movie: movie);
+  }
+
+  Future<void> _playCloud(DownloadTask task) async {
+    final movie = metaItemToMovie(_meta);
+    if (!mounted) return;
+    await playDownloadRemoteStream(context, task, movie: movie);
+  }
+
+  Future<void> _confirmDelete(DownloadTask task) async {
+    final ok = await showSettingsConfirmDialog(
+      context: context,
+      title: 'Delete download?',
+      body: 'Removes “${task.title}” from this device.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    );
+    if (!ok) return;
+    await DownloadService.instance.deleteDownload(task.id);
   }
 
   String? get _year {
@@ -169,8 +188,7 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
     final seasons = <int>{
       for (final task in _filesForTitle)
         if (task.season != null || task.episode != null) task.season ?? 1,
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     return seasons;
   }
 
@@ -237,10 +255,7 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x66000000),
-                  ForjaShellColors.bgDark,
-                ],
+                colors: [Color(0x66000000), ForjaShellColors.bgDark],
               ),
             ),
           ),
@@ -276,10 +291,10 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: ForjaShellColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          height: 1.15,
-                        ),
+                      color: ForjaShellColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
+                    ),
                   ),
                 if (meta.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -346,7 +361,7 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
           SizedBox(height: pad),
         ] else
           Text(
-            files.length == 1 ? 'Saved' : 'Saved · ${files.length}',
+            _filesHeading(files),
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 12,
@@ -362,11 +377,25 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
           )
         else
           for (var i = 0; i < files.length; i++) ...[
-            if (i > 0) const SizedBox(height: 8),
+            if (i > 0)
+              SizedBox(
+                height: ShellTokens.chromeScale(
+                  6,
+                  tv: ShellScope.metricsOf(context).usesTvDensity,
+                ),
+              ),
             _sourceRow(files[i]),
           ],
       ],
     );
+  }
+
+  String _filesHeading(List<DownloadTask> files) {
+    final saving = files.where((task) => task.isActive).length;
+    if (saving > 0) {
+      return saving == 1 ? 'Downloading' : 'Downloading · $saving';
+    }
+    return files.length == 1 ? 'Saved' : 'Saved · ${files.length}';
   }
 
   Widget _sourceRow(DownloadTask task) {
@@ -382,14 +411,21 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
             _episodeTitle(task),
           )
         : source;
-    final subtitle = [
-      if (episode && source.isNotEmpty) source,
-      if (size.isNotEmpty) size,
-    ].join(' · ');
+    final footer = episode && source.isNotEmpty && source != title
+        ? source
+        : '';
+    if (task.isActive) {
+      return _DownloadActiveRow(task: task, title: title, footer: footer);
+    }
     return _DownloadSourceRow(
       title: title,
-      subtitle: subtitle,
+      size: size,
+      footer: footer,
       onTap: () => unawaited(_play(task)),
+      onPlayCloud: downloadTaskHasRemoteStream(task)
+          ? () => unawaited(_playCloud(task))
+          : null,
+      onDelete: () => unawaited(_confirmDelete(task)),
     );
   }
 
@@ -413,17 +449,113 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
   }
 }
 
-/// Same hover as a Sources row: fill and border, no size change.
+/// In-progress file: square row, live percent, speed, and bar.
+class _DownloadActiveRow extends StatelessWidget {
+  const _DownloadActiveRow({
+    required this.task,
+    required this.title,
+    required this.footer,
+  });
+
+  final DownloadTask task;
+  final String title;
+  final String footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = ShellScope.metricsOf(context);
+    final known = task.totalBytes > 0;
+    final pct = known
+        ? '${(task.progressPercent * 100).clamp(0, 100).toStringAsFixed(0)}%'
+        : null;
+    final speed = task.isDownloading && task.speedBytesPerSec > 0
+        ? task.speedLabel
+        : null;
+    final eta = task.isDownloading && task.etaLabel != '--'
+        ? 'ETA ${task.etaLabel}'
+        : null;
+    final status = [
+      if (task.status == DownloadStatus.queued) 'Queued',
+      if (task.isPaused) 'Paused',
+      ?speed,
+      ?pct,
+      ?eta,
+      if (footer.isNotEmpty) footer,
+    ].join(' · ');
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        metrics.torrentPanelRowPadH,
+        metrics.torrentPanelRowPadV,
+        metrics.torrentPanelRowPadH,
+        metrics.torrentPanelRowPadV,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: ForjaShellColors.textPrimary,
+              fontSize: metrics.torrentPanelRowTitleFontSize,
+              fontWeight: FontWeight.w500,
+              height: 1.25,
+            ),
+          ),
+          if (status.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              status,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: ForjaShellColors.brandGreen,
+                fontSize: metrics.torrentPanelMetaFontSize,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: known ? task.progressPercent.clamp(0.0, 1.0) : null,
+              minHeight: 4,
+              backgroundColor: ForjaShellColors.storageAvailable,
+              color: ForjaShellColors.brandGreen,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Flat Sources row: square card, size badge, Offline, cloud and delete.
 class _DownloadSourceRow extends StatefulWidget {
   const _DownloadSourceRow({
     required this.title,
-    required this.subtitle,
+    required this.size,
+    required this.footer,
     required this.onTap,
+    required this.onDelete,
+    this.onPlayCloud,
   });
 
   final String title;
-  final String subtitle;
+  final String size;
+  final String footer;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final VoidCallback? onPlayCloud;
 
   @override
   State<_DownloadSourceRow> createState() => _DownloadSourceRowState();
@@ -450,14 +582,17 @@ class _DownloadSourceRowState extends State<_DownloadSourceRow> {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ShellScope.metricsOf(context);
+    final tv = metrics.usesTvDensity;
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 10,
+      borderRadius: 0,
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
       suppressInkHover: true,
+      mouseDownActivates: false,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => _hoveredN.value = hovered,
       child: MouseRegion(
@@ -468,68 +603,186 @@ class _DownloadSourceRowState extends State<_DownloadSourceRow> {
           listenable: _hoveredN,
           builder: (context, _) {
             final active = _active(_hoveredN.value);
+            final titleSize = metrics.torrentPanelRowTitleFontSize;
+            final metaSize = metrics.torrentPanelMetaFontSize;
+            final padH = metrics.torrentPanelRowPadH;
+            final padV = metrics.torrentPanelRowPadV;
+            final titleGap = tv ? 5.0 : 8.0;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeOut,
+              width: double.infinity,
               decoration: BoxDecoration(
                 color: active
                     ? ForjaShellColors.chipSelectedBg
-                    : ForjaShellColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(10),
+                    : Colors.white.withValues(alpha: 0.04),
                 border: Border.all(
                   color: active
                       ? ForjaShellColors.chipSelectedBorder
-                      : ForjaShellColors.borderSubtle,
+                      : Colors.white.withValues(alpha: 0.07),
                   width: active ? 1.5 : 1,
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
+                padding: EdgeInsets.fromLTRB(padH, padV, 4, padV),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.play_arrow_rounded,
-                      color: ForjaShellColors.brandGreen,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            widget.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: ForjaShellColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                              height: 1.25,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: ForjaShellColors.textPrimary,
+                                    fontSize: titleSize,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.25,
+                                  ),
+                                ),
+                                if (widget.size.isNotEmpty) ...[
+                                  SizedBox(height: titleGap),
+                                  _DownloadSizeBadge(
+                                    label: widget.size,
+                                    tv: tv,
+                                  ),
+                                ],
+                                if (widget.footer.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    widget.footer,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: ForjaShellColors.textSecondary,
+                                      fontSize: metaSize,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                          if (widget.subtitle.isNotEmpty) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              widget.subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: ForjaShellColors.textSecondary,
-                                fontSize: 12,
-                              ),
+                          SizedBox(width: titleGap),
+                          Text(
+                            'Offline',
+                            style: TextStyle(
+                              color: ForjaShellColors.brandGreen,
+                              fontSize: metaSize,
+                              fontWeight: FontWeight.w600,
+                              height: 1.1,
                             ),
-                          ],
+                          ),
                         ],
                       ),
+                    ),
+                    _DownloadRowIcon(
+                      tooltip: 'Play online',
+                      icon: Icons.cloud_outlined,
+                      onTap: widget.onPlayCloud,
+                    ),
+                    _DownloadRowIcon(
+                      tooltip: 'Delete',
+                      icon: Icons.delete_outline_rounded,
+                      onTap: widget.onDelete,
                     ),
                   ],
                 ),
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _DownloadSizeBadge extends StatelessWidget {
+  const _DownloadSizeBadge({required this.label, required this.tv});
+
+  final String label;
+  final bool tv;
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = ShellScope.metricsOf(context);
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: tv
+            ? ShellTokens.torrentPanelRowBadgePadHTv
+            : ShellTokens.torrentPanelRowBadgePadHDesktop,
+        vertical: tv
+            ? ShellTokens.torrentPanelRowBadgePadVTv
+            : ShellTokens.torrentPanelRowBadgePadVDesktop,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(
+          tv
+              ? ShellTokens.torrentPanelRowBadgeRadiusTv
+              : ShellTokens.torrentPanelRowBadgeRadiusDesktop,
+        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: ForjaShellColors.textPrimary,
+          fontSize: metrics.torrentPanelChipFontSize,
+          fontWeight: FontWeight.w600,
+          height: 1.1,
+        ),
+      ),
+    );
+  }
+}
+
+class _DownloadRowIcon extends StatefulWidget {
+  const _DownloadRowIcon({
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  State<_DownloadRowIcon> createState() => _DownloadRowIconState();
+}
+
+class _DownloadRowIconState extends State<_DownloadRowIcon> {
+  var _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    if (!enabled) return const SizedBox.shrink();
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final hit = ShellTokens.chromeScale(40, tv: tv);
+    final iconSize = ShellTokens.chromeScale(20, tv: tv);
+    final color = _hovered ? ForjaShellColors.brandGreen : Colors.white60;
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: SizedBox(
+            width: hit,
+            height: hit,
+            child: Icon(widget.icon, size: iconSize, color: color),
+          ),
         ),
       ),
     );

@@ -1659,6 +1659,10 @@ class PackPaintTree extends StatelessWidget {
   }
 
   Widget _mountList(BuildContext context, Map<String, dynamic> spec) {
+    final playerSetting = (spec['playerSetting'] ?? '').toString().trim();
+    if (playerSetting.isNotEmpty) {
+      KitPlayerSetting.bind(pluginId: pluginId, fieldId: playerSetting);
+    }
     final openSetting = (spec['openSetting'] ?? '').toString().trim();
     if (openSetting.isEmpty) {
       return _mountListBody(context, spec);

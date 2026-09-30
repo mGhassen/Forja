@@ -1,8 +1,12 @@
+import 'package:flutter/widgets.dart';
+
 /// Desktop: which control under the pointer should take keyboard / D-pad focus.
 ///
 /// [FocusableControl], [ForjaInteractive], and shell nav claim here so the first
 /// navigation key after a **new** hover lands on that target. Later keys do not
 /// snap back while the pointer stays put.
+///
+/// A focused text field stays selected. Hover does not move that focus.
 abstract final class ShellHoverFocus {
   ShellHoverFocus._();
 
@@ -25,10 +29,17 @@ abstract final class ShellHoverFocus {
   /// Returns true when a request was issued.
   static bool focusOwner() {
     if (!_pending) return false;
+    if (_primaryIsTextInput()) return false;
     final request = _request;
     _pending = false;
     if (request == null) return false;
     request();
     return true;
+  }
+
+  static bool _primaryIsTextInput() {
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null) return false;
+    return ctx.findAncestorWidgetOfExactType<EditableText>() != null;
   }
 }

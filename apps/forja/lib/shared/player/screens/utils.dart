@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show File;
+import 'dart:io' show Directory, File, Link;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -444,27 +444,45 @@ Duration playerUiDuration(Duration raw) {
   return offset + raw;
 }
 
-/// A local file that starts with an MPEG-TS sync byte can still be named
-/// `.mp4`. Force that demuxer, and clear it on every other open.
-Future<void> _pinLocalMpegTsDemuxer(Player player, String playUrl) async {
-  if (player.platform is! NativePlayer) return;
-  final native = player.platform as NativePlayer;
-  var format = '';
-  if (playUrl.startsWith('file://')) {
-    try {
-      final file = File(Uri.parse(playUrl).toFilePath());
-      final raf = await file.open();
-      try {
-        final head = await raf.read(1);
-        if (head.isNotEmpty && head[0] == 0x47) format = 'mpegts';
-      } finally {
-        await raf.close();
-      }
-    } catch (_) {}
-  }
+/// A saved download can be MPEG-TS with an `.mp4` name. Open a `.ts` symlink
+/// so the demuxer follows the file, not a player-wide format that also
+/// swallows subtitle files.
+Future<String> _mpegTsFileOpenUrl(String playUrl) async {
+  if (!playUrl.startsWith('file://')) return playUrl;
+  late final String path;
   try {
-    await native.setProperty('demuxer-lavf-format', format);
-  } catch (_) {}
+    path = Uri.parse(playUrl).toFilePath();
+  } catch (_) {
+    return playUrl;
+  }
+  final lower = path.toLowerCase();
+  if (lower.endsWith('.ts') || lower.endsWith('.m2ts')) return playUrl;
+  try {
+    final raf = await File(path).open();
+    late final List<int> head;
+    try {
+      head = await raf.read(1);
+    } finally {
+      await raf.close();
+    }
+    if (head.isEmpty || head[0] != 0x47) return playUrl;
+    final linkPath =
+        '${Directory.systemTemp.path}/forja_ts_${path.hashCode.toUnsigned(32)}.ts';
+    final link = Link(linkPath);
+    if (await link.exists()) {
+      if (await link.target() != path) {
+        await link.delete();
+        await link.create(path);
+      }
+    } else {
+      final blocking = File(linkPath);
+      if (await blocking.exists()) await blocking.delete();
+      await link.create(path);
+    }
+    return Uri.file(linkPath).toString();
+  } catch (_) {
+    return playUrl;
+  }
 }
 
 /// Normalize URL + headers, apply mpv UA/referrer, open via media_kit.
@@ -546,8 +564,8 @@ Future<String> openPlayerStream(
   final isTrimLoopback = isLocalLoopbackPlayUrl(playUrl);
   final attachHeaders =
       hdrs.isNotEmpty && (isRemoteHttp || isFile || isTrimLoopback);
-  await _pinLocalMpegTsDemuxer(player, playUrl);
-  await player.open(Media(playUrl, httpHeaders: attachHeaders ? hdrs : null));
+  final mediaUrl = await _mpegTsFileOpenUrl(playUrl);
+  await player.open(Media(mediaUrl, httpHeaders: attachHeaders ? hdrs : null));
   if (mpvStart != null) {
     logPeakstormResume(
       'openPlayerStream startAt',
@@ -2322,6 +2340,25 @@ Future<void> applyPreferredPlayerAudioTrack(
 
   if (player.state.track.audio.id == target.id) return;
   await selectPlayerAudioTrack(player, target);
+}
+
+/// Local `file://` subtitles go to mpv as a path. Network URLs stay as-is.
+Future<void> setPlayerExternalSubtitle(
+  Player player,
+  SubtitleTrack track,
+) async {
+  var next = track;
+  if (track.uri) {
+    final path = externalSubtitleCacheFilePath(track.id);
+    if (path != null && path != track.id) {
+      next = SubtitleTrack.uri(
+        path,
+        title: track.title,
+        language: track.language,
+      );
+    }
+  }
+  await player.setSubtitleTrack(next);
 }
 
 /// Clear mpv `sub-file` before attaching another external URI mid-playback.

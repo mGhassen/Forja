@@ -1,19 +1,10 @@
 /// VOD offline download task model (Phase 1 — HTTP / HLS only).
 library;
 
-enum DownloadStatus {
-  queued,
-  downloading,
-  paused,
-  completed,
-  failed,
-  canceled,
-}
+enum DownloadStatus { queued, downloading, paused, completed, failed, canceled }
 
 /// Phase 1 supports direct HTTP(S) only. Debrid / P2P land in later phases.
-enum DownloadSourceType {
-  http,
-}
+enum DownloadSourceType { http }
 
 class DownloadTask {
   final String id;
@@ -85,6 +76,10 @@ class DownloadTask {
       status == DownloadStatus.queued ||
       status == DownloadStatus.downloading ||
       status == DownloadStatus.paused;
+
+  /// Downloads hub card: a file still saving, or a finished one.
+  bool get showsOnDownloadHub =>
+      mediaId.trim().isNotEmpty && (isActive || isCompleted);
 
   String get speedLabel {
     if (speedBytesPerSec <= 0) return '…';

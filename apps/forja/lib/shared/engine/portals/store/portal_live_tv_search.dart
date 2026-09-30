@@ -9,6 +9,7 @@ import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/portals/store/iptv_catalog_db.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_page.dart';
 import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
+import 'package:forja/shared/engine/unlock/live_broadcast_hints.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:rust/rust.dart' show runLiveSportsFetchJson;
 
@@ -90,6 +91,12 @@ abstract final class PortalLiveTvSearch {
     final home = (game['homeTeam'] ?? '').toString().trim();
     final away = (game['awayTeam'] ?? '').toString().trim();
     final title = (game['title'] ?? '').toString().trim();
+    _mergeProviderChannelHints(
+      game,
+      title: title,
+      home: home,
+      away: away,
+    );
     if (home.isEmpty && away.isEmpty && title.isEmpty) {
       debugPrint('[PortalLiveTvSearch] no title/teams for search');
       return const [];
@@ -378,7 +385,12 @@ abstract final class PortalLiveTvSearch {
         'label': channel.isEmpty ? 'Stream' : channel,
         if (category.isNotEmpty) 'detail': category,
         if (logo.isNotEmpty) 'logoUrl': logo,
-        'provider': verified.displayLabel,
+        'provider': _portalRailLabel(
+          url: portal.url,
+          username: portal.username,
+          label: verified.label,
+          name: verified.name,
+        ),
         'portalKey': PortalsHost.packPortalKey(portal),
         if (streamId.isNotEmpty) 'streamId': streamId,
         if (epgChannelId.isNotEmpty) 'epgChannelId': epgChannelId,
@@ -481,6 +493,31 @@ abstract final class PortalLiveTvSearch {
     ];
   }
 
+  static void _mergeProviderChannelHints(
+    Map<String, dynamic> game, {
+    required String title,
+    required String home,
+    required String away,
+  }) {
+    final extra = LiveBroadcastHints.lookup(
+      title: title,
+      home: home,
+      away: away,
+    );
+    if (extra.isEmpty) return;
+    final raw = game['broadcastChannels'] ?? game['broadcast_channels'];
+    final have = <String>[
+      if (raw is List)
+        for (final e in raw)
+          if (e.toString().trim().isNotEmpty) e.toString().trim(),
+    ];
+    final seen = {for (final e in have) e.toLowerCase()};
+    for (final name in extra) {
+      if (seen.add(name.toLowerCase())) have.add(name);
+    }
+    game['broadcastChannels'] = have;
+  }
+
   static String _fixtureKey(Map<String, dynamic> game) {
     final home = (game['homeTeam'] ?? '').toString();
     final away = (game['awayTeam'] ?? '').toString();
@@ -529,6 +566,56 @@ abstract final class PortalLiveTvSearch {
   @visibleForTesting
   static String fixtureKeyForTest(Map<String, dynamic> game) =>
       _fixtureKey(game);
+
+  /// Left rail on Live Sports Live TV. A stored label that is only the
+  /// login is not a portal name — use the site host instead.
+  @visibleForTesting
+  static String portalRailLabelForTest({
+    required String url,
+    required String username,
+    String label = '',
+    String name = '',
+  }) {
+    return _portalRailLabel(
+      url: url,
+      username: username,
+      label: label,
+      name: name,
+    );
+  }
+
+  static String _portalRailLabel({
+    required String url,
+    required String username,
+    required String label,
+    required String name,
+  }) {
+    final user = username.trim();
+    final named = label.trim();
+    final account = name.trim();
+    if (_isPortalName(named, user)) return named;
+    if (_isPortalName(account, user)) return account;
+    final host = _hostOf(url);
+    if (host.isNotEmpty) return host;
+    if (user.isNotEmpty) return user;
+    return 'Portal';
+  }
+
+  static bool _isPortalName(String value, String username) {
+    final v = value.trim();
+    if (v.isEmpty || v == '__m3u__') return false;
+    if (username.isNotEmpty && v.toLowerCase() == username.toLowerCase()) {
+      return false;
+    }
+    return true;
+  }
+
+  static String _hostOf(String url) {
+    var raw = url.trim();
+    if (raw.isEmpty) return '';
+    if (!raw.contains('://')) raw = 'http://$raw';
+    return Uri.tryParse(raw)?.host.trim() ?? '';
+  }
 
   /// Kept for unit tests that assert broadcast/team token overlap helpers.
   @visibleForTesting

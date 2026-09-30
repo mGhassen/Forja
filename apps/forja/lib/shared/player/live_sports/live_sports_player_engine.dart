@@ -18,6 +18,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   void _scheduleIptvLiveGraceRecovery({required String reason});
   void _onIptvLivePlayingChanged(bool playing);
   void _armTransientHwDecodeIgnore();
+  Future<void> _reopenDesktopLiveSoftwareDecode();
   Future<void> _disposePlayer();
   Future<void> _forceSoftwareDecode();
   Future<void> _releaseEngineForHotSwap();
@@ -32,9 +33,10 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   bool get _bufferedRecovery;
 
   bool get _useSoftwareDecode {
-    // MediaKit live: never force TextureSW / hwdec=no.
+    // Android live: never hwdec=no (TextureSW / leanback OOM).
+    // Desktop live: one-shot after the hardware decoder dies.
     if (_livePlaybackProfile && _s._mediaKitBackend && !_s.widget.vodPlayback) {
-      return false;
+      return _desktopLiveHwDecodeFallback && _s._softwareDecodeForced;
     }
     return _s._softwareDecodeForced ||
         _s._androidMediaKitSafeMode ||
@@ -828,8 +830,12 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     return _currentSourceIsLive;
   }
 
-  /// Live Sports native player — sustained VT fail → soft-reopen keep HW
-  /// (cold-open blips still hold). Never TextureSW for Stremio HLS.
+  /// Mac, Windows, and Linux. Android stays on hardware decode.
+  bool get _desktopLiveHwDecodeFallback {
+    if (kIsWeb) return false;
+    return Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  }
+
   /// This library is Live Sports only — never IPTV.
   bool get _liveSportsSurface => true;
 
@@ -1019,32 +1025,52 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
               text.contains('vt decoder cb') ||
               text.contains('output image buffer is null'))) {
         final until = _s._ignoreHwDecodeFailUntil;
-        if (until != null && DateTime.now().isBefore(until)) {
+        final insideIgnore =
+            until != null && DateTime.now().isBefore(until);
+        // Desktop live: a moving clock is not frames. Reopen once on
+        // software decode. Android cold-open blip → hold; past cold open
+        // → grace→goLive (keep MediaCodec).
+        if (_livePlaybackProfile &&
+            _s._mediaKitBackend &&
+            !_s.widget.vodPlayback) {
+          final pastCold =
+              DateTime.now().difference(_s._openedAt) >=
+              const Duration(seconds: 8);
+          switch (iptvLiveHwDecodeFailAction(
+            insideIgnoreWindow: insideIgnore,
+            pastColdOpen: pastCold,
+            desktopSoftwareFallback: _desktopLiveHwDecodeFallback,
+          )) {
+            case IptvHwDecodeFailAction.ignore:
+              debugPrint(
+                '[IPTV Player] ignoring transient hw fail '
+                '(socket blip / live-edge / pause-refill)',
+              );
+              return;
+            case IptvHwDecodeFailAction.softwareDecode:
+              unawaited(_reopenDesktopLiveSoftwareDecode());
+              return;
+            case IptvHwDecodeFailAction.holdCold:
+              _armTransientHwDecodeIgnore();
+              if (_streamWorking) {
+                _logHealthyHold('hw decode fail (live hold)');
+              } else {
+                _logHold('hw decode fail (live hold)', healthy: false);
+              }
+              return;
+            case IptvHwDecodeFailAction.grace:
+              _armTransientHwDecodeIgnore();
+              _scheduleIptvLiveGraceRecovery(
+                reason: 'hw decode fail (live VT)',
+              );
+              return;
+          }
+        }
+        if (insideIgnore) {
           debugPrint(
             '[IPTV Player] ignoring transient hw fail '
             '(socket blip / live-edge / pause-refill)',
           );
-          return;
-        }
-        // MediaKit live: never TextureSW. Cold-open VT blip → hold; past cold
-        // open → grace→goLive (issue 295/359 — recover corrupt frames without
-        // soft-reopen ladder / reconnect storm).
-        if (_livePlaybackProfile &&
-            _s._mediaKitBackend &&
-            !_s.widget.vodPlayback) {
-          _armTransientHwDecodeIgnore();
-          final pastCold =
-              DateTime.now().difference(_s._openedAt) >=
-              const Duration(seconds: 8);
-          if (!pastCold) {
-            if (_streamWorking) {
-              _logHealthyHold('hw decode fail (live hold)');
-            } else {
-              _logHold('hw decode fail (live hold)', healthy: false);
-            }
-            return;
-          }
-          _scheduleIptvLiveGraceRecovery(reason: 'hw decode fail (live VT)');
           return;
         }
         if (_streamWorking) {

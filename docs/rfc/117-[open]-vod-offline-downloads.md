@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **18 / 20** components · **24 / 24** acceptance |
+| **Progress** | **20 / 22** components · **25 / 26** acceptance |
 | **Current slice** | Phase 1 + Downloads hub shipped — Phase 2/3 deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -39,6 +39,8 @@
 | 18 | R117-C18 | Saved-library card docks a side panel: saved info, finished episodes, Play, file cards only | ✅ |
 | 19 | R117-C19 | Player chrome has no Download button; enqueue stays on Sources | ✅ |
 | 20 | R117-C20 | Downloads panel is the open film (marked poster, Play on the art, source rows). Player source button and list keep that provider and stream, with the offline icon | ✅ |
+| 21 | R117-C21 | A second source for the same episode saves as its own file; the panel lists each source under that episode | ✅ |
+| 22 | R117-C22 | Downloads hub lists a title that is still saving, with a live poster bar and per-file progress in the panel | ✅ |
 
 ---
 
@@ -70,6 +72,8 @@
 | 22 | R117-A22 | The card docks a side panel with the saved info and finished episodes. Play starts the first file. The white button lists file cards only | ✅ |
 | 23 | R117-A23 | Player chrome has no Download button | ✅ |
 | 24 | R117-A24 | The open Downloads poster stays marked. The panel shows the film, Play on the poster, and each file’s provider and stream. Playing that file keeps the same source on the player button and in the source list, with the offline icon | ✅ |
+| 25 | R117-A25 | Download on a different source for an episode that already has a file starts a new save. That episode lists every saved source. The same stream does not start again | ✅ |
+| 26 | R117-A26 | A title shows on Downloads while episodes are still saving, with progress on the poster and on each file | ⬜ |
 
 ---
 
@@ -83,4 +87,4 @@ Live Sports · DRM · embed WebView · torrent/magnet offline · true OS backgro
 
 ## Downloads hub
 
-Settings → Downloads stays the queue. Finished titles also appear on the Downloads hub (pack layout over `ctx.host.downloads.titles()`). A card docks a side panel for that film: the open poster stays marked, Play sits on the art, and each saved file names the provider and stream it came from. Playing that file keeps the same source on the player button and in the source list, with the offline icon. Android TV does not show that tab (`nav.hostRequires: offlineDownloads`). Titles saved before this snapshot still list from the task; the page stays thin until that title is downloaded again while its details page is open.
+Settings → Downloads stays the queue. Titles also appear on the Downloads hub while they are saving and after they finish (pack layout over `ctx.host.downloads.titles()`). A card docks a side panel for that film: the open poster stays marked, Play sits on the art, and each saved file names the provider and stream it came from. Another source for the same episode is another file, listed under that episode. Playing that file keeps the same source on the player button and in the source list, with the offline icon. Android TV does not show that tab (`nav.hostRequires: offlineDownloads`). Titles saved before this snapshot still list from the task; the page stays thin until that title is downloaded again while its details page is open.

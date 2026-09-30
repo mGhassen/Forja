@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/unlock/live_broadcast_hints.dart';
 import 'package:forja/shared/engine/unlock/live_fixture_match.dart';
 import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
@@ -37,6 +38,7 @@ abstract final class LiveResolveStreams {
       final hit = _providersCache[cacheKey];
       if (hit != null && DateTime.now().isBefore(hit.expiresAt)) {
         if (hit.sources.isNotEmpty) {
+          _noteChannelHints(match, hit.sources);
           return List<LivePlaySource>.from(hit.sources);
         }
         _providersCache.remove(cacheKey);
@@ -78,7 +80,11 @@ abstract final class LiveResolveStreams {
       return out;
     }
 
-    void publish() => onPartial?.call(merged());
+    void publish() {
+      final rows = merged();
+      _noteChannelHints(match, rows);
+      onPartial?.call(rows);
+    }
 
     final stremioFuture = _loadStremioProviders(match);
     try {
@@ -152,6 +158,16 @@ abstract final class LiveResolveStreams {
       liveEngineResolveSource: kind == PortalLiveSourceKind.liveEngine
           ? resolveLiveEngineSource
           : null,
+    );
+  }
+
+  static void _noteChannelHints(MatchEvent match, List<LivePlaySource> sources) {
+    if (sources.isEmpty) return;
+    LiveBroadcastHints.remember(
+      title: match.title,
+      home: match.homeTeam ?? '',
+      away: match.awayTeam ?? '',
+      labels: [for (final s in sources) s.label],
     );
   }
 

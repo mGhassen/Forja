@@ -95,7 +95,7 @@ class PlayerSubtitleMenu {
       title: name,
       language: 'und',
     );
-    player.setSubtitleTrack(subTrack);
+    unawaited(setPlayerExternalSubtitle(player, subTrack));
     updateSubVisibility(subTrack);
     final isAssFile =
         name.toLowerCase().endsWith('.ass') ||
@@ -534,7 +534,7 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
     );
     try {
       await preparePlayerExternalSubtitleSwitch(widget.player);
-      await widget.player.setSubtitleTrack(track);
+      await setPlayerExternalSubtitle(widget.player, track);
       widget.updateSubVisibility(track);
       PlayerPopupPanel.dismiss();
     } catch (e) {

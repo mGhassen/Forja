@@ -2,6 +2,52 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/live/iptv_live_grace.dart';
 
 void main() {
+  group('iptvLiveHwDecodeFailAction', () {
+    test('desktop past cold open uses software decode once', () {
+      expect(
+        iptvLiveHwDecodeFailAction(
+          insideIgnoreWindow: false,
+          pastColdOpen: true,
+          desktopSoftwareFallback: true,
+        ),
+        IptvHwDecodeFailAction.softwareDecode,
+      );
+    });
+
+    test('seek or reconnect window still drops the line', () {
+      expect(
+        iptvLiveHwDecodeFailAction(
+          insideIgnoreWindow: true,
+          pastColdOpen: true,
+          desktopSoftwareFallback: true,
+        ),
+        IptvHwDecodeFailAction.ignore,
+      );
+    });
+
+    test('cold open stays on hardware', () {
+      expect(
+        iptvLiveHwDecodeFailAction(
+          insideIgnoreWindow: false,
+          pastColdOpen: false,
+          desktopSoftwareFallback: true,
+        ),
+        IptvHwDecodeFailAction.holdCold,
+      );
+    });
+
+    test('android past cold open uses grace', () {
+      expect(
+        iptvLiveHwDecodeFailAction(
+          insideIgnoreWindow: false,
+          pastColdOpen: true,
+          desktopSoftwareFallback: false,
+        ),
+        IptvHwDecodeFailAction.grace,
+      );
+    });
+  });
+
   group('iptvLiveGraceAction', () {
     test('forward position stays open', () {
       expect(
