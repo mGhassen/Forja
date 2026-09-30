@@ -163,10 +163,12 @@ Map<String, dynamic> packChromeFeedParams(
 
   if (q.isNotEmpty && (kindReloadsFeed || vodPaged)) params['q'] = q;
 
-  // Live category lists (Favorites / pins / order) — IPTV / Live Sports only.
-  // Never stamp onto Home/Anime rails or feed-share always fails after IPTV.
+  // Live category lists (Favorites / pins / order) — IPTV catalog pages only.
+  // Schedule feeds (kind + horizon) do not read these. Stamping portal
+  // prefs onto them changes the feed identity when the vault finishes and
+  // starts another catalog scrape.
   final liveLists = CategoryBarActionHost.cachedLiveListParams;
-  if ((kindReloadsFeed || vodPaged) && liveLists.isNotEmpty) {
+  if (vodPaged && liveLists.isNotEmpty) {
     params.addAll(liveLists);
   }
 
@@ -287,17 +289,16 @@ String packChromeSelectionEpoch(
 }) {
   final chrome = PackChromeScope.maybeOf(context);
   final scope = LayoutScope.maybeOf(context);
-  final kindReloadsFeed = packChromeKindReloadsFeed(listSpec);
   final vodPaged = packChromeVodPagedFeed(listSpec, scope);
 
   final portalStoreKey =
       (CategoryBarActionHost.cachedLiveListParams['portalStoreKey'] ?? '')
           .toString();
 
-  // portalStoreKey only for IPTV live shelf — hashing it on every Home/Anime
-  // rail rebind when live-list prefs warm caused tab-return skeleton flashes.
-  final portalEpoch =
-      (vodPaged || kindReloadsFeed) ? portalStoreKey : '';
+  // portalStoreKey only for IPTV live/movies/series/channels. Schedule feeds
+  // (kind + horizon) must not rebind when the portal vault hydrates — that
+  // second bind re-scraped every live catalog after the schedule had loaded.
+  final portalEpoch = vodPaged ? portalStoreKey : '';
 
   return [
     packChromeGridFlipEpoch(

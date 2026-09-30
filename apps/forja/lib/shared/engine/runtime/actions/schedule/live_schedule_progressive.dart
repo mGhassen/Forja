@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -34,8 +36,20 @@ String _liveFeedCacheKey(String catalogFilter) {
   return 'raw:$f';
 }
 
-List<Map<String, dynamic>>? _cachedFeedRows(String cacheKey) {
-  final hit = EngineCache.instance.get(_kLiveFeedCacheNs, cacheKey);
+List<Map<String, dynamic>> _copyRows(List<Map<String, dynamic>> rows) {
+  return [
+    for (final row in rows) Map<String, dynamic>.from(row),
+  ];
+}
+
+List<Map<String, dynamic>>? _rowsFromSlot(Object? hit) {
+  if (hit is String && hit.isNotEmpty) {
+    try {
+      hit = jsonDecode(hit);
+    } catch (_) {
+      return null;
+    }
+  }
   if (hit is! Map) return null;
   final rows = hit['rows'];
   if (rows is! List || rows.isEmpty) return null;
@@ -46,12 +60,18 @@ List<Map<String, dynamic>>? _cachedFeedRows(String cacheKey) {
   return out.isEmpty ? null : out;
 }
 
+List<Map<String, dynamic>>? _cachedFeedRows(String cacheKey) {
+  return _rowsFromSlot(EngineCache.instance.get(_kLiveFeedCacheNs, cacheKey));
+}
+
 void _storeFeedRows(String cacheKey, List<Map<String, dynamic>> rows) {
+  final copy = _copyRows(rows);
+  if (copy.isEmpty) return;
   EngineCache.instance.set(
     _kLiveFeedCacheNs,
     cacheKey,
     {
-      'rows': rows,
+      'rows': copy,
       'at': DateTime.now().millisecondsSinceEpoch,
     },
     ttl: _kLiveFeedCacheTtl,
@@ -61,6 +81,10 @@ void _storeFeedRows(String cacheKey, List<Map<String, dynamic>> rows) {
 Map<String, dynamic> _feedParamsForReduce(Map<String, dynamic> params) {
   final out = Map<String, dynamic>.from(params);
   out.remove('progressiveCatalogs');
+  // Reduce only filters rows already fetched. Leaving force on this call
+  // makes the pack clear live_sports.feed before it reads the row list.
+  out.remove('force');
+  out.remove('forceRefresh');
   return out;
 }
 

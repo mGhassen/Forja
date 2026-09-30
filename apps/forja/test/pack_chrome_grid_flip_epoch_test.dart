@@ -100,6 +100,47 @@ void main() {
     );
   });
 
+  testWidgets('schedule feed epoch ignores portalStoreKey hydrate',
+      (tester) async {
+    const scheduleSpec = {
+      'kindMenu': 'kind',
+      'catalogMenu': 'catalog',
+      'horizonMenu': 'horizon',
+    };
+    final selections = <String, String>{
+      'catalog': 'all',
+      'kind': 'all',
+      'horizon': 'today',
+    };
+
+    await tester.pumpWidget(
+      _chrome(
+        selections: selections,
+        child: Builder(
+          builder: (context) {
+            CategoryBarActionHost.cachedLiveListParams = const {};
+            final withoutPortal = packChromeSelectionEpoch(
+              context,
+              listSpec: scheduleSpec,
+              tabId: 'hub',
+            );
+            CategoryBarActionHost.cachedLiveListParams = {
+              'portalStoreKey': 'https://example|user',
+              'favorites': ['1'],
+            };
+            final withPortal = packChromeSelectionEpoch(
+              context,
+              listSpec: scheduleSpec,
+              tabId: 'hub',
+            );
+            expect(withPortal, withoutPortal);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+  });
+
   testWidgets('grid flip epoch changes when Live category changes',
       (tester) async {
     final selections = <String, String>{

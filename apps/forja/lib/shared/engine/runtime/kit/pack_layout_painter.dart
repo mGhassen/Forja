@@ -75,7 +75,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   final Map<String, String> _layoutSelections = {};
   String _eventQuery = '';
   int _refreshEpoch = 0;
-  bool _refreshForceNetwork = true;
+  // False until Refresh or a pack reload asks for network. A true default
+  // wiped the live schedule cache on the first epoch bump after load.
+  bool _refreshForceNetwork = false;
   bool _refreshKeepPainted = false;
   int _catalogHoldEpoch = 0;
   String _viewStyle = '';
