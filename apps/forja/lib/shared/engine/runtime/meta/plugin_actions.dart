@@ -623,25 +623,48 @@ class MetaRuntime {
       return null;
     }
 
+    return overlayEnrichData(
+      action: action,
+      data: data,
+      enrichData: enriched.data!,
+    );
+  }
+
+  /// Copies enrich `meta` / `rails` onto the source payload.
+  ///
+  /// Also keeps `deferRails`. Details uses it to schedule the follow-up that
+  /// fills More Like This. Dropping it leaves recommendations on meta, which
+  /// the details page does not paint.
+  @visibleForTesting
+  static Map<String, dynamic> overlayEnrichData({
+    required String action,
+    required Map<String, dynamic> data,
+    required Map<String, dynamic> enrichData,
+  }) {
     final merged = Map<String, dynamic>.from(data);
     if (action == 'rail') {
-      final items = enriched.data!['items'];
+      final items = enrichData['items'];
       if (items is List) merged['items'] = items;
-    } else {
-      final meta = enriched.data!['meta'];
-      if (meta is Map) merged['meta'] = Map<String, dynamic>.from(meta);
-      final rails = enriched.data!['rails'];
-      if (rails is Map && rails.isNotEmpty) {
-        final existing = merged['rails'];
-        if (existing is Map && existing.isNotEmpty) {
-          merged['rails'] = <String, dynamic>{
-            for (final e in existing.entries) e.key.toString(): e.value,
-            for (final e in rails.entries) e.key.toString(): e.value,
-          };
-        } else {
-          merged['rails'] = Map<String, dynamic>.from(rails);
-        }
+      return merged;
+    }
+
+    final meta = enrichData['meta'];
+    if (meta is Map) merged['meta'] = Map<String, dynamic>.from(meta);
+    final rails = enrichData['rails'];
+    if (rails is Map && rails.isNotEmpty) {
+      final existing = merged['rails'];
+      if (existing is Map && existing.isNotEmpty) {
+        merged['rails'] = <String, dynamic>{
+          for (final e in existing.entries) e.key.toString(): e.value,
+          for (final e in rails.entries) e.key.toString(): e.value,
+        };
+      } else {
+        merged['rails'] = Map<String, dynamic>.from(rails);
       }
+    }
+    final defer = enrichData['deferRails'];
+    if (defer is Map && defer.isNotEmpty) {
+      merged['deferRails'] = Map<String, dynamic>.from(defer);
     }
     return merged;
   }
@@ -668,7 +691,15 @@ class MetaRuntime {
       case 'details':
         final meta = data['meta'];
         if (meta is! Map) return false;
-        return _metaTmdbEnriched(Map<String, dynamic>.from(meta));
+        final metaMap = Map<String, dynamic>.from(meta);
+        if (!_metaTmdbEnriched(metaMap)) return false;
+        // Recommendations still sitting on meta, with no rail, means the
+        // follow-up never ran (or an older cache predates it).
+        final recs = metaMap['recommendations'];
+        if (recs is List && recs.isNotEmpty && !_hasRecommendationsRail(data)) {
+          return false;
+        }
+        return true;
       case 'rail':
         final rail = (params['rail'] ?? '').toString().trim();
         if (rail.isNotEmpty && rail != 'spotlight') return false;
@@ -684,6 +715,18 @@ class MetaRuntime {
       default:
         return false;
     }
+  }
+
+  static bool _hasRecommendationsRail(Map<String, dynamic> data) {
+    final rails = data['rails'];
+    if (rails is! Map) return false;
+    final rail = rails['recommendations'];
+    if (rail is List) return rail.isNotEmpty;
+    if (rail is Map) {
+      final items = rail['items'];
+      return items is List && items.isNotEmpty;
+    }
+    return false;
   }
 
   static bool _metaTmdbEnriched(Map<String, dynamic> meta) {

@@ -508,6 +508,47 @@ void main() {
       );
     });
 
+    test('details enrich keeps deferRails for the follow-up', () {
+      final merged = MetaRuntime.overlayEnrichData(
+        action: 'details',
+        data: {
+          'meta': {'id': 'title:1'},
+        },
+        enrichData: {
+          'meta': {
+            'id': 'title:1',
+            '_hubRecsPending': true,
+            'recommendations': [
+              {'id': 'rec:1', 'name': 'Other'},
+            ],
+          },
+          'deferRails': {'phase': 'rails'},
+        },
+      );
+      expect(MetaRuntime.takeDeferRails(merged), {'phase': 'rails'});
+      expect(merged.containsKey('deferRails'), isFalse);
+      expect((merged['meta'] as Map)['_hubRecsPending'], isTrue);
+    });
+
+    test('details does not skip when recommendations never became a rail', () {
+      expect(
+        MetaRuntime.envelopeAlreadyEnriched(
+          'details',
+          {
+            'meta': {
+              'id': 'title:1',
+              '_hubTmdbEnriched': true,
+              'recommendations': [
+                {'id': 'rec:1', 'name': 'Other'},
+              ],
+            },
+          },
+          const {},
+        ),
+        isFalse,
+      );
+    });
+
     test('takeDeferRails removes the follow-up map', () {
       final data = <String, dynamic>{
         'meta': {'id': 'hub:1'},
