@@ -258,7 +258,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
       // Cache: RFC-113 Forja live profile (desktop + ATV same demuxer bytes).
       await p.setProperty('cache', 'yes');
       if (_s.widget.vodPlayback) {
-        // IPTV Movies/Series — ipdigi VOD profile: fat cushion + pause-to-refill
+        // IPTV Movies/Series — VOD profile: fat cushion + pause-to-refill
         // so progressive Xtream truncations survive lavf reconnect (issue 357).
         // Live path below stays lean/reconnect-oriented (issue 163 gates intact).
         const vodBytes = 128 * 1024 * 1024;

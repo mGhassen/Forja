@@ -1001,7 +1001,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         return;
       }
-      // VOD MediaKit mid-stream: ignore non-fatal error strings (ipdigi).
+      // VOD MediaKit mid-stream: ignore non-fatal error strings.
       if (_s.widget.vodPlayback && _s._mediaKitBackend && _playbackStarted) {
         return;
       }
@@ -1053,8 +1053,8 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         return;
       }
       // ffmpeg still logs "Stream ends prematurely" / reset while lavf
-      // reconnect stitches Xtream progressive TS. ipdigi never recovers from
-      // log lines — only from completed/error. Driving grace/goLive here
+      // reconnect stitches Xtream progressive TS. Recover only from
+      // completed/error, never from log lines. Driving grace/goLive here
       // caused ~10s reconnect churn + VT ignore spam (issue 362).
       if (text.contains('ends prematurely') ||
           text.contains('end of file') ||
@@ -1069,10 +1069,10 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   }
 
   /// Socket blip from Dart error stream (not mpv logs).
-  /// Live MediaKit: silent grace → goLive (RFC-113). ipdigi parity.
+  /// Live MediaKit: silent grace → goLive (RFC-113).
   void _noteSocketTrouble(String what) {
     _armTransientHwDecodeIgnore();
-    // VOD MediaKit: lavf reconnect owns mid-stream truncations (ipdigi parity).
+    // VOD MediaKit: lavf reconnect owns mid-stream truncations.
     // Do not skip-recovery spam or reopen while ffmpeg Range-reconnects.
     if (_s.widget.vodPlayback && _s._mediaKitBackend) {
       return;

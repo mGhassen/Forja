@@ -8,6 +8,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
     String? streamUrl,
+    bool continuityProxy = false,
   });
   bool get _livePlaybackProfile;
   bool get _liveSportsSurface;
@@ -23,7 +24,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
       await restoreMediaKitAudioOutput(p);
       _engineSetVolume(_s._volume);
     } catch (e) {
-      debugPrint('[IPTV Player] desktop ao restore failed: $e');
+      debugPrint('[Live Sports Player] desktop ao restore failed: $e');
     }
 
     for (var i = 0; i < 12; i++) {
@@ -38,14 +39,14 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
           if (player.state.track.audio.id != target.id) {
             await selectPlayerAudioTrack(player, target);
             debugPrint(
-              '[IPTV Player] desktop auto audio → '
+              '[Live Sports Player] desktop auto audio → '
               '${target.title ?? target.language ?? target.id}',
             );
           }
           return;
         }
       } catch (e) {
-        debugPrint('[IPTV Player] desktop post-open tune failed: $e');
+        debugPrint('[Live Sports Player] desktop post-open tune failed: $e');
         return;
       }
     }
@@ -69,7 +70,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
       await p.setProperty('mute', 'no');
       _engineSetVolume(_s._volume);
     } catch (e) {
-      debugPrint('[IPTV Player] ATV ao restore failed: $e');
+      debugPrint('[Live Sports Player] ATV ao restore failed: $e');
     }
 
     for (var i = 0; i < 24; i++) {
@@ -96,6 +97,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
         try {
           final brRaw = await p.getProperty('video-bitrate');
           bitrate = double.tryParse(brRaw.toString()) ?? 0;
+          if (bitrate > 0) _s._lastVideoBitrate = bitrate.round();
         } catch (_) {}
 
         if (_livePlaybackProfile && !_s.widget.vodPlayback) {
@@ -116,7 +118,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
         }
         return;
       } catch (e) {
-        debugPrint('[IPTV Player] ATV post-open tune failed: $e');
+        debugPrint('[Live Sports Player] ATV post-open tune failed: $e');
         return;
       }
     }
@@ -137,10 +139,10 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
       _s._displayFrameRateApplied = true;
       await PlatformChannel.applyDisplayFrameRate(fps);
       debugPrint(
-        '[IPTV Player] ATV MediaKit display match for ${fps.toStringAsFixed(2)}fps',
+        '[Live Sports Player] ATV MediaKit display match for ${fps.toStringAsFixed(2)}fps',
       );
     } catch (e) {
-      debugPrint('[IPTV Player] ATV display frame-rate match failed: $e');
+      debugPrint('[Live Sports Player] ATV display frame-rate match failed: $e');
     }
   }
 
@@ -177,7 +179,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
           // Property missing on this build — keep the rest of the line.
         }
       }
-      if (out.isNotEmpty) debugPrint('[IPTV UHD] ${out.join(' ')}');
+      if (out.isNotEmpty) debugPrint('[Live Sports UHD] ${out.join(' ')}');
     });
   }
 
@@ -224,7 +226,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
 
     _s._liveCacheTierApplied = true;
     debugPrint(
-      '[IPTV Player] MediaKit cache profile=live/forja '
+      '[Live Sports Player] MediaKit cache profile=live/forja '
       'height=$height bitrate=${videoBitrate > 0 ? (videoBitrate / 1e6).toStringAsFixed(1) : "?"}Mbps '
       'cache=${secs}s bytes=$demuxerMaxBytes',
     );
@@ -256,7 +258,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
         final needBytes = (videoBitrate / 8) * profile.cacheSecs;
         if (needBytes > profile.demuxerMaxBytes * 0.9) {
           debugPrint(
-            '[IPTV Player] live/sports/${profile.tier} demuxer may byte-bind at '
+            '[Live Sports Player] live/sports/${profile.tier} demuxer may byte-bind at '
             '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps '
             '(override ${profile.cacheSecs}s)',
           );
@@ -275,7 +277,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
             profile = bumped;
           } else if (profile.tier == 'uhd' || profile.tier == 'fhd') {
             debugPrint(
-              '[IPTV Player] live/sports/uhd demuxer may still byte-bind at '
+              '[Live Sports Player] live/sports/uhd demuxer may still byte-bind at '
               '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps',
             );
           }
@@ -295,7 +297,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
 
     _s._liveCacheTierApplied = true;
     debugPrint(
-      '[IPTV Player] MediaKit cache profile=live/sports/${profile.tier} '
+      '[Live Sports Player] MediaKit cache profile=live/sports/${profile.tier} '
       'height=$height bitrate=${videoBitrate > 0 ? (videoBitrate / 1e6).toStringAsFixed(1) : "?"}Mbps '
       'cache=${profile.cacheSecs}s bytes=${profile.demuxerMaxBytes}',
     );
@@ -350,12 +352,12 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
       // Cache: sports = pre–RFC-113 cushion; IPTV = RFC-113 live/forja.
       await p.setProperty('cache', 'yes');
       if (_s.widget.vodPlayback) {
-        // IPTV Movies/Series — ipdigi VOD profile: fat cushion + pause-to-refill
+        // IPTV Movies/Series — VOD profile: fat cushion + pause-to-refill
         // so progressive Xtream truncations survive lavf reconnect (issue 357).
         // Live path below stays lean/reconnect-oriented (issue 163 gates intact).
         const vodBytes = 128 * 1024 * 1024;
         const vodBackBytes = 64 * 1024 * 1024;
-        debugPrint('[IPTV Player] MediaKit cache profile=vod (128MiB)');
+        debugPrint('[Live Sports Player] MediaKit cache profile=vod (128MiB)');
         await p.setProperty('cache-secs', '30');
         await p.setProperty('demuxer-readahead-secs', '30');
         await p.setProperty('demuxer-max-bytes', '$vodBytes');
@@ -375,7 +377,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
             await p.setProperty('cache-on-disk', 'yes');
             await p.setProperty('cache-dir', dir.path);
           } catch (e) {
-            debugPrint('[IPTV Player] VOD cache-on-disk setup failed: $e');
+            debugPrint('[Live Sports Player] VOD cache-on-disk setup failed: $e');
           }
         }
         // Progressive IPTV often omits Accept-Ranges — force seek + keep last frame.
@@ -404,7 +406,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
             coldLabel = 'live/sports (${forced.tier})';
           }
         }
-        debugPrint('[IPTV Player] MediaKit cache profile=$coldLabel');
+        debugPrint('[Live Sports Player] MediaKit cache profile=$coldLabel');
         await p.setProperty('cache-secs', '$coldSecs');
         await p.setProperty('demuxer-readahead-secs', '$coldReadahead');
         await p.setProperty('demuxer-max-bytes', '$coldBytes');
@@ -418,7 +420,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
         const coldReadahead = 8;
         const coldBytes = 128 * 1024 * 1024;
         const coldBackBytes = 64 * 1024 * 1024;
-        debugPrint('[IPTV Player] MediaKit cache profile=live/forja');
+        debugPrint('[Live Sports Player] MediaKit cache profile=live/forja');
         await p.setProperty('cache-secs', '$coldSecs');
         await p.setProperty('demuxer-readahead-secs', '$coldReadahead');
         await p.setProperty('demuxer-max-bytes', '$coldBytes');
@@ -437,7 +439,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
             await p.setProperty('cache-on-disk', 'yes');
             await p.setProperty('cache-dir', dir.path);
           } catch (e) {
-            debugPrint('[IPTV Player] cache-on-disk setup failed: $e');
+            debugPrint('[Live Sports Player] cache-on-disk setup failed: $e');
           }
         }
         // Live seek/sync (scrub + keep-open EOF during seek).
@@ -492,7 +494,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
                 'analyzeduration=5000000',
       );
     } catch (e) {
-      debugPrint('[IPTV Player] tunables failed: $e');
+      debugPrint('[Live Sports Player] tunables failed: $e');
     }
   }
 

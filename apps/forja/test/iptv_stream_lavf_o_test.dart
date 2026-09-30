@@ -4,7 +4,7 @@ import 'package:forja/shared/player/live_sports/live_sports_player_screen.dart';
 
 void main() {
   group('iptvStreamLavfO', () {
-    test('HLS / progressive → same lavf reconnect (ipdigi)', () {
+    test('HLS / progressive → same lavf reconnect', () {
       const expected = 'reconnect=1,'
           'reconnect_at_eof=1,'
           'reconnect_streamed=1,'
@@ -32,6 +32,37 @@ void main() {
   });
 
   group('liveSportsStreamLavfO', () {
+    test('Xtream TS uses the continuity proxy; HLS and Stremio stay direct', () {
+      expect(
+        liveSportsShouldUseContinuityProxy(
+          kind: PortalLiveSourceKind.iptvXtream,
+          url: 'http://portal.example:8080/live/user/pass/1.ts',
+        ),
+        isTrue,
+      );
+      expect(
+        liveSportsShouldUseContinuityProxy(
+          kind: PortalLiveSourceKind.iptvXtream,
+          url: 'https://cdn.example/live/index.m3u8',
+        ),
+        isFalse,
+      );
+      expect(
+        liveSportsShouldUseContinuityProxy(
+          kind: PortalLiveSourceKind.stremio,
+          url: 'http://cdn.example/live/1.ts',
+        ),
+        isFalse,
+      );
+    });
+
+    test('continuity proxy turns lavf reconnect off', () {
+      expect(
+        liveSportsStreamLavfO(continuityProxy: true),
+        'reconnect=0',
+      );
+    });
+
     test('progressive keeps reconnect_at_eof', () {
       final o = liveSportsStreamLavfO(
         streamUrl: 'http://portal.example:8080/live/user/pass/1.ts',
@@ -57,6 +88,29 @@ void main() {
       expect(proxy, contains('reconnect_streamed=0'));
       expect(proxy, isNot(contains('reconnect=1')));
       expect(proxy, contains('reconnect_on_network_error=1'));
+    });
+  });
+
+  group('iptvLiveSourceProbeUrl', () {
+    test('stremio playlist is checked', () {
+      const src = LivePlaySource(
+        url: 'https://cdn.example/stream/channel.m3u8?t=token',
+        label: 'Stream',
+        liveSourceKind: PortalLiveSourceKind.stremio,
+      );
+      expect(iptvLiveSourceProbeUrl(src), src.url);
+      expect(iptvLiveSourceProbeSkipped(src), isFalse);
+    });
+
+    test('stremio row with request headers is not bare-probed', () {
+      const src = LivePlaySource(
+        url: 'https://cdn.example/live.m3u8',
+        label: 'Stream',
+        headers: {'Referer': 'https://example/'},
+        liveSourceKind: PortalLiveSourceKind.stremio,
+      );
+      expect(iptvLiveSourceProbeUrl(src), isNull);
+      expect(iptvLiveSourceProbeSkipped(src), isTrue);
     });
   });
 

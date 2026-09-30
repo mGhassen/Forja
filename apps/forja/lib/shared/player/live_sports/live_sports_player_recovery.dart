@@ -43,7 +43,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
         : _LiveSportsPlayerScreenState._liveGraceWindow;
     _s._liveGraceStartPos = _s._position;
     debugPrint(
-      '[IPTV] live glitch ($reason) — '
+      '[Live Sports] live glitch ($reason) — '
       '${grace.inMilliseconds}ms grace (lavf reconnect)',
     );
     // keep-open pauses at EOF. A frozen clock looks unrecovered and stop+open
@@ -60,7 +60,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
       );
       if (action == IptvLiveGraceAction.hold) {
         debugPrint(
-          '[IPTV] live glitch recovered '
+          '[Live Sports] live glitch recovered '
           '(${_s._liveGraceStartPos.inSeconds}s → ${pos.inSeconds}s) — no reopen',
         );
         _clearBufferingChrome();
@@ -68,14 +68,14 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
       }
       if (action == IptvLiveGraceAction.snapArchive) {
         debugPrint(
-          '[IPTV] live glitch rewound '
+          '[Live Sports] live glitch rewound '
           '(${_s._liveGraceStartPos.inSeconds}s → ${pos.inSeconds}s) — skip archive',
         );
         unawaited(_skipReconnectArchive());
         _clearBufferingChrome();
         return;
       }
-      debugPrint('[IPTV] live glitch unrecovered — goLive');
+      debugPrint('[Live Sports] live glitch unrecovered — goLive');
       unawaited(_tryIptvLiveGoLive(reason: reason));
     });
   }
@@ -88,7 +88,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     if (last != null &&
         DateTime.now().difference(last) <
             _LiveSportsPlayerScreenState._liveGoLiveThrottle) {
-      debugPrint('[IPTV] goLive throttled — ended');
+      debugPrint('[Live Sports] goLive throttled — ended');
       if (mounted) {
         setState(() => _s._statusBanner = 'Stream ended');
       }
@@ -106,7 +106,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     if (mounted) {
       setState(() => _s._statusBanner = 'Reconnecting…');
     }
-    debugPrint('[IPTV] goLive attempt 1/$maxAttempts ($reason)');
+    debugPrint('[Live Sports] goLive attempt 1/$maxAttempts ($reason)');
     await _goLiveReopen();
     _scheduleIptvLiveGoLivePoll(maxAttempts, poll);
   }
@@ -146,13 +146,13 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
       return;
     }
     _s._liveGoLiveAttempt++;
-    debugPrint('[IPTV] goLive attempt ${_s._liveGoLiveAttempt}/$maxAttempts');
+    debugPrint('[Live Sports] goLive attempt ${_s._liveGoLiveAttempt}/$maxAttempts');
     unawaited(_goLiveReopen());
     _scheduleIptvLiveGoLivePoll(maxAttempts, poll);
   }
 
   void _scheduleIptvLiveColdRetry() {
-    debugPrint('[IPTV] goLive burst failed — cold retry');
+    debugPrint('[Live Sports] goLive burst failed — cold retry');
     _s._liveGoLiveTimer?.cancel();
     _s._liveStableTimer?.cancel();
     _s._liveStableTimer = null;
@@ -181,7 +181,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
         if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
         if (_s._statusBanner != 'Reconnecting…') return;
         if (!_s._playing || _s._position <= Duration.zero) return;
-        debugPrint('[IPTV] goLive succeeded');
+        debugPrint('[Live Sports] goLive succeeded');
         _s._liveGoLiveAttempt = 0;
         _s._liveGoLiveTimer?.cancel();
         _s._liveGoLiveTimer = null;
@@ -263,7 +263,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
           if (skip <= 0) continue;
           _armTransientHwDecodeIgnore();
           debugPrint(
-            '[IPTV Player] reconnect skip archive ${skip.toStringAsFixed(1)}s',
+            '[Live Sports Player] reconnect skip archive ${skip.toStringAsFixed(1)}s',
           );
           await p.command(['seek', skip.toStringAsFixed(3), 'relative']);
           return;
@@ -307,7 +307,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
         final cacheOk = _s._cacheAheadSecs >=
             _LiveSportsPlayerScreenState._minHealthyCacheSecs;
         debugPrint(
-          '[IPTV Player] live-edge snap (force=$allowForce'
+          '[Live Sports Player] live-edge snap (force=$allowForce'
           '${cacheOk ? '' : ', skip drop-buffers'}'
           ' cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
         );
@@ -379,7 +379,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     _s._lastRecoveryAt = now;
     _s._streamSeekable = false;
     debugPrint(
-      '[IPTV Watchdog] recovery (#${_s._retryAttempt + 1}, hard=$forceHard'
+      '[Live Sports Watchdog] recovery (#${_s._retryAttempt + 1}, hard=$forceHard'
       '${userInitiated ? ', user' : ''}): $reason '
       '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
       'rotateAfter=$_retriesBeforeSourceRotate)',
@@ -445,7 +445,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
         try {
           if (!await _recreatePlayer()) return;
         } catch (e) {
-          debugPrint('[IPTV] cold-retry recreate failed: $e');
+          debugPrint('[Live Sports] cold-retry recreate failed: $e');
         }
         // Reset the retry ladder so the next ladder run gets fresh backoff.
         _s._retryAttempt = 0;
@@ -458,7 +458,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
             ),
           );
         } catch (e) {
-          debugPrint('[IPTV] cold-retry open failed: $e');
+          debugPrint('[Live Sports] cold-retry open failed: $e');
         }
         if (mounted) setState(() {});
         _s._bufferingSince = null;
@@ -531,7 +531,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
           );
           if (mounted) setState(() {});
         } catch (e) {
-          debugPrint('[IPTV] VO-freeze recreate failed: $e');
+          debugPrint('[Live Sports] VO-freeze recreate failed: $e');
         }
         _s._bufferingSince = null;
         _s._bufferingClearAt = null;
@@ -561,7 +561,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
           );
           if (mounted) setState(() {});
         } catch (e) {
-          debugPrint('[IPTV] hard recreate failed: $e');
+          debugPrint('[Live Sports] hard recreate failed: $e');
         }
       } else if (_s._retryAttempt <= 2 || forceHard) {
         // Soft reopen — never seek(0) on live (anchors to DVR start / spam).
@@ -605,7 +605,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
           );
           if (mounted) setState(() {});
         } catch (e) {
-          debugPrint('[IPTV] recreate failed: $e');
+          debugPrint('[Live Sports] recreate failed: $e');
         }
       }
       _s._bufferingSince = null;
@@ -647,7 +647,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     }
     _recoveryInFlight = true;
     try {
-      debugPrint('[IPTV Player] hw decode failed - software decode');
+      debugPrint('[Live Sports Player] hw decode failed - software decode');
       if (!await _recreatePlayer()) return;
       if (_s._disposed || _s._sources.isEmpty) return;
       final src = _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)];
@@ -702,7 +702,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     // Soft-reopen keeps hwdec=mediacodec; never flip safe-mode / hwdec=no.
     if (_s._atvMediaKit) {
       debugPrint(
-        '[IPTV Player] ATV MediaKit: ignore hw→sw — soft reopen on MediaCodec',
+        '[Live Sports Player] ATV MediaKit: ignore hw→sw — soft reopen on MediaCodec',
       );
       if (_recoveryInFlight) return;
       await _triggerRecovery(

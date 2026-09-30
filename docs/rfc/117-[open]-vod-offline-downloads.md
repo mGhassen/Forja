@@ -81,7 +81,7 @@
 
 ## Summary
 
-Host-owned offline Downloads: save a resolved play URL to disk (PlayTorrio-shaped Dart HTTP Range + HLS). Start a download from Sources. The details hero and the player have no Download button. Settings → Downloads is the management page. Packs only supply streams via `extract`.
+Host-owned offline Downloads: save a resolved play URL to disk (Dart HTTP Range + HLS). Start a download from Sources. The details hero and the player have no Download button. Settings → Downloads is the management page. Packs only supply streams via `extract`.
 
 ## Out of scope (v1)
 

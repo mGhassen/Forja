@@ -9,7 +9,7 @@ mixin _PtPlayerLavf on _PtPlayerEngineCore {
   Future<void> _enginePlay();
   void _applyCacheAheadSample(double aheadSecs, {required String source});
 
-  /// [iptvStreamLavfO] — lavf reconnect on (ipdigi parity; progressive + HLS).
+  /// [iptvStreamLavfO] — lavf reconnect on (progressive + HLS).
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
     String? streamUrl,

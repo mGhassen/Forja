@@ -437,7 +437,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         return;
       }
 
-      // VOD MediaKit mid-stream: lavf + cache-pause own truncations (ipdigi).
+      // VOD MediaKit mid-stream: lavf + cache-pause own truncations.
       // Soft-reopen on empty cache raced reconnect and stuttered Movies/Series.
       if (_s.widget.vodPlayback &&
           _s._mediaKitBackend &&

@@ -9,10 +9,17 @@ mixin _LiveSportsPlayerLavf on _LiveSportsPlayerEngineCore {
   Future<void> _enginePlay();
   void _applyCacheAheadSample(double aheadSecs, {required String source});
 
-  Future<void> _applyStreamLavfReconnect(NativePlayer p, {String? streamUrl}) async {
+  Future<void> _applyStreamLavfReconnect(
+    NativePlayer p, {
+    String? streamUrl,
+    bool continuityProxy = false,
+  }) async {
     await p.setProperty(
       'stream-lavf-o',
-      liveSportsStreamLavfO(streamUrl: streamUrl),
+      liveSportsStreamLavfO(
+        streamUrl: streamUrl,
+        continuityProxy: continuityProxy,
+      ),
     );
   }
 

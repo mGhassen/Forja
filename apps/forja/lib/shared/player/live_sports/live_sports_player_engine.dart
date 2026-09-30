@@ -7,7 +7,14 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   Future<void> _applyMpvTunables();
   Future<void> _tuneAtvMediaKitAfterOpen();
   Future<void> _tuneDesktopMediaKitAfterOpen();
-  Future<void> _applyStreamLavfReconnect(NativePlayer p, {String? streamUrl});
+  Future<void> _applyStreamLavfReconnect(
+    NativePlayer p, {
+    String? streamUrl,
+    bool continuityProxy = false,
+  });
+  void _onProxyUpstreamReconnected();
+  int _continuityProxyMaxQueueBytes();
+  void _applyCacheAheadSample(double aheadSecs, {required String source});
   void _startWatchdog();
   void _noteFeedProgress(int markMs, {int? positionMs});
   Future<void> _triggerRecovery({
@@ -195,7 +202,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         break;
       case 'error':
         final msg = event['value']?.toString() ?? 'engine error';
-        debugPrint('[IPTV ${_s._playerEngine.storageKey}] error: $msg');
+        debugPrint('[Live Sports ${_s._playerEngine.storageKey}] error: $msg');
         unawaited(_s._failoverIptvEngineOnce(msg));
         break;
       case 'progress':
@@ -256,7 +263,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         await ExoPlayerBridge.seekTo(_s._exoViewId!, pos);
       }
     } catch (e) {
-      debugPrint('[IPTV Exo] surface fallback reopen failed: $e');
+      debugPrint('[Live Sports Exo] surface fallback reopen failed: $e');
     }
   }
 
@@ -324,7 +331,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
           _s._bufferingClearAt = null;
           _s._bufferingSince ??= DateTime.now();
           debugPrint(
-            '[IPTV Exo] STATE_BUFFERING enter '
+            '[Live Sports Exo] STATE_BUFFERING enter '
             'ahead=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
             'live=$_livePlaybackProfile',
           );
@@ -336,7 +343,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
               ? 0
               : DateTime.now().difference(since).inMilliseconds;
           debugPrint(
-            '[IPTV Exo] STATE_BUFFERING exit '
+            '[Live Sports Exo] STATE_BUFFERING exit '
             'ahead=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
             'held=${held}ms',
           );
@@ -399,7 +406,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         break;
       case 'error':
         final msg = event['message']?.toString() ?? 'Playback error';
-        debugPrint('[IPTV Exo] error: $msg');
+        debugPrint('[Live Sports Exo] error: $msg');
         _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
         break;
       case 'renderedFirstFrame':
@@ -434,7 +441,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       _s._lastPos = const Duration(milliseconds: 1);
     }
     if (wasCold) {
-      debugPrint('[IPTV] video alive ($reason)');
+      debugPrint('[Live Sports] video alive ($reason)');
       _resetStalkerHardFails();
     }
     _syncPlaybackBannerVisibility();
@@ -474,9 +481,9 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     debugPrint(
       reopen
           ? (afterMediaKit
-                ? '[IPTV] remount+reopen Exo TextureView after MediaKit surface race'
-                : '[IPTV] remount+reopen Exo TextureView after ATV cold-open first frame')
-          : '[IPTV] remount Exo TextureView after Android cold-open first frame',
+                ? '[Live Sports] remount+reopen Exo TextureView after MediaKit surface race'
+                : '[Live Sports] remount+reopen Exo TextureView after ATV cold-open first frame')
+          : '[Live Sports] remount Exo TextureView after Android cold-open first frame',
     );
     if (afterMediaKit) {
       await Future<void>.delayed(const Duration(milliseconds: 350));
@@ -587,7 +594,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
           );
         }
         debugPrint(
-          '[IPTV] live unlock miss — skip to '
+          '[Live Sports] live unlock miss — skip to '
           '${_s._sourceIdx + 1}/${_s._sources.length}',
         );
         candidate = _s._sources[_s._sourceIdx];
@@ -602,13 +609,36 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         ...candidate.headers,
       };
       final kind = _liveSourceKindFor(candidate);
-      // Live Sports opens the master URL as-is (v1.5.36) — no HLS pin.
-      final playUrl = candidate.url;
+      final useProxy = _livePlaybackProfile &&
+          !_s.widget.vodPlayback &&
+          (_s._mediaKitBackend || _s._exoBackend) &&
+          liveSportsShouldUseContinuityProxy(kind: kind, url: candidate.url);
+      var playUrl = candidate.url;
+      if (useProxy) {
+        final proxy = _s._liveContinuityProxy ??= LiveSportsContinuityProxy(
+          onUpstreamReconnected: _onProxyUpstreamReconnected,
+        );
+        final local = await proxy.start(
+          upstreamUrl: candidate.url,
+          headers: headers,
+          maxQueueBytes: _continuityProxyMaxQueueBytes(),
+        );
+        playUrl = local.toString();
+        debugPrint(
+          '[Live Sports Player] continuity proxy ($kind, '
+          '${_s._playerEngine.storageKey}, '
+          'queue=${_continuityProxyMaxQueueBytes() >> 20}MiB)',
+        );
+      } else {
+        await _s._liveContinuityProxy?.stop();
+      }
 
       if (_s._exoBackend) {
         // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
         _s._exoCueTexts.value = const [];
         _s._cacheAheadSecs = 0;
+        _s._lastProxyReconnectAt = null;
+        _s._cacheAheadAtProxyReconnect = 0;
         final live = iptvExoUrlLooksLive(candidate.url);
         // Opt-in only (Settings → IPTV live max quality). Default 0 = full quality.
         var maxHeight = 0;
@@ -622,7 +652,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         await ExoPlayerBridge.open(
           viewId: _s._exoViewId!,
           url: playUrl,
-          headers: headers,
+          headers: useProxy ? const <String, String>{} : headers,
           live: live,
           maxVideoHeight: maxHeight,
           maxVideoBitrate: maxBitrate,
@@ -654,21 +684,28 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _s._stallFrameDropBaseline = -1;
         _s._stallPaintWatchSince = null;
         await resetPlayerAudioForNewOpen(player);
-        debugPrint('[Live Sports Player] direct open ($kind)');
         final np = player.platform;
-        // v1.5.36: headers + Media(httpHeaders) + lavf direct.
-        if (np is NativePlayer) {
-          await applyMediaHttpHeaders(player, headers, streamUrl: playUrl);
-        }
-        await applyIpv4HttpProxy(player, playUrl);
-        // Before open: HLS must not reconnect_at_eof on the first playlist
-        // read (a ~4KB body otherwise loops at that offset).
-        if (np is NativePlayer) {
-          await _applyStreamLavfReconnect(np, streamUrl: playUrl);
-        }
-        await player.open(Media(playUrl, httpHeaders: headers));
-        if (np is NativePlayer) {
-          await _applyStreamLavfReconnect(np, streamUrl: playUrl);
+        if (useProxy) {
+          if (np is NativePlayer) {
+            await _applyStreamLavfReconnect(np, continuityProxy: true);
+          }
+          await player.open(Media(playUrl));
+          if (np is NativePlayer) {
+            await _applyStreamLavfReconnect(np, continuityProxy: true);
+          }
+        } else {
+          debugPrint('[Live Sports Player] direct open ($kind)');
+          if (np is NativePlayer) {
+            await applyMediaHttpHeaders(player, headers, streamUrl: playUrl);
+          }
+          await applyIpv4HttpProxy(player, playUrl);
+          if (np is NativePlayer) {
+            await _applyStreamLavfReconnect(np, streamUrl: playUrl);
+          }
+          await player.open(Media(playUrl, httpHeaders: headers));
+          if (np is NativePlayer) {
+            await _applyStreamLavfReconnect(np, streamUrl: playUrl);
+          }
         }
         await player.play();
         if (_s._atvMediaKit) {
@@ -756,11 +793,11 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         section: 'live',
       );
       if (fresh == null || fresh.isEmpty) {
-        debugPrint('[IPTV] stalker create_link empty for cmd=$cmd');
+        debugPrint('[Live Sports] stalker create_link empty for cmd=$cmd');
         return src;
       }
       if (fresh == src.url) return src;
-      debugPrint('[IPTV] stalker create_link refreshed');
+      debugPrint('[Live Sports] stalker create_link refreshed');
       final updated = src.copyWith(url: fresh);
       final i = _s._sourceIdx;
       if (i >= 0 && i < _s._sources.length) {
@@ -768,7 +805,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       }
       return updated;
     } catch (e) {
-      debugPrint('[IPTV] stalker create_link failed: $e');
+      debugPrint('[Live Sports] stalker create_link failed: $e');
       return src;
     }
   }
@@ -796,7 +833,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       _s.widget.onStreamDead?.call(id);
     }
     debugPrint(
-      '[IPTV] stalker stream dead after ${_s._stalkerHardFailCount} '
+      '[Live Sports] stalker stream dead after ${_s._stalkerHardFailCount} '
       'hard fails — stopping recovery',
     );
     _s._userPlayWhenReady = false;
@@ -982,7 +1019,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       if (_LiveSportsPlayerScreenState._isBenignMpvError(msg)) {
         return;
       }
-      debugPrint('[IPTV Player] error: $msg');
+      debugPrint('[Live Sports Player] error: $msg');
       final lower = msg.toLowerCase();
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
@@ -1010,7 +1047,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
         return;
       }
-      // VOD MediaKit mid-stream: ignore non-fatal error strings (ipdigi).
+      // VOD MediaKit mid-stream: ignore non-fatal error strings.
       if (_s.widget.vodPlayback && _s._mediaKitBackend && _playbackStarted) {
         return;
       }
@@ -1048,7 +1085,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
           )) {
             case IptvHwDecodeFailAction.ignore:
               debugPrint(
-                '[IPTV Player] ignoring transient hw fail '
+                '[Live Sports Player] ignoring transient hw fail '
                 '(socket blip / live-edge / pause-refill)',
               );
               return;
@@ -1073,7 +1110,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         }
         if (insideIgnore) {
           debugPrint(
-            '[IPTV Player] ignoring transient hw fail '
+            '[Live Sports Player] ignoring transient hw fail '
             '(socket blip / live-edge / pause-refill)',
           );
           return;
@@ -1082,7 +1119,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
           _logHealthyHold('hw decode fail');
           return;
         }
-        debugPrint('[IPTV Player] hw decode failed - falling back to software');
+        debugPrint('[Live Sports Player] hw decode failed - falling back to software');
         unawaited(_forceSoftwareDecode());
         return;
       }
@@ -1090,8 +1127,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         return;
       }
       // ffmpeg still logs "Stream ends prematurely" / reset while lavf
-      // reconnect stitches progressive live TS. ipdigi never recovers from
-      // log lines — only from completed/error. Driving grace/goLive here
+      // reconnect stitches progressive live TS. Recover only from
+      // completed/error, never from log lines. Driving grace/goLive here
       // caused ~10s reconnect churn + VT ignore spam (issue 362).
       if (text.contains('ends prematurely') ||
           text.contains('end of file') ||
@@ -1099,17 +1136,17 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
           text.contains('connection refused') ||
           text.contains('connection timed out')) {
         debugPrint(
-          '[IPTV Player] mpv log (lavf owns): ${l.level} ${l.prefix}: ${l.text}',
+          '[Live Sports Player] mpv log (lavf owns): ${l.level} ${l.prefix}: ${l.text}',
         );
       }
     });
   }
 
   /// Socket blip from Dart error stream (not mpv logs).
-  /// Live MediaKit: silent grace → goLive (RFC-113). ipdigi parity.
+  /// Live MediaKit: silent grace → goLive (RFC-113).
   void _noteSocketTrouble(String what) {
     _armTransientHwDecodeIgnore();
-    // VOD MediaKit: lavf reconnect owns mid-stream truncations (ipdigi parity).
+    // VOD MediaKit: lavf reconnect owns mid-stream truncations.
     if (_s.widget.vodPlayback && _s._mediaKitBackend) {
       return;
     }
@@ -1129,7 +1166,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     _s._socketTroublePending = true;
     final openedAt = _s._openedAt;
     debugPrint(
-      '[IPTV Player] socket trouble ($what) - '
+      '[Live Sports Player] socket trouble ($what) - '
       'allowing ${_LiveSportsPlayerScreenState._ffmpegReconnectGrace.inSeconds}s',
     );
     Future.delayed(
@@ -1370,7 +1407,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     if (!_s._userPlayWhenReady) return;
     if (_s._playing && _s._lastPos != before) return;
     debugPrint(
-      '[IPTV Player] manual reload did not restore frames - reopening',
+      '[Live Sports Player] manual reload did not restore frames - reopening',
     );
     await _triggerRecovery(
       reason: 'manual reload stalled',

@@ -30,6 +30,8 @@ import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/player/live/iptv_live_grace.dart';
+import 'package:forja/shared/player/live_sports/live_sports_continuity_proxy.dart';
+import 'package:forja/shared/player/live_sports/live_sports_proxy_skip.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart'
     show
         LivePlaySource,
@@ -106,16 +108,33 @@ part 'live_sports_player_recovery.dart';
 part 'live_sports_player_engine.dart';
 part 'live_sports_player_ui.dart';
 
+/// Xtream MPEG-TS on Live Sports. HLS playlists and Stremio / engine rows
+/// stay direct — a TS proxy on a short playlist EOF-loops (issue 272).
+@visibleForTesting
+bool liveSportsShouldUseContinuityProxy({
+  required PortalLiveSourceKind kind,
+  required String url,
+}) {
+  if (kind != PortalLiveSourceKind.iptvXtream) return false;
+  if (iptvUrlLooksLikeHls(url)) return false;
+  return true;
+}
+
 /// Live Sports MediaKit `stream-lavf-o`.
 ///
 /// Progressive live (Xtream `.ts`) keeps `reconnect` and `reconnect_at_eof` so
-/// a socket close is stitched inside lavf. An HLS playlist is a short finite
+/// a socket close is stitched inside lavf. The continuity proxy owns CDN
+/// reopen, so that open sets `reconnect=0`. An HLS playlist is a short finite
 /// body. `reconnect=1` resumes that offset when the length is unknown, and
 /// `reconnect_at_eof` does it when the length is known. Either pin leaves
 /// Streamic `/hls-proxy` stuck at the playlist size. Network and HTTP error
 /// retries stay on.
 @visibleForTesting
-String liveSportsStreamLavfO({String? streamUrl}) {
+String liveSportsStreamLavfO({
+  String? streamUrl,
+  bool continuityProxy = false,
+}) {
+  if (continuityProxy) return 'reconnect=0';
   final hls = streamUrl != null &&
       streamUrl.isNotEmpty &&
       iptvUrlLooksLikeHls(streamUrl);
@@ -728,13 +747,22 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
       liveSourceKind: kind?.name,
     );
     debugPrint(
-      '[IPTV Player] live recovery kind=${kind?.name ?? "null"} '
+      '[Live Sports Player] live recovery kind=${kind?.name ?? "null"} '
       'setting=$_liveRecoveryModeSetting effective=$_liveRecoveryMode',
     );
   }
 
   /// Last decoded height — cache profile re-apply gate (ATV live).
   int _lastVideoHeight = 0;
+  int _lastVideoBitrate = 0;
+
+  /// Xtream MPEG-TS loopback. Null when this open is direct.
+  LiveSportsContinuityProxy? _liveContinuityProxy;
+
+  /// Hold soft-reopen while the proxy refills after a CDN socket close.
+  static const Duration _proxyReconnectRecoveryGrace = Duration(seconds: 8);
+  DateTime? _lastProxyReconnectAt;
+  double _cacheAheadAtProxyReconnect = 0;
   bool _liveCacheTierApplied = false;
 
   /// Paint stall detection (MediaKit live — I199 / perf plan).
@@ -1092,10 +1120,10 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     }
     if (engine == BuiltInPlayerEngine.vlc &&
         !await VlcPlayerBridge.isAvailable()) {
-      debugPrint('[IPTV Player] VLC unavailable → MediaKit');
+      debugPrint('[Live Sports Player] VLC unavailable → MediaKit');
       engine = BuiltInPlayerEngine.mediaKit;
     }
-    debugPrint('[IPTV Player] engine=${engine.storageKey}');
+    debugPrint('[Live Sports Player] engine=${engine.storageKey}');
     return engine;
   }
 
@@ -1190,7 +1218,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     _retryAttempt = 0;
     _playbackStopped = false;
 
-    debugPrint('[IPTV Player] engine=${engine.storageKey} (switch)');
+    debugPrint('[Live Sports Player] engine=${engine.storageKey} (switch)');
     if (_exoBackend) {
       await _bootExoPlayer();
     } else if (_avPlayerBackend) {
@@ -1304,7 +1332,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     _engineFailoverUsed = true;
     _formatEngineSwapped = true;
     debugPrint(
-      '[IPTV Player] failover ${_playerEngine.storageKey}→${next.storageKey} '
+      '[Live Sports Player] failover ${_playerEngine.storageKey}→${next.storageKey} '
       '($reason)',
     );
     if (mounted) {
@@ -1498,6 +1526,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     _exoCueTexts.dispose();
     _playerTvKeyFocus.dispose();
     _seekFocus.dispose();
+    unawaited(_liveContinuityProxy?.stop());
     unawaited(_finalizeExit());
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

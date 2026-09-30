@@ -11,6 +11,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
   bool get _livePlaybackProfile;
   bool get _liveSportsSurface;
   void _syncPlaybackBannerVisibility();
+  Future<void> _enginePlay();
 
   /// Sample cache health every watchdog tick (MediaKit).
   ///
@@ -153,7 +154,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
   void _applyCacheAheadSample(double aheadSecs, {required String source}) {
     if (aheadSecs > _LiveSportsPlayerScreenState._maxSaneCacheAheadSecs) {
       debugPrint(
-        '[IPTV] ignore absurd $source=${aheadSecs.toStringAsFixed(1)}s '
+        '[Live Sports] ignore absurd $source=${aheadSecs.toStringAsFixed(1)}s '
         '(PTS discontinuity) — not counting as healthy cache',
       );
       // Do not leave a stale healthy cushion after a discontinuity spike.
@@ -193,6 +194,76 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
     _s._stallFrameDropBaseline = -1;
     _s._stallPaintWatchSince = null;
     _s._lastDemuxerSampleAt = null;
+    _s._lastProxyReconnectAt = null;
+    _s._cacheAheadAtProxyReconnect = 0;
+  }
+
+  /// Continuity-proxy just reopened CDN — hold soft-reopen while cushion refills.
+  bool get _inProxyReconnectGrace {
+    final at = _s._lastProxyReconnectAt;
+    if (at == null) return false;
+    return DateTime.now().difference(at) <
+        _LiveSportsPlayerScreenState._proxyReconnectRecoveryGrace;
+  }
+
+  bool get _proxyReconnectRefilling {
+    if (!_inProxyReconnectGrace) return false;
+    final ahead = _s._cacheAheadSecs;
+    final atReconnect = _s._cacheAheadAtProxyReconnect;
+    if (ahead + 0.5 < atReconnect && !_networkStillFeeding) return false;
+    if (_networkStillFeeding) return true;
+    if (ahead > atReconnect + 0.25) return true;
+    return false;
+  }
+
+  void _onProxyUpstreamReconnected() {
+    _s._lastProxyReconnectAt = DateTime.now();
+    _s._cacheAheadAtProxyReconnect = _s._cacheAheadSecs;
+    unawaited(() async {
+      if (_s._disposed || _recoveryInFlight) return;
+      if (_s._exoBackend) {
+        debugPrint(
+          '[Live Sports Proxy] exo play-through reconnect '
+          '(ahead=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
+        );
+        return;
+      }
+      if (!_s._playerAlive) return;
+      _armTransientHwDecodeIgnore();
+      try {
+        final p = _s._player?.platform;
+        if (p is! NativePlayer) return;
+        var cacheSecs = _s._cacheAheadSecs;
+        try {
+          final aheadRaw = await p.getProperty('demuxer-cache-duration');
+          final ahead = double.tryParse(aheadRaw.toString());
+          if (ahead != null &&
+              ahead.isFinite &&
+              ahead >= 0 &&
+              ahead <= _LiveSportsPlayerScreenState._maxSaneCacheAheadSecs) {
+            cacheSecs = ahead;
+            _applyCacheAheadSample(ahead, source: 'reconnect-probe');
+            _s._cacheAheadAtProxyReconnect = ahead;
+          }
+        } catch (_) {}
+        debugPrint(
+          '[Live Sports Proxy] reconnect '
+          '(cache=${cacheSecs.toStringAsFixed(1)}s)',
+        );
+        if (_s._userPlayWhenReady && !_s._playing && !_recoveryInFlight) {
+          await _enginePlay();
+        }
+      } catch (e) {
+        debugPrint('[Live Sports Proxy] reconnect handoff failed: $e');
+      }
+    }());
+  }
+
+  int _continuityProxyMaxQueueBytes() {
+    return liveSportsContinuityProxyMaxQueueBytes(
+      videoHeight: _s._lastVideoHeight,
+      videoBitrate: _s._lastVideoBitrate,
+    );
   }
 
   bool get _networkStillFeeding {
@@ -282,7 +353,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
 
   void _logHold(String reason, {required bool healthy}) {
     debugPrint(
-      '[IPTV] ${healthy ? 'skip recovery' : 'hold'} ($reason) — '
+      '[Live Sports] ${healthy ? 'skip recovery' : 'hold'} ($reason) — '
       '${healthy ? 'working' : 'empty'} '
       '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
       'feeding=$_networkStillFeeding)',
@@ -431,7 +502,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
     _s._bufferingClearAt = null;
     if (since != null) {
       final ms = now.difference(since).inMilliseconds;
-      if (ms >= 500) debugPrint('[IPTV Player] buffering window ${ms}ms');
+      if (ms >= 500) debugPrint('[Live Sports Player] buffering window ${ms}ms');
     }
   }
 
@@ -462,7 +533,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
           _s._lastRecoveryAt != null &&
           now.difference(_s._lastRecoveryAt!) >
               _LiveSportsPlayerScreenState._healthyStreakNeeded) {
-        debugPrint('[IPTV Watchdog] healthy streak - resetting retries');
+        debugPrint('[Live Sports Watchdog] healthy streak - resetting retries');
         _s._retryAttempt = 0;
         _s._lastRecoveryAt = null;
         if (mounted && _s._statusBanner != null) {
@@ -477,7 +548,9 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
       // Recovery stays native error + startup failover only.
       if (_nativeHlsEngine) return;
 
-      // MediaKit live (RFC-113 / ipdigi): grace → goLive only.
+      if (_inProxyReconnectGrace && _proxyReconnectRefilling) return;
+
+      // MediaKit live (RFC-113): grace → goLive only.
       // Soft-reopen on empty-cache Buffering was an infinite #1 reconnect storm
       // (Auto→stall + healthy-streak reset) on Live Sports Xtream.
       if (_mediaKitLiveProfile) {
@@ -485,7 +558,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
         return;
       }
 
-      // VOD MediaKit mid-stream: lavf + cache-pause own truncations (ipdigi).
+      // VOD MediaKit mid-stream: lavf + cache-pause own truncations.
       if (_s.widget.vodPlayback &&
           _s._mediaKitBackend &&
           _playbackStarted) {

@@ -36,7 +36,7 @@
 
 ## Summary
 
-DahmerMovies uses the PlayTorrio Stremio-addon path (`st.111477.xyz/config/…/stream/…`). That endpoint returns real `workers.dev` play URLs when healthy, but Cloudflare **error 1015 / HTTP 429** after a few requests from the same IP. The plugin treated any non-200 as empty and returned **0 streams** with no wait.
+DahmerMovies uses the Stremio-addon path (`st.111477.xyz/config/…/stream/…`). That endpoint returns real `workers.dev` play URLs when healthy, but Cloudflare **error 1015 / HTTP 429** after a few requests from the same IP. The plugin treated any non-200 as empty and returned **0 streams** with no wait.
 
 ### Fix
 

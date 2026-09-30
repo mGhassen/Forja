@@ -127,8 +127,8 @@ bool iptvUrlLooksLikeHls(String url) {
   return false;
 }
 
-/// MediaKit `stream-lavf-o` — ipdigi parity: lavf reconnect on for all live
-/// URLs (progressive + HLS).
+/// MediaKit `stream-lavf-o` — lavf reconnect on for all live URLs
+/// (progressive + HLS).
 String iptvStreamLavfO({String? streamUrl}) {
   return 'reconnect=1,'
       'reconnect_at_eof=1,'
@@ -386,12 +386,12 @@ String iptvLiveSourceProbeKey(LivePlaySource src) {
 
 /// Playable URL for [PortalAliveChecker], or null when HTTP cannot judge the row
 /// (catalog embed page, unresolved `pending:` without a handoff URL).
+///
+/// Stremio playlists (signed Flixnest `.m3u8`) are judged. A 502 is dead.
+/// Portal Xtream/Stalker still resolve first — the catalog URL is not the stream.
 String? iptvLiveSourceProbeUrl(LivePlaySource src) {
   if (src.liveSourceKind == PortalLiveSourceKind.iptvXtream ||
-      src.liveSourceKind == PortalLiveSourceKind.iptvStalker ||
-      // Flixnest JWT etc.: bare probe paints red while MediaKit opens after
-      // retries (same cold-open flake as "Failed to open" → healthy streak).
-      src.liveSourceKind == PortalLiveSourceKind.stremio) {
+      src.liveSourceKind == PortalLiveSourceKind.iptvStalker) {
     return null;
   }
   final url = src.url.trim();
@@ -414,9 +414,8 @@ String? iptvLiveSourceProbeUrl(LivePlaySource src) {
 }
 
 /// Row [iptvLiveSourceProbeUrl] cannot judge — still selectable, not dead.
-/// Covers embed pages, portal Live TV, Stremio Live TV (signed flixnest JWT),
-/// signed Streamed/WatchFooty HLS (Referer), and direct-playback rows that
-/// drop [LivePlaySource.liveEngineEmbedUrl].
+/// Covers embed pages, portal Live TV, signed HLS that needs request headers,
+/// and direct-playback rows that drop [LivePlaySource.liveEngineEmbedUrl].
 bool iptvLiveSourceProbeSkipped(LivePlaySource src) {
   return iptvLiveSourceProbeUrl(src) == null;
 }
@@ -435,8 +434,8 @@ bool iptvLiveSourceCanHoverProbe(LivePlaySource src) {
 }
 
 /// Shared hover / focus probe for Providers tiles and in-player Source menu.
-/// Skipped rows (signed HLS, portal Live TV, embeds) remember green without
-/// a bare HTTP check — same contract as [ResolveStreamsAdapter].
+/// Rows with a play URL are checked. Rows HTTP cannot judge (portal Live TV,
+/// embeds, header-signed HLS) stay selectable without a bare GET.
 Future<bool> iptvLiveSourceRunHoverProbe(
   LivePlaySource src, {
   required KitUrlHealthProbe healthProbe,

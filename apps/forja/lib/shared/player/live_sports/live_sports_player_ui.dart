@@ -444,7 +444,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
         );
       },
       onError: (e) {
-        debugPrint('[IPTV Player] subtitle fetch error: $e');
+        debugPrint('[Live Sports Player] subtitle fetch error: $e');
         if (mounted) setState(() => _s._isFetchingSubs = false);
       },
       onDone: () {
@@ -536,7 +536,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       _s._externalSubFileCache[url] = uri;
       await applyUri(uri);
     } catch (e) {
-      debugPrint('[IPTV Player] subtitle download failed: $e');
+      debugPrint('[Live Sports Player] subtitle download failed: $e');
       if (!mounted) return;
       setState(() => _s._selectedExternalSubUrl = null);
       ForjaToast.warning('Subtitle failed');
@@ -606,7 +606,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       if (!mounted) return;
       setState(() => _s._selectedExternalSubUrl = url);
     } catch (e) {
-      debugPrint('[IPTV Player] Exo subtitle load failed: $e');
+      debugPrint('[Live Sports Player] Exo subtitle load failed: $e');
       if (mounted) ForjaToast.warning('Subtitle failed');
     }
   }
