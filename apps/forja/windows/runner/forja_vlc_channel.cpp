@@ -124,7 +124,7 @@ struct VlcApi {
   }
 };
 
-struct ForjaVlcChannel::Impl;
+}  // namespace
 
 struct VlcSession {
   flutter::TextureRegistrar* textures = nullptr;
@@ -218,8 +218,6 @@ struct VlcSession {
   }
 };
 
-}  // namespace
-
 struct ForjaVlcChannel::Impl {
   flutter::BinaryMessenger* messenger = nullptr;
   flutter::TextureRegistrar* textures = nullptr;
@@ -255,8 +253,6 @@ struct ForjaVlcChannel::Impl {
     event_sink->Success(flutter::EncodableValue(map));
   }
 };
-
-namespace {
 
 void VlcSession::EmitProgress() {
   if (!channel || !player || !api || !api->player_get_time ||
@@ -321,8 +317,6 @@ void VlcSession::StartProgress() {
     }
   });
 }
-
-}  // namespace
 
 std::unique_ptr<ForjaVlcChannel> ForjaVlcChannel::Register(
     flutter::BinaryMessenger* messenger,

@@ -2,6 +2,8 @@
 
 #include <optional>
 
+#include <flutter/plugin_registrar_windows.h>
+
 #include "flutter/generated_plugin_registrant.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -31,9 +33,13 @@ bool FlutterWindow::OnCreate() {
       flutter_controller_->engine()->messenger(), GetHandle());
   desktop_pip_channel_ = DesktopPipChannel::Register(
       flutter_controller_->engine()->messenger(), GetHandle());
+  auto* vlc_registrar =
+      flutter::PluginRegistrarManager::GetInstance()
+          ->GetRegistrar<flutter::PluginRegistrarWindows>(
+              flutter_controller_->engine()->GetRegistrarForPlugin(
+                  "ForjaVlcChannel"));
   forja_vlc_channel_ = ForjaVlcChannel::Register(
-      flutter_controller_->engine()->messenger(),
-      flutter_controller_->engine()->texture_registrar());
+      vlc_registrar->messenger(), vlc_registrar->texture_registrar());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();

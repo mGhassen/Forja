@@ -6,7 +6,11 @@
 
 #include <memory>
 
+struct VlcSession;
+
 class ForjaVlcChannel {
+  friend struct VlcSession;
+
  public:
   static std::unique_ptr<ForjaVlcChannel> Register(
       flutter::BinaryMessenger* messenger,
