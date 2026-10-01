@@ -71,6 +71,45 @@ void main() {
     });
   });
 
+  group('pickPlaylistSubtitleRendition', () {
+    test('English playlist rendition wins over a later track', () {
+      final pick = pickPlaylistSubtitleRendition<Map<String, String>>(
+        preferredLang: 'English',
+        renditions: const [
+          {'language': 'es', 'name': 'Spanish', 'uri': 'es.vtt'},
+          {'language': 'en', 'name': 'English', 'uri': 'en.vtt'},
+        ],
+        languageOf: (r) => r['language'] ?? '',
+        titleOf: (r) => r['name'] ?? '',
+      );
+      expect(pick?['uri'], 'en.vtt');
+    });
+
+    test('falls back to English when the preferred language is absent', () {
+      final pick = pickPlaylistSubtitleRendition<Map<String, String>>(
+        preferredLang: 'French',
+        renditions: const [
+          {'language': 'en', 'name': 'English', 'uri': 'en.vtt'},
+        ],
+        languageOf: (r) => r['language'] ?? '',
+        titleOf: (r) => r['name'] ?? '',
+      );
+      expect(pick?['uri'], 'en.vtt');
+    });
+
+    test('returns null when nothing matches', () {
+      final pick = pickPlaylistSubtitleRendition<Map<String, String>>(
+        preferredLang: 'French',
+        renditions: const [
+          {'language': 'th', 'name': 'Thai', 'uri': 'th.vtt'},
+        ],
+        languageOf: (r) => r['language'] ?? '',
+        titleOf: (r) => r['name'] ?? '',
+      );
+      expect(pick, isNull);
+    });
+  });
+
   group('externalSubtitleAutoCandidates', () {
     test('orders by rank and dedupes', () {
       final subs = [

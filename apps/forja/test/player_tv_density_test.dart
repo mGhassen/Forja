@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
@@ -295,5 +296,54 @@ void main() {
     expect(cardW, closeTo(280 * ShellTokens.tvChromeScale, 0.001));
     expect(pad, closeTo(16 * ShellTokens.tvChromeScale, 0.001));
     expect(cardW, lessThan(280));
+  });
+
+  testWidgets('subtitle settings type densifies under TV shell', (tester) async {
+    addTearDown(PlayerSubtitleSettingsDialog.dismiss);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShellScope(
+          profile: ShellProfile.tv,
+          config: shellPlatformConfigFor(ShellProfile.tv),
+          child: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () {
+                  PlayerSubtitleSettingsDialog.show(
+                    context,
+                    initial: const PlayerSubtitleSettingsValues(
+                      size: 52,
+                      delay: 0,
+                      color: Color(0xFFFFFFFF),
+                      bgOpacity: 0.67,
+                      bottomPadding: 48,
+                      bold: false,
+                      font: 'Default',
+                    ),
+                    onChanged: (_) {},
+                  );
+                },
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pump();
+
+    expect(
+      tester.widget<Text>(find.text('Subtitle Settings')).style!.fontSize,
+      ShellTokens.tvTitleFontSize,
+    );
+    expect(
+      tester.widget<Text>(find.text('Size')).style!.fontSize,
+      ShellTokens.tvBodyFontSize,
+    );
+    expect(
+      tester.widget<Text>(find.text('Default')).style!.fontSize,
+      ShellTokens.tvBodyFontSize,
+    );
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:http/http.dart' as http;
 
 /// One HLS subtitle rendition kept off the demuxed track list until a
@@ -181,6 +182,30 @@ String _cacheKey(String url, Map<String, String>? headers) {
   if (headers == null || headers.isEmpty) return url;
   final keys = headers.keys.toList()..sort();
   return '$url|${keys.map((k) => '$k=${headers[k]}').join('\n')}';
+}
+
+/// Matching subtitle already listed on the HLS master, or null.
+///
+/// Non-HLS play URLs return null without a fetch so scraped auto-pick can run.
+Future<HlsInStreamSubtitle?> preferredHlsInStreamSubtitle({
+  required String? playUrl,
+  Map<String, String>? headers,
+  required String preferredLang,
+}) async {
+  final raw = playUrl?.trim() ?? '';
+  if (raw.isEmpty || preferredLang.isEmpty || preferredLang == 'None') {
+    return null;
+  }
+  if (hlsInStreamFetchTarget(raw) == null && !isLocalHlsPlayUrl(raw)) {
+    return null;
+  }
+  final subs = await loadHlsInStreamSubtitles(raw, headers: headers);
+  return pickPlaylistSubtitleRendition(
+    preferredLang: preferredLang,
+    renditions: subs,
+    languageOf: (s) => s.language,
+    titleOf: (s) => s.name,
+  );
 }
 
 /// Read in-stream subtitle renditions from the play URL's HLS master.

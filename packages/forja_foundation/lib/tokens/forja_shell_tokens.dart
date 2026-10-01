@@ -848,6 +848,28 @@ abstract final class ShellTokens {
   /// Probe / play status stripe on the left of a stream card.
   static const double torrentPanelProbeBarWidthDesktop = 4;
   static const double torrentPanelProbeBarWidthTv = 1;
+
+  /// Diagonal progress stripes (portal shelf warm, download rows).
+  static const double rowProgressStripeStroke = 6;
+  static const double rowProgressStripeStrokeTv =
+      rowProgressStripeStroke * tvChromeScale;
+  static const double rowProgressStripeSpacing = 14;
+  static const double rowProgressStripeSpacingTv =
+      rowProgressStripeSpacing * tvChromeScale;
+
+  /// Quieter static stripes (saved download, portal delete).
+  static const double rowQuietStripeStroke = 5;
+  static const double rowQuietStripeStrokeTv =
+      rowQuietStripeStroke * tvChromeScale;
+
+  static double rowProgressStripeStrokeOf(bool tv) =>
+      tv ? rowProgressStripeStrokeTv : rowProgressStripeStroke;
+
+  static double rowProgressStripeSpacingOf(bool tv) =>
+      tv ? rowProgressStripeSpacingTv : rowProgressStripeSpacing;
+
+  static double rowQuietStripeStrokeOf(bool tv) =>
+      tv ? rowQuietStripeStrokeTv : rowQuietStripeStroke;
   static const double torrentPanelRowPadHDesktop = 12;
   static const double torrentPanelRowPadHTv =
       torrentPanelRowPadHDesktop * tvChromeScale;

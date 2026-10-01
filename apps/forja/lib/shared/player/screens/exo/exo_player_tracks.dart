@@ -297,6 +297,11 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     });
     if (hasUsableMux) return;
 
+    // Master already lists the language, but Media3 has not reported text
+    // tracks yet. Do not sideload Wyzie in that gap — its free-plan cue
+    // flashes, then the in-stream track replaces it.
+    if (await _hlsPlaylistCoversPreferred(preferred)) return;
+
     // Already on a matching Media3 text track (embedded or previous sideload).
     if (_s._tracks.text.any(
           (t) =>
@@ -341,6 +346,19 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       '[ExoPlayer] auto external subtitle → ${pick['display'] ?? pick['language']}',
     );
     await _loadOnlineSubtitle(pick);
+  }
+
+  Future<bool> _hlsPlaylistCoversPreferred(String preferred) async {
+    final playUrl = _s._currentUrl ?? widget.mediaPath;
+    final headers = _s._sources.isNotEmpty
+        ? _s._sources[_s._sourceIndex].headers
+        : widget.headers;
+    final pick = await preferredHlsInStreamSubtitle(
+      playUrl: playUrl,
+      headers: headers,
+      preferredLang: preferred,
+    );
+    return pick != null;
   }
 
   Future<void> _turnOffSubtitles() async {

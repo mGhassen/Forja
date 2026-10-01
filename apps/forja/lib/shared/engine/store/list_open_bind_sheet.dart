@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja_foundation/components/forja_image_cache.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Checkbox;
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/components/checkbox.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_picker.dart';
 import 'package:forja/shared/engine/store/list_open_title_rank.dart';
@@ -16,6 +17,19 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+/// Open with rebind searches every hub that can search.
+/// A compatible hub is not a pre-checked direct open.
+@visibleForTesting
+bool listOpenBindUsesHubSearch({
+  required bool pickFilm,
+  required bool compatible,
+  required bool hasSearch,
+}) {
+  if (!hasSearch) return false;
+  if (pickFilm) return true;
+  return !compatible;
+}
 
 /// Result of the single Open-in bind sheet.
 class ListOpenBindResult {
@@ -34,6 +48,8 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
   required MetaItem sourceMeta,
   String title = 'Open in…',
   String? initialPluginId,
+  bool pickFilm = false,
+  Future<bool> Function(ListOpenBindResult result)? onSave,
 }) {
   if (candidates.isEmpty) return Future.value(null);
   return showDialog<ListOpenBindResult>(
@@ -47,6 +63,8 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
           sourceMeta: sourceMeta,
           title: title,
           initialPluginId: initialPluginId,
+          pickFilm: pickFilm,
+          onSave: onSave,
         ),
       );
     },
@@ -59,12 +77,20 @@ class _ListOpenBindSheet extends StatefulWidget {
     required this.sourceMeta,
     required this.title,
     this.initialPluginId,
+    this.pickFilm = false,
+    this.onSave,
   });
 
   final List<ListOpenCandidate> candidates;
   final MetaItem sourceMeta;
   final String title;
   final String? initialPluginId;
+
+  /// Right-click rebind: search every hub, check a title to save it.
+  final bool pickFilm;
+
+  /// Save the checked title and stay on the sheet. Null pops and opens.
+  final Future<bool> Function(ListOpenBindResult result)? onSave;
 
   @override
   State<_ListOpenBindSheet> createState() => _ListOpenBindSheetState();
@@ -82,6 +108,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   bool _searching = false;
   List<MetaItem> _hits = const [];
   String? _error;
+  String? _pickedKey;
+  bool _closed = false;
+  bool _saving = false;
 
   String get _yearHint {
     final r = widget.sourceMeta.releaseInfo.trim();
@@ -152,7 +181,25 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     _chipNodes[i].requestFocus();
   }
 
+  bool get _usesSearch => listOpenBindUsesHubSearch(
+        pickFilm: widget.pickFilm,
+        compatible: _hub.compatible,
+        hasSearch: _hub.hasSearch,
+      );
+
+  /// Rebind on a hub that cannot search: the current title, unchecked.
+  bool get _filmOnly =>
+      widget.pickFilm && _hub.compatible && !_hub.hasSearch;
+
   void _focusBelowHubs() {
+    if (_usesSearch || widget.pickFilm) {
+      if (_filmOnly) {
+        _openFocus.requestFocus();
+        return;
+      }
+      _queryFocus.requestFocus();
+      return;
+    }
     if (_hub.compatible) {
       _openFocus.requestFocus();
       return;
@@ -164,6 +211,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     if (_hub.pluginId == hub.pluginId) return;
     setState(() {
       _hub = hub;
+      _pickedKey = null;
       _fitHitFocus(0);
       _hits = const [];
       _error = null;
@@ -173,7 +221,15 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   }
 
   void _onHubReady() {
-    if (_hub.compatible) return;
+    if (_filmOnly) {
+      setState(() {
+        _error = null;
+        _hits = const [];
+        _searching = false;
+      });
+      return;
+    }
+    if (!_usesSearch && _hub.compatible && !widget.pickFilm) return;
     if (!_hub.hasSearch) {
       setState(() {
         _error = '${_hub.label} has no search';
@@ -190,7 +246,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   }
 
   Future<void> _runSearch() async {
-    if (_hub.compatible || !_hub.hasSearch) return;
+    if (!_usesSearch) return;
     final q = _query.text.trim();
     if (q.isEmpty) {
       setState(() {
@@ -220,12 +276,43 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     });
   }
 
+  String _hitKey(MetaItem hit) {
+    final id = hit.open?.id.trim() ?? '';
+    return '$id|${hit.name}';
+  }
+
+  void _popResult(ListOpenBindResult result) {
+    if (_closed) return;
+    _closed = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pop(result);
+    });
+  }
+
+  Future<void> _savePick(ListOpenBindResult result, String key) async {
+    if (_closed || _saving || _pickedKey == key) return;
+    final save = widget.onSave;
+    if (!widget.pickFilm || save == null) {
+      setState(() => _pickedKey = key);
+      _popResult(result);
+      return;
+    }
+    _saving = true;
+    final ok = await save(result);
+    _saving = false;
+    if (!mounted || !ok) return;
+    setState(() => _pickedKey = key);
+  }
+
   void _confirmCompatible() {
-    Navigator.of(context).pop(ListOpenBindResult(candidate: _hub));
+    unawaited(_savePick(ListOpenBindResult(candidate: _hub), 'source'));
   }
 
   void _confirmHit(MetaItem hit) {
-    Navigator.of(context).pop(ListOpenBindResult(candidate: _hub, hit: hit));
+    unawaited(
+      _savePick(ListOpenBindResult(candidate: _hub, hit: hit), _hitKey(hit)),
+    );
   }
 
   bool _isBest(MetaItem hit, int index) {
@@ -390,7 +477,18 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                 ],
               ),
               SizedBox(height: px(14)),
-              if (_hub.compatible) ...[
+              if (_filmOnly) ...[
+                _FilmCheckRow(
+                  meta: widget.sourceMeta,
+                  checked: _pickedKey == 'source',
+                  onPick: _confirmCompatible,
+                  dpad: dpad,
+                  density: density,
+                  focusNode: _openFocus,
+                  onUp: _focusSelectedChip,
+                ),
+                const Spacer(),
+              ] else if (_hub.compatible && !widget.pickFilm) ...[
                 _CompatibleOpenBody(
                   hubLabel: _hub.label,
                   onOpen: _confirmCompatible,
@@ -436,6 +534,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                     hits: _hits,
                     isBest: _isBest,
                     onPick: _confirmHit,
+                    pickFilm: widget.pickFilm,
+                    pickedKey: _pickedKey,
+                    hitKey: _hitKey,
                     dpad: dpad,
                     density: density,
                     focusNodes: _hitNodes,
@@ -491,6 +592,96 @@ class _PosterThumb extends StatelessWidget {
               ),
       ),
     );
+  }
+}
+
+class _FilmCheckRow extends StatelessWidget {
+  const _FilmCheckRow({
+    required this.meta,
+    required this.checked,
+    required this.onPick,
+    required this.dpad,
+    required this.density,
+    required this.focusNode,
+    required this.onUp,
+  });
+
+  final MetaItem meta;
+  final bool checked;
+  final VoidCallback onPick;
+  final bool dpad;
+  final bool density;
+  final FocusNode focusNode;
+  final VoidCallback onUp;
+
+  @override
+  Widget build(BuildContext context) {
+    double px(double desktop) =>
+        density ? desktop * ShellTokens.tvChromeScale : desktop;
+    double type(double desktop) =>
+        density ? ShellTokens.tvTypeSize(desktop) : desktop;
+    final year = meta.releaseInfo.trim().isNotEmpty
+        ? meta.releaseInfo.trim()
+        : meta.premiereDate.trim();
+    final name = meta.name.trim().isEmpty ? 'Untitled' : meta.name.trim();
+    final row = Padding(
+      padding: EdgeInsets.symmetric(vertical: px(8), horizontal: px(6)),
+      child: Row(
+        children: [
+          _PosterThumb(url: meta.poster.trim(), density: density),
+          SizedBox(width: px(10)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: ForjaShellColors.textPrimary,
+                    fontSize: type(13),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (year.isNotEmpty) ...[
+                  SizedBox(height: px(2)),
+                  Text(
+                    year,
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: type(11),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Checkbox(
+            value: checked,
+            onChanged: (v) {
+              if (v == true) onPick();
+            },
+          ),
+        ],
+      ),
+    );
+    if (dpad) {
+      return shellFocusableTap(
+        context: context,
+        onTap: onPick,
+        borderRadius: px(8),
+        focusNode: focusNode,
+        scaleOnFocus: 1,
+        showFocusBorder: true,
+        onUpEdge: onUp,
+        onDownEdge: () {},
+        onLeftEdge: () {},
+        onRightEdge: () {},
+        child: row,
+      );
+    }
+    return row;
   }
 }
 
@@ -691,6 +882,9 @@ class _HitsBody extends StatelessWidget {
     required this.density,
     required this.focusNodes,
     required this.onUpFromFirst,
+    this.pickFilm = false,
+    this.pickedKey,
+    this.hitKey,
   });
 
   final bool searching;
@@ -702,6 +896,9 @@ class _HitsBody extends StatelessWidget {
   final bool density;
   final List<FocusNode> focusNodes;
   final VoidCallback onUpFromFirst;
+  final bool pickFilm;
+  final String? pickedKey;
+  final String Function(MetaItem hit)? hitKey;
 
   @override
   Widget build(BuildContext context) {
@@ -795,18 +992,25 @@ class _HitsBody extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: ShellPaintScope.iconOf(context, 20),
-                color: best
-                    ? ForjaShellColors.brandGreen
-                    : ForjaShellColors.iconMuted,
-              ),
+              pickFilm
+                  ? Checkbox(
+                      value: pickedKey != null && pickedKey == hitKey?.call(hit),
+                      onChanged: (v) {
+                        if (v == true) onPick(hit);
+                      },
+                    )
+                  : Icon(
+                      Icons.chevron_right_rounded,
+                      size: ShellPaintScope.iconOf(context, 20),
+                      color: best
+                          ? ForjaShellColors.brandGreen
+                          : ForjaShellColors.iconMuted,
+                    ),
             ],
           ),
         );
 
-        final decorated = best
+        final decorated = best && !pickFilm
             ? Container(
                 decoration: BoxDecoration(
                   color: ForjaShellColors.brandGreen.withValues(alpha: 0.08),
@@ -839,6 +1043,7 @@ class _HitsBody extends StatelessWidget {
             child: decorated,
           );
         }
+        if (pickFilm) return decorated;
         return Material(
           color: Colors.transparent,
           child: InkWell(

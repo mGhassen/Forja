@@ -146,6 +146,7 @@ class SimklService {
     await _secureDelete(_keyLastSyncMs);
     _initialSyncDone = false;
     _syncInProgress = null;
+    clearWatchlistCache();
     debugPrint('[Simkl] Logged out.');
   }
 
@@ -157,6 +158,7 @@ class SimklService {
       _secureDelete(_keyLastActivity);
       _secureDelete(_keyLastSyncMs);
       _initialSyncDone = false;
+      clearWatchlistCache();
     }
   }
 
@@ -224,7 +226,9 @@ class SimklService {
     try {
       final resp = await engineHttp('POST', '$_baseUrl/sync/add-to-list', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
       debugPrint('[Simkl] Add to list: ${resp.status}');
-      return resp.status == 200 || resp.status == 201;
+      final ok = resp.status == 200 || resp.status == 201;
+      if (ok) clearWatchlistCache();
+      return ok;
     } catch (e) {
       debugPrint('[Simkl] Add to list error: $e');
       return false;
@@ -248,7 +252,9 @@ class SimklService {
 
     try {
       final resp = await engineHttp('POST', '$_baseUrl/sync/remove-from-list', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
-      return resp.status == 200;
+      final ok = resp.status == 200;
+      if (ok) clearWatchlistCache();
+      return ok;
     } catch (e) {
       debugPrint('[Simkl] Remove from list error: $e');
       return false;
@@ -887,23 +893,117 @@ class SimklService {
     _initialSyncDone = true;
   }
 
-  /// Movies + shows + anime for one status. Simkl `all-items` has no page param.
+  /// Movies + shows + anime for one status.
+  ///
+  /// One library fetch (`/all` per type, in parallel) is reused for every
+  /// status tab. My List used to hit movies, shows, and anime again on each
+  /// Plan to Watch → Watching flip.
+  static const Duration _libraryTtl = Duration(minutes: 10);
+  static List<Map<String, dynamic>>? _libraryRows;
+  static DateTime? _libraryAt;
+  static Future<List<Map<String, dynamic>>>? _libraryFlight;
+  static int _libraryGen = 0;
+
+  static void clearWatchlistCache() {
+    _libraryGen++;
+    _libraryRows = null;
+    _libraryAt = null;
+    _libraryFlight = null;
+  }
+
+  /// Rows whose Simkl `status` matches [status]. `all` returns [rows] as-is.
+  @visibleForTesting
+  static List<Map<String, dynamic>> libraryRowsForStatus(
+    List<Map<String, dynamic>> rows,
+    String status,
+  ) {
+    final want = status.trim().isEmpty ? 'plantowatch' : status.trim();
+    if (want == 'all') return rows;
+    return [
+      for (final row in rows)
+        if ((row['status'] ?? '').toString() == want) row,
+    ];
+  }
+
   Future<List<Map<String, dynamic>>> getWatchlistStatus(String status) async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return const [];
+    final rows = await _watchlistLibrary(token);
+    return libraryRowsForStatus(rows, status);
+  }
 
-    final out = <Map<String, dynamic>>[];
-    for (final type in ['movies', 'shows', 'anime']) {
-      try {
-        final items = await _allItems(token, type, status: status);
-        for (final item in items) {
-          out.add({...item, '_simklType': type});
-        }
-      } catch (e) {
-        debugPrint('[Simkl] Library fetch ($type/$status) error: $e');
-      }
+  Future<List<Map<String, dynamic>>> _watchlistLibrary(String token) {
+    final at = _libraryAt;
+    final rows = _libraryRows;
+    if (rows != null &&
+        at != null &&
+        DateTime.now().difference(at) < _libraryTtl) {
+      return Future.value(rows);
     }
-    return out;
+    final flight = _libraryFlight;
+    if (flight != null) return flight;
+    final gen = _libraryGen;
+    final next = _fetchWatchlistLibrary(token, gen);
+    _libraryFlight = next;
+    return next;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchWatchlistLibrary(
+    String token,
+    int gen,
+  ) async {
+    var failed = false;
+    try {
+      const types = ['movies', 'shows', 'anime'];
+      final batches = await Future.wait(types.map((type) async {
+        try {
+          final items = await _allItemsResult(token, type, status: 'all');
+          if (items == null) {
+            failed = true;
+            return const <Map<String, dynamic>>[];
+          }
+          return [
+            for (final item in items) {...item, '_simklType': type},
+          ];
+        } catch (e) {
+          failed = true;
+          debugPrint('[Simkl] Library fetch ($type) error: $e');
+          return const <Map<String, dynamic>>[];
+        }
+      }));
+      final rows = [for (final batch in batches) ...batch];
+      if (!failed && gen == _libraryGen) {
+        _libraryRows = rows;
+        _libraryAt = DateTime.now();
+      }
+      return rows;
+    } finally {
+      if (gen == _libraryGen) _libraryFlight = null;
+    }
+  }
+
+  /// `null` when Simkl did not answer 200 — do not cache that as an empty list.
+  Future<List<Map<String, dynamic>>?> _allItemsResult(
+    String token,
+    String type, {
+    String? status,
+    String query = '',
+  }) async {
+    final path = status == null
+        ? '/sync/all-items/$type$query'
+        : '/sync/all-items/$type/$status$query';
+    final resp = await engineHttp(
+      'GET',
+      '$_baseUrl$path',
+      headers: _authHeaders(token),
+      maxRetries: 0,
+    );
+    if (resp.status != 200) {
+      debugPrint('[Simkl] GET $path → ${resp.status}');
+      _handleUnauthorized(resp.status);
+      return null;
+    }
+    return _entries(json.decode(resp.body), type);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1131,20 +1231,13 @@ class SimklService {
     String? status,
     String query = '',
   }) async {
-    final path = status == null
-        ? '/sync/all-items/$type$query'
-        : '/sync/all-items/$type/$status$query';
-    final resp = await engineHttp(
-      'GET',
-      '$_baseUrl$path',
-      headers: _authHeaders(token),
-      maxRetries: 0,
+    final items = await _allItemsResult(
+      token,
+      type,
+      status: status,
+      query: query,
     );
-    if (resp.status != 200) {
-      debugPrint('[Simkl] GET $path → ${resp.status}');
-      return const [];
-    }
-    return _entries(json.decode(resp.body), type);
+    return items ?? const [];
   }
 
   /// Simkl `last_watched` / `next_to_watch`: `S08E02` or anime `E20`.

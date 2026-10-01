@@ -382,9 +382,14 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       return;
     }
 
+    // Remount: mux list may still be empty. Do not fill that gap with scraped
+    // subs. Attach the playlist rendition when the master already lists one.
     if (forcePlayerApply &&
         !_s._userPickedExternalSubtitle &&
         _s._selectedExternalSubUrl == null) {
+      if (!_subtitleAutoCancelled(gen)) {
+        await _applyPreferredHlsInStreamSubtitle(preferred, gen);
+      }
       return;
     }
 
@@ -424,6 +429,8 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     }
 
     if (_subtitleAutoCancelled(gen)) return;
+    if (await _applyPreferredHlsInStreamSubtitle(preferred, gen)) return;
+    if (_subtitleAutoCancelled(gen)) return;
     await _autoLoadExternalSubtitleCandidates(
       externalSubtitleAutoCandidates(
         preferredLang: preferred,
@@ -433,6 +440,50 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       forcePlayerApply: forcePlayerApply,
       gen: gen,
     );
+  }
+
+  /// Playlist already has the preferred language. Select that rendition and
+  /// skip scraped files (Wyzie's free cue flashes if we attach those first).
+  Future<bool> _applyPreferredHlsInStreamSubtitle(
+    String preferred,
+    int gen,
+  ) async {
+    if (_s._userPickedExternalSubtitle) return false;
+    final playUrl = _s._hlsMasterUrl ?? _s._currentUrl ?? widget.mediaPath;
+    final pick = await preferredHlsInStreamSubtitle(
+      playUrl: playUrl,
+      headers: _s._hlsMasterHeaders,
+      preferredLang: preferred,
+    );
+    if (_subtitleAutoCancelled(gen) || pick == null) return false;
+    final current = _s._player.state.track.subtitle;
+    final title = current.title ?? '';
+    final already = current.id != 'no' &&
+        current.id != 'auto' &&
+        current.id.isNotEmpty &&
+        (current.id == pick.uri || (title.isNotEmpty && title == pick.name));
+    if (already && _s._selectedExternalSubUrl == null) return true;
+    try {
+      await preparePlayerExternalSubtitleSwitch(_s._player);
+      if (_subtitleAutoCancelled(gen)) return false;
+      final track = SubtitleTrack.uri(
+        pick.uri,
+        title: pick.name.isNotEmpty ? pick.name : pick.language,
+        language: pick.language,
+      );
+      await setPlayerExternalSubtitle(_s._player, track);
+      if (_s._disposed || !mounted) return true;
+      _s._updateSubVisibility(track);
+      if (mounted) setState(() => _s._selectedExternalSubUrl = null);
+      debugPrint(
+        '[MobilePlayer] auto subtitle → in-stream '
+        '${pick.name.isNotEmpty ? pick.name : pick.language}',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[MobilePlayer] in-stream subtitle failed: $e');
+      return false;
+    }
   }
 
   void _showSubtitlesMenu(BuildContext anchorContext) {

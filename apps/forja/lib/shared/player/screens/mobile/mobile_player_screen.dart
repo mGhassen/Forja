@@ -27,6 +27,7 @@ import 'package:forja/shared/playback/probe/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
+import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';

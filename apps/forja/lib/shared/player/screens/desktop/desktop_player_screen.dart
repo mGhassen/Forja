@@ -38,6 +38,7 @@ import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
+import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';

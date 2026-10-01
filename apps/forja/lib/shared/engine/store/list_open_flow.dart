@@ -88,6 +88,7 @@ Future<void> openKitListItem(
   await openListItemWithBinding(
     context,
     item: kitListOpenRow(item),
+    sourceItem: item,
     shellTabId: shellTabId,
     forcePick: forcePick,
   );
@@ -97,6 +98,7 @@ Future<void> openKitListItem(
 Future<void> openListItemWithBinding(
   BuildContext context, {
   required Map<String, dynamic> item,
+  Map<String, dynamic>? sourceItem,
   String? shellTabId,
   bool forcePick = false,
 }) async {
@@ -173,30 +175,82 @@ Future<void> openListItemWithBinding(
   }
 
   if (!context.mounted) return;
+  if (forcePick) {
+    await showListOpenBindSheet(
+      context,
+      candidates: candidates,
+      sourceMeta: meta,
+      title: 'Open with…',
+      initialPluginId: row['pluginId']?.toString(),
+      pickFilm: true,
+      onSave: (bound) async {
+        final saved = await persistListOpenBinding(
+          row: row,
+          meta: meta,
+          bound: bound,
+          sourceItem: sourceItem,
+        );
+        return saved != null;
+      },
+    );
+    return;
+  }
+
   final bound = await showListOpenBindSheet(
     context,
     candidates: candidates,
     sourceMeta: meta,
-    title: forcePick ? 'Open with…' : 'Open in…',
+    title: 'Open in…',
     initialPluginId: row['pluginId']?.toString(),
   );
   if (bound == null || !context.mounted) return;
 
-  await _applyBindAndOpen(
-    context,
+  final saved = await persistListOpenBinding(
     row: row,
     meta: meta,
     bound: bound,
+    sourceItem: sourceItem,
+  );
+  if (saved == null || !context.mounted) return;
+  await openMetaItem(
+    context,
+    pluginId: bound.candidate.pluginId,
+    item: saved,
     shellTabId: shellTabId,
   );
 }
 
-Future<void> _applyBindAndOpen(
-  BuildContext context, {
+/// Copies a saved hub bind onto the grid row the next tap will read.
+@visibleForTesting
+void stampListOpenBinding(
+  Map<String, dynamic> saved,
+  Map<String, dynamic> target,
+) {
+  for (final key in const [
+    'pluginId',
+    'uniqueId',
+    'metaOpen',
+    'open',
+    'catalogOpen',
+    'listStatus',
+    'mediaType',
+  ]) {
+    if (!saved.containsKey(key)) continue;
+    target[key] = saved[key];
+  }
+  final meta = target['meta'];
+  final open = saved['open'];
+  if (meta is Map && open != null) {
+    meta['open'] = open;
+  }
+}
+
+/// Writes the chosen hub onto the bookmark. Returns the meta that would open.
+Future<MetaItem?> persistListOpenBinding({
   required Map<String, dynamic> row,
   required MetaItem meta,
   required ListOpenBindResult bound,
-  String? shellTabId,
+  Map<String, dynamic>? sourceItem,
 }) async {
   final candidate = bound.candidate;
   MetaOpen? open;
@@ -207,7 +261,7 @@ Future<void> _applyBindAndOpen(
     final hitOpen = hit.open;
     if (hitOpen == null || hitOpen.id.trim().isEmpty) {
       ForjaToast.info('That match has no open handoff');
-      return;
+      return null;
     }
     open = hitOpen;
     next = hit.copyWith(
@@ -216,12 +270,17 @@ Future<void> _applyBindAndOpen(
       background:
           hit.background.trim().isNotEmpty ? hit.background : meta.background,
     );
+    final surface = open.surface.trim();
+    if (surface.isNotEmpty && surface != 'tmdb') {
+      final panel = open.effectiveExtract.panelCategory.trim();
+      row['mediaType'] = panel.isNotEmpty ? panel : surface;
+    }
   } else {
     open = ListOpenBinding.metaOpenForCandidate(row, meta, candidate.types) ??
         meta.open;
     if (open == null || open.id.trim().isEmpty) {
       ForjaToast.info('No open handoff for ${candidate.label}');
-      return;
+      return null;
     }
     next = meta.copyWith(open: open);
   }
@@ -232,11 +291,9 @@ Future<void> _applyBindAndOpen(
     open: open,
     meta: next,
   );
-  if (!context.mounted) return;
-  await openMetaItem(
-    context,
-    pluginId: candidate.pluginId,
-    item: next,
-    shellTabId: shellTabId,
-  );
+  final grid = sourceItem;
+  if (grid != null && !identical(grid, row)) {
+    stampListOpenBinding(row, grid);
+  }
+  return next;
 }

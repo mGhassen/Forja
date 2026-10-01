@@ -879,6 +879,9 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
 }
 
 class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
+  static const _channelListTopPad = 4.0;
+  static const _channelListSeparator = 6.0;
+
   final ScrollController _scroll = ScrollController();
   final Map<int, GlobalKey> _itemKeys = {};
   CatalogPosterGridLayout? _layout;
@@ -1072,27 +1075,18 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   void _scrollToIndex(int index) {
     if (!_scroll.hasClients || index < 0) return;
     if (_compactList) {
-      const rowH = 56.0;
-      const topPad = 4.0;
-      final target = (topPad + index * rowH).clamp(
-        0.0,
-        _scroll.position.maxScrollExtent,
+      final tv = ShellPaintScope.usesTvDensityOf(context);
+      final rowH = ChannelCardTokens.listRowHeightOf(tv);
+      CatalogDenseList.scrollIndexKeepVisible(
+        _scroll,
+        index: index,
+        rowExtent: rowH,
+        topPad: _channelListTopPad,
+        stride: rowH + _channelListSeparator,
       );
-      if ((_scroll.offset - target).abs() < 0.5) return;
-      _scroll.jumpTo(target);
       return;
     }
-    final layout = _layout;
-    if (layout == null) return;
-    final cols = layout.columns.clamp(1, 999);
-    final row = index ~/ cols;
-    final rowExtent = layout.cardH + layout.gap;
-    final target = (layout.topPad + row * rowExtent).clamp(
-      0.0,
-      _scroll.position.maxScrollExtent,
-    );
-    if ((_scroll.offset - target).abs() < 0.5) return;
-    _scroll.jumpTo(target);
+    _layout?.scrollItemKeepVisible(_scroll, index);
   }
 
   /// ↑ from top row: left half of the **viewport** → shelf, right → portals.
@@ -1237,9 +1231,15 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     if (list) {
       body = ListView.separated(
         controller: _scroll,
-        padding: EdgeInsets.fromLTRB(leading, 4, trailing, 12),
+        padding: EdgeInsets.fromLTRB(
+          leading,
+          _channelListTopPad,
+          trailing,
+          12,
+        ),
         itemCount: widget.items.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 6),
+        separatorBuilder: (_, _) =>
+            const SizedBox(height: _channelListSeparator),
         itemBuilder: (context, i) => _buildChannelTile(context, i, list: true),
       );
     } else {

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
+import 'package:forja/shared/engine/store/list_open_bind_sheet.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_flow.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -214,6 +215,64 @@ void main() {
       expect(row['name'], 'Fight Club');
       expect(row['poster'], 'https://example/p.jpg');
       expect(row['mediaType'], 'movie');
+    });
+  });
+
+  group('listOpenBindUsesHubSearch', () {
+    test('rebind searches a compatible hub', () {
+      expect(
+        listOpenBindUsesHubSearch(
+          pickFilm: true,
+          compatible: true,
+          hasSearch: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('first open keeps the direct row when the hub already matches', () {
+      expect(
+        listOpenBindUsesHubSearch(
+          pickFilm: false,
+          compatible: true,
+          hasSearch: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('a hub without search is not a search list', () {
+      expect(
+        listOpenBindUsesHubSearch(
+          pickFilm: true,
+          compatible: false,
+          hasSearch: false,
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('stampListOpenBinding', () {
+    test('writes the saved hub onto the grid row and nested meta', () {
+      final saved = {
+        'pluginId': 'hub-b',
+        'open': {'surface': 'drama', 'id': '9'},
+        'metaOpen': {'surface': 'drama', 'id': '9'},
+        'catalogOpen': {'surface': 'drama', 'id': '9'},
+        'mediaType': 'drama',
+      };
+      final grid = {
+        'pluginId': 'hub-a',
+        'open': {'surface': 'tmdb', 'id': '1'},
+        'meta': {
+          'open': {'surface': 'tmdb', 'id': '1'},
+        },
+      };
+      stampListOpenBinding(saved, grid);
+      expect(grid['pluginId'], 'hub-b');
+      expect((grid['open'] as Map)['id'], '9');
+      expect(((grid['meta'] as Map)['open'] as Map)['surface'], 'drama');
     });
   });
 }

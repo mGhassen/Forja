@@ -19,6 +19,15 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+bool _subTv(BuildContext context) => ShellPaintScope.usesTvDensityOf(context);
+
+double _subChrome(BuildContext context, double desktop) =>
+    ShellTokens.chromeScale(desktop, tv: _subTv(context));
+
+double _subType(BuildContext context, double desktop) =>
+    _subTv(context) ? ShellTokens.tvTypeSize(desktop) : desktop;
+
 class PlayerSubtitleSettingsValues {
   const PlayerSubtitleSettingsValues({
     required this.size,
@@ -75,19 +84,25 @@ class PlayerSubtitleSettingsDialog {
     playerChromeCancelSeekScrubs();
 
     final overlay = Overlay.of(context);
+    final shellScope = ShellScope.maybeOf(context);
     _completer = Completer<void>();
 
     void close() => dismiss();
 
+    final panel = _SubtitleSettingsOverlay(
+      initial: initial,
+      onChanged: onChanged,
+      player: player,
+      onClose: close,
+    );
     _entry = OverlayEntry(
-      builder: (_) => ShellScopeBuilder(
-        builder: (ctx, _) => _SubtitleSettingsOverlay(
-          initial: initial,
-          onChanged: onChanged,
-          player: player,
-          onClose: close,
-        ),
-      ),
+      builder: (_) => shellScope != null
+          ? ShellScope(
+              profile: shellScope.profile,
+              config: shellScope.config,
+              child: panel,
+            )
+          : ShellScope.rehost(context, panel),
     );
     overlay.insert(_entry!);
     return _completer!.future;
@@ -203,29 +218,27 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
               children: [
                 Padding(
                   padding: EdgeInsets.fromLTRB(
-                    leanback ? 12 : 20,
-                    leanback ? 10 : 16,
-                    leanback ? 8 : 12,
-                    leanback ? 6 : 8,
+                    _subChrome(context, 20),
+                    _subChrome(context, 16),
+                    _subChrome(context, 12),
+                    _subChrome(context, 8),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.tune_rounded,
                         color: const Color(0xFF7C3AED),
-                        size: leanback
+                        size: _subTv(context)
                             ? PlayerPopupTokens.chromeIconSizeTv
                             : 20,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: _subChrome(context, 8)),
                       Expanded(
                         child: Text(
                           'Subtitle Settings',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: leanback
-                                ? PlayerPopupTokens.titleFontSizeTv
-                                : 16,
+                            fontSize: _subType(context, 16),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -237,7 +250,12 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                 const Divider(color: Colors.white10, height: 1),
                 Flexible(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                    padding: EdgeInsets.fromLTRB(
+                      _subChrome(context, 20),
+                      _subChrome(context, 12),
+                      _subChrome(context, 20),
+                      _subChrome(context, 16),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -268,7 +286,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                               )),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: _subChrome(context, 8)),
                       _tvRow(
                         tv: tv,
                         rowId: PlayerSubtitleSettingsDialog.delayRowId,
@@ -297,15 +315,15 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
+                      SizedBox(height: _subChrome(context, 12)),
+                      Text(
                         'Text Color',
                         style: TextStyle(
                           color: Colors.white70,
-                          fontSize: 13,
+                          fontSize: _subType(context, 13),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: _subChrome(context, 8)),
                       _tvRow(
                         tv: tv,
                         rowId: PlayerSubtitleSettingsDialog.colorRowId,
@@ -313,8 +331,8 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                         itemCount:
                             PlayerSubtitleSettingsDialog._colorOptions.length,
                         child: Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
+                          spacing: _subChrome(context, 10),
+                          runSpacing: _subChrome(context, 10),
                           children: () {
                             final entries = PlayerSubtitleSettingsDialog
                                 ._colorOptions.entries
@@ -349,7 +367,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                           }(),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: _subChrome(context, 16)),
                       _tvRow(
                         tv: tv,
                         rowId: PlayerSubtitleSettingsDialog.bgRowId,
@@ -377,7 +395,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                               )),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: _subChrome(context, 8)),
                       _tvRow(
                         tv: tv,
                         rowId: PlayerSubtitleSettingsDialog.posRowId,
@@ -404,7 +422,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                               )),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: _subChrome(context, 8)),
                       _tvRow(
                         tv: tv,
                         rowId: PlayerSubtitleSettingsDialog.boldRowId,
@@ -427,23 +445,23 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
+                      SizedBox(height: _subChrome(context, 8)),
+                      Text(
                         'Font',
                         style: TextStyle(
                           color: Colors.white70,
-                          fontSize: 13,
+                          fontSize: _subType(context, 13),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: _subChrome(context, 8)),
                       _tvRow(
                         tv: tv,
                         rowId: PlayerSubtitleSettingsDialog.fontRowId,
                         sortOrder: 6,
                         itemCount: PlayerSubtitleSettingsDialog._fonts.length,
                         child: Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
+                          spacing: _subChrome(context, 6),
+                          runSpacing: _subChrome(context, 6),
                           children: [
                             for (var i = 0;
                                 i < PlayerSubtitleSettingsDialog._fonts.length;
@@ -486,7 +504,12 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
             ? Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 72),
+                  padding: EdgeInsets.fromLTRB(
+                    _subChrome(context, 16),
+                    _subChrome(context, 8),
+                    _subChrome(context, 16),
+                    72,
+                  ),
                   child: panel,
                 ),
               )
@@ -613,7 +636,10 @@ class _SubSliderState extends State<_SubSlider> {
           children: [
             Text(
               widget.label,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: _subType(context, 13),
+              ),
             ),
             const Spacer(),
             Text(
@@ -622,7 +648,7 @@ class _SubSliderState extends State<_SubSlider> {
                 color: _focused
                     ? ForjaShellColors.brandGreen
                     : Colors.white,
-                fontSize: 12,
+                fontSize: _subType(context, 12),
               ),
             ),
           ],
@@ -630,11 +656,13 @@ class _SubSliderState extends State<_SubSlider> {
         ExcludeFocus(
           child: SliderTheme(
             data: SliderThemeData(
-              trackHeight: _focused ? 4 : 3,
+              trackHeight: _subChrome(context, _focused ? 4 : 3),
               thumbShape: RoundSliderThumbShape(
-                enabledThumbRadius: _focused ? 8 : 7,
+                enabledThumbRadius: _subChrome(context, _focused ? 8 : 7),
               ),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              overlayShape: RoundSliderOverlayShape(
+                overlayRadius: _subChrome(context, 14),
+              ),
               activeTrackColor: _focused
                   ? ForjaShellColors.brandGreen
                   : const Color(0xFF7C3AED),
@@ -730,11 +758,14 @@ class _SubColorSwatchState extends State<_SubColorSwatch> {
     final ring = focusChrome || widget.selected
         ? ForjaShellColors.brandGreen
         : Colors.white24;
-    final ringWidth = (focusChrome || widget.selected) ? 3.0 : 1.0;
+    final side = _subChrome(context, 34);
+    final ringWidth = (focusChrome || widget.selected)
+        ? _subChrome(context, 3)
+        : 1.0;
     final swatch = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
-      width: 34,
-      height: 34,
+      width: side,
+      height: side,
       decoration: BoxDecoration(
         color: widget.color,
         shape: BoxShape.circle,
@@ -765,7 +796,7 @@ class _SubColorSwatchState extends State<_SubColorSwatch> {
     return shellFocusableTap(
       context: context,
       onTap: widget.onSelect,
-      borderRadius: 17,
+      borderRadius: side / 2,
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
@@ -795,9 +826,12 @@ class _DelayRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text(
+        Text(
           'Delay',
-          style: TextStyle(color: Colors.white70, fontSize: 13),
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: _subType(context, 13),
+          ),
         ),
         const Spacer(),
         _DelayBumpButton(
@@ -807,13 +841,13 @@ class _DelayRow extends StatelessWidget {
           onStep: (steps) => onDelta(-0.1 * steps),
         ),
         SizedBox(
-          width: 54,
+          width: _subChrome(context, 54),
           child: Text(
             '${delay.toStringAsFixed(1)}s',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 13,
+              fontSize: _subType(context, 13),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -906,10 +940,11 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
       );
     }
 
+    final side = _subChrome(context, 36);
     final btn = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
-      width: 36,
-      height: 36,
+      width: side,
+      height: side,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
@@ -941,7 +976,7 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
     return shellFocusableTap(
       context: context,
       onTap: () => widget.onStep(1),
-      borderRadius: 18,
+      borderRadius: side / 2,
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
@@ -976,9 +1011,12 @@ class _BoldRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final row = Row(
       children: [
-        const Text(
+        Text(
           'Bold',
-          style: TextStyle(color: Colors.white70, fontSize: 13),
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: _subType(context, 13),
+          ),
         ),
         const Spacer(),
         Switch(
@@ -1043,13 +1081,15 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
       focused: _focused,
       context: context,
     );
+    final side = PlayerPopupTokens.chromeBtnSizeOf(context);
+    final radius = PlayerPopupTokens.chipRadiusOf(context);
     return Container(
-      width: 28,
-      height: 28,
+      width: side,
+      height: side,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: highlight ? PlayerPopupTokens.accentFill : Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: highlight
               ? PlayerPopupTokens.accent
@@ -1057,9 +1097,9 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
           width: highlight ? 1.5 : 1,
         ),
       ),
-      child: const Icon(
+      child: Icon(
         Icons.close_rounded,
-        size: 14,
+        size: PlayerPopupTokens.chromeIconSizeOf(context),
         color: PlayerPopupTokens.accent,
       ),
     );
@@ -1084,11 +1124,15 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
         },
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+          borderRadius: BorderRadius.circular(
+            PlayerPopupTokens.chipRadiusOf(context),
+          ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+            borderRadius: BorderRadius.circular(
+              PlayerPopupTokens.chipRadiusOf(context),
+            ),
             hoverColor: PlayerPopupTokens.accentFill,
             child: painted,
           ),
@@ -1097,7 +1141,7 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
     }
     return FocusableControl(
       onTap: widget.onTap,
-      borderRadius: PlayerPopupTokens.chipRadius,
+      borderRadius: PlayerPopupTokens.chipRadiusOf(context),
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
@@ -1155,17 +1199,22 @@ class _SelectFontChipState extends State<_SelectFontChip> {
       highlight: highlight,
     );
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: _subChrome(context, 12),
+        vertical: _subChrome(context, 8),
+      ),
       decoration: BoxDecoration(
         color: chrome.bg,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+        borderRadius: BorderRadius.circular(
+          PlayerPopupTokens.cardRadiusOf(context),
+        ),
         border: Border.all(color: chrome.border, width: chrome.borderWidth),
       ),
       child: Text(
         widget.font,
         style: TextStyle(
           color: chrome.labelFg,
-          fontSize: 12,
+          fontSize: _subType(context, 12),
           fontWeight:
               widget.selected || highlight ? FontWeight.w600 : FontWeight.w500,
         ),
@@ -1199,7 +1248,7 @@ class _SelectFontChipState extends State<_SelectFontChip> {
       child: shellFocusableTap(
         context: context,
         onTap: widget.onSelect,
-        borderRadius: PlayerPopupTokens.cardRadius,
+        borderRadius: PlayerPopupTokens.cardRadiusOf(context),
         scaleOnFocus: 1.0,
         showFocusBorder: false,
         showFocusFill: false,

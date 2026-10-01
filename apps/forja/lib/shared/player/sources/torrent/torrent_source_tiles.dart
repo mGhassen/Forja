@@ -1373,8 +1373,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
         child: Stack(
           children: [
             if (widget.downloadChrome == SourceDownloadChrome.offline)
-              const Positioned.fill(
-                child: CustomPaint(painter: _SourceOfflineStripePainter()),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _SourceOfflineStripePainter(
+                    spacing: ShellTokens.rowProgressStripeSpacingOf(tv),
+                    strokeWidth: ShellTokens.rowQuietStripeStrokeOf(tv),
+                  ),
+                ),
               ),
             if (widget.downloadChrome == SourceDownloadChrome.downloading)
               Positioned.fill(
@@ -1673,9 +1678,12 @@ class _SourceDownloadingChrome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = _sourcesLeanback(context);
     final fill = progress.clamp(0.0, 1.0);
     final widthFactor = fill <= 0 ? 0.08 : fill;
     final ctrl = controller;
+    final spacing = ShellTokens.rowProgressStripeSpacingOf(tv);
+    final strokeWidth = ShellTokens.rowProgressStripeStrokeOf(tv);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -1693,7 +1701,11 @@ class _SourceDownloadingChrome extends StatelessWidget {
           AnimatedBuilder(
             animation: ctrl,
             builder: (context, _) => CustomPaint(
-              painter: _SourceMovingStripePainter(progress: ctrl.value),
+              painter: _SourceMovingStripePainter(
+                progress: ctrl.value,
+                spacing: spacing,
+                strokeWidth: strokeWidth,
+              ),
             ),
           ),
       ],
@@ -1703,15 +1715,20 @@ class _SourceDownloadingChrome extends StatelessWidget {
 
 /// Static diagonal stripes for a completed offline source row.
 class _SourceOfflineStripePainter extends CustomPainter {
-  const _SourceOfflineStripePainter();
+  const _SourceOfflineStripePainter({
+    required this.spacing,
+    required this.strokeWidth,
+  });
+
+  final double spacing;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = ForjaShellColors.brandGreen.withValues(alpha: 0.12)
-      ..strokeWidth = 5
+      ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
-    const spacing = 14.0;
     for (double x = -size.height; x < size.width + size.height; x += spacing) {
       canvas.drawLine(
         Offset(x, size.height),
@@ -1722,22 +1739,28 @@ class _SourceOfflineStripePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SourceOfflineStripePainter oldDelegate) => false;
+  bool shouldRepaint(covariant _SourceOfflineStripePainter oldDelegate) =>
+      oldDelegate.spacing != spacing || oldDelegate.strokeWidth != strokeWidth;
 }
 
 /// Animated diagonal stripes while a source is downloading.
 class _SourceMovingStripePainter extends CustomPainter {
-  const _SourceMovingStripePainter({required this.progress});
+  const _SourceMovingStripePainter({
+    required this.progress,
+    required this.spacing,
+    required this.strokeWidth,
+  });
 
   final double progress;
+  final double spacing;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = ForjaShellColors.brandGreen.withValues(alpha: 0.2)
-      ..strokeWidth = 6
+      ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
-    const spacing = 14.0;
     final shift = progress * spacing;
     for (double x = -size.height - spacing;
         x < size.width + size.height + spacing;
@@ -1753,5 +1776,7 @@ class _SourceMovingStripePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SourceMovingStripePainter oldDelegate) =>
-      oldDelegate.progress != progress;
+      oldDelegate.progress != progress ||
+      oldDelegate.spacing != spacing ||
+      oldDelegate.strokeWidth != strokeWidth;
 }

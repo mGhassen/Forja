@@ -16,4 +16,27 @@ void main() {
       expect(SimklService.progressPercent(200000, 100000), 100);
     });
   });
+
+  group('SimklService.libraryRowsForStatus', () {
+    test('splits one library across status tabs', () {
+      final rows = [
+        {'status': 'plantowatch', 'title': 'Later'},
+        {'status': 'watching', 'title': 'Now'},
+        {'status': 'watching', 'title': 'Also'},
+        {'status': 'completed', 'title': 'Done'},
+      ];
+      expect(
+        SimklService.libraryRowsForStatus(rows, 'watching').map((r) => r['title']),
+        ['Now', 'Also'],
+      );
+      expect(
+        SimklService.libraryRowsForStatus(rows, 'plantowatch'),
+        [rows.first],
+      );
+      expect(SimklService.libraryRowsForStatus(rows, 'all'), rows);
+      expect(SimklService.libraryRowsForStatus(rows, ''), [
+        rows.first,
+      ]);
+    });
+  });
 }

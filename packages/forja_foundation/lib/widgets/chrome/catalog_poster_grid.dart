@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
 
 /// Computed poster / event-card grid metrics for catalog list chrome.
 class CatalogPosterGridLayout {
@@ -89,6 +90,23 @@ class CatalogPosterGridLayout {
     final cols = columns < 1 ? 1 : columns;
     final row = index ~/ cols;
     return topPad + row * (cardH + gap);
+  }
+
+  /// TV D-pad: nudge only when the item's row is clipped.
+  ///
+  /// Same contract as [CatalogDenseList.scrollIndexKeepVisible]. Pinning the
+  /// row to the viewport top made IPTV channel focus jump to the first line
+  /// on every ↓.
+  void scrollItemKeepVisible(ScrollController scroll, int index) {
+    if (index < 0 || columns < 1 || cardH <= 0) return;
+    final row = index ~/ columns;
+    CatalogDenseList.scrollIndexKeepVisible(
+      scroll,
+      index: row,
+      rowExtent: cardH,
+      topPad: topPad,
+      stride: cardH + gap,
+    );
   }
 
   /// Scroll offset that keeps an item at the same distance from the viewport top

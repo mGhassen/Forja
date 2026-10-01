@@ -585,8 +585,15 @@ class _PortalListRowState extends State<PortalListRow>
                 ),
               ),
               if (deleting)
-                const Positioned.fill(
-                  child: CustomPaint(painter: _DeletingStripePainter()),
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _DeletingStripePainter(
+                      spacing: PortalListTokens.itemSpacingOf(_tvDensity),
+                      strokeWidth: ShellTokens.rowQuietStripeStrokeOf(
+                        _tvDensity,
+                      ),
+                    ),
+                  ),
                 ),
               if (shelfLoading && _shelfStripeCtrl != null)
                 Positioned.fill(
@@ -595,6 +602,12 @@ class _PortalListRowState extends State<PortalListRow>
                     builder: (context, _) => CustomPaint(
                       painter: _ShelfLoadingStripePainter(
                         progress: _shelfStripeCtrl!.value,
+                        spacing: ShellTokens.rowProgressStripeSpacingOf(
+                          _tvDensity,
+                        ),
+                        strokeWidth: ShellTokens.rowProgressStripeStrokeOf(
+                          _tvDensity,
+                        ),
                       ),
                     ),
                   ),
@@ -1420,15 +1433,20 @@ class _HoverLitIconState extends State<_HoverLitIcon> {
 }
 
 class _DeletingStripePainter extends CustomPainter {
-  const _DeletingStripePainter();
+  const _DeletingStripePainter({
+    required this.spacing,
+    required this.strokeWidth,
+  });
+
+  final double spacing;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = Colors.white.withValues(alpha: 0.07)
-      ..strokeWidth = 5
+      ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
-    const spacing = PortalListTokens.itemSpacing;
     for (double x = -size.height; x < size.width + size.height; x += spacing) {
       canvas.drawLine(
         Offset(x, size.height),
@@ -1439,22 +1457,28 @@ class _DeletingStripePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DeletingStripePainter oldDelegate) => false;
+  bool shouldRepaint(covariant _DeletingStripePainter oldDelegate) =>
+      oldDelegate.spacing != spacing || oldDelegate.strokeWidth != strokeWidth;
 }
 
 /// Indeterminate diagonal stripes while the live channel shelf warms.
 class _ShelfLoadingStripePainter extends CustomPainter {
-  const _ShelfLoadingStripePainter({required this.progress});
+  const _ShelfLoadingStripePainter({
+    required this.progress,
+    required this.spacing,
+    required this.strokeWidth,
+  });
 
   final double progress;
+  final double spacing;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = ForjaShellColors.brandGreen.withValues(alpha: 0.18)
-      ..strokeWidth = 6
+      ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
-    const spacing = 14.0;
     final shift = progress * spacing;
     for (double x = -size.height - spacing;
         x < size.width + size.height + spacing;
@@ -1470,5 +1494,7 @@ class _ShelfLoadingStripePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ShelfLoadingStripePainter oldDelegate) =>
-      oldDelegate.progress != progress;
+      oldDelegate.progress != progress ||
+      oldDelegate.spacing != spacing ||
+      oldDelegate.strokeWidth != strokeWidth;
 }

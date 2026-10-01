@@ -395,6 +395,32 @@ List<Map<String, dynamic>> externalSubtitlesForAutoPick({
   return out;
 }
 
+/// Playlist rendition matching [preferredLang], then English.
+///
+/// Used before scraped auto-pick. An HLS master often lists English while
+/// the player track list is still empty; sideloading Wyzie in that gap paints
+/// its free-plan cue, then the stream track replaces it.
+T? pickPlaylistSubtitleRendition<T>({
+  required String preferredLang,
+  required Iterable<T> renditions,
+  required String Function(T rendition) languageOf,
+  required String Function(T rendition) titleOf,
+}) {
+  if (preferredLang.isEmpty || preferredLang == 'None') return null;
+  for (final lang in subtitleLanguageCandidates(preferredLang)) {
+    for (final rendition in renditions) {
+      if (matchesPreferredLanguage(
+        lang,
+        language: languageOf(rendition),
+        title: titleOf(rendition),
+      )) {
+        return rendition;
+      }
+    }
+  }
+  return null;
+}
+
 /// In-stream track matching [preferredLang], then English — no random mux fallback.
 SubtitleTrack? pickEmbeddedSubtitleWithFallback({
   required String preferredLang,
