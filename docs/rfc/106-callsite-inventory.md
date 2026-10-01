@@ -349,7 +349,6 @@ Checklist (paths only — migrate batches tick these):
 - [ ] `apps/forja/lib/shared/services/tracker/simkl_service.dart`
 - [ ] `apps/forja/lib/shared/services/update/app_update_auto_check.dart`
 - [ ] `apps/forja/lib/shared/services/update/app_update_download_service.dart`
-- [ ] `apps/forja/lib/shared/services/update/app_update_macos_installer.dart`
 - [ ] `apps/forja/lib/shared/sync/auth/desktop_browser_auth.dart`
 - [ ] `apps/forja/lib/shared/sync/bridge/sync_domain_bridge.dart`
 - [x] `apps/forja/lib/shared/theme/app_theme.dart`

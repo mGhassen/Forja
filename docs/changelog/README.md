@@ -21,6 +21,7 @@ Changelogs track **releases** (git tags), not individual commits. The draft file
 
 | File | Codename | Since tag | Status |
 |------|----------|-----------|--------|
+| [2.0.x-[draft].md](2.0.x-[draft].md) | Serrajin | v2.0.3 | drafting |
 | [1.5.x-[draft].md](1.5.x-[draft].md) | Berka | v1.5.36 | drafting |
 
 ## Released

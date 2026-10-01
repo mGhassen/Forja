@@ -11,7 +11,6 @@ import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
-import 'package:forja/shared/services/update/app_update_macos_installer.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -148,9 +147,6 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
 
   Future<void> _runUpdateCheck() async {
     try {
-      if (Platform.isMacOS) {
-        await AppUpdateMacosInstaller.consumeAndToastIfNeeded();
-      }
       final result = await AppUpdaterService().checkForUpdates();
       await AppUpdateAutoCheck.recordCheckCompleted();
       if (!mounted) return;
