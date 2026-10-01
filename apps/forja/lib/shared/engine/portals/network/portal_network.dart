@@ -567,8 +567,8 @@ class PortalClient {
   /// Parse Xtream / Mag EPG times into **device-local** [DateTime].
   ///
   /// Unix epochs (`start_timestamp`) are UTC instants → [DateTime.toLocal].
-  /// Naive wall-clock strings are treated as already regional/local (Mag
-  /// cookie + `set_timezone` match the device; Xtream prefers timestamps).
+  /// Naive wall-clock strings are treated as local — a fallback for rows
+  /// with no epoch (Mag sessions run in the portal's zone; prefer epochs).
   /// Strings with `Z` / explicit offset are absolute → local.
   @visibleForTesting
   static DateTime? parseEpgTs(dynamic v) {

@@ -1417,10 +1417,10 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                 ],
               ),
                 ),
-                if (!hideFullChrome &&
-                    DesktopWindowChrome.isDesktop &&
-                    !_s._controlsVisible)
-                  DesktopWindowChrome.overlayDragStrip(),
+                if (!hideFullChrome && DesktopWindowChrome.isDesktop)
+                  DesktopWindowChrome.overlayDragStrip(
+                    showCaption: _s._controlsVisible,
+                  ),
               ],
             ),
           ),

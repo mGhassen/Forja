@@ -2,7 +2,7 @@
 //!
 //! Mirrors the shape of Lume's Swift `StalkerClient`: candidate middleware
 //! endpoints are tried in order until one handshakes, the winning
-//! (endpoint, token) pair is cached per `portal_origin|mac|timezone` for the life of
+//! (endpoint, token) pair is cached per `portal_origin|mac` for the life of
 //! the process (catalog sync issues many separate `request_json` calls —
 //! login / categories / streams / create_link — and re-handshaking every
 //! one would be both slow and rude to the portal), a 401/403 clears the
@@ -85,9 +85,11 @@ struct StalkerRequest {
 struct Endpoint {
     url: String,
     token: String,
+    /// IANA zone the STB session runs in — see [`Session::handshake`].
+    timezone: String,
 }
 
-/// In-memory session cache keyed by `portal_origin|mac|timezone`, shared by every
+/// In-memory session cache keyed by `portal_origin|mac`, shared by every
 /// `Session` in this process. A handshake pins both the winning endpoint
 /// path (`portal.php` vs `server/load.php` vs `stalker_portal/...`) and the
 /// bearer token; both are reused across the separate login / catalog /
@@ -108,6 +110,9 @@ struct Session {
     client: reqwest::Client,
     /// `origin|mac` — the session cache key.
     cache_key: String,
+    /// Timezone sent in the `timezone` cookie. Device zone until the
+    /// handshake learns the portal's own zone.
+    timezone: Arc<Mutex<String>>,
     /// Candidate middleware paths, ordered by how the user pasted the URL.
     candidate_paths: Arc<Vec<String>>,
     endpoint: Arc<RwLock<Option<Endpoint>>>,
@@ -188,7 +193,7 @@ impl Session {
             serial.trim().to_string()
         };
         let client = crate::http::client_with_cookies(timeout)?;
-        let cache_key = format!("{origin}|{mac}|{}", device_timezone());
+        let cache_key = format!("{origin}|{mac}");
         let session = Self {
             referer: format!("{origin}/c/"),
             origin,
@@ -196,6 +201,7 @@ impl Session {
             serial,
             client,
             cache_key,
+            timezone: Arc::new(Mutex::new(device_timezone())),
             candidate_paths: Arc::new(candidate_paths(&pasted_path)),
             endpoint: Arc::new(RwLock::new(None)),
         };
@@ -204,13 +210,15 @@ impl Session {
     }
 
     fn cookie_header(&self) -> String {
-        // Mag EPG wall-clock strings follow this cookie — must match the device
-        // region so Dart can treat naive `YYYY-MM-DD HH:MM:SS` as local.
         format!(
             "mac={}; stb_lang=en; timezone={}",
             urlencoding::encode(&self.mac),
-            device_timezone()
+            self.timezone.lock().unwrap()
         )
+    }
+
+    fn set_timezone(&self, tz: &str) {
+        *self.timezone.lock().unwrap() = tz.to_string();
     }
 
     // ── Session / handshake ────────────────────────────────────────────
@@ -235,6 +243,7 @@ impl Session {
         }
         let global = SESSION_CACHE.lock().unwrap().get(&self.cache_key).cloned();
         if let Some(ep) = &global {
+            self.set_timezone(&ep.timezone);
             *self.endpoint.write().await = Some(ep.clone());
         }
         global
@@ -289,18 +298,24 @@ impl Session {
                         // Prime the profile; ignore failures — many portals
                         // don't require it and some return a sparse profile
                         // that still authorizes.
-                        let _ = self
+                        let profile = self
                             .perform_get(
                                 &endpoint_url,
                                 "type=stb&action=get_profile&JsHttpRequest=1-xml",
                                 Some(&token),
                                 timeout,
                             )
-                            .await;
-                        // Align Mag STB timezone with the device so EPG
-                        // listings match regional wall-clock (cookie alone is
-                        // not enough on every Ministra fork).
-                        let tz = device_timezone();
+                            .await
+                            .ok();
+                        // Run the STB in the portal's own zone. Ministra builds
+                        // EPG `start_timestamp` by reading the wall-clock `time`
+                        // (rendered in the STB zone) in its server zone, so the
+                        // epochs are true UTC only when the two match.
+                        let tz = profile
+                            .as_ref()
+                            .and_then(profile_default_timezone)
+                            .unwrap_or_else(device_timezone);
+                        self.set_timezone(&tz);
                         let tz_enc = urlencoding::encode(&tz);
                         let _ = self
                             .perform_get(
@@ -315,6 +330,7 @@ impl Session {
                         return Ok(Endpoint {
                             url: endpoint_url,
                             token,
+                            timezone: tz,
                         });
                     }
                     Err(e) => {
@@ -1251,7 +1267,7 @@ fn parse_stalker_epg(js: &Value, channel_id: &str) -> Vec<Value> {
             }
             _ => match (start_str, stop_str) {
                 (Some(start), Some(stop)) if start != stop => {
-                    // Wall-clock strings — Dart parses as local (Mag convention).
+                    // Wall-clock strings (portal zone) — Dart parses as local.
                     obj.insert("start".into(), json!(start));
                     obj.insert("stop".into(), json!(stop));
                 }
@@ -1379,6 +1395,17 @@ fn normalize_epoch(n: i64) -> i64 {
 /// platform cannot resolve one — never hardcode a random city.
 fn device_timezone() -> String {
     iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".to_string())
+}
+
+/// Portal server zone from `get_profile` (`default_timezone`, e.g.
+/// `Europe/Amsterdam`). `None` when absent or not an IANA `Area/City` name.
+fn profile_default_timezone(profile: &Value) -> Option<String> {
+    let tz = profile.get("default_timezone")?.as_str()?.trim();
+    let valid = tz.contains('/')
+        && tz
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '/' | '_' | '-' | '+'));
+    valid.then(|| tz.to_string())
 }
 
 fn parse_stalker_episodes(js: &Value) -> Vec<ParsedSeriesEpisode> {
@@ -1515,6 +1542,22 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].stream_id, "ffmpeg http://cdn/live.ts");
         assert_eq!(rows[0].epg_channel_id, "42");
+    }
+
+    #[test]
+    fn profile_default_timezone_reads_iana_zone() {
+        let tz = |v: Value| profile_default_timezone(&v);
+        assert_eq!(
+            tz(json!({ "default_timezone": "Europe/Amsterdam" })).as_deref(),
+            Some("Europe/Amsterdam")
+        );
+        assert_eq!(
+            tz(json!({ "default_timezone": "America/Argentina/Buenos_Aires" })).as_deref(),
+            Some("America/Argentina/Buenos_Aires")
+        );
+        assert_eq!(tz(json!({ "default_timezone": "" })), None);
+        assert_eq!(tz(json!({ "default_timezone": "UTC; x=1" })), None);
+        assert_eq!(tz(json!({ "timezone": null })), None);
     }
 
     #[test]

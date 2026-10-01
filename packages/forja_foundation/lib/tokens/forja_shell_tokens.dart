@@ -43,9 +43,9 @@ abstract final class ShellTokens {
 
   /// Leanback type ladder — separate from spatial [tvChromeScale].
   /// Keep smaller than desktop so type matches dense cards (not 14/16 desktop-ish).
-  static const double tvBodyFontSize = 10;
+  static const double tvBodyFontSize = 11;
   static const double tvTitleFontSize = 12;
-  static const double tvMetaFontSize = 9;
+  static const double tvMetaFontSize = 10;
 
   /// Map a desktop font size onto the leanback ladder.
   static double tvTypeSize(double desktop) {

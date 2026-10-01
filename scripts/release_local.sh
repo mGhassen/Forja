@@ -1153,6 +1153,7 @@ prl_ensure_running() {
 
 build_macos() {
   local ver="$1"
+  ./scripts/check_pubspec_version.sh "$ver" || die "pubspec version does not match $ver"
   local arch="${2:-$(host_macos_arch)}"
   local host
   host="$(host_macos_arch)"
@@ -1192,6 +1193,7 @@ build_macos() {
 
 build_windows_prl() {
   local ver="$1"
+  ./scripts/check_pubspec_version.sh "$ver" || die "pubspec version does not match $ver"
   local bash_repo unc
   require_darwin
   require_cmd prlctl
@@ -1212,6 +1214,7 @@ build_windows_prl() {
 
 build_android_tv() {
   local ver="$1"
+  ./scripts/check_pubspec_version.sh "$ver" || die "pubspec version does not match $ver"
   shift || true
   local -a abis=("$@")
   local keystore="" tmp_ks="" key_alias

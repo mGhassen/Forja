@@ -277,6 +277,11 @@ jobs:
             echo "version=${{ steps.existing.outputs.version }}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Check pubspec version matches tag
+        run: |
+          version="${{ steps.existing.outputs.version || steps.bump.outputs.version }}"
+          bash scripts/check_pubspec_version.sh "$version" "v${version}"
+
   build_macos_arm64:
     name: macOS arm64
     if: ${{ inputs.platform_macos_arm64 }}

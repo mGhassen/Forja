@@ -56,6 +56,7 @@ unset _prev_supabase_url
 
 command -v flutter >/dev/null || die "flutter not on PATH"
 command -v cargo >/dev/null || die "cargo/rust not on PATH"
+./scripts/check_pubspec_version.sh "$VERSION" || die "pubspec version does not match $VERSION"
 
 echo "==> Rust FFI"
 ./scripts/build_rust_release.sh
