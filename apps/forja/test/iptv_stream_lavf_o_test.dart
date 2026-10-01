@@ -89,6 +89,30 @@ void main() {
       expect(proxy, isNot(contains('reconnect=1')));
       expect(proxy, contains('reconnect_on_network_error=1'));
     });
+
+    test('HLS cold cache stays inside the live window', () {
+      final hls = liveSportsDesktopColdCache(hls: true);
+      final progressive = liveSportsDesktopColdCache(hls: false);
+      expect(hls.cacheSecs, 4);
+      expect(hls.readaheadSecs, lessThan(progressive.readaheadSecs));
+      expect(hls.label, 'live/sports/hls');
+      expect(progressive.cacheSecs, 30);
+      expect(progressive.readaheadSecs, 20);
+      expect(
+        liveSportsShouldReopenOnSocketEof(
+          reason: 'error: tcp: ffurl_read returned 0xdfb9b0bb',
+          url: 'https://cdn.example/live/index.m3u8',
+        ),
+        isTrue,
+      );
+      expect(
+        liveSportsShouldReopenOnSocketEof(
+          reason: 'error: tcp: ffurl_read returned 0xdfb9b0bb',
+          url: 'http://portal.example/live/1.ts',
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('iptvLiveSourceProbeUrl', () {

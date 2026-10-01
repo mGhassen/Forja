@@ -153,6 +153,41 @@ String liveSportsStreamLavfO({
       'reconnect_on_http_error=4xx\\,5xx';
 }
 
+/// Desktop live-sports cold cache.
+///
+/// Progressive TS keeps the v1.5.36 cushion. An HLS playlist is a short live
+/// window and lavf reconnect is off, so a 20s readahead reads past the edge,
+/// the CDN closes the socket (`ffurl_read` EOF), and the picture stops.
+@visibleForTesting
+({int cacheSecs, int readaheadSecs, int demuxerMaxBytes, String label})
+liveSportsDesktopColdCache({required bool hls}) {
+  if (hls) {
+    return (
+      cacheSecs: 4,
+      readaheadSecs: 2,
+      demuxerMaxBytes: 32 * 1024 * 1024,
+      label: 'live/sports/hls',
+    );
+  }
+  return (
+    cacheSecs: 30,
+    readaheadSecs: 20,
+    demuxerMaxBytes: 150000000,
+    label: 'live/sports',
+  );
+}
+
+/// Live HLS has reconnect off, so a socket EOF cannot be stitched in lavf.
+/// Reopen the playlist. Progressive TS keeps the grace window instead.
+@visibleForTesting
+bool liveSportsShouldReopenOnSocketEof({
+  required String reason,
+  required String? url,
+}) {
+  if (url == null || url.isEmpty || !iptvUrlLooksLikeHls(url)) return false;
+  return reason.toLowerCase().contains('ffurl_read');
+}
+
 
 /// Live Sports native player (v1.5.36 MediaKit stack — independent of IPTV).
 class LiveSportsPlayerScreen extends ConsumerStatefulWidget {

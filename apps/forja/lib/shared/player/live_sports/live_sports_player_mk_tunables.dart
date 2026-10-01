@@ -384,11 +384,18 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
         await p.setProperty('initial-audio-sync', 'yes');
         await p.setProperty('hr-seek', 'yes');
       } else if (sportsMk) {
-        // Live Sports / Stremio / liveEngine — exact v1.5.36 cushion.
-        var coldSecs = 30;
-        var coldReadahead = 20;
-        var coldBytes = 150000000;
-        var coldLabel = 'live/sports';
+        // Live Sports / Stremio / liveEngine — exact v1.5.36 cushion,
+        // except HLS (short live window; see [liveSportsDesktopColdCache]).
+        final playUrl = _s._sources.isEmpty
+            ? null
+            : _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)].url;
+        final desktop = liveSportsDesktopColdCache(
+          hls: playUrl != null && iptvUrlLooksLikeHls(playUrl),
+        );
+        var coldSecs = desktop.cacheSecs;
+        var coldReadahead = desktop.readaheadSecs;
+        var coldBytes = desktop.demuxerMaxBytes;
+        var coldLabel = desktop.label;
         if (_s._atvMediaKit) {
           final fhd = liveSportsAtvCacheTierForHeight(1080);
           coldSecs = fhd.cacheSecs;

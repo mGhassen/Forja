@@ -30,11 +30,40 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
   void _invalidatePendingLiveEdgeSnaps();
   void _clearBufferingChrome();
 
+  String? _currentPlayUrl() {
+    if (_s._sources.isEmpty) return null;
+    final i = _s._sourceIdx.clamp(0, _s._sources.length - 1);
+    return _s._sources[i].url;
+  }
+
+  /// HLS socket EOF cannot be stitched (reconnect is off). Reopen the playlist.
+  /// A second error inside the goLive throttle is ignored — the throttle's
+  /// "Stream ended" path is for a finished burst, not a duplicate log line.
+  bool _reopenHlsSocketEof(String reason) {
+    if (!liveSportsShouldReopenOnSocketEof(
+      reason: reason,
+      url: _currentPlayUrl(),
+    )) {
+      return false;
+    }
+    if (_s._liveGoLiveTimer?.isActive ?? false) return true;
+    final last = _s._lastGoLiveAt;
+    if (last != null &&
+        DateTime.now().difference(last) <
+            _LiveSportsPlayerScreenState._liveGoLiveThrottle) {
+      return true;
+    }
+    debugPrint('[Live Sports] HLS socket closed — reopen playlist ($reason)');
+    unawaited(_tryIptvLiveGoLive(reason: reason));
+    return true;
+  }
+
   /// Silent grace (≥ lavf reconnect_delay_max) then goLive.
   void _scheduleIptvLiveGraceRecovery({required String reason}) {
     if (!_livePlaybackProfile || !_s._mediaKitBackend) return;
     if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
     if (_recoveryInFlight) return;
+    if (_reopenHlsSocketEof(reason)) return;
     if (_s._liveGraceTimer?.isActive ?? false) return;
     _s._liveGoLiveTimer?.cancel();
     _s._liveStableTimer?.cancel();

@@ -285,12 +285,57 @@ final class VlcViewFactory: NSObject, FlutterPlatformViewFactory {
 final class VlcContainerView: NSView {
   override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
+    // Late VideoToolbox frames clear the GL layer to transparent. Flutter's
+    // AppKit platform-view host is an opaque white NSView, so those clears
+    // flash white. Keep this surface opaque black and paint the host the same.
     wantsLayer = true
-    layer?.backgroundColor = NSColor.black.cgColor
+    let backing = CALayer()
+    backing.backgroundColor = NSColor.black.cgColor
+    backing.isOpaque = true
+    layer = backing
+    layerContentsRedrawPolicy = .never
   }
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError() }
+
+  override var isOpaque: Bool { true }
+
+  override func draw(_ dirtyRect: NSRect) {
+    NSColor.black.setFill()
+    dirtyRect.fill()
+  }
+
+  override func viewDidMoveToSuperview() {
+    super.viewDidMoveToSuperview()
+    blackenPlatformHole()
+  }
+
+  override func layout() {
+    super.layout()
+    blackenPlatformHole()
+    for sub in subviews {
+      sub.layer?.backgroundColor = NSColor.black.cgColor
+      sub.layerContentsRedrawPolicy = .never
+    }
+  }
+
+  /// Flutter inserts opaque host views between this drawable and FlutterView.
+  /// Their default fill is white. Stop before FlutterView so the shell stays
+  /// on its own background.
+  private func blackenPlatformHole() {
+    var view = superview
+    var depth = 0
+    while let current = view, depth < 6 {
+      let name = String(describing: type(of: current))
+      if name.contains("FlutterView") { break }
+      current.wantsLayer = true
+      current.layer?.isOpaque = true
+      current.layer?.backgroundColor = NSColor.black.cgColor
+      view = current.superview
+      depth += 1
+    }
+  }
 }
 
 final class VlcSession {

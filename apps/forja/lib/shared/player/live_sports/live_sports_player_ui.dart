@@ -1280,16 +1280,15 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                     top: 0,
                     right: 0,
                     bottom: 0,
-                    child: Material(
-                      elevation: 0,
+                    child: ColoredBox(
                       color: Colors.black,
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
+                          // No Material / RepaintBoundary: both snapshot the
+                          // macOS VLC AppKitView as a white layer between frames.
                           ExcludeFocus(
-                            child: RepaintBoundary(
-                              child: _buildIptvVideoSurface(),
-                            ),
+                            child: _buildIptvVideoSurface(),
                           ),
                         ],
                       ),
