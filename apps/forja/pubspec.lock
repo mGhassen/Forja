@@ -1373,7 +1373,7 @@ packages:
       path: "../../packages/rust"
       relative: true
     source: path
-    version: "3.0.2"
+    version: "3.0.3"
   rxdart:
     dependency: transitive
     description:
