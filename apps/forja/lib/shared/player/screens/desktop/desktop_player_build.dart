@@ -142,7 +142,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             ),
           ),
         // Above video double-tap (fullscreen); below chrome so buttons still win.
-        if (!mini && !pipMode) DesktopWindowChrome.overlayDragStrip(),
+        if (!mini && !pipMode)
+          DesktopWindowChrome.overlayDragStrip(showCaption: false),
         if (!mini && !_s._isNativeSubtitle)
           StreamBuilder<List<String>>(
             stream: _s._player.stream.subtitle,
@@ -192,10 +193,13 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             imdbId: widget.movie?.imdbId,
             playbackStarted: _s._playbackConfirmed,
           ),
-        // Topmost when chrome is hidden — hover-to-show chrome used to cover the
-        // mid-stack strip via MouseRegion, so maximize never fired.
-        if (!mini && !pipMode && !_s._showControls)
-          DesktopWindowChrome.overlayDragStrip(),
+        // Topmost — hover-to-show chrome used to cover the mid-stack strip via
+        // MouseRegion, so maximize never fired. Window caption shows with the
+        // controls.
+        if (!mini && !pipMode)
+          DesktopWindowChrome.overlayDragStrip(
+            showCaption: _s._showControls,
+          ),
       ],
     );
 

@@ -137,7 +137,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     },
                   ),
                 ),
-              DesktopWindowChrome.overlayDragStrip(),
               AnimatedOpacity(
                 opacity: _s._showControls ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 220),
@@ -148,6 +147,10 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     child: _buildChromeOverlay(tvFocus: tvFocus),
                   ),
                 ),
+              ),
+              // Above chrome so the top gradient does not eat caption clicks.
+              DesktopWindowChrome.overlayDragStrip(
+                showCaption: _s._showControls,
               ),
               if (tvFocus && _s._tvBackExitArmed)
                 const PlayerEscapeExitHint.tv(),

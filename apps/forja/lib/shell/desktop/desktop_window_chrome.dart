@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
@@ -37,20 +39,32 @@ class DesktopWindowChrome {
   }
 
   /// Drag + double-tap maximize strip for routes pushed above [wrapShell]
-  /// (e.g. media details on the root navigator).
-  static Widget overlayDragStrip() {
+  /// (e.g. players, media details on the root navigator).
+  ///
+  /// Windows/Linux: these routes cover the shell caption, so the strip also
+  /// paints minimize / maximize / close while windowed and [showCaption].
+  /// Place it last in the stack so gradients above it do not eat the clicks.
+  static Widget overlayDragStrip({bool showCaption = true}) {
     if (!isDesktop) return const SizedBox.shrink();
 
-    final height = Platform.isMacOS ? kMacTitleBarHeight : kWindowCaptionHeight;
+    if (Platform.isMacOS) {
+      return const Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        height: kMacTitleBarHeight,
+        child: DragToMoveArea(
+          child: SizedBox.expand(),
+        ),
+      );
+    }
 
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
-      height: height,
-      child: const DragToMoveArea(
-        child: SizedBox.expand(),
-      ),
+      height: kWindowCaptionHeight,
+      child: _OverlayWindowCaption(visible: showCaption),
     );
   }
 
@@ -59,6 +73,68 @@ class DesktopWindowChrome {
   static Widget wrapDragMove(Widget child) {
     if (!isDesktop) return child;
     return DragToMoveArea(child: child);
+  }
+}
+
+/// Drag strip plus a fading window caption, hidden in OS fullscreen.
+class _OverlayWindowCaption extends StatefulWidget {
+  const _OverlayWindowCaption({required this.visible});
+
+  final bool visible;
+
+  @override
+  State<_OverlayWindowCaption> createState() => _OverlayWindowCaptionState();
+}
+
+class _OverlayWindowCaptionState extends State<_OverlayWindowCaption>
+    with WindowListener {
+  bool _fullscreen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    unawaited(_syncFullscreen());
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<void> _syncFullscreen() async {
+    final full = await windowManager.isFullScreen();
+    if (!mounted || full == _fullscreen) return;
+    setState(() => _fullscreen = full);
+  }
+
+  @override
+  void onWindowEnterFullScreen() => setState(() => _fullscreen = true);
+
+  @override
+  void onWindowLeaveFullScreen() => setState(() => _fullscreen = false);
+
+  @override
+  Widget build(BuildContext context) {
+    final show = widget.visible && !_fullscreen;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DragToMoveArea(child: SizedBox.expand()),
+        AnimatedOpacity(
+          opacity: show ? 1.0 : 0.0,
+          duration: ShellTokens.playerChromeFade,
+          child: IgnorePointer(
+            ignoring: !show,
+            child: const WindowCaption(
+              brightness: Brightness.dark,
+              backgroundColor: Colors.transparent,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

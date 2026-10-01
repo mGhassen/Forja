@@ -521,9 +521,12 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
                     child: const SizedBox.expand(),
                   ),
                 ),
-                DesktopWindowChrome.overlayDragStrip(),
                 _buildChrome(compact: compact),
               ],
+              // Above chrome so the top gradient does not eat caption clicks.
+              DesktopWindowChrome.overlayDragStrip(
+                showCaption: _controlsVisible,
+              ),
             ],
           ),
         ),

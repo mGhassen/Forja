@@ -531,6 +531,9 @@ abstract final class ShellTokens {
   /// Below this width the player side panel goes nearly full-bleed.
   static const double playerSidePanelNarrowMaxWidth = 700;
 
+  /// Player chrome show / hide fade (controls, desktop window caption).
+  static const Duration playerChromeFade = Duration(milliseconds: 220);
+
   /// Player transport / top chrome (Exo + MediaKit TV row).
   static const double playerChromeBtnSize = 38;
   static const double playerChromeBtnSizeTv =
