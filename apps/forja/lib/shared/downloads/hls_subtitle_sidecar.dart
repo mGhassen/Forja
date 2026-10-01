@@ -124,10 +124,10 @@ String mergeWebVttParts(List<HlsSubtitleSegmentPart> parts) {
       continue;
     }
     final map = _timestampMapOffset(part.body);
-    base ??= map ?? 0;
+    final origin = base ??= map ?? 0;
     var shift = 0.0;
     if (map != null) {
-      shift = -(base ?? 0);
+      shift = -origin;
     } else if (parsed.first.$1 + 0.05 < cursor) {
       shift = cursor;
     }

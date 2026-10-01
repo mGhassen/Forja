@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' hide BytesBuilder;
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
@@ -142,8 +143,8 @@ class Ipv4ConnectProxy {
   }
 
   Future<String> _bind() async {
-    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
-    _server = server;
+    _server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final server = _server!;
     _port = server.port;
     server.listen(
       _onClient,

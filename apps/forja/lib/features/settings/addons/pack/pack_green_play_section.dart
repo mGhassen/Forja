@@ -234,13 +234,16 @@ class _PreferredForjaEditorState extends State<_PreferredForjaEditor> {
   }
 
   void _reorder(int oldIndex, int newIndex) {
-    if (oldIndex < 0 || oldIndex >= _preferred.length) return;
-    var ni = newIndex;
-    if (ni > oldIndex) ni--;
-    if (ni < 0 || ni >= _preferred.length) return;
+    if (oldIndex < 0 ||
+        oldIndex >= _preferred.length ||
+        newIndex < 0 ||
+        newIndex >= _preferred.length ||
+        newIndex == oldIndex) {
+      return;
+    }
     final next = List<String>.from(_preferred);
     final item = next.removeAt(oldIndex);
-    next.insert(ni, item);
+    next.insert(newIndex, item);
     setState(() => _preferred = next);
     widget.onChanged(next);
   }
@@ -275,7 +278,7 @@ class _PreferredForjaEditorState extends State<_PreferredForjaEditor> {
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
             itemCount: _preferred.length,
-            onReorder: _reorder,
+            onReorderItem: _reorder,
             itemBuilder: (context, index) {
               final id = _preferred[index];
               return ListTile(

@@ -53,7 +53,6 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
@@ -2704,36 +2703,6 @@ class PackPaintTree extends StatelessWidget {
       return id;
     }
     return items.first.id;
-  }
-
-  /// Live rail with pin/reorder: first portal group after Favorites / watched
-  /// using cached pin + drag order (not raw API kinds order).
-  String _firstOrderedLiveCategoryId(
-    List<({String id, String label, String? icon})> items,
-  ) {
-    final cache = CategoryBarActionHost.cachedLiveListParams;
-    final pinned = <String>[
-      for (final e in (cache['pinnedCats'] as List? ?? const []))
-        if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
-    ];
-    final order = <String>[
-      for (final e in (cache['categoryOrder'] as List? ?? const []))
-        if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
-    ];
-    final cats = <PortalCategory>[
-      for (final e in items)
-        if (e.id.trim().isNotEmpty &&
-            e.id != 'all' &&
-            !PortalLiveCatalog.isSyntheticId(e.id))
-          PortalCategory(id: e.id, name: e.label),
-    ];
-    final id = PortalLiveCatalog.firstPortalCategoryId(
-      PortalLiveCatalog.withPins(cats),
-      userPinnedIds: pinned,
-      customOrderIds: order,
-    );
-    if (id != null && id.isNotEmpty) return id;
-    return _firstPortalCategoryId(items);
   }
 
   Widget _chromeCategoryBar(BuildContext context, Map<String, dynamic> spec) {

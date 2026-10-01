@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/portals/models.dart';
@@ -135,7 +134,6 @@ Map<String, dynamic> packChromeFeedParams(
   final q = (chrome?.eventQuery ?? '').trim();
 
   if (kindReloadsFeed || vodPaged) {
-    final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
     final kind = iptvEffectiveCategoryId(
       listSpec: listSpec,
       scope: scope,

@@ -930,8 +930,6 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   /// Stalker: consecutive hard format/open fails after fresh create_link.
   int _stalkerHardFailCount = 0;
 
-  /// One-shot Exo ↔ MediaKit swap after unrecognized-format errors.
-  bool _formatEngineSwapped = false;
   // When the user explicitly paused (play-after-pause rejoins live edge).
   DateTime? _pausedAt;
 
@@ -1598,22 +1596,6 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     }
   }
 
-  static bool _isUnrecognizedFormatError(String msg) {
-    final lower = msg.toLowerCase();
-    return lower.contains('failed to recognize file format') ||
-        lower.contains('unrecognizedinputformat') ||
-        lower.contains('none of the available extractors') ||
-        (lower.contains('source error') && lower.contains('m3u8'));
-  }
-
-  /// Live only: one failover hop after a format / hard-open error.
-  /// Movies and series stay on the engine from Settings.
-  Future<void> _autoSwapEngineForFormatError(String reason) async {
-    if (_disposed || _formatEngineSwapped || kIsWeb) return;
-    if (widget.vodPlayback) return;
-    await _failoverIptvEngineOnce(reason);
-  }
-
   /// One-hop live HLS failover then stop (plan R107-A07).
   Future<void> _failoverIptvEngineOnce(String reason) async {
     if (_disposed || _engineFailoverUsed || widget.vodPlayback) return;
@@ -1636,7 +1618,6 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     }
     if (next == null || next == _playerEngine) return;
     _engineFailoverUsed = true;
-    _formatEngineSwapped = true;
     debugPrint(
       '[IPTV Player] failover ${_playerEngine.storageKey}→${next.storageKey} '
       '($reason)',
