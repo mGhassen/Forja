@@ -716,6 +716,11 @@ mixin _MobilePlayerPlayback
     } finally {
       if (initGen == _s._fallbackGen) {
         _s._isInitPlaybackRunning = false;
+        // Tracks that arrived during open were ignored. If an auto-picked
+        // online subtitle is on, switch to the stream track now.
+        if (!_s._disposed && mounted) {
+          _scheduleEmbeddedSubtitleAuto(_s._player.state.tracks);
+        }
       }
       if (!_s._disposed && mounted) _s._flushPendingRemountSeek();
     }
@@ -1631,14 +1636,19 @@ mixin _MobilePlayerPlayback
     }
     // A sideload is reported as another embedded track. Treating that growth
     // as "tracks changed" clears the latch and re-runs auto-pick. The player
-    // route stays mounted after you leave, so the loop would continue.
-    if (_s._selectedExternalSubUrl != null) {
+    // route stays mounted after you leave, so the loop would continue. An
+    // auto-picked file does not count — mux tracks that arrive later still
+    // replace it.
+    if (_s._selectedExternalSubUrl != null && _s._userPickedExternalSubtitle) {
       _s._embeddedSubtitleAutoApplied = true;
       _s._embeddedSubtitleAutoTimer?.cancel();
       _s._embeddedSubtitleAutoTimer = null;
       return;
     }
     final embedded = embeddedSubtitleTracks(tracks.subtitle);
+    if (_s._selectedExternalSubUrl != null && embedded.isEmpty) {
+      return;
+    }
     if (embedded.isEmpty) return;
     if (embedded.length != _s._embeddedSubtitleTrackCount) {
       _s._embeddedSubtitleTrackCount = embedded.length;
@@ -1652,11 +1662,12 @@ mixin _MobilePlayerPlayback
         _s._embeddedSubtitleAutoTimer = null;
         if (_s._disposed ||
             _s._embeddedSubtitleAutoApplied ||
-            _s._userPickedExternalSubtitle ||
-            _s._selectedExternalSubUrl != null) {
-          if (_s._selectedExternalSubUrl != null) {
-            _s._embeddedSubtitleAutoApplied = true;
-          }
+            _s._userPickedExternalSubtitle) {
+          return;
+        }
+        if (_s._selectedExternalSubUrl != null &&
+            embeddedSubtitleTracks(_s._player.state.tracks.subtitle).isEmpty) {
+          _s._embeddedSubtitleAutoApplied = true;
           return;
         }
         unawaited(_applyLateEmbeddedSubtitle());

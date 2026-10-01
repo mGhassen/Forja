@@ -328,13 +328,29 @@ mixin _DesktopPlayerTracks
     required int gen,
   }) async {
     if (_subtitleAutoCancelled(gen)) return;
+    // A matching mux track replaces an auto-picked Wyzie file. The online
+    // result often lands first; leaving it selected skips the stream track.
+    if (!_s._userPickedExternalSubtitle) {
+      final earlyEmbedded =
+          embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
+      if (earlyEmbedded.isNotEmpty) {
+        await _s._applyAutoSubtitle();
+        if (_subtitleAutoCancelled(gen)) return;
+        if (_s._selectedExternalSubUrl == null && _playerHasActiveSubtitle()) {
+          return;
+        }
+      }
+    }
     // Already on this sideload. Another sub-add grows mpv's track list and
     // the tracks listener schedules this again — including after you leave
     // playback, because in-app mini keeps the player mounted.
     if (!forcePlayerApply &&
         _s._selectedExternalSubUrl != null &&
         _playerHasActiveSubtitle()) {
-      _s._embeddedSubtitleAutoApplied = true;
+      if (_s._userPickedExternalSubtitle ||
+          embeddedSubtitleTracks(_s._player.state.tracks.subtitle).isEmpty) {
+        _s._embeddedSubtitleAutoApplied = true;
+      }
       return;
     }
 

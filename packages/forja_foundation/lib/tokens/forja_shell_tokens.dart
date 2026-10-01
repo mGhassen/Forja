@@ -36,16 +36,16 @@ abstract final class ShellTokens {
   /// | **Empty / loading** | type ladder + mild pad scale |
   ///
   /// Sniff: if × scale looks correct but ugly, add a hand `*Tv` token for that family.
-  static const double tvChromeScale = 0.62;
+  static const double tvChromeScale = 0.70;
 
   /// Softer than [tvChromeScale] — hero band / title reserve stay readable at 10ft.
   static const double tvHeroScale = 0.80;
 
   /// Leanback type ladder — separate from spatial [tvChromeScale].
   /// Keep smaller than desktop so type matches dense cards (not 14/16 desktop-ish).
-  static const double tvBodyFontSize = 9;
-  static const double tvTitleFontSize = 11;
-  static const double tvMetaFontSize = 8;
+  static const double tvBodyFontSize = 10;
+  static const double tvTitleFontSize = 12;
+  static const double tvMetaFontSize = 9;
 
   /// Map a desktop font size onto the leanback ladder.
   static double tvTypeSize(double desktop) {
