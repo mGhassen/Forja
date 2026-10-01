@@ -37,6 +37,13 @@ abstract final class ResolveStreamsAdapter {
     return _rowsFor(tabId, sources, healthProbe);
   }
 
+  @visibleForTesting
+  static List<KitSourcesRow> rowsForTest(
+    String tabId,
+    List<LivePlaySource> sources,
+  ) =>
+      _rowsFor(tabId, sources, null);
+
   static List<KitSourcesRow> _rowsFor(
     String tabId,
     List<LivePlaySource> sources,

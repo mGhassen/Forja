@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 
 /// Prebuilt hub catalog scroll body — section list + bottom gap.
@@ -54,8 +55,11 @@ class CatalogBody extends StatelessWidget {
     if (sections.isEmpty) {
       return emptyChild ?? const SizedBox.shrink();
     }
+    final extent = cacheExtent;
     return CustomScrollView(
-      scrollCacheExtent: ScrollCacheExtent.pixels(cacheExtent), controller: controller,
+      scrollCacheExtent:
+          extent == null ? null : ScrollCacheExtent.pixels(extent),
+      controller: controller,
       slivers: [
         for (var i = 0; i < sections.length; i++)
           sectionSliver?.call(context, sections[i], i) ??
