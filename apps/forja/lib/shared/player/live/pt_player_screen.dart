@@ -29,6 +29,8 @@ import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/player/live/hls_play_url.dart';
+import 'package:forja/shared/player/live_sports/live_sports_continuity_proxy.dart';
+import 'package:forja/shared/player/live_sports/live_sports_proxy_skip.dart';
 import 'package:forja/shared/player/live/iptv_live_grace.dart';
 import 'package:forja/shared/player/live/player_stats_panel.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
@@ -135,6 +137,19 @@ String iptvStreamLavfO({String? streamUrl}) {
       'reconnect_streamed=1,'
       'reconnect_on_network_error=1,'
       'reconnect_delay_max=5';
+}
+
+/// Stalker live `.ts` plays through the continuity relay. create_link links
+/// are one-shot: lavf reconnect re-requests a spent link, mpv hits EOF, and
+/// stop+open wipes the cache every panel socket close. The relay mints a fresh
+/// link per upstream reconnect and keeps mpv's connection and cache.
+@visibleForTesting
+bool iptvStalkerUsesContinuityRelay({
+  required PortalLiveSourceKind kind,
+  required String url,
+}) {
+  if (kind != PortalLiveSourceKind.iptvStalker) return false;
+  return !iptvUrlLooksLikeHls(url);
 }
 
 /// HLS ABR masters (DAI / CloudFront) probe every variant before first paint.
@@ -929,6 +944,9 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
 
   /// Stalker: consecutive hard format/open fails after fresh create_link.
   int _stalkerHardFailCount = 0;
+
+  /// Stalker live relay — fresh create_link per upstream reconnect.
+  LiveSportsContinuityProxy? _stalkerRelay;
 
   // When the user explicitly paused (play-after-pause rejoins live edge).
   DateTime? _pausedAt;
@@ -1813,6 +1831,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     _exoCueTexts.dispose();
     _playerTvKeyFocus.dispose();
     _seekFocus.dispose();
+    unawaited(_stalkerRelay?.stop());
     unawaited(_finalizeExit());
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

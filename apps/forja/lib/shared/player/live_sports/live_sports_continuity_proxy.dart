@@ -8,10 +8,11 @@ import 'package:forja/shared/player/live_sports/live_sports_proxy_skip.dart';
 /// Live HTTP TS continuity: player reads loopback; we reopen the CDN when it
 /// closes the socket without tearing down the player's connection.
 ///
-/// Used by MediaKit and ExoPlayer for Xtream / M3U live (not Stalker —
-/// create_link must mint a fresh URL). On reconnect, Xtream often restarts a
-/// few seconds *behind* the previous socket end — piping that raw would look
-/// like a replay. We:
+/// Used by MediaKit and ExoPlayer for Xtream / M3U live, and for Stalker when
+/// [start] gets a `refreshUpstream` (create_link links are one-shot, so every
+/// reconnect needs a fresh URL). On reconnect, the panel often restarts a few
+/// seconds *behind* the previous socket end — piping that raw would look like
+/// a replay. We:
 /// 1. Keep a multi-second read-ahead queue so the player rarely underruns mid-reconnect
 /// 2. Skip ~[liveSportsProxyReconnectSkipBytes] of each CDN reconnect (bitrate-adaptive)
 /// 3. Keep **one CDN producer** per [start]; Exo soft-reopen only replaces the
@@ -26,6 +27,7 @@ class LiveSportsContinuityProxy {
   HttpServer? _server;
   HttpClient? _client;
   String _upstream = '';
+  Future<String?> Function()? _refreshUpstream;
   Map<String, String> _headers = const {};
   var _closed = false;
   int _generation = 0;
@@ -46,6 +48,10 @@ class LiveSportsContinuityProxy {
   int _producerEpoch = 0;
   int _producerGen = -1;
 
+  /// Producer gave up (auth failures). Drained loopback writers close so the
+  /// player sees EOF and runs its own recovery.
+  bool _producerGaveUp = false;
+
   /// Loopback HTTP writer lifetime (bumped on every Exo/MediaKit GET).
   int _clientEpoch = 0;
 
@@ -60,15 +66,19 @@ class LiveSportsContinuityProxy {
 
   int get estimatedBytesPerSec => _estimatedBytesPerSec;
 
+  /// [refreshUpstream] mints a new upstream URL before every reconnect after
+  /// the first connect. Null or empty keeps the previous URL.
   Future<Uri> start({
     required String upstreamUrl,
     required Map<String, String> headers,
     int maxQueueBytes = 12 * 1024 * 1024,
+    Future<String?> Function()? refreshUpstream,
   }) async {
     await stop();
     _closed = false;
     _maxQueueBytes = maxQueueBytes.clamp(4 * 1024 * 1024, 20 * 1024 * 1024);
     _upstream = upstreamUrl;
+    _refreshUpstream = refreshUpstream;
     _headers = Map<String, String>.from(headers);
     _estimatedBytesPerSec = 0;
     _rateSampleBytes = 0;
@@ -87,7 +97,9 @@ class LiveSportsContinuityProxy {
       onError: (Object e) => debugPrint('[Live Sports Proxy] server error: $e'),
     );
     final uri = localUri!;
-    debugPrint('[Live Sports Proxy] $uri ← $upstreamUrl (queue=${_maxQueueBytes >> 20}MiB)');
+    debugPrint(
+      '[Live Sports Proxy] $uri ← $upstreamUrl (queue=${_maxQueueBytes >> 20}MiB)',
+    );
     return uri;
   }
 
@@ -97,6 +109,8 @@ class LiveSportsContinuityProxy {
     _producerEpoch++;
     _clientEpoch++;
     _producerGen = -1;
+    _producerGaveUp = false;
+    _refreshUpstream = null;
     _clearQueue();
     _wakeWaiters();
     final server = _server;
@@ -163,12 +177,15 @@ class LiveSportsContinuityProxy {
 
     // One CDN producer per [start] generation. Exo soft-reopen / Range retry
     // only replaces the loopback writer — keep upstream + cushion.
-    if (_producerGen != gen) {
+    if (_producerGen != gen || _producerGaveUp) {
       _producerGen = gen;
+      _producerGaveUp = false;
       final pEpoch = ++_producerEpoch;
       _clearQueue();
       unawaited(_runProducer(gen, pEpoch));
-      debugPrint('[Live Sports Proxy] CDN producer start (gen=$gen epoch=$pEpoch)');
+      debugPrint(
+        '[Live Sports Proxy] CDN producer start (gen=$gen epoch=$pEpoch)',
+      );
     } else {
       debugPrint(
         '[Live Sports Proxy] loopback client attach '
@@ -185,18 +202,15 @@ class LiveSportsContinuityProxy {
       res.bufferOutput = false;
 
       var pending = 0;
-      while (!_closed &&
-          gen == _generation &&
-          clientEpoch == _clientEpoch) {
+      while (!_closed && gen == _generation && clientEpoch == _clientEpoch) {
         final chunk = _dequeue();
         if (chunk == null) {
+          if (_producerGaveUp) break;
           await _waitForData().timeout(
             const Duration(seconds: 30),
             onTimeout: () {},
           );
-          if (_closed ||
-              gen != _generation ||
-              clientEpoch != _clientEpoch) {
+          if (_closed || gen != _generation || clientEpoch != _clientEpoch) {
             break;
           }
           continue;
@@ -231,10 +245,14 @@ class LiveSportsContinuityProxy {
 
   Future<void> _runProducer(int gen, int producerEpoch) async {
     var firstConnect = true;
+    var needFreshUpstream = false;
     var fatalUpstream = 0;
     while (_producerAlive(gen, producerEpoch)) {
       HttpClientResponse? up;
       try {
+        if (needFreshUpstream) await _mintFreshUpstream(gen, producerEpoch);
+        if (!_producerAlive(gen, producerEpoch)) break;
+        needFreshUpstream = true;
         up = await _openUpstream();
         if (!_producerAlive(gen, producerEpoch)) break;
         if (up.statusCode < 200 || up.statusCode >= 300) {
@@ -260,7 +278,9 @@ class LiveSportsContinuityProxy {
         var skipAborted = false;
         final reconnectAt = DateTime.now();
         if (firstConnect) {
-          debugPrint('[Live Sports Proxy] upstream connected (${up.statusCode})');
+          debugPrint(
+            '[Live Sports Proxy] upstream connected (${up.statusCode})',
+          );
           firstConnect = false;
         } else {
           skipPlanned = liveSportsProxyReconnectSkipBytes(
@@ -311,8 +331,9 @@ class LiveSportsContinuityProxy {
           _noteUpstreamBytes(data.length);
           if (skipLeft > 0) {
             final skipped = skipPlanned - skipLeft;
-            final elapsedMs =
-                DateTime.now().difference(skipStarted).inMilliseconds;
+            final elapsedMs = DateTime.now()
+                .difference(skipStarted)
+                .inMilliseconds;
             if (liveSportsProxyShouldAbortSkip(
               skippedBytes: skipped,
               minSkipBytes: minSkip,
@@ -370,7 +391,30 @@ class LiveSportsContinuityProxy {
       if (!_producerAlive(gen, producerEpoch)) break;
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
-    debugPrint('[Live Sports Proxy] CDN producer exit (gen=$gen epoch=$producerEpoch)');
+    if (_producerAlive(gen, producerEpoch)) {
+      _producerGaveUp = true;
+      _wakeWaiters();
+    }
+    debugPrint(
+      '[Live Sports Proxy] CDN producer exit (gen=$gen epoch=$producerEpoch)',
+    );
+  }
+
+  Future<void> _mintFreshUpstream(int gen, int producerEpoch) async {
+    final refresh = _refreshUpstream;
+    if (refresh == null) return;
+    try {
+      final fresh = await refresh();
+      if (!_producerAlive(gen, producerEpoch)) return;
+      if (fresh == null || fresh.trim().isEmpty) {
+        debugPrint('[Live Sports Proxy] upstream refresh empty — reuse URL');
+        return;
+      }
+      _upstream = fresh.trim();
+      debugPrint('[Live Sports Proxy] upstream refreshed');
+    } catch (e) {
+      debugPrint('[Live Sports Proxy] upstream refresh failed: $e');
+    }
   }
 
   Future<HttpClientResponse> _openUpstream() async {
@@ -387,10 +431,7 @@ class LiveSportsContinuityProxy {
     if (!_headers.keys.any(
       (k) => k.toLowerCase() == HttpHeaders.userAgentHeader,
     )) {
-      req.headers.set(
-        HttpHeaders.userAgentHeader,
-        'VLC/3.0.20 LibVLC/3.0.20',
-      );
+      req.headers.set(HttpHeaders.userAgentHeader, 'VLC/3.0.20 LibVLC/3.0.20');
     }
     if (!_headers.keys.any(
       (k) => k.toLowerCase() == HttpHeaders.acceptHeader,

@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **16 / 16** components · **2 / 12** acceptance (manual QA) |
+| **Progress** | **17 / 17** components · **2 / 12** acceptance (manual QA) |
 | **Current slice** | Full Forja MediaKit live: decode/controller + lavf + serialized goLive |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -35,6 +35,7 @@
 | 14 | R113-C14 | MediaKit: never grace/goLive from mpv log premature-EOF / reset — lavf owns; only `completed`/`error` ([362](../../issues/fixed/362-[fixed]-iptv-mediakit-log-eof-grace-storm.md)) | ✅ |
 | 15 | R113-C15 | goLive: 2s slot after stop; stable timer confirms only; one poll; cold retry on burst fail — no Stream ended ([387](../../issues/387-[open]-iptv-golive-double-open-ends.md)) | ✅ |
 | 16 | R113-C16 | Live EOF: resume during grace; a backward jump or goLive skips the panel archive instead of replaying it ([388](../../issues/388-[open]-iptv-reconnect-replays-archive.md)) | ✅ |
+| 17 | R113-C17 | Stalker progressive live opens through the continuity relay. Each upstream reconnect mints a fresh `create_link` ([401](../issues/401-[open]-iptv-stalker-reconnect-wipes-cache.md)) | ✅ |
 
 ---
 

@@ -7,7 +7,11 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   Future<void> _applyMpvTunables();
   Future<void> _tuneAtvMediaKitAfterOpen();
   Future<void> _tuneDesktopMediaKitAfterOpen();
-  Future<void> _applyStreamLavfReconnect(NativePlayer p, {String? streamUrl});
+  Future<void> _applyStreamLavfReconnect(
+    NativePlayer p, {
+    String? streamUrl,
+    bool continuityRelay = false,
+  });
   void _startWatchdog();
   void _noteFeedProgress(int markMs, {int? positionMs});
   Future<void> _triggerRecovery({
@@ -604,6 +608,31 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       if (_s._mediaKitBackend && iptvUrlLooksLikeHls(playUrl)) {
         playUrl = await iptvResolveHlsPlayUrl(url: playUrl, headers: headers);
       }
+      final useRelay =
+          _livePlaybackProfile &&
+          !_s.widget.vodPlayback &&
+          (_s._mediaKitBackend || _s._exoBackend) &&
+          iptvStalkerUsesContinuityRelay(kind: kind, url: candidate.url);
+      if (useRelay) {
+        final relay = _s._stalkerRelay ??= LiveSportsContinuityProxy(
+          onUpstreamReconnected: _armTransientHwDecodeIgnore,
+        );
+        final local = await relay.start(
+          upstreamUrl: candidate.url,
+          headers: headers,
+          maxQueueBytes: liveSportsContinuityProxyMaxQueueBytes(
+            videoHeight: _s._lastVideoHeight,
+            videoBitrate: 0,
+          ),
+          refreshUpstream: () => _mintStalkerLink(candidate),
+        );
+        playUrl = local.toString();
+        debugPrint(
+          '[IPTV Player] stalker relay (${_s._playerEngine.storageKey})',
+        );
+      } else {
+        await _s._stalkerRelay?.stop();
+      }
 
       if (_s._exoBackend) {
         // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
@@ -622,7 +651,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         await ExoPlayerBridge.open(
           viewId: _s._exoViewId!,
           url: playUrl,
-          headers: headers,
+          headers: useRelay ? const <String, String>{} : headers,
           live: live,
           maxVideoHeight: maxHeight,
           maxVideoBitrate: maxBitrate,
@@ -654,17 +683,21 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         _s._stallFrameDropBaseline = -1;
         _s._stallPaintWatchSince = null;
         await resetPlayerAudioForNewOpen(player);
-        // RFC-113: CDN direct + lavf reconnect (no continuity proxy).
-        debugPrint('[IPTV Player] direct open ($kind)');
+        // RFC-113: CDN direct + lavf reconnect. Stalker: loopback relay.
+        if (!useRelay) debugPrint('[IPTV Player] direct open ($kind)');
         final np = player.platform;
         final liveMk = _livePlaybackProfile && !_s.widget.vodPlayback;
         if (np is NativePlayer && liveMk) {
-          await _applyStreamLavfReconnect(np, streamUrl: playUrl);
+          await _applyStreamLavfReconnect(
+            np,
+            streamUrl: playUrl,
+            continuityRelay: useRelay,
+          );
         } else if (np is NativePlayer) {
           await applyMediaHttpHeaders(player, headers, streamUrl: playUrl);
         }
         // Forja live: Media(url) only — no httpHeaders / panel UA.
-        await applyIpv4HttpProxy(player, playUrl);
+        if (!useRelay) await applyIpv4HttpProxy(player, playUrl);
         if (liveMk) {
           await player.open(Media(playUrl));
         } else {
@@ -735,26 +768,30 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     }
   }
 
-  Future<LivePlaySource> _refreshStalkerPlayUrl(LivePlaySource src) async {
-    if (_liveSourceKindFor(src) != PortalLiveSourceKind.iptvStalker) {
-      return src;
-    }
+  /// Fresh Stalker create_link for [src]. Null when the portal or cmd is
+  /// unknown, or the portal returned nothing.
+  Future<String?> _mintStalkerLink(LivePlaySource src) async {
     var portal = _s.widget.channelGuide?.xtreamPortal?.portal;
     final cmd = (src.streamId ?? '').trim();
-    if (cmd.isEmpty) return src;
+    if (cmd.isEmpty) return null;
     if (portal == null) {
       if (_s._sportsPortal == null) {
         await _s._initSportsEpgCache();
       }
       portal = _s._sportsPortal?.portal;
     }
-    if (portal == null) return src;
+    if (portal == null) return null;
+    return PortalClient.createLink(portal, cmd: cmd, section: 'live');
+  }
+
+  Future<LivePlaySource> _refreshStalkerPlayUrl(LivePlaySource src) async {
+    if (_liveSourceKindFor(src) != PortalLiveSourceKind.iptvStalker) {
+      return src;
+    }
+    final cmd = (src.streamId ?? '').trim();
+    if (cmd.isEmpty) return src;
     try {
-      final fresh = await PortalClient.createLink(
-        portal,
-        cmd: cmd,
-        section: 'live',
-      );
+      final fresh = await _mintStalkerLink(src);
       if (fresh == null || fresh.isEmpty) {
         debugPrint('[IPTV] stalker create_link empty for cmd=$cmd');
         return src;
