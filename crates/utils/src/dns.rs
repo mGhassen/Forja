@@ -70,9 +70,10 @@ pub async fn resolve_host(host: &str) -> Result<Vec<SocketAddr>, std::io::Error>
     }
 
     let host_owned = host.to_owned();
-    let unspec = tokio::task::spawn_blocking(move || lookup_blocking(&host_owned, libc::AF_UNSPEC))
-        .await
-        .map_err(|e| std::io::Error::other(e))?;
+    let unspec =
+        tokio::task::spawn_blocking(move || lookup_blocking(&host_owned, QueryFamily::Any))
+            .await
+            .map_err(|e| std::io::Error::other(e))?;
     let unspec = unspec.unwrap_or_default();
     let picked = prefer_routable(unspec);
     if picked.iter().any(|a| !is_nat64(a.ip())) {
@@ -80,7 +81,7 @@ pub async fn resolve_host(host: &str) -> Result<Vec<SocketAddr>, std::io::Error>
     }
 
     let host_v4 = host.to_owned();
-    let v4 = tokio::task::spawn_blocking(move || lookup_blocking(&host_v4, libc::AF_INET))
+    let v4 = tokio::task::spawn_blocking(move || lookup_blocking(&host_v4, QueryFamily::V4))
         .await
         .map_err(|e| std::io::Error::other(e))?
         .unwrap_or_default();
@@ -96,12 +97,36 @@ pub async fn resolve_host(host: &str) -> Result<Vec<SocketAddr>, std::io::Error>
     ))
 }
 
-fn lookup_blocking(host: &str, family: i32) -> Result<Vec<SocketAddr>, std::io::Error> {
+#[derive(Clone, Copy)]
+enum QueryFamily {
+    Any,
+    V4,
+}
+
+fn lookup_failed(rc: i32) -> std::io::Error {
+    std::io::Error::new(
+        std::io::ErrorKind::Other,
+        format!("getaddrinfo failed ({rc})"),
+    )
+}
+
+fn no_addresses(host: &str) -> std::io::Error {
+    std::io::Error::new(
+        std::io::ErrorKind::AddrNotAvailable,
+        format!("no addresses for {host}"),
+    )
+}
+
+#[cfg(unix)]
+fn lookup_blocking(host: &str, family: QueryFamily) -> Result<Vec<SocketAddr>, std::io::Error> {
     use std::ffi::CString;
 
-    let c_host = CString::new(host).map_err(|e| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, e)
-    })?;
+    let family = match family {
+        QueryFamily::Any => libc::AF_UNSPEC,
+        QueryFamily::V4 => libc::AF_INET,
+    };
+    let c_host =
+        CString::new(host).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
 
     let mut hints: libc::addrinfo = unsafe { std::mem::zeroed() };
     hints.ai_family = family;
@@ -110,10 +135,7 @@ fn lookup_blocking(host: &str, family: i32) -> Result<Vec<SocketAddr>, std::io::
     let mut res: *mut libc::addrinfo = std::ptr::null_mut();
     let rc = unsafe { libc::getaddrinfo(c_host.as_ptr(), std::ptr::null(), &hints, &mut res) };
     if rc != 0 {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("getaddrinfo failed ({rc})"),
-        ));
+        return Err(lookup_failed(rc));
     }
 
     let mut out = Vec::new();
@@ -136,12 +158,93 @@ fn lookup_blocking(host: &str, family: i32) -> Result<Vec<SocketAddr>, std::io::
     unsafe { libc::freeaddrinfo(res) };
 
     if out.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::AddrNotAvailable,
-            format!("no addresses for {host}"),
-        ));
+        return Err(no_addresses(host));
     }
     Ok(out)
+}
+
+/// WinSock `ADDRINFOA` is not the POSIX `addrinfo` that `libc` exports, so
+/// Windows cannot use the Unix lookup.
+#[cfg(windows)]
+fn lookup_blocking(host: &str, family: QueryFamily) -> Result<Vec<SocketAddr>, std::io::Error> {
+    use std::ffi::CString;
+    use std::sync::OnceLock;
+    use windows_sys::Win32::Networking::WinSock::{
+        freeaddrinfo, getaddrinfo, WSAStartup, ADDRINFOA, AF_INET, AF_INET6, AF_UNSPEC,
+        SOCKADDR_IN, SOCKADDR_IN6, SOCK_STREAM, WSADATA,
+    };
+
+    fn ensure_winsock() -> Result<(), std::io::Error> {
+        static READY: OnceLock<i32> = OnceLock::new();
+        let rc = *READY.get_or_init(|| {
+            let mut data = unsafe { std::mem::zeroed::<WSADATA>() };
+            unsafe { WSAStartup(0x0202, &mut data) }
+        });
+        if rc == 0 {
+            Ok(())
+        } else {
+            Err(std::io::Error::from_raw_os_error(rc))
+        }
+    }
+
+    ensure_winsock()?;
+
+    let family = match family {
+        QueryFamily::Any => i32::from(AF_UNSPEC),
+        QueryFamily::V4 => i32::from(AF_INET),
+    };
+    let c_host =
+        CString::new(host).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+
+    let mut hints: ADDRINFOA = unsafe { std::mem::zeroed() };
+    hints.ai_family = family;
+    hints.ai_socktype = SOCK_STREAM;
+
+    let mut res: *mut ADDRINFOA = std::ptr::null_mut();
+    let rc = unsafe {
+        getaddrinfo(
+            c_host.as_ptr() as *const u8,
+            std::ptr::null(),
+            &hints,
+            &mut res,
+        )
+    };
+    if rc != 0 {
+        return Err(lookup_failed(rc));
+    }
+
+    let mut out = Vec::new();
+    let mut cur = res;
+    while !cur.is_null() {
+        unsafe {
+            let ai = &*cur;
+            if ai.ai_family == i32::from(AF_INET) && !ai.ai_addr.is_null() {
+                let sin = &*(ai.ai_addr as *const SOCKADDR_IN);
+                let ip = Ipv4Addr::from(u32::from_be(sin.sin_addr.S_un.S_addr));
+                out.push(SocketAddr::new(IpAddr::V4(ip), 0));
+            } else if ai.ai_family == i32::from(AF_INET6) && !ai.ai_addr.is_null() {
+                let sin6 = &*(ai.ai_addr as *const SOCKADDR_IN6);
+                let ip = Ipv6Addr::from(sin6.sin6_addr.u.Byte);
+                out.push(SocketAddr::new(IpAddr::V6(ip), 0));
+            }
+            cur = ai.ai_next;
+        }
+    }
+    unsafe { freeaddrinfo(res) };
+
+    if out.is_empty() {
+        return Err(no_addresses(host));
+    }
+    Ok(out)
+}
+
+#[cfg(not(any(unix, windows)))]
+fn lookup_blocking(host: &str, family: QueryFamily) -> Result<Vec<SocketAddr>, std::io::Error> {
+    let _ = (host, family);
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "system DNS is not available on this target",
+    ))
 }
 
 /// Reqwest builder for portal HTTP. Real IPv6 is included. DNS64 translations
