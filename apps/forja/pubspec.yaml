@@ -1,7 +1,7 @@
 name: forja
 description: Forja - your cinema universe
 publish_to: none
-version: 1.5.36+70
+version: 2.0.0+71
 
 environment:
   sdk: ^3.11.0
