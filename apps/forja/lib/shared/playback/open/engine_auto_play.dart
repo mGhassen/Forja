@@ -4,24 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/sources/stream_orchestrator.dart';
 import 'package:forja/shared/playback/probe/engine_catalog_stream_probe.dart';
-import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
-import 'package:forja/shared/foundation/blocks/play/kit_episodes.dart';
-import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
-import 'package:forja/shared/foundation/blocks/play/play_session.dart';
+import 'package:forja/shared/playback/kit_episodes.dart';
+import 'package:forja/shared/playback/play_hooks.dart';
+import 'package:forja/shared/playback/play_session.dart';
 
-export 'package:forja/shared/foundation/blocks/play/play_session.dart';
-import 'package:forja/shared/foundation/blocks/play/sources_request_context.dart';
+export 'package:forja/shared/playback/play_session.dart';
+import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
-import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
-import 'package:forja/shared/foundation/components/playback/resolve_failure_view.dart';
-import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/playback/resolve_failure_view.dart';
+import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:rust/rust.dart';
 
@@ -44,6 +43,15 @@ String? enginePluginIdFromProgress(Map<String, dynamic>? progress) {
 
 bool isEngineSavedProgress(Map<String, dynamic>? progress) =>
     enginePluginIdFromProgress(progress) != null;
+
+/// Resume pin — same gate as pre-pack-details media details.
+String? preferredEnginePluginForResume({
+  Map<String, dynamic>? progress,
+  Duration? startPosition,
+}) {
+  if (startPosition == null || startPosition <= Duration.zero) return null;
+  return enginePluginIdFromProgress(progress);
+}
 
 /// Prefer explicit [stremioId], else bag `imdb` from Sources middleware.
 String? stremioIdFromSourcesBag({
@@ -81,6 +89,9 @@ Future<void> switchEpisodeViaEngineAutoPlay({
   String? stremioId,
   EnginePlaySession? session,
   List<PlayerKitEpisode>? episodes,
+
+  /// Keep the current Forja plugin first (same as resume pin).
+  String? preferredPluginId,
 }) {
   final s = session;
   final extract = engineExtractContext(
@@ -111,6 +122,7 @@ Future<void> switchEpisodeViaEngineAutoPlay({
     playSession: s,
     episodes: episodes,
     hubEpisodeNumber: episode,
+    preferredPluginId: preferredPluginId,
   );
 }
 
@@ -130,6 +142,7 @@ Future<void> Function(PlayerKitEpisode episode)? _hubEngineEpisodePicker({
   required EnginePlaySession? session,
   required List<PlayerKitEpisode>? episodes,
   int? season,
+  String? preferredPluginId,
 }) {
   if (session == null || episodes == null || episodes.isEmpty) {
     return null;
@@ -143,6 +156,7 @@ Future<void> Function(PlayerKitEpisode episode)? _hubEngineEpisodePicker({
       episode: ep.number.round(),
       session: session,
       episodes: episodes,
+      preferredPluginId: preferredPluginId,
     );
   };
 }
@@ -160,11 +174,15 @@ class EngineAutoPlayPick {
 }
 
 /// Green Play Forja Auto — same as movies/TV green Forja Play:
-/// session-cache seed, Sources → Forja pool (5 TV / 10 desktop), first UP wins
+/// session-cache seed, every selected provider at once, first UP wins
 /// (cancel rest). Not extract-all-then-probe-all; not webstreaming sequential.
 ///
 /// Used by movies/TV details, Anime, and Asian Drama — one path, not copies.
-Future<void> runEngineAutoPlay({
+///
+/// When [downloadOnly] is true, a race win calls [onPick] and returns the pick
+/// without opening the player. Failure returns null so the caller can open
+/// Sources in download mode.
+Future<EngineAutoPlayPick?> runEngineAutoPlay({
   required BuildContext context,
   required Movie movie,
   required String engineCategory,
@@ -183,12 +201,16 @@ Future<void> runEngineAutoPlay({
   /// Resume: re-extract this plugin first (from watch history `sourceId`).
   String? preferredPluginId,
 
-  /// Resume: last play URL from watch history — probed before re-extract.
+  /// Resume soft preference: prefer a matching catalog row after re-extract.
+  /// Never opens this URL directly — session `/hls-proxy` links go stale.
   String? savedStreamUrl,
 
   /// When set (e.g. provider-scoped episode id), race only these.
   /// Null → all enabled plugins in the panel category (not Sources chip prefs).
   Set<String>? selectedPluginIds,
+
+  /// Optional start order (RFC-118 pack green Play). Falls back to pack walk order.
+  List<String>? racePluginOrder,
   List<EnginePack>? packs,
 
   /// Keep an open Sources panel in sync with the shared session cache.
@@ -199,6 +221,12 @@ Future<void> runEngineAutoPlay({
   onCacheUpdated,
   void Function(EngineAutoPlayPick pick)? onPick,
   VoidCallback? onCancelUi,
+
+  /// Resolve a stream for offline download — never opens the player.
+  bool downloadOnly = false,
+
+  /// Multi-tech green Play reuses the parent overlay (RFC-118).
+  StreamLoadingSession? existingLoading,
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
@@ -211,7 +239,10 @@ Future<void> runEngineAutoPlay({
     panelCategoryHint: engineCategory,
   );
   final category = extract.panelCategory;
-  final resolveType = extract.resolveType;
+  final resolveType = engineExtractResolveType(
+    packResolveType: extract.resolveType,
+    tmdbMediaType: session?.meta?.tmdbMediaType,
+  );
   final activeSession = session ??
       PlaySession(
         malId: malId,
@@ -237,10 +268,12 @@ Future<void> runEngineAutoPlay({
 
   final poolTasks = <Future<void>>{};
   var fetchGen = 0;
-  var poolLimit = kEngineSourcesBatchDesktop;
+  var poolLimit = 1;
   final inFlight = <String>{};
   var streams = <Map<String, dynamic>>[];
   var fetchedIds = <String>{};
+  final probedUrls = <String>{};
+  final probeChains = <String, Future<void>>{};
   var sawPlatformBlockedDrmOnly = false;
 
   void abortPool() {
@@ -251,6 +284,7 @@ Future<void> runEngineAutoPlay({
   }
 
   late final StreamLoadingSession loadingSession;
+  final ownsLoadingOverlay = existingLoading == null;
   /// Mid-race tap on the overlay server list — set after the race starts.
   void Function(String pluginId)? liveManualCheck;
   void cancel() {
@@ -259,25 +293,31 @@ Future<void> runEngineAutoPlay({
     abortPool();
     final pending = hitCompleter;
     if (pending != null && !pending.isCompleted) pending.complete(null);
-    dismissStreamLoading(loadingSession);
+    if (ownsLoadingOverlay) dismissStreamLoading(loadingSession);
     onCancelUi?.call();
   }
 
-  loadingSession = showStreamLoadingOverlay(
-    context,
-    movie: movie,
-    kind: StreamLoadingKind.direct,
-    initialMessage: 'Finding Forja servers…',
-    subtitle: loadingSubtitle,
-    onCancel: cancel,
-    onManualCheckProvider: (id) => liveManualCheck?.call(id),
-  );
+  if (existingLoading != null) {
+    loadingSession = existingLoading;
+  } else {
+    loadingSession = showStreamLoadingOverlay(
+      context,
+      movie: movie,
+      kind: StreamLoadingKind.direct,
+      initialMessage: 'Finding Forja servers…',
+      subtitle: loadingSubtitle,
+      onCancel: cancel,
+      onManualCheckProvider: (id) => liveManualCheck?.call(id),
+    );
+  }
   final fadeOutNotifier = loadingSession.fadeOutNotifier;
   final messageNotifier = loadingSession.messageNotifier;
   final probeNotifier = loadingSession.probeNotifier;
   final failureNotifier = loadingSession.failureNotifier;
 
-  void dismissLoading() => dismissStreamLoading(loadingSession);
+  void dismissLoading() {
+    if (ownsLoadingOverlay) dismissStreamLoading(loadingSession);
+  }
 
   void publishCache() {
     CatalogSourcesSessionCache.writeEngine(
@@ -297,16 +337,16 @@ Future<void> runEngineAutoPlay({
   if (aborted()) {
     dismissLoading();
     disposeStreamLoadingNotifiers(loadingSession);
-    return;
+    return null;
   }
 
   try {
     await EngineService.instance.ensureOfficialInstalled();
-    if (aborted()) return;
+    if (aborted()) return null;
 
     final loadedPacks =
         packs ?? await EngineService.instance.listSourcesPanelPacks();
-    if (aborted()) return;
+    if (aborted()) return null;
 
     final enabledIds = enabledEnginePluginIds(loadedPacks);
     final scope = EngineCategories.matchingPluginIds(
@@ -325,7 +365,19 @@ Future<void> runEngineAutoPlay({
               if (enabledIds.contains(id)) id,
           };
 
-    final orderedIds = orderedEnginePluginIds(loadedPacks);
+    final walkOrder = orderedEnginePluginIds(loadedPacks);
+    final orderedIds = () {
+      final custom = racePluginOrder;
+      if (custom == null || custom.isEmpty) return walkOrder;
+      final out = <String>[];
+      for (final id in custom) {
+        if (selected.contains(id) && !out.contains(id)) out.add(id);
+      }
+      for (final id in walkOrder) {
+        if (selected.contains(id) && !out.contains(id)) out.add(id);
+      }
+      return out;
+    }();
     var pluginIds = [
       for (final id in orderedIds)
         if (selected.contains(id) &&
@@ -334,12 +386,9 @@ Future<void> runEngineAutoPlay({
     ];
 
     var pinPlugin = preferredPluginId?.trim();
-    final resumeAt = startPosition;
-    var pinActive =
-        pinPlugin != null &&
-        pinPlugin.isNotEmpty &&
-        resumeAt != null &&
-        resumeAt > Duration.zero;
+    // Callers only pass preferredPluginId when they mean to pin (resume or
+    // next/prev episode). Do not require resume position — next ep is at 0.
+    var pinActive = pinPlugin != null && pinPlugin.isNotEmpty;
     if (pinActive && !pluginIds.contains(pinPlugin)) {
       pinActive = false;
     }
@@ -372,35 +421,12 @@ Future<void> runEngineAutoPlay({
         },
       );
       await action.future;
-      return;
+      return null;
     }
 
-    if (pinActive) {
-      final savedUrl = savedStreamUrl?.trim() ?? '';
-      if (savedUrl.isNotEmpty &&
-          !isUnplayableCachedStreamUrl(savedUrl) &&
-          !isTorrentStreamUrl(savedUrl) &&
-          await probeStreamSourceUrl(savedUrl, null)) {
-        if (!aborted()) {
-          if (!context.mounted) return;
-          openedPlayer = true;
-          final isTv = movie.mediaType == 'tv';
-          await AppRouter.openPlayer(
-            context,
-            streamUrl: savedUrl,
-            title: movie.title,
-            movie: movie,
-            selectedSeason: isTv ? (season ?? 1) : null,
-            selectedEpisode: isTv ? (episode ?? 1) : null,
-            startPosition: resumeAt,
-            activeProvider: EngineIds.pluginChip(pinPlugin!),
-            pinSource: true,
-            fadeTransition: loadingSession.dialogContext != null,
-          );
-          return;
-        }
-      }
-    }
+    // Resume always re-extracts the preferred plugin (loading overlay + probe),
+    // then seeks via startPosition. Do not open a saved play URL — history often
+    // held session `/hls-proxy` links that fail cold open at resume offset.
 
     final cached = CatalogSourcesSessionCache.readEngine(cacheKey);
     if (cached != null) {
@@ -498,8 +524,12 @@ Future<void> runEngineAutoPlay({
     ) async {
       if (playAborted() || race.isCompleted) return;
       if (!pluginIds.contains(pluginId)) return;
+      if (statusById[pluginId] == StreamProviderProbeStatus.success) return;
 
-      final rows = sortEngineMetaStreamRows(pluginStreams);
+      final rows = preferSavedEngineStreamRow(
+        sortEngineMetaStreamRows(pluginStreams),
+        savedStreamUrl,
+      );
       if (rows.isEmpty) {
         statusById[pluginId] = StreamProviderProbeStatus.failed;
         publishProbes();
@@ -507,13 +537,6 @@ Future<void> runEngineAutoPlay({
           pinActive = false;
         }
         maybeCompleteEmpty();
-        return;
-      }
-
-      // Mid-race pin: ignore other plugins' hits until the pin fails.
-      if (pinActive && pluginId != pinPlugin) {
-        statusById[pluginId] = StreamProviderProbeStatus.pending;
-        publishProbes();
         return;
       }
 
@@ -526,7 +549,8 @@ Future<void> runEngineAutoPlay({
       try {
         for (final row in rows) {
           if (playAborted() || race.isCompleted) break;
-          if (pinActive && pluginId != pinPlugin) break;
+          final rowUrl = row['url']?.toString() ?? '';
+          if (rowUrl.isNotEmpty && !probedUrls.add(rowUrl)) continue;
           final probed = await buildProbedEngineCatalogSources(
             profile: profile,
             settings: settings,
@@ -535,7 +559,6 @@ Future<void> runEngineAutoPlay({
             preferFirst: row,
           );
           if (probed.isEmpty) continue;
-          if (pinActive && pluginId != pinPlugin) break;
           statusById[pluginId] = StreamProviderProbeStatus.success;
           publishProbes();
           if (!race.isCompleted) {
@@ -574,23 +597,37 @@ Future<void> runEngineAutoPlay({
         season: season,
         episode: episode,
         episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
-        panelCategoryHint: resolveType,
+        panelCategoryHint: category,
       );
       EngineExtractResult? batch;
       try {
-        batch = await EngineService.instance.runPluginIsolated(
+        batch = await StreamOrchestrator.instance.schedule(
+          sessionKey: cacheKey,
           pluginId: pluginId,
-          tmdbId: src.engine?.tmdbId ?? '',
-          type: src.engine?.resolveType ?? resolveType,
-          season: season,
-          episode: episode,
-          title: movie.title,
-          year: year,
-          movie: movie,
-          open: activeSession.effectiveOpen,
-          episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
-          audioCategory: audioCategory ?? activeSession.audioCategory,
-          allowHostFallback: false,
+          job: () => EngineService.instance.runPluginIsolated(
+            pluginId: pluginId,
+            tmdbId: src.engine?.tmdbId ?? '',
+            type: src.engine?.resolveType ?? resolveType,
+            season: season,
+            episode: episode,
+            title: movie.title,
+            year: year,
+            movie: movie,
+            open: activeSession.effectiveOpen,
+            episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
+            audioCategory: audioCategory ?? activeSession.audioCategory,
+            allowHostFallback: false,
+            onRow: (row) {
+              if (playAborted() || race.isCompleted || gen != fetchGen) return;
+              final prev = probeChains[pluginId] ?? Future<void>.value();
+              probeChains[pluginId] = prev.then((_) async {
+                if (playAborted() || race.isCompleted) return;
+                streams.add(row);
+                publishCache();
+                await onPluginDone(pluginId, [row]);
+              });
+            },
+          ),
         );
       } catch (e) {
         debugPrint('[engine-auto] plugin $pluginId failed: $e');
@@ -601,6 +638,7 @@ Future<void> runEngineAutoPlay({
       }
       fetchedIds.add(pluginId);
       inFlight.remove(pluginId);
+      await probeChains[pluginId];
       streams.removeWhere((s) => engineStreamBelongsToPlugin(s, pluginId));
       final raw = batch?.streams ?? const <Map<String, dynamic>>[];
       if (streamsArePlatformBlockedDrmOnly(raw)) {
@@ -617,13 +655,15 @@ Future<void> runEngineAutoPlay({
       );
     }
 
+    String? soloId;
+
     void fillPool(int gen) {
       if (playAborted() || gen != fetchGen || race.isCompleted) return;
       final slots = poolLimit - inFlight.length;
       if (slots <= 0) return;
-      final pinId = pinPlugin;
-      final raceIds =
-          pinActive && pinId != null && pinId.isNotEmpty ? [pinId] : pluginIds;
+      final raceIds = soloId != null && pluginIds.contains(soloId)
+          ? <String>[soloId!]
+          : pluginIds;
       final next = nextEnginePluginBatch(
         orderedIds: raceIds,
         selectedIds: raceIds.toSet(),
@@ -664,6 +704,7 @@ Future<void> runEngineAutoPlay({
 
       pinPlugin = trimmed;
       pinActive = true;
+      soloId = trimmed;
       pluginIds = [
         trimmed,
         ...pluginIds.where((other) => other != trimmed),
@@ -694,6 +735,7 @@ Future<void> runEngineAutoPlay({
           if (pinActive && pinPlugin == trimmed) {
             // Pin had rows but every probe failed — resume the full race.
             pinActive = false;
+            soloId = null;
           }
           if (!race.isCompleted && !playAborted()) {
             fillPool(fetchGen);
@@ -727,23 +769,8 @@ Future<void> runEngineAutoPlay({
       await onPluginDone(id, cachedRows);
     }
 
-    if (pinActive && !race.isCompleted && !playAborted() && pinPlugin != null) {
-      final pinId = pinPlugin!;
-      if (!fetchedIds.contains(pinId) && !inFlight.contains(pinId)) {
-        final gen = ++fetchGen;
-        inFlight.add(pinId);
-        try {
-          await runAndApply(pinId, gen);
-        } finally {
-          inFlight.remove(pinId);
-        }
-      }
-    }
-
     if (!race.isCompleted && !playAborted()) {
-      poolLimit = engineSourcesBatchLimit(
-        tv: context.mounted && SourcesPanelTv.isTv(context),
-      );
+      poolLimit = engineSourcesBatchLimit(selected: pluginIds.length);
       var gen = ++fetchGen;
       fillPool(gen);
       while (!playAborted() && !race.isCompleted) {
@@ -754,6 +781,7 @@ Future<void> runEngineAutoPlay({
             !inFlight.contains(pinPlugin) &&
             !probingIds.contains(pinPlugin)) {
           pinActive = false;
+          soloId = null;
           gen = ++fetchGen;
           fillPool(gen);
         }
@@ -764,12 +792,15 @@ Future<void> runEngineAutoPlay({
     }
 
     final hit = playAborted() ? null : await race.future;
-    if (playAborted()) return;
+    if (playAborted()) return null;
 
     if (hit != null) {
-      if (!context.mounted) return;
-      openedPlayer = true;
+      if (!context.mounted) return null;
       onPick?.call(hit);
+      if (downloadOnly) {
+        return hit;
+      }
+      openedPlayer = true;
       await _playFromProbedSources(
         context: context,
         movie: movie,
@@ -793,7 +824,7 @@ Future<void> runEngineAutoPlay({
         messageNotifier: messageNotifier,
         isAborted: playAborted,
       );
-      return;
+      return hit;
     }
 
     final resolveRow = await firstEngineCatalogResolveRow(
@@ -805,17 +836,19 @@ Future<void> runEngineAutoPlay({
       settings: settings,
     );
     if (resolveRow != null && !playAborted()) {
-      if (!context.mounted) return;
-      openedPlayer = true;
+      if (!context.mounted) return null;
       final pluginId =
           resolveRow['_enginePluginId']?.toString() ?? pluginIds.first;
-      onPick?.call(
-        EngineAutoPlayPick(
-          pluginId: pluginId,
-          stream: resolveRow,
-          sources: const [],
-        ),
+      final pick = EngineAutoPlayPick(
+        pluginId: pluginId,
+        stream: resolveRow,
+        sources: const [],
       );
+      onPick?.call(pick);
+      if (downloadOnly) {
+        return pick;
+      }
+      openedPlayer = true;
       await _playResolveRow(
         context: context,
         movie: movie,
@@ -838,7 +871,7 @@ Future<void> runEngineAutoPlay({
         loadingSession: loadingSession,
         isAborted: playAborted,
       );
-      return;
+      return pick;
     }
 
     if (sawPlatformBlockedDrmOnly &&
@@ -847,7 +880,11 @@ Future<void> runEngineAutoPlay({
       if (context.mounted) {
         ForjaToast.info(kStreamDrmAndroidOnlyMessage);
       }
-      return;
+      return null;
+    }
+
+    if (downloadOnly) {
+      return null;
     }
 
     final action = Completer<bool>();
@@ -866,7 +903,7 @@ Future<void> runEngineAutoPlay({
     final retry = await action.future;
     dismissLoading();
     if (retry && context.mounted) {
-      await runEngineAutoPlay(
+      return await runEngineAutoPlay(
         context: context,
         movie: movie,
         engineCategory: engineCategory,
@@ -887,10 +924,14 @@ Future<void> runEngineAutoPlay({
         onCacheUpdated: onCacheUpdated,
         onPick: onPick,
         onCancelUi: onCancelUi,
+        downloadOnly: downloadOnly,
       );
     }
+    return null;
   } finally {
-    if (!openedPlayer) {
+    if (!ownsLoadingOverlay) {
+      // Parent multi-tech race owns overlay lifecycle.
+    } else if (!openedPlayer) {
       dismissLoading();
       disposeStreamLoadingNotifiers(loadingSession);
     } else {
@@ -955,20 +996,24 @@ Future<void> _playFromProbedSources({
     session: enginePlaySession,
     movie: playMovie,
     episodeNumber: epNum,
+    season: season,
     episodes: playHubEpisodes,
   );
+  final activeChip = primary.providerId ?? catalogHttpPlayProviderId(stream);
   final onHubEpisodeSelected = _hubEngineEpisodePicker(
     context: context,
     movie: playMovie,
     session: enginePlaySession,
     episodes: playHubEpisodes,
     season: season,
+    preferredPluginId: EngineIds.pluginIdFromChip(activeChip),
   );
   Future<void> openPlayer() async {
     await seedEngineWatchHistory(
       session: enginePlaySession,
       movie: playMovie,
       episodeNumber: epNum,
+      season: season,
       episodes: playHubEpisodes,
     );
     if (isAborted() || !context.mounted) return;
@@ -1030,13 +1075,10 @@ Future<void> _playResolveRow({
 
   if (!await ensureLanP2pPlayback(context)) return;
   if (isAborted() || !context.mounted) return;
-
-  final debrid = settings.debridPlaybackPrefs();
   loadingSession.setKind(StreamLoadingKind.torrent);
   loadingSession.torrentStatusNotifier.value = initialStremioTorrentResolveStatus(
     profile: profile,
-    useDebrid: debrid.useDebrid,
-    debridService: debrid.service,
+    debridLabel: DebridPackBridge.activePluginLabel?.call(),
   );
   final resolved = await resolveStremioStream(
     stream: stream,
@@ -1069,20 +1111,24 @@ Future<void> _playResolveRow({
     session: enginePlaySession,
     movie: playMovie,
     episodeNumber: epNum,
+    season: season,
     episodes: playHubEpisodes,
   );
+  final torrentChip = catalogHttpPlayProviderId(stream);
   final onHubEpisodeSelected = _hubEngineEpisodePicker(
     context: context,
     movie: playMovie,
     session: enginePlaySession,
     episodes: playHubEpisodes,
     season: season,
+    preferredPluginId: EngineIds.pluginIdFromChip(torrentChip),
   );
   Future<void> openPlayer() async {
     await seedEngineWatchHistory(
       session: enginePlaySession,
       movie: playMovie,
       episodeNumber: epNum,
+      season: season,
       episodes: playHubEpisodes,
     );
     if (isAborted() || !context.mounted) return;
@@ -1118,4 +1164,22 @@ Future<void> _playResolveRow({
   } else {
     await openPlayer();
   }
+}
+
+/// Soft-prefer a history catalog URL after re-extract (same identity / nested proxy).
+List<Map<String, dynamic>> preferSavedEngineStreamRow(
+  List<Map<String, dynamic>> rows,
+  String? savedStreamUrl,
+) {
+  final saved = savedStreamUrl?.trim() ?? '';
+  if (saved.isEmpty || rows.length < 2) return rows;
+  final want = playbackStreamIdentityUrl(saved).toLowerCase();
+  if (want.isEmpty) return rows;
+  final i = rows.indexWhere((row) {
+    final u = row['url']?.toString().trim() ?? '';
+    if (u.isEmpty) return false;
+    return playbackStreamIdentityUrl(u).toLowerCase() == want;
+  });
+  if (i <= 0) return rows;
+  return [rows[i], ...rows.sublist(0, i), ...rows.sublist(i + 1)];
 }

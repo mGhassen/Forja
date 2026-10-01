@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/hub_boot_prefetch.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 
 void main() {
   setUp(PluginNavRegistry.seedTestHubNav);
@@ -11,16 +11,17 @@ void main() {
       expect(BootNeeds.isHubNavId('test_hub_a'), isTrue);
       expect(BootNeeds.isHubNavId('test_hub_b'), isTrue);
       expect(BootNeeds.isHubNavId('unknown_hub'), isFalse);
-      expect(BootNeeds.isHubNavId('mylist'), isFalse);
+      expect(BootNeeds.isHubNavId('lists_tab'), isFalse);
       expect(BootNeeds.isHubNavId('iptv'), isFalse);
       expect(BootNeeds.isHubNavId('settings'), isFalse);
 
       expect(BootNeeds.isVodNavId('test_hub_a'), isTrue);
       // Features rail slot awaiting pack nav (not yet contributed).
-      expect(BootNeeds.isVodNavId('mylist'), isTrue);
+      expect(BootNeeds.isVodNavId('lists_tab'), isTrue);
       expect(BootNeeds.isVodNavId('anime'), isTrue);
-      expect(BootNeeds.isVodNavId('iptv'), isFalse);
-      expect(BootNeeds.isVodNavId('live_sports'), isFalse);
+      // IPTV is pack-owned (RFC-109) — same VOD rail class as other hubs.
+      expect(BootNeeds.isVodNavId('iptv'), isTrue);
+      expect(BootNeeds.isVodNavId('live_sports'), isTrue);
       expect(BootNeeds.isVodNavId('settings'), isFalse);
     });
 

@@ -1,0 +1,15 @@
+{
+  "name": "tmdb-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Forja TMDB API + image gateway (Vercel + local)",
+  "scripts": {
+    "dev": "node --env-file=../../.env --env-file=.env.local src/local.js",
+    "start": "node --env-file=../../.env --env-file=.env.local src/local.js",
+    "test": "node --test src/proxy.test.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

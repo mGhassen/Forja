@@ -67,16 +67,38 @@ seg-3.m4s
     expect(out, isNot(contains('URI="init.mp4"')));
   });
 
-  test('_pickVariantUrl prefers highest bandwidth', () {
+  test('peakstormPickVariantUrl prefers DEFAULT then non-HDR', () {
     const master = '''
 #EXTM3U
-#EXT-X-STREAM-INF:BANDWIDTH=800000
-low.m3u8
-#EXT-X-STREAM-INF:BANDWIDTH=5000000
-high.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=20000000,RESOLUTION=3840x2160,VIDEO-RANGE=PQ,CODECS="hvc1.2.4.L150.B0,mp4a.40.2"
+video_4k_hdr.m3u8
+#EXT-X-STREAM-INF:DEFAULT=YES,BANDWIDTH=6000000,RESOLUTION=1920x1080,CODECS="avc1.4D4032,mp4a.40.2"
+video_1080p.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720,CODECS="avc1.4D4020,mp4a.40.2"
+video_720p.m3u8
 ''';
-    // Exercise via trim path: master without EXTINF returns variant fetch URL.
-    // pickVariant is private — covered by integration when media URL differs.
-    expect(master, contains('high.m3u8'));
+    expect(
+      peakstormPickVariantUrl(
+        master,
+        'https://ok.solarpanelcleaning.cc/playlist/x.m3u8',
+      ),
+      'https://ok.solarpanelcleaning.cc/playlist/video_1080p.m3u8',
+    );
+  });
+
+  test('peakstormPickVariantUrl falls back to highest non-HDR bandwidth', () {
+    const master = '''
+#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=20000000,RESOLUTION=3840x2160,VIDEO-RANGE=PQ,CODECS="hvc1.2.4.L150.B0"
+hdr.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=6000000,RESOLUTION=1920x1080,CODECS="avc1.4D4032"
+mid.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=900000,RESOLUTION=640x360,CODECS="avc1.4D401E"
+low.m3u8
+''';
+    expect(
+      peakstormPickVariantUrl(master, 'https://cdn.example/master.m3u8'),
+      'https://cdn.example/mid.m3u8',
+    );
   });
 }

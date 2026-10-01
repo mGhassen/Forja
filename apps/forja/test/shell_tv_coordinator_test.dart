@@ -1,14 +1,20 @@
+import 'package:forja/shared/engine/details/poster_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_app_exit.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/components/posters/movie_poster_card.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja/shell/tv/media_details_tv_scope.dart';
+import 'package:forja/shell/tv/shell_tv_app_exit.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+
 import 'package:rust/rust.dart';
 
 Widget _wrapTv(Widget child) {
@@ -260,6 +266,54 @@ void main() {
     expect(tapped, isTrue);
     focusNode.dispose();
   });
+
+  testWidgets(
+    'FocusableControl scale-1.0 does not paint ink fill unless opted in',
+    (tester) async {
+      bool hasInkHoverFill() {
+        return tester.widgetList<DecoratedBox>(find.byType(DecoratedBox)).any((
+          d,
+        ) {
+          final deco = d.decoration;
+          return deco is BoxDecoration &&
+              deco.color == ForjaShellColors.inkHover;
+        });
+      }
+
+      final defaultNode = FocusNode(debugLabel: 'scale1-default');
+      await tester.pumpWidget(
+        _wrapTv(
+          FocusableControl(
+            focusNode: defaultNode,
+            scaleOnFocus: 1.0,
+            onTap: () {},
+            child: const SizedBox(width: 200, height: 120),
+          ),
+        ),
+      );
+      defaultNode.requestFocus();
+      await tester.pump();
+      expect(hasInkHoverFill(), isFalse);
+      defaultNode.dispose();
+
+      final optInNode = FocusNode(debugLabel: 'scale1-opt-in');
+      await tester.pumpWidget(
+        _wrapTv(
+          FocusableControl(
+            focusNode: optInNode,
+            scaleOnFocus: 1.0,
+            showFocusFill: true,
+            onTap: () {},
+            child: const SizedBox(width: 200, height: 120),
+          ),
+        ),
+      );
+      optInNode.requestFocus();
+      await tester.pump();
+      expect(hasInkHoverFill(), isTrue);
+      optInNode.dispose();
+    },
+  );
 
   testWidgets('ForjaShellChip is focusable on tv profile', (tester) async {
     await tester.pumpWidget(
@@ -902,6 +956,47 @@ void main() {
       play.dispose();
       card.dispose();
       search.dispose();
+      ShellTvFocusCoordinator.clearTab('home');
+    },
+  );
+
+  testWidgets(
+    'hero notifyFocused reveals only when landing from another zone',
+    (tester) async {
+      final play = FocusNode(debugLabel: 'hero-play');
+      var revealed = 0;
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'home',
+        defaultFocus: () => play,
+        heroReveal: () => revealed++,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Focus(focusNode: play, child: const SizedBox(width: 40, height: 40)),
+        ),
+      );
+      await tester.pump();
+
+      const meta = ShellTvFocusMeta(tabId: 'home', zone: ShellTvZone.hero);
+
+      // First land on hero (no prior memory) → reveal once.
+      meta.notifyFocused(play);
+      expect(revealed, 1);
+
+      // Window focus / resume re-fires focus while still on hero → no yank.
+      meta.notifyFocused(play);
+      expect(revealed, 1);
+
+      // Leave to a row, then return → reveal again.
+      ShellTvFocusCoordinator.saveFocus(
+        'home',
+        ShellTvFocusMemory(zone: ShellTvZone.row, rowId: 'popular', node: play),
+      );
+      meta.notifyFocused(play);
+      expect(revealed, 2);
+
+      play.dispose();
       ShellTvFocusCoordinator.clearTab('home');
     },
   );
@@ -1582,6 +1677,91 @@ void main() {
       page.dispose();
     },
   );
+
+  testWidgets(
+    'pageBack-only bind keeps Settings enterFromNav + preferCustom',
+    (tester) async {
+      final settingsNav = FocusNode(debugLabel: 'nav-settings');
+      final category = FocusNode(debugLabel: 'settings-hub-selected');
+      var pageBackCalls = 0;
+      ShellTvFocus.registerNav('settings', settingsNav);
+      ShellTvFocus.currentNavTabId = 'settings';
+      ShellTvFocusCoordinator.setNavOrder(['home', 'settings']);
+
+      // SettingsScreen bind, then SettingsHubScaffold pageBack-only merge.
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'settings',
+        defaultFocus: () => category,
+        enterFromNavFocus: () {
+          if (category.canRequestFocus) category.requestFocus();
+        },
+        restoreFocus: () {
+          if (!category.canRequestFocus) return false;
+          category.requestFocus();
+          return true;
+        },
+        preferCustomRestoreFromNav: true,
+      );
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'settings',
+        pageBack: () {
+          pageBackCalls++;
+          return true;
+        },
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: settingsNav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: category,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      settingsNav.requestFocus();
+      await tester.pump();
+
+      ShellTvFocusCoordinator.enterTabFromNav('settings');
+      for (var i = 0; i < 8; i++) {
+        await tester.pump();
+      }
+
+      expect(category.hasFocus, isTrue);
+      expect(settingsNav.hasFocus, isFalse);
+      expect(ShellTvFocusCoordinator.tryPageBack('settings'), isTrue);
+      expect(pageBackCalls, 1);
+
+      settingsNav.dispose();
+      category.dispose();
+      ShellTvFocusCoordinator.clearTab('settings');
+    },
+  );
+
+  test('clearTabPageBack drops a stale Back ladder', () {
+    var calls = 0;
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'home',
+      pageBack: () {
+        calls++;
+        return true;
+      },
+    );
+    expect(ShellTvFocusCoordinator.tryPageBack('home'), isTrue);
+    expect(calls, 1);
+    ShellTvFocusCoordinator.clearTabPageBack('home');
+    expect(ShellTvFocusCoordinator.tryPageBack('home'), isFalse);
+    expect(calls, 1);
+    ShellTvFocusCoordinator.clearTab('home');
+  });
 
   testWidgets(
     'handleShellBackKey on Settings-only page arms exit (skips nav)',

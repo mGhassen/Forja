@@ -1,7 +1,7 @@
 # RFC-095: Foundation like shadcn — design alone, data alone
 
 **Status:** fixed  
-**Depends on:** [RFC-085](../085-[partial]-catalog-kit-generic-only.md) · [RFC-025](025-[fixed]-flat-cinematic-shell.md) · [RFC-092](092-[fixed]-delete-root-app-live-sports.md)  
+**Depends on:** [RFC-085](085-[fixed]-catalog-kit-generic-only.md) · [RFC-025](025-[fixed]-flat-cinematic-shell.md) · [RFC-092](092-[fixed]-delete-root-app-live-sports.md)  
 **Area:** `shared/foundation/`, `features/**`, design system rules
 
 ## Status at a glance
@@ -79,6 +79,6 @@ IptvController → view props → Kit*
 
 ### Related
 
-- [RFC-085](../085-[partial]-catalog-kit-generic-only.md) — shadcn folder layout
+- [RFC-085](085-[fixed]-catalog-kit-generic-only.md) — shadcn folder layout
 - [RFC-092](092-[fixed]-delete-root-app-live-sports.md) — IPTV match under portal data (not Live Sports product tree)
 - [forja-design-system](../../../.cursor/rules/forja-design-system.mdc) · [forja-shared-ui](../../../.cursor/rules/forja-shared-ui.mdc)

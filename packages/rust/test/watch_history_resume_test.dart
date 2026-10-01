@@ -61,6 +61,14 @@ void main() {
   group('resumeStartPositionFromProgress', () {
     test('uses in-progress position only inside 2–85% window', () {
       expect(
+        resumeStartPositionFromProgress({'position': 3_999, 'duration': 200_000}),
+        Duration.zero,
+      );
+      expect(
+        resumeStartPositionFromProgress({'position': 10_000, 'duration': 200_000}),
+        const Duration(milliseconds: 10_000),
+      );
+      expect(
         resumeStartPositionFromProgress({'position': 10_000, 'duration': 100_000}),
         const Duration(milliseconds: 10_000),
       );
@@ -83,6 +91,44 @@ void main() {
       expect(isWatchFinished(84_999, 100_000), isFalse);
       expect(isWatchFinished(85_000, 100_000), isTrue);
       expect(isWatchFinished(0, 0), isFalse);
+    });
+  });
+
+  group('latestHistoryForShow', () {
+    test('picks newest row for tmdbId including finished', () {
+      final history = [
+        {
+          'tmdbId': 1,
+          'position': 90_000,
+          'duration': 100_000,
+          'updatedAt': 100,
+          'season': 1,
+          'episode': 2,
+        },
+        {
+          'tmdbId': 1,
+          'position': 20_000,
+          'duration': 100_000,
+          'updatedAt': 200,
+          'season': 1,
+          'episode': 3,
+        },
+        {
+          'tmdbId': 2,
+          'position': 20_000,
+          'duration': 100_000,
+          'updatedAt': 300,
+          'season': 1,
+          'episode': 1,
+        },
+      ];
+      final hit = latestHistoryForShow(1, history);
+      expect(hit?['episode'], 3);
+      expect(latestInProgressForShow(1, history)?['episode'], 3);
+      expect(
+        latestInProgressForShow(1, [history[0], history[2]]),
+        isNull,
+      );
     });
   });
 }

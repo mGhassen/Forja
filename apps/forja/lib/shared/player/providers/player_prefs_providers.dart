@@ -36,6 +36,7 @@ final playerAutoSettingsProvider =
   await s.getContentWarnings();
   await s.getAutoPipOnDesktopSwitch();
   await s.getPlayInBackground();
+  await s.getTvNavSound();
   return PlayerAutoSettings(
     autoServer: autoServer,
     autoSource: autoSource,

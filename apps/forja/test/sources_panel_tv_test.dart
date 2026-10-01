@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 
 Widget _wrapTv(Widget child) {
   return MaterialApp(
@@ -196,5 +199,249 @@ void main() {
       b.dispose();
     },
   );
+
+  testWidgets(
+    'kind chip ← under ContainDpad stays on the chip (not shell nav)',
+    (tester) async {
+      final kind = FocusNode(debugLabel: 'sources-kind-0');
+      final nav = FocusNode(debugLabel: 'nav-tab');
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: nav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Expanded(
+                child: TvOverlayScope(
+                  autofocusFirst: false,
+                  debugLabel: 'sources-panel-tv',
+                  child: TvKitRow(
+                    tabId: SourcesPanelTv.tabId,
+                    rowId: SourcesPanelTv.kindRowId,
+                    sortOrder: SourcesPanelTv.kindSort,
+                    itemCount: 1,
+                    child: FocusableControl(
+                      focusNode: kind,
+                      scaleOnFocus: 1.0,
+                      tvMeta: ShellTvFocusMeta(
+                        tabId: SourcesPanelTv.tabId,
+                        zone: ShellTvZone.row,
+                        rowId: SourcesPanelTv.kindRowId,
+                        itemIndex: 0,
+                      ),
+                      onTap: () {},
+                      child: const SizedBox(width: 80, height: 40),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      kind.requestFocus();
+      await tester.pump();
+      expect(kind.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        kind.hasFocus,
+        isTrue,
+        reason: '← on first Sources kind chip must not jump to navbar',
+      );
+      expect(nav.hasFocus, isFalse);
+
+      kind.dispose();
+      nav.dispose();
+    },
+  );
+
+  testWidgets('focusKindItem(index) focuses that kind chip', (tester) async {
+    final forja = FocusNode(debugLabel: 'sources-kind-forja');
+    final torrents = FocusNode(debugLabel: 'sources-kind-torrents');
+
+    await tester.pumpWidget(
+      _wrapTv(
+        TvOverlayScope(
+          autofocusFirst: false,
+          debugLabel: 'sources-panel-tv',
+          child: TvKitRow(
+            tabId: SourcesPanelTv.tabId,
+            rowId: SourcesPanelTv.kindRowId,
+            sortOrder: SourcesPanelTv.kindSort,
+            itemCount: 2,
+            child: Row(
+              children: [
+                FocusableControl(
+                  focusNode: forja,
+                  scaleOnFocus: 1.0,
+                  tvMeta: ShellTvFocusMeta(
+                    tabId: SourcesPanelTv.tabId,
+                    zone: ShellTvZone.row,
+                    rowId: SourcesPanelTv.kindRowId,
+                    itemIndex: 0,
+                  ),
+                  onTap: () {},
+                  child: const SizedBox(width: 80, height: 40),
+                ),
+                FocusableControl(
+                  focusNode: torrents,
+                  scaleOnFocus: 1.0,
+                  tvMeta: ShellTvFocusMeta(
+                    tabId: SourcesPanelTv.tabId,
+                    zone: ShellTvZone.row,
+                    rowId: SourcesPanelTv.kindRowId,
+                    itemIndex: 1,
+                  ),
+                  onTap: () {},
+                  child: const SizedBox(width: 80, height: 40),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.kindRowId,
+      index: 0,
+      node: forja,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.kindRowId,
+      index: 1,
+      node: torrents,
+    );
+
+    SourcesPanelTv.focusKindItem(index: 0);
+    await tester.pump();
+    expect(forja.hasFocus, isTrue, reason: 'open should land on Forja (index 0)');
+
+    forja.dispose();
+    torrents.dispose();
+  });
+
+  testWidgets('↑ from kind tabs focuses header Reload', (tester) async {
+    final kind = FocusNode(debugLabel: 'sources-kind-0');
+    final reload = FocusNode(debugLabel: 'sources-header-reload');
+
+    await tester.pumpWidget(
+      _wrapTv(
+        TvOverlayScope(
+          autofocusFirst: false,
+          debugLabel: 'sources-panel-tv',
+          child: Column(
+            children: [
+              TvKitRow(
+                tabId: SourcesPanelTv.tabId,
+                rowId: SourcesPanelTv.headerRowId,
+                sortOrder: SourcesPanelTv.headerSort,
+                itemCount: 1,
+                onFocusDown: () => SourcesPanelTv.focusKindItem(),
+                child: FocusableControl(
+                  focusNode: reload,
+                  scaleOnFocus: 1.0,
+                  tvMeta: ShellTvFocusMeta(
+                    tabId: SourcesPanelTv.tabId,
+                    zone: ShellTvZone.row,
+                    rowId: SourcesPanelTv.headerRowId,
+                    itemIndex: 0,
+                  ),
+                  onTap: () {},
+                  child: const SizedBox(width: 40, height: 40),
+                ),
+              ),
+              TvKitRow(
+                tabId: SourcesPanelTv.tabId,
+                rowId: SourcesPanelTv.kindRowId,
+                sortOrder: SourcesPanelTv.kindSort,
+                itemCount: 1,
+                onFocusUp: () => SourcesPanelTv.focusHeaderItem(),
+                child: FocusableControl(
+                  focusNode: kind,
+                  scaleOnFocus: 1.0,
+                  tvMeta: ShellTvFocusMeta(
+                    tabId: SourcesPanelTv.tabId,
+                    zone: ShellTvZone.row,
+                    rowId: SourcesPanelTv.kindRowId,
+                    itemIndex: 0,
+                  ),
+                  onUpEdge: () => SourcesPanelTv.focusHeaderItem(),
+                  onTap: () {},
+                  child: const SizedBox(width: 80, height: 40),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.headerRowId,
+      index: 0,
+      node: reload,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.kindRowId,
+      index: 0,
+      node: kind,
+    );
+
+    kind.requestFocus();
+    await tester.pump();
+    expect(kind.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(
+      reload.hasFocus,
+      isTrue,
+      reason: '↑ from Providers / Live TV must land on Reload',
+    );
+
+    kind.dispose();
+    reload.dispose();
+  });
+
+  testWidgets('focusHeaderItem respects forTabId hub graph', (tester) async {
+    const hubTab = 'hub-live-sports';
+    final reload = FocusNode(debugLabel: 'hub-header-reload');
+    addTearDown(() {
+      ShellTvFocusCoordinator.clearTab(hubTab);
+      reload.dispose();
+    });
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Focus(focusNode: reload, child: const SizedBox(width: 40, height: 40)),
+      ),
+    );
+    await tester.pump();
+
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: hubTab,
+      rowId: SourcesPanelTv.headerRowId,
+      index: 0,
+      node: reload,
+    );
+
+    SourcesPanelTv.focusHeaderItem(forTabId: hubTab);
+    await tester.pump();
+    expect(reload.hasFocus, isTrue);
+  });
 }
 

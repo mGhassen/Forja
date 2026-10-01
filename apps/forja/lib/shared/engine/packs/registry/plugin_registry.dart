@@ -4,14 +4,13 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/foundation/services/meta/cache.dart';
+import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
-import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
+import 'package:forja/shared/engine/packs/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
-import 'package:forja/shared/engine/packs/catalog/plugin_catalog_remote.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_validator.dart';
+import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
@@ -28,6 +27,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PluginRegistry {
   PluginRegistry._();
   static final PluginRegistry instance = PluginRegistry._();
+
+  /// Pack `prelude` may list one path or comma-separated paths (`_kit.js,_search.js`).
+  static Iterable<String> expandPreludePaths(String spec) => spec
+      .split(',')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty);
 
   static const _packsKeyV1 = 'engine_js_packs_v1';
   static const _packsKeyV2 = 'engine_js_packs_v2';
@@ -51,6 +56,109 @@ class PluginRegistry {
   static final ValueNotifier<String?> officialInstallError =
       ValueNotifier<String?>(null);
 
+  /// Bumped when hub [EngineCache] entries are wiped (install / script edit / remove).
+  /// PackLayoutHost listens here — not [changeNotifier] — so lean sync / provider packs
+  /// do not blank keep-alive hub rails on every notify.
+  /// Off-screen hubs only mark stale (refresh on next tab select); the visible hub
+  /// soft-reloads immediately (issues 305 / 311).
+  static final ValueNotifier<int> hubFeedEpoch = ValueNotifier<int>(0);
+
+  /// In-memory pack index — avoid SharedPreferences + jsonDecode on every
+  /// poster/list open (issue 352). Invalidated on write / profile scope change.
+  List<EnginePack>? _packsMem;
+  int _packsMemScopeGen = -1;
+
+  /// Plugin ids last wiped into [hubFeedEpoch]. Empty = all hubs.
+  static Set<String> _hubFeedEpochPlugins = {};
+
+  /// Whether the current [hubFeedEpoch] must force-network (wipe live feed cache).
+  /// Pack wipe / Reload packs → true. Pack settings soft rebind → false (issue 314).
+  static bool _hubFeedEpochForceNetwork = true;
+
+  /// Whether the current [hubFeedEpoch] should invalidate [pluginId]'s rails.
+  static bool hubFeedEpochTouches(String pluginId) {
+    final id = pluginId.trim();
+    if (id.isEmpty) return false;
+    return _hubFeedEpochPlugins.isEmpty || _hubFeedEpochPlugins.contains(id);
+  }
+
+  /// Last [bumpHubFeedEpoch] asked for a network scrape (vs re-reduce from cache).
+  static bool get hubFeedEpochForceNetwork => _hubFeedEpochForceNetwork;
+
+  /// Pack wipe / Reload packs. Hubs must not scrape until the tab is opened.
+  static int _hubOpenReloadClock = 0;
+  static int _hubOpenReloadAllEpoch = 0;
+  static final Map<String, int> _hubOpenReloadEpoch = {};
+  static final Map<String, int> _hubOpenReloadSeen = {};
+
+  /// True when pack reload flagged [pluginId] and that hub has not opened since.
+  static bool hubNeedsReloadOnOpen(String pluginId) {
+    final id = pluginId.trim();
+    if (id.isEmpty) return false;
+    final seen = _hubOpenReloadSeen[id] ?? 0;
+    if (_hubOpenReloadAllEpoch > seen) return true;
+    return (_hubOpenReloadEpoch[id] ?? 0) > seen;
+  }
+
+  /// Call when the hub tab is actually shown and the reload starts.
+  static void consumeHubReloadOnOpen(String pluginId) {
+    final id = pluginId.trim();
+    if (id.isEmpty) return;
+    _hubOpenReloadSeen[id] = _hubOpenReloadClock;
+  }
+
+  @visibleForTesting
+  static void debugResetHubOpenReload() {
+    _hubOpenReloadClock = 0;
+    _hubOpenReloadAllEpoch = 0;
+    _hubOpenReloadEpoch.clear();
+    _hubOpenReloadSeen.clear();
+  }
+
+  static void _flagHubsReloadOnOpen({
+    required bool all,
+    required Set<String> pluginIds,
+  }) {
+    _hubOpenReloadClock++;
+    final clock = _hubOpenReloadClock;
+    if (all) {
+      _hubOpenReloadAllEpoch = clock;
+      debugPrint(
+        '[HubReload] flagged all hubs epoch=$clock — reload when opened',
+      );
+      return;
+    }
+    for (final id in pluginIds) {
+      _hubOpenReloadEpoch[id] = clock;
+    }
+    debugPrint(
+      '[HubReload] flagged ${pluginIds.join(', ')} epoch=$clock — reload when opened',
+    );
+  }
+
+  static void bumpHubFeedEpoch({
+    Iterable<String>? pluginIds,
+    bool all = false,
+    bool forceNetwork = true,
+  }) {
+    Set<String> next = const {};
+    if (all) {
+      _hubFeedEpochPlugins = {};
+    } else {
+      next = {
+        for (final raw in pluginIds ?? const <String>[])
+          if (raw.trim().isNotEmpty) raw.trim(),
+      };
+      if (next.isEmpty) return;
+      _hubFeedEpochPlugins = next;
+    }
+    _hubFeedEpochForceNetwork = forceNetwork;
+    if (forceNetwork) {
+      _flagHubsReloadOnOpen(all: all, pluginIds: next);
+    }
+    hubFeedEpoch.value++;
+  }
+
   Future<void>? _officialEnsureFuture;
   final Set<String> _scriptRepairAttempted = {};
 
@@ -63,29 +171,47 @@ class PluginRegistry {
   /// Pack index for the launched profile (`engine_js_packs_v2@account:profile`).
   static String get packsPrefsKey => LocalDataScope.storageKey(_packsKeyV2);
 
-  /// Read pack JSON for the active profile; lazy-copy unscoped legacy once.
+  /// Read pack JSON for the active profile.
+  ///
+  /// Never lazy-copies bare `engine_js_packs_v2` into a new profile (issue 289).
+  /// Drop the unscoped key if it still exists — scoped keys are SoT.
   Future<String?> _readPacksJson(SharedPreferences prefs) async {
     final scoped = packsPrefsKey;
     final scopedRaw = prefs.getString(scoped);
+    if (prefs.containsKey(_packsKeyV2)) {
+      await prefs.remove(_packsKeyV2);
+    }
     if (scopedRaw != null && scopedRaw.isNotEmpty) return scopedRaw;
-    final bare = prefs.getString(_packsKeyV2);
-    if (bare == null || bare.isEmpty) return null;
-    await prefs.setString(scoped, bare);
-    await prefs.remove(_packsKeyV2);
-    return bare;
+    return null;
   }
 
   Future<void> _writePacksJson(SharedPreferences prefs, String json) async {
+    _invalidatePacksMem();
     await prefs.setString(packsPrefsKey, json);
     if (prefs.containsKey(_packsKeyV2)) {
       await prefs.remove(_packsKeyV2);
     }
   }
 
+  void _invalidatePacksMem() {
+    _packsMem = null;
+    _packsMemScopeGen = -1;
+  }
+
+  /// Sync peek of the last [listPacksRaw] result — null when cold / wrong profile.
+  List<EnginePack>? peekPacks() {
+    if (_packsMem == null) return null;
+    if (_packsMemScopeGen != LocalDataScope.generation) {
+      _invalidatePacksMem();
+      return null;
+    }
+    return _packsMem;
+  }
+
   Future<http.Response> _httpGet(Uri uri) async {
     final c = debugHttpClient;
     if (c != null) return c.get(uri);
-    return http.get(uri);
+    return PackHttp.get(uri);
   }
 
   static File? _asLocalFile(String url) {
@@ -105,32 +231,6 @@ class PluginRegistry {
     return file.exists();
   }
 
-  /// When a stored manifest is a local path this device cannot read, try another
-  /// installed pack at the same opaque slot (remote URL), then a published
-  /// catalog row with the same slot. No baked GitHub URL map.
-  Future<String> _substituteUnreachableLocalManifest(String url) async {
-    if (await _localManifestExists(url)) return url;
-    final slot = forjaHqSlot(url);
-    if (slot == null) return url;
-    for (final pack in await listPacksRaw()) {
-      if (pack.sourceUrl == url) continue;
-      if (forjaHqSlot(pack.sourceUrl) != slot) continue;
-      if (_asLocalFile(pack.sourceUrl) != null) continue;
-      debugPrint(
-        '[engine] local manifest missing ($slot) — using ${pack.sourceUrl}',
-      );
-      return pack.sourceUrl;
-    }
-    for (final published in await PluginCatalogRemote.fetchPublishedPacks()) {
-      if (forjaHqSlot(published.manifestUrl) != slot) continue;
-      debugPrint(
-        '[engine] local manifest missing ($slot) — catalog ${published.manifestUrl}',
-      );
-      return published.manifestUrl;
-    }
-    return url;
-  }
-
   Future<String> _fetchText(String url) async {
     final bytes = await _fetchBytes(url);
     return utf8.decode(bytes, allowMalformed: false);
@@ -144,17 +244,19 @@ class PluginRegistry {
       }
       return file.readAsBytes();
     }
-    final resp = await _httpGet(Uri.parse(url)).timeout(
-      const Duration(seconds: 45),
-      onTimeout: () => throw TimeoutException('plugin fetch $url'),
-    );
-    if (resp.statusCode == 404 || resp.statusCode == 410) {
-      throw ManifestGoneException(url, statusCode: resp.statusCode);
+    try {
+      final resp = await _httpGet(Uri.parse(url));
+      if (resp.statusCode == 404 || resp.statusCode == 410) {
+        throw ManifestGoneException(url, statusCode: resp.statusCode);
+      }
+      if (resp.statusCode != 200) {
+        throw Exception('HTTP ${resp.statusCode}');
+      }
+      return resp.bodyBytes;
+    } catch (e) {
+      if (e is ManifestGoneException) rethrow;
+      throw Exception(PackHttp.humanizeError(e, url));
     }
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}');
-    }
-    return resp.bodyBytes;
   }
 
   /// Path-pattern helper for Settings grouping — not pack inventory.
@@ -176,8 +278,8 @@ class PluginRegistry {
   /// Host owns chrome ids as **opaque strings**. Packs may omit `nav.tabId`.
   /// - Hub tree URL → `nav.tabId` if set, else opaque `forjaHqSlot` path segment
   /// - Community / arbitrary URL → `p_<urlHash>` (+ optional local label)
-  /// Never map slot names in Dart — packs that need a stable id ≠ folder declare
-  /// `nav.tabId` (e.g. My List folder `my_list` → `"tabId": "mylist"`).
+  /// Prefer omitting `nav.tabId` so Features id == hub folder. Only set
+  /// `nav.tabId` when the folder slug cannot be the Features id.
   static String hostNavId({
     required String sourceUrl,
     required String authorTabId,
@@ -215,6 +317,7 @@ class PluginRegistry {
   static const packKindLive = 'live';
   static const packKindCatalog = 'catalog';
   static const packKindTorrent = 'torrent';
+  static const packKindDebrid = 'debrid';
   static const packKindIptv = 'iptv';
   static const packKindHubs = 'hubs';
   static const packKindOther = 'other';
@@ -224,6 +327,7 @@ class PluginRegistry {
     packKindLive,
     packKindCatalog,
     packKindTorrent,
+    packKindDebrid,
     packKindIptv,
     packKindHubs,
     packKindOther,
@@ -234,6 +338,7 @@ class PluginRegistry {
     packKindLive => 'Live',
     packKindCatalog => 'Catalog',
     packKindTorrent => 'Torrent',
+    packKindDebrid => 'Debrid',
     packKindIptv => 'IPTV',
     packKindHubs => 'Hubs',
     _ => 'Other',
@@ -251,12 +356,14 @@ class PluginRegistry {
         'live' => packKindLive,
         'catalog' => packKindCatalog,
         'torrent' => packKindTorrent,
+        'debrid' => packKindDebrid,
         'iptv-vod' => packKindIptv,
         _ when isHubManifestSlot(slot) => packKindHubs,
         _ => null,
       };
       if (fromSlot != null) return fromSlot;
     }
+    if (pack.plugins.any((p) => p.isDebrid)) return packKindDebrid;
     if (pack.plugins.any((p) => p.types.contains('iptv'))) return packKindIptv;
     if (pack.plugins.any((p) => p.isKitPlugin)) return packKindHubs;
     if (pack.plugins.any((p) => p.isLiveSportPlugin || p.isLive)) {
@@ -311,17 +418,14 @@ class PluginRegistry {
   static bool isLocalManifestUrl(String url) => _asLocalFile(url) != null;
 
   /// True when a remote pack needs install/repair (lean stub or missing disk JS).
-  /// Unreachable local checkout paths (synced Mac paths on TV) also need install
-  /// so [_substituteUnreachableLocalManifest] can swap to a peer/catalog URL.
+  /// Local checkout paths never hydrate over the network — URL/path stays as-is.
   ///
   /// Lean stubs (`plugins: []`) after sign-out / profile reset still return
   /// true here — call [rehydrateLeanStubsFromDisk] first so the active profile
   /// scope can restore metadata from `pack.json` without a network re-fetch.
   Future<bool> packNeedsDiskInstall(EnginePack pack) async {
     if (isLegacyAssetPack(pack.sourceUrl)) return false;
-    if (isLocalManifestUrl(pack.sourceUrl)) {
-      return !(await _localManifestExists(pack.sourceUrl));
-    }
+    if (isLocalManifestUrl(pack.sourceUrl)) return false;
     if (pack.plugins.isEmpty) return true;
     return !(await _diskHasAllScripts(pack));
   }
@@ -335,12 +439,15 @@ class PluginRegistry {
       )) {
         return false;
       }
-      if (p.prelude.isNotEmpty &&
-          !await PluginScriptDiskStore.hasEnginePrelude(
+      if (p.prelude.isNotEmpty) {
+        for (final part in expandPreludePaths(p.prelude)) {
+          if (!await PluginScriptDiskStore.hasEnginePrelude(
             sourceUrl: pack.sourceUrl,
-            preludeEntry: p.prelude,
+            preludeEntry: part,
           )) {
-        return false;
+            return false;
+          }
+        }
       }
     }
     return true;
@@ -483,7 +590,18 @@ class PluginRegistry {
 
   void notifyChanged() => changeNotifier.value++;
 
-  Future<void> _savePacks(List<EnginePack> packs) async {
+  Future<void> _savePacks(
+    List<EnginePack> packs, {
+    int? expectedGeneration,
+  }) async {
+    if (expectedGeneration != null &&
+        LocalDataScope.generation != expectedGeneration) {
+      debugPrint(
+        '[engine] _savePacks skipped — profile scope changed '
+        '(gen $expectedGeneration → ${LocalDataScope.generation})',
+      );
+      return;
+    }
     final prefs = await _prefs;
     await _writePacksJson(
       prefs,
@@ -492,23 +610,65 @@ class PluginRegistry {
     notifyChanged();
   }
 
+  /// Wipe pack membership for the launched profile (prefs index only).
+  ///
+  /// Local checkout folders on disk are shared and are not deleted. Remote
+  /// script caches under this profile scope are purged. Used when creating a
+  /// profile so B never inherits A's packs (issue 289).
+  Future<void> clearPackMembershipForActiveProfile() async {
+    final all = await listPacksRaw();
+    for (final pack in all) {
+      await _purgePackScriptStorage(
+        pack,
+        purgeDisk: !isLocalManifestUrl(pack.sourceUrl),
+      );
+      for (final p in pack.plugins) {
+        EngineCache.instance.wipePlugin(p.id);
+      }
+    }
+    await _savePacks(const []);
+    if (all.isNotEmpty) {
+      bumpHubFeedEpoch(all: true);
+      _invalidatePlaybackCachesAfterPackChange();
+      notifyChanged();
+    }
+  }
+
   Future<List<EnginePack>> listPacksRaw() async {
+    final scopeGen = LocalDataScope.generation;
+    final hit = _packsMem;
+    if (hit != null && _packsMemScopeGen == scopeGen) {
+      return hit;
+    }
     await _migrateV1IfNeeded();
     await _wipeLegacyMonolithIfNeeded();
     await migrateScriptsToDiskIfNeeded();
     final prefs = await _prefs;
     final raw = await _readPacksJson(prefs);
-    if (raw == null || raw.isEmpty) return [];
+    if (raw == null || raw.isEmpty) {
+      _packsMem = const [];
+      _packsMemScopeGen = scopeGen;
+      return const [];
+    }
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! List) return [];
+      if (decoded is! List) {
+        _packsMem = const [];
+        _packsMemScopeGen = scopeGen;
+        return const [];
+      }
       final packs = [
         for (final e in decoded)
           if (e is Map) EnginePack.fromStored(Map<String, dynamic>.from(e)),
       ];
-      return _purgeLegacyAssetPacks(packs);
+      final purged = await _purgeLegacyAssetPacks(packs);
+      _packsMem = purged;
+      _packsMemScopeGen = scopeGen;
+      return purged;
     } catch (_) {
-      return [];
+      _packsMem = const [];
+      _packsMemScopeGen = scopeGen;
+      return const [];
     }
   }
 
@@ -842,7 +1002,7 @@ class PluginRegistry {
         }
         _clearOfficialInstallError();
       } catch (e) {
-        final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+        final msg = PackHttp.humanizeError(e);
         officialInstallError.value = msg;
         notifyChanged();
         debugPrint('[engine] pack hydrate failed: $msg');
@@ -927,11 +1087,14 @@ class PluginRegistry {
     String manifestUrl, {
     void Function()? onScriptFetched,
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
+    /// Settings Reload / Update: always hit the network (skip splash disk reuse).
+    bool forceNetwork = false,
   }) => _withInstallLock(
     () => _installUnlocked(
       manifestUrl,
       onScriptFetched: onScriptFetched,
       onFetchProgress: onFetchProgress,
+      forceNetwork: forceNetwork,
     ),
   );
 
@@ -939,11 +1102,13 @@ class PluginRegistry {
     String manifestUrl, {
     void Function()? onScriptFetched,
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
+    bool forceNetwork = false,
   }) async {
-    final requestedUrl = manifestUrl.trim();
-    manifestUrl = await _substituteUnreachableLocalManifest(requestedUrl);
-    final remappedFromLocal =
-        requestedUrl != manifestUrl && isLocalManifestUrl(requestedUrl);
+    // Keep the URL/path exactly as given — local checkout or remote. Never
+    // remap unreachable locals through catalog / peer slots.
+    manifestUrl = manifestUrl.trim();
+    final scopeGen = LocalDataScope.generation;
+    final scopeId = LocalDataScope.id;
     final body = await _fetchText(manifestUrl);
     final map = jsonDecode(body) as Map<String, dynamic>;
     try {
@@ -954,8 +1119,7 @@ class PluginRegistry {
     final all = await listPacksRaw();
     EnginePack? previous;
     for (final p in all) {
-      if (p.sourceUrl == manifestUrl ||
-          (remappedFromLocal && p.sourceUrl == requestedUrl)) {
+      if (p.sourceUrl == manifestUrl) {
         previous = p;
         break;
       }
@@ -986,9 +1150,9 @@ class PluginRegistry {
     final localCheckout = isLocalManifestUrl(manifestUrl);
 
     final preludesNeeded = <String>{
-      if (pack.prelude.isNotEmpty) pack.prelude,
+      if (pack.prelude.isNotEmpty) ...expandPreludePaths(pack.prelude),
       for (final p in pack.plugins)
-        if (p.prelude.isNotEmpty) p.prelude,
+        if (p.prelude.isNotEmpty) ...expandPreludePaths(p.prelude),
     };
     final scriptsNeeded = [
       for (final p in pack.plugins)
@@ -1039,7 +1203,8 @@ class PluginRegistry {
 
     // Sign-out keeps JS under the profile scope but clears prefs. Prefer disk
     // before CDN so splash does not re-download every pack (issue 259).
-    if (!localCheckout) {
+    // Reload / Update pass [forceNetwork] so hub layout + scripts are not stale.
+    if (!localCheckout && !forceNetwork) {
       var reused = 0;
       for (final plugin in scriptsNeeded) {
         final body = await PluginScriptDiskStore.loadEngineScript(
@@ -1200,7 +1365,10 @@ class PluginRegistry {
     }
 
     // Commit disk (remote only) + prefs index only after all fetches succeed.
+    // Wipe the pack tree first so removed plugins / bundle files / preludes
+    // cannot linger as orphans across updates (ISO replace).
     if (!localCheckout) {
+      await PluginScriptDiskStore.removeEnginePack(manifestUrl);
       for (final e in preludes.entries) {
         await PluginScriptDiskStore.saveEnginePrelude(
           sourceUrl: manifestUrl,
@@ -1225,32 +1393,32 @@ class PluginRegistry {
       }
     }
 
-    // Drop scripts removed from this pack on refresh.
+    // Drop legacy prefs keys for scripts removed from this pack on refresh.
     if (previous != null) {
       final nextIds = {for (final p in pack.plugins) p.id};
-      final nextPreludes = {
+      final nextPreludes = <String>{
+        if (pack.prelude.isNotEmpty) ...expandPreludePaths(pack.prelude),
         for (final p in pack.plugins)
-          if (p.prelude.isNotEmpty) p.prelude,
+          if (p.prelude.isNotEmpty) ...expandPreludePaths(p.prelude),
       };
       final prefs = await _prefs;
+      if (previous.prelude.isNotEmpty) {
+        for (final part in expandPreludePaths(previous.prelude)) {
+          if (!nextPreludes.contains(part)) {
+            await prefs.remove(preludePrefsKey(manifestUrl, part));
+          }
+        }
+      }
       for (final p in previous.plugins) {
         if (!nextIds.contains(p.id)) {
-          if (!localCheckout) {
-            await PluginScriptDiskStore.removeEngineScript(
-              sourceUrl: manifestUrl,
-              pluginId: p.id,
-            );
-          }
           await prefs.remove(scriptPrefsKey(manifestUrl, p.id));
         }
-        if (p.prelude.isNotEmpty && !nextPreludes.contains(p.prelude)) {
-          if (!localCheckout) {
-            await PluginScriptDiskStore.removeEnginePrelude(
-              sourceUrl: manifestUrl,
-              preludeEntry: p.prelude,
-            );
+        if (p.prelude.isNotEmpty) {
+          for (final part in expandPreludePaths(p.prelude)) {
+            if (!nextPreludes.contains(part)) {
+              await prefs.remove(preludePrefsKey(manifestUrl, part));
+            }
           }
-          await prefs.remove(preludePrefsKey(manifestUrl, p.prelude));
         }
       }
     }
@@ -1261,27 +1429,45 @@ class PluginRegistry {
     } else {
       all.add(pack);
     }
-    if (remappedFromLocal) {
-      all.removeWhere((a) => a.sourceUrl == requestedUrl);
-      await DeferredRemoteInstallStore.clear(requestedUrl);
-      await PendingRemotePurgeStore.clear(requestedUrl);
+    if (LocalDataScope.generation != scopeGen || LocalDataScope.id != scopeId) {
+      debugPrint(
+        '[engine] install aborted — profile scope changed '
+        '($scopeId → ${LocalDataScope.id}) $manifestUrl',
+      );
+      throw StateError('Pack install cancelled: profile switched');
     }
-    await _savePacks(all);
+    await _savePacks(all, expectedGeneration: scopeGen);
+    if (LocalDataScope.generation != scopeGen) {
+      debugPrint(
+        '[engine] install write skipped after scope change $manifestUrl',
+      );
+      throw StateError('Pack install cancelled: profile switched');
+    }
     if (!localCheckout) {
       await PluginScriptDiskStore.saveEnginePackMeta(pack);
     }
     final hubSlot = forjaHqSlot(manifestUrl);
+    var hubCacheWipedAll = false;
     if (isHubManifestSlot(hubSlot) || isIptvVodManifestSlot(hubSlot)) {
-      MetaCache.instance.syncPackVersion(pack.packId, pack.version);
+      hubCacheWipedAll =
+          EngineCache.instance.syncPackVersion(pack.packId, pack.version);
     }
     // Scripts may change at the same semver — always drop cached catalog answers.
+    final wipedHubIds = <String>[];
     for (final p in pack.plugins) {
-      MetaCache.instance.wipePlugin(p.id);
+      EngineCache.instance.wipePlugin(p.id);
       _localScriptDigests.remove(p.id);
+      if (p.isKitPlugin) wipedHubIds.add(p.id);
     }
     // Legacy combined hubs pack → wipe so rails re-fetch from split packs.
     if (pack.packId == 'forjahq-hubs') {
-      MetaCache.instance.wipeAll();
+      EngineCache.instance.wipeCatalog();
+      hubCacheWipedAll = true;
+    }
+    if (hubCacheWipedAll) {
+      bumpHubFeedEpoch(all: true);
+    } else if (wipedHubIds.isNotEmpty) {
+      bumpHubFeedEpoch(pluginIds: wipedHubIds);
     }
     // Green Play / Sources RAM + resume extracts must not keep pre-update empties.
     _invalidatePlaybackCachesAfterPackChange();
@@ -1335,14 +1521,19 @@ class PluginRegistry {
     final all = await listPacksRaw();
     final victim = all.where((a) => a.sourceUrl == sourceUrl).toList();
     all.removeWhere((a) => a.sourceUrl == sourceUrl);
+    final wipedHubIds = <String>[];
     for (final pack in victim) {
       await _purgePackScriptStorage(pack, purgeDisk: purgeDisk);
       for (final p in pack.plugins) {
-        MetaCache.instance.wipePlugin(p.id);
+        EngineCache.instance.wipePlugin(p.id);
+        if (p.isKitPlugin) wipedHubIds.add(p.id);
       }
     }
     await _savePacks(all);
     if (victim.isNotEmpty) {
+      if (wipedHubIds.isNotEmpty) {
+        bumpHubFeedEpoch(pluginIds: wipedHubIds);
+      }
       _invalidatePlaybackCachesAfterPackChange();
       notifyChanged();
     }
@@ -1623,28 +1814,51 @@ class PluginRegistry {
     }
 
     if (preludeEntry.isNotEmpty) {
-      var shared = await PluginScriptDiskStore.loadEnginePrelude(
+      final shared = await _loadCommaPreludesCached(
         sourceUrl: sourceUrl,
-        preludeEntry: preludeEntry,
+        preludeSpec: preludeEntry,
       );
-      if (shared == null || shared.isEmpty) {
-        final prefs = await _prefs;
-        final pre = prefs.getString(preludePrefsKey(sourceUrl, preludeEntry));
-        if (pre != null && pre.isNotEmpty) {
-          await PluginScriptDiskStore.saveEnginePrelude(
-            sourceUrl: sourceUrl,
-            preludeEntry: preludeEntry,
-            body: pre,
-          );
-          await prefs.remove(preludePrefsKey(sourceUrl, preludeEntry));
-          shared = pre;
-        }
-      }
-      if (shared != null && shared.isNotEmpty) {
+      if (shared.isNotEmpty) {
         code = '$shared\n$code';
       }
     }
     return code;
+  }
+
+  Future<String> _loadCommaPreludesCached({
+    required String sourceUrl,
+    required String preludeSpec,
+  }) async {
+    final parts = preludeSpec
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return '';
+    final buf = StringBuffer();
+    final prefs = await _prefs;
+    for (final part in parts) {
+      var shared = await PluginScriptDiskStore.loadEnginePrelude(
+        sourceUrl: sourceUrl,
+        preludeEntry: part,
+      );
+      if (shared == null || shared.isEmpty) {
+        final pre = prefs.getString(preludePrefsKey(sourceUrl, part));
+        if (pre != null && pre.isNotEmpty) {
+          await PluginScriptDiskStore.saveEnginePrelude(
+            sourceUrl: sourceUrl,
+            preludeEntry: part,
+            body: pre,
+          );
+          await prefs.remove(preludePrefsKey(sourceUrl, part));
+          shared = pre;
+        }
+      }
+      if (shared == null || shared.isEmpty) continue;
+      if (buf.isNotEmpty) buf.writeln();
+      buf.write(shared);
+    }
+    return buf.toString();
   }
 
   Future<String?> _loadScriptFromLocalManifest({
@@ -1672,14 +1886,35 @@ class PluginRegistry {
     if (!scriptFile.existsSync()) return null;
     var code = await scriptFile.readAsString();
     if (prelude.isNotEmpty) {
-      final preludePath = resolveScriptUrl(manifestUrl, prelude);
-      final preludeFile = File(preludePath);
-      if (preludeFile.existsSync()) {
-        final shared = await preludeFile.readAsString();
-        if (shared.isNotEmpty) code = '$shared\n$code';
-      }
+      final shared = await _readCommaPreludesFromDisk(
+        manifestUrl: manifestUrl,
+        preludeSpec: prelude,
+      );
+      if (shared.isNotEmpty) code = '$shared\n$code';
     }
     return code;
+  }
+
+  /// Pack `prelude` may be a single path or comma-separated (`_kit.js,_search.js`).
+  Future<String> _readCommaPreludesFromDisk({
+    required String manifestUrl,
+    required String preludeSpec,
+  }) async {
+    final parts = preludeSpec
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty);
+    final buf = StringBuffer();
+    for (final part in parts) {
+      final preludePath = resolveScriptUrl(manifestUrl, part);
+      final preludeFile = File(preludePath);
+      if (!preludeFile.existsSync()) continue;
+      final shared = await preludeFile.readAsString();
+      if (shared.isEmpty) continue;
+      if (buf.isNotEmpty) buf.writeln();
+      buf.write(shared);
+    }
+    return buf.toString();
   }
 
   void _maybeNotifyLocalScriptChanged(String pluginId, String body) {
@@ -1690,10 +1925,10 @@ class PluginRegistry {
     if (prev == digest) return;
     _localScriptDigests[id] = digest;
     if (prev == null) return;
-    debugPrint('[engine] $id script changed — invalidating caches');
-    MetaCache.instance.wipePlugin(id);
-    _invalidatePlaybackCachesAfterPackChange();
-    notifyChanged();
+    // Wipe memoized envelopes only. Do not remount hubs / clear playback —
+    // that double-starts flutter_js mid-feed (IPTV Movies freeze / no answer).
+    debugPrint('[engine] $id script changed — wipe meta cache (no remount)');
+    EngineCache.instance.wipePlugin(id);
   }
 
   /// Resolve [pluginId] across packs — prefer active (pack + plugin on).
@@ -1723,7 +1958,7 @@ class PluginRegistry {
 
   /// Resolve [pluginId] to its owning pack + plugin.
   ///
-  /// Pass [sourceUrl] when known (hub KitShell / community packs). Without it,
+  /// Pass [sourceUrl] when known (hub PackLayoutHost / community packs). Without it,
   /// prefers an active plugin when the same id exists in multiple packs
   /// (dev `.env` + disabled cloud shadow; legacy provider path).
   Future<({EnginePack pack, EnginePlugin plugin})?> findPlugin(
@@ -1733,49 +1968,6 @@ class PluginRegistry {
       packPluginFromPacks(await listPacksRaw(), pluginId, sourceUrl: sourceUrl);
 
   Future<void>? _hydrateLeanInFlight;
-
-  /// Rewrite lean `manifestUrl`s to published catalog URLs when the opaque
-  /// [forjaHqSlot] matches. Profile rows may still hold a retired host
-  /// (e.g. old monorepo GitHub path) after admin moves `plugin_packs.manifest_url`.
-  static List<Map<String, dynamic>> rewriteLeanUrlsThroughCatalog(
-    Iterable<Map<String, dynamic>> rows,
-    Iterable<OfficialForjaHqPack> catalog,
-  ) {
-    final slotToUrl = <String, String>{};
-    for (final pack in catalog) {
-      final url = pack.manifestUrl.trim();
-      if (url.isEmpty) continue;
-      final slot = forjaHqSlot(url);
-      if (slot == null) continue;
-      slotToUrl[slot] = url;
-    }
-    if (slotToUrl.isEmpty) {
-      return [
-        for (final raw in rows)
-          if (raw is Map<String, dynamic>)
-            Map<String, dynamic>.from(raw)
-          else if (raw is Map)
-            Map<String, dynamic>.from(raw),
-      ];
-    }
-    final out = <Map<String, dynamic>>[];
-    for (final raw in rows) {
-      if (raw is! Map) continue;
-      final row = Map<String, dynamic>.from(raw);
-      final url = (row['manifestUrl'] as String?)?.trim() ?? '';
-      if (url.isEmpty) {
-        out.add(row);
-        continue;
-      }
-      final slot = forjaHqSlot(url);
-      final catalogUrl = slot == null ? null : slotToUrl[slot];
-      if (catalogUrl != null && catalogUrl != url) {
-        row['manifestUrl'] = catalogUrl;
-      }
-      out.add(row);
-    }
-    return out;
-  }
 
   /// Sync / cloud lean rows — URL (+ optional name) only. **No network.**
   ///
@@ -1794,7 +1986,7 @@ class PluginRegistry {
     bool removeMissingUserPacks = true,
     bool purgeRemovedImmediately = true,
   }) async {
-    final remote = <String, ({String? name, String? version})>{};
+    final remote = <String, ({String? name, String? version, bool enabled})>{};
     for (final raw in rows) {
       final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
       if (url.isEmpty || isLegacyAssetPack(url)) {
@@ -1808,9 +2000,12 @@ class PluginRegistry {
 
       final name = (raw['name'] as String?)?.trim();
       final version = (raw['version'] as String?)?.trim();
+      // Omit / true = on (legacy); explicit false = installed but skipped.
+      final enabled = raw['enabled'] != false;
       remote[url] = (
         name: (name != null && name.isNotEmpty) ? name : null,
         version: (version != null && version.isNotEmpty) ? version : null,
+        enabled: enabled,
       );
     }
 
@@ -1819,6 +2014,8 @@ class PluginRegistry {
     final victims = <EnginePack>[];
     final added = <LeanPackDelta>[];
     final removed = <LeanPackDelta>[];
+    final turnedOn = <LeanPackDelta>[];
+    final turnedOff = <LeanPackDelta>[];
     var changed = false;
     // Remote lean URLs already satisfied by a kept local/remote pack (same slot).
     final satisfiedRemote = <String>{};
@@ -1830,18 +2027,14 @@ class PluginRegistry {
       }
       final remoteKey = _leanRemoteKeyForPack(remote, pack.sourceUrl);
       if (removeMissingUserPacks && remoteKey == null) {
-        // Readable local checkout is device-local membership — soft-pull must
-        // not delete it just because cloud omitted the absolute path (or has
-        // a same-slot remote twin).
-        if (isLocalManifestUrl(pack.sourceUrl) &&
-            await _localManifestExists(pack.sourceUrl)) {
-          next.add(pack);
-          satisfiedRemote.add(pack.sourceUrl);
-          _markLeanSlotSatisfied(satisfiedRemote, remote, pack.sourceUrl);
-          continue;
-        }
+        // Cloud membership is SoT. Local checkout paths do not bypass an empty
+        // or omitted lean row (issue 289). Same-slot remote URLs still match
+        // via [_leanRemoteKeyForPack] above.
         final stub = pack.plugins.isEmpty;
-        if (stub || purgeRemovedImmediately) {
+        final dropNow = stub ||
+            purgeRemovedImmediately ||
+            isLocalManifestUrl(pack.sourceUrl);
+        if (dropNow) {
           victims.add(pack);
           changed = true;
           if (!stub) {
@@ -1862,11 +2055,21 @@ class PluginRegistry {
         final localOk = isLocalManifestUrl(pack.sourceUrl) &&
             await _localManifestExists(pack.sourceUrl);
         if (localOk) {
-          // Readable checkout wins over same-slot remote URL.
+          // Readable checkout wins over same-slot remote URL — still apply
+          // cloud master switch onto the local install.
           satisfiedRemote.add(remoteKey);
           satisfiedRemote.add(pack.sourceUrl);
           _markLeanSlotSatisfied(satisfiedRemote, remote, pack.sourceUrl);
-          next.add(pack);
+          final lean = remote[remoteKey]!;
+          next.add(
+            _leanApplyEnabled(
+              pack,
+              lean.enabled,
+              turnedOn: turnedOn,
+              turnedOff: turnedOff,
+              changed: () => changed = true,
+            ),
+          );
           continue;
         }
         // Remote URL moved (or dead local path) — cloud URL wins.
@@ -1885,20 +2088,30 @@ class PluginRegistry {
       }
       final lean = remoteKey != null ? remote[remoteKey] : null;
       final leanName = lean?.name;
-      if (leanName != null && pack.plugins.isEmpty && pack.name != leanName) {
+      var kept = pack;
+      if (lean != null) {
+        kept = _leanApplyEnabled(
+          kept,
+          lean.enabled,
+          turnedOn: turnedOn,
+          turnedOff: turnedOff,
+          changed: () => changed = true,
+        );
+      }
+      if (leanName != null && kept.plugins.isEmpty && kept.name != leanName) {
         next.add(
           EnginePack(
-            sourceUrl: pack.sourceUrl,
-            packId: pack.packId,
+            sourceUrl: kept.sourceUrl,
+            packId: kept.packId,
             name: leanName,
-            version: lean?.version ?? pack.version,
-            plugins: pack.plugins,
-            enabled: pack.enabled,
+            version: lean?.version ?? kept.version,
+            plugins: kept.plugins,
+            enabled: kept.enabled,
           ),
         );
         changed = true;
       } else {
-        next.add(pack);
+        next.add(kept);
       }
     }
 
@@ -1920,6 +2133,7 @@ class PluginRegistry {
           diskPack.copyWith(
             name: entry.value.name ?? diskPack.name,
             version: entry.value.version ?? diskPack.version,
+            enabled: entry.value.enabled,
           ),
         );
         changed = true;
@@ -1933,6 +2147,7 @@ class PluginRegistry {
           name: entry.value.name ?? 'Forja pack',
           version: entry.value.version ?? '0.0.0',
           plugins: const [],
+          enabled: entry.value.enabled,
         ),
       );
       added.add(LeanPackDelta(manifestUrl: entry.key, name: entry.value.name));
@@ -1951,13 +2166,37 @@ class PluginRegistry {
       await PendingRemotePurgeStore.clearAll();
     }
 
-    return LeanApplyResult(added: added, removed: removed);
+    return LeanApplyResult(
+      added: added,
+      removed: removed,
+      turnedOn: turnedOn,
+      turnedOff: turnedOff,
+    );
+  }
+
+  /// Apply cloud master switch onto [pack]; records flipped deltas.
+  static EnginePack _leanApplyEnabled(
+    EnginePack pack,
+    bool enabled, {
+    required List<LeanPackDelta> turnedOn,
+    required List<LeanPackDelta> turnedOff,
+    required void Function() changed,
+  }) {
+    if (pack.enabled == enabled) return pack;
+    changed();
+    final delta = LeanPackDelta(manifestUrl: pack.sourceUrl, name: pack.name);
+    if (enabled) {
+      turnedOn.add(delta);
+    } else {
+      turnedOff.add(delta);
+    }
+    return pack.copyWith(enabled: enabled);
   }
 
   /// Cloud lean row key for [sourceUrl], or null if the pack is not in [remote].
   /// Matches exact URL, else same opaque [forjaHqSlot] (local checkout ↔ remote).
   static String? _leanRemoteKeyForPack(
-    Map<String, ({String? name, String? version})> remote,
+    Map<String, ({String? name, String? version, bool enabled})> remote,
     String sourceUrl,
   ) {
     if (remote.containsKey(sourceUrl)) return sourceUrl;
@@ -1972,7 +2211,7 @@ class PluginRegistry {
   /// Mark every remote lean URL that shares [sourceUrl]'s opaque slot.
   static void _markLeanSlotSatisfied(
     Set<String> satisfiedRemote,
-    Map<String, ({String? name, String? version})> remote,
+    Map<String, ({String? name, String? version, bool enabled})> remote,
     String sourceUrl,
   ) {
     final slot = forjaHqSlot(sourceUrl);

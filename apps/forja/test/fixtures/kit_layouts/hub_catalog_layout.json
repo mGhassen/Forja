@@ -1,0 +1,16 @@
+{
+  "pluginId": "test-hub-catalog",
+  "layout": [
+    {
+      "type": "stack",
+      "id": "root",
+      "children": [
+        { "type": "kit.categoryBar", "id": "kinds", "items": [] },
+        { "type": "kit.menu", "id": "menu", "items": [] },
+        { "type": "tabs", "id": "tabs", "items": [] },
+        { "type": "ranked", "id": "ranked", "source": "test-feed" },
+        { "type": "host.vertical_filters", "id": "filters" }
+      ]
+    }
+  ]
+}

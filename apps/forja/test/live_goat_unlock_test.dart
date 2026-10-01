@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/live/live_goat_unlock.dart';
+import 'package:forja/shared/engine/unlock/goat_unlock.dart';
 
 void main() {
   group('LiveGoatUnlock.sportsEmbed', () {
@@ -66,6 +66,23 @@ void main() {
           'https://embed.st/embed/delta/foo/1',
         ),
         isNull,
+      );
+    });
+  });
+
+  group('LiveGoatUnlock playlist probe', () {
+    test('skips dart http probe for indianservers playlists', () {
+      expect(
+        LiveGoatUnlock.dartHttpProbeFalseNegative(
+          'https://shiva.indianservers.st/secure/tok/1/2/uefa_fin/index.m3u8',
+        ),
+        isTrue,
+      );
+      expect(
+        LiveGoatUnlock.dartHttpProbeFalseNegative(
+          'https://lb17.strmd.st/secure/tok/rtmp/stream/id/1/playlist.m3u8',
+        ),
+        isFalse,
       );
     });
   });

@@ -9,9 +9,10 @@ import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/providers/account_features_provider.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
+import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:rust/rust.dart';
 
 // ── Playback ───────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ class SettingsPlaybackSnapshot {
     required this.autoPipOnDesktopSwitch,
     required this.inAppMiniPlayer,
     required this.playInBackground,
+    required this.tvNavSound,
     required this.iptvEpgEnabled,
     required this.iptvLiveMaxHeightLabel,
     required this.iptvLiveRecoveryModeLabel,
@@ -50,7 +52,6 @@ class SettingsPlaybackSnapshot {
     required this.iptvMatchDisplayRefresh,
     required this.iptvLiveBufferSecsLabel,
     required this.maxPlaybackHeightLabel,
-    required this.animeTitleLanguageLabel,
   });
 
   final bool playSourceTorrent;
@@ -77,6 +78,7 @@ class SettingsPlaybackSnapshot {
   final bool autoPipOnDesktopSwitch;
   final bool inAppMiniPlayer;
   final bool playInBackground;
+  final bool tvNavSound;
   final bool iptvEpgEnabled;
   final String iptvLiveMaxHeightLabel;
   final String iptvLiveRecoveryModeLabel;
@@ -84,7 +86,6 @@ class SettingsPlaybackSnapshot {
   final bool iptvMatchDisplayRefresh;
   final String iptvLiveBufferSecsLabel;
   final String maxPlaybackHeightLabel;
-  final String animeTitleLanguageLabel;
 
   SettingsPlaybackSnapshot copyWith({
     bool? playSourceTorrent,
@@ -111,6 +112,7 @@ class SettingsPlaybackSnapshot {
     bool? autoPipOnDesktopSwitch,
     bool? inAppMiniPlayer,
     bool? playInBackground,
+    bool? tvNavSound,
     bool? iptvEpgEnabled,
     String? iptvLiveMaxHeightLabel,
     String? iptvLiveRecoveryModeLabel,
@@ -118,7 +120,6 @@ class SettingsPlaybackSnapshot {
     bool? iptvMatchDisplayRefresh,
     String? iptvLiveBufferSecsLabel,
     String? maxPlaybackHeightLabel,
-    String? animeTitleLanguageLabel,
   }) {
     return SettingsPlaybackSnapshot(
       playSourceTorrent: playSourceTorrent ?? this.playSourceTorrent,
@@ -154,6 +155,7 @@ class SettingsPlaybackSnapshot {
           autoPipOnDesktopSwitch ?? this.autoPipOnDesktopSwitch,
       inAppMiniPlayer: inAppMiniPlayer ?? this.inAppMiniPlayer,
       playInBackground: playInBackground ?? this.playInBackground,
+      tvNavSound: tvNavSound ?? this.tvNavSound,
       iptvEpgEnabled: iptvEpgEnabled ?? this.iptvEpgEnabled,
       iptvLiveMaxHeightLabel:
           iptvLiveMaxHeightLabel ?? this.iptvLiveMaxHeightLabel,
@@ -167,8 +169,6 @@ class SettingsPlaybackSnapshot {
           iptvLiveBufferSecsLabel ?? this.iptvLiveBufferSecsLabel,
       maxPlaybackHeightLabel:
           maxPlaybackHeightLabel ?? this.maxPlaybackHeightLabel,
-      animeTitleLanguageLabel:
-          animeTitleLanguageLabel ?? this.animeTitleLanguageLabel,
     );
   }
 }
@@ -228,6 +228,7 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
       autoPipOnDesktopSwitch: await s.getAutoPipOnDesktopSwitch(),
       inAppMiniPlayer: await s.getInAppMiniPlayer(),
       playInBackground: await s.getPlayInBackground(),
+      tvNavSound: await s.getTvNavSound(),
       iptvEpgEnabled: iptvEpgEnabled,
       iptvLiveMaxHeightLabel: SettingsService.iptvLiveMaxHeightLabel(
         await s.getIptvLiveMaxHeight(),
@@ -244,9 +245,6 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
       ),
       maxPlaybackHeightLabel: SettingsService.maxPlaybackHeightLabel(
         await s.getMaxPlaybackHeight(),
-      ),
-      animeTitleLanguageLabel: SettingsService.animeTitleLanguageLabel(
-        await s.getAnimeTitleLanguage(),
       ),
     );
   }
@@ -333,40 +331,31 @@ class SettingsTorrentNotifier extends AsyncNotifier<SettingsTorrentSnapshot> {
 @immutable
 class SettingsDebridSnapshot {
   const SettingsDebridSnapshot({
-    required this.useDebrid,
-    required this.service,
-    required this.torboxKey,
-    required this.alldebridKey,
-    required this.premiumizeKey,
-    required this.debridlinkKey,
-    required this.isRDLoggedIn,
+    required this.enabled,
+    required this.pluginId,
+    required this.pluginLabel,
+    required this.plugins,
   });
 
-  final bool useDebrid;
-  final String service;
-  final String torboxKey;
-  final String alldebridKey;
-  final String premiumizeKey;
-  final String debridlinkKey;
-  final bool isRDLoggedIn;
+  final bool enabled;
+  final String pluginId;
+  final String pluginLabel;
+  final List<({String id, String name})> plugins;
+
+  /// Master toggle for Addons list chrome.
+  bool get useDebrid => enabled;
 
   SettingsDebridSnapshot copyWith({
-    bool? useDebrid,
-    String? service,
-    String? torboxKey,
-    String? alldebridKey,
-    String? premiumizeKey,
-    String? debridlinkKey,
-    bool? isRDLoggedIn,
+    bool? enabled,
+    String? pluginId,
+    String? pluginLabel,
+    List<({String id, String name})>? plugins,
   }) {
     return SettingsDebridSnapshot(
-      useDebrid: useDebrid ?? this.useDebrid,
-      service: service ?? this.service,
-      torboxKey: torboxKey ?? this.torboxKey,
-      alldebridKey: alldebridKey ?? this.alldebridKey,
-      premiumizeKey: premiumizeKey ?? this.premiumizeKey,
-      debridlinkKey: debridlinkKey ?? this.debridlinkKey,
-      isRDLoggedIn: isRDLoggedIn ?? this.isRDLoggedIn,
+      enabled: enabled ?? this.enabled,
+      pluginId: pluginId ?? this.pluginId,
+      pluginLabel: pluginLabel ?? this.pluginLabel,
+      plugins: plugins ?? this.plugins,
     );
   }
 }
@@ -382,15 +371,23 @@ class SettingsDebridNotifier extends AsyncNotifier<SettingsDebridSnapshot> {
 
   Future<SettingsDebridSnapshot> _load() async {
     final s = SettingsService();
-    final d = DebridApi();
+    await syncDebridResolveCatalog();
+    final plugins = installedDebridPlugins();
+    final id = (await s.getMagnetResolvePluginId()).trim();
+    final stillActive = plugins.any((p) => p.id == id);
+    final activeId = stillActive ? id : '';
+    var label = '';
+    for (final p in plugins) {
+      if (p.id == activeId) {
+        label = p.name;
+        break;
+      }
+    }
     return SettingsDebridSnapshot(
-      useDebrid: await s.useDebridForStreams(),
-      service: await s.getDebridService(),
-      torboxKey: await d.getTorBoxKey() ?? '',
-      alldebridKey: await d.getAllDebridKey() ?? '',
-      premiumizeKey: await d.getPremiumizeKey() ?? '',
-      debridlinkKey: await d.getDebridLinkKey() ?? '',
-      isRDLoggedIn: await d.getRDAccessToken() != null,
+      enabled: activeId.isNotEmpty,
+      pluginId: activeId,
+      pluginLabel: label,
+      plugins: plugins,
     );
   }
 
@@ -624,14 +621,33 @@ final enginePackUpdatesProvider =
 
 class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
   Object? _checkToken;
+  String? _lastInventoryKey;
+
+  /// Urls + versions + plugin counts — not enable flags (toggles must not recheck).
+  static String inventoryKey(List<EnginePack> packs) {
+    final parts = [
+      for (final p in packs)
+        '${p.sourceUrl}\u0000${p.version}\u0000${p.plugins.length}',
+    ]..sort();
+    return parts.join('\n');
+  }
 
   @override
   EnginePackUpdatesState build() {
+    // Install / remove / version change only. Enable toggles reuse the same
+    // inventory key — re-checking flashed "Checking for plugin updates…" and
+    // rebuilt the whole Forja Packs pane on every switch flip.
+    //
+    // Use listen only — never watch enginePacksProvider from here. The nav
+    // badge used to watch this notifier at boot and pull packs before
+    // LocalDataScope was bound, caching [] forever.
     ref.listen(enginePacksProvider, (_, next) {
       final packs = next.valueOrNull;
-      if (packs != null && packs.isNotEmpty) {
-        Future.microtask(() => check(packs));
-      }
+      if (packs == null || packs.isEmpty) return;
+      final key = inventoryKey(packs);
+      if (key == _lastInventoryKey) return;
+      _lastInventoryKey = key;
+      Future.microtask(() => check(packs));
     });
     return stateOrNull ?? const EnginePackUpdatesState();
   }
@@ -647,13 +663,19 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
       lastChecked: current.lastChecked,
     );
     try {
-      final result = await EngineService.instance.checkPackUpdates(packs);
+      // Hard cap — hung DNS used to leave checking:true forever (no Update all).
+      final result = await EngineService.instance
+          .checkPackUpdates(packs)
+          .timeout(const Duration(seconds: 90));
       if (!identical(_checkToken, token)) return;
       state = EnginePackUpdatesState(
         updates: result.updates,
         deprecatedUrls: result.deprecatedUrls,
         checking: false,
         lastChecked: DateTime.now(),
+      );
+      PluginInstallCoordinator.instance.publishPendingUpdateCount(
+        result.updates.length,
       );
     } catch (_) {
       if (!identical(_checkToken, token)) return;
@@ -668,7 +690,10 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
   }
 
   Future<void> refresh() async {
-    final packs = ref.read(enginePacksProvider).valueOrNull ?? const [];
+    final packs = ref.read(enginePacksProvider).valueOrNull;
+    // Empty inventory: do not stamp lastChecked or the nav badge never retries.
+    if (packs == null || packs.isEmpty) return;
+    _lastInventoryKey = inventoryKey(packs);
     await check(packs);
   }
 
@@ -682,6 +707,7 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
       checking: state.checking,
       lastChecked: state.lastChecked,
     );
+    PluginInstallCoordinator.instance.publishPendingUpdateCount(next.length);
   }
 }
 
@@ -689,18 +715,42 @@ class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
   @override
   Future<List<EnginePack>> build() async {
     final n = EngineService.changeNotifier;
-    void listener() => ref.invalidateSelf();
+    // Keep prior packs painted — invalidateSelf flashes [] and remounts
+    // ExpansionTiles (kicks you out of the open pack row / Forja Packs pane).
+    var disposed = false;
+    void listener() {
+      Future.microtask(() {
+        if (disposed) return;
+        unawaited(reload());
+      });
+    }
+
+    Future<void> onScopeChanged() async {
+      if (disposed) return;
+      await reload();
+    }
+
     n.addListener(listener);
-    ref.onDispose(() => n.removeListener(listener));
+    LocalDataScope.addListener(onScopeChanged);
+    ref.onDispose(() {
+      disposed = true;
+      n.removeListener(listener);
+      LocalDataScope.removeListener(onScopeChanged);
+    });
     return EngineService.instance.listUserPacks();
   }
 
   Future<void> reload() async {
-    final previous = state;
-    state = const AsyncLoading<List<EnginePack>>().copyWithPrevious(previous);
-    state = await AsyncValue.guard(
+    // Do not paint AsyncLoading — even with previous data, watchers rebuild and
+    // ExpansionTiles / scroll jump. Swap in the fresh list when ready.
+    final next = await AsyncValue.guard(
       () => EngineService.instance.listUserPacks(),
     );
+    if (next.hasError && state.hasValue) {
+      // Keep prior packs on transient list failures.
+      return;
+    }
+    state = next;
   }
 }
 

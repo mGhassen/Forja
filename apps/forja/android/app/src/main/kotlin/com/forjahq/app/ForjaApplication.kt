@@ -8,29 +8,22 @@ import io.flutter.embedding.engine.renderer.FlutterRenderer
 class ForjaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Init Impeller OpenGLES before AudioService creates the engine.
-        // Do not force EnableImpeller in the manifest — phones keep the API 29+
-        // default (Vulkan when available); TV-only args live here + MainActivity.
+        // Impeller off globally via AndroidManifest. TV-only:
+        // SurfaceTexture producers — ImageReader → MediaKit audio-only black
+        // on Amlogic leanback (issue 114).
         if (PlatformUtils.isAndroidTv(this)) {
             try {
-                // API 29+ defaults createSurfaceProducer() to ImageReader. On Amlogic
-                // leanback (Xiaomi Box Android 11+) that yields MediaKit audio-only
-                // black. SurfaceTexture works with Impeller OpenGLES (issue 114).
-                // Do not set on phones — undefined with Impeller Vulkan.
                 FlutterRenderer.debugForceSurfaceProducerGlTextures = true
                 val loader = FlutterInjector.instance().flutterLoader()
                 loader.startInitialization(this)
-                loader.ensureInitializationComplete(
-                    this,
-                    TvFlutterShellArgs.forLeanback(),
-                )
+                loader.ensureInitializationComplete(this, null)
                 Log.i(
                     TAG,
-                    "Android TV: Impeller OpenGLES + SurfaceTexture producers " +
-                        "(MediaKit mediacodec_embed)",
+                    "Android TV: SurfaceTexture producers " +
+                        "(MediaKit mediacodec_embed; Impeller off in manifest)",
                 )
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to set Impeller OpenGLES on Android TV", e)
+                Log.w(TAG, "Failed TV SurfaceTexture / Flutter init", e)
             }
         }
         // WebView warm-up is deferred to first ForjaInAppWebView /

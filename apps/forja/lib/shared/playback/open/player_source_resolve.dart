@@ -145,13 +145,11 @@ abstract final class PlayerSourceResolve {
 
   static Future<List<String>> _movieSettingsOrder(Movie movie) async {
     final settings = SettingsService();
-    final t = movie.mediaType.toLowerCase();
-    if (t == 'asian_drama' || t == 'asian' || t == 'drama') {
-      return settings.getEnabledAsianDramaProviderOrder();
-    }
-    if (t == 'anime') {
-      return settings.getEnabledAnimeProviderOrder();
-    }
-    return settings.getEnabledStreamProviderOrder();
+    // Domain from opaque mediaType — no pack-id branches (RFC-109).
+    return switch (SourceDomain.fromMediaType(movie.mediaType)) {
+      SourceDomain.asianDrama => settings.getEnabledAsianDramaProviderOrder(),
+      SourceDomain.anime => settings.getEnabledAnimeProviderOrder(),
+      _ => settings.getEnabledStreamProviderOrder(),
+    };
   }
 }

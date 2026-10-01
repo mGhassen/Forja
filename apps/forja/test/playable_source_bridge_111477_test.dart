@@ -4,7 +4,7 @@ import 'package:rust/rust.dart';
 
 void main() {
   group('PlayableSourceBridge.requiresProxy', () {
-    test('false for service111477 workers.dev (PlayTorrio addon path)', () {
+    test('false for service111477 workers.dev (addon path)', () {
       final playable = [
         PlayableSource(
           url: 'https://strem1o.xn1nazihva.workers.dev/d/abc',

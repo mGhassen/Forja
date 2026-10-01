@@ -211,6 +211,9 @@ fn get_or_fetch_portal_live(
     mac: &str,
     serial: &str,
 ) -> Result<(Vec<Value>, HashMap<String, String>), String> {
+    if let Some(hit) = try_sqlite_live_shelf(url, mac, serial) {
+        return Ok(hit);
+    }
     let key = portal_cache_key(url, mac);
     if let Ok(cache) = live_cache().lock() {
         if let Some(entry) = cache.get(&key) {
@@ -240,6 +243,63 @@ fn get_or_fetch_portal_live(
         );
     }
     Ok((streams, cats))
+}
+
+fn dart_portal_key(url: &str, mac: &str, serial: &str) -> String {
+    format!("stalker|{url}|{mac}|{serial}").to_lowercase()
+}
+
+fn trim_url(url: &str) -> String {
+    url.trim().trim_end_matches('/').to_string()
+}
+
+fn cats_from_export(categories: &[Value]) -> HashMap<String, String> {
+    let mut cats = HashMap::new();
+    for c in categories {
+        let id = field_str(c, &["id", "category_id"]);
+        let name = field_str(c, &["name", "category_name"]);
+        if !id.is_empty() {
+            cats.insert(id, name);
+        }
+    }
+    cats
+}
+
+fn try_sqlite_live_shelf(
+    url: &str,
+    mac: &str,
+    serial: &str,
+) -> Option<(Vec<Value>, HashMap<String, String>)> {
+    let candidates = [
+        dart_portal_key(url.trim(), mac, serial),
+        dart_portal_key(&trim_url(url), mac, serial),
+    ];
+    for key in candidates {
+        let hash = iptv::catalog_db::portal_hash(&key);
+        let ok = iptv::catalog_db::has_shelf(&hash, "live").unwrap_or(false);
+        if !ok {
+            continue;
+        }
+        let exported = iptv::catalog_db::export_shelf(&hash, "live").ok()?;
+        if exported.get("ok") != Some(&Value::Bool(true)) {
+            continue;
+        }
+        let streams = exported
+            .get("streams")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let categories = exported
+            .get("categories")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        if streams.is_empty() && categories.is_empty() {
+            continue;
+        }
+        return Some((streams, cats_from_export(&categories)));
+    }
+    None
 }
 
 struct EpgBits {

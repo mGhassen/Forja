@@ -436,6 +436,49 @@
   animation: forja-float 5.5s ease-in-out infinite;
 }
 
+/* LAN passthrough flux bus — Desktop torrent → TV play */
+@keyframes forja-lan-beam {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+@keyframes forja-lan-packet {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 0.65rem);
+    opacity: 0;
+  }
+}
+
+.lan-flux-beam {
+  animation: forja-lan-beam 2.4s linear infinite;
+}
+
+.lan-flux-packet {
+  animation: forja-lan-packet 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.lan-flux-packet-delay {
+  animation-delay: 0.9s;
+}
+
+.lan-flux-packet-delay-2 {
+  animation-delay: 1.7s;
+}
+
 /* Login - cycling headline word */
 @keyframes forja-word-in {
   from {
@@ -537,8 +580,15 @@
   .animate-live-dot,
   .animate-now-title,
   .animate-float,
+  .lan-flux-beam,
+  .lan-flux-packet,
   .hero-enter > * {
     animation: none !important;
+  }
+
+  .lan-flux-packet {
+    left: 70%;
+    opacity: 1;
   }
 
   .animate-stream-progress {

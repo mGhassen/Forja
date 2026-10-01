@@ -1,7 +1,7 @@
 # RFC-046 — Android TV device-code / QR account link
 
 **Status:** open  
-**Depends on:** [RFC-042](042-[open]-unified-auth-system.md), [RFC-034](034-[partial]-web-portal-landing.md)  
+**Depends on:** [RFC-042](042-[open]-unified-auth-system.md), [RFC-034](fixed/034-[fixed]-web-portal-landing.md)  
 **Area:** `apps/forja` Android TV · `apps/web` `/connect` · Supabase Edge device-link  
 **Version:** v1.0 theme (Bab Souika)
 

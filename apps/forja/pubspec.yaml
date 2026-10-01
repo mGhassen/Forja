@@ -1,7 +1,7 @@
 name: forja
 description: Forja - your cinema universe
 publish_to: none
-version: 1.5.36+70
+version: 2.0.0+71
 
 environment:
   sdk: ^3.11.0
@@ -77,11 +77,12 @@ dependencies:
       path: libs/linux/media_kit_libs_linux
   rust:
     path: ../../packages/rust
+  forja_foundation:
+    path: ../../packages/forja_foundation
   qr_flutter: ^4.1.0
   supabase_flutter: ^2.16.0
   app_links: ^7.2.1
   flutter_secure_storage: ^9.2.4
-  passkeys: ^2.22.0
   sentry_flutter: ^9.25.0
   posthog_flutter: ^5.32.1
   flutter_riverpod: ^2.6.1
@@ -132,24 +133,9 @@ flutter:
   assets:
     - assets/icon/
     - assets/sounds/
-    - assets/images/
-    # Explicit — new `images/nav/` files are easy to miss in incremental macOS
-    # asset graphs (IPTV rail PNG was on disk but absent from AssetManifest).
-    - assets/images/nav/iptv.png
     - assets/fonts/
-    - assets/videasy/
     - assets/nuvio/
-    - assets/engine/_streamcrypto.js
-    - assets/plugins/live/goat/
-    - assets/plugins/live/goat/vendor/
-    - assets/plugins/live/goat/webview/
-    - assets/plugins/live/gasm/
-    - assets/plugins/live/gasm/vendor/
-    - assets/plugins/live/gasm/webview/
-    - assets/plugins/live/sportsembed/
-    - assets/plugins/live/sportsembed/vendor/
     - assets/textures/
-    - assets/watch_providers/
 
 dependency_overrides:
   media_kit:

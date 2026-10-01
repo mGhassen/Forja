@@ -12,9 +12,9 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## What you can do
 
-- Floating subtitle picker: header has **Off**, **File** (load SRT/ASS/SSA/VTT — hidden on **Android TV**), and tune (no “Subtitles” title). Body is one language list — in-stream and online tracks share a folder (drill-in on MediaKit; two-column on ExoPlayer). Tapping **Off** turns subtitles off immediately. Language names use native script (e.g. العربية, Français, தமிழ்)
+- Floating subtitle picker: header has **Subtitles** title, **Off**, **File** (load SRT/ASS/SSA/VTT — hidden on **Android TV**), and tune. Body is one language list — in-stream and online tracks share a folder (drill-in on MediaKit; two-column on ExoPlayer). Tapping **Off** turns subtitles off immediately. Language names use native script (e.g. العربية, Français, தமிழ்)
 - Enable, disable, or switch tracks
-- Change appearance (size, color, font, opacity, position) — tune icon next to Close in the Subtitles header on **MediaKit** and **ExoPlayer**. On **TV**, focus a slider and use **Left/Right** to adjust (no OK first). Color swatches show a brand-green circular focus ring. Sync **delay** applies on MediaKit only
+- Change appearance (size, color, font, opacity, position) — plain tune icon next to Close in the Subtitles header on **MediaKit** and **ExoPlayer** (turns brand-green on hover/focus; no card border). On **TV**, focus a slider and use **Left/Right** to adjust (no OK first). Color swatches show a brand-green circular focus ring. Sync **delay** applies on MediaKit only
 - Adjust sync delay if dialogue is early/late (MediaKit). On **desktop**, click **−** / **+** for 0.1s steps. On **Android TV**, focus **−** / **+**, tap **OK** for 0.1s steps, or **hold OK** to accelerate the longer you press
 - Use advanced ASS/SSA rendering for styled subs (MediaKit)
 - **Preferred language sticks across episodes** — picking French (or any category) remembers it; the next episode auto-selects the same language when available, otherwise **English**. **Off** clears the preference. Set the default under **Settings → Playback → Preferred subtitle language**
@@ -23,7 +23,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## Tips
 
-- In-stream and online tracks share one language folder (English, Français, …) — open the folder to see both (In-stream rows first)
+- In-stream and online tracks share one language folder (English, Français, …) — open the folder to see both (In-stream rows first). In-stream rows fill in while the menu is open, including subtitle groups on the stream. A saved download lists the subtitles that were on that stream, labeled In-stream.
 - Auto-play picks an in-stream row when the stream has any; online results stay in the list for manual pick
 - **KissKh (Asian Drama):** provider Sub API tracks (decrypted in the pack, attached as sideloads) are preferred over HLS mux “In-stream” — those mux tracks can be mistimed vs kisskh.co
 - On **Android TV**, opening Subtitles lands focus on the header **X** (close) — **←** reaches tune / **Off**; **↓** into the language list

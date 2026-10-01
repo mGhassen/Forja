@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/device_link_connect_view.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:forja_foundation/widgets/feedback/fractal_glass_gradient.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 enum _TvLinkStep { welcome, connect, error }
 
 /// Leanback account link: welcome → code/QR (not desktop login).
@@ -181,7 +183,11 @@ class _FlatAction extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, color: ForjaShellColors.brandGreen, size: 24),
+              Icon(
+                icon,
+                color: ForjaShellColors.brandGreen,
+                size: ShellPaintScope.iconOf(context, 24),
+              ),
               const SizedBox(width: 12),
             ],
             Text(

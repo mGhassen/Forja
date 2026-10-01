@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shell/nav/nav_complete_reload_hold.dart';
 import 'package:forja/shell/nav/nav_config.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
+import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
+
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 class ShellBottomNav extends StatelessWidget {
   const ShellBottomNav({
@@ -38,55 +41,15 @@ class ShellBottomNav extends StatelessWidget {
                 if (dest == null) return const SizedBox.shrink();
                 final isSelected = selectedIndex == idx;
 
-                return InkWell(
-                  hoverColor: ForjaShellColors.inkHover,
-                  splashColor: ForjaShellColors.inkSplash,
+                return _BottomNavItem(
+                  destination: dest,
+                  selected: isSelected,
                   onTap: () => onItemTapped(idx),
-                  onLongPress:
-                      VerticalFiltersRegistry.hasFilters(id)
+                  onLongPress: VerticalFiltersRegistry.hasFilters(id)
                       ? () => VerticalFiltersRegistry.showMenu(id)
                       : null,
-                  child: SizedBox(
-                    width: ShellTokens.bottomNavItemWidth,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedContainer(
-                            duration: ShellTokens.navSelectionAnimation,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: ShellTokens.bottomNavIconPaddingH,
-                              vertical: ShellTokens.bottomNavIconPaddingV,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? ForjaShellColors.chipSelectedBg
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(ShellTokens.navSelectionBorderRadius),
-                            ),
-                            child: NavDestinationIcon(
-                              destination: dest,
-                              selected: isSelected,
-                              color: isSelected ? Colors.white : Colors.white54,
-                              size: ShellTokens.navRailIconSize,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            dest.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.white54,
-                              fontSize: ShellTokens.bottomNavLabelSize,
-                              height: 1,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  shareFilterMenuTapGroup:
+                      VerticalFiltersRegistry.hasFilters(id),
                 );
               }).toList(),
             ),
@@ -110,7 +73,7 @@ class ShellBottomNav extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.arrow_forward_ios,
-                  size: 12,
+                  size: ShellTokens.bottomNavFadeIconSize,
                   color: Colors.white24,
                 ),
               ),
@@ -119,5 +82,152 @@ class ShellBottomNav extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _BottomNavItem extends StatefulWidget {
+  const _BottomNavItem({
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+    this.onLongPress,
+    this.shareFilterMenuTapGroup = false,
+  });
+
+  final NavDestination destination;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  /// Same [TapRegion] group as [VerticalFiltersRail] so re-press opens
+  /// without the tap counting as outside and hiding the menu.
+  final bool shareFilterMenuTapGroup;
+
+  @override
+  State<_BottomNavItem> createState() => _BottomNavItemState();
+}
+
+class _BottomNavItemState extends State<_BottomNavItem> {
+  bool _hover = false;
+  bool _focused = false;
+  late final NavCompleteReloadHold _reloadHold;
+
+  bool get _active => _hover || _focused;
+
+  @override
+  void initState() {
+    super.initState();
+    _reloadHold = NavCompleteReloadHold(
+      onChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _reloadHold.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = widget.selected;
+    Widget icon = NavDestinationIcon(
+      destination: widget.destination,
+      selected: isSelected,
+      color: isSelected ? Colors.white : Colors.white54,
+      size: ShellTokens.navRailIconSize,
+    );
+    if (widget.destination.id == 'settings') {
+      icon = PackUpdateNavChrome(
+        expanded: _active,
+        flyoutAbove: true,
+        badgeSize: ShellTokens.packUpdateBadgeSizeBottomNav,
+        child: icon,
+      );
+    }
+    icon = NavReloadHoldIcon(
+      icon: icon,
+      loading: _reloadHold.loading,
+      size: ShellTokens.navRailIconSize,
+    );
+
+    Widget item = Focus(
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (e) => _reloadHold.pointerDown(
+            e,
+            hideMenuTabId: widget.destination.id,
+          ),
+          onPointerUp: _reloadHold.pointerUp,
+          onPointerCancel: _reloadHold.pointerCancel,
+          child: InkWell(
+            hoverColor: ForjaShellColors.inkHover,
+            splashColor: ForjaShellColors.inkSplash,
+            onTap: () {
+              if (_reloadHold.consumeCompleted()) return;
+              widget.onTap();
+            },
+            onLongPress: widget.onLongPress == null
+                ? null
+                : () {
+                    if (_reloadHold.didComplete) return;
+                    widget.onLongPress!();
+                  },
+            child: SizedBox(
+              width: ShellTokens.bottomNavItemWidth,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedContainer(
+                      duration: ShellTokens.navSelectionAnimation,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: ShellTokens.bottomNavIconPaddingH,
+                        vertical: ShellTokens.bottomNavIconPaddingV,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? ForjaShellColors.chipSelectedBg
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(
+                          ShellTokens.navSelectionBorderRadius,
+                        ),
+                      ),
+                      child: icon,
+                    ),
+                    const SizedBox(height: ShellTokens.bottomNavIconLabelGap),
+                    Text(
+                      widget.destination.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white54,
+                        fontSize: ShellTokens.bottomNavLabelSize,
+                        height: 1,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (widget.shareFilterMenuTapGroup) {
+      item = TapRegion(
+        groupId: VerticalFiltersRegistry.menuTapGroup,
+        child: item,
+      );
+    }
+    return item;
   }
 }

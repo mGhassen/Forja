@@ -5,6 +5,8 @@ set -euo pipefail
 # After flutter build, call embed_rust_in_release_output.sh to copy into Release/bundle.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/macos_rust_sdk.sh
+source "$ROOT/scripts/lib/macos_rust_sdk.sh"
 cd "$ROOT/crates"
 
 PROFILE="${RUST_PROFILE:-release}"

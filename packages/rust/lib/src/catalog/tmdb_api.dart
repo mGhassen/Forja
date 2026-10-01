@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:rust/rust.dart';
 
 class TmdbApi {
-  static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
+  static const String _imageBaseUrl = 'https://tmdb.forjahq.xyz/t/p/w500';
 
   static Future<dynamic> _fetch(String resourcePath, {int timeoutSecs = 15}) async {
     final raw = await runTmdbGetJson(resourcePath, timeoutSecs: timeoutSecs);
@@ -22,16 +22,16 @@ class TmdbApi {
   }
 
   /// High-res backdrop for hero banners / full-width headers.
-  static String getBackdropUrl(String path) => 'https://image.tmdb.org/t/p/w1280$path';
+  static String getBackdropUrl(String path) => 'https://tmdb.forjahq.xyz/t/p/w1280$path';
 
   /// Small profile photo for cast lists.
-  static String getProfileUrl(String path) => 'https://image.tmdb.org/t/p/w185$path';
+  static String getProfileUrl(String path) => 'https://tmdb.forjahq.xyz/t/p/w185$path';
 
   /// Tiny still/thumbnail for episode lists.
-  static String getStillUrl(String path) => 'https://image.tmdb.org/t/p/w300$path';
+  static String getStillUrl(String path) => 'https://tmdb.forjahq.xyz/t/p/w300$path';
 
   /// Full original quality — only use when absolutely needed.
-  static String getOriginalUrl(String path) => 'https://image.tmdb.org/t/p/original$path';
+  static String getOriginalUrl(String path) => 'https://tmdb.forjahq.xyz/t/p/original$path';
 
   Future<List<Movie>> getTrending({int page = 1}) async {
     final decoded = await _fetchMap('trending/movie/day?page=$page');
@@ -264,9 +264,13 @@ class TmdbApi {
   }
 
   /// Title multi-search plus discover for year / genre / person (e.g. `nolan 2022-2025`, `horror 2025`).
-  Future<List<Movie>> searchStructured(String query) async {
+  ///
+  /// [page] is the TMDB page for multi + discover (20 items each). Callers that
+  /// want more results request page 2…N on scroll (host search caps at 5).
+  Future<List<Movie>> searchStructured(String query, {int page = 1}) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
+    final pageNum = page < 1 ? 1 : page;
 
     final parsed = parseSearchQuery(trimmed);
     final bounds = parsed.yearBounds;
@@ -280,13 +284,11 @@ class TmdbApi {
     }
 
     final multiFutures = <Future<List<Movie>>>[
-      safe(() => searchMulti(trimmed)),
-      safe(() => searchMulti(trimmed, page: 2)),
+      safe(() => searchMulti(trimmed, page: pageNum)),
     ];
     if (parsed.remainder.isNotEmpty &&
         parsed.remainder.toLowerCase() != trimmed.toLowerCase()) {
-      multiFutures.add(safe(() => searchMulti(parsed.remainder)));
-      multiFutures.add(safe(() => searchMulti(parsed.remainder, page: 2)));
+      multiFutures.add(safe(() => searchMulti(parsed.remainder, page: pageNum)));
     }
 
     int? personId;
@@ -301,48 +303,42 @@ class TmdbApi {
 
     final discoverFutures = <Future<List<Movie>>>[];
 
-    // TMDB returns 20/page; desktop grid is 4 cols → page1≈5 rows.
-    // Fetch a second page for +5 rows on filter/discover results.
-    const discoverPages = 2;
-
     void addMovieDiscover({List<int>? genres, int? people}) {
-      for (var page = 1; page <= discoverPages; page++) {
-        discoverFutures.add(
-          safe(
-            () => discoverMovies(
-              genres: genres,
-              withPeople: people,
-              year: singleYear,
-              releaseDateGte: singleYear == null ? gte : null,
-              releaseDateLte: singleYear == null ? lte : null,
-              minRating: parsed.minScore,
-              maxRating: parsed.maxScore,
-              withOriginCountry: parsed.originCountry,
-              page: page,
-            ),
+      discoverFutures.add(
+        safe(
+          () => discoverMovies(
+            genres: genres,
+            withPeople: people,
+            year: singleYear,
+            releaseDateGte: singleYear == null ? gte : null,
+            releaseDateLte: singleYear == null ? lte : null,
+            minRating: parsed.minScore,
+            maxRating: parsed.maxScore,
+            withOriginCountry: parsed.originCountry,
+            language: parsed.originalLanguage,
+            page: pageNum,
           ),
-        );
-      }
+        ),
+      );
     }
 
     void addTvDiscover({List<int>? genres, int? people}) {
-      for (var page = 1; page <= discoverPages; page++) {
-        discoverFutures.add(
-          safe(
-            () => discoverTvShows(
-              genres: genres,
-              withPeople: people,
-              year: singleYear,
-              releaseDateGte: singleYear == null ? gte : null,
-              releaseDateLte: singleYear == null ? lte : null,
-              minRating: parsed.minScore,
-              maxRating: parsed.maxScore,
-              withOriginCountry: parsed.originCountry,
-              page: page,
-            ),
+      discoverFutures.add(
+        safe(
+          () => discoverTvShows(
+            genres: genres,
+            withPeople: people,
+            year: singleYear,
+            releaseDateGte: singleYear == null ? gte : null,
+            releaseDateLte: singleYear == null ? lte : null,
+            minRating: parsed.minScore,
+            maxRating: parsed.maxScore,
+            withOriginCountry: parsed.originCountry,
+            language: parsed.originalLanguage,
+            page: pageNum,
           ),
-        );
-      }
+        ),
+      );
     }
 
     final wantMovies =
@@ -354,7 +350,8 @@ class TmdbApi {
         bounds != null ||
         parsed.hasScore ||
         parsed.hasMediaType ||
-        parsed.hasOriginCountry) {
+        parsed.hasOriginCountry ||
+        parsed.hasOriginalLanguage) {
       if (parsed.hasGenre) {
         if (wantMovies && parsed.movieGenreIds.isNotEmpty) {
           addMovieDiscover(genres: parsed.movieGenreIds, people: personId);

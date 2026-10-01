@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- IPTV / Xtream panels often serve streams over plain HTTP. MediaKit (ffmpeg)
-     bypasses Android's cleartext policy; ExoPlayer (DefaultHttpDataSource) does not.
+     bypasses Android's cleartext policy; ExoPlayer (OkHttp) does not.
      base-config must allow cleartext - domain-config alone overrides usesCleartextTraffic.
 
      ISRG Root X1/X2: Android ≤7.0 system trust stores lack Let's Encrypt roots after

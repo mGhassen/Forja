@@ -1,12 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
+export 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 typedef PlayerSwitchHandler =
     Future<void> Function(
@@ -37,6 +37,11 @@ class PlayerAppMenu {
     required PlayerMenuSelectHandler onSelect,
     BuildContext? anchorContext,
     bool centered = false,
+    BuiltInPlayerMenuSurface? surface,
+    String streamUrl = '',
+    bool torrentLocalhost = false,
+    bool needsWidevine = false,
+    bool separateAudioUrl = false,
   }) {
     PlayerPopupPanel.show(
       context: context,
@@ -50,6 +55,11 @@ class PlayerAppMenu {
         externalPlayerName: externalPlayerName,
         onSelect: onSelect,
         onDismiss: PlayerPopupPanel.dismiss,
+        surface: surface,
+        streamUrl: streamUrl,
+        torrentLocalhost: torrentLocalhost,
+        needsWidevine: needsWidevine,
+        separateAudioUrl: separateAudioUrl,
       ),
     );
   }
@@ -61,44 +71,44 @@ class PlayerAppMenu {
     required PlayerMenuSelectHandler onSelect,
     VoidCallback? onDismiss,
     ScrollPhysics? physics,
+    BuiltInPlayerMenuSurface? surface,
+    String streamUrl = '',
+    bool torrentLocalhost = false,
+    bool needsWidevine = false,
+    bool separateAudioUrl = false,
   }) {
     // Android TV: Exo + MediaKit only — external apps are not offered.
-    // Never omit MediaKit from this menu (see .cursor/rules/no-hide-as-fix.mdc).
+    // Always list every platform built-in engine. Hard unfit (torrent / dual-audio /
+    // DRM) still blocks on select via [builtInPlayerEngineUnsuitableReason].
     final showExternal = !PlatformInfo.isAndroidTv;
-    final engines = builtInPlayerEngineOptionsForUi;
+    final engines = List<BuiltInPlayerEngine>.of(
+      builtInPlayerEngineOptionsForUi,
+    );
+    final selectedBuiltIn = resolvePlayerMenuBuiltInSelection(
+      usingBuiltIn: usingBuiltIn,
+      preferred: builtInEngine,
+      visible: engines,
+    );
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       shrinkWrap: true,
       physics: physics ?? const ClampingScrollPhysics(),
       children: [
         if (showExternal) const _SectionLabel('Built-in'),
-        if (Platform.isAndroid)
-          ...[
-            for (final engine in engines)
-              PlayerPopupOptionChip(
-                label: engine.displayName,
-                selected: usingBuiltIn && engine == builtInEngine,
-                expanded: true,
-                onTap: () async {
-                  onDismiss?.call();
-                  if (usingBuiltIn && engine == builtInEngine) {
-                    return;
-                  }
-                  await onSelect(builtInEngine: engine);
-                },
-              ),
-          ]
-        else
-          PlayerPopupOptionChip(
-            label: 'Built-in Player',
-            selected: usingBuiltIn,
+        ...engines.map((engine) {
+          return PlayerPopupOptionChip(
+            label: engine.displayName,
+            selected: selectedBuiltIn == engine,
             expanded: true,
             onTap: () async {
               onDismiss?.call();
-              if (usingBuiltIn) return;
-              await onSelect(builtInEngine: builtInEngine);
+              if (selectedBuiltIn == engine) {
+                return;
+              }
+              await onSelect(builtInEngine: engine);
             },
-          ),
+          );
+        }),
         if (showExternal) ...[
           const SizedBox(height: 14),
           const _SectionLabel('External app'),

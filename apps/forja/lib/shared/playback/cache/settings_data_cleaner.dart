@@ -1,14 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/painting.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
-import 'package:forja/features/iptv/data/iptv_catalog_shelf_cache.dart';
-import 'package:forja/features/iptv/data/storage.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/foundation/services/watch/watch_history.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 import 'package:forja/shared/services/update/app_update_download_storage.dart';
+import 'package:forja/shared/engine/portals/store/iptv_catalog_db.dart';
+import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/probe/provider_score_probe_sync.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
@@ -38,18 +38,19 @@ abstract final class SettingsDataCleaner {
     } catch (_) {}
   }
 
-  static Future<void> clearIptvPortalCaches() async {
-    await IptvAliveStore.clearAll();
-    await IptvChannelResultsStore.clearAll();
-    await IptvCatalogShelfCache.clearAll();
-    await IptvCatalogDiskStore.clearAll();
+  /// IPTV catalog SQLite + legacy shelf files + alive / channel-scan (active identity).
+  static Future<void> clearPortalCaches() async {
+    await IptvCatalogDb.clearAll();
+    await PortalCatalogShelfStore.clearAll();
+    await PortalAliveStore.clearAll();
+    await PortalChannelResultsStore.clearAll();
   }
 
   static Future<void> clearImageAndWebViewCaches() async {
     imageCache.clear();
     imageCache.clearLiveImages();
     try {
-      await DefaultCacheManager().emptyCache();
+      await ForjaImageCacheManager().emptyCache();
     } catch (_) {}
     try {
       await WebViewCleanup.cleanupWebView2Cache();

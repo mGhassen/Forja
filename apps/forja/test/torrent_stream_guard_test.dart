@@ -54,6 +54,27 @@ void main() {
         isFalse,
       );
     });
+
+    test('unwraps hls-proxy nested token', () {
+      final token = _jwtWithExp(1_700_000_000); // 2023
+      final catalog =
+          'https://cdn.example/pl/x/master.m3u8?token=$token';
+      final proxy =
+          'http://127.0.0.1:9/hls-proxy?url=${Uri.encodeComponent(catalog)}';
+      expect(isStreamUrlTokenExpired(catalog), isTrue);
+      expect(isStreamUrlTokenExpired(proxy), isTrue);
+      expect(isUnplayableCachedStreamUrl(proxy), isTrue);
+    });
+
+    test('honors expires= query on catalog URL', () {
+      final now = DateTime.utc(2026, 9, 23);
+      final expired =
+          'https://vix.example/playlist/1?expires=1000&token=abc';
+      final fresh =
+          'https://vix.example/playlist/1?expires=2000000000&token=abc';
+      expect(isStreamUrlTokenExpired(expired, now: now), isTrue);
+      expect(isStreamUrlTokenExpired(fresh, now: now), isFalse);
+    });
   });
 
   group('isTorrentStreamUrl - Direct Streaming must reject torrents', () {

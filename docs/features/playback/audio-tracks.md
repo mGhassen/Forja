@@ -22,6 +22,7 @@ Many streams include multiple audio tracks (languages, commentary, Atmos). Forja
 
 - "Avoid unsupported audio" helps on TVs and phones that choke on TrueHD/Atmos
 - Track auto-select runs when a new stream starts
+- Manual switch re-syncs the stream (a tiny rewind) so the new language starts playing immediately
 
 ## Related
 

@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:media_kit/media_kit.dart';
-import 'package:forja/features/archive/audio/audiobook_player_service.dart';
-import 'package:forja/features/archive/audio/music_player_service.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 
 /// macOS bundles libmpv as [Mpv.framework] with ObjC classes (Application,
@@ -37,8 +35,7 @@ class MpvExclusiveSession {
     _trackedPlayers.remove(player);
   }
 
-  /// Wait for any in-flight video dispose, then release background audio
-  /// players on macOS (exclusive [Player]).
+  /// Wait for any in-flight video dispose before opening a new MediaKit player.
   ///
   /// Pending dispose is tracked on **all** platforms: Android timed teardown
   /// (issue 128) can leave mpv half-alive; opening a new IPTV/Live MediaKit
@@ -60,9 +57,6 @@ class MpvExclusiveSession {
       // let Exo mount over a live mediacodec_embed surface (issue 129 crop).
       await _pendingVideoDispose?.timeout(timeout);
     } catch (_) {}
-    if (!required) return needExoFitRemount;
-    await MusicPlayerService().releaseMpvForVideo();
-    await AudiobookPlayerService().releaseMpvForVideo();
     return needExoFitRemount;
   }
 

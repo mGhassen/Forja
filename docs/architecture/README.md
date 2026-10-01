@@ -15,7 +15,7 @@ Cross-cutting architecture docs for the Forja Flutter app. **Code is source of t
 
 | RFC | Topic |
 |-----|-------|
-| [RFC-019](../rfc/019-[draft]-god-file-decomposition.md) | God-file splits — line budget, target layouts, migration order |
+| [RFC-019](../rfc/fixed/019-[fixed]-god-file-decomposition.md) | God-file splits — line budget, target layouts, migration order |
 | [RFC-026](../rfc/026-[draft]-media-details-player-ux.md) | Media details + player UX; shared `media_details/` widgets |
 | [RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md) | `ShellProfile`, `ShellMetrics`, `ShellInputPolicy`, TV coordinator |
 | [RFC-048](../rfc/fixed/048-[fixed]-tv-focus-graph.md) | `TvFocusGraph` + screen recipes (Home / hubs / Search / Live Sports / IPTV / player overlays) |
@@ -25,14 +25,14 @@ Cross-cutting architecture docs for the Forja Flutter app. **Code is source of t
 
 | Layer | Location | Use in widgets |
 |-------|----------|----------------|
-| **Shell / profile** | `shared/foundation/primitives/`, `shell/adapters/`, `shared/foundation/tv/` | `ShellScope.metricsOf`, `ShellScope.inputPolicyOf` — never `ShellTokens.isTvLayout` |
-| **Shared presentation** | `shared/foundation/` — `primitives/`, `components/` (`hero/`, `media_details/`, …) | Reusable UI; screen passes data + callbacks |
+| **Shell / profile** | `shell/`, `shell/adapters/` | `ShellScope.metricsOf`, `ShellScope.inputPolicyOf` — never `ShellTokens.isTvLayout` |
+| **Shared presentation** | `packages/forja_foundation` + `shell/` + `shared/player/` | Reusable UI; screen passes data + callbacks |
 | **Tab browse** | `features/<name>/` | Orchestrator screens (&lt;800 lines target), `widgets/`, `catalog/`, `controller/` |
 | **Media routes** | `features/media/` | TMDB-global details + Stremio catalog screens — entry via `AppRouter` |
 
 ## Cursor rules
 
-- [forja-shared-ui.mdc](../../.cursor/rules/forja-shared-ui.mdc) — when to extract to `shared/foundation/`
+- [forja-shared-ui.mdc](../../.cursor/rules/forja-shared-ui.mdc) — when to extract to the package / `shared/kit` / player
 - [forja-design-system.mdc](../../.cursor/rules/forja-design-system.mdc) — tokens, buttons, TV focus patterns
 - [forja-tv-scope.mdc](../../.cursor/rules/forja-tv-scope.mdc) — supported TV tabs for D-pad QA
 

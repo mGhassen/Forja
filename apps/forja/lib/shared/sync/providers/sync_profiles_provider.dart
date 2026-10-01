@@ -24,6 +24,12 @@ class SyncProfilesNotifier extends AsyncNotifier<SyncProfilesSnapshot> {
   @override
   Future<SyncProfilesSnapshot> build() async {
     ref.watch(syncIdentityRevisionProvider);
+    final sync = ref.read(syncServiceProvider);
+    // Signed-out `listProfiles` returns [] — drop prior value so Who's watching
+    // does not treat that as a settled empty account across re-login.
+    if (!sync.isSignedIn) {
+      return const SyncProfilesSnapshot(profiles: []);
+    }
     return _load();
   }
 

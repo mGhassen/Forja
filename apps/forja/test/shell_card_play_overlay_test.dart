@@ -2,7 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 Widget _overlayHarness({
   required bool active,
@@ -42,44 +43,54 @@ Finder get _hoverTarget =>
     find.byKey(const ValueKey('shell-card-play-hover-target'));
 
 void main() {
-  testWidgets('active visible play control pulses only on button hover', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_overlayHarness(active: false, visible: true));
-
-    expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1);
-    expect(
-      tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
-      Offset.zero,
-    );
-
-    await tester.pumpWidget(_overlayHarness(active: true, visible: true));
-
-    expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1.1);
-    expect(
-      tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
-      const Offset(0, -0.1),
-    );
-    expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
-
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(mouse.removePointer);
-    await mouse.addPointer();
-    await mouse.moveTo(tester.getCenter(_hoverTarget));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    final pulse = tester.widget<ScaleTransition>(_playPulse);
-    expect(pulse.scale.value, greaterThan(1));
-    expect(pulse.scale.value, lessThanOrEqualTo(1.12));
-
-    await mouse.moveTo(const Offset(0, 0));
-    await tester.pump();
-    expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
-  });
+  final accentFill = ForjaShellColors.brandGreen.withValues(alpha: 0.18);
 
   testWidgets(
-    'inactive visible play accents green and pulses only on button hover',
+    'active visible play control tints green, floats, and heartbeats',
+    (tester) async {
+      await tester.pumpWidget(_overlayHarness(active: false, visible: true));
+
+      expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1);
+      expect(
+        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
+        Offset.zero,
+      );
+
+      await tester.pumpWidget(_overlayHarness(active: true, visible: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale,
+        1.1,
+      );
+      expect(
+        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
+        const Offset(0, -0.1),
+      );
+      expect(
+        tester.widget<AnimatedContainer>(find.byType(AnimatedContainer))
+            .decoration,
+        isA<BoxDecoration>()
+            .having((d) => d.color, 'color', accentFill)
+            .having(
+              (d) => d.border?.top.color,
+              'border',
+              ForjaShellColors.brandGreen,
+            ),
+      );
+      expect(
+        tester.widget<Icon>(find.byIcon(Icons.play_arrow_rounded)).color,
+        ForjaShellColors.brandGreen,
+      );
+      final pulse = tester.widget<ScaleTransition>(_playPulse);
+      expect(pulse.scale.value, greaterThan(1));
+      expect(pulse.scale.value, lessThanOrEqualTo(1.12));
+    },
+  );
+
+  testWidgets(
+    'inactive visible play accents green tint and pulses only on button hover',
     (tester) async {
       await tester.pumpWidget(_overlayHarness(active: false, visible: true));
 
@@ -99,6 +110,7 @@ void main() {
       await mouse.addPointer();
       await mouse.moveTo(tester.getCenter(_hoverTarget));
       await tester.pump();
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(
@@ -112,11 +124,13 @@ void main() {
       expect(
         tester.widget<AnimatedContainer>(find.byType(AnimatedContainer))
             .decoration,
-        isA<BoxDecoration>().having(
-          (d) => d.color,
-          'color',
-          ForjaShellColors.brandGreen,
-        ),
+        isA<BoxDecoration>()
+            .having((d) => d.color, 'color', accentFill)
+            .having(
+              (d) => d.border?.top.color,
+              'border',
+              ForjaShellColors.brandGreen,
+            ),
       );
       final pulse = tester.widget<ScaleTransition>(_playPulse);
       expect(pulse.scale.value, greaterThan(1));
@@ -140,9 +154,42 @@ void main() {
       tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity,
       0,
     );
+    // Hidden + active still arms the controller, but scale stays at rest (value 0).
     expect(tester.widget<ScaleTransition>(_playPulse).scale.value, 1);
     expect(tester.getSize(find.byType(AnimatedContainer)), const Size(30, 30));
     expect(tester.widget<Icon>(find.byIcon(Icons.play_arrow_rounded)).size, 18);
+  });
+
+  testWidgets('expand Stack parent does not stretch play diameter', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 280,
+            height: 160,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ShellCardPlayOverlay(
+                  active: true,
+                  visible: true,
+                  diameter: 48,
+                  iconSize: 28,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.getSize(find.byType(AnimatedContainer)), const Size(48, 48));
+    expect(
+      tester.getSize(find.byKey(const ValueKey('shell-card-play-hover-target'))),
+      const Size(48, 48),
+    );
   });
 
   testWidgets('visible play button receives tap; card does not', (tester) async {

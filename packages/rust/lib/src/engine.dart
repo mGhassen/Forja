@@ -100,6 +100,10 @@ class RustLib {
     return _readString(ptr);
   }
 
+  /// JSON array of `ctx.emit` rows drained since the last poll. `[]` when empty.
+  String engineTakeJobEvents(int jobId) =>
+      _readString(_native.ffi_engine_take_job_events(jobId));
+
   int add(int a, int b) => _native.ffi_add(a, b);
 
   bool episodeMatches(String filename, int season, int episode) {
@@ -364,21 +368,6 @@ class RustLib {
     return _readString(_native.ffi_indexer_request_json(ptr));
   });
 
-  String debridRequestJson(String requestJson) => using((arena) {
-    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_debrid_request_json(ptr));
-  });
-
-  String site111477IndexRequestJson(String requestJson) => using((arena) {
-    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_site111477_index_request_json(ptr));
-  });
-
-  String megaResolveJson(String embedUrl) => using((arena) {
-    final ptr = embedUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_mega_resolve_json(ptr));
-  });
-
   String metadataRequestJson(String requestJson) => using((arena) {
     final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     return _readString(_native.ffi_metadata_request_json(ptr));
@@ -500,6 +489,14 @@ class RustLib {
     return _native.ffi_proxy_register_route(tokenPtr, urlPtr);
   });
 
+  /// Path-style external handoff URL (`/ext/{id}/{entry}`) with headers held in
+  /// the proxy session — required for cookie DASH relative SegmentTemplate.
+  String proxyCreateExtSession(String url, String headersJson) => using((arena) {
+    final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final hdrPtr = headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_proxy_create_ext_session(urlPtr, hdrPtr));
+  });
+
   int lanServerStart({int bindMode = 1, int preferredPort = 0}) =>
       _native.ffi_lan_server_start(bindMode, preferredPort);
 
@@ -554,6 +551,11 @@ class RustLib {
   String providerHealthJson(String payloadJson) => using((arena) {
     final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     return _readString(_native.ffi_provider_health_json(ptr));
+  });
+
+  String iptvCatalogJson(String requestJson) => using((arena) {
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_iptv_catalog_json(ptr));
   });
 
   String storageOpen(String path) => using((arena) {
@@ -626,6 +628,11 @@ final class _FfiNative {
       ffi_engine_take_job_result = lib
           .lookup<ffi.NativeFunction<_EngineTakeJobNative>>(
             'ffi_engine_take_job_result',
+          )
+          .asFunction(),
+      ffi_engine_take_job_events = lib
+          .lookup<ffi.NativeFunction<_EngineTakeJobNative>>(
+            'ffi_engine_take_job_events',
           )
           .asFunction(),
       ffi_add = lib
@@ -824,21 +831,6 @@ final class _FfiNative {
             'ffi_indexer_request_json',
           )
           .asFunction(),
-      ffi_debrid_request_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_debrid_request_json',
-          )
-          .asFunction(),
-      ffi_site111477_index_request_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_site111477_index_request_json',
-          )
-          .asFunction(),
-      ffi_mega_resolve_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_mega_resolve_json',
-          )
-          .asFunction(),
       ffi_metadata_request_json = lib
           .lookup<ffi.NativeFunction<_StringInOutNative>>(
             'ffi_metadata_request_json',
@@ -950,6 +942,11 @@ final class _FfiNative {
             'ffi_proxy_register_route',
           )
           .asFunction(),
+      ffi_proxy_create_ext_session = lib
+          .lookup<ffi.NativeFunction<_ProxyCreateExtSessionNative>>(
+            'ffi_proxy_create_ext_session',
+          )
+          .asFunction(),
       ffi_lan_server_start = lib
           .lookup<ffi.NativeFunction<_LanServerStartNative>>(
             'ffi_lan_server_start',
@@ -1030,6 +1027,9 @@ final class _FfiNative {
             'ffi_provider_health_json',
           )
           .asFunction(),
+      ffi_iptv_catalog_json = lib
+          .lookup<ffi.NativeFunction<_StoragePathNative>>('ffi_iptv_catalog_json')
+          .asFunction(),
       ffi_storage_open = lib
           .lookup<ffi.NativeFunction<_StoragePathNative>>('ffi_storage_open')
           .asFunction(),
@@ -1050,6 +1050,7 @@ final class _FfiNative {
   final void Function() ffi_engine_clear_shutdown;
   final int Function(int, ffi.Pointer<ffi.Char>) ffi_engine_submit_job;
   final ffi.Pointer<ffi.Char> Function(int) ffi_engine_take_job_result;
+  final ffi.Pointer<ffi.Char> Function(int) ffi_engine_take_job_events;
   final int Function(int, int) ffi_add;
   final bool Function(ffi.Pointer<ffi.Char>, int, int) ffi_episode_matches;
   final int Function(ffi.Pointer<ffi.Char>, int, int)
@@ -1160,12 +1161,6 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_indexer_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_debrid_request_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_site111477_index_request_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_mega_resolve_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_metadata_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_subtitle_request_json;
@@ -1206,6 +1201,11 @@ final class _FfiNative {
   final int Function() ffi_proxy_port;
   final bool Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)
   ffi_proxy_register_route;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  )
+  ffi_proxy_create_ext_session;
   final int Function(int, int) ffi_lan_server_start;
   final ffi.Pointer<ffi.Char> Function() ffi_lan_server_last_error;
   final void Function() ffi_lan_server_stop;
@@ -1227,6 +1227,7 @@ final class _FfiNative {
   ffi_seek111477_purge_cache_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_provider_health_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) ffi_iptv_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) ffi_storage_open;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_storage_get_json;
@@ -1318,6 +1319,11 @@ typedef _ProxyStartNative = ffi.Int32 Function(ffi.Uint16);
 typedef _ProxyPortNative = ffi.Uint16 Function();
 typedef _ProxyRegisterNative =
     ffi.Bool Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>);
+typedef _ProxyCreateExtSessionNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+    );
 typedef _LanServerStartNative = ffi.Int32 Function(ffi.Uint8, ffi.Uint16);
 typedef _LanBrowseNative = ffi.Pointer<ffi.Char> Function(ffi.Uint64);
 typedef _Seek111477JsonNative =

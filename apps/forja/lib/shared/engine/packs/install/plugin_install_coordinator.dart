@@ -1,19 +1,23 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/settings/settings_catalog.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/features/settings/shell/catalog.dart';
+import 'package:forja/features/settings/packs/engine_pack_update.dart';
+
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
-import 'package:forja/shared/engine/runtime/service.dart';
+import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
+import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 
 /// User-visible install phase for Settings + shell banner.
 enum PluginInstallPhase { loading, installing, ready }
@@ -43,6 +47,8 @@ class PluginInstallProgress {
 
   PluginInstallPhase get phase {
     final lower = label.toLowerCase();
+    // Explicit terminal labels only — do not treat fraction==1 as "ready"
+    // (that flashed green between packs during Reload all).
     if (lower.startsWith('ready') || lower.contains('plugins ready')) {
       return PluginInstallPhase.ready;
     }
@@ -52,7 +58,6 @@ class PluginInstallProgress {
         (completedSteps == 0 && fraction <= 0)) {
       return PluginInstallPhase.loading;
     }
-    if (fraction >= 1.0) return PluginInstallPhase.ready;
     return PluginInstallPhase.installing;
   }
 
@@ -81,6 +86,15 @@ class PluginInstallCoordinator {
   /// Toast → Update: packs to confirm in [PluginPackUpdatePromptHost].
   final ValueNotifier<List<EnginePackUpdateInfo>?> pendingUpdatePrompt =
       ValueNotifier<List<EnginePackUpdateInfo>?>(null);
+
+  /// Live pending update count for nav badge (same check as the toast).
+  final ValueNotifier<int> pendingUpdateCount = ValueNotifier<int>(0);
+
+  void publishPendingUpdateCount(int count) {
+    final next = count < 0 ? 0 : count;
+    if (pendingUpdateCount.value == next) return;
+    pendingUpdateCount.value = next;
+  }
 
   final ValueNotifier<PluginInstallProgress?> progress =
       ValueNotifier<PluginInstallProgress?>(null);
@@ -154,6 +168,9 @@ class PluginInstallCoordinator {
         '(${pack.plugins.length} plugins) $manifestUrl',
       );
       await DeferredRemoteInstallStore.clear(manifestUrl);
+      if (pack.plugins.any((p) => p.isDebrid)) {
+        await syncDebridResolveCatalog();
+      }
       return pack;
     } catch (e) {
       debugPrint('[PluginInstall] failed $manifestUrl: $e');
@@ -217,6 +234,8 @@ class PluginInstallCoordinator {
     );
     return EngineService.instance.installWithProgress(
       manifestUrl,
+      // Reload / Update must not reuse on-disk scripts (stale hub layout).
+      forceNetwork: isUpdate,
       onFetchProgress: (tick) {
         _setProgress(
           PluginInstallProgress(
@@ -306,13 +325,17 @@ class PluginInstallCoordinator {
   }
 
   /// Peek remote manifests; toast once per session when updates exist.
-  /// Sticky until Update / close (TV: D-pad leave / Back also dismisses).
+  /// Timed card — dismissed early when packs are updated (or user closes).
   /// Waits for intro splash so it is not over the logo.
   Future<void> notifyPendingUpdatesIfAny() async {
     try {
       final packs = await PluginRegistry.instance.listPacksRaw();
       final check = await EngineService.instance.checkPackUpdates(packs);
-      if (check.updates.isEmpty) return;
+      publishPendingUpdateCount(check.updates.length);
+      if (check.updates.isEmpty) {
+        clearPackUpdateToast();
+        return;
+      }
       if (_updateToastShownThisSession) return;
       await _waitForSplashDismissed();
       if (_updateToastShownThisSession) return;
@@ -323,9 +346,9 @@ class PluginInstallCoordinator {
       ForjaToast.info(
         count == 1
             ? '$sample update available'
-            : '$count plugin updates available',
-        // Sticky until Update or close — once-per-session toast.
-        duration: Duration.zero,
+            : EnginePackUpdateCopy.available(count),
+        duration: const Duration(seconds: 10),
+        tag: ForjaToastTags.packUpdates,
         actionLabel: 'Update',
         onAction: () {
           pendingUpdatePrompt.value = list;
@@ -334,6 +357,11 @@ class PluginInstallCoordinator {
     } catch (e) {
       debugPrint('[PluginInstall] update notify failed: $e');
     }
+  }
+
+  /// Drop the "update available" toast (updates applied or none left).
+  void clearPackUpdateToast() {
+    ForjaToast.dismissTag(ForjaToastTags.packUpdates);
   }
 
   Future<void> _waitForSplashDismissed() async {
@@ -373,6 +401,10 @@ class PluginInstallCoordinator {
         );
         ForjaToast.error('${entry.packName} update failed: $e');
       }
+    }
+    if (ok > 0) {
+      clearPackUpdateToast();
+      publishPendingUpdateCount(0);
     }
     return ok;
   }
@@ -479,12 +511,12 @@ class PluginInstallCoordinator {
       } catch (e) {
         debugPrint('[PluginInstall] install failed ($url): $e');
         PluginRegistry.officialInstallError.value =
-            e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+            PackHttp.humanizeError(e, url);
       }
       completed++;
       _setProgress(
         PluginInstallProgress(
-          label: job.isUpdate ? 'Ready: ${pack.name}' : 'Installed ${pack.name}',
+          label: job.isUpdate ? 'Updated ${pack.name}' : 'Installed ${pack.name}',
           manifestUrl: url,
           sourceUrl: url,
           completedSteps: completed,
@@ -495,10 +527,14 @@ class PluginInstallCoordinator {
     }
 
     if (installedNames.isNotEmpty) {
+      // Keep the progress card while the result toast stacks under it
+      // (same column — do not clear first or they fight over one slot).
       await notifyCloudPacksInstalled(installedNames);
+      progress.value = null;
     }
 
     await syncTorrentSearchCatalog();
+    await syncDebridResolveCatalog();
     if (notifyUpdates) {
       unawaited(notifyPendingUpdatesIfAny());
     }

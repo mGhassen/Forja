@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 2** acceptance |
-| **Current slice** | ANR-capped prepare + sticky MediaKit race remount |
+| **Progress** | **13 / 13** fix · **0 / 2** acceptance |
+| **Current slice** | Remount+reopen on ATV first frame (matches switch-away-and-back) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -31,6 +31,9 @@
 | 8 | I129-T08 | Sticky `markExoFitRemount` on MediaKit dispose + 1.5s wall-clock cool-down when mounting Exo (no FFI await) | ✅ |
 | 9 | I129-T09 | VOD + IPTV: one-shot Exo TextureView remount after first paint when MediaKit raced | ✅ |
 | 10 | I129-T10 | Native Exo: `refreshContentFrameLayout` on attach / video size / first frame / setResizeMode | ✅ |
+| 11 | I129-T11 | ATV TextureView cold-open (no MediaKit): one-shot remount after first frame + stronger native aspect/transform refresh + `SizedBox.expand` / `endOfFrame` before open | ✅ |
+| 12 | I129-T12 | Broaden fit hygiene: Exo remount on all Android (phone + TV); `SizedBox.expand` in Exo/AV/VLC view widgets + MediaKit `Video` (mobile/desktop/IPTV/trailer) | ✅ |
+| 13 | I129-T13 | First-frame fit: await layout after PlatformView remount; MediaKit race + ATV reopen stream (stop+open) — remount-only left zoom until manual engine switch | ✅ |
 
 ---
 
@@ -59,10 +62,17 @@ VOD `PlayerScreen._switchPlayer` did an **instant** `setState` engine swap. Medi
 
 **Follow-up (T08–T10, 2026-09-09):** The 1.2s cap still left zoomed frames when MediaCodec outlived prepare. Double prepare (switch + Exo boot) could clear `_pendingVideoDispose` before boot, so the crop looked “random.” Sticky `markExoFitRemount` on MediaKit dispose, wall-clock cool-down (no FFI), and one-shot TextureView remount after first paint match the user workaround (switch away → back to Exo). Native content-frame refresh on attach/size/frame is belt-and-suspenders.
 
+**Cold-open TextureView (T11, 2026-09-21):** VOD (and IPTV) Exo on ATV is always TextureView (issue 133). Emulator goldfish + SurfaceProducer cold-open still painted a floating zoomed band with correct 16:9 `video format` logs — no MediaKit race. One-shot remount after first frame now runs for **all ATV Exo** (not only MediaKit sticky). Native refresh clears TextureView transform + re-applies `VideoSize` aspect; Dart waits `endOfFrame` and wraps the view in `SizedBox.expand`.
+
+**Cross-platform (T12, 2026-09-21):** Same remount for **all Android Exo** (phone + TV). `SizedBox.expand` lives inside `ExoPlayerView` / `AvPlayerView` / `VlcPlayerView` and around MediaKit `Video` on mobile, desktop, IPTV, and trailer so intrinsic-size surfaces cannot float as a cropped band.
+
+**Remount ≠ switch-away (T13, 2026-09-22):** Emulator log showed `remount TextureView after MediaKit surface race` while the picture stayed zoomed until the user switched engines and back. Remount-only bumped the PlatformView key and called `setResizeMode` in the same turn (hit the *old* PlayerView before attach). T13 awaits two frames after remount, then on MediaKit race / ATV **reopens** the stream (same as surface-fallback / switch-away-and-back). Phone cold-open still remounts + re-asserts FIT without a full reopen.
+
 ## Related
 
 - [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — SurfaceView tiling / hybrid composition
 - [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) — ATV SurfaceView for live FPS
 - [128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) — MediaKit surface teardown / switch ANR
+- [133](133-[open]-android-tv-exo-physical-audio-only.md) — physical ATV SurfaceView audio-only → TextureView
 - [RFC-029](../rfc/029-[open]-dual-built-in-playback-engines.md)
 - [Player](../features/playback/player.md)

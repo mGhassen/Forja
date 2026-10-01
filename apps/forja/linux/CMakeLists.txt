@@ -7,7 +7,12 @@ project(runner LANGUAGES CXX)
 set(BINARY_NAME "forja")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "com.forjahq.app")
+# Debug/Profile use .dev so local builds do not share session/prefs with Release.
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(APPLICATION_ID "com.forjahq.app")
+else()
+  set(APPLICATION_ID "com.forjahq.app.dev")
+endif()
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.

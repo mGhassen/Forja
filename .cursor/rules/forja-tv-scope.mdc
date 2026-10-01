@@ -1,7 +1,7 @@
 ---
 description: TV profile — supported nav tabs, file map, and D-pad focus requirements
 globs: apps/forja/lib/**/*.dart
-alwaysApply: true
+alwaysApply: false
 ---
 
 # TV scope — supported tabs only
@@ -10,14 +10,14 @@ On **TV profile** (`ShellInputPolicy.tv`), only these shell tabs are in scope fo
 
 | Tab (user) | Nav ID | Primary screen |
 |------------|--------|----------------|
-| Home | `home` | KitShell via hub pack `nav` (`plugins/hubs/home`) |
+| Home | `home` | Hub pack `nav` → host thin kit interpreter (`forja-packs/hubs/home`) |
 | Search | `search` | archived / out of TV polish unless restored |
-| Anime | `anime` | KitShell via hub pack (`plugins/hubs/anime`) |
-| Asian Drama | `asian_drama` | KitShell via hub pack (`plugins/hubs/asian_drama`) |
-| IPTV | `iptv` | `features/iptv/screens/iptv_pt_screen.dart` |
-| Live Sports | `live_sports` / `live_sports_cards` | KitShell via hub pack (`plugins/hubs/live_sports`, `live_sports_cards`) |
-| Lists | `mylist` | KitShell via hub pack (`plugins/hubs/my_list`) |
-| Settings | `settings` | `features/settings/settings_screen.dart` |
+| Anime | `anime` | Hub pack → kit interpreter (`forja-packs/hubs/anime`) |
+| Asian Drama | `asian_drama` | Hub pack → kit interpreter (`forja-packs/hubs/asian_drama`) |
+| IPTV | `iptv` | Hub pack → kit interpreter (`forja-packs/hubs/iptv`) |
+| Live Sports | `live_sports` / `live_sports_cards` | Hub packs → kit interpreter |
+| Lists | pack `nav.tabId` | Installed Lists hub → kit interpreter |
+| Settings | `settings` | `features/settings/shell/screen.dart` |
 
 Nav registry: `apps/forja/lib/shell/nav/nav_config.dart` (`navDestinations`, `navTabBuilders`).
 
@@ -37,27 +37,29 @@ Read `ShellScope.inputPolicyOf(context)` — never `ShellTokens.isTvLayout` in w
 | `ForjaShellChip` | Filter/mood chips (uses focus on TV automatically) |
 | `HoverScale` | Delegates to `shellFocusableTap` on TV — prefer for legacy cards |
 | `ExcludeFocus` on empty overlay | `shell_overlay_navigator.dart` — do not regress |
-| **Text inputs / search fields** | **Browse focus only on D-pad land — never activate** (see below) |
+| **Text inputs / search fields** | **Leanback TV:** browse focus only on D-pad land — never activate. **Desktop / phone:** type on focus (see below) |
 
 Hub sub-routes pushed via `pushShellRoute` (details, search, explore) inherit the same rules.
 
-## TV text inputs — focus ≠ activate (mandatory)
+## Text inputs — leanback focus ≠ activate (mandatory)
 
-**Hard rule:** On TV, D-pad / arrow focus on a text field, search field, or search chrome control must **only move focus** (highlight). It must **never** open the keyboard, enter edit mode, expand search, submit, or fire `onTap` / `onSubmitted` / open handlers.
+**Hard rule (leanback TV only):** D-pad / arrow focus on a text field, search field, or search chrome control must **only move focus** (highlight). It must **never** open the keyboard, enter edit mode, expand search, submit, or fire `onTap` / `onSubmitted` / open handlers.
 
-**Activate only on explicit select:** OK / Select / Enter / click / tap. Not on `onFocusChange(true)`, `autofocus`, or “focus landed so open it”.
+**Activate only on explicit select (TV):** OK / Select / Enter / click / tap. Not on `onFocusChange(true)`, `autofocus`, or “focus landed so open it”.
+
+**Desktop and phone:** type on focus — Tab / click into a field and type immediately. Gate with `ShellInputPolicy.browseTextUntilActivate` (leanback only), not `useFocusableMoodChips`.
 
 | Do | Don’t |
 |----|--------|
-| Use `TvBrowseTextField` for TV search/query fields | Raw `TextField` that attaches IME when focused |
-| Use browse/edit split like `SettingsTextField` (browse node in traversal; edit node only after OK) | `onFocusChange: (f) { if (f) openSearch() / beginEditing() }` |
-| Open search chrome / keyboard from tool button `onTap` or activate key | Auto-open search or keyboard because focus moved onto Search / the field |
-| Keep `readOnly` + no IME in browse; `TextInputType.none` until editing | `autofocus: true` on an editable field that pops the keyboard on land |
+| Use `TvBrowseTextField` / `browseTextUntilActivate` for search/query fields on TV | Raw `TextField` that attaches IME when focused on leanback |
+| Use browse/edit split like `SettingsTextField` on TV (browse node in traversal; edit node only after OK / Enter) | `onFocusChange: (f) { if (f) openSearch() / beginEditing() }` on TV |
+| Open search chrome / keyboard from tool button `onTap` or activate key on TV | Auto-open IME on TV because focus moved onto Search / the field |
+| Keep `readOnly` + no IME in TV browse; `TextInputType.none` until editing | `autofocus: true` on an editable field that pops the soft keyboard on leanback land |
 
-Canonical widgets: `shared/foundation/primitives/tv/tv_browse_text_field.dart`, `SettingsTextField` in `settings_ui.dart`. Same contract for IPTV catalog search, portal search, hub search, player episode search, settings fields — every TV text input.
+Canonical widgets: `shell/tv/tv_browse_text_field.dart`, `SettingsTextField` in `settings_ui.dart`. Same contract for IPTV catalog search, portal search, hub search, player episode search, settings fields — browse-until-activate on leanback; type-on-focus on desktop.
 
 ## Shell shared with all in-scope tabs
 
-`shell/frame/shell_scaffold.dart`, `shell/nav/shell_nav_rail.dart`, `shell/routing/shell_overlay_navigator.dart`, `shared/foundation/blocks/shell/kit_top_bar_host.dart`, `shared/foundation/tv/tv_remote_debug.dart`.
+`shell/frame/shell_scaffold.dart`, `shell/nav/shell_nav_rail.dart`, `shell/routing/shell_overlay_navigator.dart`, `shell/chrome/kit_chrome_top_bar.dart`, `shell/tv/tv_remote_debug.dart`.
 
 When fixing TV navigation on one in-scope tab, grep the same pattern across the other seven before marking done.

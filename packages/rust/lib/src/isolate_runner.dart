@@ -9,6 +9,13 @@ Future<String> runStremioHttpGet(String url, {int timeoutSecs = 15}) =>
       'timeout_secs': timeoutSecs,
     });
 
+/// Stream-list GET. [Engine.cancelStremioStreamFetches] aborts this kind only.
+Future<String> runStremioStreamGet(String url, {int timeoutSecs = 15}) =>
+    EngineJobs.run(EngineAsyncJob.stremioStreamGet, {
+      'url': url,
+      'timeout_secs': timeoutSecs,
+    });
+
 Future<String> runHttpGetJson(
   String url, {
   int timeoutSecs = 15,
@@ -48,23 +55,10 @@ Future<String> runIndexerRequestJson(String requestJson) =>
       'requestJson': requestJson,
     });
 
-Future<String> runDebridRequestJson(String requestJson) => EngineWorkerPool.run(
-  EngineJobKind.debridRequest,
-  {'requestJson': requestJson},
-);
-
-Future<String> runSite111477IndexRequestJson(String requestJson) =>
-    EngineWorkerPool.run(EngineJobKind.site111477IndexRequest, {
-      'requestJson': requestJson,
-    });
-
 Future<String> runSeek111477StartJson(String requestJson) => EngineJobs.run(
   EngineAsyncJob.seek111477Start,
   {'requestJson': requestJson},
 );
-
-Future<String> runMegaResolveJson(String embedUrl) =>
-    EngineWorkerPool.run(EngineJobKind.megaResolve, {'embedUrl': embedUrl});
 
 Future<String> runMetadataRequestJson(String requestJson) =>
     EngineWorkerPool.run(EngineJobKind.metadataRequest, {
@@ -100,6 +94,9 @@ Future<String> runIptvRedditCatalogJson(String requestJson) => EngineJobs.run(
 
 Future<String> runIptvXtreamJson(String requestJson) =>
     EngineJobs.run(EngineAsyncJob.iptvXtream, {'requestJson': requestJson});
+
+Future<String> runIptvCatalogJson(String requestJson) =>
+    EngineJobs.run(EngineAsyncJob.iptvCatalog, {'requestJson': requestJson});
 
 // ── CPU / fast — worker pool ────────────────────────────────────────────────
 

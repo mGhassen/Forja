@@ -1,0 +1,4428 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/downloads/download_library_panel.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_hero.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/catalog_epg_guide_host.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/channel_catalog_health_host.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
+import 'package:forja/shared/player/live/tv_focus.dart';
+import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/runtime/actions/schedule/kit_schedule_window.dart';
+import 'package:forja/shared/engine/runtime/actions/event_search/kit_event_list_search.dart';
+import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_sort_action_host.dart';
+import 'package:forja/shared/engine/runtime/actions/portals/portals_action_host.dart';
+import 'package:forja/shared/engine/runtime/actions/schedule/top_bar_host_hooks.dart';
+import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
+import 'package:forja_foundation/widgets/chrome/filter_sheet_option.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
+import 'package:forja/shared/engine/runtime/kit/lazy_viewport_gate.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
+import 'package:forja/shared/engine/store/list_open_flow.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
+import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
+import 'package:forja/shared/engine/runtime/kit/paint_foundation_mount.dart';
+import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
+import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
+import 'package:forja/shared/engine/details/kit_entry_details.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shared/engine/store/continue_entries.dart';
+import 'package:forja/shared/engine/store/list_follow.dart';
+import 'package:forja/shared/engine/store/watch_history.dart';
+import 'package:forja/shared/playback/open/history_playback_resume.dart';
+import 'package:forja/shared/playback/play_resolve.dart';
+import 'package:forja/shared/playback/open/engine_auto_play.dart';
+import 'package:forja/shared/player/sources/resolve/resolve_panel_host.dart';
+import 'package:forja/shared/player/sources/kit/kit_sources_panel.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
+import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
+import 'package:forja_foundation/blocks/catalog/columns_header_block.dart';
+import 'package:forja_foundation/blocks/catalog/tabs_cards_block.dart';
+import 'package:forja_foundation/blocks/catalog/top_body_block.dart';
+import 'package:forja_foundation/blocks/details/details_block.dart';
+import 'package:forja_foundation/blocks/details/match_details_block.dart';
+import 'package:forja_foundation/blocks/empty/empty_block.dart';
+import 'package:forja_foundation/blocks/props_map.dart';
+import 'package:forja_foundation/blocks/search/catalog_search_page.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
+import 'package:forja_foundation/blocks/shell/shell_block.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
+import 'package:forja_foundation/protocol/layout_types.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/because_section.dart';
+import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
+import 'package:forja_foundation/widgets/catalog/shell_mood_circle.dart';
+import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
+import 'package:forja_foundation/widgets/catalog/continue_section.dart';
+import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
+import 'package:forja_foundation/widgets/catalog/mood_section.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_menu.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_tabs.dart';
+import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
+import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
+import 'package:rust/rust.dart'
+    show SettingsService, WatchHistoryService, canResumeFromSavedProgress;
+
+/// Pack JSON bool — EngineJS / JSON sometimes deliver `'true'` / `1`.
+bool _packTruthy(Object? value) {
+  if (value == true) return true;
+  if (value == 1) return true;
+  final s = value?.toString().trim().toLowerCase() ?? '';
+  return s == 'true' || s == '1';
+}
+
+/// One mount table: pack `{ type, props, children?, load? }` → foundation.
+///
+/// Prepared pages and small chrome types are the same catalog — packs compose
+/// freely. Host only runs opaque [PackLoadedPaint] and injects callbacks.
+class PackPaintTree extends StatelessWidget {
+  const PackPaintTree({
+    super.key,
+    required this.spec,
+    required this.pluginId,
+    this.packSourceUrl,
+    this.tabId,
+    this.pageBottomChild,
+    this.compactSection = false,
+  });
+
+  final Map<String, dynamic> spec;
+  final String pluginId;
+  final String? packSourceUrl;
+  final String? tabId;
+
+  /// Bleed rail tucked under a hero backdrop (Featured under Spotlight).
+  final Widget? pageBottomChild;
+
+  /// Hero-bleed / Because-style rows — compact title top (pre-cutover).
+  final bool compactSection;
+
+  @override
+  Widget build(BuildContext context) {
+    if (spec['hideWhenTypeFilter'] == true &&
+        catalogChromeHidesTypeFilterRails(tabId)) {
+      return const SizedBox.shrink();
+    }
+
+    final type = LayoutTypes.normalize(
+      (spec['type'] ?? '').toString(),
+      spec,
+    );
+
+    // Opaque load first — then remount merged node as the same type catalog.
+    // continue / mood / because own host store or selection → handled in _mount.
+    final load = packLoadSpec(spec['load']);
+    if (load != null &&
+        type != LayoutTypes.list &&
+        type != LayoutTypes.continueWatching &&
+        type != LayoutTypes.mood &&
+        type != LayoutTypes.because) {
+      final id = (spec['id'] ?? spec['rail'] ?? type).toString();
+      final rail = (spec['rail'] ?? load.params['rail'] ?? '').toString();
+      final chrome = PackChromeScope.maybeOf(context);
+      final eager = type == LayoutTypes.hero ||
+          (spec['bleed'] != null &&
+              (spec['bleed'] as Object).toString().trim().isNotEmpty) ||
+          (chrome?.isEagerLoad(id, rail: rail) ?? false);
+      // Page-feed membership must NOT force eager — only first-paint keys /
+      // hero / bleed. Off-screen feed rails stay behind LazyViewportGate.
+      final heroBleed = pageBottomChild != null;
+      final loadPaint = PackLoadedPaint(
+        key: ValueKey('paint-$pluginId-$id-${load.action}'),
+        pluginId: pluginId,
+        packSourceUrl: packSourceUrl,
+        tabId: tabId,
+        action: load.action,
+        params: load.params,
+        fallbackSpec: spec,
+        loadingBottomChild:
+            type == LayoutTypes.hero ? pageBottomChild : null,
+        builder: (ctx2, merged) => PackPaintTree(
+          spec: merged,
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+          pageBottomChild: pageBottomChild,
+          compactSection: compactSection,
+        ),
+      );
+      // Eager rails paint immediately but still claim the prefetch lane so
+      // gated rows below warm [kKitRowPrefetchAhead] while scrolling.
+      if (eager) {
+        return _withMotion(
+          context,
+          spec,
+          LazyViewportGate(
+            key: ValueKey('lazy-gate-$pluginId-$id'),
+            detectorKey: Key('lazy-$pluginId-$id'),
+            placeholderHeight: 1,
+            eager: true,
+            builder: (ctx) => loadPaint,
+          ),
+        );
+      }
+      // Static structure only (no pulse) — TickerMode on tab show must not
+      // look like a rail reload when the gate is still inactive.
+      final compact = compactSection || spec['compactTop'] == true;
+      final slot = kitSectionLoadingSlot(
+        context,
+        spec,
+        compact: compact,
+        pageBottomBleed: heroBleed,
+        shimmer: false,
+      );
+      return _withMotion(
+        context,
+        spec,
+        LazyViewportGate(
+          key: ValueKey('lazy-gate-$pluginId-$id'),
+          detectorKey: Key('lazy-$pluginId-$id'),
+          placeholderHeight: slot.height,
+          placeholder: slot.placeholder,
+          eager: false,
+          builder: (ctx) => loadPaint,
+        ),
+      );
+    }
+
+    if (type == LayoutTypes.list) {
+      final listLoad = packLoadSpec(spec['load']) ??
+          (action: 'feed', params: <String, dynamic>{});
+      return _withMotion(
+        context,
+        spec,
+        PackLoadedPaint(
+          key: ValueKey('paint-$pluginId-list-${listLoad.action}'),
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+          action: listLoad.action,
+          params: listLoad.params,
+          fallbackSpec: spec,
+          builder: (ctx, merged) => _mountList(ctx, merged),
+        ),
+      );
+    }
+
+    return _withMotion(context, spec, _mount(context, spec, type: type));
+  }
+
+  /// Pack `motion{}` (node or props) → [ForjaMotionScope]. Generic merge only.
+  Widget _withMotion(
+    BuildContext context,
+    Map<String, dynamic> node,
+    Widget child,
+  ) {
+    final props = _propsOf(node);
+    final top = node['motion'];
+    final propsMotion = props['motion'];
+    final hasNums = props.containsKey('hoverScale') ||
+        props.containsKey('focusScale') ||
+        props.containsKey('durationMs') ||
+        props.containsKey('curve');
+    if (top is! Map && propsMotion == null && !hasNums) return child;
+
+    var theme = ForjaMotionTheme.of(context);
+    if (top is Map) {
+      theme = theme.merge(Map<String, Object?>.from(top));
+    }
+    theme = theme.mergeNodeProps(props);
+    return ForjaMotionScope(theme: theme, child: child);
+  }
+
+  /// Eager host section that still claims a prefetch lane index.
+  Widget _prefetchParticipant({
+    required String id,
+    required Widget child,
+  }) {
+    return LazyViewportGate(
+      key: ValueKey('lazy-gate-$pluginId-$id'),
+      detectorKey: Key('lazy-$pluginId-$id'),
+      placeholderHeight: 1,
+      eager: true,
+      builder: (_) => child,
+    );
+  }
+
+  List<Widget> _kids(BuildContext context, Map<String, dynamic> node) {
+    final raw = node['children'] ?? node['widgets'];
+    if (raw is! List) return const [];
+    return [
+      for (final c in raw)
+        if (c is Map)
+          PackPaintTree(
+            spec: Map<String, dynamic>.from(c),
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+          ),
+    ];
+  }
+
+  Map<String, dynamic> _propsOf(Map<String, dynamic> node) {
+    final paint = node['paint'];
+    final propsRaw = paint is Map ? paint['props'] : node['props'];
+    if (propsRaw is Map) return Map<String, dynamic>.from(propsRaw);
+    // Flat layout nodes (kit.topBar actions, kit.list items, …) are props.
+    return Map<String, dynamic>.from(node)
+      ..remove('type')
+      ..remove('children')
+      ..remove('widgets')
+      ..remove('load')
+      ..remove('paint');
+  }
+
+  Widget _mount(
+    BuildContext context,
+    Map<String, dynamic> node, {
+    required String type,
+  }) {
+    final props = _propsOf(node);
+    final kids = _kids(context, node);
+    final body = kids.isEmpty
+        ? const SizedBox.shrink()
+        : kids.length == 1
+            ? kids.first
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: kids,
+              );
+    final bg = ForjaShellColors.cinematic.menuSurface;
+    final scope = LayoutScope.maybeOf(context);
+
+    switch (type) {
+      case LayoutTypes.stack:
+        return LayoutStack(
+          spec: node,
+          childBuilder: (child, _) => PackPaintTree(
+            spec: child,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+          ),
+        );
+      case LayoutTypes.verticalFilters:
+        return const SizedBox.shrink();
+      case LayoutTypes.topBar:
+        return _chromeTopBar(context, node);
+      case LayoutTypes.categoryBar:
+        return _chromeCategoryBar(context, node);
+      case LayoutTypes.menu:
+        return _chromeMenu(context, node);
+      case LayoutTypes.tabs:
+        return _chromeTabs(context, node);
+      case LayoutTypes.list:
+        return _mountList(context, node);
+      case LayoutTypes.row:
+      case 'rail':
+      case 'ranked':
+        return PackPaintArtifact.posterRow(
+          context,
+          node: node,
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          compactTop: compactSection || node['compactTop'] == true,
+        );
+      case LayoutTypes.hero:
+        return _mountHero(context, node);
+      case LayoutTypes.mood:
+        // Host mounts load when built — still join the prefetch lane so
+        // New Releases / genres warm while Continue → Mood → Because scroll.
+        return _prefetchParticipant(
+          id: 'mood',
+          child: _MoodMount(
+            spec: node,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+          ),
+        );
+      case LayoutTypes.because:
+        return _prefetchParticipant(
+          id: 'because',
+          child: _BecauseMount(
+            spec: node,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+            mergeHomeWatchHistory: _packTruthy(node['mergeHomeWatchHistory']),
+          ),
+        );
+      case LayoutTypes.continueWatching:
+        return _prefetchParticipant(
+          id: 'continue',
+          child: _ContinueMount(
+            spec: node,
+            pluginId: pluginId,
+            tabId: tabId,
+            mergeHomeWatchHistory: _packTruthy(node['mergeHomeWatchHistory']),
+          ),
+        );
+      case 'catalogBody':
+        return CatalogBody.fromProps(props, sections: kids);
+      case 'columnsHeader':
+        return _mountColumnsHeader(context, node, props: props, scope: scope);
+      case 'topBody':
+        return _mountTopBody(context, node, props: props, scope: scope);
+      case 'tabsCards':
+        return _mountTabsCards(context, node, props: props);
+      case 'search':
+        return CatalogSearchPage.fromProps(props, results: body);
+      case 'details':
+        return DetailsBlock.fromProps(
+          props,
+          sections: kids,
+          fallbackBackground: bg,
+        );
+      case 'matchDetails':
+        return MatchDetailsPage.fromProps(
+          props,
+          belowActionRow: kids.isNotEmpty ? body : null,
+          fallbackBackground: bg,
+        );
+      case 'entryDetails':
+        return EntryDetails.fromProps(props, body: kids.isEmpty ? null : body);
+      case 'shell':
+        Widget? sideRail;
+        Widget shellBody = body;
+        if (kids.length >= 3) {
+          sideRail = kids[1];
+          shellBody = kids.length == 3
+              ? kids[2]
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: kids.sublist(2),
+                );
+        } else if (kids.length > 1) {
+          shellBody = kids.length == 2
+              ? kids[1]
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: kids.sublist(1),
+                );
+        }
+        return ShellBlock.fromProps(
+          props,
+          topBar: kids.isNotEmpty ? kids.first : null,
+          sideRail: sideRail,
+          body: shellBody,
+        );
+      case 'empty':
+        return EmptyBlock.fromProps(props);
+    }
+
+    final foundation = paintFoundationType(
+      context,
+      type: type,
+      props: props,
+      children: kids,
+    );
+    if (foundation != null) return foundation;
+
+    final paint = node['paint'];
+    if (paint is Map) {
+      return PackPaintArtifact.fromPaint(
+        context,
+        pluginId: pluginId,
+        paint: Map<String, dynamic>.from(paint),
+        open: node['open'] ?? paint['open'],
+        meta: node['meta'] ?? paint['meta'],
+      );
+    }
+    if (node['items'] is List) return _mountList(context, node);
+    if (kids.isNotEmpty) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.hasBoundedHeight) {
+            return ListView(padding: EdgeInsets.zero, children: kids);
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: kids,
+          );
+        },
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _mountColumnsHeader(
+    BuildContext context,
+    Map<String, dynamic> node, {
+    required Map<String, dynamic> props,
+    required LayoutScope? scope,
+  }) {
+    final chrome = PackChromeScope.maybeOf(context);
+    final merged = Map<String, dynamic>.from(props);
+    Widget? feed;
+    Map<String, dynamic>? categoryChild;
+    final rawKids = node['children'] ?? node['widgets'];
+    if (rawKids is List) {
+      for (final c in rawKids) {
+        if (c is! Map) continue;
+        final child = Map<String, dynamic>.from(c);
+        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
+        if (t == LayoutTypes.topBar) {
+          merged['actions'] ??= child['actions'];
+          merged['title'] ??= child['title'] ?? child['label'];
+        } else if (t == LayoutTypes.categoryBar) {
+          categoryChild = child;
+          final barId = (child['id'] ?? 'cats').toString();
+          final dynamicItems = chrome?.barItems(barId);
+          final seedItems = child['items'];
+          final mergedSide = <Map<String, dynamic>>[];
+          final seen = <String>{};
+          void addSide(Map raw) {
+            final sid = (raw['id'] ?? '').toString().trim();
+            if (sid.isEmpty || !seen.add(sid)) return;
+            mergedSide.add({
+              'id': sid,
+              'label': (raw['label'] ?? raw['title'] ?? sid).toString(),
+            });
+          }
+
+          if (seedItems is List) {
+            for (final raw in seedItems) {
+              if (raw is Map) addSide(raw);
+            }
+          }
+          if (dynamicItems != null) {
+            for (final raw in dynamicItems) {
+              addSide(raw);
+            }
+          }
+          if (mergedSide.isNotEmpty) {
+            merged['sideItems'] = mergedSide;
+          } else {
+            merged['sideItems'] ??= child['items'];
+          }
+          final live = scope?.selectedId(barId);
+          merged['selectedSideId'] =
+              (live != null && live.isNotEmpty) ? live : child['default'];
+          merged['defaultSideId'] ??= child['default'];
+          if (child['width'] != null) merged['sideWidth'] ??= child['width'];
+          if (child['focusUp'] != null) merged['focusUp'] ??= child['focusUp'];
+          if (child['focusDown'] != null) {
+            merged['focusDown'] ??= child['focusDown'];
+          }
+        } else if (t == LayoutTypes.list || child['load'] != null) {
+          feed = PackPaintTree(
+            spec: child,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+          );
+        }
+      }
+    }
+    final actions = propsActionMaps(merged);
+    // Mount kit.categoryBar directly (CatalogCategoryRail + pin/fav host).
+    // Do not fold into CatalogSideRail — that dropped Favorites / pin / DnD.
+    final side = categoryChild == null
+        ? null
+        : _chromeCategoryBar(context, categoryChild);
+    // Start covered when the list has an opaque load — avoids one empty-cats
+    // frame before PackLoadedPaint dispatches the loading cover.
+    final initialCover = feed != null;
+    final chromeDown = _chromeFocusDown(scope, merged);
+    return _CompositionCoverGate(
+      initialCover: initialCover,
+      builder: (hideSide) => ColumnsHeaderBlock.fromProps(
+        merged,
+        body: feed,
+        side: side,
+        hideSide: hideSide,
+        actionSelections: {
+          for (final a in actions)
+            if ((a['id'] ?? '').toString().isNotEmpty)
+              (a['id'] as Object).toString():
+                  scope?.selectedId((a['id'] as Object).toString()) ??
+                      (a['default'] ?? '').toString(),
+        },
+        actionSlots: _portalsActionSlots(
+          context,
+          actions: actions,
+          onDownEdge: chromeDown,
+        ),
+        wrapBody: _portalsWrapBody(context, actions: actions),
+        onDownEdge: chromeDown,
+        wrapChrome: _chromeTvWrap(context, actions: actions),
+        onActionSelect: (actionId, value) {
+          _dispatchTopBarAction(
+            context,
+            actions: actions,
+            actionId: actionId,
+            value: value,
+            scope: scope,
+          );
+        },
+        onSideSelect: side != null
+            ? null
+            : (id) {
+                final barId = (categoryChild?['id'] ??
+                        _childIdOfType(node, LayoutTypes.categoryBar) ??
+                        'cats')
+                    .toString();
+                scope?.onSelect(barId, id, toggle: false);
+              },
+      ),
+    );
+  }
+
+  Widget _mountTopBody(
+    BuildContext context,
+    Map<String, dynamic> node, {
+    required Map<String, dynamic> props,
+    required LayoutScope? scope,
+  }) {
+    final chrome = PackChromeScope.maybeOf(context);
+    final merged = Map<String, dynamic>.from(props);
+    Widget? feed;
+    Map<String, dynamic>? categoryChild;
+    final rawKids = node['children'] ?? node['widgets'];
+    if (rawKids is List) {
+      for (final c in rawKids) {
+        if (c is! Map) continue;
+        final child = Map<String, dynamic>.from(c);
+        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
+        if (t == LayoutTypes.topBar) {
+          merged['actions'] ??= child['actions'];
+          merged['title'] ??= child['title'] ?? child['label'];
+          if (child['focusDown'] != null) {
+            merged['focusDown'] ??= child['focusDown'];
+          }
+          if (child['focusUp'] != null) {
+            merged['focusUp'] ??= child['focusUp'];
+          }
+        } else if (t == LayoutTypes.categoryBar) {
+          categoryChild = child;
+          final barId = (child['id'] ?? 'kind').toString();
+          final dynamicItems = chrome?.barItems(barId);
+          final seedItems = child['items'];
+          final mergedKinds = <Map<String, dynamic>>[];
+          final seen = <String>{};
+          void addKind(Map raw) {
+            final kid = (raw['id'] ?? '').toString().trim();
+            if (kid.isEmpty || !seen.add(kid)) return;
+            mergedKinds.add({
+              'id': kid,
+              'label': (raw['label'] ?? raw['title'] ?? kid).toString(),
+              if (raw['icon'] != null) 'icon': raw['icon'],
+            });
+          }
+
+          if (seedItems is List) {
+            for (final raw in seedItems) {
+              if (raw is Map) addKind(raw);
+            }
+          }
+          if (dynamicItems != null) {
+            for (final raw in dynamicItems) {
+              addKind(raw);
+            }
+          }
+          if (mergedKinds.isNotEmpty) {
+            merged['kindItems'] = mergedKinds;
+          } else {
+            merged['kindItems'] ??= child['items'];
+          }
+          final live = scope?.selectedId(barId);
+          merged['selectedKindId'] =
+              (live != null && live.isNotEmpty) ? live : child['default'];
+          merged['defaultKindId'] ??= child['default'];
+        } else if (t == LayoutTypes.list || child['load'] != null) {
+          feed = PackPaintTree(
+            spec: child,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+          );
+        }
+      }
+    }
+    final actions = propsActionMaps(merged);
+    final actionSelections = _topBarSelections(scope, actions);
+    final barId = (categoryChild?['id'] ?? 'kind').toString();
+    final useCircles = categoryChild != null &&
+        (categoryChild['kindIcons'] is Map ||
+            (categoryChild['source'] ?? '').toString() == 'live_schedule');
+    final kindsBar = useCircles
+        ? _kindCircleBar(
+            context,
+            barId: barId,
+            items: _kindItemsWithIcons(
+              merged['kindItems'] is List
+                  ? merged['kindItems'] as List
+                  : const [],
+              kindIcons: kitCategoryBarKindIcons(categoryChild),
+            ),
+            selectedId: (merged['selectedKindId'] ??
+                    merged['defaultKindId'] ??
+                    'all')
+                .toString(),
+            onSelect: (id) => scope?.onSelect(barId, id, toggle: false),
+            focusDown: categoryChild['focusDown']?.toString(),
+            focusUp: categoryChild['focusUp']?.toString(),
+          )
+        : null;
+    final chromeDown = _chromeFocusDown(scope, merged);
+    return Consumer(
+      builder: (context, ref, _) {
+        final status = _topBarFeedStatus(ref);
+        final paintedActions = status.actions(actions);
+        return TopBodyBlock.fromProps(
+          merged,
+          grid: feed,
+          kindsBar: kindsBar,
+          actions: paintedActions,
+          actionSelections: actionSelections,
+          actionSelectionLabels:
+              _topBarSelectionLabels(actionSelections, actions),
+          actionSlots: _portalsActionSlots(
+            context,
+            actions: paintedActions,
+            onDownEdge: chromeDown,
+          ),
+          center: status.center,
+          wrapBody: _portalsWrapBody(context, actions: actions),
+          onDownEdge: chromeDown,
+          wrapChrome: _chromeTvWrap(context, actions: paintedActions),
+          onActionSelect: (actionId, value) {
+            _dispatchTopBarAction(
+              context,
+              actions: actions,
+              actionId: actionId,
+              value: value,
+              scope: scope,
+            );
+          },
+          onKindSelect: (id) {
+            scope?.onSelect(barId, id, toggle: false);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _mountTabsCards(
+    BuildContext context,
+    Map<String, dynamic> node, {
+    required Map<String, dynamic> props,
+  }) {
+    Widget? menu;
+    Widget? tabs;
+    Widget? feed;
+    final rawKids = node['children'] ?? node['widgets'];
+    if (rawKids is List) {
+      for (final c in rawKids) {
+        if (c is! Map) continue;
+        final child = Map<String, dynamic>.from(c);
+        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
+        final painted = PackPaintTree(
+          spec: child,
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+        );
+        if (t == LayoutTypes.menu) {
+          menu = painted;
+        } else if (t == LayoutTypes.tabs) {
+          tabs = painted;
+        } else if (t == LayoutTypes.list || child['load'] != null) {
+          feed = painted;
+        }
+      }
+    }
+    return TabsCardsBlock.fromProps(
+      props,
+      menu: menu,
+      tabs: tabs,
+      cards: feed ??
+          CatalogCardsGrid(
+            items: const [],
+            emptyTitle: propsStringOr(props, 'emptyTitle', 'Your list is empty'),
+            emptyDescription: propsString(props, 'emptyDescription'),
+            cardKind: 'poster',
+          ),
+    );
+  }
+
+  List<({String id, String label, String? icon})> _kindItemsWithIcons(
+    List raw, {
+    required Map<String, String> kindIcons,
+  }) {
+    final out = <({String id, String label, String? icon})>[];
+    for (final e in raw) {
+      if (e is! Map) continue;
+      final id = (e['id'] ?? '').toString().trim();
+      if (id.isEmpty) continue;
+      final label = (e['label'] ?? e['title'] ?? id).toString();
+      final iconToken = (e['icon'] ?? kindIcons[id.toLowerCase()])?.toString();
+      out.add((id: id, label: label, icon: iconToken));
+    }
+    return out;
+  }
+
+  Widget _kindCircleBar(
+    BuildContext context, {
+    required String barId,
+    required List<({String id, String label, String? icon})> items,
+    required String selectedId,
+    required ValueChanged<String> onSelect,
+    String? focusDown,
+    String? focusUp,
+  }) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final scope = LayoutScope.maybeOf(context);
+    final down = focusDown?.trim() ?? '';
+    final up = focusUp?.trim() ?? '';
+    return Padding(
+      key: ValueKey('kind-circles-$barId'),
+      padding: EdgeInsets.only(
+        top: ShellPaintScope.usesTvDensityOf(context) ? 0 : 2,
+        bottom: ShellPaintScope.usesTvDensityOf(context) ? 6 : 10,
+        left: ShellTokens.compactChromeLeadingInset(context),
+        right: ShellTokens.bodyHorizontalPadding,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final layout = ShellMoodCircleLayout.resolve(
+            context,
+            itemCount: items.length,
+            maxWidth: constraints.maxWidth,
+          );
+          Widget chipAt(int i) {
+            final item = items[i];
+            final meta = kitMoodCircleMeta(id: item.id, icon: item.icon);
+            return ShellMoodCircleItem(
+              layout: layout,
+              label: catalogKitCategoryLabel(
+                item.id,
+                label: item.label,
+              ),
+              icon: meta.icon,
+              accent: meta.accent,
+              selected: selectedId == item.id,
+              listIndex: i,
+              onDownEdge: down.isEmpty
+                  ? null
+                  : () =>
+                      scope?.resolveFocusEdge(down, last: true, down: true)?.call(),
+              onUpEdge: up.isEmpty
+                  ? null
+                  : () => scope?.resolveFocusEdge(up, last: true)?.call(),
+              onTap: () {
+                onSelect(item.id);
+                if (down.isNotEmpty) {
+                  scope?.resolveFocusEdge(down, last: true, down: true)?.call();
+                }
+              },
+            );
+          }
+
+          final fits =
+              layout.contentWidth(items.length) <= constraints.maxWidth;
+          // Fixed size always — center when they fit, scroll when they don't.
+          Widget body = fits
+              ? SizedBox(
+                  height: layout.rowHeight,
+                  width: double.infinity,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < items.length; i++) ...[
+                          if (i > 0) SizedBox(width: layout.horizontalGap),
+                          chipAt(i),
+                        ],
+                      ],
+                    ),
+                  ),
+                )
+              : HorizontalScroller(
+                  height: layout.rowHeight,
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) =>
+                      SizedBox(width: layout.horizontalGap),
+                  itemBuilder: (_, i) => chipAt(i),
+                );
+          final tab = (tabId ?? '').trim();
+          if (tab.isNotEmpty &&
+              items.isNotEmpty &&
+              ShellPaintScope.useTvFocusOf(context)) {
+            body = TvKitRow(
+              tabId: tab,
+              rowId: barId,
+              sortOrder: 1,
+              itemCount: items.length,
+              child: body,
+            );
+          }
+          return body;
+        },
+      ),
+    );
+  }
+
+  void _dispatchTopBarAction(
+    BuildContext context, {
+    required List<Map<String, dynamic>> actions,
+    required String actionId,
+    required String value,
+    required LayoutScope? scope,
+  }) {
+    final chrome = PackChromeScope.maybeOf(context);
+    final action = actions.cast<Map<String, dynamic>?>().firstWhere(
+          (a) => a != null && (a['id'] ?? '').toString() == actionId,
+          orElse: () => null,
+        );
+    final verb =
+        (action?['action'] ?? actionId).toString().trim().toLowerCase();
+    if (verb == 'refresh' || actionId == 'refresh') {
+      chrome?.onBumpRefresh();
+      return;
+    }
+    if (verb == 'eventsearch' || verb == 'search' || actionId == 'search') {
+      unawaited(_openEventSearch(context, action ?? const {}));
+      return;
+    }
+    if (verb == 'portals' || actionId == 'portals') {
+      _togglePortalsPanel(context);
+      return;
+    }
+    if (value == '__open__') {
+      unawaited(
+        _openTopBarMenuSheet(
+          context,
+          action: action ?? const {},
+          actionId: actionId,
+          scope: scope,
+        ),
+      );
+      return;
+    }
+    // WidgetShelf per-tab reload — select section (if encoded) then bump feed.
+    if (value == '__reload__' || value.startsWith('__reload__:')) {
+      final section = value.startsWith('__reload__:')
+          ? value.substring('__reload__:'.length).trim()
+          : '';
+      if (section.isNotEmpty) {
+        scope?.onSelect(actionId, section, toggle: false);
+        _persistTopBarChromePref(
+          context,
+          actionId: actionId,
+          value: section,
+          action: action,
+        );
+      }
+      chrome?.onBumpRefresh();
+      return;
+    }
+    if (actionId == 'view' || verb == 'view') {
+      chrome?.onViewStyle(value);
+    }
+    scope?.onSelect(actionId, value, toggle: false);
+    _persistTopBarChromePref(
+      context,
+      actionId: actionId,
+      value: value,
+      action: action,
+    );
+  }
+
+  /// Live host prefs only — gate on pack flags, never bare action ids
+  /// (`catalog` / `horizon` are reused by other hubs with static menus).
+  void _persistTopBarChromePref(
+    BuildContext context, {
+    required String actionId,
+    required String value,
+    Map<String, dynamic>? action,
+  }) {
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty || value.isEmpty) return;
+    final key = kitChromeKeyForTab(tab);
+    if (key.isEmpty) return;
+    try {
+      final container = ProviderScope.containerOf(context);
+      if (action?['dynamicCatalogs'] == true) {
+        container.read(kitFeedCatalogFilterProvider(key).notifier).state =
+            value;
+        unawaited(
+          KitTopBarHostHooks.writeCatalogFilter?.call(
+                context,
+                value,
+                tabId: tab,
+              ) ??
+              Future.value(),
+        );
+      } else if (action?['dynamicSchedule'] == true) {
+        container.read(kitFeedHorizonPrefProvider(key).notifier).state = value;
+      } else if (actionId == 'view') {
+        // Persist List/Cards only — guide/epg are session paint-only.
+        final v = value.trim().toLowerCase();
+        if (v == 'list' || v == 'cards') {
+          setKitListStyle(container, key, value);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _openTopBarMenuSheet(
+    BuildContext context, {
+    required Map<String, dynamic> action,
+    required String actionId,
+    required LayoutScope? scope,
+  }) async {
+    final current = (scope?.selectedId(actionId) ??
+            (action['default'] ?? '').toString())
+        .trim();
+    // Live Sports only — never treat every `id: catalog` / schedule id as
+    // host product (other hubs may reuse those ids with static items).
+    final dynamicCatalog = action['dynamicCatalogs'] == true;
+    final dynamicSchedule = action['dynamicSchedule'] == true;
+
+    if (dynamicSchedule) {
+      final opener = KitTopBarHostHooks.openScheduleSheet;
+      if (opener != null) {
+        await opener(
+          context,
+          currentPref: current.isEmpty ? kKitScheduleDefaultPref : current,
+          onChanged: (pref) {
+            if (!context.mounted) return;
+            scope?.onSelect(actionId, pref, toggle: false);
+            _persistTopBarChromePref(
+              context,
+              actionId: actionId,
+              value: pref,
+              action: action,
+            );
+          },
+        );
+        return;
+      }
+    }
+
+    if (dynamicCatalog) {
+      var options = <({String id, String label, String? subtitle})>[
+        for (final e in propsIdLabelList(action, 'items'))
+          (id: e.id, label: e.label, subtitle: null),
+      ];
+      final loader = KitTopBarHostHooks.loadCatalogOptions;
+      if (loader != null) {
+        final dynamicOpts = await loader();
+        if (!context.mounted) return;
+        if (dynamicOpts.isNotEmpty) {
+          options = [
+            (id: 'all', label: 'All', subtitle: null),
+            for (final o in dynamicOpts)
+              if (o.id != 'all')
+                (id: o.id, label: o.label, subtitle: null),
+          ];
+        }
+      }
+      final opener = KitTopBarHostHooks.openCatalogSheet;
+      final picked = opener != null
+          ? await opener(
+              context,
+              current: current.isEmpty ? 'all' : current,
+              options: options,
+            )
+          : await showCatalogFilterSheet(
+              context,
+              current: current.isEmpty ? 'all' : current,
+              options: options,
+            );
+      if (picked == null || !context.mounted) return;
+      scope?.onSelect(actionId, picked, toggle: false);
+      _persistTopBarChromePref(
+        context,
+        actionId: actionId,
+        value: picked,
+        action: action,
+      );
+      return;
+    }
+
+    // Static menus (e.g. My List status) — titled sheet. Sort/icon menus open
+    // as an anchored dropdown in CatalogTopChrome (not this path).
+    final nested = propsIdLabelList(action, 'items');
+    if (nested.isEmpty) return;
+    final title = (action['label'] ?? actionId).toString().trim();
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: ForjaShellColors.surfaceElevated,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final selected = current.isEmpty ? nested.first.id : current;
+        final maxHeight = MediaQuery.sizeOf(ctx).height * 0.7;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      title.isEmpty ? 'Options' : title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    for (final e in nested)
+                      FilterSheetOption(
+                        label: e.label,
+                        selected: e.id == selected,
+                        icon: Icons.tune_rounded,
+                        onSelected: () => Navigator.pop(ctx, e.id),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    if (picked == null || !context.mounted) return;
+    scope?.onSelect(actionId, picked, toggle: false);
+    _persistTopBarChromePref(
+      context,
+      actionId: actionId,
+      value: picked,
+      action: action,
+    );
+  }
+
+  /// Chrome focus slots for one top-bar action (View / shelf chips = N).
+  int _chromeActionSlotSpan(Map<String, dynamic> action) {
+    final id = (action['id'] ?? '').toString().trim().toLowerCase();
+    final verb =
+        (action['action'] ?? action['id'] ?? '').toString().trim().toLowerCase();
+    final style =
+        (action['style'] ?? action['paint'] ?? '').toString().trim().toLowerCase();
+    final nested = propsIdLabelList(action, 'items');
+    final isView = id == 'view' || verb == 'view';
+    final isViewGroup = isView &&
+        nested.isNotEmpty &&
+        (style == 'group' ||
+            style == 'toggle' ||
+            style == 'buttons' ||
+            style.isEmpty);
+    final isShelf = nested.isNotEmpty &&
+        (style == 'shelf' ||
+            style == 'segment' ||
+            action['expandOnHover'] == true);
+    return (isViewGroup || isShelf) ? nested.length : 1;
+  }
+
+  bool _chromeActionVisible(
+    BuildContext context,
+    Map<String, dynamic> action,
+  ) {
+    if (action['hideWhenCompact'] == true &&
+        ShellTokens.usesCompactNavDrawer(context)) {
+      return false;
+    }
+    if (action['hideWhenTv'] == true &&
+        ShellPaintScope.usesTvDensityOf(context)) {
+      return false;
+    }
+    if (action['compactOnly'] == true &&
+        !ShellTokens.usesCompactNavDrawer(context)) {
+      return false;
+    }
+    return true;
+  }
+
+  int _chromeIndexOfAction(
+    BuildContext context,
+    List<Map<String, dynamic>> actions,
+    String actionId,
+  ) {
+    var index = 0;
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty || !_chromeActionVisible(context, a)) continue;
+      if (id == actionId) return index;
+      index += _chromeActionSlotSpan(a);
+    }
+    return 0;
+  }
+
+  int _chromeTotalSlots(
+    BuildContext context,
+    List<Map<String, dynamic>> actions,
+  ) {
+    var count = 0;
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty || !_chromeActionVisible(context, a)) continue;
+      count += _chromeActionSlotSpan(a);
+    }
+    return count;
+  }
+
+  Map<String, Widget> _portalsActionSlots(
+    BuildContext context, {
+    required List<Map<String, dynamic>> actions,
+    VoidCallback? onDownEdge,
+  }) {
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty) return const {};
+    final out = <String, Widget>{};
+    Map<String, dynamic>? portalsAction;
+    Map<String, dynamic>? searchAction;
+    Map<String, dynamic>? sortAction;
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty || !_chromeActionVisible(context, a)) continue;
+      final verb = (a['action'] ?? '').toString().trim().toLowerCase();
+      if (portalsAction == null &&
+          (id == 'portals' || verb == 'portals')) {
+        portalsAction = a;
+      }
+      // Inline expanding search (IPTV / Live) — not hub catalog Search.
+      if (searchAction == null && verb == 'eventsearch') {
+        searchAction = a;
+      }
+      if (sortAction == null &&
+          (id == 'sort' || verb == 'sort') &&
+          tab == 'iptv') {
+        sortAction = a;
+      }
+    }
+
+    if (searchAction != null) {
+      final tooltip =
+          (searchAction['label'] ?? 'Search').toString().trim();
+      final hint = (searchAction['placeholder'] ??
+              searchAction['hint'] ??
+              'Search…')
+          .toString()
+          .trim();
+      final slotId = (searchAction['id'] ?? 'search').toString().trim();
+      final searchId = slotId.isEmpty ? 'search' : slotId;
+      out[searchId] = ShellPaintTvTabScope(
+        tabId: tab,
+        child: KitEventListSearch(
+          tooltip: tooltip.isEmpty ? 'Search' : tooltip,
+          placeholder: hint.isEmpty ? 'Search…' : hint,
+          tvItemIndex: _chromeIndexOfAction(context, actions, searchId),
+          onDownEdge: onDownEdge,
+          collapsedSize:
+              PackPaintArtifact.packLength(context, searchAction['collapsedSize']),
+          expandedWidth:
+              PackPaintArtifact.packLength(context, searchAction['expandedWidth']),
+          fontSize: PackPaintArtifact.packLength(context, searchAction['fontSize']),
+          iconSize: PackPaintArtifact.packLength(context, searchAction['iconSize']),
+          fieldIconSize:
+              PackPaintArtifact.packLength(context, searchAction['fieldIconSize']),
+        ),
+      );
+    }
+    if (sortAction != null) {
+      final slotId = (sortAction['id'] ?? 'sort').toString().trim();
+      final label = (sortAction['label'] ?? 'Sort').toString().trim();
+      final sortId = slotId.isEmpty ? 'sort' : slotId;
+      out[sortId] = Consumer(
+        builder: (ctx, ref, _) => IptvSortActionHost.buildSortChip(
+          ctx,
+          ref,
+          tabId: tab,
+          label: label.isEmpty ? 'Sort' : label,
+          icon: Icons.filter_list_rounded,
+          tvRowId: 'chrome',
+          tvItemIndex: _chromeIndexOfAction(context, actions, sortId),
+        ),
+      );
+    }
+    if (portalsAction != null) {
+      final hoist = (portalsAction['hoistSource'] ??
+              portalsAction['source'] ??
+              '')
+          .toString();
+      final sizeKeys = const [
+        'width',
+        'height',
+        'radius',
+        'pad',
+        'fontSize',
+        'iconSize',
+        'chevronSize',
+        'seatsFontSize',
+      ];
+      out['portals'] = Consumer(
+        builder: (ctx, ref, _) => PortalsActionHost.buildPortalsChip(
+          ctx,
+          ref,
+          tabId: tab,
+          rowId: 'chrome',
+          itemIndex: _chromeIndexOfAction(context, actions, 'portals'),
+          onDownEdge: onDownEdge,
+          action: {
+            if (hoist.isNotEmpty) 'hoistSource': hoist,
+            for (final k in sizeKeys)
+              if (portalsAction![k] is num) k: portalsAction[k],
+          },
+        ),
+      );
+    }
+    return out;
+  }
+
+  /// Pack top-bar `focusDown` → remembered restore (issue 265).
+  VoidCallback? _chromeFocusDown(
+    LayoutScope? scope,
+    Map<String, dynamic> props, {
+    Map<String, dynamic>? topBarChild,
+  }) {
+    final raw = (props['focusDown'] ?? topBarChild?['focusDown'] ?? '')
+        .toString()
+        .trim();
+    if (raw.isEmpty) return null;
+    return scope?.resolveFocusEdge(raw, last: true, down: true);
+  }
+
+  Widget Function(Widget child)? _chromeTvWrap(
+    BuildContext context, {
+    required List<Map<String, dynamic>> actions,
+  }) {
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty || !ShellPaintScope.useTvFocusOf(context)) return null;
+    final count = _chromeTotalSlots(context, actions);
+    return (child) => TvKitRow(
+          tabId: tab,
+          rowId: 'chrome',
+          sortOrder: -1,
+          itemCount: count <= 0 ? 1 : count,
+          child: child,
+        );
+  }
+
+  /// Always-open list search painted above a vertical category rail.
+  Widget? _categoryBarSearchHeader(
+    BuildContext context,
+    Map<String, dynamic> spec,
+  ) {
+    final raw = spec['search'];
+    if (raw is! Map) return null;
+    final search = Map<String, dynamic>.from(raw);
+    final compactOnly = search['compactOnly'] == true;
+    final compact = ShellTokens.usesCompactNavDrawer(context);
+    if (compactOnly && !compact) return null;
+    if (!compactOnly && search['hideWhenCompact'] == true && compact) {
+      return null;
+    }
+    final verb = (search['action'] ?? search['id'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (verb != 'eventsearch' && search['open'] != true) return null;
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty) return null;
+    final tooltip = (search['label'] ?? 'Search').toString().trim();
+    final hint = (search['placeholder'] ?? search['hint'] ?? 'Search…')
+        .toString()
+        .trim();
+    return ShellPaintTvTabScope(
+      tabId: tab,
+      child: KitEventListSearch(
+        tooltip: tooltip.isEmpty ? 'Search' : tooltip,
+        placeholder: hint.isEmpty ? 'Search…' : hint,
+        alwaysOpen: true,
+        tvItemIndex: 0,
+        collapsedSize: PackPaintArtifact.packLength(context, search['collapsedSize']),
+        expandedWidth: PackPaintArtifact.packLength(context, search['expandedWidth']),
+        fontSize: PackPaintArtifact.packLength(context, search['fontSize']),
+        iconSize: PackPaintArtifact.packLength(context, search['iconSize']),
+        fieldIconSize: PackPaintArtifact.packLength(context, search['fieldIconSize']),
+      ),
+    );
+  }
+
+  String? _childIdOfType(Map<String, dynamic> node, String type) {
+    final raw = node['children'] ?? node['widgets'];
+    if (raw is! List) return null;
+    for (final c in raw) {
+      if (c is! Map) continue;
+      final child = Map<String, dynamic>.from(c);
+      if (LayoutTypes.normalize((child['type'] ?? '').toString(), child) !=
+          type) {
+        continue;
+      }
+      final id = (child['id'] ?? '').toString().trim();
+      if (id.isNotEmpty) return id;
+    }
+    return null;
+  }
+
+  /// Live IPTV channel favorite star when open carries portalKey + streamId.
+  Widget? _liveFavoriteAccessory(
+    BuildContext context,
+    Map<String, dynamic> item, {
+    required bool active,
+  }) {
+    final open = item['open'];
+    Map<String, dynamic>? openMap;
+    if (open is Map) {
+      openMap = Map<String, dynamic>.from(open);
+    }
+    final props = PackPaintArtifact.propsOf(item);
+    final portalKey = (openMap?['portalKey'] ??
+            props['portalKey'] ??
+            item['portalKey'] ??
+            '')
+        .toString()
+        .trim();
+    final streamId = (openMap?['streamId'] ??
+            props['streamId'] ??
+            item['streamId'] ??
+            '')
+        .toString()
+        .trim();
+    final surface = (openMap?['surface'] ?? '').toString().trim();
+    final kind = (openMap?['kind'] ?? '').toString().trim();
+    if (portalKey.isEmpty || streamId.isEmpty) return null;
+    if (surface != 'stream' && kind != 'live') return null;
+    return CategoryBarActionHost.favoriteStar(
+      portalKey: portalKey,
+      streamId: streamId,
+      reveal: active,
+    );
+  }
+
+  /// Poster grid pin (My List / Home parity) — falls back after live fav star.
+  Widget? _listPosterPinAccessory(
+    BuildContext context,
+    Map<String, dynamic> item, {
+    required bool active,
+  }) {
+    final live = _liveFavoriteAccessory(
+      context,
+      item,
+      active: active,
+    );
+    if (live != null) return live;
+    return PackPaintArtifact.listPinFor(
+      context: context,
+      pluginId: pluginId,
+      props: PackPaintArtifact.propsOf(item),
+      open: item['open'] ?? item['metaOpen'] ?? item['catalogOpen'],
+      meta: item['meta'],
+    );
+  }
+
+  Widget _mountHero(BuildContext context, Map<String, dynamic> node) {
+    final items = node['items'];
+    if (items is! List || items.isEmpty) return const SizedBox.shrink();
+    final slideCap = _packInt(node['slideCap'], 5).clamp(1, 20);
+    final actionSpecs = _heroActionSpecs(node['actions']);
+
+    final slides = <CinematicHeroSlide>[];
+    final slideMetas = <MetaItem?>[];
+    for (final raw in items) {
+      if (raw is! Map) continue;
+      if (slides.length >= slideCap) break;
+      final item = Map<String, dynamic>.from(raw);
+      final props = PackPaintArtifact.propsOf(item);
+      // Prefer nested paint meta; flat MetaItem JSON (id/type/name/open) works too.
+      final MetaItem? meta = item['meta'] is Map
+          ? MetaItem.fromJson(Map<String, dynamic>.from(item['meta'] as Map))
+          : (item['open'] is Map &&
+                  (item['id'] != null || item['name'] != null)
+              ? MetaItem.fromJson(item)
+              : null);
+      final open = item['open'] is Map
+          ? MetaOpen.fromJson(Map<String, dynamic>.from(item['open'] as Map))
+          : meta?.open;
+      final title = (props['title'] ?? meta?.name ?? item['name'] ?? '')
+          .toString()
+          .trim();
+      // Prefer paint props; fall back to nested meta, then top-level enrich fields
+      // (companion enrich may update meta.background before paint is rebuilt).
+      final backdrop = (props['backdropUrl'] ??
+              props['backgroundUrl'] ??
+              meta?.background ??
+              item['background'] ??
+              item['backdrop'] ??
+              '')
+          .toString()
+          .trim();
+      final poster = (props['posterUrl'] ??
+              props['imageUrl'] ??
+              meta?.poster ??
+              item['poster'] ??
+              '')
+          .toString()
+          .trim();
+      if (title.isEmpty && backdrop.isEmpty && poster.isEmpty) continue;
+      final id = (open?.id ?? meta?.id ?? item['id'] ?? props['id'] ?? title)
+          .toString();
+      slides.add(
+        CinematicHeroSlide(
+          id: id.isEmpty ? title : id,
+          title: title.isEmpty ? 'Title' : title,
+          backdropUrl: backdrop.isNotEmpty ? backdrop : poster,
+          posterUrl: poster.isEmpty ? null : poster,
+          logoUrl: (props['logoUrl'] ??
+                  props['logo'] ??
+                  meta?.logo ??
+                  item['logo'] ??
+                  '')
+              .toString(),
+          overview: (props['overview'] ??
+                  props['description'] ??
+                  meta?.description ??
+                  item['description'] ??
+                  '')
+              .toString(),
+          rating: props['rating'] is num
+              ? (props['rating'] as num).toDouble()
+              : (meta?.rating ??
+                  (item['rating'] is num
+                      ? (item['rating'] as num).toDouble()
+                      : null)),
+          year: () {
+            final y = (props['year'] ?? meta?.releaseInfo ?? '').toString();
+            return y.isEmpty ? null : y.split(' • ').first;
+          }(),
+          badge: (props['badge'] ?? meta?.badge)?.toString(),
+          mediaType: (props['mediaType'] ??
+                  meta?.tmdbMediaType ??
+                  meta?.type ??
+                  '')
+              .toString(),
+          genres: props['genres'] is List
+              ? [
+                  for (final g in props['genres'] as List)
+                    if (g != null && g.toString().trim().isNotEmpty)
+                      g.toString(),
+                ]
+              : (meta?.genres ?? const <String>[]),
+          onDetails: PackPaintArtifact.openTap(
+            context,
+            pluginId: pluginId,
+            props: props,
+            open: open?.toJson(),
+            meta: meta?.toJson(),
+          ),
+        ),
+      );
+      slideMetas.add(meta);
+    }
+    if (slides.isEmpty) return const SizedBox.shrink();
+    // TV is full-bleed regardless of logical width (720p ATV ≈ 960dp < 1000).
+    final compact = !cinematicHeroIsFullBleed(
+      width: MediaQuery.sizeOf(context).width,
+      tvDensity: ShellScope.metricsOf(context).usesTvDensity,
+    );
+    final scope = LayoutScope.maybeOf(context);
+    final bleed = (node['bleed'] ?? '').toString().trim();
+    final focusDown = bleed.isNotEmpty
+        ? scope?.resolveFocusEdge(bleed, down: true)
+        : scope?.resolveFocusEdge((node['focusDown'] ?? '').toString(), down: true);
+    final tab = (tabId ?? scope?.tabId ?? '').trim();
+
+    return _HubTvCinematicHero(
+      tabId: tab,
+      pluginId: pluginId,
+      slides: slides,
+      slideMetas: slideMetas,
+      actionSpecs: actionSpecs,
+      pageBottomChild: pageBottomChild,
+      compact: compact,
+      focusDown: focusDown,
+      pack: _HeroPackVisuals.fromNode(node),
+    );
+  }
+
+  /// Pack hero `actions[]` — omit → glass View details + glass My List pin.
+  static List<_HeroActionSpec> _heroActionSpecs(Object? raw) {
+    if (raw is! List || raw.isEmpty) {
+      return const [
+        _HeroActionSpec(
+          id: 'details',
+          label: 'View details',
+          icon: 'info',
+          tone: HeroPillPlayTone.secondary,
+        ),
+        _HeroActionSpec(id: 'follow'),
+      ];
+    }
+    final out = <_HeroActionSpec>[];
+    for (final e in raw) {
+      if (e is! Map) continue;
+      final id = (e['id'] ?? '').toString().trim();
+      if (id.isEmpty) continue;
+      out.add(
+        _HeroActionSpec(
+          id: id,
+          label: e['label']?.toString(),
+          icon: e['icon']?.toString(),
+          // Details defaults glass; packs may set primary/streaming explicitly.
+          tone: _heroPillTone(
+            e['tone'],
+            fallback: id == 'details'
+                ? HeroPillPlayTone.secondary
+                : HeroPillPlayTone.primary,
+          ),
+        ),
+      );
+    }
+    return out.isEmpty
+        ? _heroActionSpecs(null)
+        : List<_HeroActionSpec>.unmodifiable(out);
+  }
+
+  static HeroPillPlayTone _heroPillTone(
+    Object? raw, {
+    HeroPillPlayTone fallback = HeroPillPlayTone.primary,
+  }) {
+    switch ((raw ?? '').toString().trim().toLowerCase()) {
+      case 'secondary':
+      case 'ghost':
+        return HeroPillPlayTone.secondary;
+      case 'streaming':
+      case 'white':
+        return HeroPillPlayTone.streaming;
+      case 'primary':
+        return HeroPillPlayTone.primary;
+      default:
+        return fallback;
+    }
+  }
+
+  static IconData _heroActionIcon(String? raw) {
+    switch ((raw ?? 'info').trim().toLowerCase()) {
+      case 'play':
+        return Icons.play_arrow_rounded;
+      case 'info':
+      default:
+        return Icons.info_outline_rounded;
+    }
+  }
+
+  static int _packInt(Object? raw, int fallback) {
+    if (raw is int) return raw;
+    if (raw is num) return raw.round();
+    return int.tryParse((raw ?? '').toString()) ?? fallback;
+  }
+
+  Widget _mountList(BuildContext context, Map<String, dynamic> spec) {
+    final openSetting = (spec['openSetting'] ?? '').toString().trim();
+    if (openSetting.isEmpty) {
+      return _mountListBody(context, spec);
+    }
+    return _ListOpenSettingGate(
+      pluginId: pluginId,
+      openSettingId: openSetting,
+      layoutOpen: (spec['open'] ?? '').toString(),
+      builder: (effectiveOpen) {
+        final merged = Map<String, dynamic>.from(spec)..['open'] = effectiveOpen;
+        return _mountListBody(context, merged);
+      },
+    );
+  }
+
+  Widget _mountListBody(BuildContext context, Map<String, dynamic> spec) {
+    final chrome = PackChromeScope.maybeOf(context);
+    final selection = chrome?.selectedListItem;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!constraints.hasBoundedWidth ||
+            !constraints.hasBoundedHeight ||
+            constraints.maxWidth < 1 ||
+            constraints.maxHeight < 1) {
+          return const SizedBox.shrink();
+        }
+        Widget buildBody(Map<String, dynamic>? selected) {
+          final raw = spec['items'];
+          final items = <Map<String, dynamic>>[
+            if (raw is List)
+              for (final e in raw)
+                if (e is Map) Map<String, dynamic>.from(e),
+          ];
+          final layoutScope = LayoutScope.maybeOf(context);
+          final kindMenu = (spec['kindMenu'] ?? '').toString().trim();
+          final kindFilter = kindMenu.isEmpty
+              ? (spec['kind'] ?? '').toString().trim()
+              : (layoutScope?.selectedId(kindMenu) ?? '').trim();
+          // IPTV Live/Movies/Series: category/search re-query catalog_page
+          // (issue 290). Paint must not kind-filter a stale previous page or
+          // the grid flashes empty while the new page loads.
+          final vodPaged = packChromeVodPagedFeed(spec, layoutScope);
+          final paintOnlySearch =
+              !packChromeKindReloadsFeed(spec) && !vodPaged;
+          final q = paintOnlySearch
+              ? (chrome?.eventQuery ?? '').trim()
+              : '';
+          final searchActive = q.isNotEmpty;
+
+          // Legacy IPTV Search: match name OR category across the full feed,
+          // then optionally narrow by a category tapped while searching.
+          // Idle (no query): category filter only (Live). VOD: trust feed.
+          List<Map<String, dynamic>> filtered;
+          if (searchActive) {
+            final hits = <Map<String, dynamic>>[
+              for (final e in items)
+                if (_itemMatchesEventQuery(e, q)) e,
+            ];
+            final hitKinds = <String>{
+              for (final e in hits)
+                if (_itemKind(e).isNotEmpty) _itemKind(e),
+            };
+            final notifier = chrome?.searchHitKindIds;
+            if (notifier != null && !setEquals(notifier.value, hitKinds)) {
+              // Defer — setState during build is illegal.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!setEquals(notifier.value, hitKinds)) {
+                  notifier.value = Set<String>.from(hitKinds);
+                }
+              });
+            }
+            if (kindFilter.isNotEmpty && kindFilter != 'all') {
+              filtered = [
+                for (final e in hits)
+                  if (_itemMatchesKindFilter(e, kindFilter)) e,
+              ];
+            } else {
+              filtered = hits;
+            }
+          } else if (vodPaged) {
+            filtered = items;
+            // IPTV Live/Movies/Series re-query catalog_page with `q` (issue 290).
+            // Category rail still filters via searchHitKindIds — paint-only search
+            // used to fill that set; clearing it here left "No categories" while
+            // the grid showed hits. Prefer shelf-wide ids from the feed envelope
+            // (pack_load_paint); merge this page's kinds as a fallback.
+            final notifier = chrome?.searchHitKindIds;
+            final eventQ = (chrome?.eventQuery ?? '').trim();
+            if (notifier != null) {
+              if (eventQ.isEmpty) {
+                if (notifier.value.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (notifier.value.isNotEmpty) {
+                      notifier.value = const {};
+                    }
+                  });
+                }
+              } else {
+                final hitKinds = <String>{
+                  for (final e in items)
+                    if (_itemKind(e).isNotEmpty) _itemKind(e),
+                };
+                if (hitKinds.isNotEmpty) {
+                  final merged = <String>{...notifier.value, ...hitKinds};
+                  if (!setEquals(notifier.value, merged)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final next = <String>{...notifier.value, ...hitKinds};
+                      if (!setEquals(notifier.value, next)) {
+                        notifier.value = next;
+                      }
+                    });
+                  }
+                }
+              }
+            }
+          } else {
+            filtered = [
+              for (final e in items)
+                if (_itemMatchesKindFilter(e, kindFilter)) e,
+            ];
+            final notifier = chrome?.searchHitKindIds;
+            if (notifier != null && notifier.value.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (notifier.value.isNotEmpty) {
+                  notifier.value = const {};
+                }
+              });
+            }
+          }
+          // IPTV Live: search/sort paint-only. Movies/Series + Live Sports
+          // re-query feed for kind/q/sort.
+          if (paintOnlySearch) {
+            final sortMenu = (spec['sortMenu'] ?? '').toString().trim();
+            final sortId = sortMenu.isEmpty
+                ? ''
+                : (LayoutScope.maybeOf(context)?.selectedId(sortMenu) ?? '')
+                    .trim();
+            filtered = _sortCatalogItems(filtered, sortId);
+          }
+          var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
+          // Empty chrome.viewStyle must not block LayoutScope ('' is not null).
+          final chromeView =
+              (chrome?.viewStyle ?? '').toString().trim().toLowerCase();
+          final scopeView =
+              (LayoutScope.maybeOf(context)?.selectedId('view') ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+          final viewOverride =
+              chromeView.isNotEmpty ? chromeView : scopeView;
+          if (viewOverride.isNotEmpty) {
+            if (viewOverride == 'cards' ||
+                viewOverride == 'list' ||
+                viewOverride == 'timeline' ||
+                viewOverride == 'epg' ||
+                viewOverride == 'guide') {
+              style = viewOverride;
+            }
+          }
+          // Live catalog EPG grid — desktop Live only (≥760); TV stays cards.
+          final wantGuide = !ShellPaintScope.usesTvDensityOf(context) &&
+              (style == 'epg' || style == 'guide') &&
+              _itemsLookLikeLiveChannels(filtered) &&
+              constraints.maxWidth >= 760;
+          if ((style == 'epg' || style == 'guide') && !wantGuide) {
+            style = 'grid';
+          }
+          final packCardKind =
+              (spec['cardKind'] ?? '').toString().trim().toLowerCase();
+          final liveChannels = _itemsLookLikeLiveChannels(filtered);
+          final cardKind = () {
+            if (wantGuide) return 'guide';
+            // IPTV Live list → Sources-style channel rows (not schedule dense).
+            if (liveChannels &&
+                (style == 'list' ||
+                    packCardKind == 'list' ||
+                    packCardKind == 'channellist')) {
+              return 'channelList';
+            }
+            // IPTV View "Cards" is style=cards — must not map live rows to
+            // Live Sports event cards (landscape poster + title overlay).
+            if (liveChannels &&
+                (style == 'cards' ||
+                    style == 'grid' ||
+                    packCardKind == 'cards' ||
+                    packCardKind == 'channel' ||
+                    packCardKind == 'livechannel' ||
+                    packCardKind.isEmpty)) {
+              if (packCardKind == 'timeline' ||
+                  packCardKind == 'dense' ||
+                  style == 'timeline') {
+                return 'dense';
+              }
+              if (packCardKind == 'guide' ||
+                  packCardKind == 'epg' ||
+                  style == 'guide' ||
+                  style == 'epg') {
+                return 'guide';
+              }
+              return 'channel';
+            }
+            if (packCardKind == 'poster' ||
+                packCardKind == 'event' ||
+                packCardKind == 'eventcard' ||
+                packCardKind == 'dense' ||
+                packCardKind == 'list' ||
+                packCardKind == 'timeline' ||
+                packCardKind == 'channel' ||
+                packCardKind == 'livechannel' ||
+                packCardKind == 'guide' ||
+                packCardKind == 'epg' ||
+                packCardKind == 'cards') {
+              if (packCardKind == 'eventcard' || packCardKind == 'cards') {
+                return 'event';
+              }
+              if (packCardKind == 'list' || packCardKind == 'timeline') {
+                return 'dense';
+              }
+              if (packCardKind == 'livechannel') return 'channel';
+              if (packCardKind == 'guide' || packCardKind == 'epg') {
+                return 'guide';
+              }
+              return packCardKind;
+            }
+            if (style == 'list' || style == 'timeline') return 'dense';
+            if (style == 'cards') {
+              // Live Sports match cards — not IPTV VOD (poster) or live channels.
+              return _itemsLookLikeEvents(filtered) ? 'event' : 'poster';
+            }
+            if (style == 'guide' || style == 'epg') return 'guide';
+            if (style == 'grid') {
+              return _itemsLookLikeEvents(filtered) ? 'event' : 'poster';
+            }
+            return 'poster';
+          }();
+          final openMode = (spec['open'] ?? '').toString().trim().toLowerCase();
+          final matchOpenSurface =
+              (spec['openSetting'] ?? '').toString().trim().isNotEmpty ||
+                  spec['panelTabs'] is List;
+          final panelSelectedId = selected == null
+              ? null
+              : (selected['id'] ??
+                      (selected['meta'] is Map
+                          ? (selected['meta'] as Map)['id']
+                          : null) ??
+                      '')
+                  .toString();
+          final highlightId =
+              (IptvCatalogLand.highlightedStreamId.value ?? '').trim();
+          final selectedId = (panelSelectedId != null &&
+                  panelSelectedId.isNotEmpty)
+              ? panelSelectedId
+              : (highlightId.isEmpty ? null : highlightId);
+          final canShowSidePanel = kitListCanShowSidePanel(
+            hasChrome: chrome != null,
+            layoutWidth: constraints.maxWidth,
+            androidTv: ShellTokens.isAndroidTvDevice,
+          );
+          // Opt-in only. A list mounts the saved-files panel when it sets `panel: 'offline'`.
+          final offlinePanel =
+              (spec['panel'] ?? '').toString().trim().toLowerCase() ==
+                  'offline';
+          final showPanel = selected != null &&
+              resolveKitListTapOpen(
+                    openMode: openMode,
+                    hasMatchOpenSurface: matchOpenSurface,
+                    canShowSidePanel: canShowSidePanel,
+                  ) ==
+                  KitListTapOpen.panel;
+          final gap = PackPaintArtifact.packLength(context, spec['gap']);
+          final pad = PackPaintArtifact.packLength(context, spec['pad']);
+          final cardWidth = PackPaintArtifact.packLength(context, spec['cardWidth']);
+          final listId = (spec['id'] ?? 'items').toString().trim();
+          final kindFilterLive = kindMenu == 'cats';
+          final currentKind = kindFilter;
+
+          if (liveChannels) {
+            IptvCatalogLand.setVisibleStreamIds([
+              for (final item in filtered) _itemStreamId(item),
+            ]);
+          }
+
+          void openOfflineLibrary(Map<String, dynamic> item) {
+            if (!context.mounted) return;
+            unawaited(
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (routeContext) => DownloadLibrarySidePanel(
+                    seed: _listEntryFromItem(item).meta,
+                    onClosed: () => Navigator.of(routeContext).pop(),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          void openMatchDetails(Map<String, dynamic> item) {
+            if (offlinePanel) {
+              openOfflineLibrary(item);
+              return;
+            }
+            unawaited(
+              KitEntryDetailsPage.open(
+                context,
+                entry: _listEntryFromItem(item),
+                listSourceId: KitResolvePanelHost.instance.listSourceId,
+                layoutWidgets: [
+                  if (spec['panelTabs'] is List)
+                    {
+                      'type': 'kit.list',
+                      'panelTabs': spec['panelTabs'],
+                      'panelTab': spec['panelTab'],
+                    },
+                ],
+                refreshEpoch: chrome?.refreshEpoch ?? 0,
+                shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+              ),
+            );
+          }
+
+          void onListItemTap(Map<String, dynamic> item) {
+            // Live Sports (openSetting / panelTabs): never fall through to
+            // open.surface:live — that only re-requests this hub tab (no-op).
+            final tapOpen = resolveKitListTapOpen(
+              openMode: openMode,
+              hasMatchOpenSurface: matchOpenSurface,
+              canShowSidePanel: canShowSidePanel,
+            );
+            switch (tapOpen) {
+              case KitListTapOpen.panel:
+                chrome!.onSelectListItem(item);
+                if (offlinePanel) return;
+                final hubTab = (tabId ?? '').trim();
+                if (hubTab.isNotEmpty &&
+                    ShellPaintScope.useTvFocusOf(context)) {
+                  KitSourcesPanel.claimProvidersFocus(forTabId: hubTab);
+                }
+                return;
+              case KitListTapOpen.details:
+                openMatchDetails(item);
+                return;
+              case KitListTapOpen.openTap:
+                break;
+            }
+            final streamId = _itemStreamId(item);
+            if (streamId.isNotEmpty) {
+              IptvCatalogLand.highlightedStreamId.value = streamId;
+              IptvCatalogLand.noteFocusedStreamId(streamId);
+            }
+            // Feed-only hubs (My List): hub binding + Open in… sheet.
+            // Details hubs keep openMetaItem via openKitListItem.
+            unawaited(
+              openKitListItem(
+                context,
+                pluginId: pluginId,
+                item: item,
+                shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+              ),
+            );
+          }
+
+          void onListItemOpenWith(Map<String, dynamic> item) {
+            if (offlinePanel) {
+              if (canShowSidePanel) {
+                chrome?.onSelectListItem(item);
+                return;
+              }
+              openOfflineLibrary(item);
+              return;
+            }
+            // Side-panel / match-open hosts keep primary open; Open-with is
+            // feed poster grids only (RFC-108).
+            if (matchOpenSurface) return;
+            unawaited(
+              openKitListItem(
+                context,
+                pluginId: pluginId,
+                item: item,
+                shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+                forcePick: true,
+              ),
+            );
+          }
+
+          void onHoldJump(Map<String, dynamic> item) {
+            final props = catalogItemProps(item);
+            final open = item['open'];
+            final openMap = open is Map ? open : null;
+            final cat = (openMap?['categoryId'] ??
+                    item['categoryId'] ??
+                    props['categoryId'] ??
+                    '')
+                .toString()
+                .trim();
+            if (cat.isEmpty ||
+                cat == 'all' ||
+                PortalLiveCatalog.isSyntheticId(cat)) {
+              return;
+            }
+            final scope = LayoutScope.maybeOf(context);
+            scope?.onSelect(IptvCatalogLand.catsRowId, cat, toggle: false);
+            final sid = _itemStreamId(item);
+            if (sid.isNotEmpty) {
+              IptvCatalogLand.highlightedStreamId.value = sid;
+              IptvCatalogLand.requestLandScroll();
+            }
+          }
+
+          Widget buildGrid({
+            ValueListenable<bool?>? Function(Map<String, dynamic>)?
+                healthListenableFor,
+            void Function(Map<String, dynamic> item, {required bool active})?
+                onInteractiveActive,
+            Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
+                loadEpgProgrammes,
+          }) {
+            final allowHoldJump = kindFilterLive &&
+                (currentKind == PortalLiveCatalog.favoritesId ||
+                    currentKind == PortalLiveCatalog.watchedId ||
+                    currentKind == 'favorites' ||
+                    currentKind == 'watched');
+            final scope = LayoutScope.maybeOf(context);
+            final leftEdge = scope?.resolveFocusEdge(
+              (spec['focusLeft'] ?? '').toString(),
+              last: true,
+            );
+            final rightEdge = scope?.resolveFocusEdge(
+              (spec['focusRight'] ?? '').toString(),
+              last: true,
+            );
+            // Pack names one `focusUp` (selected Live/Movies/Series). Host
+            // splits ↑ by viewport: left half → shelf, right half → Portals.
+            final upShelf = scope?.resolveFocusEdge(
+              (spec['focusUp'] ?? spec['focusUpLeft'] ?? '').toString(),
+            );
+            final upPortalsRaw = (spec['focusUpRight'] ?? '').toString().trim();
+            final focusRight = (spec['focusRight'] ?? '').toString().trim();
+            final upPortals = scope?.resolveFocusEdge(
+              upPortalsRaw.isNotEmpty
+                  ? upPortalsRaw
+                  : (focusRight == 'portals' ? 'portals' : ''),
+              lastItem: true,
+            );
+            final rowId =
+                listId.isEmpty ? IptvCatalogLand.itemsRowId : listId;
+            final tab = (tabId ?? '').trim();
+
+            final grid = CatalogCardsGrid(
+              items: filtered,
+              cardKind: cardKind,
+              selectedItemId: selectedId,
+              gap: gap,
+              pad: pad,
+              cardWidth: cardWidth,
+              emptyTitle:
+                  (spec['emptyTitle'] ?? 'Nothing here yet.').toString(),
+              emptyDescription:
+                  (spec['emptyDescription'] ?? '').toString().isEmpty
+                      ? null
+                      : spec['emptyDescription']?.toString(),
+              emptyAction: _listEmptyAction(context, spec),
+              itemAccessory: _listPosterPinAccessory,
+              itemHealthListenable: healthListenableFor,
+              onItemInteractiveActive: onInteractiveActive,
+              loadEpgProgrammes: loadEpgProgrammes,
+              onItemTap: onListItemTap,
+              onItemLongPress:
+                  matchOpenSurface ? null : onListItemOpenWith,
+              landEpoch: IptvCatalogLand.landEpoch,
+              preferCategoryFocusOnLand:
+                  IptvCatalogLand.preferCategoryFocusOnLand,
+              preferCategoryFocusNow: () =>
+                  IptvCatalogLand.preferCategoryFocusOnLand,
+              onHoldJumpToCategory: allowHoldJump ? onHoldJump : null,
+              onRequestFocusAt: liveFocusBrowserStreamAt,
+              onArmFocusMemory: liveArmBrowserStreamFocusMemory,
+              onLeftEdge: leftEdge,
+              onRightEdge: rightEdge,
+              onUpEdge: upShelf,
+              onUpEdgeLeftHalf: upShelf,
+              onUpEdgeRightHalf: upPortals ?? upShelf,
+              onScrollIntoViewChanged: tab.isEmpty
+                  ? null
+                  : (scroll) {
+                      ShellTvFocusCoordinator.setRowScrollIntoView(
+                        tab,
+                        rowId,
+                        scroll,
+                      );
+                    },
+            );
+            if (tab.isEmpty || !ShellPaintScope.useTvFocusOf(context)) {
+              return grid;
+            }
+            final count = filtered.isEmpty
+                ? (_listEmptyAction(context, spec) != null ? 1 : 0)
+                : filtered.length;
+            // Dense / channel list rows are vertical — ↑/↓ walk items; ←/→
+            // leave via pack focusLeft / focusRight (not a horizontal D-line).
+            final verticalList = cardKind == 'dense' ||
+                cardKind == 'list' ||
+                cardKind == 'timeline' ||
+                cardKind == 'channelList';
+            return TvKitRow(
+              tabId: tab,
+              rowId: rowId,
+              sortOrder: 2,
+              itemCount: count,
+              orientation: verticalList
+                  ? ShellTvRowOrientation.vertical
+                  : ShellTvRowOrientation.horizontal,
+              onFocusUp: upShelf,
+              child: grid,
+            );
+          }
+
+          Widget grid;
+          if (cardKind == 'guide') {
+            grid = CatalogEpgGuideHost(
+              builder: (context,
+                  {required loadEpgProgrammes, required loadShortEpgProgrammes}) {
+                return buildGrid(loadEpgProgrammes: loadEpgProgrammes);
+              },
+            );
+          } else if (cardKind == 'channel' || cardKind == 'channelList') {
+            grid = ValueListenableBuilder<String?>(
+              valueListenable: IptvCatalogLand.highlightedStreamId,
+              builder: (context, highlight, _) {
+                final hid = (highlight ?? '').trim();
+                final effectiveSelected =
+                    (panelSelectedId != null && panelSelectedId.isNotEmpty)
+                        ? panelSelectedId
+                        : (hid.isEmpty ? null : hid);
+                return CatalogEpgGuideHost(
+                  builder: (context,
+                      {required loadEpgProgrammes,
+                      required loadShortEpgProgrammes}) {
+                    return ChannelCatalogHealthHost(
+                      builder: (context,
+                          {required healthListenableFor,
+                          required onInteractiveActive}) {
+                        final allowHoldJump = kindFilterLive &&
+                            (currentKind == PortalLiveCatalog.favoritesId ||
+                                currentKind == PortalLiveCatalog.watchedId ||
+                                currentKind == 'favorites' ||
+                                currentKind == 'watched');
+                        final scope = LayoutScope.maybeOf(context);
+                        final leftEdge = scope?.resolveFocusEdge(
+                          (spec['focusLeft'] ?? '').toString(),
+                          last: true,
+                        );
+                        final rightEdge = scope?.resolveFocusEdge(
+                          (spec['focusRight'] ?? '').toString(),
+                          last: true,
+                        );
+                        final upShelf = scope?.resolveFocusEdge(
+                          (spec['focusUp'] ?? spec['focusUpLeft'] ?? '')
+                              .toString(),
+                        );
+                        final upPortalsRaw =
+                            (spec['focusUpRight'] ?? '').toString().trim();
+                        final focusRight =
+                            (spec['focusRight'] ?? '').toString().trim();
+                        final upPortals = scope?.resolveFocusEdge(
+                          upPortalsRaw.isNotEmpty
+                              ? upPortalsRaw
+                              : (focusRight == 'portals' ? 'portals' : ''),
+                          lastItem: true,
+                        );
+                        final rowId = listId.isEmpty
+                            ? IptvCatalogLand.itemsRowId
+                            : listId;
+                        final tab = (tabId ?? '').trim();
+                        final grid = CatalogCardsGrid(
+                          items: filtered,
+                          cardKind: cardKind,
+                          selectedItemId: effectiveSelected,
+                          gap: gap,
+                          pad: pad,
+                          cardWidth: cardWidth,
+                          emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.')
+                              .toString(),
+                          emptyDescription:
+                              (spec['emptyDescription'] ?? '').toString().isEmpty
+                                  ? null
+                                  : spec['emptyDescription']?.toString(),
+                          emptyAction: _listEmptyAction(context, spec),
+                          itemAccessory: _listPosterPinAccessory,
+                          itemHealthListenable: healthListenableFor,
+                          onItemInteractiveActive: onInteractiveActive,
+                          loadEpgProgrammes: loadShortEpgProgrammes,
+                          onItemTap: onListItemTap,
+                          onItemLongPress:
+                              matchOpenSurface ? null : onListItemOpenWith,
+                          landEpoch: IptvCatalogLand.landEpoch,
+                          preferCategoryFocusOnLand:
+                              IptvCatalogLand.preferCategoryFocusOnLand,
+                          preferCategoryFocusNow: () =>
+                              IptvCatalogLand.preferCategoryFocusOnLand,
+                          onHoldJumpToCategory:
+                              allowHoldJump ? onHoldJump : null,
+                          onRequestFocusAt: liveFocusBrowserStreamAt,
+                          onArmFocusMemory: liveArmBrowserStreamFocusMemory,
+                          onLeftEdge: leftEdge,
+                          onRightEdge: rightEdge,
+                          onUpEdge: upShelf,
+                          onUpEdgeLeftHalf: upShelf,
+                          onUpEdgeRightHalf: upPortals ?? upShelf,
+                          onScrollIntoViewChanged: tab.isEmpty
+                              ? null
+                              : (scroll) {
+                                  ShellTvFocusCoordinator.setRowScrollIntoView(
+                                    tab,
+                                    rowId,
+                                    scroll,
+                                  );
+                                },
+                        );
+                        if (tab.isEmpty ||
+                            !ShellPaintScope.useTvFocusOf(context)) {
+                          return grid;
+                        }
+                        final count = filtered.isEmpty
+                            ? (_listEmptyAction(context, spec) != null ? 1 : 0)
+                            : filtered.length;
+                        final verticalList = cardKind == 'dense' ||
+                            cardKind == 'list' ||
+                            cardKind == 'timeline' ||
+                            cardKind == 'channelList';
+                        return TvKitRow(
+                          tabId: tab,
+                          rowId: rowId,
+                          sortOrder: 2,
+                          itemCount: count,
+                          orientation: verticalList
+                              ? ShellTvRowOrientation.vertical
+                              : ShellTvRowOrientation.horizontal,
+                          child: grid,
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          } else {
+            grid = buildGrid();
+          }
+
+          // Always a Row so opening the dock does not remount the grid
+          // (a new ScrollController would jump back to the top).
+          Widget? panel;
+          String? dockKey;
+          final pageDock =
+              offlinePanel ? TabsCardsDockHost.maybeOf(context) : null;
+          if (showPanel) {
+            final entry = _listEntryFromItem(selected);
+            if (offlinePanel) {
+              dockKey = entry.meta.id;
+              panel = DownloadLibrarySidePanel(
+                key: ValueKey('offline-library-${entry.meta.id}'),
+                seed: entry.meta,
+                onClosed: () => chrome?.onSelectListItem(null),
+              );
+            } else {
+            final hubTab = (tabId ?? '').trim();
+            panel = KitResolvePanelHost.instance.buildSidePanel(
+              context: context,
+              entry: entry,
+              layoutWidgets: [
+                if (spec['panelTabs'] is List)
+                  {
+                    'type': 'kit.list',
+                    'panelTabs': spec['panelTabs'],
+                    'panelTab': spec['panelTab'],
+                  },
+              ],
+              shellTabVisible: chrome?.shellTabVisible ?? true,
+              refreshEpoch: chrome?.refreshEpoch ?? 0,
+              onClosed: () => chrome?.onSelectListItem(null),
+              tvTabId: hubTab.isEmpty ? null : hubTab,
+              onPanelLeftEdge: hubTab.isEmpty
+                  ? null
+                  : () {
+                      final listRow = listId.isEmpty
+                          ? IptvCatalogLand.itemsRowId
+                          : listId;
+                      ShellTvFocusCoordinator.focusRowItemRemembered(
+                        hubTab,
+                        listRow,
+                      );
+                    },
+            );
+            }
+          }
+          if (pageDock != null) {
+            if (pageDock.key != dockKey) {
+              final dock = pageDock;
+              final next = panel;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                dock.present(dockKey, next);
+              });
+            }
+            panel = null;
+          }
+          final body = SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: showPanel && panel != null ? 60 : 1, child: grid),
+                if (panel != null) Expanded(flex: 40, child: panel),
+              ],
+            ),
+          );
+
+          final hoist = _hoistSourceFromPage(context);
+          if (hoist != null && (tabId ?? '').isNotEmpty) {
+            // Composition roots (columnsHeader / topBody) already wrap below the
+            // top bar. Avoid nested SidePanelOverlay when those are present.
+            final scope = LayoutScope.maybeOf(context);
+            final underComposition = scope?.widgetSpecs.values.any((spec) {
+                  final t = LayoutTypes.normalize(
+                    (spec['type'] ?? '').toString(),
+                    spec,
+                  );
+                  return t == 'columnsHeader' || t == 'topBody';
+                }) ??
+                false;
+            if (!underComposition) {
+              return PortalsActionHost.wrapListBody(
+                context,
+                tabId: tabId!,
+                sourceId: hoist,
+                shellTabVisible: chrome?.shellTabVisible ?? true,
+                child: body,
+              );
+            }
+          }
+          return body;
+        }
+
+        if (selection == null) return buildBody(null);
+        return ListenableBuilder(
+          listenable: selection,
+          builder: (context, _) => buildBody(selection.value),
+        );
+      },
+    );
+  }
+
+  KitListEntry _listEntryFromItem(Map<String, dynamic> item) {
+    final metaMap = item['meta'] is Map
+        ? Map<String, dynamic>.from(item['meta'] as Map)
+        : <String, dynamic>{
+            'id': (item['id'] ?? PackPaintArtifact.propsOf(item)['id'] ?? '')
+                .toString(),
+            'type': (item['type'] ?? 'other').toString(),
+            'name': (PackPaintArtifact.propsOf(item)['title'] ??
+                    item['name'] ??
+                    '')
+                .toString(),
+          };
+    // Schedule rows carry open on the item (hubPaintEvent) — keep it on meta
+    // so details / resolve see the same handoff as the list row.
+    if (metaMap['open'] == null && item['open'] is Map) {
+      metaMap['open'] = Map<String, dynamic>.from(item['open'] as Map);
+    }
+    final meta = MetaItem.fromJson(metaMap);
+    return KitListEntry(
+      meta: meta,
+      legacyRow: Map<String, dynamic>.from(item),
+      kind: _itemKind(item),
+      pluginId: pluginId,
+    );
+  }
+
+  String? _hoistSourceFromPage(BuildContext context) {
+    final scope = LayoutScope.maybeOf(context);
+    final specs = scope?.widgetSpecs.values ?? const [];
+    for (final spec in specs) {
+      final hoist = _hoistSourceFromActions(propsActionMaps(spec));
+      if (hoist != null) return hoist;
+    }
+    return null;
+  }
+
+  String? _hoistSourceFromActions(List<Map<String, dynamic>> actions) {
+    for (final a in actions) {
+      final verb = (a['action'] ?? a['id'] ?? '').toString().trim().toLowerCase();
+      if (verb != 'portals') continue;
+      final hoist =
+          (a['hoistSource'] ?? a['source'] ?? '').toString().trim();
+      if (hoist.isNotEmpty) return hoist;
+    }
+    return null;
+  }
+
+  /// Portals panel below top bar — independent of feed load / list paint.
+  Widget Function(Widget body)? _portalsWrapBody(
+    BuildContext context, {
+    required List<Map<String, dynamic>> actions,
+  }) {
+    final hoist = _hoistSourceFromActions(actions);
+    final tab = (tabId ?? '').trim();
+    if (hoist == null || tab.isEmpty) return null;
+    final chrome = PackChromeScope.maybeOf(context);
+    return (child) => PortalsActionHost.wrapListBody(
+          context,
+          tabId: tab,
+          sourceId: hoist,
+          shellTabVisible: chrome?.shellTabVisible ?? true,
+          child: child,
+        );
+  }
+
+  Widget? _listEmptyAction(BuildContext context, Map<String, dynamic> spec) {
+    final raw = spec['emptyAction'];
+    if (raw is! Map) return null;
+    final label = (raw['label'] ?? '').toString().trim();
+    if (label.isEmpty) return null;
+    final verb = (raw['action'] ?? raw['id'] ?? '').toString().trim().toLowerCase();
+    if (verb != 'portals') return null;
+    final listId = (spec['id'] ?? 'items').toString().trim();
+    final tab = (tabId ?? '').trim();
+    void onOpen() => _togglePortalsPanel(context);
+    final button = Button(
+      label: label,
+      icon: Icons.dns_rounded,
+      variant: ButtonVariant.primary,
+      onPressed: onOpen,
+    );
+    if (tab.isEmpty ||
+        !ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return button;
+    }
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: onOpen,
+      borderRadius: 12,
+      scaleOnFocus: 1.0,
+      listIndex: 0,
+      tvTabId: tab,
+      tvRowId: listId.isEmpty ? IptvCatalogLand.itemsRowId : listId,
+      tvItemIndex: 0,
+      tvZone: ShellPaintTvZone.row,
+      child: button,
+    );
+  }
+
+  void _togglePortalsPanel(BuildContext context) {
+    final key = (tabId ?? '').trim();
+    if (key.isEmpty) {
+      ForjaToast.show('Portals unavailable');
+      return;
+    }
+    try {
+      final container = ProviderScope.containerOf(context);
+      final open = container.read(portalsPanelOpenProvider(key));
+      container.read(portalsPanelOpenProvider(key).notifier).state = !open;
+      if (!open) {
+        preparePortalsPanel(container, key);
+      } else {
+        container.invalidate(portalsChipSummaryProvider(key));
+      }
+    } catch (_) {
+      ForjaToast.show('Portals unavailable');
+    }
+  }
+
+  String _itemKind(Map<String, dynamic> item) {
+    final props = PackPaintArtifact.propsOf(item);
+    for (final key in [
+      item['categoryId'],
+      item['kind'],
+      props['kind'],
+      props['categoryId'],
+      item['category'],
+      item['sport'],
+      if (item['meta'] is Map) (item['meta'] as Map)['kind'],
+      if (item['meta'] is Map) (item['meta'] as Map)['categoryId'],
+    ]) {
+      final v = (key ?? '').toString().trim();
+      if (v.isNotEmpty &&
+          v != 'live_match' &&
+          v != 'iptv' &&
+          v != 'movie' &&
+          v != 'tv') {
+        return v;
+      }
+    }
+    return '';
+  }
+
+  String _itemStreamId(Map<String, dynamic> item) {
+    final props = PackPaintArtifact.propsOf(item);
+    final open = item['open'];
+    final openMap = open is Map ? Map<String, dynamic>.from(open) : null;
+    for (final key in [
+      openMap?['streamId'],
+      props['streamId'],
+      item['streamId'],
+      item['id'],
+    ]) {
+      final v = (key ?? '').toString().trim();
+      if (v.isNotEmpty) return v;
+    }
+    return '';
+  }
+
+  bool _idListContains(dynamic raw, String id) {
+    if (id.isEmpty || raw is! List) return false;
+    for (final e in raw) {
+      if (e.toString().trim() == id) return true;
+    }
+    return false;
+  }
+
+  /// IPTV cats / Favorites / Watched + My List kinds — filter painted feed
+  /// in place (pre-wipe browserAllStreams). Live Sports sport uses feed reload.
+  bool _itemMatchesKindFilter(Map<String, dynamic> item, String kindFilter) {
+    final filter = kindFilter.trim();
+    if (filter.isEmpty || filter == 'all') return true;
+    if (filter == '__favorites__' || filter == 'favorites') {
+      return _idListContains(
+        CategoryBarActionHost.cachedLiveListParams['favorites'],
+        _itemStreamId(item),
+      );
+    }
+    if (filter == '__watched__' || filter == 'watched') {
+      return _idListContains(
+        CategoryBarActionHost.cachedLiveListParams['watched'],
+        _itemStreamId(item),
+      );
+    }
+    final needle = filter.toLowerCase();
+    final kind = _itemKind(item).toLowerCase();
+    if (kind == needle || kind.contains(needle)) return true;
+    // My List chips use type/kind movie|tv — [_itemKind] skips those so IPTV
+    // `type: movie` does not steal category matching.
+    final type = (item['type'] ?? '').toString().trim().toLowerCase();
+    final rawKind = (item['kind'] ?? '').toString().trim().toLowerCase();
+    return type == needle || rawKind == needle;
+  }
+
+  bool _itemMatchesEventQuery(Map<String, dynamic> item, String query) {
+    final needle = query.trim().toLowerCase();
+    if (needle.isEmpty) return true;
+    final name = (item['name'] ?? item['title'] ?? '').toString().toLowerCase();
+    final cat = (item['categoryName'] ??
+            item['description'] ??
+            item['kind'] ??
+            '')
+        .toString()
+        .toLowerCase();
+    final props = PackPaintArtifact.propsOf(item);
+    final propTitle =
+        (props['title'] ?? props['name'] ?? '').toString().toLowerCase();
+    final propSub =
+        (props['subtitle'] ?? props['categoryLabel'] ?? '').toString().toLowerCase();
+    return name.contains(needle) ||
+        cat.contains(needle) ||
+        propTitle.contains(needle) ||
+        propSub.contains(needle);
+  }
+
+  List<Map<String, dynamic>> _sortCatalogItems(
+    List<Map<String, dynamic>> items,
+    String sortId,
+  ) {
+    final sort = sortId.trim();
+    if (sort.isEmpty || sort == 'playlist' || items.length < 2) {
+      return items;
+    }
+    int nameCmp(Map<String, dynamic> a, Map<String, dynamic> b) {
+      final an = (a['name'] ?? a['title'] ?? '').toString().toLowerCase();
+      final bn = (b['name'] ?? b['title'] ?? '').toString().toLowerCase();
+      return an.compareTo(bn);
+    }
+
+    final copy = List<Map<String, dynamic>>.from(items);
+    if (sort == 'nameAsc' || sort == 'name' || sort == 'az') {
+      copy.sort(nameCmp);
+      return copy;
+    }
+    if (sort == 'nameDesc' || sort == 'za') {
+      copy.sort((a, b) => nameCmp(b, a));
+      return copy;
+    }
+    return items;
+  }
+
+  bool _itemsLookLikeEvents(List<Map<String, dynamic>> items) {
+    for (final item in items.take(8)) {
+      final paint = item['paint'];
+      final type = paint is Map ? (paint['type'] ?? '').toString() : '';
+      if (type == 'eventCard' || type == 'event') return true;
+      final props = PackPaintArtifact.propsOf(item);
+      if (props['homeTeam'] != null ||
+          props['awayTeam'] != null ||
+          props['live'] == true) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _itemsLookLikeLiveChannels(List<Map<String, dynamic>> items) {
+    for (final item in items.take(8)) {
+      final open = item['open'];
+      if (open is Map) {
+        final surface = (open['surface'] ?? '').toString().trim();
+        final kind = (open['kind'] ?? '').toString().trim();
+        if (surface == 'stream' && kind == 'live') return true;
+      }
+      final paint = item['paint'];
+      final type = paint is Map ? (paint['type'] ?? '').toString() : '';
+      if (type == 'channelCard' || type == 'channel') return true;
+      final props = PackPaintArtifact.propsOf(item);
+      if ((props['cardKind'] ?? '').toString() == 'channel') return true;
+    }
+    return false;
+  }
+
+  Widget _chromeMenu(BuildContext context, Map<String, dynamic> spec) {
+    if (layoutItemsFromSpec(spec).isEmpty) return const SizedBox.shrink();
+    return CatalogMenu(spec: spec);
+  }
+
+  Widget _chromeTabs(BuildContext context, Map<String, dynamic> spec) {
+    if (layoutItemsFromSpec(spec).isEmpty) return const SizedBox.shrink();
+    return CatalogTabs(spec: spec);
+  }
+
+  /// Prefer first portal/mood group — skip pack "All" and `__synthetic__` rows.
+  String _firstPortalCategoryId(
+    List<({String id, String label, String? icon})> items,
+  ) {
+    for (final e in items) {
+      final id = e.id.trim();
+      if (id.isEmpty || id == 'all' || id.startsWith('__')) continue;
+      return id;
+    }
+    return items.first.id;
+  }
+
+  Widget _chromeCategoryBar(BuildContext context, Map<String, dynamic> spec) {
+    final chrome = PackChromeScope.maybeOf(context);
+    final id = (spec['id'] ?? '').toString();
+    final dynamicItems = chrome?.barItems(id);
+    final kindIcons = kitCategoryBarKindIcons(spec);
+    final seed = layoutItemsFromSpec(spec);
+    final scope = LayoutScope.maybeOf(context);
+    // IPTV shelf section — VOD must not keep Live Favorites / auto-pick a Live cat.
+    final catalogSection =
+        (scope?.selectedId('catalog') ?? '').trim().toLowerCase();
+    final vodSection =
+        catalogSection == 'movies' || catalogSection == 'series';
+    // Layout seed first (e.g. Live Sports "All"), then dynamic kinds.
+    // Packs that omit All (IPTV) never get a host-invented row.
+    final seen = <String>{};
+    final items = <({String id, String label, String? icon})>[];
+    void addItem(String itemId, String label, String? icon) {
+      final clean = itemId.trim();
+      if (clean.isEmpty || !seen.add(clean)) return;
+      // Stale Live synthetics after Movies/Series shelf flip.
+      if (vodSection && clean.startsWith('__')) return;
+      items.add((
+        id: clean,
+        label: label,
+        icon: icon ?? kindIcons[clean.toLowerCase()],
+      ));
+    }
+
+    for (final s in seed) {
+      addItem(s.id, s.label, kindIcons[s.id.toLowerCase()]);
+    }
+    if (dynamicItems != null) {
+      for (final raw in dynamicItems) {
+        final rawId = (raw['id'] ?? '').toString();
+        addItem(
+          rawId,
+          (raw['label'] ?? raw['title'] ?? rawId).toString(),
+          (raw['icon'] ?? kindIcons[rawId.toLowerCase()])?.toString(),
+        );
+      }
+    }
+    if (items.isEmpty) return const SizedBox.shrink();
+    final selectedRaw = (scope?.selectedId(id) ??
+            (spec['default'] ?? '').toString())
+        .trim();
+    final selectedInItems =
+        selectedRaw.isNotEmpty && items.any((e) => e.id == selectedRaw);
+    // Favorites / Already watched live in CategoryBarActionHost (withPins), not
+    // feed `kinds`. PackLoadedPaint overwrites barItems without them — must not
+    // snap selection back to the first portal group (grid never switched).
+    final keepSyntheticLive = !vodSection &&
+        CategoryBarActionHost.featuresEnabled(spec) &&
+        PortalLiveCatalog.isSyntheticId(selectedRaw);
+    // Search starts with no category (shelf-wide). Mid-search pick stays lit.
+    // Do not snap empty search selection back to first/all.
+    final searching = (chrome?.eventQuery ?? '').trim().isNotEmpty;
+    // Live + Movies/Series: land on remembered category when known.
+    // Do NOT painter-snap to the first portal group before store land — that
+    // paints first-group channels then flips to the selected category (322).
+    final String selected;
+    if (searching) {
+      selected = selectedInItems ? selectedRaw : '';
+    } else if (keepSyntheticLive) {
+      selected = selectedRaw;
+    } else if (!vodSection && CategoryBarActionHost.featuresEnabled(spec)) {
+      final peek = IptvCatalogLand.peekLastCategory(
+        CategoryBarActionHost.cachedLiveListParams['portalStoreKey']
+                ?.toString() ??
+            IptvCatalogLand.activePortalKey,
+      );
+      if (peek != null && items.any((e) => e.id == peek)) {
+        selected = peek;
+      } else if (selectedInItems) {
+        // Keep current only when we have no remembered land yet.
+        selected = selectedRaw;
+      } else {
+        // Pending CategoryBarActionHost store land — leave empty.
+        selected = '';
+      }
+    } else if (selectedInItems) {
+      selected = selectedRaw;
+    } else {
+      selected = _firstPortalCategoryId(items);
+    }
+    if (selected.isNotEmpty &&
+        selected != selectedRaw &&
+        scope != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        scope.onSelect(id, selected, toggle: false);
+      });
+    }
+    final orientation = (spec['orientation'] ?? spec['axis'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final source = (spec['source'] ?? '').toString().trim().toLowerCase();
+    final vertical = orientation == 'vertical' ||
+        orientation == 'rail' ||
+        spec['vertical'] == true ||
+        source == 'iptv';
+    final useCircles =
+        spec['kindIcons'] is Map || source == 'live_schedule';
+    if (useCircles && !vertical) {
+      return _kindCircleBar(
+        context,
+        barId: id,
+        items: items,
+        selectedId: selected,
+        onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
+        focusDown: spec['focusDown']?.toString(),
+        focusUp: spec['focusUp']?.toString(),
+      );
+    }
+    if (vertical) {
+      final width = PackPaintArtifact.packLength(context, spec['width']) ??
+          catalogSideRailWidth(context);
+      final searchHeader = _categoryBarSearchHeader(context, spec);
+      if (CategoryBarActionHost.featuresEnabled(spec)) {
+        return Consumer(
+          builder: (ctx, ref, _) => CategoryBarActionHost.buildRail(
+            ctx,
+            ref,
+            spec: spec,
+            seedItems: items,
+            selectedId: selected,
+            tabId: tabId,
+            header: searchHeader,
+            onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
+          ),
+        );
+      }
+      final rail = CatalogSideRail(
+        items: [for (final e in items) (id: e.id, label: e.label)],
+        selectedId: selected,
+        width: width,
+        onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
+      );
+      if (searchHeader == null) return rail;
+      return SizedBox(
+        width: width,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: searchHeader,
+            ),
+            Expanded(child: rail),
+          ],
+        ),
+      );
+    }
+    return CatalogChipBar(
+      items: [for (final e in items) (id: e.id, label: e.label)],
+      selectedId: selected,
+      padding: PackPaintArtifact.packPad(
+        spec['pad'] ?? spec['padding'],
+        fallback: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        context: context,
+      ),
+      onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
+    );
+  }
+
+  Map<String, String> _topBarSelections(
+    LayoutScope? scope,
+    List<Map<String, dynamic>> actions,
+  ) {
+    final out = <String, String>{};
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty) continue;
+      var selected =
+          (scope?.selectedId(id) ?? (a['default'] ?? '').toString()).trim();
+      // Live dynamic menus — defaults only when pack opts in. Static menus keep
+      // pack `default` / first item (do not force by action id).
+      if (a['dynamicCatalogs'] == true && selected.isEmpty) selected = 'all';
+      if (a['dynamicSchedule'] == true && selected.isEmpty) {
+        selected = kKitScheduleDefaultPref;
+      }
+      out[id] = selected;
+    }
+    return out;
+  }
+
+  Map<String, String> _topBarSelectionLabels(
+    Map<String, String> selections,
+    List<Map<String, dynamic>> actions,
+  ) {
+    final out = <String, String>{};
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString().trim();
+      if (id.isEmpty) continue;
+      final selected = (selections[id] ?? '').trim();
+      // Host chip labels are Live Sports only — static menus use pack items.
+      if (a['dynamicCatalogs'] == true) {
+        final label = KitTopBarHostHooks.catalogChipLabel?.call(
+          selected.isEmpty ? 'all' : selected,
+          const [],
+        );
+        if (label != null && label.isNotEmpty) out[id] = label;
+      } else if (a['dynamicSchedule'] == true) {
+        final label = KitTopBarHostHooks.scheduleChipLabel?.call(
+          selected.isEmpty ? kKitScheduleDefaultPref : selected,
+        );
+        if (label != null && label.isNotEmpty) out[id] = label;
+      }
+    }
+    return out;
+  }
+
+  Widget _chromeTopBar(BuildContext context, Map<String, dynamic> spec) {
+    final scope = LayoutScope.maybeOf(context);
+    final actions = propsActionMaps(spec);
+    final selections = _topBarSelections(scope, actions);
+    final height = PackPaintArtifact.packLength(context, spec['height']);
+    final gap = PackPaintArtifact.packLength(context, spec['gap']);
+    final padRaw = spec['pad'] ?? spec['padding'];
+    final padding = padRaw == null
+        ? null
+        : PackPaintArtifact.packPad(
+            padRaw,
+            fallback: EdgeInsets.fromLTRB(
+              ShellTokens.compactChromeLeadingInset(context),
+              ShellTokens.tabHeaderTopPadding,
+              ShellTokens.bodyHorizontalPadding,
+              4,
+            ),
+            context: context,
+          );
+    final chromeDown = _chromeFocusDown(scope, spec);
+    return Consumer(
+      builder: (context, ref, _) {
+        final status = _topBarFeedStatus(ref);
+        final paintedActions = status.actions(actions);
+        return CatalogTopChrome(
+          actions: paintedActions,
+          title: (spec['title'] ?? spec['label'] ?? '').toString(),
+          actionSlots: _portalsActionSlots(
+            context,
+            actions: paintedActions,
+            onDownEdge: chromeDown,
+          ),
+          selections: selections,
+          selectionLabels: _topBarSelectionLabels(selections, actions),
+          center: status.center,
+          height: height,
+          gap: gap,
+          padding: padding,
+          onDownEdge: chromeDown,
+          wrapRow: _chromeTvWrap(context, actions: paintedActions),
+          onSelect: (actionId, value) {
+            _dispatchTopBarAction(
+              context,
+              actions: actions,
+              actionId: actionId,
+              value: value,
+              scope: scope,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Live schedule scrape chip for the top-bar center (issue 278).
+  _TopBarFeedStatus _topBarFeedStatus(WidgetRef ref) {
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty || KitTopBarHostHooks.readFeedBusy == null) {
+      return const _TopBarFeedStatus();
+    }
+    final feedBusy = KitTopBarHostHooks.readFeedBusy!(ref, tabId: tab);
+    if (!feedBusy.busy) return const _TopBarFeedStatus();
+    final raw = (feedBusy.label ?? '').trim();
+    return _TopBarFeedStatus(
+      busy: true,
+      center: _KitTopBarCatalogProgressChip(
+        label: raw.isEmpty ? 'Loading…' : raw,
+      ),
+    );
+  }
+
+  Future<void> _openEventSearch(
+    BuildContext context,
+    Map<String, dynamic> action,
+  ) async {
+    final chrome = PackChromeScope.maybeOf(context);
+    final hint = (action['placeholder'] ?? action['hint'] ?? 'Search…')
+        .toString()
+        .trim();
+    final verb = (action['action'] ?? '').toString().trim().toLowerCase();
+    final tab = (tabId ?? '').trim();
+    // eventSearch filters the current list; hub `search` opens catalog search.
+    if (verb != 'eventsearch' && tab.isNotEmpty) {
+      await openCatalogSearch(
+        context,
+        pluginId: pluginId,
+        tabId: tab,
+        hintText: hint.isEmpty ? 'Search…' : hint,
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    final initial = chrome?.eventQuery ?? '';
+    final controller = TextEditingController(text: initial);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ForjaShellColors.surfaceElevated,
+        title: Text(
+          (action['label'] ?? 'Search').toString(),
+          style: const TextStyle(color: ForjaShellColors.textPrimary),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: ForjaShellColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: hint.isEmpty ? 'Search…' : hint,
+            hintStyle: const TextStyle(color: ForjaShellColors.textSecondary),
+          ),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(''),
+            child: const Text('Clear'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null || !context.mounted) return;
+    chrome?.onEventQuery(result.trim());
+  }
+}
+
+class _TopBarFeedStatus {
+  const _TopBarFeedStatus({this.busy = false, this.center});
+
+  final bool busy;
+  final Widget? center;
+
+  List<Map<String, dynamic>> actions(List<Map<String, dynamic>> all) {
+    if (!busy) return all;
+    return [
+      for (final a in all)
+        if (!_isTopBarRefreshAction(a)) a,
+    ];
+  }
+
+  static bool _isTopBarRefreshAction(Map<String, dynamic> action) {
+    final verb = (action['action'] ?? '').toString().trim().toLowerCase();
+    final id = (action['id'] ?? '').toString().trim().toLowerCase();
+    return verb == 'refresh' || id == 'refresh';
+  }
+}
+
+/// Centered scrape progress for Live Sports top bar (`Loading ESPN… 2/10`).
+class _KitTopBarCatalogProgressChip extends StatelessWidget {
+  const _KitTopBarCatalogProgressChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final maxW = (MediaQuery.sizeOf(context).width * 0.42).clamp(
+      ShellTokens.chromeScale(160, tv: tv),
+      ShellTokens.chromeScale(360, tv: tv),
+    );
+    final padH = ShellTokens.chromeScale(12, tv: tv);
+    final padV = ShellTokens.chromeScale(7, tv: tv);
+    final radius = ShellTokens.chromeScale(20, tv: tv);
+    final spin = ShellTokens.chromeScale(12, tv: tv);
+    final gap = ShellTokens.chromeScale(8, tv: tv);
+    final fontSize = tv ? ShellTokens.tvMetaFontSize : 11.5;
+    return ExcludeFocus(
+      child: Tooltip(
+        message: label,
+        child: Container(
+          constraints: BoxConstraints(maxWidth: maxW),
+          padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(
+              color: ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: spin,
+                height: spin,
+                child: CircularProgressIndicator(
+                  strokeWidth: ShellTokens.chromeScale(1.8, tv: tv),
+                  color: ForjaShellColors.sectionAccent,
+                ),
+              ),
+              SizedBox(width: gap),
+              Flexible(
+                child: CrossfadeSwap(
+                  child: Text(
+                    label,
+                    key: ValueKey(label),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Pack optional cinematic-hero visual props (omit → ShellTokens / shell metrics).
+class _HeroPackVisuals {
+  const _HeroPackVisuals({
+    this.height,
+    this.kenBurns,
+    this.heightFraction,
+    this.bleedDownOffset,
+    this.minHeight,
+    this.nextRowPeekFraction,
+    this.imageStartFraction,
+    this.textColumnWidth,
+    this.textColumnTopInset,
+    this.textColumnVerticalAlign,
+    this.titleSlotHeight,
+    this.logoMaxHeight,
+    this.minTitleHeight,
+    this.metaSlotHeight,
+    this.titleMetaGap,
+    this.metaOverviewGap,
+    this.metaActionsGap,
+    this.overviewMaxLines,
+    this.overviewFontSize,
+    this.overviewLineHeight,
+    this.upcomingNoticeReserve,
+    this.sectionPad,
+    this.compactRightInset,
+  });
+
+  factory _HeroPackVisuals.fromNode(Map<String, dynamic> node) {
+    final maxLines = PackPaintArtifact.packInt(node['overviewMaxLines']);
+    return _HeroPackVisuals(
+      height: PackPaintArtifact.packDouble(node['height']),
+      kenBurns: PackPaintArtifact.packBool(node['kenBurns']),
+      heightFraction: PackPaintArtifact.packDouble(node['heightFraction']),
+      bleedDownOffset: PackPaintArtifact.packDouble(node['bleedDownOffset']),
+      minHeight: PackPaintArtifact.packDouble(node['minHeight']),
+      nextRowPeekFraction:
+          PackPaintArtifact.packDouble(node['nextRowPeekFraction']),
+      imageStartFraction:
+          PackPaintArtifact.packDouble(node['imageStartFraction']),
+      textColumnWidth: PackPaintArtifact.packDouble(node['textColumnWidth']),
+      textColumnTopInset:
+          PackPaintArtifact.packDouble(node['textColumnTopInset']),
+      textColumnVerticalAlign:
+          PackPaintArtifact.packDouble(node['textColumnVerticalAlign']),
+      titleSlotHeight: PackPaintArtifact.packDouble(node['titleSlotHeight']),
+      logoMaxHeight: PackPaintArtifact.packDouble(node['logoMaxHeight']),
+      minTitleHeight: PackPaintArtifact.packDouble(node['minTitleHeight']),
+      metaSlotHeight: PackPaintArtifact.packDouble(node['metaSlotHeight']),
+      titleMetaGap: PackPaintArtifact.packDouble(node['titleMetaGap']),
+      metaOverviewGap: PackPaintArtifact.packDouble(node['metaOverviewGap']),
+      metaActionsGap: PackPaintArtifact.packDouble(node['metaActionsGap']),
+      overviewMaxLines: maxLines?.clamp(1, 12),
+      overviewFontSize: PackPaintArtifact.packDouble(node['overviewFontSize']),
+      overviewLineHeight:
+          PackPaintArtifact.packDouble(node['overviewLineHeight']),
+      upcomingNoticeReserve:
+          PackPaintArtifact.packDouble(node['upcomingNoticeReserve']),
+      sectionPad: PackPaintArtifact.packDouble(node['sectionPad']),
+      compactRightInset:
+          PackPaintArtifact.packDouble(node['compactRightInset']),
+    );
+  }
+
+  final double? height;
+  final bool? kenBurns;
+  final double? heightFraction;
+  final double? bleedDownOffset;
+  final double? minHeight;
+  final double? nextRowPeekFraction;
+  final double? imageStartFraction;
+  final double? textColumnWidth;
+  final double? textColumnTopInset;
+  final double? textColumnVerticalAlign;
+  final double? titleSlotHeight;
+  final double? logoMaxHeight;
+  final double? minTitleHeight;
+  final double? metaSlotHeight;
+  final double? titleMetaGap;
+  final double? metaOverviewGap;
+  final double? metaActionsGap;
+  final int? overviewMaxLines;
+  final double? overviewFontSize;
+  final double? overviewLineHeight;
+  final double? upcomingNoticeReserve;
+  final double? sectionPad;
+  final double? compactRightInset;
+}
+
+/// Hub cinematic hero + TV default focus (nav RIGHT / OK land on details CTA).
+///
+/// Restores [TvHeroActions.bind] lost when pack_layout_host_wire was deleted.
+class _HubTvCinematicHero extends StatefulWidget {
+  const _HubTvCinematicHero({
+    required this.tabId,
+    required this.pluginId,
+    required this.slides,
+    required this.slideMetas,
+    required this.actionSpecs,
+    required this.pageBottomChild,
+    required this.compact,
+    required this.pack,
+    required this.focusDown,
+  });
+
+  final String tabId;
+  final String pluginId;
+  final List<CinematicHeroSlide> slides;
+  final List<MetaItem?> slideMetas;
+  final List<_HeroActionSpec> actionSpecs;
+  final Widget? pageBottomChild;
+  final bool compact;
+  final _HeroPackVisuals pack;
+  final VoidCallback? focusDown;
+
+  @override
+  State<_HubTvCinematicHero> createState() => _HubTvCinematicHeroState();
+}
+
+class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
+  final FocusNode _playFocus = FocusNode(debugLabel: 'hub-hero-details');
+  final FocusNode _followFocus = FocusNode(debugLabel: 'hub-hero-follow');
+  final FocusNode _galleryFocus = FocusNode(debugLabel: 'hub-hero-gallery');
+  final GlobalKey<CinematicHeroState> _heroKey = GlobalKey<CinematicHeroState>();
+  /// One-shot — Spotlight remount after Films / Categories must not steal ↓
+  /// off Featured back onto View details via autofocus.
+  bool _ctaAutofocusConsumed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bindTv();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HubTvCinematicHero oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _bindTv();
+  }
+
+  @override
+  void dispose() {
+    // Do not TvHeroActions.unbind — PackLayoutPainter owns tab teardown and
+    // may still need enterFromNav / restore for list hubs after hero unmount.
+    // defaultFocus below returns null once unmounted so restore cannot use
+    // disposed FocusNodes; heroReveal stays PackLayoutPainter's scroll.
+    _playFocus.dispose();
+    _followFocus.dispose();
+    _galleryFocus.dispose();
+    super.dispose();
+  }
+
+  void _bindTv() {
+    final tab = widget.tabId;
+    if (tab.isEmpty) return;
+    // defaultFocus only — pack page `focus.enter/restore` owns nav land.
+    // Do not bind heroReveal here: PackLayoutPainter registers a ScrollController
+    // reveal that survives hero remounts (rail reload during nav enter).
+    TvHeroActions.bind(
+      tab,
+      defaultFocus: () => mounted ? _playFocus : null,
+    );
+  }
+
+  void _focusGallery() {
+    if (!_galleryFocus.canRequestFocus) return;
+    _galleryFocus.requestFocus();
+  }
+
+  void _focusPlay() {
+    if (!_playFocus.canRequestFocus) return;
+    _playFocus.requestFocus();
+  }
+
+  void _focusFollow() {
+    if (!_followFocus.canRequestFocus) return;
+    _followFocus.requestFocus();
+  }
+
+  void _focusTopBar() {
+    final tab = widget.tabId;
+    if (tab.isEmpty) return;
+    if (ShellTvFocusCoordinator.focusRowItem(tab, 'top-bar', 0)) return;
+    if (ShellTvFocusCoordinator.focusRowItem(tab, 'chrome', 0)) return;
+  }
+
+  void _stepFilm(int delta) {
+    _heroKey.currentState?.stepFilm(delta);
+  }
+
+  Widget _galleryOverlay(BuildContext context) {
+    final tab = widget.tabId;
+    final policy = ShellScope.inputPolicyOf(context);
+    // Desktop shares the TV focus graph but still needs trackpad/mouse swipes
+    // on the PageView — opaque gallery hit target would block them.
+    return IgnorePointer(
+      ignoring: policy.scaleOnHover,
+      child: shellFocusableTap(
+        context: context,
+        focusNode: _galleryFocus,
+        tvTabId: tab.isEmpty ? null : tab,
+        tvZone: ShellTvZone.hero,
+        scaleOnFocus: 1,
+        // Invisible D-pad hit target over the backdrop — never paint ink/fill.
+        showFocusFill: false,
+        suppressInkHover: true,
+        ensureVisibleMode: ShellPaintEnsureVisible.off,
+        onLeftEdge: () => _stepFilm(-1),
+        onRightEdge: () => _stepFilm(1),
+        onUpEdge: _focusTopBar,
+        onDownEdge: _focusPlay,
+        onTap: () {
+          final details = widget.slides.isEmpty
+              ? null
+              : widget.slides[_heroKey.currentState?.heroIndex ?? 0].onDetails;
+          details?.call();
+        },
+        child: const SizedBox.expand(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Keep CTA enter/default focus after PackLayoutPainter's one-shot list bind.
+    _bindTv();
+    final metrics = ShellScope.metricsOf(context);
+    final policy = ShellScope.inputPolicyOf(context);
+    final tv = policy.useFocusableMoodChips;
+    final tab = widget.tabId;
+    final compact = widget.compact;
+    final pack = widget.pack;
+
+    return CinematicHero(
+      key: _heroKey,
+      slides: widget.slides,
+      pageBottomChild: widget.pageBottomChild,
+      height: pack.height,
+      galleryOverlayBuilder: tv ? _galleryOverlay : null,
+      layout: CinematicHeroLayout(
+        compact: compact,
+        tvDensity: metrics.usesTvDensity,
+        kenBurns: pack.kenBurns ?? policy.kenBurnsBackdrop,
+        plainTitle: policy.useFocusableMoodChips,
+        heroMinTitleHeight:
+            pack.minTitleHeight ?? metrics.heroMinTitleHeight,
+        heroActionUseFittedBox: metrics.heroActionUseFittedBox,
+        heroCompactRightInset:
+            pack.compactRightInset ?? metrics.heroCompactRightInset,
+        sectionHorizontalPadding:
+            pack.sectionPad ?? ShellTokens.homeSectionHorizontalPadding,
+        heroHeightFraction:
+            pack.heightFraction ?? shellHeroHeightFraction(context),
+        heroMinHeight: pack.minHeight ?? shellHeroMinHeight(context),
+        nextRowPeekFraction:
+            pack.nextRowPeekFraction ?? shellHeroNextRowPeekFraction(context),
+        firstCatalogRowHeight: widget.pageBottomChild == null
+            ? 0
+            : catalogSectionTitleTop(context) +
+                shellPosterCardHeight(context) +
+                shellPosterCardRowGap(context),
+        bleedDownOffset: pack.bleedDownOffset,
+        scale: shellLayoutScale(context),
+        imageStartFraction: pack.imageStartFraction,
+        textColumnWidth: pack.textColumnWidth,
+        textColumnTopInset: pack.textColumnTopInset,
+        textColumnVerticalAlign: pack.textColumnVerticalAlign,
+        titleSlotHeight: pack.titleSlotHeight,
+        logoMaxHeight: pack.logoMaxHeight,
+        metaSlotHeight: pack.metaSlotHeight,
+        titleMetaGap: pack.titleMetaGap,
+        metaOverviewGap: pack.metaOverviewGap,
+        metaActionsGap: pack.metaActionsGap,
+        overviewMaxLines: pack.overviewMaxLines,
+        overviewFontSize: pack.overviewFontSize,
+        overviewLineHeight: pack.overviewLineHeight,
+        upcomingNoticeReserve: pack.upcomingNoticeReserve,
+      ),
+      onHeight: tab.isEmpty
+          ? null
+          : (h) {
+              ShellBus.hubHeroHeightFor(tab).value = h;
+            },
+      actionRowBuilder: (ctx, slide, {required isActive}) {
+        if (!isActive) return const SizedBox.shrink();
+        final idx = widget.slides.indexWhere((s) => s.id == slide.id);
+        final meta = idx >= 0 && idx < widget.slideMetas.length
+            ? widget.slideMetas[idx]
+            : null;
+        final details = slide.onDetails;
+        final follow = meta == null
+            ? null
+            : ListFollowTarget.fromMeta(
+                meta: meta,
+                pluginId: widget.pluginId,
+              );
+
+        final children = <Widget>[];
+        var autofocusUsed = false;
+        final packRtl = Directionality.of(ctx) == TextDirection.rtl;
+        final navOnRight = SettingsService.shellWritingIsRtl;
+        void focusNav() {
+          ShellTvFocusCoordinator.focusActiveNavTab();
+        }
+        for (final action in widget.actionSpecs) {
+          final id = action.id;
+          Widget? child;
+          if (id == 'details') {
+            if (details == null) continue;
+            final useAuto = tv &&
+                policy.heroPlayAutoFocus &&
+                !autofocusUsed &&
+                !_ctaAutofocusConsumed;
+            if (useAuto) {
+              autofocusUsed = true;
+              _ctaAutofocusConsumed = true;
+            }
+            final hasFollow = follow != null;
+            child = HeroPillPlayButton(
+              label: action.label ?? 'View details',
+              icon: PackPaintTree._heroActionIcon(action.icon),
+              tone: action.tone,
+              alwaysShowLabel: true,
+              onTap: details,
+              autoFocus: useAuto,
+              // Keep node mounted for nav RIGHT restore even when not autofocus.
+              focusNode: tv ? _playFocus : null,
+              tvTabId: tab.isEmpty ? null : tab,
+              tvRowId: kHubHeroDetailsFocusId,
+              tvItemIndex: 0,
+              // Explicit edges — ForjaInteractive geometric ↓ otherwise lands on
+              // hub-hero-gallery (full-bleed overlay) after denser TV posters.
+              onUpEdge: tv ? _focusGallery : null,
+              onDownEdge: tv ? widget.focusDown : null,
+              // Pack RTL mirrors the row: follow sits on the end side.
+              // Leave the hero only toward the navbar (app writing direction).
+              onLeftEdge: !tv
+                  ? null
+                  : packRtl && hasFollow
+                      ? _focusFollow
+                      : !navOnRight && (!packRtl || !hasFollow)
+                          ? focusNav
+                          : null,
+              onRightEdge: !tv
+                  ? null
+                  : !packRtl && hasFollow
+                      ? _focusFollow
+                      : navOnRight && (packRtl || !hasFollow)
+                          ? focusNav
+                          : null,
+            );
+          } else if (id == 'follow') {
+            if (follow == null) continue;
+            child = KitListStatusHero(
+              target: follow,
+              tvTabId: tab.isEmpty ? null : tab,
+              tvItemIndexStart: 1,
+              focusNode: tv ? _followFocus : null,
+              onUpEdge: tv ? _focusGallery : null,
+              onDownEdge: tv ? widget.focusDown : null,
+              onLeftEdge: !tv
+                  ? null
+                  : packRtl
+                      ? (navOnRight ? null : focusNav)
+                      : _focusPlay,
+              onRightEdge: !tv
+                  ? null
+                  : packRtl
+                      ? _focusPlay
+                      : (navOnRight ? focusNav : null),
+              enabled: true,
+            );
+          } else {
+            continue;
+          }
+          if (children.isNotEmpty) {
+            children.add(SizedBox(
+              width: ShellPaintScope.usesTvDensityOf(context)
+                  ? DetailsTokens.heroPillGapTv
+                  : DetailsTokens.heroPillGap,
+            ));
+          }
+          children.add(child);
+        }
+        if (children.isEmpty) return const SizedBox.shrink();
+        final row = HeroPillActionRow(children: children);
+        final focusDown = widget.focusDown;
+        if (!tv || focusDown == null) return row;
+        // Backup when a CTA child ignores ↓ — miss-aware so Featured remount
+        // after Films / Categories does not trap focus on View details.
+        return Focus(
+          skipTraversal: true,
+          onKeyEvent: (node, event) {
+            if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+              return KeyEventResult.ignored;
+            }
+            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              ShellTvFocusCoordinator.beginKitEdgeAttempt();
+              focusDown();
+              if (!ShellTvFocusCoordinator.takeKitEdgeMiss()) {
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            }
+            if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+              _focusGallery();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: row,
+        );
+      },
+    );
+  }
+}
+
+class _HeroActionSpec {
+  const _HeroActionSpec({
+    required this.id,
+    this.label,
+    this.icon,
+    this.tone = HeroPillPlayTone.primary,
+  });
+
+  final String id;
+  final String? label;
+  final String? icon;
+  final HeroPillPlayTone tone;
+}
+
+/// Resolves kit.list `openSetting` (e.g. matchOpen) then mounts the list body.
+class _ListOpenSettingGate extends StatefulWidget {
+  const _ListOpenSettingGate({
+    required this.pluginId,
+    required this.openSettingId,
+    required this.layoutOpen,
+    required this.builder,
+  });
+
+  final String pluginId;
+  final String openSettingId;
+  final String layoutOpen;
+  final Widget Function(String effectiveOpen) builder;
+
+  @override
+  State<_ListOpenSettingGate> createState() => _ListOpenSettingGateState();
+}
+
+class _ListOpenSettingGateState extends State<_ListOpenSettingGate> {
+  String _open = kKitListOpenModeDefault;
+
+  @override
+  void initState() {
+    super.initState();
+    packSettingsRevisionListenable.addListener(_reload);
+    unawaited(_reload());
+  }
+
+  @override
+  void didUpdateWidget(covariant _ListOpenSettingGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pluginId != widget.pluginId ||
+        oldWidget.openSettingId != widget.openSettingId ||
+        oldWidget.layoutOpen != widget.layoutOpen) {
+      unawaited(_reload());
+    }
+  }
+
+  @override
+  void dispose() {
+    packSettingsRevisionListenable.removeListener(_reload);
+    super.dispose();
+  }
+
+  Future<void> _reload() async {
+    final next = await resolveListOpenMode(
+      pluginId: widget.pluginId,
+      openSettingId: widget.openSettingId,
+      layoutOpen: widget.layoutOpen,
+    );
+    if (!mounted || next == _open) return;
+    setState(() => _open = next);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(_open);
+}
+
+Color? _parseMoodAccent(Object? raw) {
+  final s = (raw ?? '').toString().trim();
+  if (s.isEmpty) return null;
+  var hex = s;
+  if (hex.startsWith('#')) hex = hex.substring(1);
+  if (hex.length == 6) hex = 'FF$hex';
+  final v = int.tryParse(hex, radix: 16);
+  if (v == null) return null;
+  return Color(v);
+}
+
+/// Mood chips + optional pack load results → foundation [MoodSection].
+class _MoodMount extends StatefulWidget {
+  const _MoodMount({
+    required this.spec,
+    required this.pluginId,
+    this.packSourceUrl,
+    this.tabId,
+  });
+
+  final Map<String, dynamic> spec;
+  final String pluginId;
+  final String? packSourceUrl;
+  final String? tabId;
+
+  @override
+  State<_MoodMount> createState() => _MoodMountState();
+}
+
+class _MoodMountState extends State<_MoodMount> {
+  String? _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    final options = widget.spec['options'];
+    if (options is List && options.isNotEmpty) {
+      final ids = <String>[
+        for (final o in options)
+          if (o is Map && o['id'] != null) o['id'].toString(),
+      ];
+      if (ids.isNotEmpty) {
+        _selectedId = ids[DateTime.now().millisecond % ids.length];
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final options = widget.spec['options'];
+    if (options is! List || options.isEmpty) return const SizedBox.shrink();
+    final title = (widget.spec['title'] ?? '').toString();
+    final tabEarly = (widget.tabId ?? '').trim();
+    if (tabEarly.isNotEmpty) {
+      // Reserve before poster rails under mood load paint.
+      PackPaintArtifact.stableSortOrder(tabEarly, 'mood-chips');
+      PackPaintArtifact.stableSortOrder(tabEarly, 'mood-results');
+    }
+    final parsed = <({
+      String id,
+      String label,
+      IconData icon,
+      Color accent,
+    })>[];
+    for (final raw in options) {
+      if (raw is! Map) continue;
+      final opt = Map<String, dynamic>.from(raw);
+      final id = (opt['id'] ?? '').toString();
+      if (id.isEmpty) continue;
+      final token = kitMoodIconToken(opt['icon']?.toString() ?? id);
+      parsed.add((
+        id: id,
+        label: (opt['label'] ?? id).toString(),
+        icon: token.icon,
+        accent: _parseMoodAccent(opt['accent']) ?? token.accent,
+      ));
+    }
+    if (parsed.isEmpty) return const SizedBox.shrink();
+    final defaultPad = catalogSectionHorizontalPadding(context);
+    final pad = PackPaintArtifact.packLength(context, widget.spec['pad']) ?? defaultPad;
+    final titlePad = PackPaintArtifact.titlePadInsets(
+      widget.spec['titlePad'],
+      context,
+    );
+    Widget? results;
+    final load = packLoadSpec(widget.spec['load']);
+    if (_selectedId != null && load != null) {
+      results = PackLoadedPaint(
+        pluginId: widget.pluginId,
+        packSourceUrl: widget.packSourceUrl,
+        tabId: widget.tabId,
+        action: load.action,
+        params: {
+          ...load.params,
+          'filter': {'field': 'mood', 'value': _selectedId},
+        },
+        fallbackSpec: const {'type': 'rail', 'title': ''},
+        builder: (ctx, merged) {
+          final node = Map<String, dynamic>.from(merged);
+          node['id'] = 'mood-results';
+          node['focusUp'] = 'mood-chips';
+          return PackPaintArtifact.posterRow(
+            ctx,
+            node: node,
+            pluginId: widget.pluginId,
+            packSourceUrl: widget.packSourceUrl,
+          );
+        },
+      );
+    }
+    return MoodSection(
+      title: title.isEmpty ? null : title,
+      titlePadding: EdgeInsets.fromLTRB(
+        pad,
+        titlePad.top,
+        pad,
+        titlePad.bottom,
+      ),
+      chipStrip: LayoutBuilder(
+        builder: (context, constraints) {
+          final layout = ShellMoodCircleLayout.resolve(
+            context,
+            itemCount: parsed.length,
+            maxWidth: constraints.maxWidth,
+          );
+          final rowHeight =
+              PackPaintArtifact.packLength(context, widget.spec['rowHeight']) ??
+                  layout.rowHeight;
+          final chipGap =
+              PackPaintArtifact.packLength(context, widget.spec['gap']) ??
+                  layout.horizontalGap;
+          final tab = (widget.tabId ?? '').trim();
+          const chipRowId = 'mood-chips';
+          const resultsRowId = 'mood-results';
+
+          Widget chipAt(int i, {TvChipEdges? edges}) {
+            final m = parsed[i];
+            return ShellMoodCircleItem(
+              layout: layout,
+              label: m.label,
+              icon: m.icon,
+              accent: m.accent,
+              selected: _selectedId == m.id,
+              listIndex: i,
+              onTap: () {
+                final already = _selectedId == m.id;
+                setState(() => _selectedId = m.id);
+                if (already) edges?.onSelectAlreadySelected();
+              },
+              onLeftEdge: edges?.onLeft,
+              onRightEdge: edges?.onRight,
+              onUpEdge: edges?.onUp,
+              onDownEdge: edges?.onDown,
+            );
+          }
+
+          final tvNav = ShellPaintScope.useTvFocusOf(context);
+          final fits =
+              layout.contentWidth(parsed.length) <= constraints.maxWidth;
+
+          Widget centeredRow({
+            required bool scaleToFit,
+            TvChipEdges Function(int index)? edgesFor,
+          }) {
+            final row = Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < parsed.length; i++) ...[
+                  if (i > 0) SizedBox(width: chipGap),
+                  chipAt(i, edges: edgesFor?.call(i)),
+                ],
+              ],
+            );
+            return SizedBox(
+              height: rowHeight,
+              width: double.infinity,
+              child: scaleToFit
+                  ? FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.center,
+                      child: row,
+                    )
+                  : Center(child: row),
+            );
+          }
+
+          if (tvNav) {
+            final packFocusUp = LayoutScope.maybeOf(context)
+                ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
+            final packFocusDown = LayoutScope.maybeOf(context)
+                ?.resolveFocusEdge(
+                  (widget.spec['focusDown'] ?? '').toString(),
+                  down: true,
+                );
+            return TvChipStrip(
+              tabId: tab.isEmpty ? null : tab,
+              rowId: chipRowId,
+              sortOrder: PackPaintArtifact.stableSortOrder(
+                tab.isEmpty ? TvFocusGraph.tabIdOf(context) : tab,
+                chipRowId,
+              ),
+              itemCount: parsed.length,
+              resultsRowId: resultsRowId,
+              onFocusUp: packFocusUp,
+              // Pack focusDown used when mood-results is empty / unmounted —
+              // chip ↓ still prefers results via shellTvChipDownToRow first.
+              onFocusDown: packFocusDown,
+              builder: (context, edgesFor) {
+                if (fits) {
+                  return centeredRow(scaleToFit: true, edgesFor: edgesFor);
+                }
+                return HorizontalScroller(
+                  height: rowHeight,
+                  padding: EdgeInsets.symmetric(horizontal: pad),
+                  itemCount: parsed.length,
+                  separatorBuilder: (_, _) => SizedBox(width: chipGap),
+                  itemBuilder: (context, i) =>
+                      chipAt(i, edges: edgesFor(i)),
+                );
+              },
+            );
+          }
+
+          if (fits) return centeredRow(scaleToFit: false);
+          return HorizontalScroller(
+            height: rowHeight,
+            padding: EdgeInsets.symmetric(horizontal: pad),
+            itemCount: parsed.length,
+            separatorBuilder: (_, _) => SizedBox(width: chipGap),
+            itemBuilder: (context, i) => chipAt(i),
+          );
+        },
+      ),
+      results: results,
+    );
+  }
+}
+
+/// Resume seeds → pack load → foundation [BecauseSection].
+class _BecauseMount extends StatefulWidget {
+  const _BecauseMount({
+    required this.spec,
+    required this.pluginId,
+    this.packSourceUrl,
+    this.tabId,
+    this.mergeHomeWatchHistory = false,
+  });
+
+  final Map<String, dynamic> spec;
+  final String pluginId;
+  final String? packSourceUrl;
+  final String? tabId;
+  final bool mergeHomeWatchHistory;
+
+  @override
+  State<_BecauseMount> createState() => _BecauseMountState();
+}
+
+class _BecauseMountState extends State<_BecauseMount> {
+  int _shuffleKey = 0;
+  List<Map<String, dynamic>> _seeds = const [];
+  StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Cache seeds in state (same as Continue). Never FutureBuilder-per-build.
+    WatchHistory.revision.addListener(_reloadSeeds);
+    if (widget.mergeHomeWatchHistory) {
+      _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
+        unawaited(_reloadSeeds());
+      });
+    }
+    unawaited(_reloadSeeds());
+  }
+
+  @override
+  void dispose() {
+    WatchHistory.revision.removeListener(_reloadSeeds);
+    unawaited(_homeHistorySub?.cancel());
+    super.dispose();
+  }
+
+  Future<void> _reloadSeeds() async {
+    try {
+      final list = await catalogResumeSeeds(
+        widget.pluginId,
+        mergeHomeWatchHistory: widget.mergeHomeWatchHistory,
+      );
+      if (!mounted) return;
+      setState(() => _seeds = list);
+    } catch (_) {
+      // Keep last seeds — do not wipe the rail on a transient failure.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tabReserve = (widget.tabId ?? '').trim();
+    if (tabReserve.isNotEmpty) {
+      // Reserve even when seeds/items empty so late load keeps visual order.
+      PackPaintArtifact.stableSortOrder(tabReserve, 'because-shuffle');
+      PackPaintArtifact.stableSortOrder(tabReserve, 'because');
+    }
+    final seeds = _seeds;
+    if (seeds.isEmpty) return const SizedBox.shrink();
+    final load = packLoadSpec(widget.spec['load']);
+    if (load == null) return const SizedBox.shrink();
+    // Cap seeds — EngineJS params stay small; one seed is enough to fetch.
+    final seedParams = seeds.length <= 12 ? seeds : seeds.sublist(0, 12);
+    return PackLoadedPaint(
+      key: ValueKey('because-$_shuffleKey-${seedParams.length}'),
+      pluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+      tabId: widget.tabId,
+      action: load.action,
+      params: {
+        ...load.params,
+        'resumeSeeds': seedParams,
+        'shuffleKey': _shuffleKey,
+      },
+      fallbackSpec: widget.spec,
+      builder: (ctx, node) {
+        final items = node['items'];
+        if (items is! List || items.isEmpty) {
+          return const SizedBox.shrink();
+        }
+                final tab = widget.tabId ??
+                    LayoutScope.maybeOf(ctx)?.tabId ??
+                    TvFocusGraph.tabIdOf(ctx);
+                final defaultPad = catalogSectionHorizontalPadding(ctx);
+                final pad = PackPaintArtifact.packLength(
+                      ctx,
+                      widget.spec['pad'] ?? node['pad'],
+                    ) ??
+                    defaultPad;
+                final titlePad = PackPaintArtifact.titlePadInsets(
+                  widget.spec['titlePad'] ?? node['titlePad'],
+                  ctx,
+                );
+                final canShuffle = node['canShuffle'] == true;
+                final packFocusUp = LayoutScope.maybeOf(ctx)
+                    ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
+                final packFocusDown = LayoutScope.maybeOf(ctx)
+                    ?.resolveFocusEdge(
+                      (widget.spec['focusDown'] ?? '').toString(),
+                      down: true,
+                    );
+                final gap = PackPaintArtifact.packLength(
+                      ctx,
+                      widget.spec['gap'] ?? node['gap'],
+                    ) ??
+                    shellPosterCardRowGap(ctx);
+                // Raw desktop px — fromPaint applies TV scale once.
+                final packCardW = PackPaintArtifact.packDouble(
+                  widget.spec['cardWidth'] ?? node['cardWidth'],
+                );
+                final packCardH = PackPaintArtifact.packDouble(
+                  widget.spec['cardHeight'] ?? node['cardHeight'],
+                );
+                final cardH = PackPaintArtifact.packLength(
+                      ctx,
+                      widget.spec['cardHeight'] ?? node['cardHeight'],
+                    ) ??
+                    InteractivePosterCard.cardHeight(ctx);
+                final sizedCards = <Widget>[];
+                for (var i = 0; i < items.length; i++) {
+                  final raw = items[i];
+                  if (raw is! Map) continue;
+                  final item = Map<String, dynamic>.from(raw);
+                  final paint = item['paint'];
+                  if (paint is Map) {
+                    final paintMap = Map<String, dynamic>.from(paint);
+                    if (packCardW != null || packCardH != null) {
+                      final p = Map<String, dynamic>.from(
+                        paintMap['props'] is Map
+                            ? Map<String, dynamic>.from(
+                                paintMap['props'] as Map,
+                              )
+                            : PackPaintArtifact.propsOf(item),
+                      );
+                      if (packCardW != null) {
+                        p.putIfAbsent('width', () => packCardW);
+                      }
+                      if (packCardH != null) {
+                        p.putIfAbsent('height', () => packCardH);
+                      }
+                      paintMap['props'] = p;
+                    }
+                    sizedCards.add(
+                      PackPaintArtifact.fromPaint(
+                        ctx,
+                        pluginId: widget.pluginId,
+                        paint: paintMap,
+                        open: item['open'] ?? paint['open'],
+                        meta: item['meta'] ?? paint['meta'],
+                        listIndex: i,
+                      ),
+                    );
+                    continue;
+                  }
+                  final props = PackPaintArtifact.propsOf(item);
+                  if (packCardW != null) props['width'] = packCardW;
+                  if (packCardH != null) props['height'] = packCardH;
+                  sizedCards.add(
+                    PackPaintArtifact.fromPaint(
+                      ctx,
+                      pluginId: widget.pluginId,
+                      paint: {'type': 'posterCard', 'props': props},
+                      open: item['open'],
+                      meta: item['meta'],
+                      listIndex: i,
+                    ),
+                  );
+                }
+                if (sizedCards.isEmpty) return const SizedBox.shrink();
+                final rail = HorizontalScroller(
+                  height: cardH,
+                  padding: EdgeInsets.symmetric(horizontal: pad),
+                  itemCount: sizedCards.length,
+                  separatorBuilder: (_, _) => SizedBox(width: gap),
+                  itemBuilder: (_, i) => sizedCards[i],
+                );
+                final tabKey = tab.trim();
+                final shuffleSort = canShuffle && tabKey.isNotEmpty
+                    ? PackPaintArtifact.stableSortOrder(
+                        tabKey,
+                        'because-shuffle',
+                      )
+                    : null;
+                final becauseSort = tabKey.isEmpty
+                    ? 0
+                    : PackPaintArtifact.stableSortOrder(tabKey, 'because');
+                final section = BecauseSection(
+                  title: (node['heading'] ?? '').toString().isEmpty
+                      ? null
+                      : (node['heading'] ?? '').toString(),
+                  seedPosterUrl: (node['seedPoster'] ?? '').toString().isEmpty
+                      ? null
+                      : (node['seedPoster'] ?? '').toString(),
+                  kickerFontSize: PackPaintArtifact.packLength(
+                    ctx,
+                    widget.spec['kickerFontSize'] ?? node['kickerFontSize'],
+                  ),
+                  titleFontSize: PackPaintArtifact.packLength(
+                    ctx,
+                    widget.spec['titleFontSize'] ?? node['titleFontSize'],
+                  ),
+                  seeAllFontSize: PackPaintArtifact.packLength(
+                    ctx,
+                    widget.spec['seeAllFontSize'] ?? node['seeAllFontSize'],
+                  ),
+                  trailing: canShuffle
+                      ? (tabKey.isEmpty || shuffleSort == null
+                          ? BecauseShuffleButton(
+                              onTap: () => setState(() => _shuffleKey++),
+                            )
+                          : TvKitRow(
+                              tabId: tabKey,
+                              rowId: 'because-shuffle',
+                              sortOrder: shuffleSort,
+                              itemCount: 1,
+                              onFocusUp: packFocusUp,
+                              onFocusDown: () {
+                                ShellTvFocusCoordinator.focusRowItem(
+                                  tabKey,
+                                  'because',
+                                  0,
+                                );
+                              },
+                              child: BecauseShuffleButton(
+                                onTap: () => setState(() => _shuffleKey++),
+                                listIndex: 0,
+                                onUpEdge: packFocusUp,
+                                onDownEdge: () {
+                                  ShellTvFocusCoordinator.focusRowItem(
+                                    tabKey,
+                                    'because',
+                                    0,
+                                  );
+                                },
+                              ),
+                            ))
+                      : null,
+                  titlePadding: EdgeInsets.fromLTRB(
+                    pad,
+                    titlePad.top,
+                    pad,
+                    titlePad.bottom,
+                  ),
+                  rail: tabKey.isEmpty
+                      ? rail
+                      : TvKitRow(
+                          tabId: tabKey,
+                          rowId: 'because',
+                          sortOrder: becauseSort,
+                          itemCount: sizedCards.length,
+                          onFocusUp: canShuffle
+                              ? () {
+                                  ShellTvFocusCoordinator.focusRowItem(
+                                    tabKey,
+                                    'because-shuffle',
+                                    0,
+                                  );
+                                }
+                              : packFocusUp,
+                          onFocusDown: packFocusDown,
+                          child: rail,
+                        ),
+                );
+                return section;
+              },
+            );
+  }
+}
+
+/// Host store → foundation [ContinueSection] (callbacks only).
+class _ContinueMount extends StatefulWidget {
+  const _ContinueMount({
+    required this.spec,
+    required this.pluginId,
+    this.tabId,
+    this.mergeHomeWatchHistory = false,
+  });
+
+  final Map<String, dynamic> spec;
+  final String pluginId;
+  final String? tabId;
+  final bool mergeHomeWatchHistory;
+
+  @override
+  State<_ContinueMount> createState() => _ContinueMountState();
+}
+
+class _ContinueMountState extends State<_ContinueMount> {
+  final _scroll = ScrollController();
+  List<Map<String, dynamic>> _entries = const [];
+  String? _resumingMetaId;
+  StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
+
+  @override
+  void initState() {
+    super.initState();
+    WatchHistory.revision.addListener(_reload);
+    if (widget.mergeHomeWatchHistory) {
+      _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
+        unawaited(_reload());
+      });
+    }
+    unawaited(_reload());
+  }
+
+  @override
+  void dispose() {
+    WatchHistory.revision.removeListener(_reload);
+    unawaited(_homeHistorySub?.cancel());
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reload() async {
+    try {
+      final list = await catalogContinueEntries(
+        widget.pluginId,
+        mergeHomeWatchHistory: widget.mergeHomeWatchHistory,
+      );
+      if (!mounted) return;
+      setState(() => _entries = list);
+    } catch (_) {}
+  }
+
+  Map<String, dynamic>? _byId(String metaId) {
+    for (final e in _entries) {
+      if (e['metaId']?.toString() == metaId) return e;
+    }
+    return null;
+  }
+
+  Future<void> _resume(Map<String, dynamic> entry) async {
+    if (isHomeWatchHistoryEntry(entry)) {
+      final home = entry['homeHistory'];
+      if (home is! Map || _resumingMetaId != null) return;
+      final metaId = entry['metaId']?.toString();
+      if (metaId == null) return;
+      setState(() => _resumingMetaId = metaId);
+      try {
+        await resumePlaybackFromHistory(
+          context,
+          Map<String, dynamic>.from(home),
+        );
+        if (mounted) await _reload();
+      } catch (e) {
+        if (mounted) ForjaToast.error('Resume failed: $e');
+      } finally {
+        if (mounted) setState(() => _resumingMetaId = null);
+      }
+      return;
+    }
+    final metaId = entry['metaId']?.toString();
+    if (metaId == null || _resumingMetaId != null) return;
+    final meta = WatchHistory.metaFromEntry(entry);
+    if (meta == null) return;
+    setState(() => _resumingMetaId = metaId);
+    try {
+      final epNum = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
+      final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
+      final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
+      Duration? startPosition;
+      if (posMs > 5000 && canResumeFromSavedProgress(posMs, durMs)) {
+        final clamped = (durMs > 0 && posMs > durMs - 30000)
+            ? (durMs - 30000)
+            : posMs;
+        startPosition =
+            Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
+      }
+      final extras = entry['extras'];
+      final preferredPluginId = preferredEnginePluginForResume(
+        progress: entry,
+        startPosition: startPosition,
+      );
+      final ctx = catalogPlayContextFromMeta(
+        meta: meta,
+        pluginId: widget.pluginId,
+        episodeNumber: epNum,
+        episodeVideoId: entry['episodeVideoId']?.toString(),
+        extras: extras is Map
+            ? Map<String, dynamic>.from(extras)
+            : const {},
+        startPosition: startPosition,
+        preferredPluginId: preferredPluginId,
+        savedStreamUrl: entry['streamUrl']?.toString(),
+      );
+      if (!mounted) return;
+      await runPlayFromContext(context: context, ctx: ctx);
+      if (mounted) await _reload();
+    } catch (e) {
+      if (mounted) ForjaToast.error('Resume failed: $e');
+    } finally {
+      if (mounted) setState(() => _resumingMetaId = null);
+    }
+  }
+
+  Future<void> _openDetails(Map<String, dynamic> entry) async {
+    if (isHomeWatchHistoryEntry(entry)) {
+      final metaJson = entry['meta'];
+      if (metaJson is! Map) return;
+      final meta = MetaItem.fromJson(Map<String, dynamic>.from(metaJson));
+      final home = entry['homeHistory'];
+      await openMetaItem(
+        context,
+        pluginId: widget.pluginId,
+        item: meta,
+        initialSeason: home is Map ? home['season'] as int? : null,
+        initialEpisode: home is Map ? home['episode'] as int? : null,
+      );
+      if (mounted) await _reload();
+      return;
+    }
+    final meta = WatchHistory.metaFromEntry(entry);
+    if (meta == null) return;
+    await openMetaItem(context, pluginId: widget.pluginId, item: meta);
+    if (mounted) await _reload();
+  }
+
+  Future<void> _remove(Map<String, dynamic> entry) async {
+    if (isHomeWatchHistoryEntry(entry)) {
+      final id = entry['metaId']?.toString();
+      if (id == null) return;
+      await WatchHistoryService().removeItem(id);
+      if (mounted) await _reload();
+      return;
+    }
+    final id = entry['metaId']?.toString();
+    if (id == null) return;
+    await WatchHistory.remove(widget.pluginId, id);
+    if (mounted) await _reload();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tab = (widget.tabId ?? TvFocusGraph.tabIdOf(context)).trim();
+    final rowId = (widget.spec['id'] ?? 'continue_watching').toString().trim();
+    final resolvedRowId = rowId.isEmpty ? 'continue_watching' : rowId;
+    // Reserve paint-order slot while empty so late history does not sort after mood.
+    if (tab.isNotEmpty) {
+      PackPaintArtifact.stableSortOrder(tab, resolvedRowId);
+    }
+    if (_entries.isEmpty) return const SizedBox.shrink();
+    final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final defaultW = tv
+        ? ShellTokens.continueWatchingCardWidthTv
+        : (shellUsesWideLayout(context)
+            ? ShellTokens.shellContinueWatchingCardWidthDesktop
+            : ShellTokens.shellContinueWatchingCardWidthCompact);
+    final cardW =
+        PackPaintArtifact.packLength(context, widget.spec['cardWidth']) ?? defaultW;
+    final cardH = PackPaintArtifact.packLength(context, widget.spec['cardHeight']) ??
+        (cardW * 9 / 16);
+    final defaultPad = catalogSectionHorizontalPadding(context);
+    final pad =
+        PackPaintArtifact.packLength(context, widget.spec['pad']) ?? defaultPad;
+    final titlePad = PackPaintArtifact.titlePadInsets(
+      widget.spec['titlePad'],
+      context,
+    );
+    final gap = PackPaintArtifact.packLength(context, widget.spec['gap']) ??
+        shellPosterCardRowGap(context);
+    return TvKitRow(
+      tabId: tab,
+      rowId: resolvedRowId,
+      sortOrder: PackPaintArtifact.stableSortOrder(tab, resolvedRowId),
+      itemCount: _entries.length,
+      onFocusUp: LayoutScope.maybeOf(context)
+          ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString()),
+      onFocusDown: LayoutScope.maybeOf(context)
+          ?.resolveFocusEdge((widget.spec['focusDown'] ?? '').toString(), down: true),
+      child: ContinueSection(
+        title: 'Continue Watching',
+        scrollController: _scroll,
+        showScrollArrows: showArrows,
+        cardWidth: cardW,
+        cardHeight: cardH,
+        cardGap: gap,
+        titleFontSize:
+            PackPaintArtifact.packLength(context, widget.spec['titleFontSize']),
+        cardTitleFontSize:
+            PackPaintArtifact.packLength(context, widget.spec['cardTitleFontSize']),
+        cardSubtitleFontSize:
+            PackPaintArtifact.packLength(context, widget.spec['cardSubtitleFontSize']),
+        cardRemainingFontSize:
+            PackPaintArtifact.packLength(context, widget.spec['cardRemainingFontSize']),
+        titlePadding: EdgeInsets.fromLTRB(
+          pad,
+          titlePad.top,
+          pad,
+          titlePad.bottom,
+        ),
+        listPadding: EdgeInsets.symmetric(horizontal: pad),
+        entries: [for (final e in _entries) ContinueEntry.fromMap(e)],
+        resumingMetaId: _resumingMetaId,
+        onResume: (entry) {
+          final raw = _byId(entry.metaId);
+          if (raw != null) unawaited(_resume(raw));
+        },
+        onInfo: (entry) {
+          final raw = _byId(entry.metaId);
+          if (raw != null) unawaited(_openDetails(raw));
+        },
+        onRemove: (entry) {
+          final raw = _byId(entry.metaId);
+          if (raw != null) unawaited(_remove(raw));
+        },
+      ),
+    );
+  }
+}
+
+/// Listens for [PackCompositionCoverNotification] from [PackLoadedPaint].
+/// Hides the IPTV category rail while the catalog ticker / choose-portal empty
+/// fills the body under the top bar.
+class _CompositionCoverGate extends StatefulWidget {
+  const _CompositionCoverGate({
+    required this.builder,
+    this.initialCover = false,
+  });
+
+  final Widget Function(bool coverSide) builder;
+  final bool initialCover;
+
+  @override
+  State<_CompositionCoverGate> createState() => _CompositionCoverGateState();
+}
+
+class _CompositionCoverGateState extends State<_CompositionCoverGate> {
+  late bool _cover = widget.initialCover;
+
+  @override
+  void didUpdateWidget(covariant _CompositionCoverGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialCover != widget.initialCover &&
+        widget.initialCover &&
+        !_cover) {
+      _cover = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<PackCompositionCoverNotification>(
+      onNotification: (n) {
+        if (_cover == n.cover) return true;
+        setState(() => _cover = n.cover);
+        return true;
+      },
+      child: widget.builder(_cover),
+    );
+  }
+}

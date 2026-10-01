@@ -25,6 +25,25 @@ pub fn fetch_get(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {
     fetch_get_with_headers(url, timeout_secs, &HashMap::new())
 }
 
+/// Stream-list GET that aborts when this job's token is cancelled.
+///
+/// Catalog / manifest GETs stay on [fetch_get] (shutdown only) so a playback
+/// cancel does not empty Home rails. Sources chip-off uses this path.
+pub fn fetch_get_job(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {
+    let token = utils::engine_cancel::cancellation_token();
+    if token.is_cancelled() || utils::engine_cancel::is_shutdown_requested() {
+        return Err(utils::engine_cancel::cancelled_message());
+    }
+    let headers = HashMap::new();
+    RUNTIME.block_on(async {
+        tokio::select! {
+            biased;
+            _ = token.cancelled() => Err(utils::engine_cancel::cancelled_message()),
+            res = fetch_with_headers_async(url, timeout_secs, &headers, None) => res,
+        }
+    })
+}
+
 /// TMDB catalog GET — aborts on [utils::engine_cancel::request_catalog]
 /// (Home filter flips) or shutdown; ignores playback [request].
 pub fn fetch_get_catalog(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {
@@ -129,6 +148,19 @@ mod tests {
     #[test]
     fn rejects_non_http_url() {
         assert!(fetch_get("ftp://example.com", 5).is_err());
+    }
+
+    #[test]
+    fn job_fetch_returns_when_token_already_cancelled() {
+        utils::engine_cancel::clear_job_token();
+        let token = utils::engine_cancel::new_job_token();
+        token.cancel();
+        utils::engine_cancel::attach_job_token(token);
+        let started = std::time::Instant::now();
+        let err = fetch_get_job("https://example.com/stream.json", 30).unwrap_err();
+        assert_eq!(err, utils::engine_cancel::cancelled_message());
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+        utils::engine_cancel::clear_job_token();
     }
 
     #[test]

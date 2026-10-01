@@ -45,6 +45,8 @@ abstract final class EngineCategories {
         return 'IPTV';
       case hubCatalog:
         return 'Hubs';
+      case 'debrid':
+        return 'Debrid';
       case 'other':
         return 'Other';
       default:
@@ -115,6 +117,7 @@ abstract final class EngineCategories {
   static String groupKey(EnginePlugin plugin) {
     final types = plugin.types.map((t) => t.toLowerCase()).toSet();
     if (types.contains(iptv)) return iptv;
+    if (plugin.isDebrid) return 'debrid';
     if (plugin.isKitPlugin) return hubCatalog;
     if (plugin.isLiveFeedPlugin) return liveCatalog;
     if (plugin.isLivePlugin || plugin.isLiveSport || plugin.isLive) {

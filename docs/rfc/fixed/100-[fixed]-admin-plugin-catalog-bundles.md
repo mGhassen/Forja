@@ -1,0 +1,94 @@
+# RFC-100: Admin plugin catalog + product bundles
+
+**Status:** fixed  
+**Depends on:** [RFC-067](067-[fixed]-forjahq-remote-plugin-pack.md) · [RFC-068](068-[fixed]-engine-plugin-registry.md) · [RFC-083](083-[fixed]-pack-manifest-bundle-list.md)  
+**Area:** admin / web catalog / Flutter packs
+
+## Status at a glance
+
+| | |
+|--|--|
+| **Progress** | **Complete** · **5 / 5** · **9 / 9** admin · **8 / 8** app · **5 / 5** web · **3 / 3** retire |
+| **Current slice** | Web bundles marketing showcase above pack catalog |
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
+
+---
+
+## Components
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R100-C01 | Supabase `plugin_packs` / `plugin_bundles` / `plugin_bundle_items` + RLS | ✅ |
+| 2 | R100-C02 | Admin Plugins page (validate, publish, metadata, filters/bulk) | ✅ |
+| 3 | R100-C03 | Admin product bundles CRUD | ✅ |
+| 4 | R100-C04 | Flutter published catalog + bundle install (fallback baked list) | ✅ |
+| 5 | R100-C05 | Web Community Packs prefer Supabase catalog | ✅ |
+
+---
+
+## Acceptance (admin)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R100-A01 | Providers nav/page removed; Plugins menu ships | ✅ |
+| 2 | R100-A02 | Register pack by GitHub `manifestUrl`; draft unpublished | ✅ |
+| 3 | R100-A03 | Validate fetches manifest + bundle files; writes cached version | ✅ |
+| 4 | R100-A04 | Publish / unpublish pack flips catalog visibility | ✅ |
+| 5 | R100-A05 | Packs table: filters, sort, column visibility, bulk actions (localStorage) | ✅ |
+| 6 | R100-A06 | Product bundle CRUD with ordered pack items | ✅ |
+| 7 | R100-A07 | Publish / unpublish bundle | ✅ |
+| 8 | R100-A08 | Seed official packs from current ForjaHQ set | ✅ |
+| 9 | R100-A22 | Register / validate fetch via admin proxy; normalize GitHub blob → raw `manifest.json` | ✅ |
+
+---
+
+## Acceptance (app)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R100-A09 | Official picker loads published packs from Supabase (`manifest_url`) | ✅ |
+| 2 | R100-A10 | Offline / empty → fallback `kOfficialForjaHqPacks` | ✅ |
+| 3 | R100-A11 | Published product bundles load from Supabase | ✅ |
+| 4 | R100-A12 | Install recommended / best-experience uses published bundle order | ✅ |
+| 5 | R100-A13 | Settings Forja Packs can install a published bundle | ✅ |
+| 6 | R100-A14 | Existing paste-URL + per-pack update unchanged | ✅ |
+| 7 | R100-A23 | Official picker / onboarding / bundles = published only; empty when admin has none (no baked catalog fallback) | ✅ |
+| 8 | R100-A25 | No baked pack URL map — unreachable local recovers via peer install or published catalog slot match ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md) I260-T02) | ✅ |
+
+---
+
+## Acceptance (web)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R100-A15 | Community Packs prefer published Supabase packs | ✅ |
+| 2 | R100-A16 | Static `catalog.json` remains fallback | ✅ |
+| 3 | R100-A17 | Public UI still hides install URLs | ✅ |
+| 4 | R100-A21 | Web Community Packs are admin-published only — no static `catalog.json` / generated source map | ✅ |
+| 5 | R100-A24 | Web shows published product bundles as a marketing section above the pack catalog (not in the packs table) | ✅ |
+
+---
+
+## Acceptance (retire RFC-039 remote)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R100-A18 | Admin Providers runtime-config UI deleted | ✅ |
+| 2 | R100-A19 | Flutter stops remote `provider_runtime_config` fetch | ✅ |
+| 3 | R100-A20 | Dart builtins + call sites kept; debt in [issue 255](../issues/255-[open]-provider-runtime-config-builtins-debt.md) | ✅ |
+
+---
+
+## Summary
+
+Replace the obsolete admin Providers runtime overlay with a **Plugins** ops console. Pack files stay on **GitHub raw**. Supabase stores catalog metadata, publish flags, validation results, and **product bundles** (ordered groups of packs for onboarding). Flutter and web consume the **published** catalog only; install still downloads from GitHub URLs. Web has no static `catalog.json` fallback. App Official / bundle pickers use published rows only (R100-A23). Unreachable local checkout recovery uses peer installed remotes or published catalog by opaque path slot — no baked forja-packs URL invent (R100-A25). Web Community Packs shows published bundles as a marketing section above the individual pack catalog (R100-A24).
+
+**Bundle** in this RFC = product set of packs. Not RFC-083 `manifest.bundle[]` file lists.
+
+### Related
+
+- [RFC-039](039-[fixed]-remote-provider-runtime-config.md) (remote overlay — admin UI retired here)
+- [issue 255](../issues/255-[open]-provider-runtime-config-builtins-debt.md)
+- [forja-packs](../features/settings/forja-packs.md)
+- Migration: `apps/web/supabase/migrations/20260909020003_plugin_catalog_bundles.sql`

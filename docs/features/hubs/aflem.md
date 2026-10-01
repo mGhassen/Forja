@@ -4,7 +4,7 @@
 
 ## What it is
 
-The **Aflem** tab is a catalog hub from the ForjaHQ **Aflem** pack (`aflem-hub`). It browses [Brstej](https://uo.brstej.com/) series — spotlight hero, Continue Watching, latest, and a ranked series rail. Playback uses the **Brstej** Forja provider plugin (direct HLS/MP4 after server unlock). The host renders Catalog Shell with `surface: arabic`. The tab appears in **Settings → Features** (on by default) while the Aflem pack is enabled under **Forja Packs → Hubs**.
+The **Aflem** tab is a catalog hub from the ForjaHQ **Aflem** pack (`aflem-hub`). It browses [Brstej](https://hd1.brstej.com/) series — spotlight hero, Continue Watching, latest, and a ranked series rail. Playback uses the **Brstej** Forja provider plugin (direct HLS/MP4 after server unlock). The host renders Catalog Shell with `surface: arabic`. The tab appears in **Settings → Features** (on by default) while the Aflem pack is enabled under **Forja Packs → Hubs**.
 
 ## How to open it
 
@@ -12,7 +12,7 @@ Enable the ForjaHQ Aflem pack under **Settings → Forja Packs → Hubs**, turn 
 
 ## What you can do
 
-- Browse latest Brstej series (scroll a rail to load more pages) — rail titles and poster rows lay out **right-to-left**
+- Browse latest Brstej series (scroll a rail to load more pages)
 - Top menu from pack `filters` — **Search**, **Films**, **Series**, **Categories** (Egyptian / Shami / Gulf / Turkish / Prestige / Ramadan / movies, …)
 - Search titles (episodes grouped into shows; search walks multiple Brstej pages so deep hits still appear)
 - Open details, pick an episode, and play a direct stream

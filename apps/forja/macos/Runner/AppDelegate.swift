@@ -4,6 +4,9 @@ import FlutterMacOS
 @main
 class AppDelegate: FlutterAppDelegate {
   private var shellChannel: FlutterMethodChannel?
+  /// Kept so [applicationDidBecomeActive] can nudge Flutter out of a stale
+  /// `hidden` lifecycle (Cmd-Tab freeze — flutter/flutter#155977).
+  private weak var flutterViewController: FlutterViewController?
   /// Set after Flutter finishes mpv / engine teardown so terminate can proceed.
   private var allowTerminate = false
   /// True while waiting for Flutter `prepareQuit` after returning `.terminateLater`.
@@ -15,6 +18,16 @@ class AppDelegate: FlutterAppDelegate {
 
   override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
     return true
+  }
+
+  /// Flutter 3.44 still re-sends `hidden` on becomeActive when occlusion
+  /// stayed stale after Cmd-Tab (engine `_visible` never flipped back). That
+  /// gates frames — UI / video look frozen while the window is frontmost.
+  /// Push `resumed` after AppKit becomes active when any window is visible
+  /// (same rule as the upstream fix). Remove once Flutter ships #188772.
+  override func applicationDidBecomeActive(_ notification: Notification) {
+    super.applicationDidBecomeActive(notification)
+    nudgeFlutterLifecycleResumedIfVisible()
   }
 
   /// ⌘Q / Quit menu skips `windowShouldClose` / Flutter `onWindowClose`.
@@ -41,6 +54,7 @@ class AppDelegate: FlutterAppDelegate {
 
   /// Wire Edit → Find… (⌘F) and quit-ready reply to Flutter.
   func configureShellChannel(with controller: FlutterViewController) {
+    flutterViewController = controller
     shellChannel = FlutterMethodChannel(
       name: "forja.macos/shell",
       binaryMessenger: controller.engine.binaryMessenger
@@ -55,6 +69,20 @@ class AppDelegate: FlutterAppDelegate {
       }
     }
     rewireFindMenuItem()
+  }
+
+  /// Framework re-enables frames on `resumed`. Engine may still think we are
+  /// hidden; sending the lifecycle string is enough for paint + video textures.
+  private func nudgeFlutterLifecycleResumedIfVisible() {
+    guard let controller = flutterViewController else { return }
+    let anyVisible = NSApp.windows.contains { $0.isVisible && !$0.isMiniaturized }
+    guard anyVisible else { return }
+    let channel = FlutterBasicMessageChannel(
+      name: "flutter/lifecycle",
+      binaryMessenger: controller.engine.binaryMessenger,
+      codec: FlutterStringCodec.sharedInstance()
+    )
+    channel.sendMessage("AppLifecycleState.resumed")
   }
 
   private func finishTerminateAfterFlutterQuit() {

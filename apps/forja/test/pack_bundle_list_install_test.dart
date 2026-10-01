@@ -179,5 +179,111 @@ void main() {
         isFalse,
       );
     });
+
+    test('update wipes removed plugins and bundle files', () async {
+      const url = 'https://cdn.example/iso/manifest.json';
+      var version = '1.0.0';
+      registry.debugHttpClient = MockClient((req) async {
+        final u = req.url.toString();
+        if (u == url) {
+          if (version == '1.0.0') {
+            return http.Response(
+              jsonEncode({
+                'schema': 1,
+                'id': 'iso',
+                'name': 'Iso',
+                'version': '1.0.0',
+                'bundle': ['keep.js', 'drop.js', 'assets/old.bin'],
+                'plugins': [
+                  {
+                    'id': 'keep',
+                    'name': 'Keep',
+                    'entry': 'keep.js',
+                    'kind': 'http',
+                  },
+                  {
+                    'id': 'drop',
+                    'name': 'Drop',
+                    'entry': 'drop.js',
+                    'kind': 'http',
+                  },
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          return http.Response(
+            jsonEncode({
+              'schema': 1,
+              'id': 'iso',
+              'name': 'Iso',
+              'version': '2.0.0',
+              'bundle': ['keep.js'],
+              'plugins': [
+                {
+                  'id': 'keep',
+                  'name': 'Keep',
+                  'entry': 'keep.js',
+                  'kind': 'http',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (u.endsWith('keep.js')) {
+          return http.Response('function extract(ctx) { return []; }', 200);
+        }
+        if (u.endsWith('drop.js')) {
+          return http.Response('function extract(ctx) { return [1]; }', 200);
+        }
+        if (u.endsWith('assets/old.bin')) {
+          return http.Response.bytes([1, 2, 3], 200);
+        }
+        return http.Response('not found', 404);
+      });
+
+      await registry.install(url);
+      expect(
+        await PluginScriptDiskStore.hasEngineScript(
+          sourceUrl: url,
+          pluginId: 'drop',
+        ),
+        isTrue,
+      );
+      expect(
+        await PluginScriptDiskStore.hasPackRelativeFile(
+          sourceUrl: url,
+          relative: 'assets/old.bin',
+        ),
+        isTrue,
+      );
+
+      version = '2.0.0';
+      await registry.install(url, forceNetwork: true);
+      expect(
+        await PluginScriptDiskStore.hasEngineScript(
+          sourceUrl: url,
+          pluginId: 'drop',
+        ),
+        isFalse,
+      );
+      expect(
+        await PluginScriptDiskStore.hasPackRelativeFile(
+          sourceUrl: url,
+          relative: 'assets/old.bin',
+        ),
+        isFalse,
+      );
+      expect(
+        await PluginScriptDiskStore.loadEngineScript(
+          sourceUrl: url,
+          pluginId: 'keep',
+        ),
+        'function extract(ctx) { return []; }',
+      );
+    });
   });
 }

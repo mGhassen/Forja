@@ -1,0 +1,554 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:flutter/services.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+/// One tab in a [WidgetShelf] (pack supplies label / icon / gradient).
+class WidgetShelfItem {
+  const WidgetShelfItem({
+    required this.id,
+    required this.label,
+    this.icon,
+    this.gradientColors = const [],
+  });
+
+  final String id;
+  final String label;
+  final IconData? icon;
+
+  /// Selected / hover fill. Empty → muted idle only.
+  final List<Color> gradientColors;
+}
+
+/// Grouped section tabs (e.g. Live / Movies / Series) — old IPTV shelf paint.
+///
+/// [expandOnHover]: collapsed to the selected tab; hover (or TV focus) expands
+/// with the selected tab staying first and the others appending after — so the
+/// selected chip does not jump. [onExpandChanged] lets chrome hide sibling
+/// top-bar actions.
+class WidgetShelf extends StatefulWidget {
+  const WidgetShelf({
+    super.key,
+    required this.items,
+    required this.selectedId,
+    required this.onSelect,
+    this.onReload,
+    this.expandOnHover = false,
+    this.onExpandChanged,
+    this.height = ShellTokens.widgetShelfHeight,
+    this.radius = ShellTokens.widgetShelfRadius,
+    this.fontSize = ShellTokens.widgetShelfFontSize,
+    this.iconSize = ShellTokens.widgetShelfIconSize,
+    this.pad = ShellTokens.widgetShelfGap,
+    this.onDownEdge,
+    this.chromeItemIndex,
+  });
+
+  final List<WidgetShelfItem> items;
+  final String? selectedId;
+  final ValueChanged<String> onSelect;
+
+  /// Per-tab reload (hover / hold OK). Null → no reload chip.
+  final ValueChanged<String>? onReload;
+
+  /// Show only the selected tab until hover / TV focus expands the shelf.
+  final bool expandOnHover;
+  final ValueChanged<bool>? onExpandChanged;
+  final double height;
+  final double radius;
+  final double fontSize;
+  final double iconSize;
+  final double pad;
+  final VoidCallback? onDownEdge;
+
+  /// When set, TV focus uses this chrome-row index (not the item index in [items]).
+  final int? chromeItemIndex;
+
+  @override
+  State<WidgetShelf> createState() => _WidgetShelfState();
+}
+
+class _WidgetShelfState extends State<WidgetShelf> {
+  bool _hover = false;
+  int _focusedTabs = 0;
+
+  bool get _expanded =>
+      !widget.expandOnHover || _hover || _focusedTabs > 0;
+
+  void _setHover(bool value) {
+    if (_hover == value) return;
+    final was = _expanded;
+    setState(() => _hover = value);
+    _notifyExpand(was);
+  }
+
+  void _onTabFocus(bool focused) {
+    final was = _expanded;
+    setState(() {
+      _focusedTabs += focused ? 1 : -1;
+      if (_focusedTabs < 0) _focusedTabs = 0;
+    });
+    _notifyExpand(was);
+  }
+
+  void _notifyExpand(bool wasExpanded) {
+    final now = _expanded;
+    if (wasExpanded == now) return;
+    widget.onExpandChanged?.call(now);
+  }
+
+  @override
+  void didUpdateWidget(covariant WidgetShelf oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.expandOnHover && !widget.expandOnHover && _expanded) {
+      widget.onExpandChanged?.call(false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.items.isEmpty) return const SizedBox.shrink();
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final resolvedHeight =
+        tv ? ShellTokens.widgetShelfHeightTv : widget.height;
+    final resolvedFontSize =
+        tv ? ShellTokens.widgetShelfFontSizeTv : widget.fontSize;
+    final resolvedIconSize =
+        tv ? ShellTokens.widgetShelfIconSizeTv : widget.iconSize;
+    final resolvedPad = tv ? ShellTokens.widgetShelfGapTv : widget.pad;
+
+    final selectedId = (widget.selectedId ?? '').trim();
+    var selectedIndex = widget.items.indexWhere((e) => e.id == selectedId);
+    if (selectedIndex < 0) selectedIndex = 0;
+    final selected = widget.items[selectedIndex];
+
+    // Compact expand: keep selected first so it doesn't jump when opening.
+    final List<WidgetShelfItem> visible;
+    if (!widget.expandOnHover) {
+      visible = widget.items;
+    } else if (!_expanded) {
+      visible = [selected];
+    } else {
+      visible = [
+        selected,
+        for (final e in widget.items)
+          if (e.id != selected.id) e,
+      ];
+    }
+
+    Widget shelf = Container(
+      height: resolvedHeight,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(widget.radius),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: AnimatedSize(
+        duration: ForjaMotionTheme.of(context).shelfExpand.duration,
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < visible.length; i++)
+              _WidgetShelfTab(
+                key: ValueKey(visible[i].id),
+                item: visible[i],
+                selected: selectedId == visible[i].id ||
+                    (selectedId.isEmpty && i == 0 && visible.length == 1),
+                // Each Live / Movies / Series chip owns chrome slot
+                // (base + item index) so ↑ can land on the selected one.
+                listIndex: () {
+                  final itemPos =
+                      widget.items.indexWhere((e) => e.id == visible[i].id);
+                  final pos = itemPos < 0 ? 0 : itemPos;
+                  final base = widget.chromeItemIndex;
+                  return base == null ? pos : base + pos;
+                }(),
+                isFirst: i == 0,
+                isLast: i == visible.length - 1,
+                height: resolvedHeight,
+                radius: widget.radius,
+                fontSize: resolvedFontSize,
+                iconSize: resolvedIconSize,
+                pad: resolvedPad,
+                onTap: () => widget.onSelect(visible[i].id),
+                onReload: widget.onReload == null
+                    ? null
+                    : () => widget.onReload!(visible[i].id),
+                onDownEdge: widget.onDownEdge,
+                onFocusChange:
+                    widget.expandOnHover ? _onTabFocus : null,
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (!widget.expandOnHover) return shelf;
+    return MouseRegion(
+      onEnter: (_) => _setHover(true),
+      onExit: (_) => _setHover(false),
+      child: shelf,
+    );
+  }
+}
+
+class _WidgetShelfTab extends StatefulWidget {
+  const _WidgetShelfTab({
+    super.key,
+    required this.item,
+    required this.selected,
+    required this.listIndex,
+    required this.isFirst,
+    required this.isLast,
+    required this.height,
+    required this.radius,
+    required this.fontSize,
+    required this.iconSize,
+    required this.pad,
+    required this.onTap,
+    this.onReload,
+    this.onDownEdge,
+    this.onFocusChange,
+  });
+
+  final WidgetShelfItem item;
+  final bool selected;
+  final int listIndex;
+  final bool isFirst;
+  final bool isLast;
+  final double height;
+  final double radius;
+  final double fontSize;
+  final double iconSize;
+  final double pad;
+  final VoidCallback onTap;
+  final VoidCallback? onReload;
+  final VoidCallback? onDownEdge;
+  final ValueChanged<bool>? onFocusChange;
+
+  @override
+  State<_WidgetShelfTab> createState() => _WidgetShelfTabState();
+}
+
+class _WidgetShelfTabState extends State<_WidgetShelfTab> {
+  static const _tvReloadHoldDelay = Duration(seconds: 1);
+
+  bool _hover = false;
+  bool _focused = false;
+  bool _reloadChipFocused = false;
+  bool _reloadArmed = false;
+  bool _tvReloadRevealed = false;
+  bool _okHoldFired = false;
+  Timer? _revealTimer;
+  Timer? _okHoldTimer;
+
+  bool get _tv => ShellPaintScope.useTvFocusOf(context);
+
+  bool get _paintActive =>
+      ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hover,
+        focused: _focused,
+      ) ||
+      _reloadChipFocused ||
+      _tvReloadRevealed;
+
+  bool get _expandActive =>
+      ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hover,
+        focused: _focused,
+      ) ||
+      (_tv && (_tvReloadRevealed || _reloadChipFocused));
+
+  bool get _revealReload =>
+      widget.onReload != null &&
+      _expandActive &&
+      (_reloadArmed || _tvReloadRevealed || _reloadChipFocused);
+
+  List<Color> get _gradient {
+    final c = widget.item.gradientColors;
+    if (c.length >= 2) return c;
+    if (c.length == 1) return [c.first, c.first];
+    return const [Color(0xFF64748B), Color(0xFF334155)];
+  }
+
+  void _setHover(bool value) {
+    if (_hover == value) return;
+    setState(() {
+      _hover = value;
+      _syncReveal();
+    });
+  }
+
+  void _setFocused(bool value) {
+    if (_focused == value) return;
+    setState(() {
+      _focused = value;
+      if (!value) {
+        _cancelOkHold();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_focused || _reloadChipFocused) return;
+          _hideTvReload();
+        });
+      }
+      _syncReveal();
+    });
+    widget.onFocusChange?.call(value);
+  }
+
+  void _setReloadChipFocused(bool value) {
+    if (_reloadChipFocused == value) return;
+    setState(() {
+      _reloadChipFocused = value;
+      if (!value) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_focused || _reloadChipFocused) return;
+          _hideTvReload();
+        });
+      } else {
+        _tvReloadRevealed = true;
+        _reloadArmed = true;
+      }
+      _syncReveal();
+    });
+  }
+
+  void _cancelOkHold() {
+    _okHoldTimer?.cancel();
+    _okHoldTimer = null;
+    _okHoldFired = false;
+  }
+
+  void _hideTvReload() {
+    _cancelOkHold();
+    if (!_tvReloadRevealed && !_reloadArmed) return;
+    setState(() {
+      _tvReloadRevealed = false;
+      if (_tv) _reloadArmed = false;
+      _syncReveal();
+    });
+  }
+
+  void _syncReveal() {
+    if (widget.onReload == null) return;
+    if (_expandActive) {
+      if (_reloadArmed || _tvReloadRevealed) return;
+      _revealTimer?.cancel();
+      _revealTimer = Timer(
+        Duration(
+          milliseconds: ForjaMotionTheme.of(context).shelfRevealDelayMs,
+        ),
+        () {
+        if (mounted && _expandActive) setState(() => _reloadArmed = true);
+      });
+    } else {
+      _revealTimer?.cancel();
+      _revealTimer = null;
+      if (_reloadArmed) _reloadArmed = false;
+    }
+  }
+
+  bool _isActivateLogical(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.space ||
+        key == LogicalKeyboardKey.gameButtonA;
+  }
+
+  KeyEventResult _onShelfKey(FocusNode node, KeyEvent event) {
+    if (!_tv || widget.onReload == null) return KeyEventResult.ignored;
+    if (!_isActivateLogical(event.logicalKey)) return KeyEventResult.ignored;
+    if (event is KeyDownEvent) {
+      _okHoldFired = false;
+      _okHoldTimer?.cancel();
+      _okHoldTimer = Timer(_tvReloadHoldDelay, () {
+        if (!mounted || !_focused) return;
+        _okHoldFired = true;
+        setState(() {
+          _tvReloadRevealed = true;
+          _reloadArmed = true;
+        });
+        widget.onReload!();
+      });
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent) {
+      _okHoldTimer?.cancel();
+      _okHoldTimer = null;
+      if (_okHoldFired) {
+        _okHoldFired = false;
+        return KeyEventResult.handled;
+      }
+      widget.onTap();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  void dispose() {
+    _revealTimer?.cancel();
+    _cancelOkHold();
+    super.dispose();
+  }
+
+  BorderRadius get _radius {
+    final r = Radius.circular(widget.radius - 1);
+    if (widget.isFirst && widget.isLast) return BorderRadius.all(r);
+    if (widget.isFirst) {
+      return BorderRadius.only(topLeft: r, bottomLeft: r);
+    }
+    if (widget.isLast) {
+      return BorderRadius.only(topRight: r, bottomRight: r);
+    }
+    return BorderRadius.zero;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shelfRow = ShellPaintTvRowScope.maybeOf(context)?.rowId;
+    final accent = _gradient.first;
+    // Selected + hover/focus used to invert to white fill + accent ink — Series
+    // (#1CE783) and other green shelves made the label look brand-green. Keep
+    // white ink on the gradient for every lit state.
+    final showGradient = widget.selected || _paintActive;
+    final ink = showGradient ? Colors.white : Colors.white60;
+
+    final tabBody = SizedBox(
+      height: widget.height,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: widget.pad),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (widget.item.icon != null) ...[
+              Icon(widget.item.icon, size: widget.iconSize, color: ink),
+              const SizedBox(width: ShellTokens.shellChipGap),
+            ],
+            Text(
+              widget.item.label,
+              style: GoogleFonts.plusJakartaSans(
+                color: ink,
+                fontSize: widget.fontSize,
+                fontWeight: showGradient ? FontWeight.w800 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final tab = ShellPaintScope.focusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: widget.radius,
+      motion: ForjaMotionPreset.fillOnly,
+      suppressInkHover: true,
+      showFocusFill: false,
+      listIndex: widget.listIndex,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellPaintTvZone.topBar,
+      onDownEdge: widget.onDownEdge,
+      onFocusChange: _setFocused,
+      onKeyEvent: _tv && widget.onReload != null ? _onShelfKey : null,
+      child: tabBody,
+    );
+
+    final desktopTab = !_tv
+        ? shellRoundedInkHost(
+            radius: widget.radius,
+            onTap: widget.onTap,
+            suppressInkHover: true,
+            child: tabBody,
+          )
+        : tab;
+
+    return MouseRegion(
+      onEnter: (_) => _setHover(true),
+      onExit: (_) => _setHover(false),
+      child: Container(
+        height: widget.height,
+        decoration: BoxDecoration(
+          gradient: showGradient
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: _gradient,
+                )
+              : null,
+          color: showGradient ? null : Colors.transparent,
+          borderRadius: _radius,
+          boxShadow: showGradient
+              ? [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _tv ? tab : desktopTab,
+            if (widget.onReload != null)
+              ClipRect(
+                child: AnimatedAlign(
+                  duration: ForjaMotionTheme.of(context).shelfExpand.duration,
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.centerLeft,
+                  widthFactor: _revealReload ? 1 : 0,
+                  child: SizedBox(
+                    height: widget.height,
+                    child: ShellPaintScope.focusableTap(
+                      context: context,
+                      onTap: widget.onReload!,
+                      borderRadius: ShellTokens.widgetShelfRadius,
+                      motion: ForjaMotionPreset.fillOnly,
+                      suppressInkHover: true,
+                      showFocusFill: false,
+                      listIndex: widget.listIndex,
+                      tvRowId:
+                          shelfRow == null ? null : '$shelfRow-reload',
+                      tvItemIndex: widget.listIndex,
+                      tvZone: ShellPaintTvZone.topBar,
+                      onDownEdge: widget.onDownEdge,
+                      onFocusChange: _setReloadChipFocused,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Tooltip(
+                            message: 'Reload ${widget.item.label}',
+                            child: Icon(
+                              Icons.refresh_rounded,
+                              size: widget.iconSize,
+                              color: showGradient || _revealReload
+                                  ? Colors.white.withValues(alpha: 0.95)
+                                  : Colors.white60,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

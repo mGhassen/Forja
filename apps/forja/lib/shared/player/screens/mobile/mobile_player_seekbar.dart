@@ -1,0 +1,337 @@
+part of 'mobile_player_screen.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  MOBILE SEEKBAR  - touch-friendly, no tooltip (no hover on mobile)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MobileSeekbar extends StatefulWidget {
+  final Duration duration;
+  final Duration position;
+  final Duration bufferedPosition;
+  final List<SeekBarZone> zones;
+  final void Function(Duration) onSeek;
+  final void Function(Duration)? onSeekPreview;
+  final VoidCallback onDragStart;
+  final VoidCallback onDragEnd;
+
+  const _MobileSeekbar({
+    required this.duration,
+    required this.position,
+    required this.bufferedPosition,
+    this.zones = const [],
+    required this.onSeek,
+    this.onSeekPreview,
+    required this.onDragStart,
+    required this.onDragEnd,
+  });
+
+  @override
+  State<_MobileSeekbar> createState() => _MobileSeekbarState();
+}
+
+class _MobileSeekbarState extends State<_MobileSeekbar> {
+  bool _isDragging = false;
+  double _dragFrac = 0.0;
+  double _trackWidth = 0.0;
+  Timer? _seekPreviewDebounce;
+
+  double get _playFrac {
+    final total = widget.duration.inMilliseconds.toDouble();
+    if (total <= 0) return 0;
+    if (_isDragging) return _dragFrac;
+    return (widget.position.inMilliseconds / total).clamp(0.0, 1.0);
+  }
+
+  double get _bufFrac {
+    final total = widget.duration.inMilliseconds.toDouble();
+    if (total <= 0) return 0;
+    return (widget.bufferedPosition.inMilliseconds / total).clamp(0.0, 1.0);
+  }
+
+  Duration get _dragTime {
+    final total = widget.duration.inMilliseconds.toDouble();
+    return Duration(milliseconds: (_dragFrac * total).round());
+  }
+
+  double _fracFromLocal(double dx) => (dx / _trackWidth).clamp(0.0, 1.0);
+
+  @override
+  void initState() {
+    super.initState();
+    playerChromeRegisterSeekScrubCancel(_cancelScrubFromOverlay);
+  }
+
+  @override
+  void dispose() {
+    _seekPreviewDebounce?.cancel();
+    playerChromeUnregisterSeekScrubCancel(_cancelScrubFromOverlay);
+    super.dispose();
+  }
+
+  void _cancelScrubFromOverlay() {
+    if (!mounted || !_isDragging) return;
+    setState(() => _isDragging = false);
+    widget.onDragEnd();
+  }
+
+  void _scheduleSeekPreview() {
+    final cb = widget.onSeekPreview;
+    if (cb == null || widget.duration <= Duration.zero) return;
+    _seekPreviewDebounce?.cancel();
+    _seekPreviewDebounce = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      cb(_dragTime);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragStart: (d) {
+        if (playerChromeOverlayBlocksSeek()) return;
+        widget.onDragStart();
+        setState(() {
+          _isDragging = true;
+          _dragFrac = _fracFromLocal(d.localPosition.dx);
+        });
+      },
+      onHorizontalDragUpdate: (d) {
+        if (!_isDragging) return;
+        if (playerChromeOverlayBlocksSeek()) {
+          _cancelScrubFromOverlay();
+          return;
+        }
+        setState(() {
+          _dragFrac = _fracFromLocal(d.localPosition.dx);
+        });
+        _scheduleSeekPreview();
+      },
+      onHorizontalDragEnd: (_) {
+        if (!_isDragging) return;
+        final total = widget.duration.inMilliseconds.toDouble();
+        if (!playerChromeOverlayBlocksSeek()) {
+          widget.onSeek(Duration(milliseconds: (_dragFrac * total).round()));
+        }
+        widget.onDragEnd();
+        setState(() => _isDragging = false);
+      },
+      onTapUp: (d) {
+        if (playerChromeOverlayBlocksSeek()) return;
+        final total = widget.duration.inMilliseconds.toDouble();
+        widget.onSeek(
+          Duration(
+            milliseconds: (_fracFromLocal(d.localPosition.dx) * total).round(),
+          ),
+        );
+      },
+      // Hit strip densifies under leanback ShellPaintScope.
+      child: SizedBox(
+        height: playerChromeScale(
+          context,
+          ShellTokens.playerChromeSeekHitHeight,
+        ),
+        child: Align(
+          alignment: Alignment.center,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              _trackWidth = constraints.maxWidth;
+
+              final trackH = playerChromeScale(
+                context,
+                _isDragging
+                    ? ShellTokens.playerChromeSeekTrackHeightActive
+                    : ShellTokens.playerChromeSeekTrackHeight,
+              );
+              final thumbR = playerChromeScale(
+                context,
+                _isDragging
+                    ? ShellTokens.playerChromeSeekThumbRadiusActive
+                    : ShellTokens.playerChromeSeekThumbRadius,
+              );
+              final tipW = playerChromeScale(context, 72);
+              final tipHalf = tipW / 2;
+              final tipTop = -playerChromeScale(context, 34);
+              final tipPadH = playerChromeScale(context, 8);
+              final tipPadV = playerChromeScale(context, 4);
+              final tipRadius = playerChromeScale(context, 8);
+              final tipLabelW = playerChromeScale(context, 56);
+              final tipFs = playerChromeTypeSize(
+                context,
+                ShellTokens.playerChromeTimeFontSize,
+              );
+              final playPx = (_playFrac * _trackWidth).clamp(0.0, _trackWidth);
+              final thumbLeft = (playPx - thumbR).clamp(
+                0.0,
+                (_trackWidth - thumbR * 2).clamp(0.0, double.infinity),
+              );
+
+              return Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.centerLeft,
+                children: [
+                  // Background
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    curve: Curves.easeOut,
+                    height: trackH,
+                    width: _trackWidth,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(trackH),
+                    ),
+                  ),
+                  // Buffered
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    height: trackH,
+                    width: (_bufFrac * _trackWidth).clamp(0.0, _trackWidth),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.32),
+                      borderRadius: BorderRadius.circular(trackH),
+                    ),
+                  ),
+                  if (widget.zones.isNotEmpty)
+                    SeekBarZoneLayer(
+                      zones: widget.zones,
+                      width: _trackWidth,
+                      height: trackH,
+                    ),
+                  // Played
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 80),
+                    curve: Curves.easeOut,
+                    height: trackH,
+                    width: playPx,
+                    decoration: BoxDecoration(
+                      color: ForjaShellColors.brandGreen,
+                      borderRadius: BorderRadius.circular(trackH),
+                    ),
+                  ),
+                  // Thumb dot — inset so 0%/100% aren't half-clipped by chrome
+                  Positioned(
+                    left: thumbLeft,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 130),
+                      curve: Curves.easeOut,
+                      width: thumbR * 2,
+                      height: thumbR * 2,
+                      decoration: BoxDecoration(
+                        color: ForjaShellColors.brandGreen,
+                        shape: BoxShape.circle,
+                        boxShadow: _isDragging
+                            ? [
+                                BoxShadow(
+                                  color: ForjaShellColors.brandGreen
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: playerChromeScale(context, 8),
+                                ),
+                              ]
+                            : [],
+                      ),
+                    ),
+                  ),
+                  // Drag time label - floats above thumb while dragging
+                  if (_isDragging && widget.duration.inMilliseconds > 0)
+                    Positioned(
+                      left: (playPx - tipHalf).clamp(0.0, _trackWidth - tipW),
+                      top: tipTop,
+                      child: _PlayerChromeSurface(
+                        radius: tipRadius,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: tipPadH,
+                          vertical: tipPadV,
+                        ),
+                        child: SizedBox(
+                          width: tipLabelW,
+                          child: Text(
+                            formatDuration(_dragTime),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.visible,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: tipFs,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'monospace',
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SIDE INDICATOR  (volume / brightness vertical pill)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Replaces VolumeBrightnessIndicator from shared_widgets - self-contained.
+class _SideIndicator extends StatelessWidget {
+  final IconData icon;
+  final double value; // 0.0 – 1.0
+
+  const _SideIndicator({required this.icon, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return _PlayerChromeSurface(
+      radius: 20,
+      child: SizedBox(
+        width: 44,
+        height: 160,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Icon(
+              icon,
+              color: Colors.white,
+              size: ShellPaintScope.iconOf(context, 18),
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 14,
+                ),
+                child: RotatedBox(
+                  quarterTurns: -1,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: value.clamp(0.0, 1.0),
+                      backgroundColor: Colors.white24,
+                      color: Colors.white,
+                      minHeight: 4,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '${(value * 100).round()}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

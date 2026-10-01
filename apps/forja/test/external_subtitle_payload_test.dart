@@ -12,6 +12,12 @@ void main() {
     test('accepts WEBVTT', () {
       const vtt = 'WEBVTT\n\n00:00:01.000 --> 00:00:04.000\nHello\n';
       expect(isPlausibleSubtitleBytes(vtt.codeUnits), isTrue);
+      expect(externalSubtitleFileExtension(vtt.codeUnits), 'vtt');
+    });
+
+    test('keeps timed SRT as srt', () {
+      const srt = '1\n00:00:01,000 --> 00:00:04,000\nHello\n';
+      expect(externalSubtitleFileExtension(srt.codeUnits), 'srt');
     });
 
     test('rejects OpenSubtitles HTML error page', () {

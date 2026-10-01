@@ -99,7 +99,7 @@ function PlatformGlyph({
   }
 }
 
-/** First-open help for Windows / macOS detail panes — always flame (alert), never brand green. */
+/** First-open help for Windows / macOS detail panes. Always flame (alert), never brand green. */
 function PlatformOpenHelp({ platformId }: { platformId: ShowcasePlatformId }) {
   const isWindows = platformId === 'windows'
   const isMac = platformId === 'macos'
@@ -119,8 +119,8 @@ function PlatformOpenHelp({ platformId }: { platformId: ShowcasePlatformId }) {
       </div>
       <p className="mt-2 text-base leading-relaxed text-[rgba(237,230,218,0.62)]">
         {isWindows
-          ? 'Windows often blocks the first open. Photo steps — one click.'
-          : 'Mac often blocks the first open. Photo steps — one click.'}
+          ? 'Windows often blocks the first open. Photo steps, one click.'
+          : 'Mac often blocks the first open. Photo steps, one click.'}
       </p>
       <a
         href={isWindows ? '#windows-smartscreen' : '#macos-gatekeeper'}
@@ -248,7 +248,7 @@ function orderPlatformAssets(
   return [primary, ...rest]
 }
 
-/** First `# …` heading from a release notes body (e.g. `1.2.365 — Dabaghin`). */
+/** First `# …` heading from a release notes body (e.g. `1.2.365 - Dabaghin`). */
 function releaseTitleFromNotes(
   notes: string | null | undefined,
   version: string | null | undefined,
@@ -753,17 +753,15 @@ export function DownloadPage() {
       <main className="relative px-[5vw] pb-16 pt-20 sm:pb-24 sm:pt-28">
         <Reveal>
           <h1 className="font-disp max-w-[14ch] text-[clamp(40px,11vw,140px)] uppercase leading-[0.84] tracking-[-0.04em]">
-            Get the
+            Download
             <br />
-            <span className="text-flame">player.</span>
+            <span className="text-flame">Forja</span>
           </h1>
           <div className="mt-6 max-w-2xl space-y-4 text-lg leading-relaxed text-[rgba(237,230,218,0.5)]">
             <p>
-              Forja is a free media player for streaming - playback, live playlists,
-              and controls on the screen you use.
-            </p>
-            <p>
-              Windows, Mac, Linux, or Android TV. Same player everywhere.
+              Get the modular player platform for Windows, macOS, Linux, or
+              Android TV. Add community packs for hubs and sources, then stream
+              with the same controls on every screen. Forja is open source.
             </p>
           </div>
         </Reveal>

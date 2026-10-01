@@ -10,17 +10,12 @@ import 'package:logging/logging.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:forja/features/archive/audio/audiobook_player_service.dart';
-import 'package:forja/features/archive/audio/music_player_service.dart';
-import 'package:forja/features/iptv/open/iptv_kit_hooks_register.dart';
-import 'package:forja/features/iptv/screens/iptv_portals_chrome_hooks.dart';
-import 'package:forja/features/settings/settings_kit_hooks_register.dart';
+import 'package:forja/features/settings/shell/kit_hooks_register.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/tracker_sync.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
-import 'package:forja/shared/player/platform/player_pool_service.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
@@ -28,29 +23,37 @@ import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
-import 'package:forja/shared/foundation/services/follow/my_list_host.dart';
+import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
+import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
+import 'package:forja/shared/engine/runtime/open/offline_library_open.dart';
+import 'package:forja/shared/player/live/hooks/live_kit_hooks_register.dart';
+import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
+import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/engine/packs/install/forja_plugin_deeplink.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
-import 'package:forja/shared/foundation/components/update/app_update_progress_banner.dart';
+import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
+import 'package:forja/shell/update/app_update_progress_banner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt_host.dart';
 import 'package:forja/shared/engine/packs/install/plugin_pack_update_prompt_host.dart';
-import 'package:forja/shared/foundation/components/packs/plugin_install_progress_banner.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_back_handler.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_remote_debug.dart';
+import 'package:forja/features/settings/packs/plugin_install_progress_banner.dart';
+
+import 'package:forja/shell/tv/shell_tv_back_handler.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/tv_nav_sound.dart';
+import 'package:forja/shell/tv/tv_remote_debug.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/app/tmdb_user_region.dart';
 import 'package:forja/shared/network/legacy_android_tls.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
-import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
+import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
@@ -58,6 +61,15 @@ import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
 import 'package:forja/shell/platform/macos_shell_channel.dart';
+import 'package:forja/shell/brand/animated_logo.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_keyboard_focus.dart';
+import 'package:forja/shell/core/shell_paint_host_install.dart';
+import 'package:forja/shell/desktop/desktop_window_geometry.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 
 bool _appShutdownStarted = false;
 
@@ -66,15 +78,6 @@ bool _appShutdownStarted = false;
 Future<void> _shutdownMediaKitPlayers() async {
   try {
     await MpvExclusiveSession.instance.shutdownAllPlayers();
-  } catch (_) {}
-  try {
-    await MusicPlayerService().dispose();
-  } catch (_) {}
-  try {
-    await AudiobookPlayerService().dispose();
-  } catch (_) {}
-  try {
-    await PlayerPoolService().dispose();
   } catch (_) {}
 }
 
@@ -136,16 +139,18 @@ Future<void> _runDesktopQuit() async {
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
+  installShellPaintHostAdapters();
   // Before any CachedNetworkImage / TMDB poster fetch (Android ≤7.0 LE trust).
   installLegacyAndroidTlsTrust();
   initTmdbUserRegion();
   EpisodeWatchedService().syncHandler = syncEpisodeWatchedToTrackers;
-  MyListService().syncAddHandler = syncMyListAddToTrackers;
-  MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;
-  MyListHost.ensureRegistered();
-  KitLiveBoot.ensureRegistered();
-  IptvPortalsChromeHooks.ensureRegistered();
-  IptvKitHooksRegister.ensureRegistered();
+  BookmarkStore().syncAddHandler = syncBookmarkAddToTrackers;
+  BookmarkStore().syncRemoveHandler = syncBookmarkRemoveFromTrackers;
+  LiveSurfaceOpen.ensureRegistered();
+  HostPlaybackOpen.ensureRegistered();
+  OfflineLibraryOpen.ensureRegistered();
+  LiveKitHooksRegister.ensureRegistered();
+  unawaited(PortalVaultInventory.ensureMigratedFromStore());
   SettingsKitHooksRegister.ensureRegistered();
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
@@ -154,8 +159,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Always rotate the access JWT on cold start when a session exists. Skew /
   // gotrue discard can leave a locally "valid" AT that PostgREST rejects.
   await SyncService.instance.refreshSession(force: true);
-  unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
-  unawaited(SettingsService().getAnimeTitleLanguage());
+  unawaited(_migrateAnimeTitleLanguageToPack());
   if (Platform.isAndroid) {
     TvRemoteDebug.install();
   }
@@ -163,8 +167,18 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
 
   // TV profile before any WebView (lazy warm-up uses PlatformInfo).
   await PlatformChannel.initialize();
+  if (PlatformInfo.offlineDownloadsEnabled) {
+    unawaited(DownloadService.instance.initialize());
+  }
   ShellTvFocusCoordinator.tvBackPolicyEnabled =
       PlatformInfo.isAndroidTv || PlatformChannel.forceAndroidTv;
+  ShellTvFocusCoordinator.bindFrame(
+    playerSurfaceActive: ShellBus.playerSurfaceActive,
+    activeShellTabId: () => ShellBus.activeShellTabId,
+    overlayCanPop: shellOverlayCanPop,
+    overlayMaybePop: maybePopShellOverlay,
+  );
+  TvNavSound.install();
 
   // Phone: WebView debug. TV Chromium warm-up waits for first real WebView
   // (ForjaInAppWebView / ForjaHeadlessInAppWebView → TvWebViewWarm).
@@ -182,10 +196,21 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   Logger.root.onRecord.listen((e) {
     // youtube_explode spam: countdown every tick while a token is cached
     if (e.message.contains('Access token expires in')) return;
+    // gotrue session refresh is routine (start/stop, save, attempt). Warnings
+    // and failures still print. Supabase's own INFO printer is off too.
+    if (e.loggerName.startsWith('supabase') && e.level < Level.WARNING) {
+      return;
+    }
     // supabase_flutter logs PostgREST failures via this logger before the
     // caller catch; iat-skew is retried with the same token (SyncService).
     if (SyncService.isJwtIssuedAtFutureError(e.message) ||
         SyncService.isJwtIssuedAtFutureError(e.error)) {
+      return;
+    }
+    // gotrue retries /token on DNS blips then notifyException — one soft line.
+    if (SyncService.isRetryableAuthNetworkError(e.error) ||
+        SyncService.isRetryableAuthNetworkError(e.message)) {
+      debugPrint('[YT] auth network blip: ${e.error ?? e.message}');
       return;
     }
     debugPrint('[YT] ${e.message}');
@@ -205,6 +230,13 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
+
+    // Drop leaked PiP aspect / max caps before restore (issue 284).
+    try {
+      await windowManager.setAspectRatio(0);
+      await windowManager.setMinimumSize(const Size(640, 480));
+      await windowManager.setMaximumSize(const Size(100000, 100000));
+    } catch (_) {}
 
     // Restore last windowed size/place when present; otherwise clamp a
     // default to the primary display work area (issue 196).
@@ -238,6 +270,9 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
       await windowManager.focus();
       if (startup.maximized) {
         try {
+          DesktopWindowGeometry.suppressSaveBriefly();
+          // macOS: already placed on work area when possible — maximize is a
+          // no-op fill if frames match (avoids small→full flash).
           await windowManager.maximize();
         } catch (_) {}
       }
@@ -252,11 +287,20 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Profile-gated engines (Nuvio, LocalServer, TorrentStream, TMDB)
   // warm after profile settings are known - see ProfileEngineWarm / SplashScreen.
 
-  // Hydrate theme preset before first frame
-  await Engine.init();
+  // Hydrate theme preset before first frame.
+  // Engine.init's default file is the guest profile. A restored sign-in must
+  // open that profile's store before defaults, theme, or MainScreen — otherwise
+  // the first navbar read is the guest rail.
+  final signedInStore = await SyncService.instance
+      .engineStorePathForCurrentSession();
+  if (signedInStore != null) {
+    debugPrint('[Boot] opening signed-in profile store');
+  }
+  await Engine.init(storagePath: signedInStore);
+  await SyncService.instance.ensurePluginDiskScopeForCurrentSession();
   registerTorrentSearchBridge();
+  registerDebridPackBridge();
   _warnIfRustMissing();
-  ProviderRuntimeConfig.instance.pushToRust();
   await PlatformChannel.seedPlatformDefaultsAfterEngine();
   _wireLanPlaybackBridge();
   // LAN restore waits for post-splash torrent/proxy warm — see ProfileEngineWarm.
@@ -266,7 +310,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // After Engine.init so crash-reporting opt-in is readable (RFC-043).
   await Telemetry.ensureInitialized();
 
-  PlayerPoolService().warmUp();
   debugPrint('[Boot] Preloading splash sound...');
   await SplashSound.instance.preload();
   debugPrint('[Boot] Splash sound ready');
@@ -285,6 +328,15 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
+  /// Coalesces focus + resume + restore (desktop often fires several at once).
+  Timer? _becameActiveDebounce;
+
+  /// When the window last left the foreground — skip wake work for brief alt-tabs.
+  DateTime? _leftActiveAt;
+
+  static const _becameActiveCoalesce = Duration(milliseconds: 400);
+  static const _briefAwaySkip = Duration(minutes: 2);
+
   @override
   void initState() {
     super.initState();
@@ -312,6 +364,8 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
 
   @override
   void dispose() {
+    _becameActiveDebounce?.cancel();
+    _becameActiveDebounce = null;
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.removeListener(this);
       SyncService.instance.stopDesktopSessionKeepAlive();
@@ -332,44 +386,94 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     await _runDesktopQuit();
   }
 
+  /// Desktop focus / restore / lifecycle resume — JWT keep-alive only.
+  ///
+  /// Cloud soft-pull stays on tab switch + cold start. Simkl runs post-splash.
+  /// Full focus sync (session + cloud + Simkl + telemetry) made every Cmd-Tab
+  /// hitch (issue 364). Keep-alive timer already covers long-idle JWT.
+  void _noteLeftActive() {
+    _leftActiveAt ??= DateTime.now();
+  }
+
+  void _scheduleBecameActive() {
+    _becameActiveDebounce?.cancel();
+    _becameActiveDebounce = Timer(_becameActiveCoalesce, () {
+      _becameActiveDebounce = null;
+      _onBecameActive();
+    });
+  }
+
+  void _onBecameActive() {
+    final left = _leftActiveAt;
+    _leftActiveAt = null;
+    // macOS Cmd-Tab can leave Flutter lifecycle stuck at `hidden` (frames
+    // gated — frozen UI/video). Native AppDelegate nudges `resumed`; also
+    // force a paint from Dart when window_manager reports focus.
+    if (Platform.isMacOS) {
+      WidgetsBinding.instance.scheduleForcedFrame();
+    }
+    if (left != null && DateTime.now().difference(left) < _briefAwaySkip) {
+      return;
+    }
+    unawaited(SyncService.instance.ensureFreshAccessToken());
+  }
+
   @override
   void onWindowFocus() {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
-    unawaited(SyncService.instance.refreshSession());
-    unawaited(SyncDomainBridge.instance.syncFromCloud());
-    unawaited(Telemetry.syncAnalyticsIdentity());
-    unawaited(SimklService().fullSync());
+    // Immediate paint — do not wait for the JWT coalesce timer.
+    if (Platform.isMacOS) {
+      WidgetsBinding.instance.scheduleForcedFrame();
+    }
+    _scheduleBecameActive();
+  }
+
+  @override
+  void onWindowBlur() {
+    if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
+    _noteLeftActive();
   }
 
   @override
   void onWindowRestore() {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
-    unawaited(SyncService.instance.refreshSession());
-    unawaited(SyncDomainBridge.instance.syncFromCloud());
-    unawaited(Telemetry.syncAnalyticsIdentity());
+    _scheduleBecameActive();
   }
 
   @override
-  void onWindowResize() => DesktopWindowGeometry.scheduleSave();
+  void onWindowResize() {
+    DesktopWindowGeometry.scheduleSave();
+    DesktopWindowGeometry.noteWindowedFrameIfSession();
+  }
 
   @override
-  void onWindowMove() => DesktopWindowGeometry.scheduleSave();
+  void onWindowMove() {
+    DesktopWindowGeometry.scheduleSave();
+    DesktopWindowGeometry.noteWindowedFrameIfSession();
+  }
 
   @override
-  void onWindowMaximize() => DesktopWindowGeometry.scheduleSave();
+  void onWindowMaximize() {
+    DesktopWindowGeometry.suppressSaveBriefly();
+    DesktopWindowGeometry.noteWindowedFrameIfSession();
+  }
 
   @override
-  void onWindowUnmaximize() => DesktopWindowGeometry.scheduleSave();
+  void onWindowUnmaximize() {
+    DesktopWindowGeometry.suppressSaveBriefly();
+    DesktopWindowGeometry.noteWindowedFrameIfSession();
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      _noteLeftActive();
+      return;
+    }
     if (state == AppLifecycleState.resumed) {
-      unawaited(SyncService.instance.refreshSession());
-      // Cloud is master — pull full profile_settings (Stremio, nav, …) into
-      // local cache, not only account feature flags.
-      unawaited(SyncDomainBridge.instance.syncFromCloud());
-      unawaited(Telemetry.syncAnalyticsIdentity());
-      unawaited(SimklService().fullSync());
+      _scheduleBecameActive();
       return;
     }
     if (state == AppLifecycleState.detached) {
@@ -397,6 +501,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           title: widget.title,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.themeData,
+          scrollBehavior: const ForjaScrollBehavior(),
           navigatorObservers: [
             PosthogObserver(nameExtractor: ProductAnalytics.routeScreenName),
           ],
@@ -409,9 +514,11 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                   // (also avoids mouse_tracker assert when toast buttons mount).
                   allowDisplay: ShellBus.splashDismissed,
                   // One column: progress banners + toasts (not overlapping).
-                  stackAbove: const [
-                    AppUpdateProgressBanner(),
-                    PluginInstallProgressBanner(),
+                  stackAbove: [
+                    AppUpdateProgressBanner(
+                      hideWhenPlayerActive: ShellBus.playerSurfaceActive,
+                    ),
+                    const PluginInstallProgressBanner(),
                   ],
                   child: PluginPackUpdatePromptHost(
                     child: PluginInstallPromptHost(
@@ -882,4 +989,27 @@ void _warnIfRustMissing() {
   if (Platform.environment['RUST_STRICT'] == '1') {
     throw StateError(full);
   }
+}
+
+/// Host Playback → Anime pack (`anilist` / `titleLanguage`). One-shot.
+Future<void> _migrateAnimeTitleLanguageToPack() async {
+  const legacyKey = 'anime_title_language';
+  final prefs = await SharedPreferences.getInstance();
+  if (!prefs.containsKey(legacyKey)) return;
+  final raw = (prefs.getString(legacyKey) ?? 'romaji').trim().toLowerCase();
+  final v = switch (raw) {
+    'english' || 'native' || 'romaji' => raw,
+    _ => 'romaji',
+  };
+  final migrated = await PackSettingsStore.migrateStringIfAbsent(
+    'anilist',
+    'titleLanguage',
+    v,
+  );
+  await prefs.remove(legacyKey);
+  if (migrated) {
+    schedulePackSettingsSyncPush();
+  }
+  // Drop retired Playback key from cloud when signed in.
+  schedulePreferencesSyncPush();
 }

@@ -1,18 +1,24 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/player/controls/menus/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
-
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 class PlayerSubtitleSettingsValues {
   const PlayerSubtitleSettingsValues({
     required this.size,
@@ -181,33 +187,45 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
               : MediaQuery.sizeOf(context).height * 0.8,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.shellRadius),
+          borderRadius: BorderRadius.circular(
+            PlayerPopupTokens.shellRadiusOf(context),
+          ),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: PlayerPopupTokens.shellBg,
-              borderRadius:
-                  BorderRadius.circular(PlayerPopupTokens.shellRadius),
+              borderRadius: BorderRadius.circular(
+                PlayerPopupTokens.shellRadiusOf(context),
+              ),
               border: Border.all(color: PlayerPopupTokens.border),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  padding: EdgeInsets.fromLTRB(
+                    leanback ? 12 : 20,
+                    leanback ? 10 : 16,
+                    leanback ? 8 : 12,
+                    leanback ? 6 : 8,
+                  ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.tune_rounded,
-                        color: Color(0xFF7C3AED),
-                        size: 20,
+                        color: const Color(0xFF7C3AED),
+                        size: leanback
+                            ? PlayerPopupTokens.chromeIconSizeTv
+                            : 20,
                       ),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Subtitle Settings',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: leanback
+                                ? PlayerPopupTokens.titleFontSizeTv
+                                : 16,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -707,12 +725,12 @@ class _SubColorSwatchState extends State<_SubColorSwatch> {
 
   @override
   Widget build(BuildContext context) {
-    final ring = _focused
+    final focusChrome = ShellScope.inputPolicyOf(context)
+        .focusChromeVisible(context, focused: _focused);
+    final ring = focusChrome || widget.selected
         ? ForjaShellColors.brandGreen
-        : widget.selected
-            ? ForjaShellColors.brandGreen
-            : Colors.white24;
-    final ringWidth = (_focused || widget.selected) ? 3.0 : 1.0;
+        : Colors.white24;
+    final ringWidth = (focusChrome || widget.selected) ? 3.0 : 1.0;
     final swatch = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       width: 34,
@@ -721,7 +739,7 @@ class _SubColorSwatchState extends State<_SubColorSwatch> {
         color: widget.color,
         shape: BoxShape.circle,
         border: Border.all(color: ring, width: ringWidth),
-        boxShadow: _focused
+        boxShadow: focusChrome
             ? [
                 BoxShadow(
                   color: ForjaShellColors.brandGreen.withValues(alpha: 0.65),
@@ -734,7 +752,7 @@ class _SubColorSwatchState extends State<_SubColorSwatch> {
       child: widget.selected
           ? Icon(
               Icons.check,
-              size: 16,
+              size: ShellPaintScope.iconOf(context, 16),
               color: ForjaShellColors.brandGreen,
             )
           : null,
@@ -874,7 +892,14 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
         !(ShellScope.maybeOf(context)?.inputPolicy.scaleOnHover ?? true);
     if (!leanback) {
       return IconButton(
-        icon: Icon(widget.icon, color: Colors.white70, size: 20),
+        icon: Icon(
+          widget.icon,
+          color: Colors.white70,
+          size: ShellPaintScope.iconOf(
+            context,
+            ShellTokens.playerChromeIconSize,
+          ),
+        ),
         visualDensity: VisualDensity.compact,
         tooltip: widget.icon == Icons.add ? 'Increase delay' : 'Decrease delay',
         onPressed: () => widget.onStep(1),
@@ -903,7 +928,14 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
               ]
             : null,
       ),
-      child: Icon(widget.icon, color: Colors.white70, size: 20),
+      child: Icon(
+        widget.icon,
+        color: Colors.white70,
+        size: ShellPaintScope.iconOf(
+          context,
+          ShellTokens.playerChromeIconSize,
+        ),
+      ),
     );
 
     return shellFocusableTap(
@@ -913,7 +945,7 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.off,
+      ensureVisibleMode: ShellPaintEnsureVisible.off,
       listIndex: widget.listIndex,
       tvTabId: PlayerSubtitleSettingsDialog.tvTabId,
       tvRowId: PlayerSubtitleSettingsDialog.delayRowId,
@@ -949,9 +981,9 @@ class _BoldRow extends StatelessWidget {
           style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
         const Spacer(),
-        ForjaSwitch(
+        Switch(
           value: bold,
-          scale: ForjaSwitch.settingsScale,
+          scale: Switch.settingsScale,
           // Desktop hybrid: keep mouse toggle. Leanback: FocusableControl owns OK.
           onChanged: tvFocus &&
                   !(ShellScope.maybeOf(context)?.inputPolicy.scaleOnHover ??
@@ -990,16 +1022,28 @@ class _PopupSettingsCloseButton extends StatefulWidget {
 }
 
 class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
-    final policy = ShellScope.inputPolicyOf(context);
-    final tvFocus = policy.useFocusableMoodChips;
-    final mouseHover = policy.scaleOnHover;
-    final highlight = _hovered || _focused;
-    final face = Container(
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildFace(bool hovered) {
+    final highlight = ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: hovered,
+      focused: _focused,
+      context: context,
+    );
+    return Container(
       width: 28,
       height: 28,
       alignment: Alignment.center,
@@ -1019,13 +1063,24 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
         color: PlayerPopupTokens.accent,
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
+    final mouseHover = policy.scaleOnHover;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildFace(_hoveredN.value),
+    );
     if (!tvFocus) {
       return MouseRegion(
         onEnter: (_) {
-          if (mouseHover) setState(() => _hovered = true);
+          if (mouseHover) _setHovered(true);
         },
         onExit: (_) {
-          if (mouseHover) setState(() => _hovered = false);
+          if (mouseHover) _setHovered(false);
         },
         child: Material(
           color: Colors.transparent,
@@ -1035,7 +1090,7 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
             hoverColor: PlayerPopupTokens.accentFill,
-            child: face,
+            child: painted,
           ),
         ),
       );
@@ -1047,8 +1102,8 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
       showFocusBorder: false,
       showFocusFill: false,
       onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: mouseHover ? (h) => setState(() => _hovered = h) : null,
-      child: face,
+      onHoverChange: mouseHover ? _setHovered : null,
+      child: painted,
     );
   }
 }
@@ -1074,19 +1129,32 @@ class _SelectFontChip extends StatefulWidget {
 }
 
 class _SelectFontChipState extends State<_SelectFontChip> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
-    final mouseHover =
-        ShellScope.inputPolicyOf(context).scaleOnHover;
-    final highlight = _hovered || _focused;
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildFace(bool hovered) {
+    final highlight = ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: hovered,
+      focused: _focused,
+      context: context,
+    );
     final chrome = playerPopupSelectChrome(
       selected: widget.selected,
       highlight: highlight,
     );
-    final face = Container(
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: chrome.bg,
@@ -1103,17 +1171,27 @@ class _SelectFontChipState extends State<_SelectFontChip> {
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mouseHover =
+        ShellScope.inputPolicyOf(context).scaleOnHover;
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => _buildFace(_hoveredN.value),
+    );
 
     if (!widget.tv) {
       return MouseRegion(
         key: ValueKey('sub-font-${widget.font}'),
         onEnter: (_) {
-          if (mouseHover) setState(() => _hovered = true);
+          if (mouseHover) _setHovered(true);
         },
         onExit: (_) {
-          if (mouseHover) setState(() => _hovered = false);
+          if (mouseHover) _setHovered(false);
         },
-        child: GestureDetector(onTap: widget.onSelect, child: face),
+        child: GestureDetector(onTap: widget.onSelect, child: painted),
       );
     }
     return KeyedSubtree(
@@ -1131,7 +1209,7 @@ class _SelectFontChipState extends State<_SelectFontChip> {
         tvItemIndex: widget.index,
         tvZone: ShellTvZone.chipStrip,
         onFocusChange: (f) => setState(() => _focused = f),
-        child: face,
+        child: painted,
       ),
     );
   }

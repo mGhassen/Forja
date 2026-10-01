@@ -15,7 +15,7 @@ Unless the user **explicitly** expands scope, only work on these features:
 | Asian Drama | `asian_drama` (KissKh) |
 | IPTV | `iptv` |
 | Live Sports | `live_sports` / `live_sports_cards` (hub packs) |
-| Lists | `mylist` / lists |
+| Lists | pack-contributed Lists hub (`nav.tabId`) |
 | Settings | `settings` |
 
 Plus shared playback/shell that those tabs use (player, sources used by Home/Search/Anime/Asian Drama, stream providers, WebStreamr when it feeds those surfaces).

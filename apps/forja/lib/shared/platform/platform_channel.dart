@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:rust/rust.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Resolves [PlatformProfile] and configures [SettingsService] at boot.
 abstract final class PlatformChannel {
@@ -49,7 +49,9 @@ abstract final class PlatformChannel {
     final views = SchedulerBinding.instance.platformDispatcher.views;
     if (views.isEmpty) return false;
     final physical = views.first.physicalSize;
-    return physical.shortestSide >= 1080 && physical.width > physical.height;
+    if (physical.width <= physical.height) return false;
+    if (physical.width / physical.height < 1.7) return false;
+    return physical.shortestSide >= 720 && physical.longestSide >= 1280;
   }
 
   static Future<void> initialize() async {
@@ -79,6 +81,7 @@ abstract final class PlatformChannel {
     await SettingsService().ensurePlatformDefaultsSeeded(profile);
     // Hydrate live notifiers that use platform-aware fallbacks.
     await SettingsService().getPlayInBackground();
+    await SettingsService().getTvNavSound();
   }
 
   /// Android TV only — one-shot Chromium warm-up. Prefer [TvWebViewWarm.ensure]
@@ -141,6 +144,18 @@ abstract final class PlatformChannel {
       await _channel.invokeMethod<void>('clearDisplayFrameRate');
     } catch (e) {
       debugPrint('[PlatformChannel] clearDisplayFrameRate failed: $e');
+    }
+  }
+
+  /// Android TV leanback UI tick (`AudioManager.playSoundEffect`).
+  ///
+  /// [kind]: `up` / `down` / `left` / `right` / `activate`.
+  static Future<void> playSoundEffect(String kind) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('playSoundEffect', {'kind': kind});
+    } catch (e) {
+      debugPrint('[PlatformChannel] playSoundEffect failed: $e');
     }
   }
 }

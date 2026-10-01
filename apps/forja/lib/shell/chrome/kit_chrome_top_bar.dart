@@ -2,15 +2,21 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
-import 'package:forja/shell/nav/shell_nav_rail.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_menu_item.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
+import 'package:forja/shell/chrome/vertical_filters_rail.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+export 'package:forja_foundation/widgets/chrome/hub_top_bar.dart' show HubTopBar;
 
 /// Sentinel for the "All" entry in the categories popup menu.
 const catalogAllCategoriesSentinel = '__all__';
@@ -42,7 +48,7 @@ class KitChromeTopBar extends StatefulWidget {
   /// Null when the pack does not declare `search` — Search tab is omitted.
   final VoidCallback? onSearch;
 
-  static const hideSlideDistance = 56.0;
+  static const hideSlideDistance = ShellTokens.kitTopBarHideSlideDistance;
 
   @override
   State<KitChromeTopBar> createState() => _KitChromeTopBarState();
@@ -75,23 +81,13 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
 
   /// KeepAlive hubs all mount — only the active tab owns [hubHeroSearch].
   void _syncSharedSearchFocus() {
-    if (widget.tabId == 'home') {
-      ShellTvFocus.homeMenu = _searchFocus;
-      ShellTvFocus.homeSearch = _searchFocus;
-      return;
-    }
     if (ShellTvFocus.currentNavTabId != widget.tabId) return;
     ShellTvFocus.hubHeroSearch = _searchFocus;
   }
 
   @override
   void dispose() {
-    if (widget.tabId == 'home') {
-      if (ShellTvFocus.homeMenu == _searchFocus) ShellTvFocus.homeMenu = null;
-      if (ShellTvFocus.homeSearch == _searchFocus) {
-        ShellTvFocus.homeSearch = null;
-      }
-    } else if (ShellTvFocus.hubHeroSearch == _searchFocus) {
+    if (ShellTvFocus.hubHeroSearch == _searchFocus) {
       ShellTvFocus.hubHeroSearch = null;
     }
     _menuFocus.dispose();
@@ -133,30 +129,39 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
       pageBuilder: (dialogContext, _, _) {
         final shellScope = ShellScope.of(context);
         final tvFocus = shellScope.inputPolicy.useFocusableMoodChips;
+        final usesTv = shellScope.metrics.usesTvDensity;
         void dismissMenu() => Navigator.of(dialogContext).pop();
 
         Widget menu = Stack(
           children: [
             Positioned(
               left: offset.dx,
-              top: offset.dy + box.size.height + 4,
+              top: offset.dy + box.size.height + ShellTokens.homeCategoriesMenuOffsetY,
               child: Material(
                 color: ForjaShellColors.cinematic.menuSurface,
                 elevation: 8,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(
+                  ShellTokens.homeCategoriesMenuRadius,
+                ),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(
+                      ShellTokens.homeCategoriesMenuRadius,
+                    ),
                     border: Border.all(
                       color: ForjaShellColors.cinematic.borderSubtle,
                     ),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(
+                      ShellTokens.homeCategoriesMenuRadius,
+                    ),
                     child: IntrinsicWidth(
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          maxHeight: ShellTokens.homeCategoriesMenuMaxHeight,
+                          maxHeight: usesTv
+                              ? ShellTokens.homeCategoriesMenuMaxHeightTv
+                              : ShellTokens.homeCategoriesMenuMaxHeight,
                         ),
                         child: SingleChildScrollView(
                           padding: EdgeInsets.zero,
@@ -265,37 +270,11 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
     }
   }
 
-  Widget _buildMenuScroll({
-    required Widget tabs,
-    required bool compactNav,
-    required bool tvFocus,
-    required double tabGap,
-  }) {
-    if (!compactNav || tvFocus) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const ClampingScrollPhysics(),
-        child: tabs,
-      );
-    }
+  Widget _buildMenuScroll({required Widget tabs}) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const ClampingScrollPhysics(),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 34,
-            child: Center(
-              child: ShellNavMenuButton(
-                onPressed: () => Scaffold.of(context).openDrawer(),
-              ),
-            ),
-          ),
-          SizedBox(width: tabGap),
-          tabs,
-        ],
-      ),
+      child: tabs,
     );
   }
 
@@ -323,7 +302,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
         final logoHeight = usesTv
             ? ShellTokens.shellProviderTopBarIconHeightTv
             : ShellTokens.shellProviderTopBarIconHeight;
-        final barContentHeight = ShellTokens.homeTopBarHeight;
+        final barContentHeight = catalogHomeTopBarHeight(context);
 
         return ValueListenableBuilder<double>(
           valueListenable: widget.scrollOffset,
@@ -354,12 +333,19 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
             child: SizedBox(
               height: barContentHeight,
               child: Padding(
-                padding: EdgeInsets.fromLTRB(
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  // Compact: clear scaffold-owned ☰ lane (not a second button).
                   compactNav
-                      ? ShellTokens.compactMenuLeadingInset(context)
+                      ? ShellTokens.compactChromeLeadingInset(context)
                       : ShellTokens.bodyHorizontalPadding +
-                            ShellTokens.homeTopBarMenuLeadingInset,
-                  ShellTokens.shellHeaderTopPadding,
+                            (usesTv
+                                ? ShellTokens.homeTopBarMenuLeadingInsetTv
+                                : ShellTokens.homeTopBarMenuLeadingInset),
+                  // Must match homeTopBarHeight(Tv) budget — unscaled pad on TV
+                  // steals ~2.4px and overflows the tab Column by ~1.9px.
+                  usesTv
+                      ? ShellTokens.shellHeaderTopPaddingTv
+                      : ShellTokens.shellHeaderTopPadding,
                   ShellTokens.bodyHorizontalPadding,
                   0,
                 ),
@@ -374,12 +360,18 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                         final categoriesActive =
                             _categoriesOpen || categoryId != null;
                         final tabGap = usesTv
-                            ? 28.0
-                            : MediaQuery.sizeOf(context).width < 560
-                            ? 20.0
-                            : 36.0;
-                        final tabTextHeight =
-                            shellScaled(context, 34).clamp(28.0, 34.0);
+                            ? ShellTokens.kitTopBarTabGapTv
+                            : MediaQuery.sizeOf(context).width <
+                                    ShellTokens.kitTopBarTabGapCompactMaxWidth
+                            ? ShellTokens.kitTopBarTabGapCompact
+                            : ShellTokens.kitTopBarTabGapWide;
+                        final menuRowHeight = usesTv
+                            ? ShellTokens.homeMenuRowHeightTv
+                            : ShellTokens.homeMenuRowHeight;
+                        final tabTextHeight = shellScaled(
+                          context,
+                          menuRowHeight,
+                        );
                         // Provider logo → Search? → pack menus[] → Categories?
                         final hasSearch = widget.onSearch != null;
                         final menus = widget.menus;
@@ -421,8 +413,8 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                           tvFocus ? _providerLogoFocus : null,
                                       listIndex: tvFocus ? 0 : null,
                                       onDownEdge: tvFocus
-                                          ? () => ShellTvFocus
-                                              .focusHomeHeroGallery()
+                                          ? () => ShellTvFocusCoordinator
+                                              .focusHero(tabId: widget.tabId)
                                           : null,
                                     ),
                                   ),
@@ -441,7 +433,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                   focusNode: tvFocus ? _searchFocus : null,
                                   onDownEdge: tvFocus
                                       ? () =>
-                                            ShellTvFocus.focusHomeHeroGallery()
+                                            ShellTvFocusCoordinator.focusHero(tabId: widget.tabId)
                                       : null,
                                   onUpEdge: tvFocus
                                       ? () {
@@ -468,7 +460,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                       : null,
                                   onDownEdge: tvFocus
                                       ? () =>
-                                            ShellTvFocus.focusHomeHeroGallery()
+                                            ShellTvFocusCoordinator.focusHero(tabId: widget.tabId)
                                       : null,
                                   onUpEdge: tvFocus
                                       ? () {
@@ -496,7 +488,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                       tvFocus ? _categoriesTabFocus : null,
                                   onDownEdge: tvFocus
                                       ? () =>
-                                            ShellTvFocus.focusHomeHeroGallery()
+                                            ShellTvFocusCoordinator.focusHero(tabId: widget.tabId)
                                       : null,
                                   onUpEdge: tvFocus
                                       ? () {
@@ -511,12 +503,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                           ),
                         );
 
-                        final menuRow = _buildMenuScroll(
-                          tabs: tabs,
-                          compactNav: compactNav,
-                          tvFocus: tvFocus,
-                          tabGap: tabGap,
-                        );
+                        final menuRow = _buildMenuScroll(tabs: tabs);
 
                         return TvKitRow(
                           tabId: widget.tabId,
@@ -571,19 +558,29 @@ class _CategoryTab extends StatefulWidget {
 }
 
 class _CategoryTabState extends State<_CategoryTab> {
-  static const _animDuration = Duration(milliseconds: 280);
+  static const _animDuration = ShellTokens.kitTopBarTabAnimation;
   static const _animCurve = Curves.easeInOutCubic;
   static const _hoverT = 0.62;
   static const _selectedT = 1.0;
 
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
-  double get _visualTarget {
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  double _visualTargetFor(bool hovered) {
     if (widget.isActive) return _selectedT;
     final policy = ShellScope.inputPolicyOf(context);
-    if (_hovered ||
-        policy.focusStyled(context, focused: _focused)) {
+    if (hovered || policy.focusStyled(context, focused: _focused)) {
       return _hoverT;
     }
     return 0;
@@ -605,16 +602,22 @@ class _CategoryTabState extends State<_CategoryTab> {
   }
 
   double _underlineWidth(double t, BuildContext context) {
-    final hoverW = shellScaled(context, 28).clamp(14.0, 28.0);
-    final selectedExtra = shellScaled(context, 4).clamp(2.0, 4.0);
+    final hoverW = shellScaled(
+      context,
+      ShellTokens.kitTopBarUnderlineHoverWidth,
+    );
+    final selectedExtra = shellScaled(
+      context,
+      ShellTokens.kitTopBarUnderlineSelectedExtra,
+    );
     if (t <= 0) return 0;
     if (t < _hoverT) return hoverW * (t / _hoverT);
     return hoverW + selectedExtra * ((t - _hoverT) / (_selectedT - _hoverT));
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(bool hovered) {
     return TweenAnimationBuilder<double>(
-      tween: Tween<double>(end: _visualTarget),
+      tween: Tween<double>(end: _visualTargetFor(hovered)),
       duration: _animDuration,
       curve: _animCurve,
       builder: (context, t, _) {
@@ -625,9 +628,18 @@ class _CategoryTabState extends State<_CategoryTab> {
           t,
         )!;
         final underlineWidth = _underlineWidth(t, context);
-        final tabHeight = shellScaled(context, 34).clamp(28.0, 34.0);
-        final tabFont = shellScaled(context, 17).clamp(14.0, 17.0);
-        final chevronSize = shellScaled(context, 18).clamp(14.0, 18.0);
+        final usesTv = ShellScope.metricsOf(context).usesTvDensity;
+        // Spatial + type: use TV tokens directly — never shellScaled on type
+        // (poster layout scale would crush tab text to ~5px).
+        final tabHeight = usesTv
+            ? ShellTokens.homeMenuRowHeightTv
+            : ShellTokens.homeMenuRowHeight;
+        final tabFont = usesTv
+            ? ShellTokens.kitTopBarTabFontSizeTv
+            : ShellTokens.kitTopBarTabFontSize;
+        final chevronSize = usesTv
+            ? ShellTokens.kitTopBarChevronSizeTv
+            : ShellTokens.kitTopBarChevronSize;
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -636,7 +648,7 @@ class _CategoryTabState extends State<_CategoryTab> {
             SizedBox(
               height: tabHeight,
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -646,7 +658,12 @@ class _CategoryTabState extends State<_CategoryTab> {
                         size: chevronSize,
                         color: textColor,
                       ),
-                      SizedBox(width: shellScaled(context, 6).clamp(4.0, 6.0)),
+                      SizedBox(
+                        width: shellScaled(
+                          context,
+                          ShellTokens.kitTopBarIconGap,
+                        ),
+                      ),
                     ],
                     Text(
                       widget.label,
@@ -658,7 +675,12 @@ class _CategoryTabState extends State<_CategoryTab> {
                       ),
                     ),
                     if (widget.showChevron) ...[
-                      SizedBox(width: shellScaled(context, 4).clamp(2.0, 4.0)),
+                      SizedBox(
+                        width: shellScaled(
+                          context,
+                          ShellTokens.kitTopBarChevronGap,
+                        ),
+                      ),
                       Icon(
                         Icons.expand_more_rounded,
                         size: chevronSize,
@@ -673,19 +695,21 @@ class _CategoryTabState extends State<_CategoryTab> {
               height: shellScaled(
                 context,
                 ShellTokens.shellCategoryUnderlineGap,
-              ).clamp(2.0, ShellTokens.shellCategoryUnderlineGap),
+              ),
             ),
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: Container(
                 height: shellScaled(
                   context,
                   ShellTokens.shellNavUnderlineHeight,
-                ).clamp(1.0, ShellTokens.shellNavUnderlineHeight),
+                ),
                 width: underlineWidth,
                 decoration: BoxDecoration(
                   color: underlineWidth > 0 ? textColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(
+                    ShellTokens.shellNavUnderlineRadius,
+                  ),
                 ),
               ),
             ),
@@ -701,8 +725,8 @@ class _CategoryTabState extends State<_CategoryTab> {
       return shellFocusableTap(
         context: context,
         onTap: widget.onTap,
-        borderRadius: 4,
-        scaleOnFocus: ShellTokens.focusActiveScale,
+        borderRadius: ShellTokens.kitTopBarFocusRadius,
+        scaleOnFocus: 1.0,
         listIndex: widget.listIndex,
         tvTabId: widget.tabId,
         tvRowId: 'top-bar',
@@ -712,19 +736,25 @@ class _CategoryTabState extends State<_CategoryTab> {
         onUpEdge: widget.onUpEdge,
         focusNode: widget.focusNode,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: _buildContent(),
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => _buildContent(_hoveredN.value),
+        ),
       );
     }
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       child: GestureDetector(
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
-        child: _buildContent(),
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => _buildContent(_hoveredN.value),
+        ),
       ),
     );
   }
@@ -758,41 +788,67 @@ class _FlatMenuRow extends StatefulWidget {
 }
 
 class _FlatMenuRowState extends State<_FlatMenuRow> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildRow(bool hovered) {
     final cinematic = ForjaShellColors.cinematic;
     final policy = ShellScope.inputPolicyOf(context);
+    final usesTv = ShellScope.metricsOf(context).usesTvDensity;
     final focusStyled = policy.focusStyled(context, focused: _focused);
-    final highlight = widget.selected || _hovered || focusStyled;
-    final row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    final highlight = widget.selected || hovered || focusStyled;
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: usesTv
+            ? ShellTokens.homeCategoriesMenuRowPadHTv
+            : ShellTokens.homeCategoriesMenuRowPadH,
+        vertical: usesTv
+            ? ShellTokens.homeCategoriesMenuRowPadVTv
+            : ShellTokens.homeCategoriesMenuRowPadV,
+      ),
       child: Text(
         widget.label,
         style: GoogleFonts.plusJakartaSans(
-          fontSize: 14,
+          fontSize: usesTv
+              ? ShellTokens.homeCategoriesMenuFontSizeTv
+              : ShellTokens.homeCategoriesMenuFontSize,
           fontWeight: highlight ? FontWeight.w600 : FontWeight.w500,
           color: highlight ? Colors.white : cinematic.textSecondary,
         ),
       ),
     );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 4,
+      borderRadius: ShellTokens.kitTopBarFocusRadius,
       listIndex: widget.listIndex,
       focusNode: widget.focusNode,
       onUpEdge: widget.onUpEdge,
       onLeftEdge: widget.onLeftEdge,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      onHoverChange: _setHovered,
       tvTabId: widget.tvFocus ? widget.tabId : null,
       tvZone: widget.tvFocus ? ShellTvZone.topBar : null,
       tvItemIndex: widget.listIndex,
-      child: row,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildRow(_hoveredN.value),
+      ),
     );
   }
 }

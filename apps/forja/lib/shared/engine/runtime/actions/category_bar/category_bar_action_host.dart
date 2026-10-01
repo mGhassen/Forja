@@ -1,0 +1,1070 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/portals/portals_host.dart';
+import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
+import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_live_sort_providers.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_category_rail.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
+import 'package:forja_foundation/widgets/chrome/live_favorite_star.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja/shared/engine/engine.dart';
+
+/// Live category rail chrome — pack declares features; host owns store engines.
+///
+/// Mirrors [PortalsActionHost]: paint is foundation; pin/fav/watched/order SoT
+/// is [PortalLiveChannelListsStore].
+abstract final class CategoryBarActionHost {
+  CategoryBarActionHost._();
+
+  /// Last loaded Live list params for [packChromeFeedParams] (sync cache).
+  static Map<String, dynamic> cachedLiveListParams = const {};
+
+  static bool featuresEnabled(Map<String, dynamic> spec) {
+    final raw = spec['features'];
+    if (raw is! Map) return false;
+    return raw['pin'] == true ||
+        raw['reorder'] == true ||
+        (raw['widgets'] is List && (raw['widgets'] as List).isNotEmpty);
+  }
+
+  static Widget buildRail(
+    BuildContext context,
+    WidgetRef ref, {
+    required Map<String, dynamic> spec,
+    required List<({String id, String label, String? icon})> seedItems,
+    required String selectedId,
+    required ValueChanged<String> onSelect,
+    String? tabId,
+    Widget? header,
+  }) {
+    return _CategoryBarRailHost(
+      spec: spec,
+      seedItems: seedItems,
+      selectedId: selectedId,
+      onSelect: onSelect,
+      tabId: tabId,
+      header: header,
+    );
+  }
+
+  /// Opaque Live list ids for pack feed params.
+  static Future<Map<String, dynamic>> liveListFeedParams({
+    String? preferTabId,
+  }) async {
+    final portal = await _resolveActivePortal(preferTabId: preferTabId);
+    if (portal == null) {
+      cachedLiveListParams = const {};
+      return const {};
+    }
+    final key = PortalAliveStore.portalKey(portal);
+    final favs = await PortalLiveChannelListsStore.loadFavorites(key);
+    final watched = await PortalLiveChannelListsStore.loadWatched(key);
+    final pinned = await PortalLiveChannelListsStore.loadPinnedCategories(key);
+    final order = await PortalLiveChannelListsStore.loadCategoryOrder(key);
+    final out = <String, dynamic>{
+      'favorites': favs.toList(),
+      'watched': watched,
+      'pinnedCats': pinned,
+      'categoryOrder': order,
+      'portalStoreKey': key,
+    };
+    cachedLiveListParams = out;
+    return out;
+  }
+
+  static Future<void> recordWatched({
+    required String portalKeyOrVaultKey,
+    required String streamId,
+  }) async {
+    if (streamId.isEmpty) return;
+    final portal = await _portalForKey(portalKeyOrVaultKey);
+    if (portal == null) return;
+    await PortalLiveChannelListsStore.recordWatched(
+      PortalAliveStore.portalKey(portal),
+      streamId,
+    );
+  }
+
+  /// Prefer [cachedLiveListParams] portalStoreKey — skips vault JSON parse.
+  static Future<String?> resolveLiveStoreKey(String portalKeyOrVaultKey) async {
+    final want = portalKeyOrVaultKey.trim();
+    final cached =
+        (cachedLiveListParams['portalStoreKey'] ?? '').toString().trim();
+    if (cached.isNotEmpty &&
+        (want.isEmpty || PortalsHost.samePortalKey(want, cached))) {
+      return cached;
+    }
+    if (want.isEmpty) return null;
+    // Already url|user|pass store form.
+    if (want.split('|').length >= 3) return want;
+    final portal = await _portalForKey(want);
+    if (portal == null) return null;
+    return PortalAliveStore.portalKey(portal);
+  }
+
+  /// Sync patch so Favorites paint / next feed params see the toggle now.
+  static void patchCachedFavorites(Set<String> streamIds) {
+    final prev = cachedLiveListParams;
+    cachedLiveListParams = <String, dynamic>{
+      ...prev,
+      'favorites': streamIds.toList(growable: false),
+    };
+  }
+
+  /// Cached favorites when [portalStoreKey] matches — no prefs/vault I/O.
+  static Set<String>? cachedFavoriteIds({required String portalKeyOrVaultKey}) {
+    final want = portalKeyOrVaultKey.trim();
+    final cached =
+        (cachedLiveListParams['portalStoreKey'] ?? '').toString().trim();
+    if (cached.isEmpty) return null;
+    if (want.isNotEmpty && !PortalsHost.samePortalKey(want, cached)) {
+      return null;
+    }
+    final raw = cachedLiveListParams['favorites'];
+    if (raw is! List) return null;
+    return {
+      for (final e in raw)
+        if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+    };
+  }
+
+  static Future<bool> toggleFavorite({
+    required String portalKeyOrVaultKey,
+    required String streamId,
+  }) async {
+    if (streamId.isEmpty) return false;
+    final key = await resolveLiveStoreKey(portalKeyOrVaultKey);
+    if (key == null || key.isEmpty) return false;
+    final next = await PortalLiveChannelListsStore.loadFavorites(key);
+    final nowFav = !next.remove(streamId);
+    if (nowFav) next.add(streamId);
+    await PortalLiveChannelListsStore.saveFavorites(key, next);
+    patchCachedFavorites(next);
+    return nowFav;
+  }
+
+  static Future<Set<String>> loadFavoriteIds({
+    required String portalKeyOrVaultKey,
+  }) async {
+    final cached = cachedFavoriteIds(portalKeyOrVaultKey: portalKeyOrVaultKey);
+    if (cached != null) return cached;
+    final key = await resolveLiveStoreKey(portalKeyOrVaultKey);
+    if (key == null || key.isEmpty) return {};
+    return PortalLiveChannelListsStore.loadFavorites(key);
+  }
+
+  /// Favorite star for a live landscape card (props + callbacks only at DS).
+  static Widget favoriteStar({
+    required String portalKey,
+    required String streamId,
+    required bool reveal,
+    double iconSize = 14,
+  }) {
+    return _LiveFavoriteStarHost(
+      portalKey: portalKey,
+      streamId: streamId,
+      reveal: reveal,
+      iconSize: iconSize,
+    );
+  }
+
+  /// Live store hydrate land — which category id to select.
+  ///
+  /// Returns null when the current selection should stay (Favorites / Watched).
+  /// Otherwise last portal category when present in [itemIds], else the first
+  /// non-synthetic / non-`all` id (painter may already have snapped to first —
+  /// that must not beat [preferCategoryId]).
+  static String? resolveLiveStoreCategoryLand({
+    required String selectedId,
+    required String? preferCategoryId,
+    required Iterable<String> itemIds,
+  }) {
+    final ids = [
+      for (final raw in itemIds)
+        if (raw.trim().isNotEmpty) raw.trim(),
+    ];
+    if (ids.isEmpty) return null;
+
+    final sel = selectedId.trim();
+    if (sel.isNotEmpty &&
+        PortalLiveCatalog.isSyntheticId(sel) &&
+        ids.contains(sel)) {
+      return null;
+    }
+
+    final prefer = (preferCategoryId ?? '').trim();
+    if (prefer.isNotEmpty &&
+        !PortalLiveCatalog.isSyntheticId(prefer) &&
+        ids.contains(prefer)) {
+      return prefer;
+    }
+
+    for (final id in ids) {
+      if (PortalLiveCatalog.isSyntheticId(id) || id == 'all') continue;
+      return id;
+    }
+    return ids.first;
+  }
+
+  /// Vault `iptv.active` only — never invent the first inventory row.
+  ///
+  /// Feed params stamp `portalStoreKey` into [EngineCache]. Falling back to the
+  /// first portal while active is empty cached the empty “Choose a portal”
+  /// cover under that portal’s key, so selecting the first portal hit stale
+  /// cache and the grid never loaded.
+  static Future<Portal?> _resolveActivePortal({String? preferTabId}) async {
+    try {
+      final activeRaw = await EngineVault.get(PortalVaultKeys.active);
+      final activeKey = (activeRaw ?? '').toString().trim();
+      if (activeKey.isEmpty) return null;
+      return PortalsHost.loadVaultPortal(activeKey);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<Portal?> _portalForKey(String key) async {
+    final k = key.trim();
+    if (k.isEmpty) return null;
+    final byVault = await PortalsHost.loadVaultPortal(k);
+    if (byVault != null) return byVault;
+    // Full store key url|user|pass — match vault by url|user prefix.
+    try {
+      final raw = await EngineVault.get(PortalVaultKeys.portals);
+      if (raw == null || raw.trim().isEmpty) return null;
+      final parsed = jsonDecode(raw);
+      if (parsed is! List) return null;
+      for (final e in parsed) {
+        if (e is! Map) continue;
+        final p = Portal.fromJson(Map<String, dynamic>.from(e));
+        if (PortalAliveStore.portalKey(p) == k) return p;
+        if (PortalsHost.vaultPortalKey(Map<String, dynamic>.from(e)) == k) {
+          return p;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+}
+
+final liveCategoryListsEpochProvider =
+    StateProvider.family<int, String>((ref, tabId) => 0);
+
+class _LiveFavoriteStarHost extends ConsumerStatefulWidget {
+  const _LiveFavoriteStarHost({
+    required this.portalKey,
+    required this.streamId,
+    required this.reveal,
+    this.iconSize = 14,
+  });
+
+  final String portalKey;
+  final String streamId;
+  final bool reveal;
+  final double iconSize;
+
+  @override
+  ConsumerState<_LiveFavoriteStarHost> createState() =>
+      _LiveFavoriteStarHostState();
+}
+
+class _LiveFavoriteStarHostState extends ConsumerState<_LiveFavoriteStarHost> {
+  bool? _fav;
+  int _toggleGen = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fav = _peekCached();
+    unawaited(_load());
+  }
+
+  @override
+  void didUpdateWidget(covariant _LiveFavoriteStarHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.streamId != widget.streamId ||
+        oldWidget.portalKey != widget.portalKey) {
+      _fav = _peekCached();
+      unawaited(_load());
+    }
+  }
+
+  bool? _peekCached() {
+    final ids = CategoryBarActionHost.cachedFavoriteIds(
+      portalKeyOrVaultKey: widget.portalKey,
+    );
+    if (ids == null) return null;
+    return ids.contains(widget.streamId);
+  }
+
+  Future<void> _load() async {
+    final ids = await CategoryBarActionHost.loadFavoriteIds(
+      portalKeyOrVaultKey: widget.portalKey,
+    );
+    if (!mounted) return;
+    setState(() => _fav = ids.contains(widget.streamId));
+  }
+
+  void _onToggle() {
+    final was = _fav ?? false;
+    final next = !was;
+    final gen = ++_toggleGen;
+    // Optimistic — pin already paints before prefs I/O; star was awaiting vault
+    // resolve + save + full liveListFeedParams before the icon flipped.
+    setState(() => _fav = next);
+    final cached = CategoryBarActionHost.cachedFavoriteIds(
+          portalKeyOrVaultKey: widget.portalKey,
+        ) ??
+        <String>{};
+    final patched = Set<String>.from(cached);
+    if (next) {
+      patched.add(widget.streamId);
+    } else {
+      patched.remove(widget.streamId);
+    }
+    CategoryBarActionHost.patchCachedFavorites(patched);
+    unawaited(() async {
+      try {
+        final persisted = await CategoryBarActionHost.toggleFavorite(
+          portalKeyOrVaultKey: widget.portalKey,
+          streamId: widget.streamId,
+        );
+        if (!mounted || gen != _toggleGen) return;
+        if (persisted != next) setState(() => _fav = persisted);
+      } catch (_) {
+        if (!mounted || gen != _toggleGen) return;
+        setState(() => _fav = was);
+        final revert = Set<String>.from(
+          CategoryBarActionHost.cachedFavoriteIds(
+                portalKeyOrVaultKey: widget.portalKey,
+              ) ??
+              <String>{},
+        );
+        if (was) {
+          revert.add(widget.streamId);
+        } else {
+          revert.remove(widget.streamId);
+        }
+        CategoryBarActionHost.patchCachedFavorites(revert);
+      }
+    }());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LiveFavoriteStar(
+      favorited: _fav ?? false,
+      reveal: widget.reveal,
+      iconSize: widget.iconSize,
+      onToggle: _onToggle,
+    );
+  }
+}
+
+class _CategoryBarRailHost extends ConsumerStatefulWidget {
+  const _CategoryBarRailHost({
+    required this.spec,
+    required this.seedItems,
+    required this.selectedId,
+    required this.onSelect,
+    this.tabId,
+    this.header,
+  });
+
+  final Map<String, dynamic> spec;
+  final List<({String id, String label, String? icon})> seedItems;
+  final String selectedId;
+  final ValueChanged<String> onSelect;
+  final String? tabId;
+  final Widget? header;
+
+  @override
+  ConsumerState<_CategoryBarRailHost> createState() =>
+      _CategoryBarRailHostState();
+}
+
+class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
+  List<CatalogCategoryItem> _items = const [];
+  String? _storeKey;
+  List<String> _pinned = const [];
+  List<String> _order = const [];
+  bool _loading = true;
+  String? _boundSection;
+
+  Map<String, dynamic> get _features {
+    final raw = widget.spec['features'];
+    return raw is Map ? Map<String, dynamic>.from(raw) : const {};
+  }
+
+  bool get _wantWidgets {
+    final w = _features['widgets'];
+    return w is List && w.isNotEmpty;
+  }
+
+  bool get _wantPin => _features['pin'] == true;
+  bool get _wantReorder => _features['reorder'] == true;
+
+  String get _section {
+    final scope = LayoutScope.maybeOf(context);
+    final catalogMenu = 'catalog';
+    final sel = scope?.selectedId(catalogMenu) ?? '';
+    return sel.isEmpty ? 'live' : sel;
+  }
+
+  bool get _isLive => _section == 'live' || _section.isEmpty;
+
+  bool get _canReorder {
+    if (!_wantReorder || !_isLive) return false;
+    final categorySort = ref.watch(iptvLiveCategorySortProvider);
+    final chrome = PackChromeScope.maybeOf(context);
+    final q = (chrome?.eventQuery ?? '').trim();
+    return categorySort == PortalCatalogSort.playlist && q.isEmpty;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(hydrateIptvLiveSortProviders(ref));
+    // Seed groups paint immediately — blank rail while prefs load made hub
+    // open look like channels → clear → categories → channels (issue 322).
+    if (widget.seedItems.isNotEmpty) {
+      _items = _plainItems();
+      _loading = false;
+      final peek = IptvCatalogLand.peekLastCategory(
+        CategoryBarActionHost.cachedLiveListParams['portalStoreKey']
+                ?.toString() ??
+            IptvCatalogLand.activePortalKey,
+      );
+      if (peek != null && peek.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _ensureValidSelection(
+            _items,
+            preferCategoryId: peek,
+            landOrderedFirst: true,
+          );
+        });
+      }
+    }
+    unawaited(_reload());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final section = _section;
+    if (_boundSection == section) return;
+    final prev = _boundSection;
+    _boundSection = section;
+    if (prev == null) return;
+    // Immediate wipe — do not keep Live Favorites/cats painted under Movies/Series.
+    if (!_isLive) {
+      setState(() {
+        _items = const [];
+        _loading = true;
+        _storeKey = null;
+        _pinned = const [];
+        _order = const [];
+      });
+    }
+    unawaited(_reload());
+  }
+
+  @override
+  void didUpdateWidget(covariant _CategoryBarRailHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_sameSeed(oldWidget.seedItems, widget.seedItems)) return;
+    // Seed churn from feed `kinds` — rebuild the rail in place. Do not async
+    // `_reload` + landOrderedFirst (that stole Favorites back to first group).
+    if (_isLive && _storeKey != null && !_loading) {
+      setState(() {
+        _items = _buildItems(
+          pinned: _pinned,
+          order: _order,
+          sort: ref.read(iptvLiveCategorySortProvider),
+        );
+      });
+      _publishBar(chromeItems: _items);
+      _ensureValidSelection(_items);
+      return;
+    }
+    // Kinds arrived while store still loading — show groups now (not blank).
+    if (widget.seedItems.isNotEmpty && _items.isEmpty) {
+      setState(() {
+        _items = _plainItems();
+        _loading = false;
+      });
+    }
+    unawaited(_reload());
+  }
+
+  static bool _sameSeed(
+    List<({String id, String label, String? icon})> a,
+    List<({String id, String label, String? icon})> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id || a[i].label != b[i].label) return false;
+    }
+    return true;
+  }
+
+  Future<void> _reload() async {
+    final portal = await CategoryBarActionHost._resolveActivePortal(
+      preferTabId: widget.tabId,
+    );
+    if (!mounted) return;
+    if (portal == null || !_isLive) {
+      setState(() {
+        _storeKey = null;
+        _pinned = const [];
+        _order = const [];
+        _items = _plainItems();
+        _loading = false;
+      });
+      _ensureValidSelection(_items);
+      return;
+    }
+    final key = PortalAliveStore.portalKey(portal);
+    IptvCatalogLand.bindPortalKey(key);
+    final pinned =
+        await PortalLiveChannelListsStore.loadPinnedCategories(key);
+    final order = await PortalLiveChannelListsStore.loadCategoryOrder(key);
+    final lastCat = await IptvCatalogLand.loadLastCategory();
+    await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
+    if (!mounted) return;
+    setState(() {
+      _storeKey = key;
+      _pinned = pinned;
+      _order = order;
+      _items = _buildItems(
+        pinned: pinned,
+        order: order,
+        sort: ref.read(iptvLiveCategorySortProvider),
+      );
+      _loading = false;
+    });
+    _publishBar(chromeItems: _items);
+    // Store-backed Live land: last category, else first portal group in
+    // pin / drag / playlist order (overrides painter API-first snap).
+    _ensureValidSelection(
+      _items,
+      preferCategoryId: lastCat,
+      landOrderedFirst: true,
+    );
+    unawaited(IptvCatalogLand.hydrateHighlightFromStore());
+  }
+
+  List<CatalogCategoryItem> _plainItems() {
+    return [
+      for (final e in widget.seedItems)
+        if (e.id.isNotEmpty &&
+            e.id != 'all' &&
+            !PortalLiveCatalog.isSyntheticId(e.id))
+          CatalogCategoryItem(
+            id: e.id,
+            label: e.label,
+            icon: catalogCategoryIconForId(e.id) ??
+                _iconFromName(e.icon),
+            fixed: true,
+          ),
+    ];
+  }
+
+  /// Movies/Series rail — same Categories sort as Live (no pin/reorder).
+  List<CatalogCategoryItem> _vodItems(PortalCatalogSort sort) {
+    final plain = _items.isNotEmpty ? _items : _plainItems();
+    if (sort == PortalCatalogSort.playlist || plain.length < 2) {
+      return plain;
+    }
+    final cats = [
+      for (final e in plain) PortalCategory(id: e.id, name: e.label),
+    ];
+    final sorted = PortalLiveCatalog.sortCategories(cats, sort: sort);
+    final byId = {for (final e in plain) e.id: e};
+    return [
+      for (final c in sorted)
+        if (byId.containsKey(c.id)) byId[c.id]!,
+    ];
+  }
+
+  List<CatalogCategoryItem> _buildItems({
+    required List<String> pinned,
+    required List<String> order,
+    required PortalCatalogSort sort,
+  }) {
+    final byId = <String, ({String id, String label, String? icon})>{};
+    for (final e in widget.seedItems) {
+      if (e.id.isEmpty || e.id == 'all') continue;
+      if (PortalLiveCatalog.isSyntheticId(e.id)) continue;
+      byId[e.id] = e;
+    }
+
+    final cats = <PortalCategory>[
+      for (final e in byId.values) PortalCategory(id: e.id, name: e.label),
+    ];
+    final sorted = PortalLiveCatalog.sortCategories(
+      _wantWidgets ? PortalLiveCatalog.withPins(cats) : cats,
+      sort: sort,
+      userPinnedIds: pinned,
+      customOrderIds: order,
+    );
+
+    final pinSet = pinned.toSet();
+    return [
+      for (final c in sorted)
+        CatalogCategoryItem(
+          id: c.id,
+          label: c.name,
+          icon: catalogCategoryIconForId(c.id) ??
+              _iconFromName(byId[c.id]?.icon),
+          fixed: PortalLiveCatalog.isSyntheticId(c.id),
+          pinnable: _wantPin && !PortalLiveCatalog.isSyntheticId(c.id),
+          pinned: pinSet.contains(c.id),
+        ),
+    ];
+  }
+
+  void _ensureValidSelection(
+    List<CatalogCategoryItem> items, {
+    String? preferCategoryId,
+    bool landOrderedFirst = false,
+  }) {
+    if (items.isEmpty) return;
+
+    // Search: empty selection = shelf-wide hits. Do not land on first group
+    // (that would re-scope the query). Keep a mid-search pick when present.
+    final searching =
+        (PackChromeScope.maybeOf(context)?.eventQuery ?? '').trim().isNotEmpty;
+    if (searching) {
+      final sel = widget.selectedId.trim();
+      if (sel.isNotEmpty && items.any((e) => e.id == sel)) {
+        _armCatsFocusMemory(sel, items: items);
+      }
+      return;
+    }
+
+    // Live store reload / hub open: last category wins over painter auto-snap
+    // to the first portal group. Keep Favorites / Already watched mid-session.
+    if (_isLive && landOrderedFirst) {
+      final land = CategoryBarActionHost.resolveLiveStoreCategoryLand(
+        selectedId: widget.selectedId,
+        preferCategoryId: preferCategoryId,
+        itemIds: [for (final e in items) e.id],
+      );
+      if (land == null) {
+        final sel = widget.selectedId.trim();
+        if (sel.isNotEmpty) _armCatsFocusMemory(sel, items: items);
+        return;
+      }
+      _applyLandSelection(land, items, reclaimTvFocus: true);
+      return;
+    }
+
+    // Keep the user's current row — including Favorites / Already watched.
+    // Seed churn from feed `kinds` must not re-land on the first portal group
+    // (that flashed Favorites then snapped back).
+    final sel = widget.selectedId.trim();
+    if (sel.isNotEmpty && sel != 'all' && items.any((e) => e.id == sel)) {
+      _armCatsFocusMemory(sel, items: items);
+      return;
+    }
+
+    // Movies/Series (or Live without store land): first portal group.
+    for (final e in items) {
+      if (PortalLiveCatalog.isSyntheticId(e.id) || e.id == 'all') continue;
+      _applyLandSelection(e.id, items);
+      return;
+    }
+    _applyLandSelection(items.first.id, items);
+  }
+
+  void _applyLandSelection(
+    String id,
+    List<CatalogCategoryItem> items, {
+    bool reclaimTvFocus = false,
+  }) {
+    final want = id.trim();
+    if (want.isEmpty) return;
+    void commit() {
+      if (!mounted) return;
+      if (widget.selectedId.trim() != want) {
+        widget.onSelect(want);
+      }
+      _armCatsFocusMemory(want, items: items);
+      if (!reclaimTvFocus) return;
+      if (!ShellPaintScope.useTvFocusOf(context)) return;
+      final tab = (widget.tabId ?? '').trim().isNotEmpty
+          ? widget.tabId!.trim()
+          : 'iptv';
+      final index = items.indexWhere((e) => e.id == want);
+      if (index < 0) return;
+      IptvCatalogLand.scheduleFocusCategory(
+        tabId: tab,
+        categoryId: want,
+        categoryIndex: index,
+      );
+    }
+
+    if (widget.selectedId.trim() == want) {
+      commit();
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => commit());
+  }
+
+  void _onSelectCategory(String id) {
+    // Drop stale channel ids before the page reloads — → / OK must not focus a
+    // dying tile from the previous group (Favorites empty remount → shelf).
+    IptvCatalogLand.clearVisibleStreamIds();
+    IptvCatalogLand.cancelCategoryFocusSchedule();
+    widget.onSelect(id);
+    _armCatsFocusMemory(id);
+    if (_isLive) {
+      unawaited(IptvCatalogLand.rememberCategory(id));
+    }
+    if (!ShellPaintScope.useTvFocusOf(context)) return;
+    if (!PortalLiveCatalog.isSyntheticId(id)) {
+      IptvCatalogLand.cancelSyntheticFocusSchedule();
+      return;
+    }
+    final tab = (widget.tabId ?? '').trim().isNotEmpty
+        ? widget.tabId!.trim()
+        : 'iptv';
+    final index = _items.indexWhere((e) => e.id == id);
+    if (index < 0) return;
+    IptvCatalogLand.scheduleFocusFirstOrKeepCategory(
+      tabId: tab,
+      categoryId: id,
+      categoryIndex: index,
+    );
+  }
+
+  /// Nav enter/restore remembered land → selected category (not a browse-only row).
+  void _armCatsFocusMemory(
+    String categoryId, {
+    List<CatalogCategoryItem>? items,
+  }) {
+    final id = categoryId.trim();
+    if (id.isEmpty) return;
+    final tab = (widget.tabId ?? '').trim();
+    if (tab.isEmpty) return;
+    final list = items ?? _items;
+    final index = list.indexWhere((e) => e.id == id);
+    if (index < 0) return;
+    ShellTvFocusCoordinator.setRowLastFocusedIndex(
+      tab,
+      IptvCatalogLand.catsRowId,
+      index,
+    );
+  }
+
+  void _publishBar({required List<CatalogCategoryItem> chromeItems}) {
+    final chrome = PackChromeScope.maybeOf(context);
+    final barId = (widget.spec['id'] ?? '').toString();
+    if (chrome == null || barId.isEmpty) return;
+    // Live-only — never restore Favorites/cats after Movies/Series wipe.
+    if (!_isLive) return;
+    final section = _section;
+    final maps = <Map<String, dynamic>>[
+      for (final e in chromeItems)
+        {
+          'id': e.id,
+          'label': e.label,
+          if (e.icon != null) 'icon': e.id,
+        },
+    ];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _section != section || !_isLive) return;
+      chrome.onDynamicBarItems(barId, maps);
+    });
+  }
+
+  Future<void> _togglePin(String id) async {
+    final key = _storeKey;
+    if (key == null || PortalLiveCatalog.isSyntheticId(id) || id == 'all') {
+      return;
+    }
+    final next = List<String>.from(_pinned);
+    final pinning = !next.remove(id);
+    if (pinning) next.insert(0, id);
+    List<String>? order;
+    if (pinning) {
+      order = [
+        for (final e in _items)
+          if (!e.fixed && e.id != 'all') e.id,
+      ];
+      order.remove(id);
+      order.insert(0, id);
+    }
+    // Optimistic paint so the rail can scroll+focus the new index this frame.
+    if (!mounted) return;
+    setState(() {
+      _pinned = next;
+      if (order != null) _order = order;
+      _items = _buildItems(
+        pinned: next,
+        order: order ?? _order,
+        sort: ref.read(iptvLiveCategorySortProvider),
+      );
+    });
+    _publishBar(chromeItems: _items);
+    _bumpEpoch();
+    await PortalLiveChannelListsStore.savePinnedCategories(key, next);
+    if (order != null) {
+      await PortalLiveChannelListsStore.saveCategoryOrder(key, order);
+    }
+    await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
+  }
+
+  Future<void> _reorder(int oldIndex, int newIndex) async {
+    final key = _storeKey;
+    if (key == null || !_canReorder) return;
+    // onReorderItem already adjusts newIndex for the removed item.
+    final movable = [for (final e in _items) if (!e.fixed) e.id];
+    if (oldIndex < 0 ||
+        oldIndex >= movable.length ||
+        newIndex < 0 ||
+        newIndex >= movable.length ||
+        oldIndex == newIndex) {
+      return;
+    }
+    final id = movable.removeAt(oldIndex);
+    movable.insert(newIndex, id);
+    final nextPins = [
+      for (final pin in _pinned)
+        if (movable.contains(pin)) pin,
+    ];
+    await PortalLiveChannelListsStore.saveCategoryOrder(key, movable);
+    await PortalLiveChannelListsStore.savePinnedCategories(key, nextPins);
+    await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
+    if (!mounted) return;
+    setState(() {
+      _order = movable;
+      _pinned = nextPins;
+      _items = _buildItems(
+        pinned: nextPins,
+        order: movable,
+        sort: ref.read(iptvLiveCategorySortProvider),
+      );
+    });
+    _publishBar(chromeItems: _items);
+    _bumpEpoch();
+  }
+
+  void _bumpEpoch() {
+    final tab = (widget.tabId ?? '').trim();
+    if (tab.isEmpty) return;
+    ref.read(liveCategoryListsEpochProvider(tab).notifier).state++;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tab = (widget.tabId ?? '').trim();
+    if (tab.isNotEmpty) {
+      ref.watch(liveCategoryListsEpochProvider(tab));
+    }
+    final categorySort = ref.watch(iptvLiveCategorySortProvider);
+    final width = _d(context, 'width') ?? catalogSideRailWidth(context);
+    final tvTab = tab.isNotEmpty ? tab : 'iptv';
+
+    if (_loading && _items.isEmpty) {
+      final loading = const ColoredBox(color: Color(0xFF141414));
+      if (widget.header == null) {
+        return SizedBox(width: width, child: loading);
+      }
+      return SizedBox(
+        width: width,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: widget.header!,
+            ),
+            Expanded(child: loading),
+          ],
+        ),
+      );
+    }
+
+    final chrome = PackChromeScope.maybeOf(context);
+    final q = (chrome?.eventQuery ?? '').trim().toLowerCase();
+    final hitListenable = chrome?.searchHitKindIds;
+
+    List<CatalogCategoryItem> applySearchFilter(
+      List<CatalogCategoryItem> raw,
+      Set<String> hits,
+    ) {
+      if (q.isEmpty) return raw;
+      return [
+        for (final c in raw)
+          if (hits.contains(c.id) || c.label.toLowerCase().contains(q)) c,
+      ];
+    }
+
+    Widget rail({
+      required List<CatalogCategoryItem> items,
+      ValueChanged<String>? onTogglePin,
+      void Function(int oldIndex, int newIndex)? onReorder,
+      required bool canReorder,
+    }) {
+      final scope = LayoutScope.maybeOf(context);
+      final focusUp = scope?.resolveFocusEdge(
+        (widget.spec['focusUp'] ?? '').toString(),
+      );
+      final enterChannels = scope?.resolveFocusEdge(
+        (widget.spec['focusRight'] ?? '').toString(),
+        last: true,
+      );
+      void enterItems() {
+        // Last selected channel if still in this list; else first tile.
+        // Favorites / Already watched: always the first channel.
+        // Empty list (or mid-reload after clearVisibleStreamIds): stay on the
+        // category — never fall through to items/shelf.
+        if (tvTab.isEmpty) {
+          enterChannels?.call();
+          return;
+        }
+        final synthetic =
+            PortalLiveCatalog.isSyntheticId(widget.selectedId.trim());
+        IptvCatalogLand.focusItemsFromCategory(
+          tabId: tvTab,
+          preferFirst: synthetic,
+        );
+      }
+
+      final child = CatalogCategoryRail(
+        items: items,
+        selectedId: widget.selectedId,
+        width: width,
+        rowHeight: _d(context, 'rowHeight'),
+        fontSize: _d(context, 'fontSize'),
+        iconSize: _d(context, 'iconSize'),
+        rowPadH: _d(context, 'rowPadH'),
+        listPadV: _d(context, 'listPadV') ?? catalogCategoryRailListPadV(context),
+        pinSlotWidth:
+            _d(context, 'pinSlotWidth') ?? catalogCategoryRailPinSlotWidth(context),
+        onSelect: _onSelectCategory,
+        onTogglePin: onTogglePin,
+        onReorder: onReorder,
+        canReorder: canReorder,
+        header: widget.header,
+        onTvEnterRight: enterItems,
+        onTvFocusUp: focusUp,
+        onScrollJumpReady: tvTab.isEmpty
+            ? null
+            : (jump) {
+                ShellTvFocusCoordinator.setRowScrollIntoView(
+                  tvTab,
+                  IptvCatalogLand.catsRowId,
+                  jump,
+                );
+              },
+      );
+      if (!ShellPaintScope.useTvFocusOf(context)) {
+        return ShellPaintTvTabScope(tabId: tvTab, child: child);
+      }
+      return ShellPaintTvTabScope(
+        tabId: tvTab,
+        child: ShellPaintScope.tvRow(
+          context: context,
+          tabId: tvTab,
+          rowId: IptvCatalogLand.catsRowId,
+          sortOrder: 1,
+          itemCount: items.length,
+          axis: ShellPaintTvRowAxis.vertical,
+          onFocusUp: focusUp,
+          // Vertical panel — never walk sortOrder down into channels.
+          onFocusDown: () {},
+          child: child,
+        ),
+      );
+    }
+
+    // Movies/Series/Channels: fixed list (no pin/widgets), honor Categories sort.
+    // Prefer cleared _items over stale Live seed until VOD/Channels republishes kinds.
+    if (!_isLive) {
+      final vodItems = _vodItems(categorySort);
+      if (hitListenable == null) {
+        return rail(
+          items: applySearchFilter(vodItems, const {}),
+          canReorder: false,
+        );
+      }
+      return ValueListenableBuilder<Set<String>>(
+        valueListenable: hitListenable,
+        builder: (context, hits, _) {
+          return rail(
+            items: applySearchFilter(vodItems, hits),
+            canReorder: false,
+          );
+        },
+      );
+    }
+
+    final liveItems = _storeKey == null && _items.isEmpty
+        ? _plainItems()
+        : _buildItems(
+            pinned: _pinned,
+            order: _order,
+            sort: categorySort,
+          );
+    if (hitListenable == null) {
+      return rail(
+        items: applySearchFilter(liveItems, const {}),
+        onTogglePin: _wantPin ? _togglePin : null,
+        onReorder: _wantReorder ? _reorder : null,
+        canReorder: _canReorder,
+      );
+    }
+    return ValueListenableBuilder<Set<String>>(
+      valueListenable: hitListenable,
+      builder: (context, hits, _) {
+        return rail(
+          items: applySearchFilter(liveItems, hits),
+          onTogglePin: _wantPin ? _togglePin : null,
+          onReorder: _wantReorder ? _reorder : null,
+          canReorder: _canReorder,
+        );
+      },
+    );
+  }
+
+  /// Pack desktop px → TV × [ShellTokens.tvChromeScale].
+  double? _d(BuildContext context, String k) {
+    final raw = widget.spec[k];
+    if (raw is! num) return null;
+    return ShellTokens.chromeScale(
+      raw.toDouble(),
+      tv: ShellPaintScope.usesTvDensityOf(context),
+    );
+  }
+}
+
+IconData? _iconFromName(String? name) {
+  final n = (name ?? '').trim().toLowerCase();
+  if (n.isEmpty) return null;
+  switch (n) {
+    case 'grid':
+    case 'grid_view':
+      return Icons.grid_view_rounded;
+    case 'star':
+      return Icons.star_rounded;
+    case 'history':
+      return Icons.history_rounded;
+    default:
+      return null;
+  }
+}

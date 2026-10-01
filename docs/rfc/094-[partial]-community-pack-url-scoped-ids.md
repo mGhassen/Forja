@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 4** components · **8 / 8** acceptance (hub slice) · **0 / 4** deferred (providers) |
+| **Progress** | **3 / 4** components · **8 / 8** acceptance (hub slice) · **0 / 4** deferred (providers) · **0 / 1** pack-product pointer |
 | **Current slice** | Hub install + Features host nav ids + pack-scoped catalog resolve shipped; providers deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -49,6 +49,14 @@
 | 2 | R94-A10 | EngineRuntime JS registry key includes urlHash | ⏭️ |
 | 3 | R94-A11 | MetaCache / My List entry keys pack-scoped | ⏭️ |
 | 4 | R94-A12 | ProviderRuntimeConfig keyed by pack ref | ⏭️ |
+
+---
+
+## Acceptance (pack-product host pointer)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R94-A13 | MetaCache / list keys follow [RFC-109](109-[open]-forja-pack-product-host.md) generic `cache`/`store` (no product MetaCache) | ⬜ |
 
 ---
 

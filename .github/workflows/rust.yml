@@ -22,6 +22,8 @@ jobs:
           shared-key: rust-engine-test
       - name: cargo test
         run: |
+          # shellcheck source=scripts/lib/macos_rust_sdk.sh
+          source ./scripts/lib/macos_rust_sdk.sh
           cd crates
           cargo test --workspace
           cargo test -p utils --test golden
@@ -44,6 +46,10 @@ jobs:
           flutter test test/engine_smoke_test.dart
       - name: TV shell boundary check
         run: ./scripts/check_tv_shell_boundary.sh
+      - name: Foundation zone + shim death
+        run: |
+          ./scripts/check_foundation_import_zone.sh
+          ./scripts/check_foundation_shim_alive.sh
 
   android-ffi:
     name: Android FFI (arm64 + armeabi-v7a)

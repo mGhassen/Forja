@@ -54,8 +54,7 @@ A full-bleed hero that pulls you in. Shelves that feel personal. New titles next
 
 - Rich metadata from TMDB — posters, cast, trailers, similar picks
 - Watch history with auto-resume — pick up exactly where you left off
-- My List, Discover, and search that actually finds what you mean
-- Trakt, Simkl, and MDBList when you want your lists everywhere
+- My List and external lists (Trakt, Simkl, MDBList) when you want your shelves everywhere
 
 ---
 
@@ -83,7 +82,7 @@ Unified playback across desktop, phone, and TV — built for the couch and the d
 
 | Hub | |
 |:--|:--|
-| **Live Matches** | Kickoff. Overtime. Sports and events from multiple stream sources. |
+| **Live Sports** | Kickoff. Overtime. Sports and events from multiple stream sources. |
 | **IPTV** | Xtream Codes, M3U, and Stalker portals — live channels and VOD. |
 
 <p align="center">
@@ -92,20 +91,15 @@ Unified playback across desktop, phone, and TV — built for the couch and the d
 
 ---
 
-## Worlds inside one app
+## Content hubs
 
-Dedicated hubs when you want something specific — same shell, same player, different night.
+Same shell, same player — dedicated catalogs when you want something specific.
 
 | Hub | |
 |:--|:--|
 | **Anime** | Catalog, seasons, episode flow |
-| **Asian Drama** | KissKh-powered drama hub |
-| **Arabic · Anime Arabic** | Regional cinema and anime |
-| **Music** | Search, stream, lyrics, playlists, offline downloads |
-| **Manga · Comics · Books** | Read in-app with chapter tracking |
-| **Audiobooks** | Chapters, speed control, generate from text |
-| **Jellyfin** | Your home server, your library |
-| **Downloader · Magnet** | Keep offline, or paste a magnet and play |
+| **Asian Drama** | Drama hub with episode tracking |
+| **Regional hubs** | Arabic, Aflem, Shahid, كرتون, Kids — install via packs |
 
 ---
 
@@ -133,6 +127,7 @@ Forja doesn’t lock you into one catalog. You wire what you own.
 - **Debrid** — Real-Debrid, TorBox
 - **Stremio addons** — catalog + streams
 - **WebStreamr / stream providers** — direct links without torrent
+- **Forja Packs** — hubs and providers you install
 - **LAN** — pair desktop ↔ phone/TV for torrent relay
 - **Cloud sync** — Forja account across devices
 - **Backup & restore** — move settings between machines

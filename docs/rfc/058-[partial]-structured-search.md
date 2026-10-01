@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **5 / 6** acceptance (1.4.0) · **5 / 5** acceptance (lens) · **4 / 4** acceptance (kit capability) |
-| **Current slice** | Kit hub Search gated by pack `structured_search`; Home TMDB pack opted in — device smoke (R58-A06) still open |
+| **Progress** | **3 / 3** components · **5 / 6** acceptance (1.4.0) · **5 / 5** acceptance (lens) · **4 / 4** acceptance (kit capability) · **2 / 2** acceptance (language filter) |
+| **Current slice** | Language filter on kit lens (`lang:xx` → original language) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -48,6 +48,15 @@
 | 3 | R58-A09 | Tune icon opens filter lens; active filters dock as clearable ghost tokens | ✅ |
 | 4 | R58-A10 | Addon search uses remainder only (skips when filters-only) | ✅ |
 | 5 | R58-A11 | ATV score/year: focus browse → OK arm → Left/Right scrub (year ↑/↓ thumb) | ✅ |
+
+---
+
+## Acceptance (language filter)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R58-A16 | Filter lens Language chips compose `lang:<iso>` into query (distinct from Country) | ✅ |
+| 2 | R58-A17 | Parser + TMDB discover honor `lang:xx` as `with_original_language` (host + Home pack) | ✅ |
 
 ---
 

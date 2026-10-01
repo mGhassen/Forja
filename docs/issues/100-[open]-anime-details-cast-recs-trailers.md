@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 6** |
+| **Progress** | **5 / 6** fix · **1 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -34,7 +34,7 @@
 |--:|----|-------------|--------|
 | 1 | I100-A01 | Anime details shows Characters + Staff (when AniList has them) | ⬜ |
 | 2 | I100-A02 | YouTube trailer row opens trailer player when AniList has a trailer | ⬜ |
-| 3 | I100-A03 | More Like This shows AniList recommendations (not franchise Related) | ⬜ |
+| 3 | I100-A03 | More Like This shows AniList recommendations (not franchise Related) | ✅ |
 | 4 | I100-A04 | Switching seasons reloads rows for that AniList id; episodes only for opened season | ⬜ |
 
 ---

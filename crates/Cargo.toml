@@ -16,7 +16,6 @@ members = [
     "subtitles",
     "media-metadata",
     "indexer",
-    "debrid",
     "live-sports",
     "engine",
     "archive/jellyfin",
@@ -25,17 +24,16 @@ members = [
     "archive/manga",
     "archive/catalog",
     "archive/anilist",
-    "archive/anime",
     "archive/host-http",
     "archive/media-extra",
     "archive/trakt",
 ]
 
 [workspace.package]
-version = "1.2.72"
+version = "3.0.0"
 edition = "2021"
 license = "GPL-2.0-only"
-repository = "https://github.com/forja/forja"
+repository = "https://github.com/mGhassen/Forja"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -61,6 +59,7 @@ hyper-util = { version = "0.1", features = ["tokio", "server-auto", "http1"] }
 http-body-util = "0.1"
 tower = "0.5"
 url = "2"
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 # iOS: upstream 0.7.0 uses bind_device on iOS; Apple needs bind_device_by_index_v4/v6.
 [patch.crates-io]

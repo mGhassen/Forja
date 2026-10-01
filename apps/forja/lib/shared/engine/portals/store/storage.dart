@@ -1,0 +1,673 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/portals/store/iptv_catalog_db.dart';
+import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
+import 'package:rust/rust.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models.dart';
+
+/// Map key for portal passwords in [SecureSettings.iptvPortalPasswords].
+String iptvPortalPasswordMapKey(String url, String username) =>
+    '${url.trim()}|${username.trim()}'.toLowerCase();
+
+/// Prefs JSON for one portal - never includes the password.
+Map<String, dynamic> iptvPortalMetadataJson(VerifiedPortal v) => {
+      'url': v.portal.url,
+      'username': v.portal.username,
+      'source': v.portal.source,
+      'platform': v.portal.platform.wire,
+      if (v.portal.userAgent.isNotEmpty) 'userAgent': v.portal.userAgent,
+      'label': v.label,
+      'name': v.name,
+      'expiry': v.expiry,
+      'max': v.maxConnections,
+      'active': v.activeConnections,
+    };
+
+/// Verified portal store (port of PortalStore.kt).
+///
+/// Non-secret portal metadata lives in SharedPreferences. Passwords live in
+/// Keychain/Keystore via [SecureSettings.iptvPortalPasswords]. CSV export still
+/// writes plaintext passwords on purpose (user-owned backup file).
+class PortalStore {
+
+  static String get _key => LocalDataScope.storageKey('pt_iptv_verified_portals');
+  static String get _favKey => LocalDataScope.storageKey('pt_iptv_favorite_portal_keys');
+  static String get _lastPortalKey => LocalDataScope.storageKey('pt_iptv_last_portal_key');
+  static String get _lastSectionKey => LocalDataScope.storageKey('pt_iptv_last_section');
+  static String get _liveCategorySortKey =>
+      LocalDataScope.storageKey('pt_iptv_live_category_sort');
+  static String get _liveContentSortKey =>
+      LocalDataScope.storageKey('pt_iptv_live_content_sort');
+  static String get _liveBrowseLayoutKey =>
+      LocalDataScope.storageKey('pt_iptv_live_browse_layout');
+  static String get _playerVolumeKey =>
+      LocalDataScope.storageKey('pt_iptv_player_volume');
+  static String get _catalogStatsKey =>
+      LocalDataScope.storageKey('pt_iptv_catalog_stats_v1');
+  static String get _passwordSecureKey =>
+      LocalDataScope.storageKey(SecureSettings.iptvPortalPasswords);
+
+  static bool _portalInventoryMigrated = false;
+
+  /// One-time: copy bare portal inventory prefs + password map into active scope.
+  static Future<void> migrateLegacyInventoryIfNeeded() async {
+    if (_portalInventoryMigrated) return;
+    _portalInventoryMigrated = true;
+    final prefs = await SharedPreferences.getInstance();
+    const flag = 'pt_iptv_inventory_scope_v1_migrated';
+    if (prefs.getBool(flag) == true) return;
+
+    Future<void> moveString(String bare) async {
+      final scoped = LocalDataScope.storageKey(bare);
+      if (prefs.containsKey(scoped)) return;
+      final v = prefs.getString(bare);
+      if (v == null) return;
+      await prefs.setString(scoped, v);
+      await prefs.remove(bare);
+    }
+
+    Future<void> moveList(String bare) async {
+      final scoped = LocalDataScope.storageKey(bare);
+      if (prefs.containsKey(scoped)) return;
+      final v = prefs.getStringList(bare);
+      if (v == null) return;
+      await prefs.setStringList(scoped, v);
+      await prefs.remove(bare);
+    }
+
+    Future<void> moveDouble(String bare) async {
+      final scoped = LocalDataScope.storageKey(bare);
+      if (prefs.containsKey(scoped)) return;
+      final v = prefs.getDouble(bare);
+      if (v == null) return;
+      await prefs.setDouble(scoped, v);
+      await prefs.remove(bare);
+    }
+
+    await moveString('pt_iptv_verified_portals');
+    await moveList('pt_iptv_favorite_portal_keys');
+    await moveString('pt_iptv_last_portal_key');
+    await moveString('pt_iptv_last_section');
+    await moveString('pt_iptv_live_category_sort');
+    await moveString('pt_iptv_live_content_sort');
+    await moveString('pt_iptv_live_browse_layout');
+    await moveDouble('pt_iptv_player_volume');
+    await moveString('pt_iptv_catalog_stats_v1');
+
+    // Passwords: bare SecureSettings key → scoped
+    final barePw = await SecureSettings.read(_passwordSecureKey);
+    final scopedPw = await SecureSettings.read(_passwordSecureKey);
+    if ((scopedPw == null || scopedPw.isEmpty) &&
+        barePw != null &&
+        barePw.isNotEmpty) {
+      await SecureSettings.write(_passwordSecureKey, barePw);
+      await SecureSettings.delete(_passwordSecureKey);
+    }
+
+    await prefs.setBool(flag, true);
+  }
+
+  /// Bumped when portals change outside the IPTV tab (CSV import, etc.).
+  static final ValueNotifier<int> listRevision = ValueNotifier(0);
+
+  static void notifyListChanged() {
+    listRevision.value++;
+  }
+
+  static Future<Map<String, String>> _loadPasswordMap() async {
+    final raw = await SecureSettings.read(_passwordSecureKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final e in decoded.entries)
+          e.key.toString(): e.value?.toString() ?? '',
+      }..removeWhere((_, v) => v.isEmpty);
+    } catch (e) {
+      debugPrint('PortalStore password map decode failed: $e');
+      return {};
+    }
+  }
+
+  static Future<bool> _writePasswordMap(Map<String, String> map) async {
+    final cleaned = {
+      for (final e in map.entries)
+        if (e.value.isNotEmpty) e.key: e.value,
+    };
+    try {
+      if (cleaned.isEmpty) {
+        await SecureSettings.delete(_passwordSecureKey);
+      } else {
+        await SecureSettings.write(
+          _passwordSecureKey,
+          json.encode(cleaned),
+        );
+      }
+      return true;
+    } catch (e) {
+      debugPrint('PortalStore secure password write failed: $e');
+      return false;
+    }
+  }
+
+  static Future<List<VerifiedPortal>> load() async {
+    await migrateLegacyInventoryIfNeeded();
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    if (raw == null) return [];
+    try {
+      final arr = json.decode(raw) as List;
+      final passwords = await _loadPasswordMap();
+      var needsStrip = false;
+      final list = <VerifiedPortal>[];
+
+      for (final e in arr) {
+        final o = e as Map<String, dynamic>;
+        final url = o['url'] as String? ?? '';
+        final username = o['username'] as String? ?? '';
+        final legacyPassword = o['password'] as String? ?? '';
+        final mapKey = iptvPortalPasswordMapKey(url, username);
+        var password = passwords[mapKey] ?? '';
+
+        if (legacyPassword.isNotEmpty) {
+          if (password != legacyPassword) {
+            passwords[mapKey] = legacyPassword;
+            password = legacyPassword;
+          }
+          needsStrip = true;
+        }
+
+        list.add(
+          VerifiedPortal(
+            portal: Portal(
+              url: url,
+              username: username,
+              password: password,
+              source: o['source'] as String? ?? '',
+              platform: PortalPlatform.fromString(o['platform'] as String?),
+              userAgent: o['userAgent'] as String? ?? '',
+            ),
+            label: o['label'] as String? ?? '',
+            name: o['name'] as String? ?? '',
+            expiry: o['expiry'] as String? ?? '',
+            maxConnections: o['max'] as String? ?? '1',
+            activeConnections: o['active'] as String? ?? '0',
+          ),
+        );
+      }
+
+      if (needsStrip) {
+        final secured = await _writePasswordMap(passwords);
+        if (secured) {
+          await prefs.setString(
+            _key,
+            json.encode(list.map(iptvPortalMetadataJson).toList()),
+          );
+        }
+      }
+
+      return list;
+    } catch (e) {
+      debugPrint('PortalStore.load failed: $e');
+      return [];
+    }
+  }
+
+  /// Persist local IPTV cache. Cloud is master - [scheduleSync] only for real
+  /// user edits (add/edit/delete). Profile wipe / pull apply pass false.
+  static Future<void> save(
+    List<VerifiedPortal> list, {
+    bool scheduleSync = true,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final passwords = <String, String>{
+      for (final v in list)
+        if (v.portal.password.isNotEmpty)
+          iptvPortalPasswordMapKey(v.portal.url, v.portal.username):
+              v.portal.password,
+    };
+
+    final secured = await _writePasswordMap(passwords);
+    if (secured) {
+      await prefs.setString(
+        _key,
+        json.encode(list.map(iptvPortalMetadataJson).toList()),
+      );
+    } else {
+      // Keychain unavailable - keep portals usable; passwords stay in prefs.
+      final arr = list
+          .map(
+            (v) => {
+              ...iptvPortalMetadataJson(v),
+              'password': v.portal.password,
+            },
+          )
+          .toList();
+      await prefs.setString(_key, json.encode(arr));
+    }
+    if (scheduleSync) scheduleIptvSyncPush();
+    unawaited(
+      PortalVaultInventory.mirrorFromStore(portals: list),
+    );
+  }
+
+  static Future<Set<String>> loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_favKey) ?? const <String>[];
+    return list.toSet();
+  }
+
+  static Future<void> saveFavorites(
+    Set<String> keys, {
+    bool scheduleSync = true,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_favKey, keys.toList());
+    if (scheduleSync) scheduleIptvSyncPush();
+    unawaited(
+      PortalVaultInventory.mirrorFromStore(
+        portals: await load(),
+        favoriteKeys: keys,
+      ),
+    );
+  }
+
+  static Future<String?> loadLastPortalKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_lastPortalKey);
+  }
+
+  static Future<void> saveLastPortalKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastPortalKey, key);
+  }
+
+  static Future<void> clearLastPortalKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastPortalKey);
+  }
+
+  static Future<PortalSection> loadLastSection() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_lastSectionKey);
+    return switch (raw) {
+      'vod' => PortalSection.vod,
+      'series' => PortalSection.series,
+      _ => PortalSection.live,
+    };
+  }
+
+  static Future<void> saveLastSection(PortalSection section) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = switch (section) {
+      PortalSection.vod => 'vod',
+      PortalSection.series => 'series',
+      PortalSection.live => 'live',
+    };
+    await prefs.setString(_lastSectionKey, raw);
+  }
+
+  static Future<PortalCatalogSort> loadLiveCategorySort() async {
+    final prefs = await SharedPreferences.getInstance();
+    return PortalCatalogSort.fromPrefs(prefs.getString(_liveCategorySortKey));
+  }
+
+  static Future<void> saveLiveCategorySort(PortalCatalogSort sort) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveCategorySortKey, sort.prefsValue);
+  }
+
+  static Future<PortalCatalogSort> loadLiveContentSort() async {
+    final prefs = await SharedPreferences.getInstance();
+    return PortalCatalogSort.fromPrefs(prefs.getString(_liveContentSortKey));
+  }
+
+  static Future<void> saveLiveContentSort(PortalCatalogSort sort) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveContentSortKey, sort.prefsValue);
+  }
+
+  static Future<PortalLiveBrowseLayout> loadLiveBrowseLayout() async {
+    final prefs = await SharedPreferences.getInstance();
+    return PortalLiveBrowseLayout.fromPrefs(prefs.getString(_liveBrowseLayoutKey));
+  }
+
+  static Future<void> saveLiveBrowseLayout(PortalLiveBrowseLayout layout) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveBrowseLayoutKey, layout.prefsValue);
+  }
+
+  /// IPTV player volume 0–100 (mpv scale). Default 100 when unset.
+  static Future<double> loadPlayerVolume() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getDouble(_playerVolumeKey);
+    if (v == null) return 100.0;
+    return v.clamp(0.0, 100.0);
+  }
+
+  static Future<void> savePlayerVolume(double volume) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_playerVolumeKey, volume.clamp(0.0, 100.0));
+  }
+
+  /// Cached catalog counts from the last successful Live/Movies/Series load.
+  static Future<Map<String, PortalCatalogLoadProgress>> loadCatalogStats() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_catalogStatsKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      final out = <String, PortalCatalogLoadProgress>{};
+      for (final e in decoded.entries) {
+        final v = e.value;
+        if (v is! Map) continue;
+        out[e.key.toString()] = PortalCatalogLoadProgress.fromStatsJson(
+          Map<String, dynamic>.from(v),
+        );
+      }
+      return out;
+    } catch (e) {
+      debugPrint('PortalStore.loadCatalogStats failed: $e');
+      return {};
+    }
+  }
+
+  static Future<void> saveCatalogStats(
+    String portalKey,
+    PortalCatalogLoadProgress stats,
+  ) async {
+    if (portalKey.isEmpty || !stats.hasAnyCount) return;
+    final prefs = await SharedPreferences.getInstance();
+    Map<String, dynamic> root = {};
+    final raw = prefs.getString(_catalogStatsKey);
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = json.decode(raw);
+        if (decoded is Map) {
+          root = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+    root[portalKey] = stats.toStatsJson();
+    await prefs.setString(_catalogStatsKey, json.encode(root));
+  }
+}
+
+/// Per-portal cache of "alive" live channel IDs + per-portal Live-only pref.
+class PortalAliveStore {
+  static String portalKey(Portal p) =>
+      '${p.url}|${p.username}|${p.password}'.toLowerCase();
+
+  static Future<AliveSnapshot?> load(String key) async {
+    final raw = IptvCatalogDb.aliveLoad(key);
+    if (raw == null) return null;
+    final ids = <String>{};
+    final list = raw['ids'];
+    if (list is List) {
+      for (final e in list) {
+        final id = e.toString().trim();
+        if (id.isNotEmpty) ids.add(id);
+      }
+    }
+    return AliveSnapshot(
+      checkedAt: (raw['at'] as num?)?.toInt() ?? 0,
+      aliveIds: ids,
+    );
+  }
+
+  static Future<void> save(String key, AliveSnapshot snap) async {
+    final liveOnly = await loadLiveOnly(key);
+    IptvCatalogDb.aliveSave(
+      portalKey: key,
+      checkedAt: snap.checkedAt,
+      ids: snap.aliveIds,
+      liveOnly: liveOnly,
+    );
+  }
+
+  static Future<void> clear(String key) async {
+    IptvCatalogDb.aliveClear(key);
+  }
+
+  /// Clears alive-ID / Live-only for the **active** identity catalog DB.
+  static Future<void> clearAll() async {
+    IptvCatalogDb.aliveClearAll();
+  }
+
+  static Future<bool> loadLiveOnly(String key) async {
+    final raw = IptvCatalogDb.aliveLoad(key);
+    if (raw == null) return false;
+    return raw['liveOnly'] == true || raw['live_only'] == true;
+  }
+
+  static Future<void> saveLiveOnly(String key, bool enabled) async {
+    IptvCatalogDb.aliveSetLiveOnly(key, enabled);
+  }
+}
+
+class AliveSnapshot {
+  final int checkedAt;
+  final Set<String> aliveIds;
+  const AliveSnapshot({required this.checkedAt, required this.aliveIds});
+}
+
+/// Per-HardcodedChannel persisted alive stream hits.
+class PortalChannelResultsStore {
+  static Future<List<StoredHit>> load(String channelId) async {
+    final arr = IptvCatalogDb.channelHitsLoad(channelId);
+    return [
+      for (final o in arr)
+        StoredHit(
+          portalUrl: o['pu'] as String? ?? '',
+          portalUser: o['uu'] as String? ?? '',
+          portalPass: o['pp'] as String? ?? '',
+          portalName: o['pn'] as String? ?? '',
+          streamId: o['sid'] as String? ?? '',
+          streamName: o['sn'] as String? ?? '',
+          streamIcon: o['si'] as String? ?? '',
+          streamCategoryId: o['scid'] as String? ?? '',
+          streamContainerExt: o['sce'] as String? ?? '',
+          streamKind: o['sk'] as String? ?? 'live',
+          streamUrl: o['url'] as String? ?? '',
+        ),
+    ];
+  }
+
+  static Future<void> save(String channelId, List<StoredHit> hits) async {
+    final arr = [
+      for (final h in hits)
+        {
+          'pu': h.portalUrl,
+          'uu': h.portalUser,
+          'pp': h.portalPass,
+          'pn': h.portalName,
+          'sid': h.streamId,
+          'sn': h.streamName,
+          'si': h.streamIcon,
+          'scid': h.streamCategoryId,
+          'sce': h.streamContainerExt,
+          'sk': h.streamKind,
+          'url': h.streamUrl,
+        },
+    ];
+    IptvCatalogDb.channelHitsSave(channelId, arr);
+  }
+
+  static Future<void> clear(String channelId) async {
+    IptvCatalogDb.channelHitsClear(channelId);
+  }
+
+  static Future<void> clearAll() async {
+    IptvCatalogDb.channelHitsClearAll();
+  }
+}
+
+class StoredHit {
+  final String portalUrl;
+  final String portalUser;
+  final String portalPass;
+  final String portalName;
+  final String streamId;
+  final String streamName;
+  final String streamIcon;
+  final String streamCategoryId;
+  final String streamContainerExt;
+  final String streamKind;
+  final String streamUrl;
+
+  const StoredHit({
+    required this.portalUrl,
+    required this.portalUser,
+    required this.portalPass,
+    required this.portalName,
+    required this.streamId,
+    required this.streamName,
+    required this.streamIcon,
+    required this.streamCategoryId,
+    required this.streamContainerExt,
+    required this.streamKind,
+    required this.streamUrl,
+  });
+}
+
+/// Per-HardcodedChannel set of favorited stream URLs (pinned to top).
+class PortalChannelFavoritesStore {
+  static String _key(String channelId) => 'pt_iptv_chfav_$channelId';
+
+  static Future<Set<String>> load(String channelId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_key(channelId)) ?? const <String>[]).toSet();
+  }
+
+  static Future<void> save(String channelId, Set<String> urls) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_key(channelId), urls.toList());
+  }
+}
+
+/// Device-local Live catalog favorites, watched channels, pinned groups,
+/// full category order, and last browse selection (category click / channel play).
+/// Keyed by portal `url|username|password` (same as [PortalAliveStore]).
+class PortalLiveChannelListsStore {
+  static String _favKey(String portalKey) => 'pt_iptv_live_fav_$portalKey';
+  static String _watchedKey(String portalKey) =>
+      'pt_iptv_live_watched_$portalKey';
+  static String _pinnedCatsKey(String portalKey) =>
+      'pt_iptv_live_pinned_cats_$portalKey';
+  static String _categoryOrderKey(String portalKey) =>
+      'pt_iptv_live_cat_order_$portalKey';
+  static String _lastCategoryKey(String portalKey) =>
+      'pt_iptv_live_last_cat_$portalKey';
+  static String _lastChannelKey(String portalKey) =>
+      'pt_iptv_live_last_ch_$portalKey';
+
+  static Future<Set<String>> loadFavorites(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_favKey(portalKey)) ?? const <String>[])
+        .toSet();
+  }
+
+  static Future<void> saveFavorites(
+    String portalKey,
+    Set<String> streamIds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_favKey(portalKey), streamIds.toList());
+  }
+
+  /// Most-recently opened first.
+  static Future<List<String>> loadWatched(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return List<String>.from(
+      prefs.getStringList(_watchedKey(portalKey)) ?? const <String>[],
+    );
+  }
+
+  /// Moves [streamId] to front; keeps at most [PortalLiveCatalog.watchedLimit].
+  static Future<List<String>> recordWatched(
+    String portalKey,
+    String streamId,
+  ) async {
+    if (streamId.isEmpty) return loadWatched(portalKey);
+    final prefs = await SharedPreferences.getInstance();
+    final next = <String>[streamId];
+    for (final id in prefs.getStringList(_watchedKey(portalKey)) ??
+        const <String>[]) {
+      if (id != streamId) next.add(id);
+      if (next.length >= PortalLiveCatalog.watchedLimit) break;
+    }
+    await prefs.setStringList(_watchedKey(portalKey), next);
+    return next;
+  }
+
+  /// User-pinned Live category ids - first = top under Already watched.
+  static Future<List<String>> loadPinnedCategories(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return List<String>.from(
+      prefs.getStringList(_pinnedCatsKey(portalKey)) ?? const <String>[],
+    );
+  }
+
+  static Future<void> savePinnedCategories(
+    String portalKey,
+    List<String> categoryIds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_pinnedCatsKey(portalKey), categoryIds);
+  }
+
+  /// Full manual Live category order (non-synthetic ids, top → bottom).
+  static Future<List<String>> loadCategoryOrder(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return List<String>.from(
+      prefs.getStringList(_categoryOrderKey(portalKey)) ?? const <String>[],
+    );
+  }
+
+  static Future<void> saveCategoryOrder(
+    String portalKey,
+    List<String> categoryIds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_categoryOrderKey(portalKey), categoryIds);
+  }
+
+  /// Last Live category the user committed (sidebar click / OK).
+  static Future<String?> loadLastCategory(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_lastCategoryKey(portalKey));
+    if (id == null || id.isEmpty) return null;
+    return id;
+  }
+
+  static Future<void> saveLastCategory(
+    String portalKey,
+    String categoryId,
+  ) async {
+    if (categoryId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastCategoryKey(portalKey), categoryId);
+  }
+
+  /// Last Live channel the user actually played (not mere tap/focus).
+  static Future<String?> loadLastChannel(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_lastChannelKey(portalKey));
+    if (id == null || id.isEmpty) return null;
+    return id;
+  }
+
+  static Future<void> saveLastChannel(
+    String portalKey,
+    String streamId,
+  ) async {
+    if (streamId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastChannelKey(portalKey), streamId);
+  }
+}

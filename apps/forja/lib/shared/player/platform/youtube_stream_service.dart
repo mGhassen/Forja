@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/network/legacy_android_tls.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 
 /// One closed-caption track as a direct WebVTT URL.
@@ -208,14 +209,15 @@ class YoutubeStreamService {
   }) async {
     final maxHeight = maxHeightOverride ?? defaultMaxHeight;
     try {
-      final streams = await Isolate.run(
-        () => _resolveStreamsBlocking(
+      final streams = await Isolate.run(() {
+        installLegacyAndroidTlsTrust();
+        return _resolveStreamsBlocking(
           videoId,
           maxHeight,
           withCaptions,
           withMetadata,
-        ),
-      );
+        );
+      });
       if (streams != null) {
         _resolveCache.removeWhere(
           (_, e) => DateTime.now().difference(e.at) >= _resolveCacheTtl,
@@ -238,7 +240,10 @@ class YoutubeStreamService {
     String videoId,
   ) async {
     try {
-      return await Isolate.run(() => _fetchCaptionsBlocking(videoId));
+      return await Isolate.run(() {
+        installLegacyAndroidTlsTrust();
+        return _fetchCaptionsBlocking(videoId);
+      });
     } catch (e) {
       debugPrint('YoutubeStreamService: captions failed for $videoId — $e');
       return const [];

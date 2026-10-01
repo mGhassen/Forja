@@ -1,27 +1,39 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
-import 'package:forja/features/iptv/data/models.dart';
-import 'package:forja/features/iptv/data/storage.dart';
+import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
+import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
+import 'package:forja/shared/engine/packs/settings/pack_green_play_config.dart';
+import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
+import 'package:forja/shared/engine/store/list_open_prefs.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shared/sync/bridge/packs_onboarding_store.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
 
 /// Export/import between local stores and lean `profile_settings.payload`.
 ///
 /// **Cloud is master** for `profile_settings` and IPTV assignments. Local KV /
-/// `IptvStore` are caches - intentional UI edits write the cache then push;
+/// `PortalStore` are caches - intentional UI edits write the cache then push;
 /// wipe / pull / defaults never push incomplete cache over cloud.
 ///
 /// IPTV portals sync via `user_iptv_portals` / `iptv_portals` - never
 /// `profile_settings`. M3U playlists are device-local only.
 class SyncDomainBridge {
-  SyncDomainBridge._();
+  SyncDomainBridge._() {
+    PackSettingsStore.onNonSecretUserWrite ??= () {
+      notePackSettingsDirty();
+      schedulePush(_domainPackSettings);
+    };
+  }
   static final SyncDomainBridge instance = SyncDomainBridge._();
 
   /// Debounce key for portal assignment pushes (not profile_settings.iptv).
@@ -30,6 +42,7 @@ class SyncDomainBridge {
   static const _domainStremio = 'stremio';
   static const _domainNuvio = 'nuvio';
   static const _domainForja = 'forja';
+  static const _domainPackSettings = 'pack_settings';
   static const _domainNavigation = 'navigation';
 
   final _settings = SettingsService();
@@ -49,6 +62,8 @@ class SyncDomainBridge {
   /// Addons switch still looked ON (optimistic UI).
   int _preferencesLocalGen = 0;
   int _preferencesSyncedGen = 0;
+  int _packSettingsLocalGen = 0;
+  int _packSettingsSyncedGen = 0;
 
   /// IPTV inventory dirty while a local add/edit/delete has not finished a
   /// cloud replace. Portal-panel / soft pulls must flush or skip apply so
@@ -98,36 +113,34 @@ class SyncDomainBridge {
   Future<void> clearAccountBoundLocalState() async {
     cancelPendingPushes();
     await resetSyncedLocalToPlatformDefaults(clearIptv: true);
-    await IptvStore.clearLastPortalKey();
-    await IptvAliveStore.clearAll();
-    await IptvChannelResultsStore.clearAll();
-    await IptvCatalogDiskStore.clearAll();
-    IptvStore.notifyListChanged();
+    await PortalStore.clearLastPortalKey();
+    await PortalAliveStore.clearAll();
+    await PortalChannelResultsStore.clearAll();
+    PortalStore.notifyListChanged();
   }
 
   /// Fail-closed IPTV cache wipe for profile boundaries (issue 217).
   ///
-  /// [IptvStore] is device-global. On profile switch / active-profile delete we
-  /// must clear portals + passwords **before** cloud pull — never keep the prior
-  /// profile's inventory when pull fails, times out, or continues early.
-  /// Cache-only (`scheduleSync: false`); empty local must not push to cloud.
+  /// Clears the **active identity** portal inventory before cloud pull (scoped
+  /// prefs / vault). Other profiles' rows stay on disk. Cache-only
+  /// (`scheduleSync: false`); empty local must not push to cloud.
   Future<void> wipeLocalIptvInventoryForProfileBoundary({
     bool notify = true,
   }) async {
     _pushTimers.remove(_domainIptv)?.cancel();
     _iptvLocalGen = 0;
     _iptvSyncedGen = 0;
-    await IptvStore.save(const [], scheduleSync: false);
-    await IptvStore.saveFavorites({}, scheduleSync: false);
-    await IptvStore.clearLastPortalKey();
-    if (notify) IptvStore.notifyListChanged();
+    await PortalStore.save(const [], scheduleSync: false);
+    await PortalStore.saveFavorites({}, scheduleSync: false);
+    await PortalStore.clearLastPortalKey();
+    if (notify) PortalStore.notifyListChanged();
   }
 
   /// Wipe synced local domains to platform defaults (no prior-profile bleed).
   ///
-  /// Local KV is a device-global **cache**; every profile switch/create must
-  /// reset before applying that profile's cloud payload. Never schedules a
-  /// cloud push - empty/default cache must not overwrite cloud.
+  /// Local KV is path-scoped per identity; wipe resets the **active** store
+  /// before applying that profile's cloud payload. Never schedules a cloud
+  /// push - empty/default cache must not overwrite cloud.
   ///
   /// When [notify] is false, UI listeners are not bumped mid-wipe (caller
   /// should notify once after the final cloud import so the shell does not
@@ -142,6 +155,8 @@ class SyncDomainBridge {
     _navigationSyncedGen = 0;
     _preferencesLocalGen = 0;
     _preferencesSyncedGen = 0;
+    _packSettingsLocalGen = 0;
+    _packSettingsSyncedGen = 0;
     _iptvLocalGen = 0;
     _iptvSyncedGen = 0;
     _lastNavigationPushAt = null;
@@ -179,13 +194,12 @@ class SyncDomainBridge {
       }
     }
 
-    // Pack index is per launched profile ([LocalDataScope]); lean apply after
-    // selectProfile owns membership. Do not removePack here.
+    // Pack membership cleared in [seedNewProfileDefaults] / lean import — not
+    // here (profile switch applies cloud packs[] after this wipe).
     await PacksOnboardingStore.clearLocalForActiveProfile();
 
     final nuvioAddons = await NuvioService.instance.listAddons();
     for (final addon in nuvioAddons) {
-      if (NuvioService.isBundled(addon.manifestUrl)) continue;
       try {
         await NuvioService.instance.remove(
           addon.manifestUrl,
@@ -196,19 +210,24 @@ class SyncDomainBridge {
 
     if (clearIptv) {
       // Local cache only - never schedule a cloud push from a wipe.
-      await IptvStore.save(const [], scheduleSync: false);
-      await IptvStore.saveFavorites({}, scheduleSync: false);
-      await IptvStore.clearLastPortalKey();
-      if (notify) IptvStore.notifyListChanged();
+      await PortalStore.save(const [], scheduleSync: false);
+      await PortalStore.saveFavorites({}, scheduleSync: false);
+      await PortalStore.clearLastPortalKey();
+      if (notify) PortalStore.notifyListChanged();
     }
   }
 
-  /// After creating a profile: local defaults + push so cloud is not `{}` / prior prefs.
+  /// After creating a profile: local defaults + empty pack membership + push
+  /// so cloud is not `{}` / prior prefs / prior packs (issue 289).
   Future<void> seedNewProfileDefaults() async {
     cancelPendingPushes();
     await resetSyncedLocalToPlatformDefaults(clearIptv: true);
+    await PluginRegistry.instance.clearPackMembershipForActiveProfile();
     // New profile has no assignments yet - settings only; skip empty IPTV wipe.
-    await pushAllLocal(pushIptvIfLocalEmpty: false);
+    await pushAllLocal(
+      pushIptvIfLocalEmpty: false,
+      allowEmptyForjaWipe: true,
+    );
   }
 
   DateTime? _lastCloudPullAt;
@@ -332,12 +351,20 @@ class SyncDomainBridge {
     // Otherwise keep the boundary wipe (already empty when resetLocalFirst).
     final nav = await _settings.getNavbarConfig();
     if (nav.contains('iptv')) {
+      // Issue 308: pack Add writes vault only — heal into PortalStore before
+      // soft-pull so empty cloud cannot leave web at 0 while the app shows rows.
+      if (!resetLocalFirst) {
+        await PortalVaultInventory.mirrorVaultToStoreAndScheduleSync(
+          onlyIfStoreEmpty: true,
+        );
+        await flushIptvPushIfDirty();
+      }
       if (_iptvLocalGen != _iptvSyncedGen) {
         debugPrint(
           '[Sync] skip IPTV soft-pull apply — local inventory still dirty',
         );
       } else {
-        await _pullAndApplyUserIptvPortals();
+        await _pullAndApplyUserPortals();
       }
     } else {
       // No IPTV tab — skip portal pull; clear stale portals for this profile.
@@ -355,16 +382,43 @@ class SyncDomainBridge {
   /// edit / portal panel open). Merges: keeps existing local probe fields,
   /// appends new assignments, drops unassigned. Notifies only when inventory
   /// actually changed. Returns `false` when the pull failed and local was kept.
-  Future<bool> pullIptvPortalsFromCloud() async {
+  ///
+  /// [cloudIsSource] — Deal / remote assign already wrote cloud. Skip flush
+  /// (pushing thin local would race the new assignments) and apply even when
+  /// the local gen looks dirty.
+  Future<bool> pullPortalsFromCloud({bool cloudIsSource = false}) async {
     if (!SyncService.instance.isSignedIn) return false;
+    if (cloudIsSource) {
+      // Drop pending push timer — cloud won; do not replace over dealt rows.
+      _pushTimers.remove(_domainIptv)?.cancel();
+      final ok = await _pullAndApplyUserPortals();
+      if (ok) {
+        _iptvSyncedGen = _iptvLocalGen;
+      }
+      return ok;
+    }
     // Panel open after add used to pull empty cloud over the just-saved row
     // before the 3s debounce push (229). Flush first; skip apply if still dirty.
     await flushIptvPushIfDirty();
     if (_iptvLocalGen != _iptvSyncedGen) {
+      // Admin / web assign can land while local is dirty. Flush may refuse
+      // shrink (cloud already larger) — still pull merge; cloud is master.
+      final localCount = (await PortalStore.load()).length;
+      final cloudCount = await SyncService.instance.countUserPortals();
+      if (cloudCount > localCount) {
+        debugPrint(
+          '[Sync] IPTV pull despite dirty — cloud ahead '
+          '($cloudCount > local $localCount)',
+        );
+        _pushTimers.remove(_domainIptv)?.cancel();
+        final ok = await _pullAndApplyUserPortals();
+        if (ok) _iptvSyncedGen = _iptvLocalGen;
+        return ok;
+      }
       debugPrint('[Sync] skip IPTV pull — local inventory still dirty');
       return false;
     }
-    return _pullAndApplyUserIptvPortals();
+    return _pullAndApplyUserPortals();
   }
 
   /// Mark IPTV cache dirty before / with a scheduled push so pulls cannot apply
@@ -384,7 +438,7 @@ class SyncDomainBridge {
     noteIptvDirty();
     _pushTimers.remove(_domainIptv)?.cancel();
     final gen = _iptvLocalGen;
-    final ok = await _pushUserIptvPortals(
+    final ok = await _pushUserPortals(
       pushIfLocalEmpty: false,
       allowEmptyWipe: false,
       allowShrink: false,
@@ -417,10 +471,13 @@ class SyncDomainBridge {
     if (!SyncService.instance.isSignedIn) return;
     final navGenAtStart = _navigationLocalGen;
     final prefsGenAtStart = _preferencesLocalGen;
+    final packSettingsGenAtStart = _packSettingsLocalGen;
     final overlayNav =
         overlayDomains == null || overlayDomains.contains(_domainNavigation);
     final overlayPrefs = overlayDomains == null ||
         overlayDomains.contains(_domainPreferences);
+    final overlayPackSettings = overlayDomains == null ||
+        overlayDomains.contains(_domainPackSettings);
     final payload = await _buildMergedCloudPayload(
       allowEmptyStremioWipe: allowEmptyStremioWipe,
       allowEmptyNuvioWipe: allowEmptyNuvioWipe,
@@ -438,22 +495,23 @@ class SyncDomainBridge {
       _navigationSyncedGen = navGenAtStart;
       _lastNavigationPushAt = DateTime.now();
       final nav = payload['navigation'];
-      final ids = nav is Map
-          ? _navVisibleIds(Map<String, dynamic>.from(nav))
-          : null;
       debugPrint(
-        '[Sync] navigation upsert ok visibleIds=$ids '
+        '[Sync] navigation upsert ok '
         'tabOrder=${nav is Map ? nav['tabOrder'] : null}',
       );
     }
     if (overlayPrefs && prefsGenAtStart == _preferencesLocalGen) {
       _preferencesSyncedGen = prefsGenAtStart;
     }
+    if (overlayPackSettings &&
+        packSettingsGenAtStart == _packSettingsLocalGen) {
+      _packSettingsSyncedGen = packSettingsGenAtStart;
+    }
     final pushIptv =
         overlayDomains == null || overlayDomains.contains(_domainIptv);
     if (pushIptv) {
       final iptvGenAtStart = _iptvLocalGen;
-      final ok = await _pushUserIptvPortals(
+      final ok = await _pushUserPortals(
         pushIfLocalEmpty: pushIptvIfLocalEmpty,
         allowEmptyWipe: allowEmptyIptvWipe,
         allowShrink: allowIptvShrink,
@@ -469,7 +527,7 @@ class SyncDomainBridge {
     if (!SyncService.instance.isSignedIn) return;
     noteIptvDirty();
     final gen = _iptvLocalGen;
-    final ok = await _pushUserIptvPortals(
+    final ok = await _pushUserPortals(
       pushIfLocalEmpty: true,
       allowEmptyWipe: true,
       allowShrink: true,
@@ -482,7 +540,7 @@ class SyncDomainBridge {
     if (!SyncService.instance.isSignedIn) return;
     noteIptvDirty();
     final gen = _iptvLocalGen;
-    final ok = await _pushUserIptvPortals(
+    final ok = await _pushUserPortals(
       pushIfLocalEmpty: true,
       allowEmptyWipe: false,
       allowShrink: true,
@@ -503,6 +561,12 @@ class SyncDomainBridge {
   void notePreferencesDirty() {
     if (_preferencesLocalGen == _preferencesSyncedGen) {
       _preferencesLocalGen++;
+    }
+  }
+
+  void notePackSettingsDirty() {
+    if (_packSettingsLocalGen == _packSettingsSyncedGen) {
+      _packSettingsLocalGen++;
     }
   }
 
@@ -625,10 +689,12 @@ class SyncDomainBridge {
     final stremio = await _exportStremioCompact();
     final nuvio = await _exportNuvioCompact();
     final forja = await _exportForjaCompact();
+    final packSettings = await _exportPackSettingsCompact();
     final connected = <String, dynamic>{};
     if (stremio.isNotEmpty) connected['stremio'] = stremio;
     if (nuvio.isNotEmpty) connected['nuvio'] = nuvio;
     if (forja.isNotEmpty) connected['forja'] = forja;
+    if (packSettings.isNotEmpty) connected['packSettings'] = packSettings;
     if (connected.isNotEmpty) out['connectedServices'] = connected;
 
     final navigation = await _exportNavigationCompact();
@@ -684,6 +750,8 @@ class SyncDomainBridge {
         overlayAll || overlayDomains.contains(_domainStremio);
     final overlayNuvio = overlayAll || overlayDomains.contains(_domainNuvio);
     final overlayForja = overlayAll || overlayDomains.contains(_domainForja);
+    final overlayPackSettings =
+        overlayAll || overlayDomains.contains(_domainPackSettings);
 
     if (overlayPlayback) {
       final playback = local['playback'];
@@ -696,6 +764,9 @@ class SyncDomainBridge {
         final remotePb = remote['playback'] is Map
             ? Map<String, dynamic>.from(remote['playback'] as Map)
             : <String, dynamic>{};
+        // Host Playback → Anime pack setting (packSettings is SoT).
+        remotePb.remove('anime_title_language');
+        localPb.remove('anime_title_language');
         next['playback'] = {...remotePb, ...localPb};
       }
     }
@@ -799,6 +870,12 @@ class SyncDomainBridge {
       }
     }
 
+    if (overlayPackSettings) {
+      if (localConnected.containsKey('packSettings')) {
+        connected['packSettings'] = localConnected['packSettings'];
+      }
+    }
+
     if (connected.isNotEmpty) {
       next['connectedServices'] = connected;
     } else {
@@ -897,6 +974,21 @@ class SyncDomainBridge {
           '[Sync] importForja empty — cloud omitted connectedServices.forja',
         );
         await importForja(const <String, dynamic>{});
+      }
+      final packSettingsPending =
+          !resetLocalFirst &&
+          _packSettingsLocalGen != _packSettingsSyncedGen;
+      if (packSettingsPending) {
+        debugPrint(
+          '[Sync] skip packSettings apply — local pack settings edit '
+          'not synced yet',
+        );
+      } else {
+        final packSettings = connected['packSettings'];
+        if (packSettings is Map) {
+          await importPackSettings(Map<String, dynamic>.from(packSettings));
+          _packSettingsSyncedGen = _packSettingsLocalGen;
+        }
       }
     } else {
       // Full profile row with no connectedServices → no forja membership.
@@ -1008,6 +1100,8 @@ class SyncDomainBridge {
       if (version.isNotEmpty && version != '0.0.0') {
         row['version'] = version;
       }
+      // Omit when on (legacy); explicit false = installed but skipped.
+      if (!pack.enabled) row['enabled'] = false;
       lean.add(row);
     }
     final out = <String, dynamic>{};
@@ -1017,6 +1111,133 @@ class SyncDomainBridge {
       out['onboarded'] = true;
     }
     return out;
+  }
+
+  /// Non-secret pack Addon settings keyed by pluginId (RFC-089 / issue 307).
+  Future<Map<String, dynamic>> _exportPackSettingsCompact() async {
+    final packs = await EngineService.instance.listPacks();
+    final out = <String, Map<String, dynamic>>{};
+    for (final plugin in activePluginsFromPacks(packs)) {
+      final spec = PackAddonSettingsSpec.fromPlugin(plugin);
+      final fields = <String, dynamic>{};
+      if (spec != null) {
+        for (final field in spec.fields) {
+          if (field.type == PackAddonSettingsFieldType.password) continue;
+          switch (field.type) {
+            case PackAddonSettingsFieldType.toggle:
+              fields[field.id] = await PackSettingsStore.getBool(
+                spec.pluginId,
+                field.id,
+                defaultValue: field.defaultBool,
+              );
+            case PackAddonSettingsFieldType.multiSelect:
+              fields[field.id] = await PackSettingsStore.getStringList(
+                spec.pluginId,
+                field.id,
+                defaultValue: field.defaultStringList,
+              );
+            case PackAddonSettingsFieldType.select:
+            case PackAddonSettingsFieldType.text:
+            case PackAddonSettingsFieldType.hubSelect:
+              var value = await PackSettingsStore.getString(
+                spec.pluginId,
+                field.id,
+                defaultValue: field.defaultString,
+              );
+              if (field.type == PackAddonSettingsFieldType.hubSelect &&
+                  field.listOpenDefault &&
+                  field.hubTypes.isNotEmpty) {
+                final fromPrefs = await ListOpenPrefs.defaultPluginId(
+                  field.hubTypes.first,
+                );
+                if (fromPrefs != null && fromPrefs.isNotEmpty) {
+                  value = fromPrefs;
+                }
+              }
+              fields[field.id] = value;
+            case PackAddonSettingsFieldType.password:
+              break;
+          }
+        }
+      }
+      // RFC-118 green Play JSON blob (when declared + user overlay present).
+      if (PackGreenPlayConfig.isDeclared(plugin)) {
+        final raw = await PackSettingsStore.getString(
+          plugin.id,
+          PackGreenPlayConfig.fieldId,
+          defaultValue: '',
+        );
+        if (raw.trim().isNotEmpty) {
+          try {
+            fields[PackGreenPlayConfig.fieldId] = jsonDecode(raw);
+          } catch (_) {
+            fields[PackGreenPlayConfig.fieldId] = raw;
+          }
+        }
+      }
+      if (fields.isNotEmpty) out[plugin.id] = fields;
+    }
+    return out;
+  }
+
+  /// Apply cloud pack settings into [PackSettingsStore] (no secrets).
+  Future<void> importPackSettings(Map<String, dynamic> payload) async {
+    for (final entry in payload.entries) {
+      final pluginId = entry.key.trim();
+      if (pluginId.isEmpty) continue;
+      final raw = entry.value;
+      if (raw is! Map) continue;
+      for (final fieldEntry in raw.entries) {
+        final fieldId = fieldEntry.key.toString().trim();
+        if (fieldId.isEmpty) continue;
+        final value = fieldEntry.value;
+        if (value is bool) {
+          await PackSettingsStore.setBool(
+            pluginId,
+            fieldId,
+            value,
+            reloadHub: false,
+          );
+        } else if (value is List) {
+          await PackSettingsStore.setStringList(
+            pluginId,
+            fieldId,
+            [
+              for (final e in value)
+                if (e.toString().trim().isNotEmpty) e.toString().trim(),
+            ],
+            reloadHub: false,
+          );
+        } else if (value is Map) {
+          // RFC-118 greenPlay (and any future JSON object fields).
+          await PackSettingsStore.setString(
+            pluginId,
+            fieldId,
+            jsonEncode(Map<String, dynamic>.from(value)),
+            reloadHub: false,
+          );
+        } else if (value is String || value is num) {
+          final s = value.toString();
+          await PackSettingsStore.setString(
+            pluginId,
+            fieldId,
+            s,
+            reloadHub: false,
+          );
+          // My List openDefault.* → ListOpenPrefs
+          if (fieldId.startsWith('openDefault.')) {
+            final type = fieldId.substring('openDefault.'.length).trim();
+            if (type.isNotEmpty) {
+              await ListOpenPrefs.setDefaultPluginId(
+                type,
+                s.trim().isEmpty ? null : s.trim(),
+              );
+            }
+          }
+        }
+      }
+    }
+    PackSettingsStore.revision.value++;
   }
 
   Future<Map<String, dynamic>> _exportNavigationCompact() async {
@@ -1068,7 +1289,6 @@ class SyncDomainBridge {
           return;
         }
       }
-      debugPrint('[Sync] _importNavigation visibleIds=$incoming');
       final tabOrder = payload['tabOrder'] is List
           ? (payload['tabOrder'] as List).cast<String>()
           : null;
@@ -1079,12 +1299,12 @@ class SyncDomainBridge {
     }
   }
 
-  Future<bool> _pushUserIptvPortals({
+  Future<bool> _pushUserPortals({
     required bool pushIfLocalEmpty,
     required bool allowEmptyWipe,
     required bool allowShrink,
   }) async {
-    final portals = await IptvStore.load();
+    final portals = await PortalStore.load();
     if (portals.isEmpty) {
       if (!pushIfLocalEmpty) {
         debugPrint(
@@ -1098,14 +1318,14 @@ class SyncDomainBridge {
         );
         return false;
       }
-      await SyncService.instance.replaceUserIptvPortals(
+      await SyncService.instance.replaceUserPortals(
         const [],
         allowShrink: true,
       );
       return true;
     }
 
-    final cloudCount = await SyncService.instance.countUserIptvPortals();
+    final cloudCount = await SyncService.instance.countUserPortals();
     if (cloudCount < 0) {
       debugPrint('[Sync] refuse IPTV replace - cloud count unavailable');
       return false;
@@ -1118,12 +1338,12 @@ class SyncDomainBridge {
       return false;
     }
 
-    final favorites = await IptvStore.loadFavorites();
+    final favorites = await PortalStore.loadFavorites();
     final assignments =
         <({String portalId, String portalName, bool favorite})>[];
 
     for (final v in portals) {
-      final portalId = await SyncService.instance.upsertIptvPortal(
+      final portalId = await SyncService.instance.upsertPortal(
         url: v.portal.url,
         username: v.portal.username,
         password: v.portal.password,
@@ -1164,7 +1384,7 @@ class SyncDomainBridge {
       return false;
     }
 
-    await SyncService.instance.replaceUserIptvPortals(
+    await SyncService.instance.replaceUserPortals(
       assignments,
       allowShrink: allowEmptyWipe || allowShrink,
     );
@@ -1174,20 +1394,20 @@ class SyncDomainBridge {
     return true;
   }
 
-  Future<bool> _pullAndApplyUserIptvPortals() async {
+  Future<bool> _pullAndApplyUserPortals() async {
     final List<Map<String, dynamic>> rows;
     try {
-      rows = await SyncService.instance.pullUserIptvPortals();
+      rows = await SyncService.instance.pullUserPortals();
     } catch (e) {
       // Focus/resume re-pull: keep whatever is already in the cache for this
       // profile. Profile-switch paths wipe first (issue 217), so failure stays
       // empty — never rehydrate the previous profile's portals.
-      debugPrint('[Sync] pullUserIptvPortals failed (local kept): $e');
+      debugPrint('[Sync] pullUserPortals failed (local kept): $e');
       return false;
     }
-    final local = await IptvStore.load();
+    final local = await PortalStore.load();
     final localByKey = {for (final v in local) v.key: v};
-    final localFav = await IptvStore.loadFavorites();
+    final localFav = await PortalStore.loadFavorites();
 
     // Cloud is master for *which* portals are assigned. Existing local rows
     // keep probe fields (name / seats / expiry) — only append new keys and
@@ -1202,12 +1422,12 @@ class SyncDomainBridge {
       final username = g['username'] as String? ?? '';
       final password = g['password'] as String? ?? '';
       final cloudLabel = (row['portal_name'] as String?)?.trim() ?? '';
-      final cloudPortal = IptvPortal(
+      final cloudPortal = Portal(
         url: url,
         username: username,
         password: password,
         source: g['source'] as String? ?? '',
-        platform: IptvPortalPlatform.fromString(g['platform'] as String?),
+        platform: PortalPlatform.fromString(g['platform'] as String?),
       );
       final key = cloudPortal.key;
       final existing = localByKey[key];
@@ -1254,9 +1474,14 @@ class SyncDomainBridge {
     if (keysSame && favSame && !labelChanged) return true;
 
     // Cloud → local cache only; never schedule a push that could race-wipe.
-    await IptvStore.save(portals, scheduleSync: false);
-    await IptvStore.saveFavorites(favoriteKeys, scheduleSync: false);
-    IptvStore.notifyListChanged();
+    await PortalStore.save(portals, scheduleSync: false);
+    await PortalStore.saveFavorites(favoriteKeys, scheduleSync: false);
+    // save() mirrors vault unawaited — await here so panel softReload sees it.
+    await PortalVaultInventory.mirrorFromStore(
+      portals: portals,
+      favoriteKeys: favoriteKeys,
+    );
+    PortalStore.notifyListChanged();
     return true;
   }
 
@@ -1282,10 +1507,11 @@ class SyncDomainBridge {
       'content_warnings': await _settings.getContentWarnings(),
       'auto_pip_on_desktop_switch': await _settings.getAutoPipOnDesktopSwitch(),
       // play_in_background is device-local (desktop on / phone·TV off).
+      // tv_nav_sound is Android TV-only / device-local.
       'iptv_epg_enabled': await _settings.isIptvEpgEnabled(),
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
-      'anime_title_language': await _settings.getAnimeTitleLanguage(),
-      'addon_feature_iptv': await _settings.isAddonFeatureEnabled('iptv'),
+      // Pack-only — always false in cloud payload (legacy key).
+      'addon_feature_iptv': false,
     };
   }
 
@@ -1358,18 +1584,28 @@ class SyncDomainBridge {
         (payload['max_playback_height'] as num).toInt(),
       );
     }
+    // Legacy host Playback key → Anime pack setting (packSettings is SoT now).
     if (payload.containsKey('anime_title_language')) {
-      await _settings.setAnimeTitleLanguage(
-        payload['anime_title_language'] as String,
+      final raw =
+          (payload['anime_title_language'] as String? ?? 'romaji')
+              .trim()
+              .toLowerCase();
+      final v = switch (raw) {
+        'english' || 'native' || 'romaji' => raw,
+        _ => 'romaji',
+      };
+      final migrated = await PackSettingsStore.migrateStringIfAbsent(
+        'anilist',
+        'titleLanguage',
+        v,
       );
+      if (migrated) {
+        schedulePackSettingsSyncPush();
+      }
+      // Always strip the retired Playback key from cloud on next prefs push.
+      schedulePreferencesSyncPush();
     }
-    if (payload.containsKey('addon_feature_iptv')) {
-      await _settings.setAddonFeatureEnabled(
-        'iptv',
-        payload['addon_feature_iptv'] as bool,
-      );
-    }
-    // RFC-093: ignore retired Live Sports addon feature keys from cloud.
+    // RFC-109: IPTV / Live Sports are pack-only — ignore retired addon feature keys.
   }
 
   Future<Map<String, dynamic>> exportProviders() async {
@@ -1542,9 +1778,9 @@ class SyncDomainBridge {
   /// [PluginInstallCoordinator.ensureAllInstalled] owns pre-shell hydrate
   /// (issue 259).
   ///
-  /// Before apply: remap lean URLs through published `plugin_packs` when the
-  /// opaque slot matches a newer catalog `manifest_url` (issue 267). After a
-  /// URL migrate (`added`), push so profile `packs[]` stores the new URLs.
+  /// Apply cloud `packs[]` as-is. Never remap URLs through the published
+  /// catalog (issue 275). After a same-slot remote URL migrate (`added`),
+  /// push so profile `packs[]` stores the URL the device installed.
   Future<LeanApplyResult> importForja(Map<String, dynamic> payload) async {
     // Pack membership only after a profile was launched (guest or selectProfile).
     if (SyncService.instance.isSignedIn &&
@@ -1554,18 +1790,10 @@ class SyncDomainBridge {
     }
     await PacksOnboardingStore.applyFromCloud(payload['onboarded'] == true);
     final packs = payload['packs'] as List? ?? const [];
-    final rawRows = <Map<String, dynamic>>[
+    final rows = <Map<String, dynamic>>[
       for (final raw in packs)
         if (raw is Map) Map<String, dynamic>.from(raw),
     ];
-    List<Map<String, dynamic>> rows = rawRows;
-    if (rawRows.isNotEmpty) {
-      final catalog = await PluginCatalogRemote.fetchPublishedPacks();
-      if (catalog.isNotEmpty) {
-        rows = PluginRegistry.rewriteLeanUrlsThroughCatalog(rawRows, catalog);
-      }
-    }
-    debugPrint('[Sync] importForja packs=${rows.length}');
     final result = await EngineService.instance.applyLeanManifestUrls(
       rows,
       purgeRemovedImmediately: true,
@@ -1575,15 +1803,45 @@ class SyncDomainBridge {
         '[Sync] importForja purged ${result.removed.length} pack(s)',
       );
     }
+    await _applyForjaEnabledHubDiff(result);
     // Downloads / hub activate only when splash dismissed (or no-op under
     // bootWarm). Soft-pull before profile splash must not install early.
     await PluginInstallPromptService.applyCloudLeanDiff(result);
-    // Catalog / same-slot URL migrate → push so cloud packs[] leaves the
-    // retired host (otherwise the next pull reintroduces the old URL).
+    // Same-slot remote URL migrate → push so cloud packs[] matches device.
     if (result.added.isNotEmpty) {
       scheduleForjaSyncPush();
     }
     return result;
+  }
+
+  /// Cloud pack master switch → Features / rail (same as Settings toggle).
+  Future<void> _applyForjaEnabledHubDiff(LeanApplyResult result) async {
+    if (result.turnedOn.isEmpty && result.turnedOff.isEmpty) return;
+    final packs = await PluginRegistry.instance.listPacksRaw();
+    EnginePack? find(String url) {
+      for (final p in packs) {
+        if (p.sourceUrl == url) return p;
+      }
+      return null;
+    }
+
+    for (final d in result.turnedOff) {
+      final pack = find(d.manifestUrl);
+      if (pack == null) continue;
+      await PluginNavRegistry.refresh();
+      await PackHubFeatures.deactivate(pack);
+    }
+
+    if (PluginInstallCoordinator.instance.isBootWarm) return;
+    if (!ShellBus.splashDismissed.value) return;
+
+    final onPacks = <EnginePack>[
+      for (final d in result.turnedOn)
+        ?find(d.manifestUrl),
+    ];
+    if (onPacks.isNotEmpty) {
+      await PackHubFeatures.refreshAndActivateInstalled(onPacks);
+    }
   }
 }
 
@@ -1619,6 +1877,13 @@ void scheduleNuvioSyncPush() =>
 
 void scheduleForjaSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainForja);
+
+void schedulePackSettingsSyncPush() {
+  SyncDomainBridge.instance.notePackSettingsDirty();
+  SyncDomainBridge.instance.schedulePush(
+    SyncDomainBridge._domainPackSettings,
+  );
+}
 
 /// Push `onboarded` without wiping cloud pack membership when local packs are empty.
 void scheduleForjaOnboardedSyncPush() =>

@@ -1,17 +1,25 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
-import 'package:forja/features/settings/widgets/settings_ui.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:forja/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shell/brand/forja_profile_avatar.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 enum ProfileChooserMode { choose, manage }
 
@@ -33,7 +41,7 @@ Future<bool> presentProfileChooser(
           initialMode: initialMode,
           prepareCurrentOnSwitch: prepareCurrentOnSwitch,
           closeIfAlreadyActive: closeIfAlreadyActive,
-          onProfileSelected: () => Navigator.of(context).pop(true),
+          onProfileSelected: (_) => Navigator.of(context).pop(true),
           onSignOut: allowSignOut
               ? () {
                   Navigator.of(context).pop(false);
@@ -59,7 +67,7 @@ class ProfileChooserScreen extends ConsumerStatefulWidget {
     this.useLogoIntroSplash = false,
   });
 
-  final VoidCallback onProfileSelected;
+  final ValueChanged<SyncProfile> onProfileSelected;
   final VoidCallback? onSignOut;
   final bool showBack;
   final ProfileChooserMode initialMode;
@@ -70,9 +78,9 @@ class ProfileChooserScreen extends ConsumerStatefulWidget {
   /// When re-opening Who's watching, tapping the current profile just closes.
   final bool closeIfAlreadyActive;
 
-  /// When true: select + merge only, then [onProfileSelected] (caller shows
-  /// logo [SplashScreen]). Default false: show [ProfileSwitchSplash] first
-  /// (cold sign-in and mid-session switches).
+  /// When true: hand off [profile] immediately via [onProfileSelected] — no
+  /// select/merge on this screen (caller / [ProfileSwitchSplash] owns that).
+  /// Default false: push [ProfileSwitchSplash] from here (mid-session).
   final bool useLogoIntroSplash;
 
   @override
@@ -87,6 +95,10 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
   String? _error;
   bool _busy = false;
   late _Screen _screen;
+
+  /// Set only by the empty-list auto-jump — not by Manage → Add profile.
+  /// Cleared when profiles arrive so we return to Who's watching.
+  bool _autoOpenedCreate = false;
 
   final _nameCtrl = TextEditingController();
   String _avatarKey = 'forge';
@@ -114,7 +126,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
   Future<void> _select(SyncProfile profile, {Rect? originRect}) async {
     if (_busy) return;
     if (widget.closeIfAlreadyActive && profile.id == _activeProfileId) {
-      widget.onProfileSelected();
+      widget.onProfileSelected(profile);
       return;
     }
 
@@ -123,18 +135,9 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
       _error = null;
     });
 
+    // Cold gate: leave Who's watching immediately — splash/packs own select.
     if (widget.useLogoIntroSplash) {
-      final ok = await _activateProfileForIntroSplash(profile);
-      if (!mounted) return;
-      if (ok) {
-        widget.onProfileSelected();
-        return;
-      }
-      setState(() {
-        _busy = false;
-        _error =
-            'Could not open this profile. Check your connection and retry.';
-      });
+      widget.onProfileSelected(profile);
       return;
     }
 
@@ -164,7 +167,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     );
     if (!mounted) return;
     if (ok == true) {
-      widget.onProfileSelected();
+      widget.onProfileSelected(profile);
       return;
     }
     setState(() {
@@ -172,21 +175,6 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
       _error =
           'Could not open this profile. Check your connection and retry.';
     });
-  }
-
-  /// Cold sign-in: bind the profile + merge settings only. Engine/catalog
-  /// warm happens on the logo intro splash that follows.
-  Future<bool> _activateProfileForIntroSplash(SyncProfile profile) async {
-    try {
-      final selected = await SyncService.instance.selectProfile(profile.id);
-      if (!selected) return false;
-      await ref
-          .read(profileSettingsSyncProvider.notifier)
-          .pullAndMergeForProfileSwitch();
-      return true;
-    } catch (_) {
-      return false;
-    }
   }
 
   Future<void> _signOut() async {
@@ -213,6 +201,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     final keys = forjaProfileAvatarKeys;
     setState(() {
       _screen = _Screen.create;
+      _autoOpenedCreate = false;
       _editingId = null;
       _nameCtrl.text = '';
       _avatarKey = keys[_profiles.length % keys.length];
@@ -338,7 +327,10 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     final snap = profilesAsync.valueOrNull;
     final profiles = snap?.profiles ?? const <SyncProfile>[];
     final activeProfileId = snap?.activeProfileId;
-    final loading = profilesAsync.isLoading && !profilesAsync.hasValue;
+    // Keep showing existing tiles while refreshing. Treat empty+loading as
+    // loading so a signed-out `[]` snap cannot auto-open create (issue 285).
+    final loading = profilesAsync.isLoading &&
+        !(snap != null && snap.profiles.isNotEmpty);
     final loadError = profilesAsync.hasError
         ? (profilesAsync.error is SyncProfileFetchException
             ? (profilesAsync.error as SyncProfileFetchException).message
@@ -346,16 +338,28 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
         : null;
     final error = _error ?? loadError;
 
-    // Cold sign-in / last profile deleted - jump straight into profile
-    // creation. Mutating fields here (not via setState) is safe: we are
-    // already mid-build and the widget tree below reflects the new screen.
-    if (snap != null &&
+    // Settled empty list only — never while reloading a stale signed-out [].
+    // Mutating fields here (not via setState) is safe: we are already mid-build.
+    if (!profilesAsync.isLoading &&
+        !profilesAsync.hasError &&
+        snap != null &&
         snap.profiles.isEmpty &&
         (_screen == _Screen.choose || _screen == _Screen.manage)) {
       _screen = _Screen.create;
+      _autoOpenedCreate = true;
       _editingId = null;
       _nameCtrl.text = '';
       _avatarKey = forjaProfileAvatarKeys.first;
+    }
+
+    // Auto-open landed on create from stale empty; real profiles arrived.
+    if (_autoOpenedCreate &&
+        _screen == _Screen.create &&
+        profiles.isNotEmpty) {
+      _screen = _Screen.choose;
+      _autoOpenedCreate = false;
+      _editingId = null;
+      _error = null;
     }
 
     final showChromeBack = widget.showBack &&
@@ -386,6 +390,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                       _screen = profiles.isEmpty
                           ? _Screen.choose
                           : _Screen.manage;
+                      _autoOpenedCreate = false;
                       _editingId = null;
                       _error = null;
                     }),
@@ -525,10 +530,11 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                                 _ProfileChoice(
                                   profile: profiles[i],
                                   metrics: metrics,
-                                  active: profiles[i].id == activeProfileId,
                                   managing: managing,
-                                  enabled: !_busy,
-                                  autofocus: !_busy && i == autofocusIndex,
+                                  // Keep focus on the pressed tile while busy —
+                                  // ExcludeFocus would jump to autofocusIndex.
+                                  ignorePointer: _busy,
+                                  autofocus: i == autofocusIndex,
                                   onTap: (originRect) {
                                     final profile = profiles[i];
                                     if (managing) {
@@ -541,8 +547,8 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                               if (showAdd)
                                 _AddProfileTile(
                                   metrics: metrics,
-                                  enabled: !_busy,
-                                  autofocus: !_busy && profiles.isEmpty,
+                                  ignorePointer: _busy,
+                                  autofocus: profiles.isEmpty,
                                   onTap: _beginCreate,
                                 ),
                             ],
@@ -635,13 +641,23 @@ class _ChooserAction extends StatefulWidget {
 }
 
 class _ChooserActionState extends State<_ChooserAction> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
 
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onTap != null;
-    final highlighted = enabled && (_focused || _hovered);
     final fg = widget.primary
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.textPrimary;
@@ -655,21 +671,35 @@ class _ChooserActionState extends State<_ChooserAction> {
         showFocusBorder: false,
         showFocusFill: false,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: AnimatedOpacity(
-          opacity: enabled ? 1 : 0.45,
-          duration: const Duration(milliseconds: 120),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Text(
-              widget.label,
-              style: TextStyle(
-                color: fg,
-                fontSize: 15,
-                fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final highlighted = enabled &&
+                ShellInputPolicy.interactiveActive(
+                  ShellScope.inputPolicyOf(context),
+                  hovered: _hoveredN.value,
+                  focused: _focused,
+                  context: context,
+                );
+            return AnimatedOpacity(
+              opacity: enabled ? 1 : 0.45,
+              duration: const Duration(milliseconds: 120),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: 15,
+                    fontWeight:
+                        highlighted ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -679,14 +709,14 @@ class _ChooserActionState extends State<_ChooserAction> {
 class _AddProfileTile extends StatefulWidget {
   const _AddProfileTile({
     required this.metrics,
-    required this.enabled,
     required this.onTap,
+    this.ignorePointer = false,
     this.autofocus = false,
   });
 
   final ProfileChooserMetrics metrics;
-  final bool enabled;
   final VoidCallback onTap;
+  final bool ignorePointer;
   final bool autofocus;
 
   @override
@@ -694,62 +724,83 @@ class _AddProfileTile extends StatefulWidget {
 }
 
 class _AddProfileTileState extends State<_AddProfileTile> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = _focused || _hovered;
     final m = widget.metrics;
-    return ExcludeFocus(
-      excluding: !widget.enabled,
+    return IgnorePointer(
+      ignoring: widget.ignorePointer,
       child: FocusableControl(
-        autoFocus: widget.autofocus && widget.enabled,
-        onTap: widget.enabled ? widget.onTap : null,
+        autoFocus: widget.autofocus,
+        onTap: widget.ignorePointer ? null : widget.onTap,
         borderRadius: 8,
         scaleOnFocus: 1.06,
         showFocusBorder: false,
         showFocusFill: false,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: SizedBox(
-          width: m.tileWidth,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: m.avatarSize,
-                height: m.avatarSize,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4.5),
-                  border: Border.all(
-                    color: highlighted
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.25),
-                    width: 3,
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final highlighted = ShellInputPolicy.interactiveActive(
+              ShellScope.inputPolicyOf(context),
+              hovered: _hoveredN.value,
+              focused: _focused,
+              context: context,
+            );
+            return SizedBox(
+              width: m.tileWidth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: m.avatarSize,
+                    height: m.avatarSize,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4.5),
+                      border: Border.all(
+                        color: highlighted
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.25),
+                        width: 3,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.add_rounded,
+                      size: m.avatarSize * 0.5,
+                      color: highlighted
+                          ? ForjaShellColors.textPrimary
+                          : ForjaShellColors.textSecondary,
+                    ),
                   ),
-                ),
-                child: Icon(
-                  Icons.add_rounded,
-                  size: m.avatarSize * 0.5,
-                  color: highlighted
-                      ? ForjaShellColors.textPrimary
-                      : ForjaShellColors.textSecondary,
-                ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Add profile',
+                    style: TextStyle(
+                      color: highlighted
+                          ? ForjaShellColors.textPrimary
+                          : ForjaShellColors.textSecondary,
+                      fontSize: m.isTv ? 13 : 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Add profile',
-                style: TextStyle(
-                  color: highlighted
-                      ? ForjaShellColors.textPrimary
-                      : ForjaShellColors.textSecondary,
-                  fontSize: m.isTv ? 13 : 15,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -760,18 +811,16 @@ class _ProfileChoice extends StatefulWidget {
   const _ProfileChoice({
     required this.profile,
     required this.metrics,
-    required this.active,
     required this.managing,
-    required this.enabled,
     required this.onTap,
+    this.ignorePointer = false,
     this.autofocus = false,
   });
 
   final SyncProfile profile;
   final ProfileChooserMetrics metrics;
-  final bool active;
   final bool managing;
-  final bool enabled;
+  final bool ignorePointer;
   final bool autofocus;
   final void Function(Rect? avatarOrigin) onTap;
 
@@ -781,8 +830,19 @@ class _ProfileChoice extends StatefulWidget {
 
 class _ProfileChoiceState extends State<_ProfileChoice> {
   final GlobalKey _avatarKey = GlobalKey();
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
 
   Rect? _avatarOriginRect() {
     final box = _avatarKey.currentContext?.findRenderObject() as RenderBox?;
@@ -792,20 +852,20 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
   }
 
   void _handleTap() {
-    if (!widget.enabled) return;
+    if (widget.ignorePointer) return;
     widget.onTap(_avatarOriginRect());
   }
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = _focused || _hovered;
-    final selected = highlighted || (!widget.managing && widget.active);
     final m = widget.metrics;
-    return ExcludeFocus(
-      excluding: !widget.enabled,
+    // IgnorePointer blocks double-OK; do not ExcludeFocus — that steals the
+    // D-pad highlight to the active/autofocus profile while splash is pending.
+    return IgnorePointer(
+      ignoring: widget.ignorePointer,
       child: FocusableControl(
-        autoFocus: widget.autofocus && widget.enabled,
-        onTap: widget.enabled ? _handleTap : null,
+        autoFocus: widget.autofocus,
+        onTap: widget.ignorePointer ? null : _handleTap,
         borderRadius: 8,
         scaleOnFocus: 1.06,
         // Avatar [ForjaProfileAvatar.selected] is the hover/focus cue -
@@ -813,40 +873,50 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
         showFocusBorder: false,
         showFocusFill: false,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: SizedBox(
-          width: m.tileWidth,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              KeyedSubtree(
-                key: _avatarKey,
-                child: ForjaProfileAvatar(
-                  avatarKey: widget.profile.avatarKey,
-                  name: widget.profile.name,
-                  size: m.avatarSize,
-                  selected: selected,
-                  editing: widget.managing,
-                ),
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final highlighted = ShellInputPolicy.interactiveActive(
+              ShellScope.inputPolicyOf(context),
+              hovered: _hoveredN.value,
+              focused: _focused,
+              context: context,
+            );
+            return SizedBox(
+              width: m.tileWidth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  KeyedSubtree(
+                    key: _avatarKey,
+                    child: ForjaProfileAvatar(
+                      avatarKey: widget.profile.avatarKey,
+                      name: widget.profile.name,
+                      size: m.avatarSize,
+                      selected: highlighted,
+                      editing: widget.managing,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.profile.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: highlighted
+                          ? ForjaShellColors.textPrimary
+                          : ForjaShellColors.textSecondary,
+                      fontSize: m.isTv ? 13 : 15,
+                      fontWeight:
+                          highlighted ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                widget.profile.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: selected
-                      ? ForjaShellColors.textPrimary
-                      : ForjaShellColors.textSecondary,
-                  fontSize: m.isTv ? 13 : 15,
-                  fontWeight: (!widget.managing && widget.active)
-                      ? FontWeight.w700
-                      : FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -885,6 +955,10 @@ class _ProfileEditor extends StatefulWidget {
 }
 
 class _ProfileEditorState extends State<_ProfileEditor> {
+  late final FocusNode _saveFocus = FocusNode(debugLabel: 'profile-save');
+  late final FocusNode _cancelFocus = FocusNode(debugLabel: 'profile-cancel');
+  late final FocusNode _deleteFocus = FocusNode(debugLabel: 'profile-delete');
+
   @override
   void initState() {
     super.initState();
@@ -903,10 +977,49 @@ class _ProfileEditorState extends State<_ProfileEditor> {
   @override
   void dispose() {
     widget.nameController.removeListener(_onName);
+    _saveFocus.dispose();
+    _cancelFocus.dispose();
+    _deleteFocus.dispose();
     super.dispose();
   }
 
   void _onName() => setState(() {});
+
+  /// App-root [DirectionalFocusAction] no-ops ←/→ — drive spatial walk here.
+  KeyEventResult _actionKey(FocusNode node, KeyEvent event) {
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return KeyEventResult.ignored;
+    }
+    if (event is KeyUpEvent) {
+      ShellTvHoldAccel.note(event);
+      return KeyEventResult.ignored;
+    }
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    ShellTvHoldAccel.note(event);
+    final key = event.logicalKey;
+    TraversalDirection? direction;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      direction = TraversalDirection.left;
+    } else if (key == LogicalKeyboardKey.arrowRight) {
+      direction = TraversalDirection.right;
+    } else if (key == LogicalKeyboardKey.arrowUp) {
+      direction = TraversalDirection.up;
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      direction = TraversalDirection.down;
+    }
+    if (direction == null) return KeyEventResult.ignored;
+    final vertical = direction == TraversalDirection.up ||
+        direction == TraversalDirection.down;
+    final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
+    var n = FocusManager.instance.primaryFocus ?? node;
+    var moved = false;
+    for (var i = 0; i < steps; i++) {
+      if (!n.focusInDirection(direction)) break;
+      moved = true;
+      n = FocusManager.instance.primaryFocus ?? n;
+    }
+    return moved ? KeyEventResult.handled : KeyEventResult.ignored;
+  }
 
   Widget _avatarPick(String key) {
     final selected = key == widget.avatarKey;
@@ -1006,27 +1119,39 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                 ),
               ],
               const SizedBox(height: 20),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  ForjaButton.primary(
-                    label: widget.saving ? 'Saving…' : 'Save profile',
-                    onPressed:
-                        widget.saving || name.isEmpty ? null : widget.onSave,
-                    busy: widget.saving,
-                  ),
-                  if (widget.canCancel)
-                    ForjaButton(
-                      label: 'Cancel',
-                      onPressed: widget.saving ? null : widget.onCancel,
+              FocusTraversalGroup(
+                policy: ReadingOrderTraversalPolicy(),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    Button(
+                      variant: ButtonVariant.primary,
+                      label: widget.saving ? 'Saving…' : 'Save profile',
+                      onPressed: widget.saving || name.isEmpty
+                          ? null
+                          : widget.onSave,
+                      loading: widget.saving,
+                      focusNode: _saveFocus,
+                      onKeyEvent: _actionKey,
                     ),
-                  if (widget.canDelete)
-                    ForjaButton.destructive(
-                      label: 'Delete profile',
-                      onPressed: widget.saving ? null : widget.onDelete,
-                    ),
-                ],
+                    if (widget.canCancel)
+                      Button(
+                        label: 'Cancel',
+                        onPressed: widget.saving ? null : widget.onCancel,
+                        focusNode: _cancelFocus,
+                        onKeyEvent: _actionKey,
+                      ),
+                    if (widget.canDelete)
+                      Button(
+                        variant: ButtonVariant.destructive,
+                        label: 'Delete profile',
+                        onPressed: widget.saving ? null : widget.onDelete,
+                        focusNode: _deleteFocus,
+                        onKeyEvent: _actionKey,
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1055,12 +1180,22 @@ class _ProfileAvatarPick extends StatefulWidget {
 }
 
 class _ProfileAvatarPickState extends State<_ProfileAvatarPick> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
-  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = _focused || _hovered || widget.selected;
     return ExcludeFocus(
       excluding: !widget.enabled,
       child: FocusableControl(
@@ -1070,12 +1205,24 @@ class _ProfileAvatarPickState extends State<_ProfileAvatarPick> {
         showFocusBorder: false,
         showFocusFill: false,
         onFocusChange: (focused) => setState(() => _focused = focused),
-        onHoverChange: (hovered) => setState(() => _hovered = hovered),
-        child: ForjaProfileAvatar(
-          avatarKey: widget.avatarKey,
-          name: widget.avatarKey,
-          size: 56,
-          selected: highlighted,
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) {
+            final highlighted = widget.selected ||
+                ShellInputPolicy.interactiveActive(
+                  ShellScope.inputPolicyOf(context),
+                  hovered: _hoveredN.value,
+                  focused: _focused,
+                  context: context,
+                );
+            return ForjaProfileAvatar(
+              avatarKey: widget.avatarKey,
+              name: widget.avatarKey,
+              size: 56,
+              selected: highlighted,
+            );
+          },
         ),
       ),
     );

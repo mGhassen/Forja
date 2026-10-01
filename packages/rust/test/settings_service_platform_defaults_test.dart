@@ -5,17 +5,6 @@ import 'helpers/rust_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
 
-/// Pre–RFC-081 rail (hub packs in platform defaults). Legacy shell migrations
-/// still rewrite *to* this list — not host-only [PlatformDefaults.defaultNavIds].
-const _legacyPackSeededDefaultNavIds = [
-  'home',
-  'asian_drama',
-  'anime',
-  'iptv',
-  'live_sports',
-  'mylist',
-];
-
 void main() {
   late Directory tmp;
   var storeCounter = 0;
@@ -43,6 +32,7 @@ void main() {
   setUp(() async {
     SettingsService.configurePlatformProfile(PlatformProfile.phone);
     SettingsService.resetNavbarLockForTest();
+    SettingsService.resetAddonFeatureMemoryForTest();
     await openFreshStore();
   });
 
@@ -297,32 +287,38 @@ void main() {
   });
 
   test(
-    'legacy untouched nav defaults migrate to the current default',
+    'legacy prefs with opaque hub ids are left alone (no pack rewrite)',
     () async {
       await kvSetStringList('navbar_config', const [
         'home',
-        'search',
-        'mylist',
+        'lists',
       ]);
       await kvSetStringList(
         'navbar_known_ids',
         List.from(SettingsService.allNavIds),
       );
-      await kvSetString('navbar_shell_080', '1');
-      await kvSetString('navbar_shell_081', '1');
-      await kvSetString('navbar_shell_084', '1');
-      await kvSetString('navbar_shell_085', '1');
-      await kvSetString('navbar_shell_086', '1');
-      await kvSetString('navbar_shell_087', '1');
-      await kvSetString('navbar_shell_088', '1');
+      for (final k in [
+        'navbar_shell_080',
+        'navbar_shell_081',
+        'navbar_shell_084',
+        'navbar_shell_085',
+        'navbar_shell_086',
+        'navbar_shell_087',
+        'navbar_shell_088',
+        'navbar_shell_089',
+        'navbar_shell_090',
+        'navbar_shell_091',
+      ]) {
+        await kvSetString(k, '1');
+      }
 
       final nav = await SettingsService().getNavbarConfig();
 
-      expect(nav, _legacyPackSeededDefaultNavIds);
+      expect(nav, ['home', 'lists']);
     },
   );
 
-  test('Android TV legacy nav migrates to pack-seeded default', () async {
+  test('Android TV legacy nav keeps opaque hub ids (no pack rewrite)', () async {
     await kvSetStringList('navbar_config', const [
       'home',
       'search',
@@ -330,7 +326,7 @@ void main() {
       'asian_drama',
       'iptv',
       'live_sports',
-      'mylist',
+      'lists',
     ]);
     await kvSetStringList(
       'navbar_known_ids',
@@ -347,10 +343,17 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav, _legacyPackSeededDefaultNavIds);
+    expect(nav, [
+      'home',
+      'anime',
+      'asian_drama',
+      'iptv',
+      'live_sports',
+      'lists',
+    ]);
   });
 
-  test('Android TV custom nav is not overwritten by shell 088', () async {
+  test('Android TV custom nav drops archived search id', () async {
     await kvSetStringList('navbar_config', const ['home', 'iptv', 'search']);
     await kvSetStringList(
       'navbar_known_ids',
@@ -367,10 +370,49 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav, ['home', 'iptv', 'search']);
+    expect(nav, ['home', 'iptv']);
   });
 
-  test('Android TV search-first legacy migrates to pack-seeded default', () async {
+  test('getNavbarTabOrder omits archived host ids', () async {
+    await kvSetStringList('navbar_config', const ['home', 'iptv']);
+    await kvSetStringList('navbar_known_ids', const [
+      'home',
+      'iptv',
+      'search',
+      'discover',
+      'jellyfin',
+    ]);
+    await kvSetStringList('navbar_tab_order', const [
+      'home',
+      'iptv',
+      'search',
+      'discover',
+      'jellyfin',
+    ]);
+    for (final k in [
+      'navbar_shell_080',
+      'navbar_shell_081',
+      'navbar_shell_084',
+      'navbar_shell_085',
+      'navbar_shell_086',
+      'navbar_shell_087',
+      'navbar_shell_088',
+      'navbar_shell_089',
+      'navbar_shell_090',
+      'navbar_shell_091',
+    ]) {
+      await kvSetString(k, '1');
+    }
+
+    final order = await SettingsService().getNavbarTabOrder();
+    expect(order, isNot(contains('search')));
+    expect(order, isNot(contains('discover')));
+    expect(order, isNot(contains('jellyfin')));
+    expect(order, contains('home'));
+    expect(order, contains('iptv'));
+  });
+
+  test('Android TV search-first legacy migrates to home-first only', () async {
     await kvSetStringList('navbar_config', const [
       'search',
       'home',
@@ -378,7 +420,7 @@ void main() {
       'asian_drama',
       'iptv',
       'live_sports',
-      'mylist',
+      'lists',
     ]);
     await kvSetStringList(
       'navbar_known_ids',
@@ -393,7 +435,14 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav, _legacyPackSeededDefaultNavIds);
+    expect(nav, [
+      'home',
+      'anime',
+      'asian_drama',
+      'iptv',
+      'live_sports',
+      'lists',
+    ]);
   });
 
   test(
@@ -406,7 +455,7 @@ void main() {
         'asian_drama',
         'iptv',
         'live_sports',
-        'mylist',
+        'lists',
       ]);
       await kvSetStringList(
         'navbar_known_ids',
@@ -424,7 +473,10 @@ void main() {
       final service = SettingsService();
       final nav = await service.getNavbarConfig();
 
-      expect(nav, _legacyPackSeededDefaultNavIds);
+      // Pack-seeded rewrite removed — opaque prefs stay (search archived-filtered).
+      expect(nav, isNot(contains('search')));
+      expect(nav, contains('home'));
+      expect(nav, contains('lists'));
     },
   );
 
@@ -438,7 +490,7 @@ void main() {
         'asian_drama',
         'iptv',
         'live_sports',
-        'mylist',
+        'lists',
       ]);
       await kvSetStringList(
         'navbar_known_ids',
@@ -455,12 +507,15 @@ void main() {
 
       final nav = await SettingsService().getNavbarConfig();
 
-      expect(nav, _legacyPackSeededDefaultNavIds);
+      // Pack-seeded rewrite removed — opaque prefs stay (search archived-filtered).
+      expect(nav, isNot(contains('search')));
+      expect(nav, contains('home'));
+      expect(nav, contains('lists'));
     },
   );
 
   test('desktop legacy search-first nav migrates to pack-seeded default', () async {
-    await kvSetStringList('navbar_config', const ['search', 'home', 'mylist']);
+    await kvSetStringList('navbar_config', const ['search', 'home', 'lists']);
     await kvSetStringList(
       'navbar_known_ids',
       List.from(SettingsService.allNavIds),
@@ -475,7 +530,10 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav, _legacyPackSeededDefaultNavIds);
+    // Pack-seeded rewrite removed — opaque prefs stay (search archived-filtered).
+      expect(nav, isNot(contains('search')));
+      expect(nav, contains('home'));
+      expect(nav, contains('lists'));
   });
 
   test(
@@ -488,7 +546,7 @@ void main() {
         'anime',
         'iptv',
         'live_sports',
-        'mylist',
+        'lists',
       ]);
       await kvSetStringList(
         'navbar_known_ids',
@@ -506,7 +564,10 @@ void main() {
 
       final nav = await SettingsService().getNavbarConfig();
 
-      expect(nav, _legacyPackSeededDefaultNavIds);
+      // Pack-seeded rewrite removed — opaque prefs stay (search archived-filtered).
+      expect(nav, isNot(contains('search')));
+      expect(nav, contains('home'));
+      expect(nav, contains('lists'));
       expect(nav, isNot(contains('search')));
     },
   );
@@ -586,16 +647,16 @@ void main() {
       'asian_drama',
       'anime',
       'iptv',
-      'mylist',
+      'lists',
     ]);
     await service.setNavbarConfig(
-      const ['home', 'asian_drama', 'iptv', 'mylist'],
+      const ['home', 'asian_drama', 'iptv', 'lists'],
       tabOrder: const [
         'home',
         'asian_drama',
         'anime',
         'iptv',
-        'mylist',
+        'lists',
       ],
     );
 
@@ -607,7 +668,7 @@ void main() {
       'asian_drama',
       'anime',
       'iptv',
-      'mylist',
+      'lists',
     ]);
   });
 
@@ -619,18 +680,18 @@ void main() {
       'asian_drama',
       'anime',
       'iptv',
-      'mylist',
+      'lists',
       'kids',
     ]);
     await service.setNavbarConfig(
-      const ['home', 'asian_drama', 'iptv', 'mylist'],
+      const ['home', 'asian_drama', 'iptv', 'lists'],
       tabOrder: const [
         'home',
         'kids',
         'asian_drama',
         'anime',
         'iptv',
-        'mylist',
+        'lists',
       ],
     );
 
@@ -641,7 +702,7 @@ void main() {
       'home',
       'asian_drama',
       'iptv',
-      'mylist',
+      'lists',
       'kids',
     ]);
     const hubs = {
@@ -649,7 +710,7 @@ void main() {
       'asian_drama',
       'anime',
       'iptv',
-      'mylist',
+      'lists',
       'kids',
     };
     expect(
@@ -662,7 +723,7 @@ void main() {
         'asian_drama',
         'anime',
         'iptv',
-        'mylist',
+        'lists',
         'kids',
       ],
     );
@@ -700,7 +761,7 @@ void main() {
         'home',
         'anime',
         'asian_drama',
-        'mylist',
+        'lists',
       },
     );
 
@@ -709,7 +770,7 @@ void main() {
       'home',
       'anime',
       'asian_drama',
-      'mylist',
+      'lists',
     ]);
   });
 

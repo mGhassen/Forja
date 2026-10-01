@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/features/settings/shell/visibility_provider.dart';
+
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/brand/animated_logo.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Shown when every shell feature tab is hidden — guides users to Plugins,
 /// Addons, and Features instead of landing on an empty Settings body.
@@ -58,7 +64,10 @@ class _ShellEmptyFeaturesScreenState
 
   @override
   void dispose() {
-    TvHeroActions.unbind('settings');
+    // Do not TvHeroActions.unbind('settings') here. Gate → Settings swap runs
+    // dispose *after* SettingsHubScaffold.initState; a full unbind wipes
+    // pageBack / ←-on-row-edge and traps D-pad inside Features.
+    // Settings clears empty-shell handlers on its own bind.
     for (final n in _cardFocus) {
       n.dispose();
     }
@@ -148,8 +157,10 @@ class _ShellEmptyFeaturesScreenState
         : profile == ShellProfile.mobile
             ? 72.0
             : 88.0;
-    final titleSize = tv ? 20.0 : 22.0;
-    final bodySize = tv ? 13.0 : 14.0;
+    final titleSize =
+        tv ? ShellTokens.tvTitleFontSize : 22.0;
+    final bodySize =
+        tv ? ShellTokens.tvBodyFontSize : 14.0;
     final hPad = tv
         ? 16.0
         : profile == ShellProfile.mobile
@@ -208,7 +219,11 @@ class _ShellEmptyFeaturesScreenState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       ForjaLogoIdle(logoHeight: logoHeight),
-                      SizedBox(height: tv ? 14 : 28),
+                      SizedBox(
+                        height: tv
+                            ? ShellTokens.emptyFeaturesTitleGapTv
+                            : ShellTokens.emptyFeaturesTitleGapDesktop,
+                      ),
                       Text(
                         'Turn on a feature to get started',
                         textAlign: TextAlign.center,
@@ -220,7 +235,11 @@ class _ShellEmptyFeaturesScreenState
                           height: 1.2,
                         ),
                       ),
-                      SizedBox(height: tv ? 10 : 14),
+                      SizedBox(
+                        height: tv
+                            ? ShellTokens.emptyFeaturesBodyGapTv
+                            : ShellTokens.emptyFeaturesBodyGapDesktop,
+                      ),
                       Text(
                         'Pick Plugins, Addons, or Features.',
                         textAlign: TextAlign.center,
@@ -234,14 +253,21 @@ class _ShellEmptyFeaturesScreenState
                           height: 1.35,
                         ),
                       ),
-                      SizedBox(height: tv ? 20 : 32),
+                      SizedBox(
+                        height: tv
+                            ? ShellTokens.emptyFeaturesCardsGapTv
+                            : ShellTokens.emptyFeaturesCardsGapDesktop,
+                      ),
                       if (horizontal)
                         IntrinsicHeight(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               for (var i = 0; i < specs.length; i++) ...[
-                                if (i > 0) SizedBox(width: tv ? 12 : 12),
+                                if (i > 0)
+                                  const SizedBox(
+                                    width: ShellTokens.emptyFeaturesCardGap,
+                                  ),
                                 Expanded(
                                   child: cardAt(
                                     i,
@@ -257,7 +283,12 @@ class _ShellEmptyFeaturesScreenState
                         Column(
                           children: [
                             for (var i = 0; i < specs.length; i++) ...[
-                              if (i > 0) SizedBox(height: tv ? 10 : 12),
+                              if (i > 0)
+                                SizedBox(
+                                  height: tv
+                                      ? ShellTokens.emptyFeaturesCardGapCompact
+                                      : ShellTokens.emptyFeaturesCardGap,
+                                ),
                               cardAt(i, expandBody: false, compact: tv),
                             ],
                           ],
@@ -338,8 +369,13 @@ class _HintCardState extends State<_HintCard> {
     final lit = _isLit(context);
     final accent = widget.spec.accent;
     final pad = widget.compact ? 14.0 : 18.0;
-    final titleSize = widget.compact ? 15.0 : 16.0;
-    final bodySize = widget.compact ? 12.0 : 13.0;
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final titleSize = tv
+        ? ShellTokens.tvBodyFontSize
+        : (widget.compact ? 15.0 : 16.0);
+    final bodySize = tv
+        ? ShellTokens.tvMetaFontSize
+        : (widget.compact ? 12.0 : 13.0);
     final iconSize = widget.compact ? 22.0 : 24.0;
     final radius = 16.0;
 
@@ -353,7 +389,7 @@ class _HintCardState extends State<_HintCard> {
     final borderColor = accent;
 
     final inner = AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
+      duration: ShellTokens.emptyFeaturesCardAnim,
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: lit ? litBg : idleBg,
@@ -366,7 +402,11 @@ class _HintCardState extends State<_HintCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(widget.spec.icon, size: iconSize, color: iconColor),
-            SizedBox(height: widget.compact ? 10 : 12),
+            SizedBox(
+              height: widget.compact
+                  ? ShellTokens.emptyFeaturesCardGapCompact
+                  : ShellTokens.emptyFeaturesCardGap,
+            ),
             Text(
               widget.spec.title,
               style: GoogleFonts.plusJakartaSans(
@@ -430,7 +470,7 @@ class _HintCardState extends State<_HintCard> {
         onRightEdge: widget.onFocusRight,
         onUpEdge: widget.onFocusUp,
         onDownEdge: widget.onFocusDown,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         child: inner,
       );
     }

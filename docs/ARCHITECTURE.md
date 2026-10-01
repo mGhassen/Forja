@@ -23,6 +23,7 @@ Forja is a **GPL-2.0 melos + Cargo monorepo**: one cross-platform Flutter produc
 | C3–C5 hosts (WebView, Nuvio/`flutter_js`, WASM) | `apps/forja` (permanent) |
 | Widgets, navigation, theme, OAuth UX, **Riverpod host state** ([RFC-047](rfc/047-[open]-riverpod-state-migration.md)) | Host (`apps/forja`) |
 | Dart FFI bridge + thin catalog/playback glue | `packages/rust` (permanent) |
+| Design system (tokens → components → kit) | `packages/forja_foundation` (RFC-106) |
 | Web portal auth (TS) | `packages/forja-auth` + `apps/web` |
 
 ### Target end-state (Flutter product)
@@ -43,7 +44,7 @@ flowchart TB
   Flutter --> DartFFI --> FFICrate
 ```
 
-Normalized Flutter engine path: **`packages/rust` + `crates/*`**. Web portal and [forja-admin](https://github.com/mGhassen/forja-admin) are separate surfaces.
+Normalized Flutter path: **`packages/rust` + `packages/forja_foundation` + `crates/*`**. Web portal and [forja-admin](https://github.com/mGhassen/forja-admin) are separate surfaces.
 
 ### Layer cake (Flutter)
 
@@ -51,6 +52,8 @@ Normalized Flutter engine path: **`packages/rust` + `crates/*`**. Web portal and
 ┌──────────────────────────────────────────┐
 │  apps/forja — widgets, shell, player     │
 │  C3–C5 hosts, OAuth UX, Riverpod         │
+├──────────────────────────────────────────┤
+│  packages/forja_foundation — design sys  │
 ├──────────────────────────────────────────┤
 │  packages/rust — FFI + thin glue         │
 ├──────────────────────────────────────────┤
@@ -72,6 +75,7 @@ Forja/
 │   └── web/             Portal (Supabase) — download, account, …
 ├── packages/
 │   ├── rust/            Dart FFI bridge + thin glue (permanent)
+│   ├── forja_foundation/ Design system (RFC-106)
 │   └── forja-auth/      Shared TS auth helpers for web
 ├── crates/              Rust engine workspace → libffi
 ├── docs/                Architecture, migration, RFCs, features
@@ -86,6 +90,7 @@ Sibling: **[forja-admin](https://github.com/mGhassen/forja-admin)** — ops cons
 | `apps/web` | Web portal | **Permanent** (separate from Flutter engine) |
 | [forja-admin](https://github.com/mGhassen/forja-admin) | Ops console | **Permanent** (external repo) |
 | `packages/rust` | Dart FFI bridge + parity tests + thin services | **Permanent** |
+| `packages/forja_foundation` | Design system (tokens → kit) | **Permanent** ([RFC-106](rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md)) |
 | `packages/forja-auth` | TS auth for web (+ vendored copy in forja-admin) | **Permanent** (web stack) |
 | ~~`packages/api`~~ / ~~`packages/{core,storage,streaming}`~~ | Legacy Dart engines | **Deleted** (waves 1–2) |
 | `crates/*` | Rust engine | **Permanent** |
@@ -93,8 +98,9 @@ Sibling: **[forja-admin](https://github.com/mGhassen/forja-admin)** — ops cons
 ### Dependency rules (Flutter)
 
 ```
-apps/forja → packages/rust only (engine)
+apps/forja → packages/rust (engine) + packages/forja_foundation (DS)
 packages/rust → never import apps/forja
+packages/forja_foundation → never import apps/forja / packages/rust
 ```
 
 Cross-feature navigation uses `shell/routing/app_router.dart` and `shell/bus/shell_bus.dart` — features must not import other features' screens directly. See [architecture/README.md](architecture/README.md).
@@ -130,9 +136,9 @@ Workspace members (`crates/Cargo.toml`):
 | **`anime`** | Anime extractors, resolve, subtitles, mdblist, introdb, lyrics |
 | **`live-matches`** | Live sports catalog / fetch pipelines |
 | **`indexer`** | Jackett / Prowlarr HTTP |
-| **`debrid`** | Real-Debrid, AllDebrid, Premiumize, TorBox, Debrid-Link |
+| **`debrid`** | **Removed** — magnet resolve is `forja-packs/debrid/` (`kind: debrid`) |
 | **`music`** | Deezer / YouTube music HTTP |
-| **`engine`** | QuickJS extract host (crypto, PoW, KissKh kkey, hop, fetch) + provider reliability score store |
+| **`engine`** | QuickJS extract host (generic crypto/scrypt, hop, fetch) + provider reliability score store |
 
 Vendored patch: `crates/third_party/librqbit-dualstack-sockets` — iOS socket binding fix for librqbit.
 
@@ -229,6 +235,7 @@ Long-lived localhost axum servers run **inside** the `libffi` process — not se
 | `/health` | Liveness |
 | `/proxy?url=&headers=` | Generic upstream fetch — CORS bypass, Range, headers |
 | `/hls-proxy` | HLS playlist rewrite + PNG-wrapper TS strip |
+| `/ext/{id}/…` | Path session for external players (cookie DASH/HLS relative URIs) |
 | `/proxy/{token}` | Pre-registered upstream by token |
 
 Additional proxy modules (mega, jellyfin, comic, seek111477, …) live under `crates/proxy`.
@@ -276,6 +283,7 @@ Host prefs / settings facades live in **`packages/rust/lib/src/`** (`SettingsSer
 | Package | Role |
 |---------|------|
 | `packages/rust` | Dart FFI bridge, thin catalog/playback services, parity tests |
+| `packages/forja_foundation` | Design system — tokens, components, kit ([RFC-106](rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md)) |
 | `packages/forja-auth` | Shared TypeScript auth for `apps/web` |
 
 Deleted engine packages: `api`, `scrapers`, `webstreamr`, `streaming`, `storage`, `core`, legacy `forja_*`.
@@ -283,7 +291,9 @@ Deleted engine packages: `api`, `scrapers`, `webstreamr`, `streaming`, `storage`
 ```mermaid
 flowchart BT
   rust[packages/rust]
+  ds[packages/forja_foundation]
   app["apps/forja"] --> rust
+  app --> ds
   rust --> crates[crates/*]
   web["apps/web"] --> auth[packages/forja-auth]
 ```

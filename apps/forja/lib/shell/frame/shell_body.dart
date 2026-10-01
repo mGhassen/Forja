@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 
 class ShellBody extends StatelessWidget {
   const ShellBody({
@@ -37,23 +38,22 @@ class ShellBody extends StatelessWidget {
                       key: ValueKey<String>('shell-tab-${visibleIds[i]}'),
                       visible: i == selectedIndex,
                       maintainState: true,
-                      // Flutter requires maintainAnimation when maintainSize is true.
-                      // Pause tickers on hidden tabs via TickerMode below instead.
+                      // Offstage, not maintainSize. maintainSize laid out every
+                      // kept-alive hub on each shell rebuild, so a click waited
+                      // on four other full pages.
                       maintainAnimation: true,
-                      maintainSize: true,
-                      // Hidden tabs must not hit-test. With maintainInteractivity,
-                      // later mounted tabs sit above the selected one in this Stack
-                      // and swallow hover/clicks (e.g. IPTV "frozen" after visiting
-                      // Settings / Live Sports).
+                      maintainSize: false,
                       maintainInteractivity: false,
                       child: TickerMode(
                         // Hidden tabs, and the selected tab under a fullscreen
                         // player, must not keep tickers alive — wastes CPU on
                         // ATV while decode needs the SoC.
                         enabled: i == selectedIndex && !playerActive,
-                        child: mountedTabIds.contains(visibleIds[i])
-                            ? tabFor(visibleIds[i])
-                            : const SizedBox.shrink(),
+                        child: _tabSlot(
+                          context,
+                          index: i,
+                          tabId: visibleIds[i],
+                        ),
                       ),
                     ),
                 ],
@@ -63,5 +63,21 @@ class ShellBody extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Selected + not yet mounted used to paint [SizedBox.shrink] — blank hub
+  /// (no loading ticker, no pack structure) after pack reload / remount races.
+  Widget _tabSlot(
+    BuildContext context, {
+    required int index,
+    required String tabId,
+  }) {
+    if (mountedTabIds.contains(tabId)) {
+      return tabFor(tabId);
+    }
+    if (index == selectedIndex) {
+      return hubNeutralLoadingSkeleton(context, tabId: tabId);
+    }
+    return const SizedBox.shrink();
   }
 }

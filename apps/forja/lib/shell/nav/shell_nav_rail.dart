@@ -2,103 +2,65 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shell/nav/nav_complete_reload_hold.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
+
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/shell/focus/shell_hover_focus.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/brand/forja_profile_avatar.dart';
+import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
+import 'package:forja_foundation/blocks/shell/shell_nav_placement.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
-
-double _navRailItemSpacingForHeight({
-  required int itemCount,
-  required double maxHeight,
-  required double preferredSpacing,
-  required double itemContentHeight,
-}) {
-  if (itemCount <= 0) return preferredSpacing;
-  final naturalHeight = itemCount * (itemContentHeight + preferredSpacing);
-  if (naturalHeight <= maxHeight) return preferredSpacing;
-  return math.max(0, (maxHeight - itemCount * itemContentHeight) / itemCount);
-}
-
-double _navRailItemContentHeight({
-  required double iconSize,
-  required double labelSlotHeight,
-}) {
-  return iconSize * ShellTokens.navRailIconHoverScale +
-      ShellTokens.navRailIconUnderlineGap +
-      ShellTokens.shellNavUnderlineHeight +
-      ShellTokens.navRailIconLabelGap +
-      labelSlotHeight;
-}
-
-/// Shrink icons (then spacing) so [itemCount] rail items fit in [maxHeight].
-({double iconSize, double labelSlotHeight, double itemSpacing}) _navRailFitForHeight({
-  required int itemCount,
-  required double maxHeight,
-  required double preferredIconSize,
-  required double preferredLabelSlotHeight,
-  required double preferredSpacing,
-}) {
-  if (itemCount <= 0) {
-    return (
-      iconSize: preferredIconSize,
-      labelSlotHeight: preferredLabelSlotHeight,
-      itemSpacing: preferredSpacing,
-    );
+/// Scroll a focused rail tab into view only when it is clipped.
+void revealNavRailItem(BuildContext context) {
+  final box = context.findRenderObject();
+  if (box is! RenderBox || !box.attached || !box.hasSize) return;
+  final viewport = RenderAbstractViewport.maybeOf(box);
+  final scrollable = Scrollable.maybeOf(context);
+  if (viewport == null || scrollable == null) return;
+  final position = scrollable.position;
+  if (!position.hasContentDimensions || !position.hasPixels) return;
+  final top = viewport.getOffsetToReveal(box, 0.0).offset;
+  final height = box.size.height;
+  final pixels = position.pixels;
+  final view = position.viewportDimension;
+  const slop = 1.0;
+  double? next;
+  if (top < pixels - slop) {
+    next = top;
+  } else if (top + height > pixels + view + slop) {
+    next = top + height - view;
   }
-
-  var iconSize = preferredIconSize;
-  final labelSlotHeight = preferredLabelSlotHeight;
-  double contentHeight() => _navRailItemContentHeight(
-    iconSize: iconSize,
-    labelSlotHeight: labelSlotHeight,
-  );
-
-  var spacing = _navRailItemSpacingForHeight(
-    itemCount: itemCount,
-    maxHeight: maxHeight,
-    preferredSpacing: preferredSpacing,
-    itemContentHeight: contentHeight(),
-  );
-
-  // Prefer keeping desktop-sized icons; only compress when spacing hits ~0.
-  if (itemCount * contentHeight() <= maxHeight) {
-    return (
-      iconSize: iconSize,
-      labelSlotHeight: labelSlotHeight,
-      itemSpacing: spacing,
-    );
+  if (next == null) return;
+  next = next.clamp(position.minScrollExtent, position.maxScrollExtent);
+  if ((next - pixels).abs() < 0.5) return;
+  final policy = ShellScope.maybeOf(context)?.inputPolicy;
+  if (policy != null && policy.instantFocusChrome) {
+    position.jumpTo(next);
+    return;
   }
-
-  final minIcon = ShellTokens.navRailIconSizeMin;
-  // Solve: n * (icon * hoverScale + fixedChrome + minSpacing) <= maxHeight
-  const minSpacing = 2.0;
-  final fixedChrome = ShellTokens.navRailIconUnderlineGap +
-      ShellTokens.shellNavUnderlineHeight +
-      ShellTokens.navRailIconLabelGap;
-  final perItemBudget = maxHeight / itemCount;
-  final iconBudget =
-      (perItemBudget - fixedChrome - preferredLabelSlotHeight - minSpacing) /
-      ShellTokens.navRailIconHoverScale;
-  iconSize = iconBudget.clamp(minIcon, preferredIconSize);
-  spacing = _navRailItemSpacingForHeight(
-    itemCount: itemCount,
-    maxHeight: maxHeight,
-    preferredSpacing: preferredSpacing,
-    itemContentHeight: contentHeight(),
-  );
-  return (
-    iconSize: iconSize,
-    labelSlotHeight: labelSlotHeight,
-    itemSpacing: spacing,
+  position.animateTo(
+    next,
+    duration: const Duration(milliseconds: 140),
+    curve: Curves.easeOutCubic,
   );
 }
 
@@ -145,8 +107,8 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
           onTap: widget.onPressed,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
-            width: 34,
-            height: 34,
+            width: ShellTokens.shellNavMenuButtonHitSize,
+            height: ShellTokens.shellNavMenuButtonHitSize,
             child: Center(
               child: AnimatedScale(
                 scale: active
@@ -159,9 +121,9 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
                 child: Icon(
                   Icons.menu_rounded,
                   color: active
-                      ? ForjaShellColors.iconHover
-                      : ForjaShellColors.iconMuted,
-                  size: ShellTokens.navRailIconSize,
+                      ? ForjaShellColors.cinematic.chromeIconActive
+                      : ForjaShellColors.cinematic.chromeIconIdle,
+                  size: ShellTokens.shellNavMenuButtonIconSize,
                 ),
               ),
             ),
@@ -179,6 +141,7 @@ class ShellNavRail extends StatefulWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     this.hideLogo = false,
+    this.pageDirection = TextDirection.ltr,
   });
 
   final List<String> visibleIds;
@@ -187,6 +150,9 @@ class ShellNavRail extends StatefulWidget {
 
   /// Get-started empty shell — keep profile, hide top Forja logo.
   final bool hideLogo;
+
+  /// Writing direction of the selected hub. Moves D-pad "into the page".
+  final TextDirection pageDirection;
 
   @override
   State<ShellNavRail> createState() => _ShellNavRailState();
@@ -277,7 +243,8 @@ class _ShellNavRailState extends State<ShellNavRail> {
     if (widget.visibleIds.isEmpty) return;
     // Guest / Settings-only: empty get-started (or Settings hub) owns first
     // focus — cold-start rail steal left RIGHT/Back stuck on the Settings icon.
-    if (widget.visibleIds.length == 1 && widget.visibleIds.first == 'settings') {
+    if (widget.visibleIds.length == 1 &&
+        widget.visibleIds.first == 'settings') {
       _coldStartNavFocusDone = true;
       return;
     }
@@ -317,7 +284,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
       context,
       preferredLabelFont,
     );
-    final profileAvatarScale = shellNavRailProfileAvatarScale(context);
 
     Widget buildNavColumn({
       required double itemSpacing,
@@ -332,7 +298,8 @@ class _ShellNavRailState extends State<ShellNavRail> {
               builder: (context) {
                 final id = _navIds[i];
                 final index = _indexForId(id)!;
-                final dest = navDestinationFor(id) ??
+                final dest =
+                    navDestinationFor(id) ??
                     NavDestination(
                       id: id,
                       icon: Icons.apps_outlined,
@@ -350,6 +317,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                   labelSlotHeight: labelSlotHeight,
                   railEngaged: _railEngaged,
                   onFocusChanged: _syncFocusInRail,
+                  pageDirection: widget.pageDirection,
                 );
               },
             ),
@@ -381,62 +349,67 @@ class _ShellNavRailState extends State<ShellNavRail> {
                   onExit: (_) => setState(() => _mouseInRail = false),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final profileIconSize =
-                          preferredIconSize * profileAvatarScale;
-                      final profileSpacing =
-                          isTv ? 4.0 : metrics.navRailItemSpacing;
+                      final padV = isTv
+                          ? ShellTokens.navRailNavPadVTv
+                          : ShellTokens.navRailScrollPadV;
+                      final profileSpacing = isTv
+                          ? ShellTokens.navRailProfileSpacingTv
+                          : metrics.navRailItemSpacing;
                       final profileLabelSlot = math.max(
                         preferredLabelSlot,
                         LanPresenceMark.railSlotHeight(tv: isTv),
                       );
-                      final profileBlockHeight = settingsIndex == null
-                          ? 0.0
-                          : _navRailItemContentHeight(
-                                iconSize: profileIconSize,
-                                labelSlotHeight: profileLabelSlot,
-                              ) +
-                              profileSpacing;
-                      const navPadV = 4.0;
-                      final navMaxHeight = math.max(
-                        0.0,
-                        constraints.maxHeight -
-                            profileBlockHeight -
-                            (isTv ? navPadV * 2 : 16),
+                      final showBoostedProfile =
+                          settingsIndex != null && showDesktopProfile;
+                      // Peer-size profile only in compact shell (☰ drawer width).
+                      final compactShell = ShellTokens.usesCompactNavDrawer(
+                        context,
                       );
-                      final fit = _navRailFitForHeight(
-                        itemCount: _navIds.length,
-                        maxHeight: navMaxHeight,
-                        preferredIconSize: preferredIconSize,
-                        preferredLabelSlotHeight: preferredLabelSlot,
-                        preferredSpacing: metrics.navRailItemSpacing,
-                      );
+                      final profileIconSize =
+                          showBoostedProfile && !compactShell
+                          ? preferredIconSize *
+                                shellNavRailProfileAvatarScale(context)
+                          : preferredIconSize;
+
+                      // Paint at hover size; idle AnimatedScale downscales —
+                      // upscaling a smaller SVG was the stutter/flash.
+                      final profilePaintSize =
+                          profileIconSize * ShellTokens.navRailIconHoverScale;
 
                       final navColumn = buildNavColumn(
-                        itemSpacing: fit.itemSpacing,
-                        iconSize: fit.iconSize,
-                        labelSlotHeight: fit.labelSlotHeight,
+                        itemSpacing: metrics.navRailItemSpacing,
+                        iconSize: preferredIconSize,
+                        labelSlotHeight: preferredLabelSlot,
                       );
 
-                      final navArea = isTv
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: navPadV,
-                              ),
-                              child: navColumn,
-                            )
-                          : SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minHeight: math.max(0, navMaxHeight),
-                                ),
-                                child: navColumn,
-                              ),
-                            );
+                      final oneItem = shellNavRailItemContentHeight(
+                        context,
+                        iconSize: preferredIconSize,
+                        labelFontSize: preferredLabelFont,
+                        labelSlotHeight: preferredLabelSlot,
+                      );
+                      final navExtent =
+                          _navIds.length * (oneItem + metrics.navRailItemSpacing);
 
                       return Column(
                         children: [
-                          Expanded(child: navArea),
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, navBox) {
+                                // Fixed icon size and gap. Extra hubs scroll;
+                                // the profile stays pinned. When the icons
+                                // fit, skip the scroll view so desktop does
+                                // not paint a bar, and center them.
+                                if (navExtent <= navBox.maxHeight) {
+                                  return navColumn;
+                                }
+                                return SingleChildScrollView(
+                                  padding: EdgeInsets.symmetric(vertical: padV),
+                                  child: navColumn,
+                                );
+                              },
+                            ),
+                          ),
                           if (settingsIndex != null)
                             ValueListenableBuilder<LanPresence>(
                               valueListenable:
@@ -444,13 +417,14 @@ class _ShellNavRailState extends State<ShellNavRail> {
                               builder: (context, lanPresence, _) {
                                 return _ShellNavRailItem(
                                   key: const ValueKey('nav-rail-settings'),
+                                  pageDirection: widget.pageDirection,
                                   destination: navDestinations['settings']!,
                                   label: showDesktopProfile
                                       ? _profileLabel
                                       : null,
                                   icon: showDesktopProfile
                                       ? ForjaActiveProfileAvatar(
-                                          size: profileIconSize,
+                                          size: profilePaintSize,
                                           showBorder: false,
                                           onProfile: _onActiveProfile,
                                         )
@@ -461,7 +435,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                                   customIconSize: showDesktopProfile
                                       ? profileIconSize
                                       : null,
-                                  iconSize: fit.iconSize,
+                                  iconSize: preferredIconSize,
                                   labelFontSize: preferredLabelFont,
                                   labelSlotHeight: profileLabelSlot,
                                   alwaysShowLabel: showDesktopProfile,
@@ -470,9 +444,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                                   selected:
                                       settingsIndex == widget.selectedIndex,
                                   onTap: () {
-                                    widget.onDestinationSelected(
-                                      settingsIndex,
-                                    );
+                                    widget.onDestinationSelected(settingsIndex);
                                   },
                                   itemSpacing: profileSpacing,
                                   railEngaged: _railEngaged,
@@ -513,9 +485,10 @@ class _RailLogoState extends State<_RailLogo> {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ShellScope.metricsOf(context);
     final logo = Image.asset(
       'assets/icon/logo-dark.png',
-      width: ShellTokens.navRailLogoWidth,
+      width: metrics.navRailLogoWidth,
       fit: BoxFit.contain,
     );
 
@@ -553,7 +526,8 @@ class _RailLogoState extends State<_RailLogo> {
     final onTap = widget.onTap;
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final active = onTap != null &&
+    final active =
+        onTap != null &&
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _hover,
@@ -562,7 +536,7 @@ class _RailLogoState extends State<_RailLogo> {
         );
 
     content = AnimatedScale(
-      scale: active ? 1.04 : 1,
+      scale: active ? ShellTokens.navRailLogoHoverScale : 1,
       duration: policy.instantFocusChrome
           ? Duration.zero
           : ShellTokens.navSelectionAnimation,
@@ -572,13 +546,13 @@ class _RailLogoState extends State<_RailLogo> {
 
     if (onTap == null) {
       return SizedBox(
-        width: ShellTokens.navRailWidth,
+        width: metrics.navRailWidth,
         child: Center(child: content),
       );
     }
 
     return SizedBox(
-      width: ShellTokens.navRailWidth,
+      width: metrics.navRailWidth,
       child: Center(
         child: Focus(
           onFocusChange: (focused) => setState(() => _focused = focused),
@@ -599,7 +573,10 @@ class _RailLogoState extends State<_RailLogo> {
               onTap: onTap,
               behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: ShellTokens.navRailLogoTapPadding,
+                  horizontal: ShellTokens.navRailLogoTapPaddingWide,
+                ),
                 child: content,
               ),
             ),
@@ -790,12 +767,8 @@ class _NavRailLabel extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        LanPresenceMark(
-          presence: presence,
-          size: markSize,
-          showBar: showBar,
-        ),
-        const SizedBox(width: 5),
+        LanPresenceMark(presence: presence, size: markSize, showBar: showBar),
+        const SizedBox(width: ShellTokens.navRailLanMarkGap),
         Flexible(child: label),
       ],
     );
@@ -820,6 +793,7 @@ class _ShellNavRailItem extends StatefulWidget {
     this.customIconSize,
     this.alwaysShowLabel = false,
     this.desaturateCustomIconWhenIdle = false,
+    this.pageDirection = TextDirection.ltr,
   });
 
   final NavDestination destination;
@@ -830,8 +804,10 @@ class _ShellNavRailItem extends StatefulWidget {
   final VoidCallback onFocusChanged;
   final String? label;
   final Widget? icon;
+
   /// LAN server (dot) + session (bar) before the profile label.
   final LanPresence labelPresence;
+
   /// Fitted / preferred glyph size for destination icons.
   final double? iconSize;
   final double? labelFontSize;
@@ -839,6 +815,7 @@ class _ShellNavRailItem extends StatefulWidget {
   final double? customIconSize;
   final bool alwaysShowLabel;
   final bool desaturateCustomIconWhenIdle;
+  final TextDirection pageDirection;
 
   @override
   State<_ShellNavRailItem> createState() => _ShellNavRailItemState();
@@ -850,19 +827,60 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   bool _focused = false;
   bool _typing = false;
   Timer? _revealTimer;
+  bool _mouseDownDidNavigate = false;
   Timer? _providerRevealTimer;
   Timer? _providerHoldTimer;
   bool _providerHoldFired = false;
   late final FocusNode _focusNode;
+  late final void Function() _hoverClaim = _requestHoverFocus;
+  late final NavCompleteReloadHold _reloadHold;
 
   bool get _hasVerticalFilters =>
       VerticalFiltersRegistry.hasFilters(widget.destination.id);
 
+  void _requestHoverFocus() {
+    if (!mounted) return;
+    if (_focusNode.hasFocus || !_focusNode.canRequestFocus) return;
+    _focusNode.requestFocus();
+  }
+
+  /// Press chrome. [GestureDetector.dispose] fires [onTapCancel] while
+  /// [BuildOwner.finalizeTree] holds the tree lock — a direct [setState] there
+  /// asserts. Clear the flag now and rebuild on the next unlocked frame.
+  /// Press chrome. [GestureDetector.dispose] fires [onTapCancel] while
+  /// [BuildOwner.finalizeTree] holds the tree lock — a direct [setState] there
+  /// asserts. Clear the flag now and rebuild on the next unlocked frame.
+  void _setPressed(bool pressed) {
+    if (_pressed == pressed) return;
+    if (!mounted ||
+        SchedulerBinding.instance.schedulerPhase ==
+            SchedulerPhase.persistentCallbacks) {
+      _pressed = pressed;
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return;
+    }
+    setState(() => _pressed = pressed);
+  }
+
   @override
   void initState() {
     super.initState();
+    _reloadHold = NavCompleteReloadHold(
+      onChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
     _focusNode = FocusNode(debugLabel: 'nav-${widget.destination.id}');
     ShellTvFocus.registerNav(widget.destination.id, _focusNode);
+    if (widget.selected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        revealNavRailItem(context);
+      });
+    }
   }
 
   @override
@@ -876,13 +894,21 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       _focusNode.debugLabel = 'nav-${widget.destination.id}';
       _cancelProviderReveal();
     }
+    if (widget.selected && !oldWidget.selected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        revealNavRailItem(context);
+      });
+    }
   }
 
   @override
   void dispose() {
+    ShellHoverFocus.release(_hoverClaim);
     ShellTvFocus.unregisterNav(widget.destination.id, _focusNode);
     _focusNode.dispose();
     _revealTimer?.cancel();
+    _reloadHold.dispose();
     _cancelProviderReveal();
     super.dispose();
   }
@@ -911,6 +937,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       _hover = true;
       _typing = false;
     });
+    ShellHoverFocus.claim(_hoverClaim);
     _revealTimer?.cancel();
     _revealTimer = Timer(ShellTokens.navRailLabelRevealDelay, () {
       if (!mounted || !_hover) return;
@@ -922,6 +949,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
 
   void _onHoverExit() {
     if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
+    ShellHoverFocus.release(_hoverClaim);
     _revealTimer?.cancel();
     _providerRevealTimer?.cancel();
     _providerRevealTimer = null;
@@ -944,18 +972,28 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       focused: _focused,
       context: context,
     );
+    // Profile: painted at hover size; idle downscales (never upscale SVG).
     if (widget.customIconSize != null) {
-      if (itemActive) return _pressed ? big * 0.92 : big;
-      return 1;
+      final idle = 1 / ShellTokens.navRailIconHoverScale;
+      if (itemActive) {
+        return _pressed ? ShellTokens.navRailIconPressScale : 1;
+      }
+      return idle;
     }
-    if (itemActive) return _pressed ? big * 0.92 : big;
+    // Pack icons are also painted at hover size. Hover is 1 so the bitmap
+    // is never enlarged. A filtered upscale bakes in the paint offset and
+    // Impeller flashes and slides the glyph when the rail is on the right.
+    if (itemActive) {
+      return _pressed ? ShellTokens.navRailIconPressScale : 1;
+    }
+    final idle = small / big;
     // TV: selected stays big, idle stays small — no rail-engage shrink cascade.
     if (policy.instantFocusChrome) {
-      return widget.selected ? big : small;
+      return widget.selected ? 1 : idle;
     }
     // Desktop: selected tab stays enlarged while browsing page content.
-    if (!widget.railEngaged) return widget.selected ? big : small;
-    return small;
+    if (!widget.railEngaged) return widget.selected ? 1 : idle;
+    return idle;
   }
 
   Duration _chromeAnim(ShellInputPolicy policy) => policy.instantFocusChrome
@@ -964,7 +1002,13 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
 
   void _enterPageFromNav() {
     widget.onTap();
-    ShellTvFocusCoordinator.enterTabFromNav(widget.destination.id);
+    final id = widget.destination.id;
+    // Same-tab OK that opened the provider strip: stay on the nav so →
+    // can move into the strip (enter would yank focus to the hero).
+    if (VerticalFiltersRegistry.menuVisibleFor(id).value) {
+      return;
+    }
+    ShellTvFocusCoordinator.enterTabFromNav(id);
   }
 
   void _returnToActivePage() {
@@ -987,7 +1031,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final labelFont =
         widget.labelFontSize ?? shellNavRailLabelFontSize(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
-    final labelSlot = widget.labelSlotHeight ??
+    final labelSlot =
+        widget.labelSlotHeight ??
         (widget.alwaysShowLabel
             ? math.max(
                 shellNavRailLabelSlotHeight(context, labelFont),
@@ -1021,7 +1066,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final lanShowBar = LanServerService.canRunServer;
     final lanMarkSize = LanPresenceMark.sizeFor(tv: tv);
-    final labelSlotHeight = widget.labelSlotHeight ??
+    final labelSlotHeight =
+        widget.labelSlotHeight ??
         (widget.alwaysShowLabel
             ? math.max(
                 shellNavRailLabelSlotHeight(context, labelFontSize),
@@ -1029,7 +1075,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               )
             : shellNavRailLabelSlotHeight(context, labelFontSize));
     final contentHeight = _contentHeight(context);
-    final underlineWidth = shellScaled(context, 24).clamp(14.0, 24.0);
+    final underlineWidth =
+        shellScaled(context, ShellTokens.shellNavUnderlineWidth).clamp(
+          ShellTokens.shellNavUnderlineWidthMin,
+          ShellTokens.shellNavUnderlineWidth,
+        );
     final destinationAccent =
         navDestinationAccentColors[widget.destination.id] ??
         ForjaShellColors.brandGreen;
@@ -1059,7 +1109,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         ? ForjaShellColors.textSecondary
         : ForjaShellColors.iconMuted;
     // Desktop: typewriter on hover. TV: static label when D-pad focus is visible.
-    final showLabel = widget.alwaysShowLabel ||
+    final showLabel =
+        widget.alwaysShowLabel ||
         policy.focusChromeVisible(context, focused: _focused) &&
             !policy.scaleOnHover;
     final labelStyle = GoogleFonts.plusJakartaSans(
@@ -1070,6 +1121,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     );
     final label = widget.label ?? widget.destination.label;
     final chromeAnim = _chromeAnim(policy);
+    // Paint at hover size. Idle scale is idle/hover, so the glyph lands on
+    // iconSize * idleScale. Painting at iconSize then applying that scale
+    // shrank every tab icon.
+    final iconBox = renderedIconSize * ShellTokens.navRailIconHoverScale;
     Widget icon =
         widget.icon ??
         TweenAnimationBuilder<Color?>(
@@ -1080,7 +1135,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
             destination: widget.destination,
             selected: widget.selected,
             color: color ?? iconColor,
-            size: iconSize,
+            size: iconBox,
           ),
         );
     if (widget.icon != null && widget.desaturateCustomIconWhenIdle) {
@@ -1089,6 +1144,20 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         child: icon,
       );
     }
+    if (widget.destination.id == 'settings') {
+      icon = PackUpdateNavChrome(
+        expanded: active,
+        badgeSize: tv
+            ? ShellTokens.packUpdateBadgeSizeTv
+            : ShellTokens.packUpdateBadgeSize,
+        child: icon,
+      );
+    }
+    icon = NavReloadHoldIcon(
+      icon: icon,
+      loading: _reloadHold.loading,
+      size: iconBox,
+    );
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: widget.itemSpacing / 2),
@@ -1098,16 +1167,23 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         onFocusChange: (focused) {
           setState(() => _focused = focused);
           widget.onFocusChanged();
+          if (focused) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              revealNavRailItem(context);
+            });
+          }
         },
         onKeyEvent: (node, event) {
-          if (_hasVerticalFilters) {
-            if (shellTvIsActivateKey(event)) {
+          if (shellTvIsActivateKey(event)) {
+            _reloadHold.activateDown(hideMenuTabId: widget.destination.id);
+            if (_hasVerticalFilters) {
               _providerHoldFired = false;
               _providerHoldTimer?.cancel();
               _providerHoldTimer = Timer(
                 VerticalFiltersRegistry.menuHoldDelay,
                 () {
-                  if (!mounted) return;
+                  if (!mounted || _reloadHold.didComplete) return;
                   _providerHoldFired = true;
                   VerticalFiltersRegistry.showMenu(widget.destination.id);
                   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1115,9 +1191,20 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                   });
                 },
               );
+            }
+            return KeyEventResult.handled;
+          }
+          if (shellTvIsActivateKeyUp(event)) {
+            final completed = _reloadHold.didComplete;
+            _reloadHold.activateUp();
+            if (completed) {
+              _reloadHold.consumeCompleted();
+              _providerHoldTimer?.cancel();
+              _providerHoldTimer = null;
+              _providerHoldFired = false;
               return KeyEventResult.handled;
             }
-            if (shellTvIsActivateKeyUp(event)) {
+            if (_hasVerticalFilters) {
               _providerHoldTimer?.cancel();
               _providerHoldTimer = null;
               if (!_providerHoldFired) {
@@ -1126,16 +1213,19 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               _providerHoldFired = false;
               return KeyEventResult.handled;
             }
-          }
-          if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-          if (shellTvIsActivateKey(event)) {
             _enterPageFromNav();
             return KeyEventResult.handled;
           }
+          if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
           if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
             final arrow = event.logicalKey;
-            if (arrow == LogicalKeyboardKey.arrowRight) {
-              if (_hasVerticalFilters &&
+            final placement = ShellNavPlacement(
+              textDirection: widget.pageDirection,
+            );
+            if (placement.isTowardPage(arrow)) {
+              // Provider strip sits on the physical left, next to an LTR rail.
+              if (!placement.isRtl &&
+                  _hasVerticalFilters &&
                   VerticalFiltersRegistry.menuVisibleFor(
                     widget.destination.id,
                   ).value &&
@@ -1147,13 +1237,19 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
             }
             if (arrow == LogicalKeyboardKey.arrowUp ||
                 arrow == LogicalKeyboardKey.arrowDown ||
-                arrow == LogicalKeyboardKey.arrowLeft) {
-              if (arrow == LogicalKeyboardKey.arrowLeft &&
+                placement.isAwayFromPage(arrow)) {
+              if (!placement.isRtl &&
+                  arrow == LogicalKeyboardKey.arrowLeft &&
                   ShellTvFocus.miniRegistered &&
                   ShellTvFocus.tryFocusMiniFromNav()) {
                 return KeyEventResult.handled;
               }
-              if (ShellTvFocusCoordinator.handleNavKey(arrow)) {
+              // Coordinator treats left as the trapped edge and right as
+              // "return to the page". Map the physical away-key onto left.
+              final navKey = placement.isAwayFromPage(arrow)
+                  ? LogicalKeyboardKey.arrowLeft
+                  : arrow;
+              if (ShellTvFocusCoordinator.handleNavKey(navKey)) {
                 return KeyEventResult.handled;
               }
               return KeyEventResult.handled;
@@ -1163,109 +1259,144 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         },
         child: Builder(
           builder: (context) {
-            return SizedBox(
-              width: ShellTokens.navRailWidth,
-              height: contentHeight,
-              child: Center(
-                child: MouseRegion(
-                  onEnter: (_) => _onHoverEnter(),
-                  onExit: (_) => _onHoverExit(),
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTapDown: (_) => setState(() => _pressed = true),
-                    onTapUp: (_) => setState(() => _pressed = false),
-                    onTapCancel: () => setState(() => _pressed = false),
-                    onTap: _enterPageFromNav,
-                    onLongPress: _hasVerticalFilters
-                        ? () {
-                            VerticalFiltersRegistry.showMenu(
-                              widget.destination.id,
-                            );
-                          }
-                        : null,
-                    behavior: HitTestBehavior.opaque,
-                    child: SizedBox(
-                      width: ShellTokens.navRailWidth,
-                      height: contentHeight,
-                      // Top-pin icon stack so focus scale + label never shift the
-                      // icon baseline relative to unlabeled neighbors.
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: ShellTokens.navRailWidth,
-                            height:
-                                renderedIconSize *
-                                ShellTokens.navRailIconHoverScale,
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
+            final railW = ShellScope.metricsOf(context).navRailWidth;
+            Widget hitTarget = MouseRegion(
+              onEnter: (_) => _onHoverEnter(),
+              onExit: (_) => _onHoverExit(),
+              cursor: SystemMouseCursors.click,
+              child: Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (e) {
+                  _reloadHold.pointerDown(
+                    e,
+                    hideMenuTabId: widget.destination.id,
+                  );
+                  // Long-press owns the hold (provider menu). A plain click
+                  // acts on mouse down so it doesn't wait on that arena.
+                  if (_hasVerticalFilters) return;
+                  if (e.kind != PointerDeviceKind.mouse) return;
+                  if ((e.buttons & kPrimaryButton) == 0) return;
+                  _mouseDownDidNavigate = true;
+                  _enterPageFromNav();
+                },
+                onPointerUp: _reloadHold.pointerUp,
+                onPointerCancel: _reloadHold.pointerCancel,
+                child: GestureDetector(
+                  onTapDown: (_) => _setPressed(true),
+                  onTapUp: (_) => _setPressed(false),
+                  // Do not cancel the 4s reload hold here — long-press (Home
+                  // watch services) wins the arena and would abort the hold.
+                  onTapCancel: () => _setPressed(false),
+                  onTap: () {
+                    if (_reloadHold.consumeCompleted()) return;
+                    if (_mouseDownDidNavigate) {
+                      _mouseDownDidNavigate = false;
+                      return;
+                    }
+                    _enterPageFromNav();
+                  },
+                  onLongPress: _hasVerticalFilters
+                      ? () {
+                          if (_reloadHold.didComplete) return;
+                          VerticalFiltersRegistry.showMenu(
+                            widget.destination.id,
+                          );
+                        }
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: SizedBox(
+                    width: railW,
+                    height: contentHeight,
+                    // Top-pin icon stack so focus scale + label never shift the
+                    // icon baseline relative to unlabeled neighbors.
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: railW,
+                          height:
+                              renderedIconSize *
+                              ShellTokens.navRailIconHoverScale,
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: RepaintBoundary(
                               child: AnimatedScale(
                                 alignment: Alignment.bottomCenter,
                                 scale: _scaleFor(policy),
                                 duration: chromeAnim,
                                 curve: Curves.easeOutCubic,
-                                // Bilinear — Impeller defaults can nearest-neighbor
-                                // the focus grow and make pack PNGs look 8-bit.
-                                filterQuality: FilterQuality.low,
                                 child: SizedBox(
-                                  width: renderedIconSize,
-                                  height: renderedIconSize,
+                                  width: iconBox,
+                                  height: iconBox,
                                   child: Center(child: icon),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(
-                            height: ShellTokens.navRailIconUnderlineGap,
+                        ),
+                        const SizedBox(
+                          height: ShellTokens.navRailIconUnderlineGap,
+                        ),
+                        AnimatedContainer(
+                          key: ValueKey(
+                            'nav-${widget.destination.id}-underline',
                           ),
-                          AnimatedContainer(
-                            key: ValueKey(
-                              'nav-${widget.destination.id}-underline',
-                            ),
-                            duration: chromeAnim,
-                            curve: Curves.easeOutCubic,
-                            height: ShellTokens.shellNavUnderlineHeight,
-                            width: widget.selected ? underlineWidth : 0,
-                            decoration: BoxDecoration(
-                              color: widget.selected
-                                  ? (useDestinationAccent
-                                        ? destinationAccent
-                                        : selectedFocused
-                                        ? Colors.white
-                                        : ForjaShellColors.navUnderline)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(
-                            height: ShellTokens.navRailIconLabelGap,
-                          ),
-                          SizedBox(
-                            height: labelSlotHeight,
-                            width: ShellTokens.navRailWidth,
-                            child: Center(
-                              child: showLabel
-                                  ? _NavRailLabel(
-                                      text: label,
-                                      style: labelStyle,
-                                      presence: widget.labelPresence,
-                                      markSize: lanMarkSize,
-                                      showBar: lanShowBar,
-                                    )
-                                  : _TypewriterLabel(
-                                      text: label,
-                                      active: _typing,
-                                      style: labelStyle,
-                                    ),
+                          duration: chromeAnim,
+                          curve: Curves.easeOutCubic,
+                          height: ShellTokens.shellNavUnderlineHeight,
+                          width: widget.selected ? underlineWidth : 0,
+                          decoration: BoxDecoration(
+                            color: widget.selected
+                                ? (useDestinationAccent
+                                      ? destinationAccent
+                                      : selectedFocused
+                                      ? Colors.white
+                                      : ForjaShellColors.navUnderline)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(
+                              ShellTokens.shellNavUnderlineRadius,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: ShellTokens.navRailIconLabelGap),
+                        SizedBox(
+                          height: labelSlotHeight,
+                          width: railW,
+                          child: Center(
+                            child: showLabel
+                                ? _NavRailLabel(
+                                    text: label,
+                                    style: labelStyle,
+                                    presence: widget.labelPresence,
+                                    markSize: lanMarkSize,
+                                    showBar: lanShowBar,
+                                  )
+                                : _TypewriterLabel(
+                                    text: label,
+                                    active: _typing,
+                                    style: labelStyle,
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
+            );
+            // Same TapRegion group as VerticalFiltersRail — otherwise the
+            // re-press tap that opens the menu is also tap-outside and hides it.
+            if (_hasVerticalFilters) {
+              hitTarget = TapRegion(
+                groupId: VerticalFiltersRegistry.menuTapGroup,
+                child: hitTarget,
+              );
+            }
+            return SizedBox(
+              width: railW,
+              height: contentHeight,
+              child: Center(child: hitTarget),
             );
           },
         ),

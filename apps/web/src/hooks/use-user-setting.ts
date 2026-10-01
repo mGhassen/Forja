@@ -4,6 +4,7 @@ export {
   useNuvioSetting,
   useForjaSetting,
   useNavigationSetting,
+  usePackSettingsSetting,
 } from '@/hooks/use-profile-settings-sections'
 
 // Re-export profile settings for callers that need the full payload.

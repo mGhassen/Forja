@@ -3,8 +3,6 @@ mod engine_jobs;
 #[cfg(feature = "lan-server")]
 mod engine_lan;
 #[cfg(feature = "local-proxy")]
-mod engine_mega;
-#[cfg(feature = "local-proxy")]
 mod engine_proxy;
 #[cfg(feature = "local-proxy")]
 mod engine_seek111477;
@@ -68,6 +66,10 @@ fn engine_submit_job(kind: u32, payload_json: String) -> u64 {
 
 fn engine_take_job_result(job_id: u64) -> Option<String> {
     engine_jobs::take_result(job_id)
+}
+
+fn engine_take_job_events(job_id: u64) -> String {
+    engine_jobs::take_events(job_id)
 }
 
 fn add(a: i64, b: i64) -> i64 {
@@ -309,11 +311,6 @@ fn media_extra_request_json(request_json: String) -> String {
 fn indexer_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
     indexer::request_json(&request_json)
-}
-
-fn debrid_request_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    debrid::request_json(&request_json)
 }
 
 fn metadata_request_json(request_json: String) -> String {
@@ -574,6 +571,18 @@ fn proxy_register_route(token: String, upstream_url: String) -> bool {
     }
 }
 
+fn proxy_create_ext_session(url: String, headers_json: String) -> String {
+    #[cfg(feature = "local-proxy")]
+    {
+        engine_proxy::proxy_create_ext_session(&RUNTIME, url, headers_json)
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        let _ = (url, headers_json);
+        String::new()
+    }
+}
+
 fn lan_server_start(bind_mode: u8, preferred_port: u32) -> i32 {
     #[cfg(feature = "lan-server")]
     {
@@ -759,32 +768,13 @@ fn seek111477_purge_cache_json(cache_dir: String) -> String {
     }
 }
 
-fn site111477_index_request_json(json: String) -> String {
-    #[cfg(feature = "local-proxy")]
-    {
-        proxy::index111477::request_json_blocking(&json)
-    }
-    #[cfg(not(feature = "local-proxy"))]
-    {
-        let _ = json;
-        r#"{"error":"local_proxy_unavailable"}"#.into()
-    }
-}
-
-fn mega_resolve_json(embed_url: String) -> String {
-    #[cfg(feature = "local-proxy")]
-    {
-        engine_mega::mega_resolve_json(&RUNTIME, embed_url)
-    }
-    #[cfg(not(feature = "local-proxy"))]
-    {
-        let _ = embed_url;
-        r#"{"url":null,"size":null,"error":"local_proxy_unavailable"}"#.into()
-    }
-}
-
 fn provider_health_json(payload_json: String) -> String {
     engine::handle_health_json(&payload_json)
+}
+
+
+fn iptv_catalog_json(request_json: String) -> String {
+    iptv::catalog_db::handle_json(&request_json)
 }
 
 fn storage_open(path: String) -> String {

@@ -7,31 +7,30 @@ const WORDS = ['stream', 'sync', 'live', 'play'] as const
 const BEATS = [
   {
     n: '01',
-    title: 'One player',
-    line: 'Movies, series, anime, live TV - same controls, same calm.',
+    title: 'One modular platform',
+    line: 'Movies, series, anime, live sport, and IPTV use the same controls in one app.',
     accent: 'brand' as const,
   },
   {
     n: '02',
-    title: 'Your sources',
-    line: 'Playlists you connect. Guides inside the player. Nothing hosted here.',
+    title: 'Community packs',
+    line: 'Install hubs and sources you want. Leave out everything else.',
     accent: 'flame' as const,
   },
   {
     n: '03',
-    title: 'Every screen',
-    line: 'Desk, couch, TV - pick up where you left off when you sign in.',
+    title: 'Open source',
+    line: 'Inspect the project, ship packs with the SDK, and sync settings across every screen.',
     accent: 'brand' as const,
   },
 ]
 
 const MARQUEE = [
   'Playback',
-  'Guides',
+  'Community packs',
   'Live lists',
-  'Subtitles',
+  'Profile sync',
   'Desk to TV',
-  'Sync',
 ]
 
 const CYCLE_MS = 3200
@@ -43,9 +42,9 @@ type AuthStoryPanelProps = {
 }
 
 export function AuthStoryPanel({
-  eyebrow = 'Creative player platform',
-  lead = 'One player. Your sources. Every screen.',
-  emphasis = 'Sign in to sync settings across your screens.',
+  eyebrow = 'Forja',
+  lead = 'The modular player platform. Community packs for what you watch.',
+  emphasis = 'Open source. Sync across every screen.',
 }: AuthStoryPanelProps) {
   const [wordIndex, setWordIndex] = useState(0)
   const [reduced, setReduced] = useState(false)
@@ -69,7 +68,7 @@ export function AuthStoryPanel({
   const word = WORDS[wordIndex]!
 
   return (
-    <section className="relative flex h-full min-h-[min(52vh,520px)] flex-col justify-center overflow-hidden border-b border-[rgba(237,230,218,0.1)] py-14 lg:min-h-0 lg:border-b-0 lg:border-r lg:py-16">
+    <section className="relative flex h-full min-h-[min(52vh,520px)] flex-col justify-center overflow-hidden border-t border-[rgba(237,230,218,0.1)] py-14 lg:min-h-0 lg:border-t-0 lg:border-r lg:py-16">
       <div className="hero-enter relative z-[1] w-full max-w-xl px-5 sm:px-8 lg:px-10">
         <p className="font-mono-ui text-[11px] uppercase tracking-[0.22em] text-forja-green">
           <span className="animate-live-dot mr-2 inline-block h-1.5 w-1.5 rounded-full bg-forja-green align-middle" />
@@ -87,9 +86,8 @@ export function AuthStoryPanel({
           </span>
         </h1>
 
-        <p className="mt-6 max-w-md font-disp text-[clamp(17px,2.2vw,24px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
-          {lead}
-          <br />
+        <p className="mt-6 max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
+          {lead}{' '}
           <span className="text-[#EDE6DA]">{emphasis}</span>
         </p>
       </div>

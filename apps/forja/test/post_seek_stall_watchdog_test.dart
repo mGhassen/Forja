@@ -267,6 +267,18 @@ void main() {
     );
     expect(
       peakstormFmp4HlsAvoidHardSeek(
+        'https://ok.solarpanelcleaning.cc/playlist/Dr8NLd2ck7lx-zQzZMaQpQ.m3u8',
+      ),
+      isTrue,
+    );
+    expect(
+      peakstormFmp4HlsAvoidHardSeek(
+        'https://ok.solarpanelcleaning.cc/video/ttSDdpg9ct/video_1080p.m3u8',
+      ),
+      isTrue,
+    );
+    expect(
+      peakstormFmp4HlsAvoidHardSeek(
         'https://example.com/vod/index.m3u8',
       ),
       isFalse,

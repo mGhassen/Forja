@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
-import 'package:forja/shared/foundation/components/playback/resolve_failure_view.dart';
-import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
+import 'package:forja/shared/playback/resolve_failure_view.dart';
+import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
 export 'package:forja/shared/playback/sources/torrent_loading_sink.dart';
@@ -9,9 +9,10 @@ export 'package:forja/shared/playback/sources/torrent_loading_sink.dart';
 enum StreamLoadingKind { direct, torrent }
 
 /// Active fullscreen stream-loading overlay (at most one).
+///
+/// Stays set until the player route pops. Do not use it to hide in-player
+/// status text — that hid buffering / checking for the whole watch.
 StreamLoadingSession? _activeStreamLoadingSession;
-
-bool get isStreamLoadingOverlayActive => _activeStreamLoadingSession != null;
 
 /// Holds notifiers + dialog context for one resolve wait.
 class StreamLoadingSession {

@@ -1,7 +1,7 @@
 # RFC-081: Host-only platform nav defaults
 
 **Status:** fixed  
-**Depends on:** [RFC-028](../028-[draft]-adaptive-shell-profiles.md) (R28-A28 superseded for new installs), [RFC-080](../080-[open]-post-login-packs-onboarding.md)  
+**Depends on:** [RFC-028](../028-[draft]-adaptive-shell-profiles.md) (R28-A28 superseded for new installs), [RFC-080](080-[fixed]-post-login-packs-onboarding.md)  
 **Area:** shell / plugins / settings
 
 ## Status at a glance

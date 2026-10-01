@@ -37,9 +37,9 @@ export const Route = createRootRoute({
       {
         name: 'description',
         content:
-          'Forja is a free media player for movies, series, anime, live sport, and IPTV. Download for Windows, macOS, Linux, and Android TV.',
+          'Forja is an open-source modular player platform. Packs and addons shape hubs and sources. Movies, series, live sport, and IPTV on Windows, macOS, Linux, and Android TV.',
       },
-      { title: 'Forja - free media player for movies, series, anime, and live TV' },
+      { title: 'Forja – Open-source modular player platform' },
     ],
     links: [
       { rel: 'icon', type: 'image/svg+xml', href: '/brand/logo-dark.svg' },

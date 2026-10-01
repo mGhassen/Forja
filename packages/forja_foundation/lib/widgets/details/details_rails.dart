@@ -1,0 +1,118 @@
+import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+/// One catalog details rail — title + horizontal cards (props only).
+class DetailsRailSectionData {
+  const DetailsRailSectionData({
+    required this.id,
+    required this.title,
+    required this.cards,
+  });
+
+  final String id;
+  final String title;
+  final List<Widget> cards;
+}
+
+/// Horizontal rail row used under details heroes.
+class DetailsRailSection extends StatelessWidget {
+  const DetailsRailSection({
+    super.key,
+    required this.title,
+    required this.cards,
+    required this.rowHeight,
+    this.compactTop = true,
+  });
+
+  final String title;
+  final List<Widget> cards;
+
+  /// Host passes portrait poster card height; a short fixed row clips to near-square.
+  final double rowHeight;
+  final bool compactTop;
+
+  @override
+  Widget build(BuildContext context) {
+    if (cards.isEmpty) return const SizedBox.shrink();
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final titleSize = tv
+        ? DetailsTokens.sectionTitleFontSizeTv
+        : DetailsTokens.sectionTitleFontSize;
+    final railsGap = tv ? DetailsTokens.railsGapTv : DetailsTokens.railsGap;
+    return Padding(
+      padding: EdgeInsets.only(
+        top: compactTop ? 0 : ShellTokens.homeSectionTitleTop,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ShellTokens.homeSectionHorizontalPadding,
+            ),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: ForjaShellColors.textPrimary,
+                fontSize: titleSize,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          SizedBox(height: railsGap),
+          SizedBox(
+            height: rowHeight,
+            child: ListView.separated(
+              // Match Home HorizontalScroller — hover/focus scale paints past
+              // the row box instead of clipping into section margins.
+              clipBehavior: Clip.none,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(
+                horizontal: ShellTokens.homeSectionHorizontalPadding,
+              ),
+              itemCount: cards.length,
+              separatorBuilder: (_, _) =>
+                  const SizedBox(width: ShellTokens.posterCardRowGap),
+              itemBuilder: (context, i) => cards[i],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Stack of [DetailsRailSection] widgets.
+class DetailsRails extends StatelessWidget {
+  const DetailsRails({
+    super.key,
+    required this.sections,
+    required this.rowHeight,
+  });
+
+  final List<DetailsRailSectionData> sections;
+  final double rowHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final sectionGap = ShellPaintScope.usesTvDensityOf(context)
+        ? DetailsTokens.railsSectionGapTv
+        : DetailsTokens.railsSectionGap;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < sections.length; i++) ...[
+          if (i > 0) SizedBox(height: sectionGap),
+          DetailsRailSection(
+            title: sections[i].title,
+            cards: sections[i].cards,
+            rowHeight: rowHeight,
+          ),
+        ],
+      ],
+    );
+  }
+}

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/live/live_plugin_engine.dart';
+import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 
 void main() {
   group('liveEnginePreferDirectPlayback', () {
@@ -26,7 +26,7 @@ void main() {
   });
 
   group('liveEngineOpenDirect', () {
-    test('trusts pluginDirect except wfty / amazonaws', () {
+    test('trusts pluginDirect except wfty / amazonaws / indianservers', () {
       expect(
         liveEngineOpenDirect(
           'https://lb1.strmd.st/secure/tok/delta/stream/foo/1/playlist.m3u8',
@@ -51,6 +51,13 @@ void main() {
       expect(
         liveEngineOpenDirect(
           'https://foorja1.s3.eu-north-1.amazonaws.com/live/master.m3u8',
+          pluginDirect: true,
+        ),
+        isFalse,
+      );
+      expect(
+        liveEngineOpenDirect(
+          'https://lb3.indianservers.st/secure/tok/fiba-africa/index.m3u8',
           pluginDirect: true,
         ),
         isFalse,

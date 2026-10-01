@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronUp, Lock, Star } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
@@ -7,19 +8,16 @@ import { useCommitDraft } from '@/hooks/use-commit-draft'
 import {
   useForjaSetting,
   useNavigationSetting,
-  usePlaybackSetting,
 } from '@/hooks/use-user-setting'
 import {
   availableFeatureTabIds,
   DEFAULT_NAV_TAB,
   emptyForjaPayload,
-  emptyPreferencesPayload,
   navTabLabel,
   normalizeNavigationPayload,
   pruneNavigationToAvailable,
   type ForjaPayload,
   type NavigationPayload,
-  type PreferencesPayload,
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
 
@@ -29,8 +27,8 @@ type NavDraft = {
   defaultTab: string
 }
 
-function labelFor(id: string): string {
-  return navTabLabel(id)
+function labelFor(id: string, packs: ForjaPayload['packs']): string {
+  return navTabLabel(id, packs)
 }
 
 function emptyNavDraft(): NavDraft {
@@ -41,18 +39,11 @@ function emptyNavDraft(): NavDraft {
   }
 }
 
-/** Inventory from cloud slices — never empty playDraft on first hydrate. */
-function availableFromServer(
-  playbackPayloadValue: unknown,
-  forjaPayloadValue: unknown,
-): string[] {
-  const play = playbackPayloadValue as PreferencesPayload | undefined
+/** Inventory from enabled hub packs on the profile — same as the app. */
+function availableFromServer(forjaPayloadValue: unknown): string[] {
   const packs =
     (forjaPayloadValue as ForjaPayload | undefined)?.packs ?? []
-  return availableFeatureTabIds({
-    addonFeatureIptv: play?.addon_feature_iptv,
-    packs,
-  })
+  return availableFeatureTabIds({ packs })
 }
 
 function navDraftFromServer(value: unknown): NavDraft {
@@ -67,22 +58,29 @@ function navDraftFromServer(value: unknown): NavDraft {
 }
 
 export function AccountSettingsNavigationPage() {
+  const queryClient = useQueryClient()
   const navigation = useNavigationSetting()
-  const playback = usePlaybackSetting()
   const forja = useForjaSetting()
 
-  const playDraft = useCommitDraft({
-    profileId: playback.profileId,
-    updatedAt: playback.data?.updated_at,
-    isReady: Boolean(playback.data) && !playback.isLoading,
-    serverValue: playback.data?.payload,
-    mapServer: (value: unknown) => ({
-      ...emptyPreferencesPayload(),
-      ...((value as PreferencesPayload | undefined) ?? {}),
-    }),
-    makeEmpty: emptyPreferencesPayload,
-    save: playback.save,
-  })
+  // Soft-pull while Features is open (no Realtime — issue 224 T43). App → web
+  // toggles land without leaving the browser tab.
+  useEffect(() => {
+    const profileId = navigation.profileId
+    if (!profileId) return
+    const softPull = () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['profile_settings'],
+      })
+    }
+    softPull()
+    const onFocus = () => softPull()
+    window.addEventListener('focus', onFocus)
+    const tick = window.setInterval(softPull, 4000)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      window.clearInterval(tick)
+    }
+  }, [navigation.profileId, queryClient])
 
   const packsDraft = useCommitDraft({
     profileId: forja.profileId,
@@ -97,19 +95,13 @@ export function AccountSettingsNavigationPage() {
     save: forja.save,
   })
 
-  // Cloud playback/packs first — drafts start empty until effects run.
+  // Inventory = enabled hub packs only (same as the app).
   const availableIds = useMemo(
     () =>
       availableFromServer(
-        playback.data?.payload ?? playDraft.draft,
         forja.data?.payload ?? { packs: packsDraft.draft.packs },
       ),
-    [
-      playback.data?.payload,
-      forja.data?.payload,
-      playDraft.draft,
-      packsDraft.draft.packs,
-    ],
+    [forja.data?.payload, packsDraft.draft.packs],
   )
 
   const {
@@ -176,13 +168,7 @@ export function AccountSettingsNavigationPage() {
     return ordered
   }, [draft.order, availableIds])
 
-  const startupOptions = useMemo(() => {
-    const opts = featureOrder.filter((id) => draft.visible.has(id))
-    if (!opts.includes('settings')) opts.push('settings')
-    return opts
-  }, [featureOrder, draft.visible])
-
-  const move = (index: number, dir: -1 | 1) => {
+  const move =(index: number, dir: -1 | 1) => {
     const id = featureOrder[index]
     if (!id) return
     void commit((prev) => {
@@ -209,11 +195,15 @@ export function AccountSettingsNavigationPage() {
   }
 
   const locked = controlsLocked || isSaving
+  const packRows =
+    (forja.data?.payload as ForjaPayload | undefined)?.packs ??
+    packsDraft.draft.packs
+  const tabLabel = (id: string) => labelFor(id, packRows)
 
   return (
     <AccountSettingsShell
       title="Features"
-      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Unlock IPTV under Addons; Live Sports and other hub tabs appear when those packs are on this profile (the app downloads hub scripts)."
+      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Hub tabs (Home, IPTV, Live Sports, …) appear when those packs are enabled on this profile (the app downloads hub scripts)."
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}
@@ -224,7 +214,7 @@ export function AccountSettingsNavigationPage() {
     >
       <SettingsSection
         label="Tabs"
-        description="Star sets the default tab after launch or profile switch. Only unlocked Addons and hub packs on this profile are listed."
+        description="Star sets the default tab after launch or profile switch. Only enabled hub packs on this profile are listed."
       >
         <ul className="divide-y divide-forja-border/60">
           {featureOrder.length === 0 ? (
@@ -236,6 +226,7 @@ export function AccountSettingsNavigationPage() {
           {featureOrder.map((id, index) => {
             const on = draft.visible.has(id)
             const isDefault = draft.defaultTab === id
+            const name = tabLabel(id)
             return (
               <li
                 key={id}
@@ -244,7 +235,7 @@ export function AccountSettingsNavigationPage() {
                 <div className="flex shrink-0 flex-col gap-0.5">
                   <button
                     type="button"
-                    aria-label={`Move ${labelFor(id)} up`}
+                    aria-label={`Move ${name} up`}
                     disabled={locked || index === 0}
                     onClick={() => move(index, -1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
@@ -253,7 +244,7 @@ export function AccountSettingsNavigationPage() {
                   </button>
                   <button
                     type="button"
-                    aria-label={`Move ${labelFor(id)} down`}
+                    aria-label={`Move ${name} down`}
                     disabled={locked || index === featureOrder.length - 1}
                     onClick={() => move(index, 1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
@@ -267,14 +258,14 @@ export function AccountSettingsNavigationPage() {
                     on ? 'text-forja-text' : 'text-forja-muted',
                   )}
                 >
-                  {labelFor(id)}
+                  {name}
                 </span>
                 <button
                   type="button"
                   aria-label={
                     isDefault
-                      ? `${labelFor(id)} is default tab`
-                      : `Set ${labelFor(id)} as default tab`
+                      ? `${name} is default tab`
+                      : `Set ${name} as default tab`
                   }
                   disabled={locked || !on}
                   onClick={() =>
@@ -296,7 +287,7 @@ export function AccountSettingsNavigationPage() {
                   type="button"
                   role="switch"
                   aria-checked={on}
-                  aria-label={`Show ${labelFor(id)}`}
+                  aria-label={`Show ${name}`}
                   disabled={locked}
                   onClick={() => setVisible(id, !on)}
                   className={cn(
@@ -352,32 +343,6 @@ export function AccountSettingsNavigationPage() {
             </span>
           </li>
         </ul>
-      </SettingsSection>
-
-      <SettingsSection label="Default tab">
-        <div className="flex min-h-14.5 items-center justify-between gap-5 px-0.5 py-3">
-          <span className="text-sm font-medium">
-            Opens after sync / profile switch
-          </span>
-          <select
-            className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"
-            value={
-              startupOptions.includes(draft.defaultTab)
-                ? draft.defaultTab
-                : (startupOptions[0] ?? DEFAULT_NAV_TAB)
-            }
-            disabled={locked}
-            onChange={(e) =>
-              void commit((prev) => ({ ...prev, defaultTab: e.target.value }))
-            }
-          >
-            {startupOptions.map((id) => (
-              <option key={id} value={id}>
-                {labelFor(id)}
-              </option>
-            ))}
-          </select>
-        </div>
       </SettingsSection>
     </AccountSettingsShell>
   )

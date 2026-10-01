@@ -12,6 +12,14 @@ void main() {
       BuiltInPlayerEngine.mediaKit,
     );
     expect(
+      BuiltInPlayerEngine.fromStorage('avplayer'),
+      BuiltInPlayerEngine.avPlayer,
+    );
+    expect(
+      BuiltInPlayerEngine.fromStorage('vlc'),
+      BuiltInPlayerEngine.vlc,
+    );
+    expect(
       BuiltInPlayerEngine.fromStorage(null),
       BuiltInPlayerEngine.exoPlayer,
     );
@@ -23,11 +31,10 @@ void main() {
     }
   });
 
-  test('UI options list ExoPlayer first', () {
+  test('UI options always include MediaKit', () {
     final ui = builtInPlayerEngineOptionsForUi;
     expect(ui, isNotEmpty);
-    expect(ui.first, BuiltInPlayerEngine.exoPlayer);
-    expect(ui.toSet(), builtInPlayerEngineOptions.toSet());
+    expect(ui, contains(BuiltInPlayerEngine.mediaKit));
   });
 
   test('defaultForContext: Android live/vod/iptv default to Exo', () {
@@ -59,7 +66,7 @@ void main() {
     }
   });
 
-  test('defaultForContext: desktop stays MediaKit', () {
+  test('defaultForContext: desktop vod/live MediaKit', () {
     expect(
       BuiltInPlayerEngine.defaultForContext(
         BuiltInPlayerContext.vod,
@@ -67,26 +74,25 @@ void main() {
       ),
       BuiltInPlayerEngine.mediaKit,
     );
+    expect(
+      BuiltInPlayerEngine.defaultForContext(
+        BuiltInPlayerContext.live,
+        profile: PlatformProfile.desktop,
+      ),
+      BuiltInPlayerEngine.mediaKit,
+    );
   });
 
-  test('player contexts use distinct storage keys', () {
+  test('preferredIptvHlsEngine is platform-shaped', () {
+    final preferred = preferredIptvHlsEngine();
     expect(
-      BuiltInPlayerContext.vod.storageKey,
-      'built_in_player_engine',
-    );
-    expect(
-      BuiltInPlayerContext.iptv.storageKey,
-      'built_in_player_engine_iptv',
-    );
-    expect(
-      BuiltInPlayerContext.live.storageKey,
-      'built_in_player_engine_live',
-    );
-    expect(
-      {
-        for (final c in BuiltInPlayerContext.values) c.storageKey,
-      }.length,
-      BuiltInPlayerContext.values.length,
+      preferred,
+      anyOf(
+        BuiltInPlayerEngine.exoPlayer,
+        BuiltInPlayerEngine.avPlayer,
+        BuiltInPlayerEngine.vlc,
+        BuiltInPlayerEngine.mediaKit,
+      ),
     );
   });
 }

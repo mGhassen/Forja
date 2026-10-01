@@ -120,9 +120,9 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     MpvExclusiveSession.instance.untrackPlayer(player);
     final disposeFuture = teardownMediaKitPlayer(player);
     MpvExclusiveSession.instance.trackVideoDispose(
-    disposeFuture,
-    markExoFitRemount: true,
-  );
+      disposeFuture,
+      markExoFitRemount: true,
+    );
     await disposeFuture;
   }
 
@@ -233,6 +233,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     );
     final remote =
         videoUrl.startsWith('http://') || videoUrl.startsWith('https://');
+    await applyIpv4HttpProxy(player, videoUrl);
     await player.open(
       Media(videoUrl, httpHeaders: remote ? hdrs : null),
       play: play,
@@ -561,7 +562,8 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         .where((c) => c.langCode == languageCode)
         .firstOrNull;
     if (track == null) return;
-    await player.setSubtitleTrack(
+    await setPlayerExternalSubtitle(
+      player,
       SubtitleTrack.uri(
         track.url,
         title: track.langName,

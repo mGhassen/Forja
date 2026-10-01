@@ -152,7 +152,7 @@ export function NowPlayingPanel({ className }: { className?: string }) {
                 />
               </div>
               <div className="font-mono-ui mt-3 flex justify-between text-[11px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.38)] sm:text-xs">
-                <span>Free</span>
+                <span>Open source</span>
                 <span>Desk to TV</span>
               </div>
             </div>

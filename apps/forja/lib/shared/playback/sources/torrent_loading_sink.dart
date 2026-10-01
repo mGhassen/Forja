@@ -12,27 +12,22 @@ void Function(TorrentLoadingStatus status) torrentLoadingStatusSink(
   };
 }
 
-TorrentLoadingStatus initialTorrentResolveStatus({
-  required bool useDebrid,
-  required String debridService,
-}) {
+TorrentLoadingStatus initialTorrentResolveStatus({String? debridLabel}) {
   return torrentLoadingStatusGeneric(
-    playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
-    hint: playbackSourceHint(useDebrid: useDebrid, debridService: debridService),
+    playbackResolveLabel(debridLabel: debridLabel),
+    hint: playbackSourceHint(debridLabel: debridLabel),
   );
 }
 
 TorrentLoadingStatus initialStremioTorrentResolveStatus({
   required PlaybackProfile profile,
-  required bool useDebrid,
-  required String debridService,
+  String? debridLabel,
 }) {
   return torrentLoadingStatusGeneric(
     stremioResolveLoadingMessage(
       profile: profile,
-      useDebrid: useDebrid,
-      debridService: debridService,
+      debridLabel: debridLabel,
     ),
-    hint: playbackSourceHint(useDebrid: useDebrid, debridService: debridService),
+    hint: playbackSourceHint(debridLabel: debridLabel),
   );
 }

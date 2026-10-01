@@ -1,0 +1,25 @@
+# forja_foundation
+
+Forja design system package (RFC-106).
+
+Tokens → components → widgets → blocks, plus protocol / platform / utils.
+`ForjaThemeExtension` / `forjaThemeData()` live under `tokens/`.
+
+## Entry points
+
+| Import | Use |
+|--------|-----|
+| `package:forja_foundation/forja_foundation.dart` | Full public API (sectioned) |
+| `package:forja_foundation/forja_foundation_primitives.dart` | Leaf tokens + components (name historical) |
+| `package:forja_foundation/forja_foundation_kit.dart` | Protocol + blocks (name historical) |
+
+## Zones
+
+- **A (UI):** no Riverpod, no `features/**`, no `TmdbApi`
+- **B (kit):** opaque contracts only — layout walk, registries, hooks
+
+## Status
+
+Part 1 scaffold: tokens (copied), `ForjaThemeExtension`, `Button` / `ButtonGroup` / `VerticalMenu`. See [MIGRATION.md](MIGRATION.md) and [RFC-106](../../docs/rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md).
+
+App imports the **file** (`package:forja_foundation/components/button.dart`, `widgets/details/facts_panel.dart`, …). Catalog UI lives in this package (`widgets/` / `components/` / `blocks/`). Host glue is `shared/engine/hub/`, `shell/`, `shared/player/` — see [MIGRATION.md](MIGRATION.md).

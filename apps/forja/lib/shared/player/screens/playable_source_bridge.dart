@@ -31,7 +31,6 @@ abstract final class PlayableSourceBridge {
             ? playable[index].url
             : null);
     // Seek proxy only for raw *111477* CDN hosts (a./p.). Addon workers.dev
-    // URLs play direct — PlayTorrio path. Do not key off provider id alone.
     return is111477UpstreamUrl(url ?? '');
   }
 }

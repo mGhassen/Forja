@@ -1,0 +1,1567 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:forja_foundation/components/settled_network_image.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
+import 'package:forja_foundation/widgets/details/details_body.dart';
+import 'package:forja_foundation/widgets/details/episode_air_date.dart';
+import 'package:forja_foundation/widgets/details/episode_range_bar.dart';
+import 'package:forja_foundation/widgets/details/watch_progress_bar.dart';
+import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
+import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
+
+typedef SeasonSelectCallback = void Function(int season);
+typedef EpisodeSelectCallback = void Function(int episode);
+typedef EpisodeWatchedToggle = void Function(int season, int episode);
+typedef SeasonWatchedToggle =
+    Future<void> Function(int season, List<int> episodes);
+
+class TvSeasonEpisodePicker extends StatefulWidget {
+  const TvSeasonEpisodePicker({
+    super.key,
+    required this.tmdbId,
+    required this.seasonCount,
+    required this.selectedSeason,
+    required this.selectedEpisode,
+    required this.isLoadingSeason,
+    required this.seasonData,
+    required this.watchedEpisodes,
+    required this.fallbackPosterPath,
+    required this.onSeasonSelected,
+    required this.onEpisodeSelected,
+    required this.onToggleWatched,
+    this.onSeasonToggleWatched,
+    this.onEpisodePlay,
+    this.onEpisodeFocused,
+    this.seasonPosters = const {},
+    this.episodeProgress = const {},
+    this.customEpisodesBySeason,
+
+    /// When set (`anilist` / `kisskh`), watched keys are `{catalog}_{id}_S…_E…`.
+    /// Null keeps TMDB keys `{id}_S…_E…`.
+    this.watchedCatalog,
+
+    /// When set, watched / progress keys and [onToggleWatched] use this season
+    /// instead of [selectedSeason]. Anime franchise rails use `1` (each AniList
+    /// Media keeps its own id + historical `S1_E*` marks).
+    this.watchedSeasonForKeys,
+    this.tvRowOrderBase = 0,
+    this.tvFocusUp,
+
+    /// `cards` (default) or `chips` — Home pack `episodeView`.
+    this.episodeView = kEpisodeViewCards,
+  });
+
+  final int tmdbId;
+  final int seasonCount;
+  final int selectedSeason;
+  final int selectedEpisode;
+  final bool isLoadingSeason;
+  final Map<String, dynamic>? seasonData;
+  final Set<String> watchedEpisodes;
+  final String? watchedCatalog;
+  final int? watchedSeasonForKeys;
+  final String fallbackPosterPath;
+  final SeasonSelectCallback onSeasonSelected;
+  final EpisodeSelectCallback onEpisodeSelected;
+  final EpisodeWatchedToggle onToggleWatched;
+  final SeasonWatchedToggle? onSeasonToggleWatched;
+  final EpisodeSelectCallback? onEpisodePlay;
+  final EpisodeSelectCallback? onEpisodeFocused;
+  final Map<int, String> seasonPosters;
+  final Map<String, Map<String, dynamic>> episodeProgress;
+  final Map<int, List<Map<String, dynamic>>>? customEpisodesBySeason;
+  final int tvRowOrderBase;
+  final VoidCallback? tvFocusUp;
+  final String episodeView;
+
+  @override
+  State<TvSeasonEpisodePicker> createState() => _TvSeasonEpisodePickerState();
+}
+
+class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
+  int _episodeChunk = 0;
+  final ScrollController _episodeScrollController = ScrollController();
+  final ScrollController _seasonScrollController = ScrollController();
+
+  /// TV: which episode the in-card play control plays. Set on card OK only —
+  /// D-pad focus does not change it. Defaults to [selectedEpisode] (ep 1 or resume).
+  int? _tvArmedEpisode;
+  final FocusNode _episodePlayFocus = FocusNode(debugLabel: 'episode-play');
+
+  static const _seasonRowId = 'seasons';
+  static const _episodeRowId = 'episodes';
+  static const _rangeRowId = 'episode-range';
+
+  bool get _chipsView => episodeViewIsChips(widget.episodeView);
+
+  @override
+  void dispose() {
+    _episodePlayFocus.dispose();
+    _episodeScrollController.dispose();
+    _seasonScrollController.dispose();
+    super.dispose();
+  }
+
+  double _episodeCardStride(BuildContext context) =>
+      _EpisodeCard.cardWidthOf(context) + 16;
+
+  double _seasonCardStride(BuildContext context) =>
+      _SeasonCard.cardWidthOf(context) + 12;
+
+  @override
+  void initState() {
+    super.initState();
+    _tvArmedEpisode = widget.selectedEpisode;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncEpisodeChunk();
+      _scrollToSelectedSeason();
+    });
+  }
+
+  void _syncEpisodeChunk() {
+    if (!mounted || widget.isLoadingSeason || _sortedEpisodes.isEmpty) return;
+    final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
+    if (chunk != _episodeChunk) {
+      setState(() => _episodeChunk = chunk);
+    }
+    _scrollToSelectedEpisode();
+  }
+
+  @override
+  void didUpdateWidget(covariant TvSeasonEpisodePicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedSeason != widget.selectedSeason) {
+      _tvArmedEpisode = widget.selectedEpisode;
+      _episodeChunk = _chunkIndexForEpisode(widget.selectedEpisode);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToSelectedSeason();
+        _scrollToSelectedEpisode();
+      });
+    } else if (oldWidget.selectedEpisode != widget.selectedEpisode) {
+      // Parent resolved resume S/E — keep default arm in sync until user picks a card.
+      if (_tvArmedEpisode == null ||
+          _tvArmedEpisode == oldWidget.selectedEpisode) {
+        _tvArmedEpisode = widget.selectedEpisode;
+      }
+      final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
+      if (chunk != _episodeChunk) {
+        setState(() => _episodeChunk = chunk);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToSelectedEpisode();
+        });
+      }
+    }
+    if (oldWidget.isLoadingSeason != widget.isLoadingSeason ||
+        oldWidget.seasonData != widget.seasonData) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncEpisodeChunk());
+    }
+  }
+
+  int _episodeNumberAt(dynamic ep) =>
+      (ep['episode_number'] ?? ep['episode']) as int;
+
+  List<int> get _episodeNumbers =>
+      _sortedEpisodes.map(_episodeNumberAt).toList();
+
+  List<EpisodeRange> get _episodeRanges =>
+      buildEpisodeRangesForNumbers(_episodeNumbers);
+
+  List<dynamic> get _visibleEpisodes => filterEpisodeChunkByNumber(
+    _sortedEpisodes,
+    _episodeNumberAt,
+    _episodeChunk,
+  );
+
+  int _chunkIndexForEpisode(int episode) => episodeChunkIndexForNumber(episode);
+
+  void _selectChunk(int chunk) {
+    if (chunk == _episodeChunk) return;
+    setState(() => _episodeChunk = chunk);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_chunkIndexForEpisode(widget.selectedEpisode) == chunk) {
+        _scrollToSelectedEpisode();
+      } else if (_episodeScrollController.hasClients) {
+        _episodeScrollController.jumpTo(0);
+      }
+    });
+  }
+
+  List<dynamic> get _episodes {
+    if (widget.customEpisodesBySeason != null) {
+      return widget.customEpisodesBySeason![widget.selectedSeason] ?? [];
+    }
+    if (widget.seasonData == null) return [];
+    if (widget.seasonData!['episodes'] != null) {
+      return widget.seasonData!['episodes'] as List;
+    }
+    final bySeason = widget.seasonData!['episodesBySeason'];
+    if (bySeason is Map) {
+      return bySeason[widget.selectedSeason] as List? ?? [];
+    }
+    return [];
+  }
+
+  List<dynamic> _rawEpisodesForSeason(int season) {
+    if (widget.customEpisodesBySeason != null) {
+      return widget.customEpisodesBySeason![season] ?? [];
+    }
+    if (widget.seasonData == null) return [];
+    if (widget.selectedSeason == season) return _episodes;
+    final bySeason = widget.seasonData!['episodesBySeason'];
+    if (bySeason is Map) {
+      return bySeason[season] as List? ?? [];
+    }
+    if (widget.seasonData!['season_number'] == season &&
+        widget.seasonData!['episodes'] != null) {
+      return widget.seasonData!['episodes'] as List;
+    }
+    return [];
+  }
+
+  List<int> _episodeNumbersForSeason(int season) {
+    final out = <int>[];
+    for (final raw in _rawEpisodesForSeason(season)) {
+      if (raw is! Map) continue;
+      final ep = Map<String, dynamic>.from(raw);
+      if (episodeAirDateInfo(ep).notShippedYet) continue;
+      out.add(_episodeNumberAt(ep));
+    }
+    return out;
+  }
+
+  List<dynamic> get _sortedEpisodes {
+    final episodes = List<dynamic>.from(_episodes);
+    episodes.sort((a, b) {
+      final aNum = (a['episode_number'] ?? a['episode']) as int;
+      final bNum = (b['episode_number'] ?? b['episode']) as int;
+      return aNum.compareTo(bNum);
+    });
+    return episodes;
+  }
+
+  int get _keysSeason => widget.watchedSeasonForKeys ?? widget.selectedSeason;
+
+  bool _watchedKey(int episode) {
+    final season = _keysSeason;
+    final catalog = widget.watchedCatalog;
+    final key = (catalog == null || catalog.isEmpty)
+        ? '${widget.tmdbId}_S${season}_E$episode'
+        : '${catalog}_${widget.tmdbId}_S${season}_E$episode';
+    return widget.watchedEpisodes.contains(key);
+  }
+
+  void _scrollToSelectedSeason() {
+    if (!_seasonScrollController.hasClients || widget.seasonCount <= 1) return;
+    final index = widget.selectedSeason - 1;
+    if (index < 0) return;
+    final target = (index * _seasonCardStride(context)).clamp(
+      0.0,
+      _seasonScrollController.position.maxScrollExtent,
+    );
+    _seasonScrollController.animateTo(
+      target,
+      duration: ForjaMotionTheme.of(context).scrollSnap.duration,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _scrollToSelectedEpisode() {
+    if (!_episodeScrollController.hasClients) return;
+    final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
+    if (chunk != _episodeChunk) {
+      setState(() => _episodeChunk = chunk);
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToSelectedEpisode(),
+      );
+      return;
+    }
+    final index = _visibleEpisodes.indexWhere(
+      (ep) => _episodeNumberAt(ep) == widget.selectedEpisode,
+    );
+    if (index < 0) return;
+    final position = _episodeScrollController.position;
+    final itemStart = index * _episodeCardStride(context);
+    final itemEnd = itemStart + _EpisodeCard.cardWidthOf(context);
+    final viewStart = position.pixels;
+    final viewEnd = viewStart + position.viewportDimension;
+    // Only scroll when the card is clipped; keep current offset otherwise.
+    double? target;
+    if (itemStart < viewStart) {
+      target = itemStart;
+    } else if (itemEnd > viewEnd) {
+      target = itemEnd - position.viewportDimension;
+    }
+    if (target == null) return;
+    target = target.clamp(0.0, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < 1) return;
+    _episodeScrollController.animateTo(
+      target,
+      duration: ForjaMotionTheme.of(context).scrollSnap.duration,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Widget _buildSeasonRow() {
+    return HorizontalScroller(
+      height: _SeasonCard.rowScrollerHeightOf(context),
+      padding: const EdgeInsets.symmetric(
+        vertical: _SeasonCard.rowVerticalPadding,
+      ),
+      controller: _seasonScrollController,
+      itemCount: widget.seasonCount,
+      separatorBuilder: (_, _) => const SizedBox(width: 12),
+      itemBuilder: (_, i) {
+        final season = i + 1;
+        return _SeasonCard(
+          key: ValueKey('season-$season'),
+          seasonNumber: season,
+          selected: widget.selectedSeason == season,
+          posterUrl: _seasonPosterUrl(season),
+          onTap: () {
+            if (season == widget.selectedSeason) {
+              return;
+            }
+            setState(() => _episodeChunk = 0);
+            widget.onSeasonSelected(season);
+          },
+          onDoubleTap: widget.onSeasonToggleWatched == null
+              ? null
+              : () => widget.onSeasonToggleWatched!(
+                  season,
+                  _episodeNumbersForSeason(season),
+                ),
+          onLeftEdge: null,
+          listIndex: i,
+        );
+      },
+    );
+  }
+
+  ({bool showDate, bool showOverview}) _episodeMetaFlags(List<dynamic> eps) {
+    var showDate = false;
+    var showOverview = false;
+    for (final raw in eps) {
+      if (raw is! Map) continue;
+      final ep = Map<String, dynamic>.from(raw);
+      if (!showDate && episodeAirDateInfo(ep).label != null) showDate = true;
+      if (!showOverview &&
+          (ep['overview'] ?? '').toString().trim().isNotEmpty) {
+        showOverview = true;
+      }
+      if (showDate && showOverview) break;
+    }
+    return (showDate: showDate, showOverview: showOverview);
+  }
+
+  Widget _buildEpisodeRow() {
+    final meta = _episodeMetaFlags(_visibleEpisodes);
+    return HorizontalScroller(
+      height: _EpisodeCard.rowScrollerHeight(
+        context,
+        showDate: meta.showDate,
+        showOverview: meta.showOverview,
+      ),
+      controller: _episodeScrollController,
+      padding: const EdgeInsets.symmetric(
+        vertical: _EpisodeCard.rowVerticalPadding,
+      ),
+      itemCount: _visibleEpisodes.length,
+      separatorBuilder: (_, _) => const SizedBox(width: 16),
+      itemBuilder: (_, i) {
+        final ep = _visibleEpisodes[i];
+        final epNum = (ep['episode_number'] ?? ep['episode']) as int;
+        final title = (ep['name'] ?? ep['title'] ?? 'Episode $epNum')
+            .toString();
+        final overview = (ep['overview'] ?? '').toString();
+        final runtime = ep['runtime'] as int? ?? 0;
+        final thumbnail = _resolveThumbnail(
+          ep['still_path'] ?? ep['thumbnail'],
+          widget.fallbackPosterPath,
+        );
+        final watched = _watchedKey(epNum);
+        final progKey = 'S${_keysSeason}_E$epNum';
+        final prog = widget.episodeProgress[progKey];
+        final pos = prog?['position'] as int? ?? 0;
+        final dur =
+            prog?['duration'] as int? ?? (runtime > 0 ? runtime * 60000 : 0);
+        final airDate = episodeAirDateInfo(ep);
+
+        final selected = widget.selectedEpisode == epNum;
+        final armed = _tvArmedEpisode == epNum;
+        final tvFocus = ShellPaintScope.useTvFocusOf(context);
+        return _EpisodeCard(
+          key: ValueKey('ep-${widget.selectedSeason}-$epNum'),
+          episodeNumber: epNum,
+          title: title,
+          overview: overview,
+          runtime: runtime,
+          dateLabel: airDate.label,
+          dateNotShippedYet: airDate.notShippedYet,
+          thumbnail: thumbnail,
+          selected: selected,
+          armed: armed,
+          watched: watched,
+          positionMs: pos,
+          durationMs: dur,
+          onTap: () {
+            widget.onEpisodeSelected(epNum);
+            setState(() => _tvArmedEpisode = epNum);
+            if (airDate.notShippedYet) return;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToSelectedEpisode();
+              if (tvFocus &&
+                  widget.onEpisodePlay != null &&
+                  _episodePlayFocus.canRequestFocus) {
+                _episodePlayFocus.requestFocus();
+              }
+            });
+          },
+          onPlay: airDate.notShippedYet || widget.onEpisodePlay == null
+              ? null
+              : () => widget.onEpisodePlay!(epNum),
+          playFocusNode: tvFocus && armed && widget.onEpisodePlay != null
+              ? _episodePlayFocus
+              : null,
+          onPlayKeyEvent: tvFocus && armed
+              ? (node, event) {
+                  if (event is! KeyDownEvent) {
+                    return KeyEventResult.ignored;
+                  }
+                  final key = event.logicalKey;
+                  if (key == LogicalKeyboardKey.arrowUp) {
+                    widget.tvFocusUp?.call();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                }
+              : null,
+          onFocusChange: widget.onEpisodeFocused == null
+              ? null
+              : (focused) {
+                  if (focused) widget.onEpisodeFocused!(epNum);
+                },
+          onToggleWatched: () => widget.onToggleWatched(_keysSeason, epNum),
+          onLeftEdge: null,
+          listIndex: i,
+        );
+      },
+    );
+  }
+
+  String? _resolveThumbnail(dynamic thumb, String fallback) {
+    final value = thumb?.toString().trim();
+    if (value != null && value.isNotEmpty && value != 'null') return value;
+    final fb = fallback.trim();
+    return fb.isNotEmpty ? fb : null;
+  }
+
+  String? _seasonPosterUrl(int season) {
+    final poster = widget.seasonPosters[season];
+    if (poster != null && poster.isNotEmpty) {
+      return poster.startsWith('http') ? poster : null;
+    }
+    final fb = widget.fallbackPosterPath.trim();
+    if (fb.isEmpty) return null;
+    return fb.startsWith('http') ? fb : null;
+  }
+
+  Widget _buildEpisodeChipsSection({
+    required int sortOrder,
+    required String? tabId,
+    required bool useTv,
+    required VoidCallback? onFocusUp,
+  }) {
+    final eps = _visibleEpisodes;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final chipW = tv
+        ? DetailsTokens.episodeChipMinWidthTv
+        : DetailsTokens.episodeChipMinWidth;
+    final chipH = tv
+        ? DetailsTokens.episodeChipHeightTv
+        : DetailsTokens.episodeChipHeight;
+    final gap = tv
+        ? DetailsTokens.episodeChipGapTv
+        : DetailsTokens.episodeChipGap;
+    final radius = tv
+        ? DetailsTokens.episodeChipRadiusTv
+        : DetailsTokens.episodeChipRadius;
+    final fontSize = tv
+        ? DetailsTokens.bodyFontSizeTv
+        : DetailsTokens.bodyFontSize;
+    final watchedBadgeSize = tv
+        ? DetailsTokens.episodeChipWatchedBadgeSizeTv
+        : DetailsTokens.episodeChipWatchedBadgeSize;
+    final watchedBadgeInset = tv
+        ? DetailsTokens.episodeChipWatchedBadgeInsetTv
+        : DetailsTokens.episodeChipWatchedBadgeInset;
+    final watchedBadgeHalo = tv
+        ? DetailsTokens.episodeChipWatchedBadgeHaloTv
+        : DetailsTokens.episodeChipWatchedBadgeHalo;
+    final watchedCheckSize = tv
+        ? DetailsTokens.episodeChipWatchedCheckSizeTv
+        : DetailsTokens.episodeChipWatchedCheckSize;
+    final hPad = DetailsTokens.contentHorizontalPadding(
+      MediaQuery.sizeOf(context).width,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final rawW = constraints.maxWidth.isFinite && constraints.maxWidth > 0
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final avail = (rawW - hPad * 2).clamp(chipW, double.infinity);
+        final cols = ((avail + gap) / (chipW + gap)).floor().clamp(
+          DetailsTokens.episodeChipColumnsMin,
+          DetailsTokens.episodeChipColumnsMax,
+        );
+
+        final grid = Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad),
+          child: Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (var i = 0; i < eps.length; i++)
+                _buildEpisodeNumberChip(
+                  index: i,
+                  ep: eps[i],
+                  width: chipW,
+                  height: chipH,
+                  radius: radius,
+                  fontSize: fontSize,
+                  watchedBadgeSize: watchedBadgeSize,
+                  watchedBadgeInset: watchedBadgeInset,
+                  watchedBadgeHalo: watchedBadgeHalo,
+                  watchedCheckSize: watchedCheckSize,
+                  columns: cols,
+                  tvFocus: useTv,
+                  tabId: tabId,
+                ),
+            ],
+          ),
+        );
+
+        if (!useTv || tabId == null) return grid;
+        return ShellPaintScope.tvGrid(
+          context: context,
+          tabId: tabId,
+          rowId: _episodeRowId,
+          sortOrder: sortOrder,
+          itemCount: eps.length,
+          columns: cols,
+          onFocusUp: onFocusUp,
+          child: grid,
+        );
+      },
+    );
+  }
+
+  Widget _buildEpisodeNumberChip({
+    required int index,
+    required dynamic ep,
+    required double width,
+    required double height,
+    required double radius,
+    required double fontSize,
+    required double watchedBadgeSize,
+    required double watchedBadgeInset,
+    required double watchedBadgeHalo,
+    required double watchedCheckSize,
+    required int columns,
+    required bool tvFocus,
+    required String? tabId,
+  }) {
+    final epNum = (ep['episode_number'] ?? ep['episode']) as int;
+    final map = ep is Map ? Map<String, dynamic>.from(ep) : <String, dynamic>{};
+    final airDate = episodeAirDateInfo(map);
+    final watched = _watchedKey(epNum);
+    final selected = widget.selectedEpisode == epNum;
+    final unaired = airDate.notShippedYet;
+
+    return _EpisodeNumberChip(
+      label: '$epNum',
+      width: width,
+      height: height,
+      radius: radius,
+      fontSize: fontSize,
+      watchedBadgeSize: watchedBadgeSize,
+      watchedBadgeInset: watchedBadgeInset,
+      watchedBadgeHalo: watchedBadgeHalo,
+      watchedCheckSize: watchedCheckSize,
+      selected: selected,
+      watched: watched,
+      unaired: unaired,
+      onTap: () {
+        widget.onEpisodeSelected(epNum);
+        setState(() => _tvArmedEpisode = epNum);
+      },
+      onToggleWatched: () => widget.onToggleWatched(_keysSeason, epNum),
+      listIndex: index,
+      gridIndex: index,
+      gridColumns: columns,
+      tvTabId: tabId,
+      tvRowId: _episodeRowId,
+      tvFocus: tvFocus,
+      onFocusChange: widget.onEpisodeFocused == null
+          ? null
+          : (focused) {
+              if (focused) widget.onEpisodeFocused!(epNum);
+            },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.seasonCount <= 0) return const SizedBox.shrink();
+
+    final episodeCount = _episodes.length;
+    final tabId = ShellPaintTvTabScope.tabIdOf(context);
+    final useTv = tabId != null && ShellPaintScope.useTvFocusOf(context);
+    final hasMultiSeason = widget.seasonCount > 1;
+    final showRange = showEpisodeRangeBar(_episodeNumbers);
+    final chips = _chipsView;
+
+    // Focus order: range (if any) → seasons (if multi) → episodes.
+    var nextOrder = widget.tvRowOrderBase;
+    final rangeOrder = showRange ? nextOrder++ : null;
+    final seasonOrder = hasMultiSeason ? nextOrder++ : null;
+    final episodeOrder = nextOrder;
+
+    Widget? seasonSection;
+    if (hasMultiSeason) {
+      final seasonRow = _buildSeasonRow();
+      seasonSection = useTv
+          ? ShellPaintScope.tvRow(
+              context: context,
+              tabId: tabId,
+              rowId: _seasonRowId,
+              sortOrder: seasonOrder!,
+              itemCount: widget.seasonCount,
+              onFocusUp: showRange ? null : widget.tvFocusUp,
+              child: seasonRow,
+            )
+          : seasonRow;
+    }
+
+    Widget? episodeSection;
+    if (widget.isLoadingSeason) {
+      episodeSection = _buildEpisodeSkeletonRow();
+    } else if (_visibleEpisodes.isNotEmpty) {
+      if (chips) {
+        episodeSection = _buildEpisodeChipsSection(
+          sortOrder: episodeOrder,
+          tabId: tabId,
+          useTv: useTv,
+          onFocusUp: (hasMultiSeason || showRange) ? null : widget.tvFocusUp,
+        );
+      } else {
+        final episodeRow = _buildEpisodeRow();
+        episodeSection = useTv
+            ? ShellPaintScope.tvRow(
+                context: context,
+                tabId: tabId,
+                rowId: _episodeRowId,
+                sortOrder: episodeOrder,
+                itemCount: _visibleEpisodes.length,
+                onFocusUp: (hasMultiSeason || showRange)
+                    ? null
+                    : widget.tvFocusUp,
+                child: episodeRow,
+              )
+            : episodeRow;
+      }
+    }
+
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    // Secondary to the section title (desktop 14 → TV body ladder).
+    final countFontSize = tvDensity ? ShellTokens.tvTypeSize(14) : 14.0;
+
+    Widget? rangeControl;
+    if (showRange) {
+      final selector = EpisodeRangeSelector(
+        ranges: _episodeRanges,
+        selectedIndex: _episodeChunk,
+        onSelected: _selectChunk,
+        useFocusableChips: ShellPaintScope.useTvFocusOf(context),
+      );
+      rangeControl = useTv
+          ? ShellPaintScope.tvRow(
+              context: context,
+              tabId: tabId,
+              rowId: _rangeRowId,
+              sortOrder: rangeOrder!,
+              itemCount: 1,
+              onFocusUp: widget.tvFocusUp,
+              child: selector,
+            )
+          : selector;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: DetailsBody.contentPadding(context),
+          child: Row(
+            children: [
+              Text('Episodes', style: ShellSectionTitle.titleStyleFor(context)),
+              if (episodeCount > 0) ...[
+                const SizedBox(width: 8),
+                Text(
+                  '$episodeCount',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: countFontSize,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              if (rangeControl != null) ...[const Spacer(), rangeControl],
+            ],
+          ),
+        ),
+        if (seasonSection != null) ...[
+          const SizedBox(height: 16),
+          seasonSection,
+        ],
+        const SizedBox(height: 20),
+        ?episodeSection,
+      ],
+    );
+  }
+
+  Widget _buildEpisodeSkeletonRow() {
+    if (_chipsView) {
+      final tv = ShellPaintScope.usesTvDensityOf(context);
+      final chipW = tv
+          ? DetailsTokens.episodeChipMinWidthTv
+          : DetailsTokens.episodeChipMinWidth;
+      final chipH = tv
+          ? DetailsTokens.episodeChipHeightTv
+          : DetailsTokens.episodeChipHeight;
+      final gap = tv
+          ? DetailsTokens.episodeChipGapTv
+          : DetailsTokens.episodeChipGap;
+      return homeLoadingShimmer(
+        Padding(
+          padding: DetailsBody.contentPadding(context),
+          child: Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: List.generate(
+              12,
+              (_) => Container(
+                width: chipW,
+                height: chipH,
+                decoration: BoxDecoration(
+                  color: ForjaShellColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(
+                    tv
+                        ? DetailsTokens.episodeChipRadiusTv
+                        : DetailsTokens.episodeChipRadius,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    const count = 4;
+    // Prefer season source over visible chunk - loading often has empty visible.
+    final meta = _episodeMetaFlags(_sortedEpisodes);
+    final compact = !meta.showDate && !meta.showOverview;
+    return homeLoadingShimmer(
+      SizedBox(
+        height: _EpisodeCard.rowScrollerHeight(
+          context,
+          showDate: meta.showDate,
+          showOverview: meta.showOverview,
+        ),
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(
+            vertical: _EpisodeCard.rowVerticalPadding,
+          ),
+          itemCount: count,
+          separatorBuilder: (_, _) => const SizedBox(width: 16),
+          itemBuilder: (_, _) => _EpisodeCardSkeleton(compact: compact),
+        ),
+      ),
+    );
+  }
+}
+
+class _EpisodeNumberChip extends StatefulWidget {
+  const _EpisodeNumberChip({
+    required this.label,
+    required this.width,
+    required this.height,
+    required this.radius,
+    required this.fontSize,
+    required this.watchedBadgeSize,
+    required this.watchedBadgeInset,
+    required this.watchedBadgeHalo,
+    required this.watchedCheckSize,
+    required this.selected,
+    required this.watched,
+    required this.unaired,
+    required this.onTap,
+    required this.onToggleWatched,
+    required this.listIndex,
+    required this.gridIndex,
+    required this.gridColumns,
+    required this.tvTabId,
+    required this.tvRowId,
+    required this.tvFocus,
+    this.onFocusChange,
+  });
+
+  final String label;
+  final double width;
+  final double height;
+  final double radius;
+  final double fontSize;
+  final double watchedBadgeSize;
+  final double watchedBadgeInset;
+  final double watchedBadgeHalo;
+  final double watchedCheckSize;
+  final bool selected;
+  final bool watched;
+  final bool unaired;
+  final VoidCallback? onTap;
+  final VoidCallback onToggleWatched;
+  final int listIndex;
+  final int gridIndex;
+  final int gridColumns;
+  final String? tvTabId;
+  final String tvRowId;
+  final bool tvFocus;
+  final ValueChanged<bool>? onFocusChange;
+
+  @override
+  State<_EpisodeNumberChip> createState() => _EpisodeNumberChipState();
+}
+
+class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
+  bool _focused = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+
+    Widget face = ValueListenableBuilder<bool>(
+      valueListenable: _hoveredN,
+      builder: (context, hovered, _) {
+        final liveActive = ShellPaintScope.interactiveActive(
+          context,
+          hovered: hovered,
+          focused: _focused,
+        );
+        final liveBorder = widget.selected || liveActive
+            ? ForjaShellColors.chipSelectedBorder
+            : cinematic.borderSubtle;
+        final labelColor = episodeDateColor(
+          notShippedYet: widget.unaired,
+          normal: widget.selected || liveActive
+              ? cinematic.textPrimary
+              : cinematic.textSecondary,
+        );
+        return AnimatedContainer(
+          duration: ForjaMotionTheme.of(context).chipLift.duration,
+          width: widget.width,
+          height: widget.height,
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          decoration: BoxDecoration(
+            color: cinematic.menuSurface,
+            borderRadius: BorderRadius.circular(widget.radius),
+            border: Border.all(
+              color: liveBorder,
+              width: widget.selected || liveActive ? 2 : 1,
+            ),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: labelColor,
+                  fontSize: widget.fontSize,
+                  fontWeight: widget.selected || liveActive
+                      ? FontWeight.w700
+                      : FontWeight.w600,
+                ),
+              ),
+              if (widget.watched)
+                Positioned(
+                  right: widget.watchedBadgeInset,
+                  top: widget.watchedBadgeInset,
+                  child: Container(
+                    width: widget.watchedBadgeSize,
+                    height: widget.watchedBadgeSize,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: ForjaShellColors.brandGreen,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: cinematic.menuSurface,
+                        width: widget.watchedBadgeHalo,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: widget.watchedCheckSize,
+                      color: ForjaShellColors.bgDark,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+
+    face = GestureDetector(
+      onSecondaryTap: widget.onToggleWatched,
+      onDoubleTap: widget.onToggleWatched,
+      child: face,
+    );
+
+    if (!widget.tvFocus && widget.onTap == null) {
+      return MouseRegion(
+        onEnter: (_) => _hoveredN.value = true,
+        onExit: (_) => _hoveredN.value = false,
+        child: face,
+      );
+    }
+
+    return MouseRegion(
+      onEnter: (_) => _hoveredN.value = true,
+      onExit: (_) => _hoveredN.value = false,
+      child: ShellPaintScope.focusableTap(
+        context: context,
+        onTap: widget.onTap,
+        mouseDownActivates: false,
+        borderRadius: widget.radius,
+        showFocusBorder: false,
+        listIndex: widget.listIndex,
+        gridIndex: widget.gridIndex,
+        gridColumns: widget.gridColumns,
+        tvTabId: widget.tvTabId,
+        tvRowId: widget.tvRowId,
+        tvItemIndex: widget.gridIndex,
+        tvZone: ShellPaintTvZone.grid,
+        onFocusChange: (focused) {
+          setState(() => _focused = focused);
+          widget.onFocusChange?.call(focused);
+        },
+        child: face,
+      ),
+    );
+  }
+}
+
+class _EpisodeCardSkeleton extends StatelessWidget {
+  const _EpisodeCardSkeleton({this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardWidth = _EpisodeCard.cardWidthOf(context);
+    final thumbHeight = _EpisodeCard.thumbHeightOf(context);
+    return SizedBox(
+      width: cardWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: cardWidth,
+            height: thumbHeight,
+            decoration: BoxDecoration(
+              color: ForjaShellColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
+            ),
+          ),
+          const SizedBox(height: _EpisodeCard._bodyTopGap),
+          Container(
+            height: 14,
+            width: cardWidth * 0.72,
+            decoration: BoxDecoration(
+              color: ForjaShellColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          if (!compact) ...[
+            const SizedBox(height: _EpisodeCard._metaGap),
+            Container(
+              height: 12,
+              width: cardWidth * 0.38,
+              decoration: BoxDecoration(
+                color: ForjaShellColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: _EpisodeCard._metaGap),
+            Container(
+              height: 12,
+              width: cardWidth,
+              decoration: BoxDecoration(
+                color: ForjaShellColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              height: 12,
+              width: cardWidth * 0.85,
+              decoration: BoxDecoration(
+                color: ForjaShellColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SeasonCard extends StatefulWidget {
+  const _SeasonCard({
+    super.key,
+    required this.seasonNumber,
+    required this.selected,
+    required this.posterUrl,
+    this.onTap,
+    this.onDoubleTap,
+    this.onLeftEdge,
+    this.listIndex,
+  });
+
+  final int seasonNumber;
+  final bool selected;
+  final String? posterUrl;
+  final VoidCallback? onTap;
+  final VoidCallback? onDoubleTap;
+  final VoidCallback? onLeftEdge;
+  final int? listIndex;
+
+  static const double radius = ShellTokens.shellProviderCardRadius;
+  static const double rowVerticalPadding = 4;
+
+  static double cardWidthOf(BuildContext context) =>
+      ShellPaintScope.usesTvDensityOf(context)
+      ? DetailsTokens.episodeSeasonWidthTv
+      : DetailsTokens.episodeSeasonWidth;
+
+  static double cardHeightOf(BuildContext context) =>
+      ShellPaintScope.usesTvDensityOf(context)
+      ? DetailsTokens.episodeSeasonHeightTv
+      : DetailsTokens.episodeSeasonHeight;
+
+  static double rowScrollerHeightOf(BuildContext context) =>
+      cardHeightOf(context) * ForjaMotionTheme.defaults.chipLift.hoverScale +
+      rowVerticalPadding * 2;
+
+  @override
+  State<_SeasonCard> createState() => _SeasonCardState();
+}
+
+class _SeasonCardState extends State<_SeasonCard> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  bool _focused = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildCard(bool hovered) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final seasonFontSize = tv ? DetailsTokens.bodyFontSizeTv : 12.0;
+    final active = ShellPaintScope.interactiveActive(
+      context,
+      hovered: hovered,
+      focused: _focused,
+    );
+    final borderColor = widget.selected || active
+        ? ForjaShellColors.chipSelectedBorder
+        : ForjaShellColors.cinematic.borderSubtle;
+    final borderWidth = widget.selected || active ? 2.0 : 1.0;
+    final liftActive = active && !widget.selected;
+
+    return ForjaMotionScale(
+      preset: ForjaMotionPreset.chipLift,
+      active: liftActive,
+      child: GestureDetector(
+        onSecondaryTap: widget.onDoubleTap,
+        onDoubleTap: widget.onDoubleTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: _SeasonCard.cardWidthOf(context),
+          height: _SeasonCard.cardHeightOf(context),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(_SeasonCard.radius),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (widget.posterUrl != null)
+                      SettledNetworkImage(
+                        imageUrl: widget.posterUrl!,
+                        fit: BoxFit.cover,
+                        errorWidget: _fallback(),
+                      )
+                    else
+                      _fallback(),
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Color(0xD9000000)],
+                          stops: [0.45, 1.0],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 8,
+                      right: 8,
+                      bottom: 10,
+                      child: Text(
+                        'Season ${widget.seasonNumber}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(
+                            alpha: widget.selected ? 1.0 : 0.85,
+                          ),
+                          fontSize: seasonFontSize,
+                          fontWeight: widget.selected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IgnorePointer(
+                child: AnimatedContainer(
+                  duration: ForjaMotionTheme.of(context).chipLift.duration,
+                  curve: ForjaMotionTheme.of(context).chipLift.resolvedCurve,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(_SeasonCard.radius),
+                    border: Border.all(color: borderColor, width: borderWidth),
+                    boxShadow: widget.selected || active
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: widget.onTap,
+      mouseDownActivates: widget.onDoubleTap == null,
+      borderRadius: _SeasonCard.radius,
+      motion: ForjaMotionPreset.fillOnly,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: _setHovered,
+      onLeftEdge: widget.onLeftEdge,
+      listIndex: widget.listIndex,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellPaintTvZone.row,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildCard(_hoveredN.value),
+      ),
+    );
+  }
+
+  Widget _fallback() {
+    return Container(color: Colors.white.withValues(alpha: 0.06));
+  }
+}
+
+class _EpisodeCard extends StatefulWidget {
+  const _EpisodeCard({
+    super.key,
+    required this.episodeNumber,
+    required this.title,
+    required this.overview,
+    required this.runtime,
+    this.dateLabel,
+    this.dateNotShippedYet = false,
+    required this.thumbnail,
+    required this.selected,
+    this.armed = false,
+    required this.watched,
+    required this.positionMs,
+    required this.durationMs,
+    this.onTap,
+    this.onPlay,
+    this.playFocusNode,
+    this.onPlayKeyEvent,
+    required this.onToggleWatched,
+    this.onFocusChange,
+    this.onLeftEdge,
+    this.listIndex,
+  });
+
+  final int episodeNumber;
+  final String title;
+  final String overview;
+  final int runtime;
+  final String? dateLabel;
+  final bool dateNotShippedYet;
+  final dynamic thumbnail;
+  final bool selected;
+  final bool armed;
+  final bool watched;
+  final int positionMs;
+  final int durationMs;
+  final VoidCallback? onTap;
+  final VoidCallback? onPlay;
+  final FocusNode? playFocusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onPlayKeyEvent;
+  final VoidCallback onToggleWatched;
+  final ValueChanged<bool>? onFocusChange;
+  final VoidCallback? onLeftEdge;
+  final int? listIndex;
+
+  static const double thumbRadius = 10;
+  static const double rowVerticalPadding = 8;
+
+  static const double _bodyTopGap = 10;
+  static const double _metaGap = 4;
+  // Ceil text metrics — fractional line heights + platform font rounding
+  // were overflowing the row by <1px (e.g. 150.75 thumb in a 216 budget).
+  static const double _titleLineHeight = 18; // ceil(14 * 1.25)
+  static const double _dateBlockHeight = _metaGap + 15; // ceil(12 * 1.2)
+  static const double _overviewBlockHeight =
+      _metaGap + 34; // ceil(12 * 1.4 * 2)
+  // macOS/desktop font metrics can exceed ceil budgets by ~1px inside ListView rows.
+  static const double _layoutSlack = 1;
+
+  static double cardWidthOf(BuildContext context) =>
+      ShellPaintScope.usesTvDensityOf(context)
+      ? DetailsTokens.episodeCardWidthTv
+      : DetailsTokens.episodeCardWidth;
+
+  static double thumbHeightOf(BuildContext context) =>
+      (cardWidthOf(context) * 9 / 16).ceilToDouble();
+
+  /// Height for title + optional air date / two-line overview.
+  static double contentHeight(
+    BuildContext context, {
+    bool showDate = true,
+    bool showOverview = true,
+  }) {
+    var h = thumbHeightOf(context) + _bodyTopGap + _titleLineHeight;
+    if (showDate) h += _dateBlockHeight;
+    if (showOverview) h += _overviewBlockHeight;
+    return h + _layoutSlack;
+  }
+
+  static double rowScrollerHeight(
+    BuildContext context, {
+    bool showDate = true,
+    bool showOverview = true,
+  }) =>
+      contentHeight(context, showDate: showDate, showOverview: showOverview) +
+      rowVerticalPadding * 2;
+
+  @override
+  State<_EpisodeCard> createState() => _EpisodeCardState();
+}
+
+class _EpisodeCardState extends State<_EpisodeCard> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  bool _focused = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  Widget _buildCard(bool hovered) {
+    final cardWidth = _EpisodeCard.cardWidthOf(context);
+    final thumbHeight = _EpisodeCard.thumbHeightOf(context);
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final titleFontSize = tvDensity ? DetailsTokens.bodyFontSizeTv : 14.0;
+    final metaFontSize = tvDensity ? DetailsTokens.metaFontSizeTv : 12.0;
+    final showProgress = WatchProgressBar.isResumable(
+      widget.positionMs,
+      widget.durationMs,
+    );
+    final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
+    final tvFocus = ShellPaintScope.useTvFocusOf(context);
+    final active = ShellPaintScope.interactiveActive(
+      context,
+      hovered: hovered,
+      focused: _focused,
+    );
+    final enabled = widget.onTap != null;
+    final playEnabled = widget.onPlay != null;
+    final showPlayOverlay = !widget.dateNotShippedYet &&
+        (tvFocus
+            ? (playEnabled || enabled) && (widget.armed || active)
+            : (playEnabled || enabled) && (active || widget.selected));
+    final liftActive = !tvFocus && enabled && (active || widget.selected);
+    final showThumbBorder = widget.selected || active;
+    final thumbBorderColor = widget.selected
+        ? Colors.white
+        : ForjaShellColors.chipSelectedBorder;
+
+    return ForjaMotionScale(
+      preset: ForjaMotionPreset.cardLift,
+      active: liftActive,
+      child: GestureDetector(
+        onSecondaryTap: enabled && !widget.dateNotShippedYet
+            ? widget.onToggleWatched
+            : null,
+        onDoubleTap: enabled && !widget.dateNotShippedYet
+            ? widget.onToggleWatched
+            : null,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: cardWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: cardWidth,
+                height: thumbHeight,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
+                  border: showThumbBorder
+                      ? Border.all(color: thumbBorderColor, width: 2)
+                      : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      widget.thumbnail != null &&
+                              widget.thumbnail.toString().startsWith('http')
+                          ? SettledNetworkImage(
+                              imageUrl: widget.thumbnail.toString(),
+                              fit: BoxFit.cover,
+                              errorWidget: _thumbFallback(),
+                            )
+                          : _thumbFallback(),
+                      if (showProgress)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: LinearProgressIndicator(
+                            value: (widget.positionMs / widget.durationMs)
+                                .clamp(0.0, 1.0),
+                            minHeight: 3,
+                            backgroundColor: Colors.black54,
+                            valueColor: AlwaysStoppedAnimation(
+                              ForjaShellColors.progressFill,
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: _ThumbBadge(label: 'E${widget.episodeNumber}'),
+                      ),
+                      if (durationLabel != null)
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: _ThumbBadge(label: durationLabel),
+                        ),
+                      if (widget.watched)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Icon(
+                            Icons.check_circle_rounded,
+                            size: ShellPaintScope.iconOf(context, 16),
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ShellCardPlayOverlay(
+                        active: widget.playFocusNode?.hasFocus == true,
+                        visible: showPlayOverlay,
+                        onTap:
+                            playEnabled &&
+                                (tvFocus ? widget.armed : showPlayOverlay)
+                            ? widget.onPlay
+                            : null,
+                        focusNode: widget.playFocusNode,
+                        onKeyEvent: widget.onPlayKeyEvent,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: _EpisodeCard._bodyTopGap),
+              Text(
+                widget.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                ),
+              ),
+              if (widget.dateLabel != null) ...[
+                const SizedBox(height: _EpisodeCard._metaGap),
+                Text(
+                  widget.dateLabel!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: episodeDateColor(
+                      notShippedYet: widget.dateNotShippedYet,
+                      normal: Colors.white.withValues(alpha: 0.45),
+                    ),
+                    fontSize: metaFontSize,
+                    fontWeight: widget.dateNotShippedYet
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+              if (widget.overview.isNotEmpty) ...[
+                const SizedBox(height: _EpisodeCard._metaGap),
+                Text(
+                  widget.overview,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: metaFontSize,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: widget.onTap,
+      mouseDownActivates: false,
+      borderRadius: _EpisodeCard.thumbRadius,
+      motion: ForjaMotionPreset.fillOnly,
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        widget.onFocusChange?.call(focused);
+      },
+      onHoverChange: _setHovered,
+      onLeftEdge: widget.onLeftEdge,
+      listIndex: widget.listIndex,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellPaintTvZone.row,
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) => _buildCard(_hoveredN.value),
+      ),
+    );
+  }
+
+  Widget _thumbFallback() {
+    return Container(color: Colors.white.withValues(alpha: 0.06));
+  }
+}
+
+class _ThumbBadge extends StatelessWidget {
+  const _ThumbBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final badgeFontSize = tv ? DetailsTokens.metaFontSizeTv : 11.0;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: tv ? 4 : 7,
+        vertical: tv ? 2 : 4,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(tv ? 3 : 5),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.black.withValues(alpha: 0.88),
+          fontSize: badgeFontSize,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}

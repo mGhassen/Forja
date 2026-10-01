@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shell/routing/app_router.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 
 Movie movieFromWatchHistory(Map<String, dynamic> item) {
   final season = item['season'] as int?;
@@ -76,13 +77,9 @@ Future<bool> _resumeStremioDirectStream(
 
   final profile = PlatformPlayback.capabilities;
   final settings = SettingsService();
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
   final precheck = classifyStremioStream(
     matched,
     profile,
-    useDebrid: useDebrid,
-    debridService: debridService,
   );
   if (precheck is StremioExternalLink) {
     if (!context.mounted) return false;
@@ -163,10 +160,6 @@ Future<bool> _resumeTorrentStream(
   if (magnetLink == null || magnetLink.isEmpty) {
     throw Exception('No magnet link saved for this torrent');
   }
-
-  final useDebridSetting = await SettingsService().useDebridForStreams();
-  final debridService = await SettingsService().getDebridService();
-  final useDebrid = useDebridSetting && debridService != 'None';
   if (!context.mounted) return false;
   if (!await ensureLanP2pPlayback(context)) {
     return false;
@@ -175,8 +168,6 @@ Future<bool> _resumeTorrentStream(
 
   final playback = await resolveMagnetForPlayback(
     magnet: magnetLink,
-    useDebrid: useDebrid,
-    debridService: debridService,
     localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
     season: season,
     episode: episode,

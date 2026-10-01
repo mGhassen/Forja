@@ -1,0 +1,220 @@
+import 'package:flutter/material.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+/// One icon slot in a [ViewButtonGroup].
+class ViewButtonItem {
+  const ViewButtonItem({
+    required this.id,
+    required this.icon,
+    this.label = '',
+  });
+
+  final String id;
+  final IconData icon;
+  final String label;
+}
+
+/// Compact icon toggle group (cards / list / timeline) — old IPTV view chrome.
+class ViewButtonGroup extends StatelessWidget {
+  const ViewButtonGroup({
+    super.key,
+    required this.items,
+    required this.selectedId,
+    required this.onSelect,
+    this.height,
+    this.iconSize,
+    this.dividerHeight,
+    this.onDownEdge,
+    this.baseTvItemIndex = 0,
+  });
+
+  final List<ViewButtonItem> items;
+  final String? selectedId;
+  final ValueChanged<String> onSelect;
+  final double? height;
+  final double? iconSize;
+  final double? dividerHeight;
+  final VoidCallback? onDownEdge;
+
+  /// Chrome-row index for the first button; later buttons use +i.
+  final int baseTvItemIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final h = height ??
+        (tv ? ShellTokens.viewButtonHeightTv : ShellTokens.viewButtonHeight);
+    final icon = iconSize ??
+        (tv ? ShellTokens.viewButtonIconSizeTv : ShellTokens.viewButtonIconSize);
+    final gap = dividerHeight ??
+        (tv ? ShellTokens.viewButtonGapTv : ShellTokens.viewButtonGap);
+    final r = Radius.circular(h / 2);
+    return Container(
+      height: h,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(h / 2),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0)
+              Container(
+                width: 1,
+                height: gap,
+                color: Colors.white.withValues(alpha: 0.14),
+              ),
+            _ViewButtonSlot(
+              item: items[i],
+              selected: selectedId == items[i].id,
+              isFirst: i == 0,
+              isLast: i == items.length - 1,
+              height: h,
+              radius: r,
+              iconSize: icon,
+              listIndex: baseTvItemIndex + i,
+              onDownEdge: onDownEdge,
+              onTap: () => onSelect(items[i].id),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ViewButtonSlot extends StatefulWidget {
+  const _ViewButtonSlot({
+    required this.item,
+    required this.selected,
+    required this.isFirst,
+    required this.isLast,
+    required this.height,
+    required this.radius,
+    required this.iconSize,
+    required this.listIndex,
+    required this.onTap,
+    this.onDownEdge,
+  });
+
+  final ViewButtonItem item;
+  final bool selected;
+  final bool isFirst;
+  final bool isLast;
+  final double height;
+  final Radius radius;
+  final double iconSize;
+  final int listIndex;
+  final VoidCallback onTap;
+  final VoidCallback? onDownEdge;
+
+  @override
+  State<_ViewButtonSlot> createState() => _ViewButtonSlotState();
+}
+
+class _ViewButtonSlotState extends State<_ViewButtonSlot> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  bool _focused = false;
+
+  bool get _tv => ShellPaintScope.useTvFocusOf(context);
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  Widget _buildSlot(bool hovered) {
+    final chromeActive = ShellPaintScope.interactiveActive(
+      context,
+      hovered: hovered,
+      focused: _focused,
+    );
+    // Selected stays white; hover / focus → brand green.
+    final Color fg;
+    final Color fill;
+    if (chromeActive) {
+      fg = ForjaShellColors.brandGreen;
+      fill = ForjaShellColors.brandGreen.withValues(alpha: 0.18);
+    } else if (widget.selected) {
+      fg = Colors.white.withValues(alpha: 0.92);
+      fill = Colors.white.withValues(alpha: 0.10);
+    } else {
+      fg = Colors.white60;
+      fill = Colors.transparent;
+    }
+    return AnimatedContainer(
+      duration: ForjaMotionTheme.of(context).fillOnly.duration,
+      width: widget.height,
+      height: widget.height,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.horizontal(
+          left: widget.isFirst ? widget.radius : Radius.zero,
+          right: widget.isLast ? widget.radius : Radius.zero,
+        ),
+      ),
+      child: Icon(
+        widget.item.icon,
+        size: widget.iconSize,
+        color: fg,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) {
+        final slot = _buildSlot(_hoveredN.value);
+        return widget.item.label.isEmpty
+            ? slot
+            : Tooltip(message: widget.item.label, child: slot);
+      },
+    );
+
+    if (!_tv) {
+      return MouseRegion(
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
+        child: shellRoundedInkHost(
+          radius: widget.height / 2,
+          onTap: widget.onTap,
+          suppressInkHover: true,
+          child: painted,
+        ),
+      );
+    }
+
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: widget.height / 2,
+      motion: ForjaMotionPreset.fillOnly,
+      suppressInkHover: true,
+      showFocusFill: false,
+      listIndex: widget.listIndex,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellPaintTvZone.topBar,
+      onDownEdge: widget.onDownEdge,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onHoverChange: _setHovered,
+      child: painted,
+    );
+  }
+}

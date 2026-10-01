@@ -1,3 +1,4 @@
+pub mod catalog_db;
 pub mod http;
 pub mod m3u;
 pub mod m3u_client;

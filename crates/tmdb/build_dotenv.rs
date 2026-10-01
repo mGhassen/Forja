@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 const KEYS: &[&str] = &[
     "TMDB_API_KEY",
     "TMDB_READ_ACCESS_TOKEN",
+    "TMDB_BASE_URL",
+    "TMDB_IMAGE_BASE_URL",
     "WYZIE_API_KEY",
     "REDDIT_CLIENT_IDS",
 ];

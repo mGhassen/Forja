@@ -15,8 +15,8 @@ import 'package:forja/shared/services/update/app_update_macos_installer.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
-import 'package:forja/shared/foundation/components/update/update_dialog.dart';
+import 'package:forja/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja/shell/update/update_dialog.dart';
 import 'package:rust/rust.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -33,7 +33,7 @@ DesktopStartupDestination resolveDesktopStartupDestination({
   return DesktopStartupDestination.account;
 }
 
-/// Email/password/passkey/Web login ([AccountEntryScreen]). Hidden — desktop
+/// Email/password/Web login ([AccountEntryScreen]). Hidden — desktop
 /// cold start uses [TvAccountLinkScreen] (code/QR) like Android TV.
 const bool kShowDesktopEmailAuth = false;
 
@@ -104,6 +104,14 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     _authSub = SyncService.instance.authChanges.listen(
       _onAuthState,
       onError: (Object e, StackTrace st) {
+        // gotrue [notifyException]s retryable /token failures onto this stream.
+        // DNS/offline blips are expected at cold start — keep the cached session.
+        if (SyncService.isRetryableAuthNetworkError(e)) {
+          debugPrint(
+            '[DesktopStartupGate] auth network blip (keeping session): $e',
+          );
+          return;
+        }
         debugPrint('[DesktopStartupGate] auth stream error: $e');
       },
     );
@@ -162,9 +170,30 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     var hasSession = SyncService.instance.isSignedIn;
     if (ForjaSupabase.isConfigured) {
       try {
-        await SyncService.instance.refreshSession(force: true);
+        // Bootstrap already force-refreshed once. Debounced refresh skips a
+        // second /token round-trip when the AT is still valid (avoids DNS-blip
+        // AuthRetryableFetchException storms). Expired AT still refreshes.
+        final ok = await SyncService.instance.refreshSession();
+        if (!ok && SyncService.instance.isSignedIn) {
+          debugPrint(
+            '[DesktopStartupGate] refresh soft-failed; keeping cached session',
+          );
+          // One deferred retry after DNS/Wi-Fi settles (keep-alive also covers).
+          unawaited(
+            Future<void>.delayed(const Duration(seconds: 5), () async {
+              if (!SyncService.instance.isSignedIn) return;
+              await SyncService.instance.refreshSession();
+            }),
+          );
+        }
       } catch (e) {
-        debugPrint('[DesktopStartupGate] refreshSession: $e');
+        if (SyncService.isRetryableAuthNetworkError(e)) {
+          debugPrint(
+            '[DesktopStartupGate] refresh network blip (keeping session): $e',
+          );
+        } else {
+          debugPrint('[DesktopStartupGate] refreshSession: $e');
+        }
       }
       hasSession = SyncService.instance.isSignedIn;
     }
@@ -186,6 +215,11 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
 
     try {
       await SyncService.instance.activeProfile();
+      // Restored sessions skip sign-in and selectProfile, so nothing else
+      // bumps identityRevision. Profile chrome already mounted (nav rail
+      // avatar + label) would otherwise keep whatever it resolved before the
+      // session was refreshed.
+      SyncService.instance.notifyIdentityResolved();
       // Restored sessions skip ProfileSwitchSplash, so MainScreen may have
       // already locked onto Settings (empty/guest rail). Force the starred
       // default once profile scope + cloud nav land (issue 253).
@@ -210,16 +244,22 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     );
 
     // Upgrade / empty-onboarded cohort: interrupt splash → packs once.
-    if (_stage == _StartupStage.splash &&
-        SyncService.instance.isSignedIn &&
-        await PacksOnboardingStore.shouldShow()) {
-      final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
-      if (!mounted) return;
-      if (!auto) {
-        debugPrint('[DesktopStartupGate] restored session → packs onboarding');
-        _packsSkipProfileSplash = true;
-        setState(() => _stage = _StartupStage.packs);
+    try {
+      if (_stage == _StartupStage.splash &&
+          SyncService.instance.isSignedIn &&
+          await PacksOnboardingStore.shouldShow()) {
+        final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
+        if (!mounted) return;
+        if (!auto) {
+          debugPrint('[DesktopStartupGate] restored session → packs onboarding');
+          _packsSkipProfileSplash = true;
+          setState(() => _stage = _StartupStage.packs);
+        }
       }
+    } on SyncProfileFetchException catch (e) {
+      debugPrint('[DesktopStartupGate] packs onboarding check: $e');
+    } catch (e) {
+      debugPrint('[DesktopStartupGate] packs onboarding check: $e');
     }
   }
 
@@ -271,22 +311,41 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     setState(() => _stage = _StartupStage.splash);
   }
 
-  Future<void> _afterProfileReady() async {
+  Future<void> _afterProfileReady(SyncProfile profile) async {
     if (!mounted) return;
-    if (await PacksOnboardingStore.shouldShow()) {
-      final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
+    _splashProfile = profile;
+
+    if (await PacksOnboardingStore.shouldShow(profileId: profile.id)) {
+      final auto = await PacksOnboardingStore.autoCompleteIfHasPacks(
+        profileId: profile.id,
+      );
       if (!mounted) return;
       if (!auto) {
+        // Packs install needs disk scope bound before the onboarding UI.
+        final ok = await SyncService.instance.selectProfile(
+          profile.id,
+          skipRemoteCheck: true,
+        );
+        if (!mounted) return;
+        if (!ok) {
+          setState(() => _stage = _StartupStage.profiles);
+          return;
+        }
         _packsSkipProfileSplash = false;
         setState(() => _stage = _StartupStage.packs);
         return;
       }
     }
-    await _goToProfileSplash();
+    // Avatar splash immediately — it owns selectProfile + settings merge.
+    setState(() {
+      _splashProfile = profile;
+      _stage = _StartupStage.profileSplash;
+    });
   }
 
   Future<void> _goToProfileSplash() async {
-    final profile = await SyncService.instance.activeProfile();
+    final profile =
+        _splashProfile ?? await SyncService.instance.activeProfile();
     if (!mounted) return;
     if (profile == null) {
       _enterShellAfterProfileSplash();
@@ -343,9 +402,9 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
               ),
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,
-        // Defer ProfileSwitchSplash until after packs onboarding.
+        // Hand off the picked profile immediately; splash owns select/merge.
         useLogoIntroSplash: true,
-        onProfileSelected: () => unawaited(_afterProfileReady()),
+        onProfileSelected: (profile) => unawaited(_afterProfileReady(profile)),
         onSignOut: () => setState(() => _stage = _StartupStage.account),
       ),
       _StartupStage.packs => PacksOnboardingScreen(

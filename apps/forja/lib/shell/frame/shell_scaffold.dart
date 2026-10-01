@@ -4,13 +4,21 @@ import 'package:forja/shell/nav/shell_bottom_nav.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/nav/shell_nav_rail.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja_foundation/blocks/shell/shell_nav_placement.dart';
+import 'package:rust/rust.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
+/// Host chassis scaffold — composes nav + body + overlays.
+///
+/// Target shape for peel: [EmptyShellFrame] in `forja_foundation` (rail + body
+/// only). Product chrome stays in packs / kit painter; this file must not grow
+/// Home/Search vocabulary.
 class ShellScaffold extends StatefulWidget {
   const ShellScaffold({
     super.key,
@@ -57,8 +65,21 @@ class _ShellScaffoldState extends State<ShellScaffold> {
         width < ShellTokens.shellNavCompactMaxWidth;
   }
 
+  bool _navRtl = false;
+
+  void _openNavDrawer() {
+    final state = _scaffoldKey.currentState;
+    if (state == null) return;
+    if (_navRtl) {
+      state.openEndDrawer();
+    } else {
+      state.openDrawer();
+    }
+  }
+
   void _onNavSelected(int index) {
-    popShellOverlayUntilRoot();
+    // Overlay dismiss lives in [MainScreen._selectTab] so a same-tab tap can
+    // tell "close the title" from "re-tap to reload the hub".
     widget.onDestinationSelected(index);
     if (_compactNav(context)) {
       Navigator.of(context).pop();
@@ -78,12 +99,29 @@ class _ShellScaffoldState extends State<ShellScaffold> {
     return ValueListenableBuilder<bool>(
       valueListenable: ShellBus.emptyFeaturesGate,
       builder: (context, emptyGate, _) {
-        return _buildShell(context, emptyFeaturesGate: emptyGate);
+        return ValueListenableBuilder<String>(
+          valueListenable: SettingsService.shellWritingDirection,
+          builder: (context, direction, _) {
+            return _buildShell(
+              context,
+              emptyFeaturesGate: emptyGate,
+              layoutRtl: direction == SettingsService.shellWritingRtl,
+            );
+          },
+        );
       },
     );
   }
 
-  Widget _buildShell(BuildContext context, {required bool emptyFeaturesGate}) {
+  Widget _buildShell(
+    BuildContext context, {
+    required bool emptyFeaturesGate,
+    required bool layoutRtl,
+  }) {
+    _navRtl = layoutRtl;
+    final placement = ShellNavPlacement(
+      textDirection: layoutRtl ? TextDirection.rtl : TextDirection.ltr,
+    );
     final metrics = ShellScope.metricsOf(context);
     final compactNav = _compactNav(context);
     // Keep the rail Element mounted whenever this profile uses a rail; only
@@ -97,20 +135,24 @@ class _ShellScaffoldState extends State<ShellScaffold> {
     // Desktop empty get-started: full-bleed (rail overlays).
     // TV: body-center with rail inset — screen-centering a narrow card row
     // next to a permanent rail reads as off-center on leanback.
-    final contentLeftInset =
-        (emptyFeaturesGate && !metrics.usesTvDensity)
-            ? tvSafeLeft
-            : tvSafeLeft + railWidth;
+    final contentPadding = (emptyFeaturesGate && !metrics.usesTvDensity)
+        ? placement.contentPadding(
+            railWidth: 0,
+            safeLeft: tvSafeLeft,
+            safeRight: tvSafeRight,
+          )
+        : placement.contentPadding(
+            railWidth: railWidth,
+            safeLeft: tvSafeLeft,
+            safeRight: tvSafeRight,
+          );
 
     Widget body = Stack(
       children: [
         Container(decoration: AppTheme.effectiveBackground),
         Positioned.fill(
           child: Padding(
-            padding: EdgeInsets.only(
-              left: contentLeftInset,
-              right: tvSafeRight,
-            ),
+            padding: contentPadding,
             child: Column(
               children: [
                 if (widget.shellHeader != null) widget.shellHeader!,
@@ -132,37 +174,52 @@ class _ShellScaffoldState extends State<ShellScaffold> {
           ),
         ),
         // Always reserve this slot so overlay open/close does not reshuffle
-        // later Stack children (provider rail / nav) onto the wrong Elements.
+        // later Stack children (nav) onto the wrong Elements.
         Positioned(
-          key: const ValueKey('shell-home-top-bar'),
+          key: const ValueKey('shell-kit-top-bar'),
           top: 0,
-          left: contentLeftInset,
-          right: tvSafeRight,
+          left: contentPadding.left,
+          right: contentPadding.right,
           child: widget.shellTopBar ?? const SizedBox.shrink(),
         ),
-        if (compactNav && widget.shellTopBar == null)
+        // Compact ☰ always lives here — even when a pack hub mounts an empty
+        // shellTopBar (layout-only hubs). Kit chrome pads for this lane; it
+        // must not paint a second button.
+        if (compactNav) ...[
           Positioned(
             top: 0,
-            left: tvSafeLeft,
+            left: placement.railOnRight ? null : tvSafeLeft,
+            right: placement.railOnRight ? tvSafeRight : null,
             child: SafeArea(
               bottom: false,
               left: false,
               right: false,
               child: Padding(
-                padding: EdgeInsets.only(
-                  left: ShellTokens.compactMenuLeadingInset(context),
+                padding: placement.compactMenuPadding(
+                  leading: ShellTokens.compactMenuLeadingInset(context),
                   top: ShellTokens.shellHeaderTopPadding,
                 ),
-                child: ShellNavMenuButton(
-                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                ),
+                child: ShellNavMenuButton(onPressed: _openNavDrawer),
               ),
             ),
           ),
+          Positioned(
+            left: placement.railOnRight ? null : tvSafeLeft,
+            right: placement.railOnRight ? tvSafeRight : null,
+            top: 0,
+            bottom: 0,
+            width: ShellTokens.compactNavEdgeHoverWidth,
+            child: MouseRegion(
+              onEnter: (_) => _openNavDrawer(),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ],
         if (mountRail)
           Positioned(
             key: const ValueKey('shell-nav-rail'),
-            left: tvSafeLeft,
+            left: placement.railOnRight ? null : tvSafeLeft,
+            right: placement.railOnRight ? tvSafeRight : null,
             top: 0,
             bottom: 0,
             child: Offstage(
@@ -176,31 +233,8 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                     selectedIndex: widget.selectedIndex,
                     onDestinationSelected: _onNavSelected,
                     hideLogo: emptyFeaturesGate,
+                    pageDirection: placement.textDirection,
                   ),
-                ),
-              ),
-            ),
-          ),
-        // Above the nav rail so the panel stays hittable; keyed so Home
-        // re-select / top-bar chrome toggles cannot steal this Element.
-        if (!emptyFeaturesGate &&
-            widget.visibleIds.isNotEmpty &&
-            widget.selectedIndex < widget.visibleIds.length &&
-            VerticalFiltersRegistry.hasFilters(
-              widget.visibleIds[widget.selectedIndex],
-            ))
-          Positioned(
-            key: ValueKey(
-              'shell-vf-rail-${widget.visibleIds[widget.selectedIndex]}',
-            ),
-            left: contentLeftInset + ShellTokens.shellProviderRailInset,
-            top: 0,
-            bottom: 0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: VerticalFiltersRail(
-                  tabId: widget.visibleIds[widget.selectedIndex],
                 ),
               ),
             ),
@@ -222,27 +256,33 @@ class _ShellScaffoldState extends State<ShellScaffold> {
       );
     }
 
+    final navDrawer = compactNav
+        ? Drawer(
+            width: metrics.navRailWidth,
+            backgroundColor: AppTheme.bgDark,
+            child: ShellNavRail(
+              visibleIds: widget.visibleIds,
+              selectedIndex: widget.selectedIndex,
+              onDestinationSelected: _onNavSelected,
+              hideLogo: emptyFeaturesGate,
+              pageDirection: placement.textDirection,
+            ),
+          )
+        : null;
     Widget shell = Scaffold(
       key: _scaffoldKey,
-      drawer: compactNav
-          ? Drawer(
-              width: metrics.navRailWidth,
-              backgroundColor: AppTheme.bgDark,
-              child: ShellNavRail(
-                visibleIds: widget.visibleIds,
-                selectedIndex: widget.selectedIndex,
-                onDestinationSelected: _onNavSelected,
-                hideLogo: emptyFeaturesGate,
-              ),
-            )
-          : null,
+      drawer: placement.railOnRight ? null : navDrawer,
+      endDrawer: placement.railOnRight ? navDrawer : null,
       body: body,
       bottomNavigationBar: widget.useNavRail || widget.hideGlobalNav
           ? null
-          : ShellBottomNav(
-              visibleIds: widget.visibleIds,
-              selectedIndex: widget.selectedIndex,
-              onItemTapped: _onNavSelected,
+          : Directionality(
+              textDirection: placement.textDirection,
+              child: ShellBottomNav(
+                visibleIds: widget.visibleIds,
+                selectedIndex: widget.selectedIndex,
+                onItemTapped: _onNavSelected,
+              ),
             ),
     );
 

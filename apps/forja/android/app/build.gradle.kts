@@ -32,6 +32,11 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    // AGP 9: resValue() in buildTypes requires this (default false).
+    buildFeatures {
+        resValues = true
+    }
+
     defaultConfig {
         applicationId = "com.forjahq.app"
         minSdk = maxOf(flutter.minSdkVersion, 23)
@@ -57,6 +62,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Isolate flutter run from the Play/shipped package (session, prefs, data).
+            applicationIdSuffix = ".dev"
+            resValue("string", "app_name", "Forja Dev")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -65,6 +75,7 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            resValue("string", "app_name", "Forja")
         }
     }
 
@@ -101,6 +112,8 @@ dependencies {
     // Widevine / DRM lives inside media3-exoplayer (no media3-exoplayer-drm artifact).
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-datasource:$media3Version")
+    implementation("androidx.media3:media3-datasource-okhttp:$media3Version")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // StandaloneDatabaseProvider for the VOD disk cache. media3-datasource only
     // pulls this at runtime scope, so it must be declared to compile against.
     implementation("androidx.media3:media3-database:$media3Version")

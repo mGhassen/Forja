@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/services/follow/list_follow_from_watched.dart';
+import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:rust/rust.dart';
 
 void main() {
@@ -55,6 +55,36 @@ void main() {
           episodeNowWatched: true,
         ),
         'completed',
+      );
+    });
+
+    test('unknown total (0) never completes', () {
+      expect(
+        ListFollowFromWatched.nextStatus(
+          current: 'plantowatch',
+          watchedCount: 1,
+          totalEpisodes: 0,
+          episodeNowWatched: true,
+        ),
+        'watching',
+      );
+      expect(
+        ListFollowFromWatched.nextStatus(
+          current: 'watching',
+          watchedCount: 1,
+          totalEpisodes: 0,
+          episodeNowWatched: true,
+        ),
+        isNull,
+      );
+      expect(
+        ListFollowFromWatched.nextStatus(
+          current: 'watching',
+          watchedCount: 99,
+          totalEpisodes: 0,
+          episodeNowWatched: true,
+        ),
+        isNull,
       );
     });
 

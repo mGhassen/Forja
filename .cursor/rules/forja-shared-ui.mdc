@@ -4,33 +4,30 @@ globs: apps/forja/lib/**/*.dart
 alwaysApply: false
 ---
 
-# Shared UI components (RFC-026 · RFC-095)
+# Shared UI components (RFC-026 · RFC-095 · RFC-106)
 
-Extract **presentation** into `shared/foundation/` (`primitives/` atoms, `components/` composers); keep **state, fetching, navigation** in feature screens. No peer `shared/widgets/` package.
+Extract **presentation** into the design system; keep **state, fetching, navigation** in feature screens. No peer `shared/widgets/` package.
 
-**Design alone / data alone:** `components/` widgets must not import `features/**` or take feature god objects (`IptvController`, …). Pass display fields + callbacks. Features adapt.
+**Source of truth:** [`packages/forja_foundation`](../../packages/forja_foundation) — `Button`, `ButtonGroup`, `VerticalMenu`, `LogoMenuRail`, tokens/theme. Import the file, not the gallery barrel.
+
+Architecture: [pack-product host](./forja-pack-product-host.mdc) · skill **forja-pack-product-host**. DS widgets: props + callbacks only — no feature god objects.
 
 ## Folder map
 
 ```
-shared/foundation/components/hero/            # titles, meta, cinematic hero, overview, banner
-shared/foundation/components/media_details/   # details page, cast/trailers, torrent sources, episodes
-shared/foundation/components/posters/         # rows, posters, atmosphere, loading skeleton
-shared/foundation/components/rows|cards|chrome/  # kit section / poster / search / portals chip
-shared/foundation/components/details/         # kit details chrome / play / sources
-shared/foundation/components/panel/           # sources panel, side overlay, portal list shell
-shared/foundation/primitives/chrome/          # focusable tap, scroller, overlays, mood chip
-shared/foundation/primitives/desktop/         # window chrome / focus / geometry
-shared/foundation/primitives/tv/              # browse text field, search overlay
-shared/foundation/components/update/          # update dialog + progress banner
-shared/foundation/components/packs/           # pack choice cards, install progress
-shared/foundation/primitives/brand/           # logo, splash logo, profile avatar
-shared/foundation/components/playback/        # stream/torrent loading, resolve failure
-shared/foundation/components/chrome/          # kit search page/filters, recent queries/tile, letter jump, status pin, portals chip
-shared/foundation/components/account/         # keychain consent
+packages/forja_foundation/lib/{tokens,components,widgets,blocks,protocol}/
+apps/forja/lib/shell/          # empty chassis only (pack-nav wire, platform, OTA) — paint in forja_foundation
+apps/forja/lib/shared/engine/runtime/kit/  # thin kit interpreter (layout JSON → DS)
+apps/forja/lib/shared/player/sources/
+apps/forja/lib/shared/playback/
+apps/forja/lib/shared/engine/details/  # title details host wire (not player)
+apps/forja/lib/shared/engine/{store,unlock,portals,packs}/
+apps/forja/lib/shared/engine/runtime/{kit,actions,search,nav,open}/
+apps/forja/lib/features/settings/packs/  # pack install UI
+forja-packs/hubs/**                     # product
 ```
 
-Barrel: `media_details/media_details.dart` for details + torrent sources.
+Barrel: `package:forja/shared/engine/details/media_details.dart` for details widgets.
 
 ## When to extract
 
@@ -55,7 +52,7 @@ MediaDetailsScrollPage(
 ```
 
 - Section spacing: `DetailsTokens.sectionSpacing` — applied inside scroll page, not per screen.
-- Recommendations: `MediaDetailsRecommendationsSection` + screen-specific `onMovieTap`.
+- Recommendations / pack rails: pack emits rail `id: recommendations` → host `buildKitDetailRailSections` → `DetailsRailSection`.
 - Torrent sources overlay: `TorrentSourcesPanel` + filters/tiles; screen wires chip `onChipTap` to existing handlers.
 
 ## Hero overview slots
@@ -69,8 +66,6 @@ MediaDetailsScrollPage(
 2. Export from barrel if in `media_details/`.
 3. Use `ShellTokens` / `DetailsTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
 4. Update RFC-026 component row if part of the media-details UX arc.
-
-Do **not** put app-shell or kit-host orchestration under `components/` leaf folders. App frame → `lib/shell/`. Hub tab host → `shared/foundation/blocks/shell/`.
 
 ## Do not
 

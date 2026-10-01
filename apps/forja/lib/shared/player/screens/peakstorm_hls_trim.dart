@@ -11,8 +11,8 @@ import 'package:path_provider/path_provider.dart';
 
 /// Trim a peakstorm fMP4 HLS playlist to start near [target] without mpv `start`.
 ///
-/// Returns a `file://` playlist (or loopback `http://` for dmcdn) mpv can open —
-/// segment URIs stay absolute CDN URLs.
+/// Returns a loopback `http://` playlist (file:// only if bind fails) mpv can
+/// open — segment URIs stay absolute CDN URLs.
 Future<String?> buildPeakstormTrimmedPlaylistFile({
   required String catalogUrl,
   required Duration target,
@@ -23,7 +23,7 @@ Future<String?> buildPeakstormTrimmedPlaylistFile({
     return null;
   }
   try {
-    final masterUrl = preferVideasyHlsMasterUrl(catalogUrl.trim().split('#').first);
+    final masterUrl = preferHlsMasterPlaylistUrl(catalogUrl.trim().split('#').first);
     final masterBody = await _fetchPlaylistText(masterUrl, headers);
     if (masterBody == null || masterBody.isEmpty) return null;
 
@@ -42,18 +42,17 @@ Future<String?> buildPeakstormTrimmedPlaylistFile({
     );
     if (trimmed == null) return null;
 
-    // dmcdn: file:// demux fails ("Failed to recognize file format"); serve
-    // the same body over loopback so mpv treats it as remote HLS + headers.
-    if (isDailymotionDmcdnHlsUrl(catalogUrl)) {
-      final loop = await _serveTrimmedPlaylistLoopback(trimmed);
-      if (loop != null) {
-        logPeakstormResume(
-          'trim playlist',
-          target: target,
-          detail: 'seg=${_segmentIndexFromTrimmed(trimmed)} loopback=$loop',
-        );
-        return loop;
-      }
+    // file:// demux fails ("Failed to recognize file format") on fMP4 HLS
+    // (peakstorm / Videasy / dmcdn). Serve over loopback so mpv treats it as
+    // remote HLS and keeps CDN headers on segment fetches.
+    final loop = await _serveTrimmedPlaylistLoopback(trimmed);
+    if (loop != null) {
+      logPeakstormResume(
+        'trim playlist',
+        target: target,
+        detail: 'seg=${_segmentIndexFromTrimmed(trimmed)} loopback=$loop',
+      );
+      return loop;
     }
 
     final dir = await getTemporaryDirectory();
@@ -140,8 +139,11 @@ String? _pickVariantUrl(String masterBody, String masterUrl) {
     return masterBody.contains('#EXTINF') ? masterUrl : null;
   }
   final base = _baseUrl(masterUrl);
+  String? defaultUrl;
   String? bestUrl;
+  String? bestNonHdrUrl;
   var bestBw = -1;
+  var bestNonHdrBw = -1;
   final lines = masterBody.split('\n');
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i].trim();
@@ -151,13 +153,29 @@ String? _pickVariantUrl(String masterBody, String masterUrl) {
     final next = i + 1 < lines.length ? lines[i + 1].trim() : '';
     if (next.isEmpty || next.startsWith('#')) continue;
     final resolved = _resolveUrl(next, base);
+    final isDefault = line.contains('DEFAULT=YES');
+    final isHdr = line.contains('VIDEO-RANGE=PQ') ||
+        line.contains('VIDEO-RANGE=HLG') ||
+        RegExp(r'CODECS="[^"]*hvc1', caseSensitive: false).hasMatch(line);
+    if (isDefault) defaultUrl = resolved;
     if (bw >= bestBw) {
       bestBw = bw;
       bestUrl = resolved;
     }
+    if (!isHdr && bw >= bestNonHdrBw) {
+      bestNonHdrBw = bw;
+      bestNonHdrUrl = resolved;
+    }
   }
-  return bestUrl;
+  // Prefer DEFAULT / non-HDR for trim remounts — Vidzee Apre lists 4K HDR
+  // first; remounting that after a hard-seek stall often stays black.
+  return defaultUrl ?? bestNonHdrUrl ?? bestUrl;
 }
+
+/// Test seam for [_pickVariantUrl].
+@visibleForTesting
+String? peakstormPickVariantUrl(String masterBody, String masterUrl) =>
+    _pickVariantUrl(masterBody, masterUrl);
 
 /// Visible for tests.
 String? trimMediaPlaylistFromTarget({

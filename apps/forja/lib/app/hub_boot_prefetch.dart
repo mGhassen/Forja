@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
-import 'package:forja/shared/foundation/protocol/filter.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/services/meta/runtime.dart';
-import 'package:forja/shared/foundation/components/chrome/chrome_filters.dart';
+import 'package:forja_foundation/protocol/filter.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:rust/rust.dart';
 
-/// Prefetch default hub layout + first-paint rails into [MetaCache].
+/// Prefetch default hub layout + first-paint rails into [EngineCache].
 ///
 /// Driven by pack `layout` (`feed: true` or widgets above Continue) — never a
 /// hardcoded home/anime/asian_drama rail list.
@@ -20,12 +20,14 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
 
   final pluginId = await PluginNavRegistry.pluginIdForTab(tabId);
   if (pluginId == null || pluginId.isEmpty) return;
+  final packSourceUrl = await PluginNavRegistry.packSourceUrlForTab(tabId);
 
   debugPrint('[Init] Prefetch hub ($tabId → $pluginId)');
   late final MetaEnvelope layoutEnv;
   try {
     layoutEnv = await MetaRuntime.instance.run(
       pluginId: pluginId,
+      packSourceUrl: packSourceUrl,
       action: 'layout',
       params: {'page': tabId},
       timeout: const Duration(seconds: 20),
@@ -46,6 +48,7 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
     try {
       await MetaRuntime.instance.run(
         pluginId: pluginId,
+        packSourceUrl: packSourceUrl,
         action: 'feed',
         params: catalogParamsWithFilters(
           const {},
@@ -67,7 +70,7 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
 
   debugPrint('[Init] Prefetch hub rails (${rails.join(', ')})');
   await Future.wait(
-    rails.map((rail) => _prefetchRail(pluginId, tabId, rail)),
+    rails.map((rail) => _prefetchRail(pluginId, tabId, rail, packSourceUrl)),
   );
 }
 
@@ -75,10 +78,12 @@ Future<void> _prefetchRail(
   String pluginId,
   String tabId,
   String rail,
+  String? packSourceUrl,
 ) async {
   try {
     await MetaRuntime.instance.run(
       pluginId: pluginId,
+      packSourceUrl: packSourceUrl,
       action: 'rail',
       params: catalogParamsWithFilters(
         {'rail': rail},

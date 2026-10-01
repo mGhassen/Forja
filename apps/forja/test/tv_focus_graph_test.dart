@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 
 Widget _wrapTv(Widget child) {
   return MaterialApp(
@@ -475,7 +478,7 @@ void main() {
                             autoFocus: true,
                             tvMeta: meta,
                             scaleOnFocus: 1.0,
-                            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                            ensureVisibleMode: ShellPaintEnsureVisible.item,
                             onTap: () {},
                             child: const SizedBox(width: 200, height: 48),
                           ),
@@ -483,7 +486,7 @@ void main() {
                             focusNode: bottom,
                             tvMeta: meta,
                             scaleOnFocus: 1.0,
-                            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                            ensureVisibleMode: ShellPaintEnsureVisible.item,
                             onTap: () {},
                             child: const SizedBox(width: 200, height: 48),
                           ),
@@ -515,11 +518,11 @@ void main() {
   );
 
   testWidgets(
-    'settings linear scope: ↓ and → both walk next (vertical list, not sideways)',
+    'settings page: ↑ at top stays in-page; ← exits via onBackwardEdge',
     (tester) async {
       final a = FocusNode(debugLabel: 'a');
       final b = FocusNode(debugLabel: 'b');
-      final c = FocusNode(debugLabel: 'c');
+      var exited = false;
       const meta = ShellTvFocusMeta(
         tabId: 'settings',
         zone: ShellTvZone.settings,
@@ -531,7 +534,7 @@ void main() {
           autoFocus: autoFocus,
           tvMeta: meta,
           scaleOnFocus: 1.0,
-          ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+          ensureVisibleMode: ShellPaintEnsureVisible.item,
           onTap: () {},
           child: const SizedBox(width: 240, height: 40),
         );
@@ -548,14 +551,17 @@ void main() {
                 enabled: true,
                 child: Scaffold(
                   body: ShellTvContainDpad(
-                    child: ShellTvLinearFocusScope(
+                    child: ShellTvLinearFocusEdges(
+                      onBackwardEdge: () {
+                        exited = true;
+                        return true;
+                      },
                       child: FocusTraversalGroup(
                         policy: ReadingOrderTraversalPolicy(),
                         child: Column(
                           children: [
                             row(a, autoFocus: true),
                             row(b),
-                            row(c),
                           ],
                         ),
                       ),
@@ -570,30 +576,26 @@ void main() {
       await tester.pump();
       expect(a.hasFocus, isTrue);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pump();
-      expect(b.hasFocus, isTrue);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
-      expect(c.hasFocus, isTrue, reason: '→ aliases next in linear settings');
-
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(a.hasFocus, isTrue, reason: '↑ must not leave the settings page');
+      expect(exited, isFalse);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
       expect(b.hasFocus, isTrue);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pump();
-      expect(a.hasFocus, isTrue, reason: '← aliases previous in linear settings');
+      expect(exited, isTrue, reason: '← exits to category rail');
 
       a.dispose();
       b.dispose();
-      c.dispose();
     },
   );
 
   testWidgets(
-    'settings detail wraps ShellTvLinearFocusScope (vertical list)',
+    'settings page wraps ShellTvContainDpad without linear 1D scope',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -604,9 +606,7 @@ void main() {
               config: shellPlatformConfigFor(ShellProfile.tv),
               child: const Scaffold(
                 body: ShellTvContainDpad(
-                  child: ShellTvLinearFocusScope(
-                    child: SizedBox(width: 100, height: 100),
-                  ),
+                  child: SizedBox(width: 100, height: 100),
                 ),
               ),
             ),
@@ -615,8 +615,77 @@ void main() {
       );
       await tester.pump();
       final boxCtx = tester.element(find.byType(SizedBox));
-      expect(ShellTvLinearFocusScope.activeOf(boxCtx), isTrue);
+      expect(ShellTvLinearFocusScope.activeOf(boxCtx), isFalse);
       expect(ShellTvContainDpad.activeOf(boxCtx), isTrue);
+    },
+  );
+
+  testWidgets(
+    'shellTvSpatialFocusArrows: → moves between side-by-side Material focus nodes '
+    'under app-root DirectionalFocus no-op',
+    (tester) async {
+      final left = FocusNode(debugLabel: 'dlg-cancel');
+      final right = FocusNode(debugLabel: 'dlg-confirm');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: ShellInputPolicy.maybeWrapFocusTraversal(
+                enabled: true,
+                child: Scaffold(
+                  body: TvOverlayScope(
+                    autofocusFirst: false,
+                    child: SizedBox(
+                      width: 320,
+                      height: 80,
+                      child: Row(
+                        children: [
+                          Focus(
+                            focusNode: left,
+                            autofocus: true,
+                            onKeyEvent: (node, event) =>
+                                shellTvSpatialFocusArrows(
+                              node: node,
+                              event: event,
+                            ),
+                            child: const SizedBox(width: 120, height: 48),
+                          ),
+                          Focus(
+                            focusNode: right,
+                            onKeyEvent: (node, event) =>
+                                shellTvSpatialFocusArrows(
+                              node: node,
+                              event: event,
+                            ),
+                            child: const SizedBox(width: 120, height: 48),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(left.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(right.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(left.hasPrimaryFocus, isTrue);
+
+      left.dispose();
+      right.dispose();
     },
   );
 }

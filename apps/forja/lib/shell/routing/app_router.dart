@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/blocks/details/kit_details_screen.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/foundation/blocks/shell/legacy_movie_meta.dart';
-import 'package:forja/features/archive/search/search_screen.dart';
+import 'package:forja/shared/engine/details/pack_details_host.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
+import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/entry/player_screen.dart';
-import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
+import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/trailer/trailer_player_screen.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shell/routing/shell_overlay_navigator.dart';
+
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Central navigation for cross-feature routes (details, player).
 class AppRouter {
@@ -212,14 +217,20 @@ class AppRouter {
     );
   }
 
-  static Future<T?> openSearch<T>(BuildContext context) {
-    return pushShellRoute<T>(
+  static Future<T?> openSearch<T>(BuildContext context) async {
+    final tabId = ShellBus.activeShellTabId ??
+        await SettingsService().getDefaultNavTab();
+    final pluginId = await PluginNavRegistry.resolveKitPluginId(tabId: tabId);
+    if (pluginId == null || !context.mounted) return null;
+    final label =
+        PluginNavRegistry.destinations[tabId]?.label ?? 'Search';
+    await openCatalogSearch(
       context,
-      slideShellRoute(
-        (_) => const SearchScreen(overlay: true),
-        settings: const RouteSettings(name: 'search_overlay'),
-      ),
+      pluginId: pluginId,
+      tabId: tabId,
+      hintText: 'Search $label…',
     );
+    return null;
   }
 
   static Future<T?> openTrailerPlayer<T>(
@@ -276,7 +287,7 @@ class AppRouter {
     num? hubEpisodeNumber,
     Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected,
     String? episodeOverview,
-    Future<void> Function(Duration position, Duration duration)? onSaveProgress,
+    Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})? onSaveProgress,
     Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned,
     bool pinSource = false,
     bool streamsPrevalidated = false,
@@ -289,8 +300,17 @@ class AppRouter {
     EnginePlaySession? enginePlaySession,
     bool fadeTransition = false,
   }) async {
-    await InAppMiniPlayerController.instance.stopForNewPlay();
-    if (!context.mounted) return null;
+    // In-player next/episode / source switch calls openPlayer from a player
+    // route. stopForNewPlay → _exitPlayer would pop that route first, then
+    // !context.mounted aborts the push — user lands on details with no next ep.
+    // pushAndRemoveUntil already replaces the living player; only tear down a
+    // demoted mini (or a stale session) when opening from outside the player.
+    final replacingPlayer =
+        ModalRoute.of(context)?.settings.name == playerRouteName;
+    if (!replacingPlayer) {
+      await InAppMiniPlayerController.instance.stopForNewPlay();
+      if (!context.mounted) return null;
+    }
     const settings = RouteSettings(name: playerRouteName);
     // Capture shell tokens now - loading dialogs / hosts may unmount while the
     // player route still rebuilds its pageBuilder.
@@ -302,8 +322,6 @@ class AppRouter {
     // Forja Auto loading *dialog* sits on top. pushAndRemoveUntil must not stop
     // on that dialog (or the hub loading host) — otherwise Back returns to the
     // previous episode instead of details.
-    final replacingPlayer =
-        ModalRoute.of(context)?.settings.name == playerRouteName;
     final RouteTransitionsBuilder transitions = fadeTransition
         ? (context, animation, secondaryAnimation, child) {
             return FadeTransition(

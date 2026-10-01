@@ -4,7 +4,7 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 
 **Active engine:** everything else under [`crates/`](../) linked from [`ffi`](../ffi/Cargo.toml).
 
-**Matching Flutter archive:** [`apps/forja/lib/features/archive/`](../../apps/forja/lib/features/archive/README.md)
+**Matching Flutter archive:** [`apps/archive/`](../../apps/archive/README.md)
 
 ## Archived crates
 
@@ -16,7 +16,6 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 | `manga/` | Manga tab |
 | `catalog/` | Similar tab (`bestsimilar.com`) |
 | `anilist/` | Legacy AniList GraphQL (hub browse is `plugins/hubs/anime`) |
-| `anime/` | Legacy Rust anime extractors/resolve (`anime_extractors`) — JS providers own extract now |
 | `host-http/` | Rich HTTP (retries, binary) via `hostHttp()` |
 | `media-extra/` | Lyrics + paper2audio via `mediaExtraRequest()` |
 | `trakt/` | Trakt.tv API client (Simkl is the active tracker) |
@@ -29,7 +28,7 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 | `subtitles` | Player subtitle search (Wyzie, Levrx, SubtitleCat, Mysubs) |
 | `media-metadata` | mdblist + introdb |
 | `proxy` `/jellyfin-stream` | Loopback route for any Jellyfin-style stream URL — not the `jellyfin` catalog crate |
-| `engine` | Provider JS host — includes KissKh `kkey` (`__native_kisskh_kkey`) |
+| `engine` | Provider JS host (fetch, hops, generic crypto/PoW bridges) |
 
 ## Restore
 

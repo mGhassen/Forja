@@ -50,6 +50,6 @@ On **Android TV**, IPTV player bottom transport buttons and **Back** used brand-
 
 ## Related
 
-- [104](104-[open]-android-tv-live-matches-embed-dpad.md) — Live Matches embed D-pad
+- [104](canceled/104-[canceled]-android-tv-live-matches-embed-dpad.md) — Live Matches embed D-pad
 - [122](122-[open]-android-tv-iptv-player-lost-dpad.md) — IPTV player D-pad parity
 - [IPTV Xtream](../features/live/iptv-xtream.md) · [Player](../features/playback/player.md)

@@ -1,0 +1,2252 @@
+/// Hub search chrome wire — MetaRuntime `search` + openMetaItem.
+///
+/// Foundation owns CatalogSearch* paint. Packs own what/how to search.
+library;
+
+import 'dart:async';
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
+import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
+import 'package:forja/shared/engine/runtime/search/search_recent_queries.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
+import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja_foundation/protocol/filter.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
+import 'package:forja_foundation/blocks/search/catalog_search_page.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_search_result_card.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_search_screen.dart';
+import 'package:forja_foundation/widgets/catalog/recent_search_helper_tile.dart' as foundation;
+import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
+import 'package:forja_foundation/widgets/tv/tv_search_browse_overlay.dart';
+
+export 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart' show CatalogSearchFilters, CatalogSearchFilterLens, CatalogScoreArcPainter, CatalogYearTimelinePainter, SearchFilters, SearchMediaFilter, composeSearchQuery, kSearchFilterCountries, kSearchFilterGenres, kSearchFilterLanguages;
+export 'package:forja_foundation/blocks/search/catalog_search_page.dart' show CatalogSearchResult;
+export 'package:forja_foundation/widgets/catalog/catalog_search_result_card.dart' show CatalogSearchResultCard, CatalogSearchSkeletonCard;
+export 'package:forja_foundation/widgets/catalog/catalog_search_screen.dart' show CatalogSearchScreen;
+
+// ===== recent_search_helper_tile.dart =====
+class RecentSearchHelperTile extends StatelessWidget {
+  const RecentSearchHelperTile({
+    super.key,
+    required this.title,
+    required this.selected,
+    required this.listIndex,
+    required this.tvTabId,
+    required this.tvRowId,
+    required this.onSelect,
+    required this.onRemove,
+    this.titleFocusNode,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onRightPastRemove,
+    this.onFocusChange,
+    this.titleFontSize = 16,
+    this.titleFontSizeSelected = 18,
+    this.verticalPadding = 4,
+  });
+
+  final String title;
+  final bool selected;
+  final int listIndex;
+  final String tvTabId;
+  final String tvRowId;
+  final VoidCallback onSelect;
+  final VoidCallback onRemove;
+  final FocusNode? titleFocusNode;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onRightPastRemove;
+  final ValueChanged<bool>? onFocusChange;
+  final double titleFontSize;
+  final double titleFontSizeSelected;
+  final double verticalPadding;
+
+  String get _removeRowId => '$tvRowId-remove';
+
+  void _focusTitle() {
+    final node = titleFocusNode;
+    if (node != null && node.canRequestFocus) {
+      node.requestFocus();
+      return;
+    }
+    ShellTvFocusCoordinator.focusRowItem(tvTabId, tvRowId, listIndex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return foundation.RecentSearchHelperTile(
+      title: title,
+      selected: selected,
+      onSelect: onSelect,
+      onRemove: onRemove,
+      titleFocusNode: titleFocusNode,
+      // Desktop hybrid: FocusableControl paints inkHover (same as recommendations).
+      // Foundation row MouseRegion would double-fill under nested focusables.
+      scaleOnHover: false,
+      titleFontSize: titleFontSize,
+      titleFontSizeSelected: titleFontSizeSelected,
+      verticalPadding: verticalPadding,
+      onFocusChange: onFocusChange,
+      titleInteractiveBuilder: ({
+        required child,
+        required onTap,
+        onFocusChange,
+        focusNode,
+      }) =>
+          shellFocusableTap(
+            context: context,
+            onTap: onTap,
+            borderRadius: 4,
+            scaleOnFocus: 1.0,
+            navLeftAlways: true,
+            listIndex: listIndex,
+            tvTabId: tvTabId,
+            tvRowId: tvRowId,
+            tvZone: ShellTvZone.chipStrip,
+            tvItemIndex: listIndex,
+            focusNode: focusNode,
+            onUpEdge: onUpEdge,
+            onDownEdge: onDownEdge,
+            onRightEdge: () {
+              ShellTvFocusCoordinator.focusRowItem(
+                tvTabId,
+                _removeRowId,
+                listIndex,
+              );
+            },
+            ensureVisibleMode: ShellPaintEnsureVisible.row,
+            onFocusChange: onFocusChange,
+            child: child,
+          ),
+      removeInteractiveBuilder: ({
+        required child,
+        required onTap,
+        onFocusChange,
+        focusNode,
+      }) =>
+          shellFocusableTap(
+            context: context,
+            onTap: onTap,
+            borderRadius: 4,
+            scaleOnFocus: 1.0,
+            tvTabId: tvTabId,
+            tvRowId: _removeRowId,
+            tvZone: ShellTvZone.chipStrip,
+            tvItemIndex: listIndex,
+            focusNode: focusNode,
+            onUpEdge: onUpEdge,
+            onDownEdge: onDownEdge,
+            onLeftEdge: _focusTitle,
+            onRightEdge: onRightPastRemove,
+            ensureVisibleMode: ShellPaintEnsureVisible.row,
+            onFocusChange: onFocusChange,
+            child: child,
+          ),
+    );
+  }
+}
+
+// ===== search_filters.dart =====
+class KitSearchFilterToken extends StatelessWidget {
+  const KitSearchFilterToken({
+    super.key,
+    required this.label,
+    required this.onClear,
+    this.listIndex,
+  });
+
+  final String label;
+  final VoidCallback onClear;
+  final int? listIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final tabId = TvFocusGraph.tabIdOf(context, fallback: 'search');
+    final density = ShellScope.metricsOf(context).usesTvDensity;
+    return shellFocusableTap(
+      context: context,
+      borderRadius: density
+          ? ShellTokens.searchFilterTokenRadiusTv
+          : ShellTokens.searchFilterTokenRadius,
+      scaleOnFocus: 1.0,
+      showFocusFill: true,
+      onTap: onClear,
+      listIndex: listIndex,
+      tvTabId: tabId,
+      tvRowId: 'search_filter_tokens',
+      tvZone: ShellTvZone.row,
+      tvItemIndex: listIndex,
+      child: Container(
+        padding: EdgeInsets.only(
+          left: density
+              ? ShellTokens.searchFilterTokenPadLeadTv
+              : ShellTokens.searchFilterTokenPadLead,
+          right: density
+              ? ShellTokens.searchFilterTokenPadTrailTv
+              : ShellTokens.searchFilterTokenPadTrail,
+          top: density
+              ? ShellTokens.searchFilterTokenPadVTv
+              : ShellTokens.searchFilterTokenPadV,
+          bottom: density
+              ? ShellTokens.searchFilterTokenPadVTv
+              : ShellTokens.searchFilterTokenPadV,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(
+            density
+                ? ShellTokens.searchFilterTokenRadiusTv
+                : ShellTokens.searchFilterTokenRadius,
+          ),
+          border: Border.all(
+            color: ForjaShellColors.textPrimary.withValues(alpha: 0.28),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: ForjaShellColors.textPrimary,
+                fontSize: density
+                    ? ShellTokens.searchFilterTokenFontSizeTv
+                    : ShellTokens.searchFilterTokenFontSize,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(
+              width: density
+                  ? ShellTokens.searchFilterTokenIconGapTv
+                  : ShellTokens.searchFilterTokenIconGap,
+            ),
+            Icon(
+              Icons.close,
+              size: density
+                  ? ShellTokens.searchFilterTokenIconSizeTv
+                  : ShellTokens.searchFilterTokenIconSize,
+              color: ForjaShellColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+bool _searchFilterTvLeanback(BuildContext context) {
+  final policy = ShellScope.maybeOf(context)?.inputPolicy;
+  if (policy != null) {
+    return policy.useFocusableMoodChips && !policy.scaleOnHover;
+  }
+  return ShellTokens.isAndroidTvDevice;
+}
+
+class KitSearchFilterLens extends StatelessWidget {
+  const KitSearchFilterLens({
+    super.key,
+    required this.open,
+    required this.filters,
+    required this.onFiltersChanged,
+    required this.onSubmit,
+    this.firstFocusNode,
+    this.onUpFromFirst,
+  });
+
+  final bool open;
+  final SearchFilters filters;
+  final ValueChanged<SearchFilters> onFiltersChanged;
+  final VoidCallback onSubmit;
+  final FocusNode? firstFocusNode;
+  final VoidCallback? onUpFromFirst;
+
+  @override
+  Widget build(BuildContext context) {
+    return CatalogSearchFilterLens(
+      open: open,
+      filters: filters,
+      onFiltersChanged: onFiltersChanged,
+      onSubmit: onSubmit,
+      allLabel: 'All',
+      movieLabel: 'Films',
+      seriesLabel: 'Series',
+      firstFocusNode: firstFocusNode,
+      onUpFromFirst: onUpFromFirst,
+      tvLeanback: _searchFilterTvLeanback(context),
+      onLeftFromFirstSegment: ShellTvFocusCoordinator.focusActiveNavTab,
+      interactiveBuilder: ({
+        required child,
+        required onTap,
+        focusNode,
+        onUpEdge,
+        onLeftEdge,
+        listIndex,
+      }) {
+        final paintRow = ShellPaintTvRowScope.maybeOf(context);
+        final isSegment = paintRow == null && listIndex != null;
+        final isSubmit =
+            paintRow == null && listIndex == null && focusNode == null;
+        return shellFocusableTap(
+          context: context,
+          focusNode: focusNode,
+          onUpEdge: onUpEdge,
+          onLeftEdge: onLeftEdge,
+          listIndex: listIndex,
+          borderRadius: isSubmit || isSegment ? 20 : 16,
+          // Flat inkHover (FocusableControl) — same as search helpers.
+          scaleOnFocus: 1.0,
+          showFocusFill: true,
+          onTap: onTap,
+          tvZone: ShellTvZone.row,
+          tvItemIndex: listIndex,
+          child: child,
+        );
+      },
+    );
+  }
+}
+
+// ===== search_page.dart =====
+typedef KitSearchResult = CatalogSearchResult;
+typedef KitSearchQuery = Future<List<KitSearchResult>> Function(String query);
+typedef KitSearchEmit = void Function(
+  List<KitSearchResult> results, {
+  required bool done,
+  bool canLoadMore,
+});
+typedef KitSearchProgressive = Future<void> Function(
+  String query,
+  KitSearchEmit emit,
+);
+typedef KitSearchLoadMore = Future<void> Function(KitSearchEmit emit);
+typedef KitRecommendationsLoader = Future<List<String>> Function({
+  required String query,
+  required List<KitSearchResult> results,
+});
+typedef KitSearchOpen = void Function(KitSearchResult result);
+
+class KitSearchPage extends StatefulWidget {
+  const KitSearchPage({
+    super.key,
+    required this.hintText,
+    required this.tvTabId,
+    required this.onSearch,
+    required this.onOpen,
+    required this.loadRecommendations,
+    this.onSearchProgressive,
+    this.onSearchLoadMore,
+    this.structuredSearch = false,
+  });
+
+  final String hintText;
+  final String tvTabId;
+  final KitSearchQuery onSearch;
+
+  final KitSearchProgressive? onSearchProgressive;
+
+  final KitSearchLoadMore? onSearchLoadMore;
+  final KitSearchOpen onOpen;
+  final KitRecommendationsLoader loadRecommendations;
+
+  final bool structuredSearch;
+
+  @override
+  State<KitSearchPage> createState() => _KitSearchPageState();
+}
+
+class _KitSearchPageState extends State<KitSearchPage> {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  final FocusNode _closeFocusNode = FocusNode(debugLabel: 'hub-search-close');
+  final FocusNode _filterFocusNode = FocusNode(debugLabel: 'hub-search-filter');
+  final FocusNode _filterLensFirstFocusNode =
+      FocusNode(debugLabel: 'hub-search-filter-lens-first');
+  final FocusNode _firstHelperFocusNode = FocusNode();
+  final ScrollController _helpersScrollController = ScrollController();
+  final ScrollController _resultsScrollController = ScrollController();
+
+  String _query = '';
+  String _activeSearchQuery = '';
+  int _searchGeneration = 0;
+  int _recommendGeneration = 0;
+  bool _isSearching = false;
+  bool _loadingMore = false;
+  bool _canLoadMore = false;
+  String? _error;
+  List<KitSearchResult> _results = [];
+
+  List<String> _recommendationTitles = [];
+  List<String> _recentQueries = const [];
+  bool _recommendationsLoading = true;
+  int? _helperFocusedIndex;
+  int _gridFocusedIndex = 0;
+  int? _pendingGridFocusIndex;
+  bool _searchFieldEditing = false;
+  bool _searchSubmitArmed = false;
+  int _searchEditEpoch = 0;
+  bool _initialFocusScheduled = false;
+  SearchFilters _filters = SearchFilters.empty;
+  bool _filtersOpen = false;
+  ModalRoute<void>? _route;
+  AnimationStatusListener? _routeAnimationListener;
+
+  static const _helpersRowId = 'search-helpers';
+  static const _helperResultsRowId = 'search-helper-results';
+  static const _resultsRowId = 'search-results';
+
+  @override
+  void initState() {
+    super.initState();
+    ShellBus.registerFindShortcutHandler(_handleFindShortcut);
+    _focusNode.addListener(_onSearchFieldFocusChange);
+    _focusNode.onKeyEvent = _searchFieldKeyEvent;
+    _resultsScrollController.addListener(_onResultsScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ShellBus.shellOverlayHasPage.addListener(_onShellOverlayChanged);
+    });
+    _loadRecommendations();
+    _loadRecentQueries();
+  }
+
+  Future<void> _loadRecentQueries() async {
+    final recent = await SearchRecentQueries.load(widget.tvTabId);
+    if (!mounted) return;
+    setState(() => _recentQueries = recent);
+  }
+
+  void _scheduleEnsureSearchFieldFocused() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _ensureSearchFieldFocused();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != _route) {
+      _detachRouteAnimationListener();
+      _route = route;
+      final animation = route?.animation;
+      if (animation != null) {
+        _routeAnimationListener = (status) {
+          if (status == AnimationStatus.completed && mounted) {
+            _scheduleEnsureSearchFieldFocused();
+          }
+        };
+        animation.addStatusListener(_routeAnimationListener!);
+        if (animation.isCompleted) {
+          _scheduleEnsureSearchFieldFocused();
+        }
+      }
+    }
+
+    if (!_initialFocusScheduled) {
+      _initialFocusScheduled = true;
+      _scheduleEnsureSearchFieldFocused();
+    }
+  }
+
+  void _detachRouteAnimationListener() {
+    final listener = _routeAnimationListener;
+    final animation = _route?.animation;
+    if (listener != null && animation != null) {
+      animation.removeStatusListener(listener);
+    }
+    _routeAnimationListener = null;
+  }
+
+  void _onShellOverlayChanged() {
+    if (ShellBus.shellOverlayHasPage.value) {
+      _scheduleEnsureSearchFieldFocused();
+    }
+  }
+
+  void _ensureSearchFieldFocused({int attempt = 0}) {
+    if (!mounted) return;
+    // Browse focus only — Enter / OK / click arms typing (desktop + TV).
+    if (_query.trim().isNotEmpty && _leanbackTextInput(context)) return;
+
+    _focusSearchFieldBrowse();
+
+    if (!_leanbackTextInput(context) || _focusNode.hasFocus || attempt >= 12) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureSearchFieldFocused(attempt: attempt + 1);
+    });
+  }
+
+  Future<void> _loadRecommendations({
+    String query = '',
+    List<KitSearchResult> results = const [],
+  }) async {
+    final gen = ++_recommendGeneration;
+    try {
+      final titles = await widget.loadRecommendations(
+        query: query,
+        results: results,
+      );
+      if (!mounted || gen != _recommendGeneration) return;
+      setState(() {
+        _recommendationTitles = titles;
+        _recommendationsLoading = false;
+      });
+      if (_query.isEmpty && _tvFocus(context)) {
+        _scheduleEnsureSearchFieldFocused();
+      }
+    } catch (_) {
+      if (!mounted || gen != _recommendGeneration) return;
+      setState(() => _recommendationsLoading = false);
+    }
+  }
+
+  List<_KitHelperEntry> get _helperEntries {
+    final recent = [
+      for (final q in _recentQueries) _KitHelperEntry(q, isRecent: true),
+    ];
+    final recs = SearchRecentQueries.pickRecommendations(
+      _recommendationTitles,
+      exclude: _recentQueries,
+    );
+    return [
+      ...recent,
+      for (final t in recs) _KitHelperEntry(t, isRecent: false),
+    ];
+  }
+
+  Future<void> _recordRecentQuery(String query) async {
+    final next = await SearchRecentQueries.record(widget.tvTabId, query);
+    if (!mounted) return;
+    setState(() => _recentQueries = next);
+  }
+
+  Future<void> _removeRecentQuery(String query, {required int index}) async {
+    final next = await SearchRecentQueries.remove(widget.tvTabId, query);
+    if (!mounted) return;
+    setState(() {
+      _recentQueries = next;
+      _helperFocusedIndex = null;
+    });
+    final count = _helperItemCount();
+    if (count == 0) {
+      _focusSearchFieldBrowse();
+      return;
+    }
+    final focusIndex = index.clamp(0, count - 1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _focusHelperAtIndex(focusIndex);
+    });
+  }
+
+  void _onSearchFieldFocusChange() {
+    if (mounted) setState(() {});
+    if (!_focusNode.hasFocus) {
+      _searchSubmitArmed = false;
+      _searchEditEpoch++;
+      if (_searchFieldEditing && mounted) {
+        setState(() => _searchFieldEditing = false);
+      }
+      return;
+    }
+    ShellTvFocusCoordinator.saveFocus(
+      widget.tvTabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _focusNode),
+    );
+  }
+
+  bool _handleFindShortcut() {
+    _focusSearchFieldBrowse();
+    return true;
+  }
+
+  void _focusSearchFieldBrowse() {
+    if (!_focusNode.canRequestFocus) return;
+    _searchSubmitArmed = false;
+    _searchEditEpoch++;
+    if (_searchFieldEditing) {
+      setState(() => _searchFieldEditing = false);
+    }
+    _resetHelpersScroll();
+    _focusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      widget.tvTabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _focusNode),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _query.trim().isNotEmpty) return;
+      if (!_focusNode.hasFocus) {
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
+  void _beginSearchFieldEditing() {
+    final epoch = ++_searchEditEpoch;
+    _searchSubmitArmed = false;
+    setState(() => _searchFieldEditing = true);
+    if (!_focusNode.hasFocus) {
+      _focusNode.requestFocus();
+    }
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted || epoch != _searchEditEpoch || !_searchFieldEditing) {
+        return;
+      }
+      _searchSubmitArmed = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    ShellBus.unregisterFindShortcutHandler(_handleFindShortcut);
+    ShellBus.shellOverlayHasPage.removeListener(_onShellOverlayChanged);
+    _detachRouteAnimationListener();
+    _focusNode.removeListener(_onSearchFieldFocusChange);
+    _controller.dispose();
+    _focusNode.dispose();
+    _closeFocusNode.dispose();
+    _filterFocusNode.dispose();
+    _filterLensFirstFocusNode.dispose();
+    _firstHelperFocusNode.dispose();
+    _helpersScrollController.dispose();
+    _resultsScrollController.removeListener(_onResultsScroll);
+    _resultsScrollController.dispose();
+    super.dispose();
+  }
+
+  bool _isWideLayout(BuildContext context) => shellUsesWideLayout(context);
+
+  bool _tvFocus(BuildContext context) =>
+      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+  bool _leanbackTextInput(BuildContext context) {
+    return ShellScope.inputPolicyOf(context).browseTextUntilActivate;
+  }
+
+  bool _tvDensity(BuildContext context) =>
+      ShellScope.metricsOf(context).usesTvDensity;
+
+  /// Results pane width beside the helpers column (wide layout flex 3:7).
+  double _tvSearchResultsPaneWidth(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final rail = ShellScope.metricsOf(context).navRailWidth;
+    final inset = ShellTokens.searchPageInsetTv * 2;
+    final columnGap = ShellTokens.searchColumnGapTv;
+    final content = math.max(0.0, screenW - rail - inset);
+    return math.max(0.0, (content - columnGap) * 7 / 10);
+  }
+
+  /// Desktop: fixed 4-up. TV: pack so each cell stays ≥ poster width.
+  int _resultsGridColumns(BuildContext context) {
+    if (!_tvDensity(context)) return ShellTokens.searchResultsGridColumns;
+    final dens = CatalogSearchDensity.maybeOf(context);
+    final minW = dens?.resultCardWidth ?? ShellTokens.posterCardWidthTv;
+    final gap = ShellTokens.tvPosterCardRowGap;
+    // Matches [Padding] around each film card in [_buildResultsColumn].
+    const cellPad = 8.0;
+    final resultsW = _tvSearchResultsPaneWidth(context);
+    final cols = math.max(
+      1,
+      ((resultsW + gap) / (minW + cellPad + gap)).floor(),
+    );
+    return cols.clamp(1, ShellTokens.searchResultsGridColumnsTv);
+  }
+
+  String _effectiveSearchQuery([String? typed]) {
+    if (!widget.structuredSearch) return (typed ?? _query).trim();
+    return composeSearchQuery(typed ?? _query, _filters);
+  }
+
+  void _onFiltersChanged(SearchFilters next) {
+    setState(() => _filters = next);
+  }
+
+  void _toggleFiltersOpen() {
+    setState(() => _filtersOpen = !_filtersOpen);
+  }
+
+  void _submitFilters() {
+    setState(() => _filtersOpen = false);
+    final effective = _effectiveSearchQuery(_controller.text);
+    if (effective.isEmpty) return;
+    _performSearch(effective, recordRecent: _controller.text.trim().isNotEmpty);
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _query = query;
+      _helperFocusedIndex = null;
+      _gridFocusedIndex = 0;
+      _error = null;
+    });
+    final effective = _effectiveSearchQuery(query);
+    // Submit-only: typing never hits the pack. Clear when empty or when the
+    // field no longer matches the last submitted query (drop stale cards).
+    if (effective.isEmpty || effective != _activeSearchQuery) {
+      final wasEmpty = _activeSearchQuery.isEmpty && _results.isEmpty;
+      setState(() {
+        _results = [];
+        _isSearching = false;
+        _loadingMore = false;
+        _canLoadMore = false;
+        _activeSearchQuery = '';
+        _pendingGridFocusIndex = null;
+      });
+      if (effective.isEmpty && !wasEmpty) {
+        _loadRecommendations();
+      }
+      if (effective.isEmpty &&
+          _leanbackTextInput(context) &&
+          _focusNode.hasFocus) {
+        _focusSearchFieldBrowse();
+      }
+    }
+  }
+
+  void _onResultsScroll() {
+    if (!_canLoadMore || _loadingMore || _isSearching) return;
+    if (widget.onSearchLoadMore == null) return;
+    if (!_resultsScrollController.hasClients) return;
+    final pos = _resultsScrollController.position;
+    if (pos.maxScrollExtent <= 0) return;
+    if (pos.pixels < pos.maxScrollExtent - 320) return;
+    unawaited(_loadMoreResults());
+  }
+
+  Future<void> _loadMoreResults() async {
+    final loadMore = widget.onSearchLoadMore;
+    if (loadMore == null) return;
+    if (!_canLoadMore || _loadingMore || _isSearching) return;
+    final gen = _searchGeneration;
+    setState(() => _loadingMore = true);
+    try {
+      await loadMore((results, {required done, bool canLoadMore = false}) {
+        if (gen != _searchGeneration || !mounted) return;
+        setState(() {
+          _results = results;
+          _canLoadMore = canLoadMore;
+          _loadingMore = false;
+          _isSearching = !done;
+        });
+      });
+    } catch (_) {
+      if (gen != _searchGeneration || !mounted) return;
+      setState(() => _loadingMore = false);
+    }
+    if (!mounted || gen != _searchGeneration) return;
+    if (_loadingMore) setState(() => _loadingMore = false);
+  }
+
+  Future<void> _performSearch(
+    String query, {
+    bool recordRecent = true,
+  }) async {
+    if (query.isEmpty) return;
+    final gen = ++_searchGeneration;
+    setState(() {
+      _activeSearchQuery = query;
+      _results = [];
+      _isSearching = true;
+      _loadingMore = false;
+      _canLoadMore = false;
+      _error = null;
+      _helperFocusedIndex = null;
+      _gridFocusedIndex = 0;
+    });
+    if (recordRecent) {
+      _recordRecentQuery(query);
+    }
+    try {
+      final progressive = widget.onSearchProgressive;
+      if (progressive != null) {
+        await progressive(query, (results, {required done, bool canLoadMore = false}) {
+          if (gen != _searchGeneration || !mounted) return;
+          setState(() {
+            _results = results;
+            _isSearching = !done;
+            _canLoadMore = canLoadMore;
+            _error = null;
+          });
+          if (done) {
+            _loadRecommendations(query: query, results: results);
+            _scheduleFocusOnResultCardIfPending();
+          } else if (results.isNotEmpty) {
+            _scheduleFocusOnResultCardIfPending();
+          }
+        });
+        return;
+      }
+      final results = await widget.onSearch(query);
+      if (gen != _searchGeneration || !mounted) return;
+      setState(() {
+        _results = results;
+        _isSearching = false;
+        _canLoadMore = false;
+      });
+      _loadRecommendations(query: query, results: results);
+      _scheduleFocusOnResultCardIfPending();
+    } catch (e) {
+      if (gen != _searchGeneration || !mounted) return;
+      setState(() {
+        _isSearching = false;
+        _canLoadMore = false;
+        _error = 'Search failed';
+      });
+    }
+  }
+
+  void _submitSearchField() {
+    if (!_leanbackTextInput(context)) return;
+    if (!_searchSubmitArmed) return;
+    final query = _controller.text.trim();
+    final effective = _effectiveSearchQuery(query);
+    if (effective.isEmpty) return;
+
+    if (_searchFieldEditing && mounted) {
+      setState(() => _searchFieldEditing = false);
+    }
+
+    _pendingGridFocusIndex = 0;
+    _performSearch(effective, recordRecent: query.isNotEmpty);
+    _scheduleFocusOnResultCardIfPending();
+  }
+
+  void _applyHelperQuery(String title) {
+    _pendingGridFocusIndex = 0;
+    _controller.text = title;
+    setState(() {
+      _query = title;
+      _helperFocusedIndex = null;
+      _gridFocusedIndex = 0;
+      _error = null;
+    });
+    final effective = _effectiveSearchQuery(title);
+    if (effective.isEmpty) return;
+    _performSearch(effective, recordRecent: title.trim().isNotEmpty);
+  }
+
+  KitSearchResult? get _focusedResult {
+    if (_results.isEmpty) return null;
+    final index = _gridFocusedIndex.clamp(0, _results.length - 1);
+    return _results[index];
+  }
+
+  void _focusResultCardAt(int index) {
+    final count = _results.length;
+    if (count == 0) {
+      _pendingGridFocusIndex = index;
+      return;
+    }
+    _pendingGridFocusIndex = null;
+    _focusNode.unfocus();
+    final clamped = index.clamp(0, count - 1);
+    setState(() {
+      _gridFocusedIndex = clamped;
+      _helperFocusedIndex = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ShellTvFocusCoordinator.focusRowItem(
+        widget.tvTabId,
+        _resultsRowId,
+        clamped,
+      );
+    });
+  }
+
+  void _scheduleFocusOnResultCardIfPending() {
+    final pending = _pendingGridFocusIndex;
+    if (pending == null || _results.isEmpty) return;
+    _pendingGridFocusIndex = null;
+    _focusNode.unfocus();
+    final index = pending.clamp(0, _results.length - 1);
+    if (_gridFocusedIndex != index) {
+      setState(() => _gridFocusedIndex = index);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ShellTvFocusCoordinator.focusRowItem(
+        widget.tvTabId,
+        _resultsRowId,
+        index,
+      );
+    });
+  }
+
+  String _helpersRowIdForFocus() =>
+      _query.trim().isEmpty ? _helpersRowId : _helperResultsRowId;
+
+  void _focusHelperAtIndex(int index) {
+    final rowId = _helpersRowIdForFocus();
+    final count = _helperItemCount();
+    if (count == 0) return;
+    final clamped = index.clamp(0, count - 1);
+    setState(() => _helperFocusedIndex = clamped);
+
+    void tryFocus({int attempt = 0}) {
+      if (ShellTvFocusCoordinator.focusRowItem(
+        widget.tvTabId,
+        rowId,
+        clamped,
+      )) {
+        return;
+      }
+      if (attempt >= 4) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        tryFocus(attempt: attempt + 1);
+      });
+    }
+
+    tryFocus();
+  }
+
+  void _focusFirstHelper() => _focusHelperAtIndex(0);
+
+  RenderBox? _tvItemRenderBox(String rowId, int index) {
+    final node =
+        ShellTvFocusCoordinator.itemNode(widget.tvTabId, rowId, index);
+    final ctx = node?.context;
+    if (ctx == null || !ctx.mounted) return null;
+    final renderObject = ctx.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.hasSize ||
+        !renderObject.attached) {
+      return null;
+    }
+    return renderObject;
+  }
+
+  double? _tvItemCenterGlobalY(String rowId, int index) {
+    final box = _tvItemRenderBox(rowId, index);
+    if (box == null) return null;
+    return box.localToGlobal(box.size.center(Offset.zero)).dy;
+  }
+
+  double? _gridRowScrollStride() {
+    final gridColumns = _resultsGridColumns(context);
+    for (var row = 0; row < 24; row++) {
+      final y0 = _tvItemCenterGlobalY(_resultsRowId, row * gridColumns);
+      final y1 =
+          _tvItemCenterGlobalY(_resultsRowId, (row + 1) * gridColumns);
+      if (y0 != null && y1 != null) return y1 - y0;
+    }
+    final box = _tvItemRenderBox(_resultsRowId, 0);
+    if (box == null) return null;
+    return box.size.height + 16;
+  }
+
+  int _closestGridRowForGlobalY(double helperCenterY, int maxRow) {
+    final gridColumns = _resultsGridColumns(context);
+    var bestRow = 0;
+    var bestDelta = double.infinity;
+    var sawRenderedRow = false;
+
+    for (var row = 0; row <= maxRow; row++) {
+      final centerY =
+          _tvItemCenterGlobalY(_resultsRowId, row * gridColumns);
+      if (centerY == null) continue;
+      sawRenderedRow = true;
+      final delta = (centerY - helperCenterY).abs();
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        bestRow = row;
+      }
+    }
+
+    if (sawRenderedRow) return bestRow;
+
+    final anchorY = _tvItemCenterGlobalY(_resultsRowId, 0);
+    final stride = _gridRowScrollStride();
+    if (anchorY != null && stride != null && stride > 0) {
+      return ((helperCenterY - anchorY) / stride).round().clamp(0, maxRow);
+    }
+    return 0;
+  }
+
+  void _ensureGridRowVisible(int row) {
+    final gridColumns = _resultsGridColumns(context);
+    final index = row * gridColumns;
+    final node = ShellTvFocusCoordinator.itemNode(
+      widget.tvTabId,
+      _resultsRowId,
+      index,
+    );
+    final ctx = node?.context;
+    if (ctx != null && ctx.mounted) {
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.2,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
+    if (!_resultsScrollController.hasClients) return;
+    final stride = _gridRowScrollStride();
+    if (stride == null || stride <= 0) return;
+    final maxExtent = _resultsScrollController.position.maxScrollExtent;
+    _resultsScrollController.jumpTo((row * stride).clamp(0.0, maxExtent));
+  }
+
+  void _focusResultCardAtVisualLevel(int helperIndex) {
+    final gridColumns = _resultsGridColumns(context);
+    final count = _results.length;
+    if (count == 0) return;
+
+    final maxRow = (count - 1) ~/ gridColumns;
+    final helperRowId = _helpersRowIdForFocus();
+    final helperY = _tvItemCenterGlobalY(helperRowId, helperIndex);
+    final targetRow = helperY == null
+        ? 0
+        : _closestGridRowForGlobalY(helperY, maxRow);
+    final targetIndex = (targetRow * gridColumns).clamp(0, count - 1);
+
+    _ensureGridRowVisible(targetRow);
+
+    void tryFocus({int attempt = 0}) {
+      if (!mounted) return;
+      if (ShellTvFocusCoordinator.focusRowItem(
+        widget.tvTabId,
+        _resultsRowId,
+        targetIndex,
+      )) {
+        _pendingGridFocusIndex = null;
+        _focusNode.unfocus();
+        setState(() {
+          _gridFocusedIndex = targetIndex;
+          _helperFocusedIndex = null;
+        });
+        return;
+      }
+      if (attempt >= 4) {
+        _focusResultCardAt(targetIndex);
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        tryFocus(attempt: attempt + 1);
+      });
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => tryFocus());
+  }
+
+  void _resetHelpersScroll() {
+    if (!_helpersScrollController.hasClients) return;
+    if (_helpersScrollController.offset <= 0) return;
+    _helpersScrollController.jumpTo(0);
+  }
+
+  VoidCallback? _helperUpEdge(int index) {
+    if (index == 0) return _focusSearchFieldBrowse;
+    return () => _focusHelperAtIndex(index - 1);
+  }
+
+  VoidCallback? _helperDownEdge(int index, int count) {
+    if (index >= count - 1) return () {};
+    return () => _focusHelperAtIndex(index + 1);
+  }
+
+  VoidCallback? _helperRightEdge(int index) {
+    if (_results.isEmpty) return null;
+    return () => _focusResultCardAtVisualLevel(index);
+  }
+
+  int _helperItemCount() => _helperEntries.length;
+
+  void _focusSearchClose() {
+    if (!_closeFocusNode.canRequestFocus) return;
+    _closeFocusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      widget.tvTabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _closeFocusNode),
+    );
+  }
+
+  void _focusSearchFilter() {
+    if (!widget.structuredSearch) return;
+    if (!_filterFocusNode.canRequestFocus) return;
+    _filterFocusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      widget.tvTabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: _filterFocusNode),
+    );
+  }
+
+  void _focusHelperAtVisualLevelFromGrid(int gridIndex) {
+    final count = _helperItemCount();
+    if (count <= 0) return;
+    final helperRowId = _helpersRowIdForFocus();
+    final cardY = _tvItemCenterGlobalY(_resultsRowId, gridIndex);
+    if (cardY == null) {
+      _focusFirstHelper();
+      return;
+    }
+    var best = 0;
+    var bestDist = double.infinity;
+    for (var i = 0; i < count; i++) {
+      final y = _tvItemCenterGlobalY(helperRowId, i);
+      if (y == null) continue;
+      final dist = (y - cardY).abs();
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    _focusHelperAtIndex(best);
+  }
+
+  void _focusFilmCardsFromClose() {
+    if (_results.isNotEmpty) {
+      _focusResultCardAt(0);
+      return;
+    }
+    if (_helperItemCount() > 0) {
+      _focusFirstHelper();
+    }
+  }
+
+  KeyEventResult _searchCloseKeyEvent(FocusNode node, KeyEvent event) {
+    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      _focusSearchFieldBrowse();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      if (!widget.structuredSearch) return KeyEventResult.handled;
+      _focusSearchFilter();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _focusFilmCardsFromClose();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _searchFilterTuneKeyEvent(FocusNode node, KeyEvent event) {
+    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      if (_query.trim().isNotEmpty && _closeFocusNode.canRequestFocus) {
+        _focusSearchClose();
+      } else {
+        _focusSearchFieldBrowse();
+      }
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown && _filtersOpen) {
+      if (_filterLensFirstFocusNode.canRequestFocus) {
+        _filterLensFirstFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _focusFilmCardsFromClose();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _searchFieldKeyEvent(FocusNode node, KeyEvent event) {
+    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      // Browse: trap - nav exit is Down → suggestions → Left.
+      // Editing: ignore so the caret can move.
+      if (_searchFieldEditing) return KeyEventResult.ignored;
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      if (_helperItemCount() <= 0) return KeyEventResult.ignored;
+      _focusFirstHelper();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      // Editing: ignore so the caret can move.
+      if (_searchFieldEditing) return KeyEventResult.ignored;
+      if (_query.trim().isNotEmpty && _closeFocusNode.canRequestFocus) {
+        _focusSearchClose();
+        return KeyEventResult.handled;
+      }
+      if (widget.structuredSearch) {
+        _focusSearchFilter();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.handled;
+    }
+    if (_leanbackTextInput(context) &&
+        shellTvIsActivateKey(event) &&
+        _searchFieldEditing) {
+      // Swallow the twin Select/Enter from the OK that opened editing.
+      return KeyEventResult.handled;
+    }
+    if (_leanbackTextInput(context) &&
+        shellTvIsActivateKey(event) &&
+        !_searchFieldEditing) {
+      _beginSearchFieldEditing();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  PreferredSizeWidget _buildCompactAppBar() {
+    return AppBar(
+      backgroundColor: AppTheme.bgDark,
+      elevation: 0,
+      iconTheme: const IconThemeData(color: Colors.white),
+      titleSpacing: 0,
+      title: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        autofocus: true,
+        onChanged: _onSearchChanged,
+        onSubmitted: (v) {
+          final effective = _effectiveSearchQuery(v);
+          if (effective.isEmpty) return;
+          _performSearch(effective, recordRecent: v.trim().isNotEmpty);
+        },
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+        cursorColor: ForjaShellColors.sectionAccent,
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+          hintStyle: TextStyle(
+            color: ForjaShellColors.cinematic.textSecondary
+                .withValues(alpha: 0.7),
+            fontWeight: FontWeight.w400,
+          ),
+          border: InputBorder.none,
+        ),
+      ),
+      actions: [
+        if (widget.structuredSearch)
+          Button(
+            variant: ButtonVariant.plainIcon,
+            size: ButtonSize.icon,
+            icon: Icons.tune_rounded,
+            iconSize: 22,
+            focusNode: _filterFocusNode,
+            color: (_filtersOpen || _filters.isActive)
+                ? ForjaShellColors.textPrimary
+                : ForjaShellColors.textSecondary,
+            tooltip: 'Filters',
+            onKeyEvent: _searchFilterTuneKeyEvent,
+            onPressed: _toggleFiltersOpen,
+          ),
+        if (_controller.text.isNotEmpty)
+          Button(
+            variant: ButtonVariant.plainIcon,
+            size: ButtonSize.icon,
+            icon: Icons.close_rounded,
+            compact: true,
+            color: ForjaShellColors.cinematic.textPrimary,
+            focusNode: _closeFocusNode,
+            onKeyEvent: _searchCloseKeyEvent,
+            onPressed: () {
+              _controller.clear();
+              _onSearchChanged('');
+              _focusSearchFieldBrowse();
+            },
+          ),
+        const SizedBox(width: 4),
+      ],
+      bottom: widget.structuredSearch
+          ? PreferredSize(
+              preferredSize: Size.fromHeight(
+                _filtersOpen
+                    ? 320
+                    : (_filters.isActive ? 48 : 0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildFilterChrome(context),
+              ),
+            )
+          : null,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocusGraph(
+      tabId: widget.tvTabId,
+      child: ValueListenableBuilder<AppThemePreset>(
+        valueListenable: AppTheme.themeNotifier,
+        builder: (context, _, _) {
+          if (_isWideLayout(context)) {
+            return ColoredBox(
+              color: AppTheme.bgDark,
+              child: _buildWideLayout(context),
+            );
+          }
+          return Scaffold(
+            backgroundColor: AppTheme.bgDark,
+            appBar: _buildCompactAppBar(),
+            body: _buildCompactBody(context),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildWideLayout(BuildContext context) {
+    final focused = _focusedResult;
+    final backdropUrl = focused?.backdropUrl ?? focused?.posterUrl;
+    final tv = _tvDensity(context);
+    final inset =
+        tv ? ShellTokens.searchPageInsetTv : ShellTokens.searchPageInset;
+    final columnGap =
+        tv ? ShellTokens.searchColumnGapTv : ShellTokens.searchColumnGap;
+    final fieldBelow = tv
+        ? ShellTokens.searchFieldBelowGapTv
+        : ShellTokens.searchFieldBelowGap;
+
+    return CatalogSearchPage(
+      backdropUrl: backdropUrl,
+      backgroundColor: Colors.transparent,
+      hintText: widget.hintText,
+      field: Padding(
+        padding: EdgeInsets.fromLTRB(inset, inset, inset, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildSearchField(context),
+            // Active filter tokens stay under the field; the lens itself
+            // lives in the left column (replaces helpers when open).
+            _buildFilterTokens(context),
+            SizedBox(height: fieldBelow),
+          ],
+        ),
+      ),
+      results: Padding(
+        padding: EdgeInsets.fromLTRB(inset, 0, inset, inset),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 3,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: _filtersOpen && widget.structuredSearch
+                    ? Align(
+                        key: const ValueKey('hub-search-filter-lens'),
+                        alignment: Alignment.topLeft,
+                        child: KitSearchFilterLens(
+                          open: true,
+                          filters: _filters,
+                          onFiltersChanged: _onFiltersChanged,
+                          onSubmit: _submitFilters,
+                          firstFocusNode: _filterLensFirstFocusNode,
+                          onUpFromFirst: _focusSearchFieldBrowse,
+                        ),
+                      )
+                    : KeyedSubtree(
+                        key: const ValueKey('hub-search-helpers'),
+                        child: _buildHelpersList(context),
+                      ),
+              ),
+            ),
+            SizedBox(width: columnGap),
+            Expanded(
+              flex: 7,
+              child: _buildResultsColumn(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchField(BuildContext context) {
+    final leanbackInput = _leanbackTextInput(context);
+    final browseOnly = leanbackInput && !_searchFieldEditing;
+    final tv = _tvDensity(context);
+    final queryFont = tv
+        ? ShellTokens.searchQueryFontSizeTv
+        : ShellTokens.searchQueryFontSize;
+    final cursorHeight = tv
+        ? ShellTokens.searchQueryCursorHeightTv
+        : ShellTokens.searchQueryCursorHeight;
+    final hintStyle = TextStyle(
+      color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
+      fontSize: queryFont,
+      fontWeight: FontWeight.w600,
+      height: 1.15,
+    );
+    final showBrowsePlaceholder =
+        browseOnly && _focusNode.hasFocus && _query.isEmpty;
+
+    final field = Stack(
+      alignment: Alignment.centerLeft,
+      children: [
+        TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          autofocus: !leanbackInput,
+          readOnly: browseOnly,
+          showCursor: !browseOnly || _query.isNotEmpty,
+          enableInteractiveSelection: !browseOnly,
+          onChanged: _onSearchChanged,
+          onTap: leanbackInput
+              ? () {
+                  if (!_searchFieldEditing) _beginSearchFieldEditing();
+                }
+              : null,
+          onSubmitted: (v) {
+            if (_leanbackTextInput(context)) {
+              _submitSearchField();
+            } else {
+              final effective = _effectiveSearchQuery(v);
+              if (effective.isEmpty) return;
+              _performSearch(
+                effective,
+                recordRecent: v.trim().isNotEmpty,
+              );
+            }
+          },
+          textInputAction: TextInputAction.search,
+          style: TextStyle(
+            color: ForjaShellColors.textPrimary,
+            fontSize: queryFont,
+            fontWeight: FontWeight.w600,
+            height: 1.15,
+          ),
+          cursorColor: ForjaShellColors.textPrimary,
+          cursorHeight: cursorHeight,
+          decoration: InputDecoration(
+            hintText: showBrowsePlaceholder ? null : widget.hintText,
+            hintStyle: hintStyle,
+            border: InputBorder.none,
+            isDense: true,
+            contentPadding: EdgeInsets.zero,
+            suffixIcon: _query.isNotEmpty
+                ? Button(
+                    variant: ButtonVariant.plainIcon,
+                    size: ButtonSize.icon,
+                    icon: Icons.close_rounded,
+                    compact: true,
+                    color: ForjaShellColors.textSecondary,
+                    focusNode: _closeFocusNode,
+                    onKeyEvent: _searchCloseKeyEvent,
+                    onPressed: () {
+                      _controller.clear();
+                      _onSearchChanged('');
+                      _focusSearchFieldBrowse();
+                    },
+                  )
+                : null,
+          ),
+        ),
+        if (showBrowsePlaceholder)
+          TvSearchBrowsePlaceholder(
+            active: true,
+            placeholder: widget.hintText,
+            hintStyle: hintStyle,
+            caretHeight: cursorHeight,
+          ),
+      ],
+    );
+
+    if (!widget.structuredSearch) return field;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(child: field),
+        Button(
+          variant: ButtonVariant.plainIcon,
+          size: ButtonSize.icon,
+          icon: Icons.tune_rounded,
+          iconSize: ShellTokens.searchFilterTuneIconSizeOf(tv),
+          focusNode: _filterFocusNode,
+          color: (_filtersOpen || _filters.isActive)
+              ? ForjaShellColors.textPrimary
+              : ForjaShellColors.textSecondary,
+          tooltip: 'Filters',
+          onKeyEvent: _searchFilterTuneKeyEvent,
+          onPressed: _toggleFiltersOpen,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChrome(BuildContext context) {
+    if (!widget.structuredSearch) return const SizedBox.shrink();
+    final tokens = _filters.tokenActions(_onFiltersChanged);
+    final density = _tvDensity(context);
+    final gap = ShellTokens.searchFilterChipWrapGapOf(density);
+    final top = ShellTokens.searchFilterSectionGapOf(density);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!_filtersOpen && _filters.isActive)
+          Padding(
+            padding: EdgeInsets.only(top: top),
+            child: Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (var i = 0; i < tokens.length; i++)
+                  KitSearchFilterToken(
+                    label: tokens[i].$1,
+                    onClear: tokens[i].$2,
+                    listIndex: i,
+                  ),
+              ],
+            ),
+          ),
+        KitSearchFilterLens(
+          open: _filtersOpen,
+          filters: _filters,
+          onFiltersChanged: _onFiltersChanged,
+          onSubmit: _submitFilters,
+          firstFocusNode: _filterLensFirstFocusNode,
+          onUpFromFirst: _focusSearchFieldBrowse,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterTokens(BuildContext context) {
+    if (!widget.structuredSearch) return const SizedBox.shrink();
+    if (_filtersOpen || !_filters.isActive) return const SizedBox.shrink();
+    final tokens = _filters.tokenActions(_onFiltersChanged);
+    final density = _tvDensity(context);
+    final gap = ShellTokens.searchFilterChipWrapGapOf(density);
+    final top = ShellTokens.searchFilterSectionGapOf(density);
+    return Padding(
+      padding: EdgeInsets.only(top: top),
+      child: Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (var i = 0; i < tokens.length; i++)
+            KitSearchFilterToken(
+              label: tokens[i].$1,
+              onClear: tokens[i].$2,
+              listIndex: i,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelperTitle(
+    BuildContext context,
+    String title, {
+    required bool selected,
+    bool isRecent = false,
+  }) {
+    final tv = _tvDensity(context);
+    final color = selected
+        ? ForjaShellColors.textPrimary
+        : ForjaShellColors.textSecondary;
+    final fontSize = selected
+        ? (tv
+            ? ShellTokens.searchHelperFontSizeSelectedTv
+            : ShellTokens.searchHelperFontSizeSelected)
+        : (tv
+            ? ShellTokens.searchHelperFontSizeTv
+            : ShellTokens.searchHelperFontSize);
+    final iconSize = selected
+        ? (tv
+            ? ShellTokens.searchHelperIconSizeSelectedTv
+            : ShellTokens.searchHelperIconSizeSelected)
+        : (tv
+            ? ShellTokens.searchHelperIconSizeTv
+            : ShellTokens.searchHelperIconSize);
+    final pad = tv
+        ? ShellTokens.searchHelperVerticalPaddingTv
+        : ShellTokens.searchHelperVerticalPadding;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: pad),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          children: [
+            if (isRecent) ...[
+              Icon(
+                Icons.history,
+                size: iconSize,
+                color: color.withValues(alpha: selected ? 0.9 : 0.55),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: fontSize,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpersList(BuildContext context) {
+    final hasQuery = _query.trim().isNotEmpty;
+    final entries = _helperEntries;
+    final tv = _tvDensity(context);
+    final helperFont = tv
+        ? ShellTokens.searchHelperFontSizeTv
+        : ShellTokens.searchHelperFontSize;
+    final helperFontSelected = tv
+        ? ShellTokens.searchHelperFontSizeSelectedTv
+        : ShellTokens.searchHelperFontSizeSelected;
+    final helperPad = tv
+        ? ShellTokens.searchHelperVerticalPaddingTv
+        : ShellTokens.searchHelperVerticalPadding;
+
+    if (entries.isEmpty) {
+      if (!hasQuery && _recommendationsLoading) {
+        return const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      }
+      if (hasQuery && _isSearching) {
+        return Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppTheme.current.primaryColor,
+            ),
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    }
+
+    final rowId = hasQuery ? _helperResultsRowId : _helpersRowId;
+
+    return TvKitRow(
+      tabId: widget.tvTabId,
+      rowId: rowId,
+      sortOrder: 0,
+      itemCount: entries.length,
+      orientation: ShellTvRowOrientation.vertical,
+      child: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: ListView.separated(
+          controller: _helpersScrollController,
+          clipBehavior: Clip.none,
+          padding: const EdgeInsets.only(right: 8, bottom: 8),
+          itemCount: entries.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 2),
+          itemBuilder: (context, index) {
+            final entry = entries[index];
+            final count = entries.length;
+            final policy = ShellScope.inputPolicyOf(context);
+            // Desktop: focus highlight only while keyboard/D-pad chrome is
+            // visible — mouse hover must not keep the prior focus style.
+            final selected = policy.focusChromeVisible(
+              context,
+              focused: _helperFocusedIndex == index,
+            );
+            void onFocusChange(bool focused) {
+              setState(() {
+                if (focused) {
+                  _helperFocusedIndex = index;
+                } else if (_helperFocusedIndex == index) {
+                  _helperFocusedIndex = null;
+                }
+              });
+            }
+
+            if (entry.isRecent) {
+              return RecentSearchHelperTile(
+                title: entry.title,
+                selected: selected,
+                listIndex: index,
+                tvTabId: widget.tvTabId,
+                tvRowId: rowId,
+                titleFocusNode: index == 0 ? _firstHelperFocusNode : null,
+                onSelect: () => _applyHelperQuery(entry.title),
+                onRemove: () => _removeRecentQuery(
+                  entry.title,
+                  index: index,
+                ),
+                onUpEdge: _helperUpEdge(index),
+                onDownEdge: _helperDownEdge(index, count),
+                onRightPastRemove: _helperRightEdge(index),
+                onFocusChange: onFocusChange,
+                titleFontSize: helperFont,
+                titleFontSizeSelected: helperFontSelected,
+                verticalPadding: helperPad,
+              );
+            }
+
+            return shellFocusableTap(
+              context: context,
+                onTap: () => _applyHelperQuery(entry.title),
+              borderRadius: 4,
+              scaleOnFocus: 1.0,
+              navLeftAlways: true,
+              listIndex: index,
+              tvTabId: widget.tvTabId,
+              tvRowId: rowId,
+              tvZone: ShellTvZone.chipStrip,
+              tvItemIndex: index,
+              focusNode: index == 0 ? _firstHelperFocusNode : null,
+              onUpEdge: _helperUpEdge(index),
+              onDownEdge: _helperDownEdge(index, count),
+              onRightEdge: _helperRightEdge(index),
+              ensureVisibleMode: ShellPaintEnsureVisible.row,
+              onFocusChange: onFocusChange,
+              child: _buildHelperTitle(
+                context,
+                entry.title,
+                selected: selected,
+                isRecent: false,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  String _submitSearchHint() {
+    if (_filtersOpen) return 'Set filters, then tap Search';
+    if (ShellScope.inputPolicyOf(context).leanbackOnly) {
+      return 'Press OK to search';
+    }
+    return 'Press Enter to search';
+  }
+
+  Widget _buildResultsColumn(BuildContext context) {
+    final active = _activeSearchQuery.trim();
+    if (active.isEmpty) {
+      return Align(
+        alignment: Alignment.topLeft,
+        child: _buildEmpty(hint: _submitSearchHint()),
+      );
+    }
+    if (_error != null) {
+      return Align(
+        alignment: Alignment.topLeft,
+        child: _buildError(),
+      );
+    }
+    if (_results.isEmpty && _isSearching) {
+      return Center(
+        child: CircularProgressIndicator(color: AppTheme.current.primaryColor),
+      );
+    }
+    if (_results.isEmpty) {
+      return Align(
+        alignment: Alignment.topLeft,
+        child: _buildEmpty(hint: 'No results found'),
+      );
+    }
+
+    final gridColumns = _resultsGridColumns(context);
+    final tvFocus = _tvFocus(context);
+    final tv = _tvDensity(context);
+    final skeletonCount = _loadingMore ? gridColumns : 0;
+    final itemCount = _results.length + skeletonCount;
+    final mainAxisSpacing =
+        tv ? ShellTokens.tvPosterCardRowGap : 16.0;
+    final crossAxisSpacing =
+        tv ? ShellTokens.tvPosterCardRowGap : 14.0;
+
+    return TvGrid(
+      tabId: widget.tvTabId,
+      rowId: _resultsRowId,
+      sortOrder: 1,
+      columns: gridColumns,
+      itemCount: _results.length,
+      child: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: GridView.builder(
+          controller: _resultsScrollController,
+          clipBehavior: Clip.none,
+          padding: const EdgeInsets.only(bottom: 8),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: gridColumns,
+            mainAxisSpacing: mainAxisSpacing,
+            crossAxisSpacing: crossAxisSpacing,
+            childAspectRatio: 2 / 3,
+          ),
+          itemCount: itemCount,
+          itemBuilder: (context, index) {
+            if (index >= _results.length) {
+              return const Padding(
+                padding: EdgeInsets.all(4),
+                child: CatalogSearchSkeletonCard(),
+              );
+            }
+            final item = _results[index];
+            final firstColumn = index % gridColumns == 0;
+            final firstRow = index ~/ gridColumns == 0;
+            final policy = ShellScope.inputPolicyOf(context);
+            // White selected border = keyboard/D-pad focus only. Desktop mouse
+            // hover must not keep (or default to) the focus ring on card 0.
+            final selected = policy.focusChromeVisible(
+              context,
+              focused: index == _gridFocusedIndex,
+            );
+            return Padding(
+              padding: const EdgeInsets.all(4),
+              child: CatalogSearchResultCard.film(
+                title: item.title,
+                posterUrl: item.posterUrl,
+                subtitle: item.subtitle,
+                rating: item.rating,
+                selected: selected,
+                titleFontSize: shellHubCardTitleFontSize(context),
+                onTap: () => widget.onOpen(item),
+                interactiveBuilder: ({required child, required onTap}) {
+                  final grid = TvGridScope.maybeOf(context);
+                  final meta = grid?.metaFor(index);
+                  return shellFocusableTap(
+                    context: context,
+                    onTap: onTap,
+                    borderRadius: 14,
+                    showFocusBorder: true,
+                    onLeftEdge: firstColumn && tvFocus
+                        ? () => _focusHelperAtVisualLevelFromGrid(index)
+                        : null,
+                    onUpEdge:
+                        firstRow && tvFocus ? _focusSearchFieldBrowse : null,
+                    gridIndex: meta?.gridIndex ?? index,
+                    gridColumns: meta?.gridColumns,
+                    tvTabId: meta?.tvTabId,
+                    tvRowId: meta?.tvRowId,
+                    tvZone: meta?.tvZone ?? ShellTvZone.grid,
+                    tvItemIndex: meta?.tvItemIndex ?? index,
+                    onFocusChange: (focused) {
+                      if (focused) {
+                        setState(() {
+                          _gridFocusedIndex = index;
+                          _helperFocusedIndex = null;
+                        });
+                      }
+                    },
+                    child: child,
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactBody(BuildContext context) {
+    final effective = _effectiveSearchQuery();
+    final active = _activeSearchQuery.trim();
+    if (_error != null) return _buildError();
+    if (active.isEmpty && effective.isEmpty) return _buildEmpty();
+    if (active.isEmpty) {
+      return _buildEmpty(hint: _submitSearchHint());
+    }
+    if (_isSearching && _results.isEmpty) {
+      return Center(
+        child: CircularProgressIndicator(color: AppTheme.current.primaryColor),
+      );
+    }
+    if (_results.isEmpty) {
+      return _buildEmpty(hint: 'No results found');
+    }
+
+    final dens = CatalogSearchDensity.maybeOf(context);
+    final tv = _tvDensity(context);
+    final cardWidth = dens?.resultCardWidth ??
+        (tv
+            ? ShellTokens.searchCardWidthTv
+            : ShellTokens.searchCardWidthCompact);
+    final aspect = dens?.resultCardAspect ?? 1.5;
+    final cardHeight = cardWidth * aspect;
+    final padding =
+        dens?.sectionPad ?? ShellTokens.homeSectionHorizontalPadding;
+    const skeletonCount = 4;
+    final itemCount = _results.length + (_loadingMore ? skeletonCount : 0);
+
+    return GridView.builder(
+      controller: _resultsScrollController,
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(padding, 12, padding, 24),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: cardWidth + 16,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 12,
+        childAspectRatio: cardWidth / cardHeight,
+      ),
+      itemCount: itemCount,
+      itemBuilder: (_, i) {
+        if (i >= _results.length) {
+          return const Align(
+            alignment: Alignment.topCenter,
+            child: CatalogSearchSkeletonCard(),
+          );
+        }
+        final item = _results[i];
+        return Align(
+          alignment: Alignment.topCenter,
+          child: CatalogSearchResultCard.compact(
+            title: item.title,
+            posterUrl: item.posterUrl,
+            subtitle: item.subtitle,
+            rating: item.rating,
+            onTap: () => widget.onOpen(item),
+            interactiveBuilder: ({required child, required onTap}) =>
+                shellFocusableTap(
+              context: context,
+              onTap: onTap,
+              borderRadius: 12,
+              showFocusBorder: true,
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmpty({String? hint}) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search,
+            size: 80,
+            color: Colors.white.withValues(alpha: 0.05),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            hint ??
+                (_activeSearchQuery.trim().isEmpty
+                    ? 'Search for your favorite content'
+                    : 'No results found'),
+            style: const TextStyle(color: Colors.white38),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return ShellErrorRetryPanel(
+      message: _error!,
+      onRetry: () {
+        final effective = _effectiveSearchQuery();
+        if (effective.isEmpty) return;
+        _performSearch(effective, recordRecent: false);
+      },
+    );
+  }
+}
+
+class _KitHelperEntry {
+  const _KitHelperEntry(
+    this.title, {
+    required this.isRecent,
+  });
+
+  final String title;
+  final bool isRecent;
+}
+
+// ===== search_screen.dart =====
+class KitSearchScreen extends StatefulWidget {
+  const KitSearchScreen({
+    super.key,
+    required this.pluginId,
+    required this.tabId,
+    this.hintText = 'Search…',
+    this.structuredSearch = false,
+    this.applyChromeFilters = false,
+    this.searchHelpers = false,
+  });
+
+  final String pluginId;
+  final String tabId;
+  final String hintText;
+  final bool structuredSearch;
+  final bool applyChromeFilters;
+
+  /// Pack declares [PackCapabilities.searchHelpers] → `action: search_helpers`.
+  final bool searchHelpers;
+
+  @override
+  State<KitSearchScreen> createState() => _KitSearchScreenState();
+}
+
+class _KitSearchPageResult {
+  const _KitSearchPageResult({
+    required this.results,
+    required this.hasMore,
+  });
+
+  final List<KitSearchResult> results;
+  final bool hasMore;
+}
+
+class _KitSearchScreenState extends State<KitSearchScreen> {
+  static const _pageSize = 20;
+
+  String _pagingQuery = '';
+  int _pagingPage = 0;
+  Map<String, dynamic>? _pagingSeed;
+  final List<String> _pagingExcludeIds = [];
+  List<KitSearchResult> _pagingResults = const [];
+
+  String? _excludeIdFor(KitSearchResult result) {
+    final payload = result.payload;
+    if (payload is! MetaItem) return null;
+    final tmdb = payload.ids['tmdb'];
+    if (tmdb == null) return null;
+    final type = (payload.tmdbMediaType ?? payload.type).trim();
+    if (type.isEmpty) return null;
+    return '$type:$tmdb'.toLowerCase();
+  }
+
+  Map<String, dynamic>? _seedJsonFor(KitSearchResult? result) {
+    final payload = result?.payload;
+    if (payload is! MetaItem) return null;
+    return payload.toJson();
+  }
+
+  KitSearchResult _resultFromMeta(MetaItem item) {
+    return KitSearchResult(
+      key: item.id,
+      title: item.name,
+      posterUrl: item.poster,
+      backdropUrl: item.background.isEmpty ? null : item.background,
+      subtitle: kitPosterSubtitle(item),
+      rating: item.rating,
+      payload: item,
+    );
+  }
+
+  Future<_KitSearchPageResult> _packSearchPage({
+    required String query,
+    required int page,
+    Map<String, dynamic>? seed,
+    List<String> excludeIds = const [],
+  }) async {
+    final base = <String, dynamic>{
+      'query': query,
+      'limit': _pageSize,
+      'page': page,
+      'seed': seed,
+      if (excludeIds.isNotEmpty) 'excludeIds': excludeIds,
+    };
+    final params = widget.applyChromeFilters
+        ? catalogParamsWithFilters(
+            base,
+            filters: catalogChromeFilters(
+              tabId: widget.tabId,
+              pluginId: widget.pluginId,
+            ),
+          )
+        : base;
+    final env = await MetaRuntime.instance.run(
+      pluginId: widget.pluginId,
+      action: 'search',
+      params: params,
+    );
+    if (!env.ok) {
+      return const _KitSearchPageResult(results: [], hasMore: false);
+    }
+    return _KitSearchPageResult(
+      results: [for (final item in env.items) _resultFromMeta(item)],
+      hasMore: catalogRailHasMoreFrom(env.data) ?? false,
+    );
+  }
+
+  Future<List<KitSearchResult>> _packSearch(String query) async {
+    final page = await _packSearchPage(query: query, page: 1);
+    return page.results;
+  }
+
+  Future<void> _packSearchProgressive(
+    String query,
+    KitSearchEmit emit,
+  ) async {
+    _pagingQuery = query;
+    _pagingPage = 1;
+    _pagingSeed = null;
+    _pagingExcludeIds.clear();
+    _pagingResults = const [];
+
+    final page = await _packSearchPage(query: query, page: 1);
+    final results = <KitSearchResult>[];
+    final seen = <String>{};
+    for (final r in page.results) {
+      if (!seen.add(r.key)) continue;
+      results.add(r);
+      final ex = _excludeIdFor(r);
+      if (ex != null) _pagingExcludeIds.add(ex);
+    }
+    _pagingResults = results;
+    _pagingSeed = _seedJsonFor(results.isEmpty ? null : results.first);
+    emit(results, done: true, canLoadMore: page.hasMore);
+  }
+
+  Future<void> _packSearchLoadMore(KitSearchEmit emit) async {
+    if (_pagingQuery.isEmpty || _pagingPage <= 0) {
+      emit(_pagingResults, done: true, canLoadMore: false);
+      return;
+    }
+    final nextPage = _pagingPage + 1;
+    final page = await _packSearchPage(
+      query: _pagingQuery,
+      page: nextPage,
+      seed: _pagingSeed,
+      excludeIds: List<String>.from(_pagingExcludeIds),
+    );
+    final merged = List<KitSearchResult>.from(_pagingResults);
+    final seen = <String>{for (final r in merged) r.key};
+    KitSearchResult? hopSeed;
+    for (final r in page.results) {
+      if (!seen.add(r.key)) continue;
+      merged.add(r);
+      hopSeed ??= r;
+      final ex = _excludeIdFor(r);
+      if (ex != null) _pagingExcludeIds.add(ex);
+    }
+    _pagingPage = nextPage;
+    _pagingResults = merged;
+    // Last-page related fill uses the first new card when the catalog page is empty.
+    if (hopSeed != null) {
+      _pagingSeed = _seedJsonFor(hopSeed);
+    }
+    emit(merged, done: true, canLoadMore: page.hasMore);
+  }
+
+  Future<List<String>> _packRecommendations({
+    required String query,
+    required List<KitSearchResult> results,
+  }) async {
+    if (!widget.searchHelpers) return const [];
+
+    final exclude = <String>[
+      for (final r in results)
+        if (r.title.trim().isNotEmpty) r.title.trim(),
+    ];
+    Map<String, dynamic>? seed;
+    for (final r in results) {
+      final payload = r.payload;
+      if (payload is MetaItem && payload.name.trim().isNotEmpty) {
+        seed = payload.toJson();
+        break;
+      }
+    }
+
+    final env = await MetaRuntime.instance.run(
+      pluginId: widget.pluginId,
+      action: 'search_helpers',
+      params: {
+        'query': query,
+        'limit': 64,
+        if (exclude.isNotEmpty) 'exclude': exclude,
+        'seed': seed,
+      },
+    );
+    if (!env.ok) return const [];
+    final titles = <String>[];
+    final seen = <String>{};
+    for (final item in env.items) {
+      final t = item.name.trim();
+      if (t.isEmpty) continue;
+      if (!seen.add(t.toLowerCase())) continue;
+      titles.add(t);
+    }
+    return titles;
+  }
+
+  void _openResult(BuildContext context, KitSearchResult result) {
+    final payload = result.payload;
+    if (payload is MetaItem) {
+      openMetaItem(
+        context,
+        pluginId: widget.pluginId,
+        item: payload,
+      );
+      return;
+    }
+    if (payload is Map) {
+      unawaited(
+        AppRouter.openStremioSearchResult(
+          context,
+          Map<String, dynamic>.from(payload),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PlayerSurfaceChromeStub(
+      builder: (context) => CatalogSearchScreen(
+        hintText: widget.hintText,
+        structuredSearch: widget.structuredSearch,
+        onSearch: _packSearch,
+        loadRecommendations: _packRecommendations,
+        onOpen: (result) => _openResult(context, result),
+        pageBuilder: ({
+          required onSearch,
+          required onOpen,
+          required hintText,
+          required structuredSearch,
+          loadRecommendations,
+        }) {
+          return KitSearchPage(
+            hintText: hintText,
+            tvTabId: widget.tabId,
+            structuredSearch: structuredSearch,
+            onSearch: onSearch,
+            onSearchProgressive: _packSearchProgressive,
+            onSearchLoadMore: _packSearchLoadMore,
+            loadRecommendations: loadRecommendations ?? _packRecommendations,
+            onOpen: onOpen,
+          );
+        },
+      ),
+    );
+  }
+}

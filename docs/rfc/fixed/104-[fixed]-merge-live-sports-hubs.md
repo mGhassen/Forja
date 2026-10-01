@@ -2,7 +2,7 @@
 
 **Status:** fixed  
 
-**Depends on:** [RFC-087](fixed/087-[fixed]-live-sports-pack-only.md) · [RFC-085](085-[partial]-catalog-kit-generic-only.md) · [RFC-098](fixed/098-[fixed]-live-sports-event-search.md)  
+**Depends on:** [RFC-087](087-[fixed]-live-sports-pack-only.md) · [RFC-085](085-[fixed]-catalog-kit-generic-only.md) · [RFC-098](098-[fixed]-live-sports-event-search.md)  
 **Area:** `forja-packs/hubs/live_sports/`, `shared/foundation/` kit list + schedule prefs, IPTV Portals chrome hooks
 
 ## Status at a glance
@@ -56,4 +56,4 @@ Collapse the two Live Sports skins (`list`+`panel` vs `cards`+`details`) into on
 ## Related
 
 - [live-sports feature doc](../features/live/live-sports.md)
-- [RFC-087](fixed/087-[fixed]-live-sports-pack-only.md) — pack-only Live Sports
+- [RFC-087](087-[fixed]-live-sports-pack-only.md) — pack-only Live Sports

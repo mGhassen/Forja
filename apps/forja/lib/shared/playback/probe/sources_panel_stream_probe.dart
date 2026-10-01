@@ -20,16 +20,9 @@ Future<bool> probeSourcesPanelStream(Map<String, dynamic> stream) async {
     };
   }
 
-  String? sourceKey;
-  final addonBase = stream['_addonBaseUrl']?.toString().trim();
-  if (addonBase != null && addonBase.isNotEmpty) {
-    sourceKey = addonBase;
-  } else {
-    final pluginId = stream['_enginePluginId']?.toString().trim();
-    if (pluginId != null && pluginId.isNotEmpty) {
-      sourceKey = 'engine:$pluginId';
-    }
-  }
-
-  return probeStreamSourceUrl(url, headers, sourceKey: sourceKey);
+  return probeStreamSourceUrl(
+    url,
+    headers,
+    probe: stream['probe']?.toString(),
+  );
 }

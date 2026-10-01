@@ -1,6 +1,7 @@
 ---
 description: Supabase is production — immutable migrations, no reset, no push
-alwaysApply: true
+globs: apps/web/supabase/**,apps/web/**/*supabase*
+alwaysApply: false
 ---
 
 # Supabase — production schema discipline
@@ -9,25 +10,24 @@ The Forja web portal is **released**. Hosted Supabase is live data. Treat schema
 
 ## Mandatory
 
-1. **Schema changes only via new migrations** — never edit tables/RLS/functions/triggers by hand in Studio (or SQL that bypasses the migration history) as the way to “fix” prod/local parity. Add a new file under `apps/web/supabase/migrations/` using:
+1. **Schema changes only via new migrations** — never edit tables/RLS/functions/triggers by hand in Studio as the way to “fix” prod/local parity. Add under `apps/web/supabase/migrations/` using:
 
    ```bash
    cd apps/web && supabase migration new <name>
    ```
 
-   Then write SQL into the file the CLI created. Do **not** hand-create migration filenames.
+   Write SQL into the CLI-created file. Do **not** hand-create migration filenames.
 
-2. **Pushed migrations are immutable** — once a migration has been committed and applied (local history or remote), **do not edit, rename, reorder, or delete it**. Fix mistakes with a **new** forward migration.
+2. **Pushed migrations are immutable** — once committed/applied, **do not edit, rename, reorder, or delete**. Fix with a **new** forward migration.
 
-3. **Never reset or push without explicit user approval in the same conversation** — do **not** run any of:
+3. **Never reset or push without explicit user approval in the same conversation** — do **not** run:
 
    - `supabase db reset`
-   - `supabase db push`
-   - `supabase db push --linked` / remote migrate
+   - `supabase db push` / `--linked` / remote migrate
    - `node scripts/reset-forja-supabase.js`
    - any destructive wipe/recreate of local or remote DB
 
-   Creating a migration file with `supabase migration new` is fine. Applying it (`reset` / `push` / hosted migrate) requires the user to say so.
+   Creating a migration file is fine. Applying it requires the user to say so.
 
 ## Allowed
 
@@ -41,7 +41,7 @@ The Forja web portal is **released**. Hosted Supabase is live data. Treat schema
 |--------|-----|
 | Edit an existing `migrations/*.sql` that already shipped | Breaks checksums / history |
 | `db reset` without user OK | Destroys local (or worse, remote) state |
-| `db push` without user OK | Mutates remote/local schema outside explicit ops |
+| `db push` without user OK | Mutates schema outside explicit ops |
 | “Just change it in Studio” as source of truth | Drift |
 | Squash / rewrite migration history on a released project | Same as editing old migrations |
 

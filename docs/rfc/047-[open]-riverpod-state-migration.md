@@ -187,5 +187,5 @@ Old `ValueNotifier` / `ChangeNotifier` / `setState` remain where not yet migrate
 ### Related
 
 - [RFC-006](006-[partial]-supabase-sync.md) — settings sync
-- [RFC-016](016-[partial]-lazy-tab-mounting.md) / [RFC-024](024-[partial]-tab-cache-eviction-stale.md) — tab cache / dispose
+- [RFC-016](fixed/016-[fixed]-lazy-tab-mounting.md) / [RFC-024](fixed/024-[fixed]-tab-cache-eviction-stale.md) — tab cache / dispose
 - [ARCHITECTURE.md](../ARCHITECTURE.md)

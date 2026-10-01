@@ -77,11 +77,8 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
         }
         final url = stream['url'] as String;
         if (isTorrentStreamUrl(url)) {
-          final settings = SettingsService();
           final playback = await resolveMagnetForPlayback(
             magnet: url,
-            useDebrid: await settings.useDebridForStreams(),
-            debridService: await settings.getDebridService(),
             localTorrentEngine:
                 PlatformPlayback.capabilities.localTorrentEngine,
             season: season,
@@ -137,11 +134,8 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
         final resolvedMagnet =
             'magnet:?xt=urn:btih:$infoHash$dn$trackerParams';
 
-        final settings = SettingsService();
         final playback = await resolveMagnetForPlayback(
           magnet: resolvedMagnet,
-          useDebrid: await settings.useDebridForStreams(),
-          debridService: await settings.getDebridService(),
           localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
           season: season,
           episode: episode,
@@ -170,11 +164,8 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
   if (providerKey == 'torrent') {
     if (magnetLink != null && magnetLink.isNotEmpty) {
       try {
-        final settings = SettingsService();
         final playback = await resolveMagnetForPlayback(
           magnet: magnetLink,
-          useDebrid: await settings.useDebridForStreams(),
-          debridService: await settings.getDebridService(),
           localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
           season: season,
           episode: episode,

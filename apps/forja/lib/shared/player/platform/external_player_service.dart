@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/player/platform/android_player_launcher.dart';
 import 'package:forja/shared/player/platform/macos_external_player_launcher.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
+import 'package:forja/shell/feedback/forja_toast.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  EXTERNAL PLAYER SERVICE
@@ -400,7 +401,7 @@ class ExternalPlayerService {
       await proxy.start();
     }
     if (proxy.port > 0) {
-      final proxied = proxy.getHlsProxyUrl(url, headers);
+      final proxied = proxy.getExtProxyUrl(url, headers);
       debugPrint(
         '[ExternalPlayer] Proxying stream for external player '
         '(127.0.0.1:${proxy.port})',
@@ -427,6 +428,7 @@ class ExternalPlayerService {
     if (uri == null) return false;
     if (uri.host != '127.0.0.1' && uri.host != 'localhost') return false;
     return uri.path.contains('/hls-proxy') ||
+        uri.path.contains('/ext/') ||
         uri.path.contains('/jellyfin-stream') ||
         uri.path.contains('/toky-proxy') ||
         uri.path.contains('/comic-proxy');

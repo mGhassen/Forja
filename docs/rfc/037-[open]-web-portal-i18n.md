@@ -70,5 +70,5 @@ Localize the web portal UI into English (default), French, and Arabic using web-
 
 ## Related
 
-- [RFC-034](034-[partial]-web-portal-landing.md) — web portal
+- [RFC-034](fixed/034-[fixed]-web-portal-landing.md) — web portal
 - [Backlog 1.0.4](../backlog/1.0.4-[draft].md)

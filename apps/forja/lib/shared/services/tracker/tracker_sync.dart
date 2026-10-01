@@ -27,7 +27,7 @@ void syncEpisodeWatchedToTrackers(
   });
 }
 
-void syncMyListAddToTrackers(int? tmdbId, String? imdbId, String mediaType) {
+void syncBookmarkAddToTrackers(int? tmdbId, String? imdbId, String mediaType) {
   if (tmdbId == null && imdbId == null) return;
   SimklService().isLoggedIn().then((loggedIn) {
     if (!loggedIn) return;
@@ -39,7 +39,7 @@ void syncMyListAddToTrackers(int? tmdbId, String? imdbId, String mediaType) {
   });
 }
 
-void syncMyListRemoveFromTrackers(
+void syncBookmarkRemoveFromTrackers(
   int? tmdbId,
   String? imdbId,
   String mediaType,

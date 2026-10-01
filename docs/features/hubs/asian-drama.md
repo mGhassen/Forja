@@ -6,7 +6,7 @@
 
 Asian Drama is a catalog hub from the ForjaHQ **Asian Drama** pack plugin `kisskh-hub` (`kind: catalog`). **Browse rails** are pack-defined; spotlight and details get TMDB enrich from companion plugin `enrich-tmdb`. The shell renders the shared **cinematic hero**, host **Continue Watching**, and **Search** via the pack `search` action. Toggle the tab under **Settings → Features**.
 
-KissKH title pages use [Hub details](hub-details.md). The **Popular** row is TMDB Asian TV — those cards open [TMDB details](../movies-tv/tmdb-details.md).
+KissKH title pages use [Hub details](hub-details.md). The **Popular** row is KissKH `most_viewed` (same order as the pre-CatalogShell Asian Drama hub) — cards open [Hub details](hub-details.md) on the KissKH title.
 
 ## How to open it
 
@@ -14,14 +14,16 @@ Tap **Asian Drama** in the navigation bar.
 
 ## What you can do
 
-- Browse hero and explore sections — cards use **wide 16:9** KissKH banners. Top menu: **Search**, **Films**, **Series**, **Categories** (country filters). Films/Series/country **refill KissKH rails** (Latest, Trending, …). **Popular** is TMDB-only (opens TMDB details). **Upcoming** shows **Coming soon** in hero meta when KissKH marks a title unreleased.
-- **Search** — hub top-bar **Search** overlay (same two-column pattern as Anime on desktop/TV). Plain KissKH title search via the pack `search` action (no structured DSL unless the pack declares `structured_search`). **Cmd+F** / **Ctrl+F** on desktop.
-- **View details** on KissKH cards → [Hub details](hub-details.md) (episodes, KissKH native play, Sources when TMDB matched).
+- Browse hero and explore sections — cards use **wide 16:9** KissKH banners. Top menu: **Search**, **Films**, **Series**, **Categories** (country filters). Films/Series/country **refill KissKH rails** (Latest, Trending, Popular, …). **Upcoming** shows **Coming soon** in hero meta when KissKH marks a title unreleased. On **Android TV**, **OK** on Asian Drama or **→** from the nav lands on hero **View details**; D-pad **↓** from the hero bleed walks Continue → Trending → Popular → Upcoming (empty Continue is skipped); **↑** from the bleed row (Latest Update) lands on hero **View details**; remote **Back** from a rail returns to the **Asian Drama** nav item.
+- **Search** — hub top-bar **Search** overlay (same two-column pattern as Anime on desktop/TV). Plain KissKH title search via the pack `search` action (no structured DSL unless the pack declares `structured_search`). On **desktop**, focus the field and type; on **Android TV**, browse-focus until **OK** (or click) to type. Search runs on **Enter** / **OK** (or a recent / recommendation tap), not while typing. **Cmd+F** / **Ctrl+F** on desktop.
+- **View details** on KissKH cards → [Hub details](hub-details.md) (episodes, KissKH native play, Sources with TMDB/IMDb handoff for Forja scrapers when enrich matches).
 - **Torrents in Sources** — pack sets `open.torrentEp` (`Title 05` search) and enrich can supply IMDb for Torrentio (see [Torrent scrapers](../scrapers/torrent.md)).
+- Films vs series use the TMDB movie/TV type for Forja scrapers (Sources chips stay under Drama).
 - **Continue watching** — resume from hub row or details; clear progress with trash on details hero.
 
 ## Tips
 
+- Choose **Episode list** (**Cards** or **Number chips**) under **Settings → Forja Packs** → expand Asian Drama — same control as Home / Anime / IPTV series details.
 - On **desktop**, drag-select hero titles to copy them.
 - KissKH posters often use TMDB CDN; Android 7.0 builds embed Let's Encrypt roots for those hosts.
 - Stream resolve signs KissKH keys in-engine (~1s typical); WebView fallback only if direct path fails. Rate-limit cooldown does not hop mirrors.

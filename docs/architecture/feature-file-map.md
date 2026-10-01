@@ -3,7 +3,7 @@
 **Status:** living doc  
 **Area:** `apps/forja/lib/features/`  
 **Line counts:** `wc -l` on repo HEAD — re-run when splits land  
-**Related:** [RFC-019](../rfc/019-[draft]-god-file-decomposition.md) · [Architecture README](README.md)
+**Related:** [RFC-019](../rfc/fixed/019-[fixed]-god-file-decomposition.md) · [Architecture README](README.md)
 
 ## Status at a glance
 
@@ -36,7 +36,7 @@
 | **home** | 11 | ~3,800 | `home_screen_feed.dart` (854) + `home_hero.dart` |
 | **media** | 12 | ~5,800 | `details_screen.dart` (545) + `details_screen_*.dart` mixins |
 | **anime** | 17 | ~7,100 | `catalog/anime_service.dart` (1,648) + `widgets/` |
-| **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
+| **settings** | ~40 | ~10k | `hub/` + `addons/` + `categories/` + `chrome/` |
 | **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
 | **live_sports** | 4 | thin host | `live_sports_host.dart` + catalog list/panel; panel in `shared/foundation/services/live/` |
 | **music** | 2 | ~3,300 | `music_screen.dart` (2,401) |
@@ -71,7 +71,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`media/details/details_screen.dart`](../../apps/forja/lib/features/media/details/details_screen.dart) | 545 | Details orchestrator | In | 8 `details_screen_*.dart` mixins; moved from `home/` (RFC-020) |
-| [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | `sections/` + `widgets/` |
+| [`settings/hub/screen.dart`](../../apps/forja/lib/features/settings/shell/screen.dart) | — | Orchestrator | In | `shell/` · page folders · `addons/` · `ui/` |
 
 ---
 
@@ -98,7 +98,7 @@ These tabs are in [TV scope](../../.cursor/rules/forja-tv-scope.mdc) and under ~
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In |
 | [`asian_drama/asian_drama_screen.dart`](../../apps/forja/lib/features/asian_drama/asian_drama_screen.dart) | 781 | Uses `HubCinematicHero` |
 
-My List hub pack `plugins/hubs/my_list` + list services in [`shared/foundation/services/follow/`](../../apps/forja/lib/shared/foundation/services/follow/) (RFC-088 — no `features/my_list/` root).
+My List hub pack (`forja-packs` `hubs/my_list`) + host `BookmarkStore` / `ListFollow` in [`shared/engine/lists/`](../../apps/forja/lib/shared/engine/lists/) (no `features/my_list/` root).
 
 ---
 
@@ -278,8 +278,8 @@ flowchart TB
 
 | Layer | Location | Owns | Does NOT own |
 |-------|----------|------|--------------|
-| Shell / profile | `shared/foundation/primitives/`, `shell/adapters/`, `shared/foundation/tv/` | Metrics, input policy, D-pad coordinator, `TvFocusGraph` / `TvKitRow` / `TvChipStrip` / `TvGrid` / `TvOverlayScope` | Feature fetching |
-| Shared presentation | `shared/foundation/` (`primitives/`, `components/`) | Reusable UI + callbacks | State machines, routing |
+| Shell / profile | `shell/{core,tv}/`, `shell/adapters/` | Metrics, input policy, D-pad coordinator, `TvFocusGraph` / `TvKitRow` / `TvChipStrip` / `TvGrid` / `TvOverlayScope` | Feature fetching |
+| Shared presentation | `packages/forja_foundation/` + `shell/` | Reusable UI + callbacks | State machines, routing |
 | Feature modules | `features/<name>/` | Orchestrator &lt;800 lines, `widgets/`, `catalog/` | Cross-feature UI clones |
 
 ### Canonical feature folder
@@ -293,7 +293,7 @@ features/<feature>/
   controller/                 # state machines (IPTV pattern)
 ```
 
-### Home target ([RFC-019 R19-A03](../rfc/019-[draft]-god-file-decomposition.md)) — browse only
+### Home target ([RFC-019 R19-A03](../rfc/fixed/019-[fixed]-god-file-decomposition.md)) — browse only
 
 ```
 features/home/
@@ -332,7 +332,7 @@ features/media/
 | Widget | Path | Replaces |
 |--------|------|----------|
 | `MediaDetailsScrollPage` | `shared/foundation/components/media_details/media_details_scroll_page.dart` | Inline scroll + `MediaDetailsTvScope` wrapper |
-| `MediaDetailsRecommendationsSection` | `shared/foundation/components/media_details/media_details_recommendations_section.dart` | `_buildRecommendationsSection` |
+| ~~`MediaDetailsRecommendationsSection`~~ | removed — pack rails via `buildKitDetailRailSections` | `_buildRecommendationsSection` |
 | `MediaDetailsTrackerHandlers` | `shared/foundation/components/media_details/media_details_tracker_handlers.dart` | Trakt/Simkl rating, collection, check-in, list (~400 lines) |
 
 **Remaining** (Phase D): `details_webstreaming` mixin/part, `details_episodes` / TV picker; then RFC-026 R26-C03 → `features/media/details/`
@@ -353,7 +353,7 @@ features/media/
 
 `details_screen.dart`: 4,061 → **545** lines (−3,516).
 
-### Settings target ([RFC-019 R19-A04](../rfc/019-[draft]-god-file-decomposition.md))
+### Settings target ([RFC-019 R19-A04](../rfc/fixed/019-[fixed]-god-file-decomposition.md))
 
 ```
 features/settings/
@@ -389,7 +389,7 @@ features/iptv/
   controller/iptv_controller_models.dart
 ```
 
-### Player ([RFC-019 R19-A05](../rfc/019-[draft]-god-file-decomposition.md))
+### Player ([RFC-019 R19-A05](../rfc/fixed/019-[fixed]-god-file-decomposition.md))
 
 | File | Lines (current) | Target |
 |------|----------------:|--------|
@@ -433,7 +433,7 @@ features/iptv/
 
 ## Extraction rules
 
-From [RFC-019](../rfc/019-[draft]-god-file-decomposition.md) and [forja-shared-ui.mdc](../../.cursor/rules/forja-shared-ui.mdc):
+From [RFC-019](../rfc/fixed/019-[fixed]-god-file-decomposition.md) and [forja-shared-ui.mdc](../../.cursor/rules/forja-shared-ui.mdc):
 
 1. **One PR per split** — no mega-refactor
 2. **No behavior change** — pure move/extract
@@ -456,7 +456,7 @@ Map and targets only. No Dart changes.
 | PR | Action | Status |
 |----|--------|--------|
 | A1 | Wire `MediaDetailsScrollPage` | Done |
-| A2 | Wire `MediaDetailsRecommendationsSection` | Done |
+| A2 | Wire recommendations (later: pack rails / `buildKitDetailRailSections`) | Done |
 | A3 | Adopt `MediaDetailsTrackerHandlers` | Done |
 
 `details_screen.dart`: 4,509 → 4,061 lines.
@@ -536,7 +536,7 @@ When a split PR lands: update RFC-019 acceptance rows, backlog shipped rows, and
 ## Related
 
 - [Architecture README](README.md)
-- [RFC-019](../rfc/019-[draft]-god-file-decomposition.md)
+- [RFC-019](../rfc/fixed/019-[fixed]-god-file-decomposition.md)
 - [RFC-026](../rfc/026-[draft]-media-details-player-ux.md)
 - [RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md)
 - [Features user guide](../features/README.md)

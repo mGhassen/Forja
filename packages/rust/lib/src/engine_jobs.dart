@@ -8,6 +8,8 @@ import 'library_path.dart';
 /// Job kinds — must match [JobKind] in `crates/ffi/src/engine_jobs.rs`.
 abstract final class EngineAsyncJob {
   static const stremioHttpGet = 2;
+  /// Sources stream-list GET. Safe to cancel without killing catalog GETs.
+  static const stremioStreamGet = 17;
   static const httpGet = 5;
   static const httpPost = 6;
   static const iptvProbeStream = 7;
@@ -17,12 +19,20 @@ abstract final class EngineAsyncJob {
   static const iptvRedditCatalog = 13;
   static const iptvXtream = 14;
   static const engineJsExtract = 15;
+  static const iptvCatalog = 16;
 }
 
 class _AwaitJobCmd {
   const _AwaitJobCmd(this.jobId, this.replyPort);
   final int jobId;
   final SendPort replyPort;
+}
+
+class _WatchJobCmd {
+  const _WatchJobCmd(this.jobId, this.eventsPort, this.donePort);
+  final int jobId;
+  final SendPort eventsPort;
+  final SendPort donePort;
 }
 
 class _SubscribeStatusCmd {
@@ -33,6 +43,12 @@ class _SubscribeStatusCmd {
 class _UnsubscribeStatusCmd {
   const _UnsubscribeStatusCmd(this.updatesPort);
   final SendPort updatesPort;
+}
+
+class _PendingWatch {
+  const _PendingWatch(this.events, this.done);
+  final SendPort events;
+  final SendPort done;
 }
 
 class _ShutdownCmd {
@@ -121,6 +137,46 @@ abstract final class EngineJobs {
     });
   }
 
+  /// Submit a job and invoke [onRow] for each `ctx.emit` payload before the final JSON.
+  static Future<String> runWatching(
+    int kind,
+    Map<String, Object?> payload, {
+    void Function(Map<String, dynamic> row)? onRow,
+  }) {
+    if (_cmdPort != null) {
+      return _awaitWatching(kind, payload, onRow);
+    }
+    return _ensureStarted().then((_) => _awaitWatching(kind, payload, onRow));
+  }
+
+  static Future<String> _awaitWatching(
+    int kind,
+    Map<String, Object?> payload,
+    void Function(Map<String, dynamic> row)? onRow,
+  ) {
+    final jobId =
+        RustLib.instance.engineSubmitJob(kind, jsonEncode(payload));
+    final events = ReceivePort();
+    final done = ReceivePort();
+    final sub = events.listen((message) {
+      if (onRow == null || message is! String || message.isEmpty) return;
+      try {
+        final decoded = jsonDecode(message);
+        if (decoded is Map) {
+          onRow(Map<String, dynamic>.from(decoded));
+        }
+      } catch (_) {}
+    });
+    _cmdPort!.send(_WatchJobCmd(jobId, events.sendPort, done.sendPort));
+    return done.first.then((result) async {
+      await sub.cancel();
+      events.close();
+      done.close();
+      if (result is String) return result;
+      throw StateError('EngineJobs watcher returned unexpected reply: $result');
+    });
+  }
+
   /// Live `torrent_status_json` from the waiter isolate (not the UI isolate).
   static Stream<String> torrentStatusJsonStream() {
     late final StreamController<String> controller;
@@ -200,18 +256,45 @@ void _engineJobsWaiterMain(List<Object?> startArgs) {
   readyPort.send([cmds.sendPort, mainDeath.sendPort]);
 
   final pending = <int, SendPort>{};
+  final watching = <int, _PendingWatch>{};
   final statusListeners = <SendPort>{};
   Timer? timer;
 
   void stopTimerIfIdle() {
-    if (pending.isEmpty && statusListeners.isEmpty) {
+    if (pending.isEmpty && watching.isEmpty && statusListeners.isEmpty) {
       timer?.cancel();
       timer = null;
     }
   }
 
+  void drainEmits(int jobId, SendPort events) {
+    final rust = RustLib.instance;
+    final raw = rust.engineTakeJobEvents(jobId);
+    if (raw.isEmpty || raw == '[]') return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+      for (final item in decoded) {
+        if (item is! Map) continue;
+        try {
+          events.send(jsonEncode(item));
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
   void tick() {
     final rust = RustLib.instance;
+    for (final entry in watching.entries.toList()) {
+      drainEmits(entry.key, entry.value.events);
+      final result = rust.engineTakeJobResult(entry.key);
+      if (result == null) continue;
+      drainEmits(entry.key, entry.value.events);
+      try {
+        entry.value.done.send(result);
+      } catch (_) {}
+      watching.remove(entry.key);
+    }
     for (final entry in pending.entries.toList()) {
       final result = rust.engineTakeJobResult(entry.key);
       if (result == null) continue;
@@ -245,12 +328,24 @@ void _engineJobsWaiterMain(List<Object?> startArgs) {
           reply.send('{"error":"cancelled"}');
         } catch (_) {}
       }
+      for (final watch in watching.values) {
+        try {
+          watch.done.send('{"error":"cancelled"}');
+        } catch (_) {}
+      }
       pending.clear();
+      watching.clear();
       statusListeners.clear();
       Isolate.exit();
     }
     if (message is _AwaitJobCmd) {
       pending[message.jobId] = message.replyPort;
+      ensureTimer();
+      tick();
+      return;
+    }
+    if (message is _WatchJobCmd) {
+      watching[message.jobId] = _PendingWatch(message.eventsPort, message.donePort);
       ensureTimer();
       tick();
       return;

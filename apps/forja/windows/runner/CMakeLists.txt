@@ -10,6 +10,7 @@ add_executable(${BINARY_NAME} WIN32
   "flutter_window.cpp"
   "desktop_space_channel.cpp"
   "desktop_pip_channel.cpp"
+  "forja_vlc_channel.cpp"
   "main.cpp"
   "utils.cpp"
   "win32_window.cpp"

@@ -15,6 +15,10 @@ bool stremioErrorIsTimeout(Object error) {
       m.contains('deadline');
 }
 
+bool stremioErrorIsCancelled(Object error) {
+  return error.toString().toLowerCase().contains('cancelled');
+}
+
 bool stremioStatusIsNoRetry(int statusCode) {
   if (statusCode == 404 ||
       statusCode == 401 ||
@@ -99,18 +103,39 @@ class StremioService {
 
   final SettingsService _settings = SettingsService();
 
+  /// Bumped by [cancelStreamFetches] so a chip-off drops retries, not just the UI.
+  int _streamFetchGen = 0;
+
+  /// Stop in-flight Sources stream searches. Does not touch catalog GETs.
+  void cancelStreamFetches() {
+    _streamFetchGen++;
+    Engine.cancelStremioStreamFetches();
+  }
+
   /// Retry a GET via Rust engine with exponential backoff.
-  /// Does NOT retry on 404/401/403/429, other 4xx, or timeouts.
+  /// Does NOT retry on 404/401/403/429, other 4xx, timeouts, or cancel.
   Future<_StremioHttpResponse> _retryGet(
     Uri uri, {
     int retries = 1,
     Duration timeout = const Duration(seconds: 15),
+    bool abortable = false,
+    bool Function()? stillCurrent,
   }) async {
     _StremioHttpResponse? lastResponse;
     Object? lastError;
     for (var attempt = 0; attempt <= retries; attempt++) {
+      if (stillCurrent != null && !stillCurrent()) {
+        throw Exception('cancelled');
+      }
       try {
-        final response = await _rustGet(uri, timeout: timeout);
+        final response = await _rustGet(
+          uri,
+          timeout: timeout,
+          abortable: abortable,
+        );
+        if (stillCurrent != null && !stillCurrent()) {
+          throw Exception('cancelled');
+        }
         if (response.statusCode == 200) return response;
         lastResponse = response;
         if (stremioStatusIsNoRetry(response.statusCode)) {
@@ -118,7 +143,7 @@ class StremioService {
         }
       } catch (e) {
         lastError = e;
-        if (stremioErrorIsTimeout(e)) break;
+        if (stremioErrorIsTimeout(e) || stremioErrorIsCancelled(e)) break;
       }
       if (attempt < retries) {
         await Future.delayed(Duration(milliseconds: 500 * (1 << attempt)));
@@ -131,11 +156,17 @@ class StremioService {
   Future<_StremioHttpResponse> _rustGet(
     Uri uri, {
     Duration timeout = const Duration(seconds: 15),
+    bool abortable = false,
   }) async {
-    final raw = await runStremioHttpGet(
-      uri.toString(),
-      timeoutSecs: timeout.inSeconds.clamp(1, 120),
-    );
+    final raw = abortable
+        ? await runStremioStreamGet(
+            uri.toString(),
+            timeoutSecs: timeout.inSeconds.clamp(1, 120),
+          )
+        : await runStremioHttpGet(
+            uri.toString(),
+            timeoutSecs: timeout.inSeconds.clamp(1, 120),
+          );
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) {
       throw Exception(parsed['error']);
@@ -210,9 +241,16 @@ class StremioService {
     if (failedUntil != null && failedUntil.isAfter(now)) {
       return [];
     }
+    final fetchGen = _streamFetchGen;
+    bool live() => fetchGen == _streamFetchGen;
     debugPrint('[StremioService.getStreams] URL: $url');
     try {
-      final response = await _retryGet(Uri.parse(url));
+      final response = await _retryGet(
+        Uri.parse(url),
+        abortable: true,
+        stillCurrent: live,
+      );
+      if (!live()) return [];
       if (response.statusCode == 200) {
         _streamFailedUntil.remove(url);
         return _parseStremioStreams(response.body);
@@ -222,6 +260,7 @@ class StremioService {
       }
       debugPrint('[StremioService] Stream fetch HTTP ${response.statusCode} ($url)');
     } catch (e) {
+      if (!live() || stremioErrorIsCancelled(e)) return [];
       _streamFailedUntil[url] = now.add(_failTtl);
       debugPrint('[StremioService] Stream fetch error ($url): $e');
     }

@@ -1,0 +1,159 @@
+import 'package:flutter/material.dart';
+
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+/// Guide / live player chrome tokens — flat cinematic shell (RFC-025).
+abstract final class GuideChromeStyle {
+  static const cinematic = ForjaShellColors.cinematic;
+
+  /// Leanback spatial densify for guide / EPG / search chrome lengths.
+  static bool densifyOf(BuildContext context) =>
+      ShellPaintScope.usesTvDensityOf(context);
+
+  static double len(BuildContext context, double desktop) =>
+      ShellTokens.chromeScale(desktop, tv: densifyOf(context));
+
+  /// Desktop type → leanback ladder (never × [ShellTokens.tvChromeScale]).
+  static double type(BuildContext context, double desktop) =>
+      densifyOf(context) ? ShellTokens.tvTypeSize(desktop) : desktop;
+
+  static Color get accent => cinematic.navUnderline;
+  static Color get accentMuted => cinematic.textSecondary;
+  static Color get textPrimary => cinematic.textPrimary;
+  static Color get textSecondary => cinematic.textSecondary;
+  static Color get border => cinematic.borderSubtle;
+  static Color get surface => cinematic.menuSurface;
+  /// Flat translucent dark fill for full-height player guide / search shells.
+  static Color get surfaceGlass =>
+      cinematic.menuSurface.withValues(alpha: 0.82);
+
+  /// Player programme card — video shows through.
+  static Color get floatingEpgFill =>
+      cinematic.menuSurface.withValues(alpha: 0.62);
+
+  /// Desktop floating programme card max width (player chrome).
+  static const double floatingEpgMaxWidth = 540;
+
+  /// Compact / phone floating programme card max width.
+  static const double floatingEpgMaxWidthCompact = 440;
+
+  /// Densified floating EPG max width for the active paint scope.
+  static double floatingEpgMaxWidthOf(
+    BuildContext context, {
+    required bool compact,
+  }) =>
+      len(
+        context,
+        compact ? floatingEpgMaxWidthCompact : floatingEpgMaxWidth,
+      );
+  static Color get surfaceMuted => Colors.white.withValues(alpha: 0.04);
+  static Color get chipSelectedBg => ForjaShellColors.chipSelectedBg;
+  static Color get chipSelectedBorder => ForjaShellColors.chipSelectedBorder;
+  static Color get progress => ForjaShellColors.brandGreen;
+  static Color get iconMuted => ForjaShellColors.cinematic.textSecondary;
+  static Color get liveBadge => const Color(0xFFEF4444);
+
+  static const TextStyle pageTitle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.3,
+  );
+
+  static const TextStyle headerTitle = TextStyle(
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+  );
+
+  static const TextStyle overlayTitle = TextStyle(
+    color: Colors.white,
+    fontSize: 19,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.2,
+  );
+
+  /// Overlay title densified for leanback (player channel guide header).
+  static TextStyle overlayTitleOf(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    if (!tv) return overlayTitle;
+    return overlayTitle.copyWith(fontSize: ShellTokens.tvTitleFontSize);
+  }
+
+  static BoxDecoration chipDecoration({required bool selected}) => BoxDecoration(
+        color: selected ? chipSelectedBg : surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: selected ? chipSelectedBorder : Colors.white.withValues(alpha: 0.12),
+        ),
+      );
+
+  static BoxDecoration primaryButtonDecoration({bool subtle = false}) =>
+      BoxDecoration(
+        color: subtle ? surfaceMuted : chipSelectedBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: subtle ? border : chipSelectedBorder,
+        ),
+      );
+
+  static BoxDecoration dialogSurface({bool tv = false}) => BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(tv ? 10 : 14),
+        border: Border.all(color: border),
+      );
+
+  static SliderThemeData sliderTheme(BuildContext context) =>
+      SliderTheme.of(context).copyWith(
+        activeTrackColor: progress,
+        inactiveTrackColor: Colors.white.withValues(alpha: 0.18),
+        thumbColor: ForjaShellColors.brandGreen,
+        overlayColor: progress.withValues(alpha: 0.2),
+      );
+}
+
+/// Thin green position scroller for **list** chrome (categories, channels,
+/// schedules, Portals, guide). Shows while scrolling, then fades. No-op off TV
+/// — desktop uses [ForjaScrollBehavior].
+///
+/// Live Sports schedule passes [thumbVisibility] so the thumb stays on.
+class LiveTvScrollbar extends StatelessWidget {
+  const LiveTvScrollbar({
+    super.key,
+    required this.controller,
+    required this.child,
+    /// When set, overrides [ShellPaintScope.usesTvDensityOf].
+    this.enabled,
+    this.thumbVisibility,
+  });
+
+  final ScrollController controller;
+  final Widget child;
+  final bool? enabled;
+  final bool? thumbVisibility;
+
+  @override
+  Widget build(BuildContext context) {
+    final on = enabled ?? ShellPaintScope.usesTvDensityOf(context);
+    if (!on) return child;
+    return RawScrollbar(
+      controller: controller,
+      interactive: false,
+      thumbVisibility: thumbVisibility,
+      thickness: ForjaScrollbarStyle.thickness,
+      radius: ForjaScrollbarStyle.radius,
+      mainAxisMargin: ForjaScrollbarStyle.mainAxisMargin,
+      crossAxisMargin: ForjaScrollbarStyle.crossAxisMargin,
+      thumbColor: ForjaScrollbarStyle.thumbColor,
+      trackColor: ForjaScrollbarStyle.trackColor,
+      trackBorderColor: Colors.transparent,
+      child: forjaSuppressAutoScrollbar(context: context, child: child),
+    );
+  }
+}
+
+/// Alias — guide panels often prefer the Guide* name.
+typedef GuideTvScrollbar = LiveTvScrollbar;

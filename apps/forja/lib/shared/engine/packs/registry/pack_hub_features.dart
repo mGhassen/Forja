@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:rust/rust.dart';
 
@@ -39,17 +39,27 @@ abstract final class PackHubFeatures {
   }
 
   /// Pack ON / fresh install → hub Features + rail on by default (RFC-086 A08).
+  ///
+  /// Forces `enabled: true` on the in-memory pack — callers often pass the
+  /// pre-toggle snapshot after [PluginRegistry.setPackEnabled], and
+  /// [refreshAndActivateInstalled] skips `!pack.enabled` (reactivate no-op).
   static Future<void> activate(EnginePack pack) =>
-      refreshAndActivateInstalled([pack]);
+      refreshAndActivateInstalled([pack.copyWith(enabled: true)]);
 
   /// Pack OFF / uninstall → drop that pack's hub tabs from Features / rail.
+  ///
+  /// One [SettingsService.setNavbarConfig] write (not N [setNavbarTabVisible]
+  /// notifies) so Settings → Forja Packs is not stormed off the shell mid-remove.
   static Future<void> deactivate(EnginePack pack) async {
     final tabs = hubTabIds(pack, requirePluginEnabled: false);
     if (tabs.isEmpty) return;
     final settings = SettingsService();
     noteNavigationDirty();
-    for (final id in tabs) {
-      await settings.setNavbarTabVisible(id, false);
+    final drop = tabs.toSet();
+    final current = await settings.getNavbarConfig();
+    final next = [for (final id in current) if (!drop.contains(id)) id];
+    if (next.length != current.length) {
+      await settings.setNavbarConfig(next);
     }
     await scheduleNavigationSyncPush();
   }

@@ -1,7 +1,7 @@
 # RFC-071: Live Sports catalog hub kit
 
 **Status:** fixed  
-**Depends on:** [RFC-070](../070-[partial]-catalog-hub-protocol.md) · [RFC-065](../065-[open]-live-forja-scrapers.md) · [RFC-062](../062-[open]-native-iptv-sports-matching.md)  
+**Depends on:** [RFC-070](../070-[partial]-catalog-hub-protocol.md) · [RFC-065](../065-[open]-live-forja-scrapers.md) · [RFC-062](062-[fixed]-native-iptv-sports-matching.md)  
 **Area:** `shared/foundation/components/sources/live_schedule/`, `plugins/hubs/live_sports/`, `KitShell`
 
 ## Status at a glance

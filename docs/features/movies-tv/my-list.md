@@ -4,7 +4,7 @@
 
 ## What it is
 
-My List is a **hub pack** (ForjaHQ My List) — same class as Home or Live Sports. The pack declares **`kit.menu`** (kind) and **`kit.tabs`** (status) in the shell top bar — the same overlay slot as Home’s Search / Films / Series menu — plus a **`kit.list`** poster grid. Pack **`feed`** composes the grid via MetaRuntime (`ctx.host.myList.load`); the host keeps local bookmarks and Simkl sync behind that bridge. There is no host My List feature tab without the hub pack.
+My List is a **hub pack** you install (pack-product host — same class as Home or Live Sports). It shows kind filters and status tabs in the shell top bar plus a poster grid of your bookmarks. Local bookmarks and Simkl stay on the device; the pack composes what you see via the host store bridge.
 
 ## How to open it
 
@@ -12,19 +12,21 @@ Install and enable the **ForjaHQ My List** hub pack, then show **My List** under
 
 ## What you can do
 
-- Filter the grid with **Film / Series / Anime / Asian Drama** (labels from the pack; tap again to show everything)
-- Switch **Plan to Watch / Watching / On Hold / Completed / Dropped** — local uses the same buckets; with Simkl, the open tab loads from Simkl. Change status from the card bookmark on desktop/mobile (same menu as Home); on Android TV use details / hero
-- Open a title — stays on **My List** in the nav (details overlay; not a jump to Home / Anime). On **TV**, entering the tab focuses the first kind tab. **↓** goes to status then the grid; arrow keys move between posters; **←** from the first column returns to the nav rail. Anime and Asian Drama reopen with that hub’s details and stream providers (not Home / TMDB)
-- Add or move a title from details **+** or a poster bookmark (same five statuses, with or without Simkl) — movies/TV, Anime, and Asian Drama. Click the active status again to remove it; the card leaves that tab right away (Completed / On Hold / Dropped included) without reloading the whole grid. Local status wins over a slow Simkl refresh or Simkl rewriting Completed on still-airing shows back to Watching.
+- Filter the grid with **Film / Series / Anime / Asian Drama** (labels from the pack; tap again to show everything) — hover and focus match Home **Films** / **TV Shows** (bright white label + short underline)
+- Switch **Plan to Watch / Watching / On Hold / Completed / Dropped** — local uses the same buckets; with Simkl, the open tab loads from Simkl. Status tab labels stay white on hover/focus; green is only the selected underline. Change status from the card bookmark on desktop/mobile (same menu as Home); on Android TV use details / hero. Home / hub poster pins show the same colored status as My List (one bookmark identity for TMDB titles). Opening the status menu highlights the current status in that status’s color.
+- Open a title — uses the hub saved on that bookmark when known (**Home** / **Anime** / **Asian Drama**, etc.). If the title could open in more than one hub (or has no hub yet), Forja opens one **Open in…** sheet: pick the hub, then confirm the title match (edit the search if needed — same / closest title is listed first). **Right-click** (desktop) or **long-press ~2s** (touch / TV) on a poster → **Open with…** uses the same sheet. Details overlay switches the nav to the chosen hub (Back leaves you there). On **TV**, entering the tab focuses the first kind tab. **↓** goes to status then the grid; arrow keys move between posters; **←** from the first column returns to the nav rail.
+- Set **default open hubs** on the **My List** pack (**Settings → Addons → My List**, or expand the pack under Forja Packs). Options are hubs you have installed that match each type. Used only when a row has matching ids and no saved hub yet
+- Add or move a title from details **+** or a poster bookmark (same five statuses, with or without Simkl) — movies/TV, Anime, and Asian Drama. The card shows on **My List** right away (no pull-to-refresh). Click the active status again to remove it; the card leaves that tab right away (Completed / On Hold / Dropped included) without reloading the whole grid. Local status wins over a slow Simkl refresh or Simkl rewriting Completed on still-airing shows back to Watching.
 - Playing a **movie** adds it as **Watching** (or upgrades Plan to Watch). Finishing ≥85% moves it to **Completed**. TV / Anime / Asian Drama still follow episode watched marks for those buckets
-- Asian Drama titles have their own kind filter (KissKH and drama hub bookmarks). Unmatched KissKH titles stay local and still show while Simkl is connected
+- Asian Drama titles have their own kind filter. Unmatched titles stay local and still show while Simkl is connected
 - Disconnect Simkl and the local buckets are still there
 
 ## Tips
 
 - The My List tab icon ships in the pack (`icons/nav.png`)
-- My List statuses are stored locally on your device. With Simkl connected, the open tab prefers your local status for titles you’ve already bookmarked, and still lists Simkl-only rows. Connecting or Sync Now asks Keep local / Use Simkl / Merge — or No sync / Back to do nothing
+- My List statuses are stored locally on your device. With Simkl connected, the open tab prefers your local status for titles you’ve already bookmarked, and still lists Simkl-only rows. Opening a title remembers the hub without changing its status. Connecting or Sync Now asks Keep local / Use Simkl / Merge — or No sync / Back to do nothing
 - Titles missing posters (especially Simkl anime) fill from TMDB in the background when a TMDB id is known — pull to refresh if art stays blank
+- Asian Drama (and other) cards show **year • type** under the title when the year is known (from the bookmark, Simkl, the title, or TMDB)
 - Use [Backup & restore](../settings/backup-restore.md) to move lists to another install
 
 ## Related

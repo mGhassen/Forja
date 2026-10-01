@@ -6,6 +6,7 @@ import type {
   NuvioPayload,
   ForjaPayload,
   NavigationPayload,
+  PackSettingsPayload,
 } from '@/lib/sync-domains'
 import {
   navigationAfterForjaPacksChange,
@@ -155,6 +156,33 @@ export function useNavigationSetting() {
     data,
     save: async (payload: NavigationPayload) => {
       await settings.patch({ navigation: payload })
+    },
+  }
+}
+
+export function usePackSettingsSetting() {
+  const settings = useProfileSettings()
+  const data = useMemo(
+    () =>
+      settings.data
+        ? {
+            payload:
+              settings.data.payload.connectedServices?.packSettings ?? {},
+            updated_at: settings.data.updated_at,
+          }
+        : undefined,
+    [settings.data],
+  )
+  return {
+    ...settings,
+    data,
+    save: async (payload: PackSettingsPayload) => {
+      await settings.patch({
+        connectedServices: {
+          ...settings.data?.payload.connectedServices,
+          packSettings: payload,
+        },
+      })
     },
   }
 }

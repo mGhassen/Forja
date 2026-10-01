@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/playback/probe/provider_score_probe_sync.dart';
-import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
+import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
 void main() {

@@ -142,8 +142,7 @@ Map<String, String> stremioStreamRequestHeaders(Map<String, dynamic> stream) {
 StremioResolveOutcome? classifyStremioStream(
   Map<String, dynamic> stream,
   PlaybackProfile profile, {
-  required bool useDebrid,
-  required String debridService,
+  String? debridLabel,
 }) {
   final externalUrl = stream['externalUrl']?.toString();
   if (externalUrl != null && externalUrl.isNotEmpty) {
@@ -171,9 +170,11 @@ StremioResolveOutcome? classifyStremioStream(
     );
   }
 
+  final hasDebrid = (debridLabel ?? '').trim().isNotEmpty ||
+      (DebridPackBridge.activePluginId?.call()?.trim().isNotEmpty ?? false);
   if (!profile.localTorrentEngine &&
       profile.stremioInfoHash == StremioInfoHashPolicy.debridOnly &&
-      (!useDebrid || debridService == 'None')) {
+      !hasDebrid) {
     return StremioResolveFailure(
       error: StremioPlaybackError.requiresDebrid,
       message:
@@ -186,13 +187,9 @@ StremioResolveOutcome? classifyStremioStream(
 
 String stremioResolveLoadingMessage({
   required PlaybackProfile profile,
-  required bool useDebrid,
-  required String debridService,
+  String? debridLabel,
 }) {
-  return playbackResolveLabel(
-    useDebrid: useDebrid,
-    debridService: debridService,
-  );
+  return playbackResolveLabel(debridLabel: debridLabel);
 }
 
 String stremioPlaybackErrorMessage(StremioPlaybackError error) {
@@ -220,15 +217,12 @@ Future<StremioResolveOutcome> resolveStremioStream({
   bool Function()? isCancelled,
   void Function(TorrentLoadingStatus status)? onStatus,
 }) async {
-  final svc = settings ?? SettingsService();
-  final useDebrid = await svc.useDebridForStreams();
-  final debridService = await svc.getDebridService();
+  final debridLabel = DebridPackBridge.activePluginLabel?.call();
 
   final precheck = classifyStremioStream(
     stream,
     profile,
-    useDebrid: useDebrid,
-    debridService: debridService,
+    debridLabel: debridLabel,
   );
   if (precheck != null) return precheck;
 
@@ -236,24 +230,18 @@ Future<StremioResolveOutcome> resolveStremioStream({
   final fileIdx = stremioStreamFileIdx(stream);
   final loadingMessage = stremioResolveLoadingMessage(
     profile: profile,
-    useDebrid: useDebrid,
-    debridService: debridService,
+    debridLabel: debridLabel,
   );
   onStatus?.call(
     torrentLoadingStatusGeneric(
       loadingMessage,
-      hint: playbackSourceHint(
-        useDebrid: useDebrid,
-        debridService: debridService,
-      ),
+      hint: playbackSourceHint(debridLabel: debridLabel),
     ),
   );
 
   try {
     final result = await resolveMagnetForPlayback(
       magnet: magnet,
-      useDebrid: useDebrid,
-      debridService: debridService,
       localTorrentEngine: profile.localTorrentEngine,
       season: season,
       episode: episode,
@@ -283,9 +271,13 @@ Future<StremioResolveOutcome> resolveStremioStream({
       );
     }
   } catch (e) {
+    final label =
+        (debridLabel != null && debridLabel.trim().isNotEmpty)
+            ? debridLabel
+            : 'Debrid';
     final message = e is DebridAuthException
         ? e.toString()
-        : debridUserMessage(e, debridService);
+        : debridUserMessage(e, label);
     return StremioResolveFailure(
       error: e is DebridAuthException
           ? StremioPlaybackError.requiresDebrid

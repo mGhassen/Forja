@@ -50,3 +50,20 @@ pub fn proxy_register_route(runtime: &Runtime, token: String, upstream_url: Stri
         })
         .is_some()
 }
+
+pub fn proxy_create_ext_session(
+    runtime: &Runtime,
+    url: String,
+    headers_json: String,
+) -> String {
+    runtime
+        .block_on(async {
+            let Ok(proxy) = PROXY.lock() else {
+                return None;
+            };
+            let state = proxy.state.clone();
+            drop(proxy);
+            proxy::ext::create_ext_session(&state, &url, &headers_json).await
+        })
+        .unwrap_or_default()
+}

@@ -8,8 +8,7 @@ class StreamSource {
   final String type;
   final Map<String, String>? headers;
 
-  /// Anime / provider identity (e.g. `megaplay`, `miruro:kiwi`). Used for
-  /// Referer policy and PNG-strip — not CDN hostname matching (RFC-044).
+  /// Opaque extractor id from the pack. The host does not branch on it.
   final String? providerId;
 
   /// Pre-proxy catalog URL when [url] is a local `/hls-proxy` play endpoint.
@@ -17,6 +16,12 @@ class StreamSource {
 
   /// Widevine / ClearKey license config (Android Exo only — RFC-101).
   final StreamDrmConfig? drm;
+
+  /// Pack-declared probe (`skip`, `masterOnly`, `headOrRange`, `segmentPoisonSample`).
+  final String? probe;
+
+  /// Pack-declared PNG unwrap (`auto`, `force`, `never`).
+  final String? pngStrip;
 
   StreamSource({
     required this.url,
@@ -26,6 +31,8 @@ class StreamSource {
     this.providerId,
     this.catalogUrl,
     this.drm,
+    this.probe,
+    this.pngStrip,
   });
 
   bool get hasDrm => drm != null && drm!.licenseUrl.isNotEmpty;
@@ -38,6 +45,8 @@ class StreamSource {
     }
     final pid = (json['providerId'] as String?)?.trim();
     final catalog = (json['catalogUrl'] as String?)?.trim();
+    final probe = (json['probe'] as String?)?.trim();
+    final pngStrip = (json['pngStrip'] as String?)?.trim();
     return StreamSource(
       url: json['url'] ?? json['file'] ?? json['src'] ?? '',
       title: json['title'] ?? json['label'] ?? json['quality'] ?? 'Unknown',
@@ -46,6 +55,8 @@ class StreamSource {
       providerId: (pid != null && pid.isNotEmpty) ? pid : null,
       catalogUrl: (catalog != null && catalog.isNotEmpty) ? catalog : null,
       drm: StreamDrmConfig.tryParse(json['drm']),
+      probe: (probe != null && probe.isNotEmpty) ? probe : null,
+      pngStrip: (pngStrip != null && pngStrip.isNotEmpty) ? pngStrip : null,
     );
   }
 
@@ -57,6 +68,8 @@ class StreamSource {
         if (providerId != null && providerId!.isNotEmpty) 'providerId': providerId,
         if (catalogUrl != null && catalogUrl!.isNotEmpty) 'catalogUrl': catalogUrl,
         if (drm != null) 'drm': drm!.toJson(),
+        if (probe != null && probe!.isNotEmpty) 'probe': probe,
+        if (pngStrip != null && pngStrip!.isNotEmpty) 'pngStrip': pngStrip,
       };
 
   StreamSource copyWith({
@@ -67,6 +80,8 @@ class StreamSource {
     String? providerId,
     String? catalogUrl,
     StreamDrmConfig? drm,
+    String? probe,
+    String? pngStrip,
     bool clearHeaders = false,
     bool clearDrm = false,
   }) {
@@ -78,6 +93,8 @@ class StreamSource {
       providerId: providerId ?? this.providerId,
       catalogUrl: catalogUrl ?? this.catalogUrl,
       drm: clearDrm ? null : (drm ?? this.drm),
+      probe: probe ?? this.probe,
+      pngStrip: pngStrip ?? this.pngStrip,
     );
   }
 }

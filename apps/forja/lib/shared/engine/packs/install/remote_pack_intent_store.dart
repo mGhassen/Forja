@@ -61,7 +61,7 @@ abstract final class RemotePackIntentStore {
   }
 }
 
-/// User tapped Not now on a remote-profile install prompt.
+/// User dismissed a remote-profile install prompt without applying (Back).
 abstract final class DeferredRemoteInstallStore {
   static const _key = 'engine_deferred_remote_install_v1';
 

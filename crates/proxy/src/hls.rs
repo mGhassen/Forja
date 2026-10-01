@@ -4,8 +4,12 @@ use axum::{
     http::{header, HeaderMap, Method, StatusCode},
     response::Response,
 };
+use flate2::read::{GzDecoder, ZlibDecoder};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::io::Read;
+use std::sync::Arc;
+use std::time::Duration;
 
 use crate::{forward_response, parse_custom_headers, ProxyState};
 
@@ -20,16 +24,23 @@ pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
     if raw.len() < 16 {
         return raw.to_vec();
     }
+    // embedindia PPV: a 13-byte VP8L still, then an EXIF chunk that is raw
+    // MPEG-TS. The web player reads that chunk. MediaKit sees WEBP and EOFs.
+    if let Some(ts) = strip_riff_chunk_ts(raw) {
+        return ts;
+    }
     if raw[0] != 0x89 || raw[1] != 0x50 || raw[2] != 0x4E || raw[3] != 0x47 {
         return raw.to_vec();
     }
+    // Daddy / Streamic: MPEG-TS gzipped into RGB pixels (magic TIKTIKPX),
+    // not appended after IEND. Must run before the IEND scan — compressed
+    // IDAT can contain the ASCII "IEND" and that scan would return junk.
+    if let Some(ts) = png_pixel_ts(raw) {
+        return ts;
+    }
     let mut idx = None;
     for i in 8..raw.len().saturating_sub(8) {
-        if raw[i] == 0x49
-            && raw[i + 1] == 0x45
-            && raw[i + 2] == 0x4E
-            && raw[i + 3] == 0x44
-        {
+        if raw[i] == 0x49 && raw[i + 1] == 0x45 && raw[i + 2] == 0x4E && raw[i + 3] == 0x44 {
             idx = Some(i + 8);
             break;
         }
@@ -58,6 +69,161 @@ pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
     raw.to_vec()
 }
 
+/// RIFF/WEBP whose chunk payload is MPEG-TS (sync `0x47` every 188 bytes).
+/// embedindia writes the TS into an `EXIF` chunk after a tiny `VP8L` still.
+fn strip_riff_chunk_ts(raw: &[u8]) -> Option<Vec<u8>> {
+    if raw.len() < 12 || &raw[..4] != b"RIFF" || &raw[8..12] != b"WEBP" {
+        return None;
+    }
+    let mut off = 12usize;
+    while off + 8 <= raw.len() {
+        let size = u32::from_le_bytes(raw.get(off + 4..off + 8)?.try_into().ok()?) as usize;
+        let start = off + 8;
+        let end = start.checked_add(size)?;
+        if end > raw.len() {
+            return None;
+        }
+        let payload = raw.get(start..end)?;
+        if payload.len() >= 188 && payload[0] == 0x47 && payload.get(188) == Some(&0x47) {
+            return Some(payload.to_vec());
+        }
+        off = end + (size & 1);
+    }
+    None
+}
+
+/// `TIKTIKPX` — MPEG-TS gzip stored in reconstructed RGB (Streamic / daddy).
+const TIKTIK_PX: &[u8] = b"TIKTIKPX";
+
+fn paeth(a: u8, b: u8, c: u8) -> u8 {
+    let a = a as i16;
+    let b = b as i16;
+    let c = c as i16;
+    let p = a + b - c;
+    let pa = (p - a).abs();
+    let pb = (p - b).abs();
+    let pc = (p - c).abs();
+    if pa <= pb && pa <= pc {
+        a as u8
+    } else if pb <= pc {
+        b as u8
+    } else {
+        c as u8
+    }
+}
+
+/// Decode a PNG whose RGB pixels start with `TIKTIKPX`, a big-endian length,
+/// and a gzip of MPEG-TS. Matches the daddy player `unwrapPixels` path.
+fn png_pixel_ts(raw: &[u8]) -> Option<Vec<u8>> {
+    if raw.len() < 8 || raw[0] != 0x89 || raw[1] != 0x50 {
+        return None;
+    }
+    let mut off = 8usize;
+    let mut w = 0u32;
+    let mut h = 0u32;
+    let mut depth = 0u8;
+    let mut ctype = 0u8;
+    let mut interlace = 0u8;
+    let mut idat = Vec::new();
+    while off + 8 <= raw.len() {
+        let len = u32::from_be_bytes(raw.get(off..off + 4)?.try_into().ok()?) as usize;
+        if off + 12 + len > raw.len() {
+            return None;
+        }
+        let typ = raw.get(off + 4..off + 8)?;
+        let data = raw.get(off + 8..off + 8 + len)?;
+        if typ == b"IHDR" {
+            if data.len() < 13 {
+                return None;
+            }
+            w = u32::from_be_bytes(data[0..4].try_into().ok()?);
+            h = u32::from_be_bytes(data[4..8].try_into().ok()?);
+            depth = data[8];
+            ctype = data[9];
+            interlace = data[12];
+        } else if typ == b"IDAT" {
+            idat.extend_from_slice(data);
+        } else if typ == b"IEND" {
+            break;
+        }
+        off += 12 + len;
+    }
+    if w == 0 || h == 0 || depth != 8 || interlace != 0 || (ctype != 2 && ctype != 6) {
+        return None;
+    }
+    let bpp: usize = if ctype == 6 { 4 } else { 3 };
+    let stride = (w as usize).checked_mul(bpp)?;
+    let rgb_len = (w as usize).checked_mul(h as usize)?.checked_mul(3)?;
+    // Live segments are a few MB. Reject anything that would balloon.
+    if stride == 0 || rgb_len == 0 || rgb_len > 32 * 1024 * 1024 {
+        return None;
+    }
+    let mut inflated = Vec::new();
+    ZlibDecoder::new(&idat[..])
+        .read_to_end(&mut inflated)
+        .ok()?;
+    let mut rgb = vec![0u8; rgb_len];
+    let mut src = 0usize;
+    let mut dst = 0usize;
+    let mut prev = vec![0u8; stride];
+    for _y in 0..h as usize {
+        if src + 1 + stride > inflated.len() {
+            return None;
+        }
+        let filter = inflated[src];
+        src += 1;
+        let row = &inflated[src..src + stride];
+        src += stride;
+        let mut recon = vec![0u8; stride];
+        for i in 0..stride {
+            let left = if i >= bpp { recon[i - bpp] } else { 0 };
+            let up = prev[i];
+            let up_left = if i >= bpp { prev[i - bpp] } else { 0 };
+            let mut v = row[i] as u16;
+            match filter {
+                0 => {}
+                1 => v += left as u16,
+                2 => v += up as u16,
+                3 => v += (left as u16 + up as u16) >> 1,
+                4 => v += paeth(left, up, up_left) as u16,
+                _ => return None,
+            }
+            recon[i] = (v & 255) as u8;
+        }
+        if ctype == 2 {
+            rgb[dst..dst + stride].copy_from_slice(&recon);
+            dst += stride;
+        } else {
+            let mut i = 0;
+            while i + 3 < stride {
+                rgb[dst] = recon[i];
+                rgb[dst + 1] = recon[i + 1];
+                rgb[dst + 2] = recon[i + 2];
+                dst += 3;
+                i += 4;
+            }
+        }
+        prev = recon;
+    }
+    if rgb.len() < 12 || &rgb[..8] != TIKTIK_PX {
+        return None;
+    }
+    let n = u32::from_be_bytes(rgb.get(8..12)?.try_into().ok()?) as usize;
+    if n == 0 || 12 + n > rgb.len() {
+        return None;
+    }
+    let gz = rgb.get(12..12 + n)?;
+    if gz.len() < 2 || gz[0] != 0x1f || gz[1] != 0x8b {
+        return None;
+    }
+    let mut ts = Vec::new();
+    GzDecoder::new(gz).read_to_end(&mut ts).ok()?;
+    if ts.first() != Some(&0x47) {
+        return None;
+    }
+    Some(ts)
+}
+
 /// True when bytes are a PNG that wraps MPEG-TS (Megaplay anti-scraper).
 #[allow(dead_code)] // used by unit tests; strip path inlines the same logic
 pub fn png_wraps_mpeg_ts(raw: &[u8]) -> bool {
@@ -78,8 +244,7 @@ fn resolve_url(relative: &str, base_path: &str, server_base: &str) -> String {
     } else if let Some(rest) = trimmed.strip_prefix("//") {
         // Protocol-relative (`//cdn.example/seg`) — must NOT be treated as a
         // path under server_base (that produced `https://hostA//hostB/…`).
-        let scheme = if base_path.starts_with("https://") || server_base.starts_with("https://")
-        {
+        let scheme = if base_path.starts_with("https://") || server_base.starts_with("https://") {
             "https"
         } else {
             "http"
@@ -137,13 +302,9 @@ pub fn build_hls_proxy_url(
     out
 }
 
-pub fn rewrite_hls_playlist(
-    body: &str,
-    decoded_url: &str,
-    proxy_base: &str,
-    headers_json: &str,
-    strip: Option<&str>,
-) -> String {
+/// Rewrite playlist URIs to paths relative to [session_base] so `/ext/{id}/…`
+/// relative resolution keeps cookies on nested playlists and segments.
+pub fn rewrite_hls_playlist_relative(body: &str, decoded_url: &str, session_base: &str) -> String {
     let slash = decoded_url.rfind('/').unwrap_or(0);
     let base_path = &decoded_url[..=slash];
     let server_base = if let Some(scheme_end) = decoded_url.find("://") {
@@ -157,10 +318,26 @@ pub fn rewrite_hls_playlist(
         decoded_url
     };
 
-    body.lines()
+    let to_rel = |full: &str| -> String {
+        if let Some(rest) = full.strip_prefix(session_base) {
+            return rest.to_string();
+        }
+        full.to_string()
+    };
+
+    let mut forja_subs = Vec::new();
+    let playlist = body
+        .lines()
         .filter_map(|line| {
             let trimmed = line.trim();
             if is_hls_subtitle_media(trimmed) {
+                if let Some(uri) = hls_quoted_attr(trimmed, "URI") {
+                    let full = resolve_url(&uri, base_path, server_base);
+                    let play = to_rel(&full);
+                    if let Some(sub) = forja_sub_fields(trimmed, play) {
+                        forja_subs.push(sub);
+                    }
+                }
                 return None;
             }
             let line = strip_stream_inf_subtitles_attr(line);
@@ -175,12 +352,7 @@ pub fn rewrite_hls_playlist(
                         let Some(end) = rest.find('"') else { break };
                         let uri = &rest[..end];
                         let full = resolve_url(uri, base_path, server_base);
-                        let replacement = build_hls_proxy_url(
-                            proxy_base,
-                            &full,
-                            headers_json,
-                            strip,
-                        );
+                        let replacement = to_rel(&full);
                         let new_token = format!("URI=\"{replacement}\"");
                         out.replace_range(start..start + 5 + end + 1, &new_token);
                         search_from = start + new_token.len();
@@ -190,15 +362,120 @@ pub fn rewrite_hls_playlist(
                 return Some(line.to_string());
             }
             let full = resolve_url(trimmed, base_path, server_base);
-            Some(build_hls_proxy_url(
-                proxy_base,
-                &full,
-                headers_json,
-                strip,
-            ))
+            Some(to_rel(&full))
         })
         .collect::<Vec<_>>()
+        .join("\n");
+    append_forja_sub_comments(playlist, &forja_subs)
+}
+
+/// Master playlists that also list a real `.m3u8` / `.ts` sometimes pad with
+/// still-image URIs. Strict players (AVPlayer) abort the item on the first
+/// 403. All-image playlists stay intact — those filenames are the media.
+fn drop_mixed_image_decoys(body: &str) -> String {
+    let has_real = body.lines().any(|line| {
+        let trimmed = line.trim();
+        !trimmed.is_empty() && !trimmed.starts_with('#') && !is_plain_image_uri(trimmed)
+    });
+    if !has_real {
+        return body.to_string();
+    }
+    let lines: Vec<&str> = body.lines().collect();
+    let mut drop = vec![false; lines.len()];
+    for (i, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') || !is_plain_image_uri(trimmed) {
+            continue;
+        }
+        drop[i] = true;
+        let mut j = i;
+        while j > 0 {
+            j -= 1;
+            let prev = lines[j].trim();
+            if prev.is_empty() {
+                continue;
+            }
+            let upper = prev.to_ascii_uppercase();
+            if upper.starts_with("#EXTINF:") || upper.starts_with("#EXT-X-STREAM-INF:") {
+                drop[j] = true;
+            }
+            break;
+        }
+    }
+    lines
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| !drop[*i])
+        .map(|(_, line)| *line)
+        .collect::<Vec<_>>()
         .join("\n")
+}
+
+pub fn rewrite_hls_playlist(
+    body: &str,
+    decoded_url: &str,
+    proxy_base: &str,
+    headers_json: &str,
+    strip: Option<&str>,
+) -> String {
+    let filtered = drop_mixed_image_decoys(body);
+    let body = filtered.as_str();
+    let slash = decoded_url.rfind('/').unwrap_or(0);
+    let base_path = &decoded_url[..=slash];
+    let server_base = if let Some(scheme_end) = decoded_url.find("://") {
+        let rest = &decoded_url[scheme_end + 3..];
+        if let Some(path_start) = rest.find('/') {
+            &decoded_url[..scheme_end + 3 + path_start]
+        } else {
+            decoded_url
+        }
+    } else {
+        decoded_url
+    };
+
+    let mut forja_subs = Vec::new();
+    let playlist = body
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if is_hls_subtitle_media(trimmed) {
+                if let Some(uri) = hls_quoted_attr(trimmed, "URI") {
+                    let full = resolve_url(&uri, base_path, server_base);
+                    let play = build_hls_proxy_url(proxy_base, &full, headers_json, strip);
+                    if let Some(sub) = forja_sub_fields(trimmed, play) {
+                        forja_subs.push(sub);
+                    }
+                }
+                return None;
+            }
+            let line = strip_stream_inf_subtitles_attr(line);
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                if trimmed.contains("URI=\"") {
+                    let mut out = line.to_string();
+                    let mut search_from = 0;
+                    while let Some(rel) = out[search_from..].find("URI=\"") {
+                        let start = search_from + rel;
+                        let rest = &out[start + 5..];
+                        let Some(end) = rest.find('"') else { break };
+                        let uri = &rest[..end];
+                        let full = resolve_url(uri, base_path, server_base);
+                        let replacement =
+                            build_hls_proxy_url(proxy_base, &full, headers_json, strip);
+                        let new_token = format!("URI=\"{replacement}\"");
+                        out.replace_range(start..start + 5 + end + 1, &new_token);
+                        search_from = start + new_token.len();
+                    }
+                    return Some(out);
+                }
+                return Some(line.to_string());
+            }
+            let full = resolve_url(trimmed, base_path, server_base);
+            Some(build_hls_proxy_url(proxy_base, &full, headers_json, strip))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    append_forja_sub_comments(playlist, &forja_subs)
 }
 
 fn is_plain_image_uri(uri: &str) -> bool {
@@ -209,6 +486,9 @@ fn is_plain_image_uri(uri: &str) -> bool {
         || path.ends_with(".gif")
         || path.ends_with(".webp")
         || path.ends_with(".svg")
+        // embedindia WAF decoy segments (TikTok CDN stills as "HLS").
+        || path.ends_with(".image")
+        || (path.contains("tiktokcdn") && path.contains("tplv-tiktokx-origin"))
 }
 
 /// True when every media URI is a still image (WAF decoy), not HLS/TS/fMP4.
@@ -227,6 +507,291 @@ pub fn hls_playlist_is_image_bait(body: &str) -> bool {
     uris > 0
 }
 
+/// Last [n] media segment URLs in a playlist. Skips variant playlists.
+pub fn hls_tail_media_urls(body: &str, playlist_url: &str, n: usize) -> Vec<String> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let slash = playlist_url.rfind('/').unwrap_or(0);
+    let base_path = &playlist_url[..=slash];
+    let server_base = if let Some(scheme_end) = playlist_url.find("://") {
+        let rest = &playlist_url[scheme_end + 3..];
+        if let Some(path_start) = rest.find('/') {
+            &playlist_url[..scheme_end + 3 + path_start]
+        } else {
+            playlist_url
+        }
+    } else {
+        playlist_url
+    };
+    let mut urls = Vec::new();
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let lower = trimmed.to_ascii_lowercase();
+        if lower.contains(".m3u8") {
+            continue;
+        }
+        urls.push(resolve_url(trimmed, base_path, server_base));
+    }
+    if urls.len() > n {
+        urls.split_off(urls.len() - n)
+    } else {
+        urls
+    }
+}
+
+const AHEAD_MAX_SEGS: usize = 8;
+const AHEAD_MAX_BYTES: usize = 64 * 1024 * 1024;
+
+struct ReadySeg {
+    status: StatusCode,
+    content_type: String,
+    bytes: Vec<u8>,
+}
+
+struct SegSlot {
+    tx: tokio::sync::watch::Sender<Option<Result<Arc<ReadySeg>, ()>>>,
+    // Sender drops the value if every receiver is gone. Keep one alive.
+    _rx: tokio::sync::watch::Receiver<Option<Result<Arc<ReadySeg>, ()>>>,
+}
+
+impl SegSlot {
+    fn pending() -> Arc<Self> {
+        let (tx, rx) = tokio::sync::watch::channel(None);
+        Arc::new(Self { tx, _rx: rx })
+    }
+
+    async fn wait_ready(&self) -> Option<Arc<ReadySeg>> {
+        let mut rx = self.tx.subscribe();
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(25);
+        loop {
+            if let Some(value) = rx.borrow().clone() {
+                return value.ok();
+            }
+            if tokio::time::timeout_at(deadline, rx.changed()).await.is_err() {
+                return None;
+            }
+        }
+    }
+
+    fn finish(&self, seg: Arc<ReadySeg>) {
+        let _ = self.tx.send(Some(Ok(seg)));
+    }
+
+    fn miss(&self) {
+        let _ = self.tx.send(Some(Err(())));
+    }
+}
+
+struct HlsAheadInner {
+    order: VecDeque<String>,
+    total: usize,
+    slots: HashMap<String, Arc<SegSlot>>,
+}
+
+#[derive(Clone)]
+pub struct HlsAheadCache {
+    inner: Arc<tokio::sync::Mutex<HlsAheadInner>>,
+}
+
+impl Default for HlsAheadCache {
+    fn default() -> Self {
+        Self {
+            inner: Arc::new(tokio::sync::Mutex::new(HlsAheadInner {
+                order: VecDeque::new(),
+                total: 0,
+                slots: HashMap::new(),
+            })),
+        }
+    }
+}
+
+enum AheadBegin {
+    Ready(Arc<ReadySeg>),
+    Wait(Arc<SegSlot>),
+    Owner(Arc<SegSlot>),
+}
+
+impl HlsAheadCache {
+    async fn begin(&self, url: &str) -> AheadBegin {
+        let mut guard = self.inner.lock().await;
+        if let Some(slot) = guard.slots.get(url).cloned() {
+            let value = slot.tx.borrow().clone();
+            match value {
+                Some(Ok(seg)) => return AheadBegin::Ready(seg),
+                None => return AheadBegin::Wait(slot),
+                Some(Err(())) => {
+                    guard.slots.remove(url);
+                }
+            }
+        }
+        let slot = SegSlot::pending();
+        guard.slots.insert(url.to_string(), Arc::clone(&slot));
+        AheadBegin::Owner(slot)
+    }
+
+    async fn store(&self, url: &str, slot: &SegSlot, seg: Arc<ReadySeg>) {
+        slot.finish(Arc::clone(&seg));
+        let mut guard = self.inner.lock().await;
+        guard.total = guard.total.saturating_add(seg.bytes.len());
+        guard.order.push_back(url.to_string());
+        while guard.order.len() > AHEAD_MAX_SEGS || guard.total > AHEAD_MAX_BYTES {
+            let Some(old) = guard.order.pop_front() else {
+                break;
+            };
+            if old == url && guard.order.is_empty() {
+                guard.order.push_front(old);
+                break;
+            }
+            if let Some(old_slot) = guard.slots.remove(&old) {
+                if let Some(Ok(prev)) = old_slot.tx.borrow().clone() {
+                    guard.total = guard.total.saturating_sub(prev.bytes.len());
+                }
+            }
+        }
+    }
+
+    fn abandon(&self, url: &str, slot: &SegSlot) {
+        slot.miss();
+        let cache = self.clone();
+        let url = url.to_string();
+        tokio::spawn(async move {
+            let mut guard = cache.inner.lock().await;
+            if guard.slots.get(&url).is_some_and(|s| {
+                matches!(s.tx.borrow().clone(), Some(Err(())))
+            }) {
+                guard.slots.remove(&url);
+            }
+        });
+    }
+}
+
+fn stripped_segment_response(seg: &ReadySeg) -> Result<Response, StatusCode> {
+    Response::builder()
+        .status(seg.status)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONNECTION, "keep-alive")
+        .header(header::CONTENT_TYPE, seg.content_type.as_str())
+        .header(header::CONTENT_LENGTH, seg.bytes.len())
+        .body(Body::from(seg.bytes.clone()))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn fetch_upstream_bytes(
+    state: &ProxyState,
+    target_url: &str,
+    custom: &HashMap<String, String>,
+) -> Result<(StatusCode, String, Vec<u8>), StatusCode> {
+    if host_needs_chrome_tls(target_url) {
+        let url = target_url.to_string();
+        let headers = custom.clone();
+        return tokio::task::spawn_blocking(move || libressl_fetch_bytes(&url, &headers))
+            .await
+            .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    }
+    let req = build_hls_upstream_request(
+        state,
+        Method::GET,
+        target_url,
+        custom,
+        &HeaderMap::new(),
+    )?;
+    let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+    let status = resp.status();
+    let content_type = resp
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let bytes = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?.to_vec();
+    Ok((status, content_type, bytes))
+}
+
+/// Download and unwrap one image-shelled segment. Concurrent callers share one fetch.
+async fn ensure_stripped_segment(
+    state: &ProxyState,
+    target_url: &str,
+    custom: &HashMap<String, String>,
+) -> Result<Arc<ReadySeg>, StatusCode> {
+    match state.hls_ahead.begin(target_url).await {
+        AheadBegin::Ready(seg) => return Ok(seg),
+        AheadBegin::Wait(slot) => {
+            if let Some(seg) = slot.wait_ready().await {
+                return Ok(seg);
+            }
+        }
+        AheadBegin::Owner(slot) => {
+            return fetch_and_store_segment(state, target_url, custom, slot).await;
+        }
+    }
+    match state.hls_ahead.begin(target_url).await {
+        AheadBegin::Ready(seg) => Ok(seg),
+        AheadBegin::Wait(slot) => slot.wait_ready().await.ok_or(StatusCode::BAD_GATEWAY),
+        AheadBegin::Owner(slot) => fetch_and_store_segment(state, target_url, custom, slot).await,
+    }
+}
+
+async fn fetch_and_store_segment(
+    state: &ProxyState,
+    target_url: &str,
+    custom: &HashMap<String, String>,
+    slot: Arc<SegSlot>,
+) -> Result<Arc<ReadySeg>, StatusCode> {
+    let fetched = fetch_upstream_bytes(state, target_url, custom).await;
+    let (status, _content_type, bytes) = match fetched {
+        Ok(v) => v,
+        Err(code) => {
+            state.hls_ahead.abandon(target_url, &slot);
+            return Err(code);
+        }
+    };
+    if !status.is_success() {
+        state.hls_ahead.abandon(target_url, &slot);
+        return Err(status);
+    }
+    let stripped = strip_png_wrapper(&bytes);
+    let content_type = if stripped.first() == Some(&0x47) {
+        "video/mp2t".to_string()
+    } else {
+        "application/octet-stream".to_string()
+    };
+    let seg = Arc::new(ReadySeg {
+        status: StatusCode::OK,
+        content_type,
+        bytes: stripped,
+    });
+    state.hls_ahead.store(target_url, &slot, Arc::clone(&seg)).await;
+    Ok(seg)
+}
+
+fn schedule_png_ahead(
+    state: &ProxyState,
+    body: &str,
+    playlist_url: &str,
+    headers_json: &str,
+    strip: Option<&str>,
+) {
+    if strip != Some("png") {
+        return;
+    }
+    let urls = hls_tail_media_urls(body, playlist_url, 4);
+    if urls.is_empty() {
+        return;
+    }
+    let state = state.clone();
+    let custom = parse_custom_headers(Some(headers_json));
+    tokio::spawn(async move {
+        for url in urls {
+            let _ = ensure_stripped_segment(&state, &url, &custom).await;
+        }
+    });
+}
+
 fn is_hls_subtitle_media(line: &str) -> bool {
     let t = line.trim();
     if !t.starts_with("#EXT-X-MEDIA:") {
@@ -235,7 +800,57 @@ fn is_hls_subtitle_media(line: &str) -> bool {
     t.to_ascii_uppercase().contains("TYPE=SUBTITLES")
 }
 
-/// lavf waits on HLS `SUBTITLES=` groups (VixSrc ships ~30). In-app Wyzie/sideload covers captions.
+/// `KEY="value"` on an HLS tag. Matching is case-insensitive; the value keeps
+/// the original spelling.
+fn hls_quoted_attr(line: &str, key: &str) -> Option<String> {
+    let lower = line.to_ascii_lowercase();
+    let needle = format!("{}=\"", key.to_ascii_lowercase());
+    let i = lower.find(&needle)?;
+    let start = i + needle.len();
+    let rest = &line[start..];
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
+}
+
+/// lang, display name, play URI. LANGUAGE falls back to NAME.
+fn forja_sub_fields(line: &str, play_uri: String) -> Option<(String, String, String)> {
+    let play_uri = play_uri.trim().to_string();
+    if play_uri.is_empty() {
+        return None;
+    }
+    let name = hls_quoted_attr(line, "NAME")
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "Subtitles".to_string());
+    let lang = hls_quoted_attr(line, "LANGUAGE")
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| name.clone());
+    Some((lang, name, play_uri))
+}
+
+/// Playlist comment the subtitle menu reads. Not an HLS tag, so lavf does not
+/// open every rendition at start.
+fn append_forja_sub_comments(mut body: String, subs: &[(String, String, String)]) -> String {
+    if subs.is_empty() {
+        return body;
+    }
+    if !body.ends_with('\n') {
+        body.push('\n');
+    }
+    for (lang, name, uri) in subs {
+        body.push_str("#FORJA-SUB:lang=");
+        body.push_str(&urlencoding::encode(lang));
+        body.push_str("&name=");
+        body.push_str(&urlencoding::encode(name));
+        body.push_str("&uri=");
+        body.push_str(&urlencoding::encode(uri));
+        body.push('\n');
+    }
+    body
+}
+
+/// lavf waits on HLS `SUBTITLES=` groups (VixSrc ships ~30). Groups stay off the
+/// variant the player demuxes. Renditions are re-emitted as `#FORJA-SUB:` so
+/// the subtitle menu can load one of them.
 fn strip_stream_inf_subtitles_attr(line: &str) -> String {
     let trimmed = line.trim();
     if !trimmed.to_ascii_uppercase().contains("#EXT-X-STREAM-INF:") {
@@ -263,10 +878,93 @@ fn strip_quoted_attr(line: &str, attr: &str) -> String {
     format!("{}{}", &line[..start], &rest[end + 1..])
 }
 
-fn header_ci<'a>(
-    custom_headers: &'a HashMap<String, String>,
-    name: &str,
-) -> Option<&'a str> {
+/// How a client `Range` applies to a rewritten playlist body.
+///
+/// ffmpeg `reconnect_at_eof` asks for `bytes=<playlist length>-` when the
+/// short m3u8 ends. Returning the full playlist again concatenates the same
+/// tags forever (`Will reconnect at <size> … End of file`). A range that
+/// starts at or past the body is not satisfiable.
+enum PlaylistByteRange {
+    Full,
+    Partial { start: u64, end: u64 },
+    Unsatisfiable,
+}
+
+fn playlist_byte_range(header: Option<&str>, total: u64) -> PlaylistByteRange {
+    let Some(hdr) = header.map(str::trim).filter(|s| !s.is_empty()) else {
+        return PlaylistByteRange::Full;
+    };
+    let Some(spec) = hdr.strip_prefix("bytes=") else {
+        return PlaylistByteRange::Full;
+    };
+    let spec = spec.split(',').next().unwrap_or(spec).trim();
+    let Some((a, b)) = spec.split_once('-') else {
+        return PlaylistByteRange::Full;
+    };
+    if a.is_empty() {
+        let Ok(n) = b.parse::<u64>() else {
+            return PlaylistByteRange::Full;
+        };
+        if n == 0 || total == 0 {
+            return PlaylistByteRange::Unsatisfiable;
+        }
+        let start = total.saturating_sub(n);
+        return PlaylistByteRange::Partial {
+            start,
+            end: total - 1,
+        };
+    }
+    let Ok(start) = a.parse::<u64>() else {
+        return PlaylistByteRange::Full;
+    };
+    let end = if b.is_empty() {
+        total.saturating_sub(1)
+    } else {
+        let Ok(end) = b.parse::<u64>() else {
+            return PlaylistByteRange::Full;
+        };
+        end
+    };
+    if total == 0 || start >= total || start > end {
+        return PlaylistByteRange::Unsatisfiable;
+    }
+    PlaylistByteRange::Partial {
+        start,
+        end: end.min(total - 1),
+    }
+}
+
+fn playlist_response(body: String, range: Option<&str>) -> Result<Response, StatusCode> {
+    let bytes = body.into_bytes();
+    let total = bytes.len() as u64;
+    let (status, content_range, out) = match playlist_byte_range(range, total) {
+        PlaylistByteRange::Full => (StatusCode::OK, None, bytes),
+        PlaylistByteRange::Unsatisfiable => (
+            StatusCode::RANGE_NOT_SATISFIABLE,
+            Some(format!("bytes */{total}")),
+            Vec::new(),
+        ),
+        PlaylistByteRange::Partial { start, end } => (
+            StatusCode::PARTIAL_CONTENT,
+            Some(format!("bytes {start}-{end}/{total}")),
+            bytes[start as usize..=end as usize].to_vec(),
+        ),
+    };
+    let mut builder = Response::builder()
+        .status(status)
+        .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_LENGTH, out.len().to_string());
+    if let Some(value) = content_range {
+        builder = builder.header(header::CONTENT_RANGE, value);
+    }
+    builder
+        .body(Body::from(out))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+fn header_ci<'a>(custom_headers: &'a HashMap<String, String>, name: &str) -> Option<&'a str> {
     let want = name.to_ascii_lowercase();
     custom_headers
         .iter()
@@ -274,7 +972,79 @@ fn header_ci<'a>(
         .map(|(_, v)| v.as_str())
 }
 
-fn build_hls_upstream_request(
+/// Playlist host. rustls and Chrome impersonation are nginx-403'd.
+fn host_needs_chrome_tls(target_url: &str) -> bool {
+    reqwest::Url::parse(target_url)
+        .ok()
+        .and_then(|u| {
+            u.host_str()
+                .map(|h| h.to_ascii_lowercase().contains("indianservers.st"))
+        })
+        .unwrap_or(false)
+}
+
+/// rustls, Dart, and Chrome-impersonation are nginx-403'd. CPython's LibreSSL is not.
+fn libressl_fetch_bytes(
+    target_url: &str,
+    custom_headers: &HashMap<String, String>,
+) -> Result<(StatusCode, String, Vec<u8>), StatusCode> {
+    let script = r#"
+import json, sys, urllib.request, urllib.error
+req = json.load(sys.stdin)
+r = urllib.request.Request(req["url"], headers=req.get("headers") or {})
+try:
+    with urllib.request.urlopen(r, timeout=20) as resp:
+        body = resp.read()
+        ctype = resp.headers.get("Content-Type") or ""
+        sys.stdout.buffer.write(str(resp.status).encode() + b"\n")
+        sys.stdout.buffer.write(ctype.encode() + b"\n")
+        sys.stdout.buffer.write(body)
+except urllib.error.HTTPError as e:
+    body = e.read()
+    ctype = e.headers.get("Content-Type") or ""
+    sys.stdout.buffer.write(str(e.code).encode() + b"\n")
+    sys.stdout.buffer.write(ctype.encode() + b"\n")
+    sys.stdout.buffer.write(body)
+"#;
+    let payload = serde_json::json!({
+        "url": target_url,
+        "headers": custom_headers,
+    });
+    let mut child = std::process::Command::new("python3")
+        .arg("-c")
+        .arg(script)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    {
+        let stdin = child.stdin.as_mut().ok_or(StatusCode::BAD_GATEWAY)?;
+        use std::io::Write;
+        stdin
+            .write_all(payload.to_string().as_bytes())
+            .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    }
+    let out = child
+        .wait_with_output()
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    if !out.status.success() && out.stdout.is_empty() {
+        return Err(StatusCode::BAD_GATEWAY);
+    }
+    let mut lines = out.stdout.splitn(3, |b| *b == b'\n');
+    let status_raw = lines.next().unwrap_or_default();
+    let ctype_raw = lines.next().unwrap_or_default();
+    let body = lines.next().unwrap_or_default().to_vec();
+    let status_num: u16 = String::from_utf8_lossy(status_raw)
+        .trim()
+        .parse()
+        .unwrap_or(0);
+    let status = StatusCode::from_u16(status_num).unwrap_or(StatusCode::BAD_GATEWAY);
+    let content_type = String::from_utf8_lossy(ctype_raw).trim().to_lowercase();
+    Ok((status, content_type, body))
+}
+
+pub(crate) fn build_hls_upstream_request(
     state: &ProxyState,
     method: Method,
     target_url: &str,
@@ -310,6 +1080,83 @@ fn build_hls_upstream_request(
     Ok(req)
 }
 
+async fn finish_hls_proxy_body(
+    state: &ProxyState,
+    status: StatusCode,
+    content_type: &str,
+    bytes: Vec<u8>,
+    target_url: &str,
+    headers_json: &str,
+    strip: Option<&str>,
+    range: Option<&str>,
+) -> Result<Response, StatusCode> {
+    let looks_like_playlist_url = content_type.contains("mpegurl")
+        || content_type.contains("x-mpegurl")
+        || target_url.contains(".m3u8")
+        || target_url.contains("/playlist/");
+    if looks_like_playlist_url {
+        let body = String::from_utf8_lossy(&bytes).into_owned();
+        let trimmed = body.trim_start();
+        if !status.is_success() || !trimmed.starts_with("#EXTM3U") {
+            let out_status = if status.is_success() {
+                StatusCode::BAD_GATEWAY
+            } else {
+                status
+            };
+            return Response::builder()
+                .status(out_status)
+                .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        let effective_strip = if strip == Some("png") || hls_playlist_is_image_bait(&body) {
+            Some("png")
+        } else {
+            strip
+        };
+        let port = *state.listen_port.read().await;
+        let proxy_base = format!("http://127.0.0.1:{port}/hls-proxy");
+        let rewritten = rewrite_hls_playlist(
+            &body,
+            target_url,
+            &proxy_base,
+            headers_json,
+            effective_strip,
+        );
+        schedule_png_ahead(state, &body, target_url, headers_json, effective_strip);
+        return playlist_response(rewritten, range);
+    }
+    if strip == Some("png") {
+        let stripped = strip_png_wrapper(&bytes);
+        let content_type = if stripped.first() == Some(&0x47) {
+            "video/mp2t"
+        } else {
+            "application/octet-stream"
+        };
+        let out_status = if status.is_success() {
+            StatusCode::OK
+        } else {
+            status
+        };
+        return Response::builder()
+            .status(out_status)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .header(header::ACCEPT_RANGES, "bytes")
+            .header(header::CONNECTION, "keep-alive")
+            .header(header::CONTENT_TYPE, content_type)
+            .header(header::CONTENT_LENGTH, stripped.len())
+            .body(Body::from(stripped))
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    Response::builder()
+        .status(status)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .body(Body::from(bytes))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 pub async fn hls_proxy_handler(
     State(state): State<ProxyState>,
     Query(query): Query<HlsProxyQuery>,
@@ -325,7 +1172,63 @@ pub async fn hls_proxy_handler(
     let headers_json = query.headers.as_deref().unwrap_or("{}");
     let strip = query.strip.as_deref();
 
-    let req = build_hls_upstream_request(&state, method.clone(), &target_url, &custom, &headers)?;
+    // Image-shelled segments are downloaded whole. Serve a copy already
+    // unwrapped when the playlist prefetch finished it.
+    if strip == Some("png")
+        && !target_url.to_ascii_lowercase().contains(".m3u8")
+        && !target_url.to_ascii_lowercase().contains("/playlist/")
+    {
+        let seg = ensure_stripped_segment(&state, &target_url, &custom).await?;
+        return stripped_segment_response(&seg);
+    }
+
+    // DASH via query-proxy cannot resolve relative SegmentTemplate (query is
+    // dropped). Redirect into a path session so IINA/VLC/etc. keep cookies.
+    if target_url.to_ascii_lowercase().contains(".mpd") {
+        if let Some(play) = crate::ext::create_ext_session(&state, &target_url, headers_json).await
+        {
+            return Response::builder()
+                .status(StatusCode::FOUND)
+                .header(header::LOCATION, play)
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Client Range is applied to the rewritten playlist below. Upstream
+    // fetches of picture-shelled segments still drop Range (partial PNG).
+    let client_range = headers
+        .get(header::RANGE)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned);
+    // Picture-shelled segments (strip=png) must be fetched whole. A Range
+    // probe returns a partial PNG that cannot be inflated.
+    let mut fetch_headers = headers.clone();
+    if strip == Some("png") {
+        fetch_headers.remove(header::RANGE);
+    }
+    if host_needs_chrome_tls(&target_url) {
+        let url = target_url.clone();
+        let headers = custom.clone();
+        let (status, content_type, bytes) =
+            tokio::task::spawn_blocking(move || libressl_fetch_bytes(&url, &headers))
+                .await
+                .map_err(|_| StatusCode::BAD_GATEWAY)??;
+        return finish_hls_proxy_body(
+            &state,
+            status,
+            &content_type,
+            bytes,
+            &target_url,
+            headers_json,
+            strip,
+            client_range.as_deref(),
+        )
+        .await;
+    }
+    let req =
+        build_hls_upstream_request(&state, method.clone(), &target_url, &custom, &fetch_headers)?;
     let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
 
     let status = resp.status();
@@ -359,24 +1262,26 @@ pub async fn hls_proxy_handler(
                 .body(Body::from(body))
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
-        // WAF decoy: #EXTM3U whose only URIs are bare images (not PNG-wrapped TS).
-        if strip != Some("png") && hls_playlist_is_image_bait(&body) {
-            return Response::builder()
-                .status(StatusCode::BAD_GATEWAY)
-                .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from("hls-proxy: rejected image decoy playlist"))
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
-        }
+        // URI ends in .png/.jpg/… — often a WAF stills decoy, but WatchFooty
+        // `wfty.st` (and peers) serve real MPEG-TS under image filenames.
+        // Don't 502 the playlist; rewrite children with strip=png so the
+        // segment path sniffs TS / strips a PNG shell (KissKh path).
+        let effective_strip = if strip == Some("png") || hls_playlist_is_image_bait(&body) {
+            Some("png")
+        } else {
+            strip
+        };
         let port = *state.listen_port.read().await;
         let proxy_base = format!("http://127.0.0.1:{port}/hls-proxy");
-        let rewritten = rewrite_hls_playlist(&body, &target_url, &proxy_base, headers_json, strip);
-        return Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .body(Body::from(rewritten))
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        let rewritten = rewrite_hls_playlist(
+            &body,
+            &target_url,
+            &proxy_base,
+            headers_json,
+            effective_strip,
+        );
+        schedule_png_ahead(&state, &body, &target_url, headers_json, effective_strip);
+        return playlist_response(rewritten, client_range.as_deref());
     }
 
     if strip == Some("png") {
@@ -388,8 +1293,14 @@ pub async fn hls_proxy_handler(
         } else {
             "application/octet-stream"
         };
+        // Unwrapped bodies are the full segment, not the client's Range.
+        let out_status = if status.is_success() {
+            StatusCode::OK
+        } else {
+            status
+        };
         return Response::builder()
-            .status(status)
+            .status(out_status)
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .header(header::ACCEPT_RANGES, "bytes")
             .header(header::CONNECTION, "keep-alive")
@@ -407,11 +1318,41 @@ mod tests {
     use super::*;
 
     #[test]
+    fn playlist_range_past_eof_is_unsatisfiable() {
+        let body = "#EXTM3U\n#EXTINF:6,\nseg.ts\n";
+        let total = body.len() as u64;
+        assert!(matches!(
+            playlist_byte_range(Some(&format!("bytes={total}-")), total),
+            PlaylistByteRange::Unsatisfiable
+        ));
+        assert!(matches!(
+            playlist_byte_range(None, total),
+            PlaylistByteRange::Full
+        ));
+        assert!(matches!(
+            playlist_byte_range(Some("bytes=0-3"), total),
+            PlaylistByteRange::Partial { start: 0, end: 3 }
+        ));
+    }
+
+    #[test]
     fn header_ci_is_case_insensitive() {
         let mut map = HashMap::new();
         map.insert("cookie".into(), "a=1".into());
         assert_eq!(header_ci(&map, "Cookie"), Some("a=1"));
         assert_eq!(header_ci(&map, "COOKIE"), Some("a=1"));
+    }
+
+    #[test]
+    fn relative_hls_rewrite_keeps_nested_paths() {
+        const MASTER: &str = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\n720p/index.m3u8\n";
+        let out = rewrite_hls_playlist_relative(
+            MASTER,
+            "https://cdn.example/path/master.m3u8",
+            "https://cdn.example/path/",
+        );
+        assert!(out.contains("720p/index.m3u8"), "{out}");
+        assert!(!out.contains("http://"), "{out}");
     }
 
     #[test]
@@ -455,7 +1396,7 @@ https://cdn.example/seg.ts
         const BODY: &str = "\
 #EXTM3U
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"audio\",NAME=\"Korean\",URI=\"/playlist/1?type=audio\"
-#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"English\",URI=\"/playlist/1?type=subtitle\"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"English\",LANGUAGE=\"en\",URI=\"/playlist/1?type=subtitle\"
 #EXT-X-STREAM-INF:BANDWIDTH=1000,AUDIO=\"audio\",SUBTITLES=\"subs\"
 /playlist/1?type=video
 ";
@@ -466,10 +1407,20 @@ https://cdn.example/seg.ts
             "{}",
             None,
         );
-        assert!(!out.to_ascii_uppercase().contains("TYPE=SUBTITLES"), "{out}");
+        assert!(
+            !out.to_ascii_uppercase().contains("TYPE=SUBTITLES"),
+            "{out}"
+        );
         assert!(!out.to_ascii_uppercase().contains("SUBTITLES="), "{out}");
         assert!(out.to_ascii_uppercase().contains("TYPE=AUDIO"), "{out}");
         assert!(out.contains("/hls-proxy?url="), "{out}");
+        assert!(out.contains("#FORJA-SUB:"), "{out}");
+        assert!(out.contains("lang=en"), "{out}");
+        assert!(out.contains("name=English"), "{out}");
+        assert!(
+            out.contains("type%253Dsubtitle") || out.contains("subtitle"),
+            "{out}"
+        );
     }
 
     #[test]
@@ -528,10 +1479,7 @@ https://cdn.example/seg.ts
         let out = collapse_double_authority(
             "https://hls20.cdnvideo11.shop//hls19.videotradercdn.site/segment/x.png",
         );
-        assert_eq!(
-            out,
-            "https://hls19.videotradercdn.site/segment/x.png"
-        );
+        assert_eq!(out, "https://hls19.videotradercdn.site/segment/x.png");
     }
 
     #[test]
@@ -560,6 +1508,71 @@ https://cdn.example/seg.ts
     }
 
     #[test]
+    fn mixed_master_drops_image_decoys() {
+        const BODY: &str = "\
+#EXTM3U
+#EXTINF:4,
+https://cdn.example/decoy.png
+#EXTINF:4,
+https://lb5.wfty.st/secure/tok/playlist.m3u8
+#EXTINF:4,
+https://cdn.example/bait.jpg
+";
+        let out = rewrite_hls_playlist(
+            BODY,
+            "https://lb5.wfty.st/secure/tok/master.m3u8",
+            "http://127.0.0.1:9/hls-proxy",
+            "{}",
+            Some("png"),
+        );
+        assert!(!out.contains("decoy.png"), "{out}");
+        assert!(!out.contains("bait.jpg"), "{out}");
+        assert!(out.contains("playlist.m3u8"), "{out}");
+    }
+
+    #[test]
+    fn image_bait_playlist_rewrites_with_strip_png() {
+        const BODY: &str = "\
+#EXTM3U
+#EXTINF:4,
+https://cdn.example/anon/seg.png
+";
+        assert!(hls_playlist_is_image_bait(BODY));
+        let out = rewrite_hls_playlist(
+            BODY,
+            "https://lb1.wfty.st/secure/tok/pro/slug/1/1/1/playlist.m3u8",
+            "http://127.0.0.1:9/hls-proxy",
+            r#"{"Referer":"https://sportsembed.su/embed/1/slug/pro/1"}"#,
+            Some("png"),
+        );
+        assert!(out.contains("strip=png"), "{out}");
+        assert!(out.contains("seg.png"), "{out}");
+    }
+
+    #[test]
+    fn tail_media_urls_keeps_the_last_segments() {
+        const BODY: &str = "\
+#EXTM3U
+#EXTINF:2,
+a.ts
+#EXTINF:2,
+b.ts
+#EXTINF:2,
+https://cdn.example/c.png
+#EXT-X-STREAM-INF:BANDWIDTH=1
+nested.m3u8
+";
+        let urls = hls_tail_media_urls(BODY, "https://lb.example/live/playlist.m3u8", 2);
+        assert_eq!(
+            urls,
+            vec![
+                "https://lb.example/live/b.ts".to_string(),
+                "https://cdn.example/c.png".to_string(),
+            ]
+        );
+    }
+
+    #[test]
     fn image_bait_playlist_is_detected() {
         const BAIT: &str = "\
 #EXTM3U
@@ -573,11 +1586,106 @@ https://cdn.example/lumeflow/y.png
         assert!(!hls_playlist_is_image_bait(
             "#EXTM3U\n#EXTINF:4,\nhttps://lb6.wfty.st/secure/tok/seg.ts\n"
         ));
-        // KissKh-style .png media URIs are bait at this layer; handler skips
-        // when strip=png so wrapped TS still proxies.
+        // .png media URIs classify as image-bait; handler upgrades to strip=png
+        // so MPEG-TS / PNG-wrapped TS (WatchFooty, KissKh) still proxies.
         assert!(hls_playlist_is_image_bait(
             "#EXTM3U\n#EXTINF:3,\n//cdn.example/seg.png\n"
         ));
+        assert!(hls_playlist_is_image_bait(
+            "#EXTM3U\n#EXTINF:4,\nhttps://p16-common-sign.tiktokcdn-eu.com/tos-x~tplv-tiktokx-origin.image?x=1\n"
+        ));
+        // WatchFooty-style: image filenames that are still playable via strip.
+        assert!(hls_playlist_is_image_bait(
+            "#EXTM3U\n#EXTINF:4,\nhttps://cdn.example/anon/seg.png\n"
+        ));
+    }
+
+    #[test]
+    fn strip_png_unwraps_webp_exif_mpeg_ts() {
+        let mut ts = vec![0x47u8, 0x40, 0x00, 0x10];
+        ts.resize(188, 0);
+        ts.push(0x47);
+        ts.resize(376, 0x11);
+        let chunk = |typ: &[u8], data: &[u8]| {
+            let mut c = Vec::new();
+            c.extend_from_slice(typ);
+            c.extend_from_slice(&(data.len() as u32).to_le_bytes());
+            c.extend_from_slice(data);
+            if data.len() % 2 == 1 {
+                c.push(0);
+            }
+            c
+        };
+        let vp8l = chunk(
+            b"VP8L",
+            &[
+                0x2f, 0, 0, 0, 0x10, 0x07, 0x10, 0x11, 0x11, 0x88, 0x88, 0xfe, 0x07,
+            ],
+        );
+        let exif = chunk(b"EXIF", &ts);
+        let mut raw = Vec::new();
+        raw.extend_from_slice(b"RIFF");
+        let payload_len = (4 + vp8l.len() + exif.len()) as u32;
+        raw.extend_from_slice(&payload_len.to_le_bytes());
+        raw.extend_from_slice(b"WEBP");
+        raw.extend_from_slice(&vp8l);
+        raw.extend_from_slice(&exif);
+        let out = strip_png_wrapper(&raw);
+        assert_eq!(out, ts);
+        assert_eq!(out.first(), Some(&0x47));
+    }
+
+    #[test]
+    fn strip_png_unwraps_tiktok_pixel_gzip() {
+        let ts = {
+            let mut v = vec![0x47u8];
+            v.extend(std::iter::repeat_n(0u8, 187));
+            v.push(0x47);
+            v
+        };
+        let gz = {
+            use flate2::write::GzEncoder;
+            use flate2::Compression;
+            use std::io::Write;
+            let mut enc = GzEncoder::new(Vec::new(), Compression::default());
+            enc.write_all(&ts).unwrap();
+            enc.finish().unwrap()
+        };
+        let mut rgb = b"TIKTIKPX".to_vec();
+        rgb.extend_from_slice(&(gz.len() as u32).to_be_bytes());
+        rgb.extend_from_slice(&gz);
+        while rgb.len() % 3 != 0 {
+            rgb.push(0);
+        }
+        let width = (rgb.len() / 3) as u32;
+        let mut ihdr = Vec::new();
+        ihdr.extend_from_slice(&width.to_be_bytes());
+        ihdr.extend_from_slice(&1u32.to_be_bytes());
+        ihdr.extend_from_slice(&[8, 2, 0, 0, 0]);
+        let mut scan = vec![0u8];
+        scan.extend_from_slice(&rgb);
+        let idat = {
+            use flate2::write::ZlibEncoder;
+            use flate2::Compression;
+            use std::io::Write;
+            let mut enc = ZlibEncoder::new(Vec::new(), Compression::default());
+            enc.write_all(&scan).unwrap();
+            enc.finish().unwrap()
+        };
+        let mut png = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        let chunk = |typ: &[u8], data: &[u8]| {
+            let mut c = Vec::new();
+            c.extend_from_slice(&(data.len() as u32).to_be_bytes());
+            c.extend_from_slice(typ);
+            c.extend_from_slice(data);
+            c.extend_from_slice(&[0, 0, 0, 0]);
+            c
+        };
+        png.extend(chunk(b"IHDR", &ihdr));
+        png.extend(chunk(b"IDAT", &idat));
+        png.extend(chunk(b"IEND", b""));
+        let out = strip_png_wrapper(&png);
+        assert_eq!(out, ts);
     }
 
     #[test]

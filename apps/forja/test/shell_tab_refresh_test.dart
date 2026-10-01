@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 class _StaleProbe extends StatefulWidget {
   const _StaleProbe();
@@ -58,7 +58,7 @@ void main() {
     expect(ShellTokens.maxMountedTabsTv, 3);
     expect(ShellTokens.maxMountedTabs, greaterThanOrEqualTo(3));
     expect(ShellTokens.tabStaleDefault.inMinutes, 15);
-    expect(ShellTokens.tabStaleIptv.inMinutes, 10);
+    expect(ShellTokens.tabStaleLive.inMinutes, 10);
   });
 
   testWidgets('ShellTabRefresh shellBlocksEviction defaults false', (tester) async {
@@ -82,4 +82,24 @@ void main() {
     state.onShellTabShown();
     expect(state.shellTabVisible, isTrue);
   });
+
+  testWidgets(
+    'markShellTabStale forces refreshIfStale after hide (pack-reload deferral)',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: _StaleProbe()));
+      final state = tester.state<_StaleProbeState>(find.byType(_StaleProbe));
+
+      await state.refreshIfStale();
+      expect(state.refreshCount, 1);
+
+      state.onShellTabHidden();
+      // Pack reload while off-screen: stale only — no refresh until shown.
+      state.markShellTabStale();
+      expect(state.refreshCount, 1);
+
+      state.onShellTabShown();
+      await state.refreshIfStale();
+      expect(state.refreshCount, 2);
+    },
+  );
 }

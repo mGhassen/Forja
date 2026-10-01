@@ -66,7 +66,7 @@ This is the parent issue for “did we forget something or break playback like W
 | Magnet playback | libtorrent → librqbit | librqbit only | **Intentional engine swap** (P2-21); playback path needs smoke |
 | IPTV probe / M3U | Partial Rust | More Rust FFI | **Unverified** |
 
-Catalog verticals (`anime`, `manga`, `arabic`, etc.) are rename-only (`forja_api` → `api`) — tracked separately in [021](021-[draft]-catalog-vertical-import-smoke-unverified.md).
+Catalog verticals (`anime`, `manga`, `arabic`, etc.) are rename-only (`forja_api` → `api`) — tracked separately in [021](canceled/021-[canceled]-catalog-vertical-import-smoke-unverified.md).
 
 ## Root cause (why this issue exists)
 
@@ -118,7 +118,7 @@ cd packages/rust && flutter test test/parity/
 |---|-------|
 | [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md) | Live test bypasses `EngineJobs` app path |
 | [020](020-[draft]-cancel-gen-token-discard-unverified.md) | Gen-token may discard valid results |
-| [021](021-[draft]-catalog-vertical-import-smoke-unverified.md) | 14 verticals rename-only, no smoke |
+| [021](canceled/021-[canceled]-catalog-vertical-import-smoke-unverified.md) | 14 verticals rename-only, no smoke |
 | [022](022-[draft]-playback-widget-integration-tests.md) | No widget tests with mocked slow FFI |
 | [002](fixed/002-[fixed]-torrent-disk-cache-not-cleaned.md) | Torrent disk cache (pre-existing, not parity) |
 

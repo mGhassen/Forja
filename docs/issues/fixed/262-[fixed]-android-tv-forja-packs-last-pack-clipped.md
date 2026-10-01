@@ -41,4 +41,4 @@ On **Android TV**, **Settings → Forja Packs** stopped one pack short: the last
 
 **Root fix:** Bottom inset in ensureVisible (token-aligned scroll slack) + focusable pending pack headers.
 
-**Related:** [forja-packs](../features/settings/forja-packs.md) · [127](127-[open]-android-tv-settings-detail-dpad.md)
+**Related:** [forja-packs](../features/settings/forja-packs.md) · [127](127-[fixed]-android-tv-settings-detail-dpad.md)

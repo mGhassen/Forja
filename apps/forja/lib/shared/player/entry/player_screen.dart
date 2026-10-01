@@ -3,22 +3,30 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
+import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/entry/external_player_handoff_screen.dart';
-import 'package:forja/shared/player/screens/exo_player_screen.dart';
-import 'package:forja/shared/player/screens/mobile_player_screen.dart';
-import 'package:forja/shared/player/screens/tv_player_screen.dart';
-import 'package:forja/shared/player/screens/desktop_player_screen.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
+import 'package:forja/shared/player/screens/exo/exo_player_screen.dart';
+import 'package:forja/shared/player/screens/mobile/mobile_player_screen.dart';
+import 'package:forja/shared/player/screens/tv/tv_player_screen.dart';
+import 'package:forja/shared/player/screens/desktop/desktop_player_screen.dart';
+import 'package:forja/shared/player/screens/desktop/desktop_native_player_screen.dart';
+import 'package:forja/shared/player/avplayer/av_player_bridge.dart';
+import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
+
 import 'package:forja/shared/platform/platform_info.dart';
-import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
+import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
-
+import 'package:forja/shell/desktop/desktop_window_geometry.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_theme.dart';
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
   final String? audioUrl;
@@ -57,7 +65,7 @@ class PlayerScreen extends StatefulWidget {
   /// watch history should be persisted (lifecycle pause, periodic tick,
   /// player exit). Used by anime / arabic flows that own their own
   /// per-source history store and don't go through `WatchHistoryService`.
-  final Future<void> Function(Duration position, Duration duration)?
+  final Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})?
   onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)?
   onSourcePinned;
@@ -175,6 +183,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
       engine = BuiltInPlayerEngine.exoPlayer;
     }
 
+    // Desktop catalog: AVPlayer is macOS-only; VLC needs a system install.
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      if (engine == BuiltInPlayerEngine.avPlayer &&
+          !AvPlayerBridge.isSupported) {
+        engine = BuiltInPlayerEngine.mediaKit;
+      }
+      if (engine == BuiltInPlayerEngine.vlc &&
+          !await VlcPlayerBridge.isAvailable()) {
+        engine = BuiltInPlayerEngine.mediaKit;
+      }
+    }
+
     if (!mounted) return;
 
     setState(() {
@@ -197,6 +217,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     ShellBus.leavePlayerSurface();
+    DesktopWindowGeometry.abandonPlayerSession();
     site111477_proxy.retainForExternalHandoff = false;
     TorrentStreamService().retainForExternalHandoff = false;
     if (site111477_proxy.is111477ProxyRunning) {
@@ -328,6 +349,35 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (builtInEngine == null) return;
     if (builtInEngine == _builtInEngine && !_useExternalPlayer) return;
 
+    if (builtInEngine == BuiltInPlayerEngine.vlc &&
+        !await VlcPlayerBridge.isAvailable()) {
+      if (mounted) {
+        ForjaToast.info('VLC (libVLC) is not installed');
+      }
+      return;
+    }
+    if (builtInEngine == BuiltInPlayerEngine.avPlayer &&
+        !AvPlayerBridge.isSupported) {
+      if (mounted) ForjaToast.info('AVPlayer is macOS-only');
+      return;
+    }
+
+    final unfit = builtInPlayerEngineUnsuitableReason(
+      builtInEngine,
+      surface: BuiltInPlayerMenuSurface.catalogVod,
+      streamUrl: streamUrl ?? _sessionStreamUrl,
+      torrentLocalhost: isLocalTorrentStreamUrl(
+        streamUrl ?? _sessionStreamUrl,
+      ),
+      needsWidevine: _sessionNeedsWidevine(),
+      separateAudioUrl:
+          widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
+    );
+    if (unfit != null) {
+      if (mounted) ForjaToast.info(unfit);
+      return;
+    }
+
     await SettingsService().setBuiltInPlayerEngine(
       builtInEngine,
       context: BuiltInPlayerContext.vod,
@@ -425,6 +475,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         playerName: _externalPlayerName,
         launched: _externalLaunched,
         builtInEngine: _builtInEngine,
+        streamUrl: _externalStreamUrl ?? _sessionStreamUrl,
+        torrentLocalhost: isLocalTorrentStreamUrl(
+          _externalStreamUrl ?? _sessionStreamUrl,
+        ),
+        needsWidevine: _sessionNeedsWidevine(),
+        separateAudioUrl:
+            widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
         onRelaunch: _launchExternal,
         onSwitchBuiltIn: () async {
           site111477_proxy.retainForExternalHandoff = false;
@@ -624,6 +681,33 @@ class _PlayerScreenState extends State<PlayerScreen> {
         providerSourcesCache: widget.providerSourcesCache,
         providerProbesNotifier: widget.providerProbesNotifier,
         builtInEngine: _builtInEngine,
+        onSwitchPlayer: _switchPlayer,
+      );
+    } else if (_builtInEngine == BuiltInPlayerEngine.avPlayer ||
+        _builtInEngine == BuiltInPlayerEngine.vlc) {
+      return DesktopNativePlayerScreen(
+        key: ValueKey(
+          'native_${_builtInEngine.name}_${_sessionActiveProvider}_${_sessionStreamUrl.hashCode}',
+        ),
+        mediaPath: _sessionStreamUrl,
+        title: widget.title,
+        builtInEngine: _builtInEngine,
+        headers: _sessionHeaders,
+        movie: widget.movie,
+        selectedSeason: widget.selectedSeason,
+        selectedEpisode: widget.selectedEpisode,
+        activeProvider: _sessionActiveProvider,
+        startPosition: _effectiveStartPosition,
+        sources: _sessionSources,
+        onNextEpisode: widget.onNextEpisode,
+        hasNextEpisode: widget.hasNextEpisode,
+        episodes: widget.episodes,
+        hubEpisodeNumber: widget.hubEpisodeNumber,
+        onHubEpisodeSelected: widget.onHubEpisodeSelected,
+        episodeOverview: widget.episodeOverview,
+        enginePlaySession: widget.enginePlaySession,
+        onSaveProgress: widget.onSaveProgress,
+        onPlaybackStarted: widget.onPlaybackStarted,
         onSwitchPlayer: _switchPlayer,
       );
     } else {

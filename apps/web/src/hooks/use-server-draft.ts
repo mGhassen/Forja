@@ -3,9 +3,9 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 /**
  * Local editable draft hydrated from a server row.
  *
- * Hydrates only when `profileId` or `updatedAt` changes — never on every
- * render / loading flicker. That prevents toggles and fields from snapping
- * back while the user is editing.
+ * Hydrates when `profileId`, `updatedAt`, or the `serverValue` reference /
+ * JSON content changes (fresh fetch). Skips same-key + same content so parent
+ * re-renders do not wipe mid-edit toggles.
  *
  * [hydratePaused] skips soft-pull remounts while a local commit is in flight.
  */
@@ -24,9 +24,13 @@ export function useServerDraft<T>(
   mapRef.current = mapServer
   emptyRef.current = makeEmpty
   const hydratedKeyRef = useRef<string | null>(null)
+  const appliedServerRef = useRef<unknown>(undefined)
+  const appliedContentRef = useRef<string | null>(null)
 
   useEffect(() => {
     hydratedKeyRef.current = null
+    appliedServerRef.current = undefined
+    appliedContentRef.current = null
     setDraft(emptyRef.current())
   }, [profileId])
 
@@ -34,8 +38,22 @@ export function useServerDraft<T>(
     if (!profileId || !isReady) return
     if (hydratePaused) return
     const key = `${profileId}:${updatedAt ?? 'null'}`
-    if (hydratedKeyRef.current === key) return
+    let content: string
+    try {
+      content = JSON.stringify(serverValue ?? null)
+    } catch {
+      content = String(serverValue)
+    }
+    if (
+      hydratedKeyRef.current === key &&
+      (Object.is(appliedServerRef.current, serverValue) ||
+        appliedContentRef.current === content)
+    ) {
+      return
+    }
     hydratedKeyRef.current = key
+    appliedServerRef.current = serverValue
+    appliedContentRef.current = content
     setDraft(mapRef.current(serverValue))
   }, [profileId, isReady, updatedAt, serverValue, hydratePaused])
 

@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
-import 'package:forja/features/settings/settings_screen.dart';
-import 'package:forja/shared/foundation/lib/forja_host_assets.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja/features/settings/shell/screen.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
 
 export 'package:forja/shell/nav/nav_destination.dart';
 
-/// Tab ids under [features/archive/] — stripped from shell, Features settings,
-/// and saved nav configs. Re-register in [coreNavDestinations] to restore.
+/// Tab ids vaulted under [apps/archive/] — stripped from shell, Features settings,
+/// and saved nav configs. Restore from that vault to bring a tab back.
 const Set<String> archivedNavIds = {
   'search',
   'discover',
@@ -27,16 +25,9 @@ const Set<String> archivedNavIds = {
 @Deprecated('Use archivedNavIds')
 const Set<String> temporarilyHiddenNavIds = archivedNavIds;
 
-/// In-scope app-owned shell destinations.
-/// IPTV keeps a host bitmap; hub packs (incl. Live Sports) ship PNGs via `nav`.
+/// In-scope app-owned shell destinations (settings only).
+/// IPTV / hubs come from pack `nav` via [PluginNavRegistry].
 const Map<String, NavDestination> coreNavDestinations = {
-  'iptv': NavDestination(
-    id: 'iptv',
-    icon: Icons.live_tv_outlined,
-    activeIcon: Icons.live_tv,
-    label: 'IPTV',
-    iconAsset: ForjaHostAssets.flutterNavIptv,
-  ),
   'settings': NavDestination(
     id: 'settings',
     icon: Icons.settings_outlined,
@@ -55,7 +46,7 @@ Map<String, NavDestination> get navDestinations => {
 };
 
 /// Resolve a rail id to a destination, including ForjaHQ slot→`nav.tabId`
-/// aliases (`my_list` → My List pack destination).
+/// aliases (folder slot → author `nav.tabId` destination).
 NavDestination? navDestinationFor(String id) {
   if (archivedNavIds.contains(id)) return null;
   final core = coreNavDestinations[id];
@@ -64,7 +55,6 @@ NavDestination? navDestinationFor(String id) {
 }
 
 const Map<String, Color> coreNavDestinationAccentColors = {
-  'iptv': Color(0xFF22D3EE),
   'settings': Color(0xFF94A3B8),
 };
 
@@ -75,7 +65,6 @@ Map<String, Color> get navDestinationAccentColors => {
 
 /// Lazy tab factories — widgets are created on first visit only.
 final Map<String, TabBuilder> coreNavTabBuilders = {
-  'iptv': IptvPtScreen.new,
   'settings': SettingsScreen.new,
 };
 

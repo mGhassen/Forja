@@ -1,9 +1,16 @@
+import 'package:forja/shared/engine/details/poster_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/components/posters/movie_poster_card.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
 import 'package:rust/rust.dart';
 
 Widget _wrapProfile({
@@ -42,7 +49,7 @@ void main() {
         child: Builder(
           builder: (context) {
             expect(shellUsesWideLayout(context), isTrue);
-            expect(shellMovieCardWidth(context), 90);
+            expect(shellPosterCardWidth(context), ShellTokens.posterCardWidthTv);
             return const SizedBox.shrink();
           },
         ),

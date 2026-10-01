@@ -1,14 +1,21 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
-
+import 'package:forja/shared/playback/loading_overlay.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shell/focus/forja_interactive.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/forja_theme.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 /// Handoff screen while playback runs in an external app.
 class ExternalPlayerHandoffScreen extends StatefulWidget {
   const ExternalPlayerHandoffScreen({
@@ -20,6 +27,10 @@ class ExternalPlayerHandoffScreen extends StatefulWidget {
     required this.onRelaunch,
     required this.onSwitchBuiltIn,
     required this.onSelectPlayer,
+    this.streamUrl = '',
+    this.torrentLocalhost = false,
+    this.needsWidevine = false,
+    this.separateAudioUrl = false,
   });
 
   final String title;
@@ -29,6 +40,10 @@ class ExternalPlayerHandoffScreen extends StatefulWidget {
   final VoidCallback onRelaunch;
   final VoidCallback onSwitchBuiltIn;
   final PlayerMenuSelectHandler onSelectPlayer;
+  final String streamUrl;
+  final bool torrentLocalhost;
+  final bool needsWidevine;
+  final bool separateAudioUrl;
 
   @override
   State<ExternalPlayerHandoffScreen> createState() =>
@@ -111,6 +126,10 @@ class _ExternalPlayerHandoffScreenState
                                 key: const ValueKey('picker'),
                                 playerName: widget.playerName,
                                 builtInEngine: widget.builtInEngine,
+                                streamUrl: widget.streamUrl,
+                                torrentLocalhost: widget.torrentLocalhost,
+                                needsWidevine: widget.needsWidevine,
+                                separateAudioUrl: widget.separateAudioUrl,
                                 onSelectPlayer: widget.onSelectPlayer,
                                 onCancel: () =>
                                     setState(() => _pickingPlayer = false),
@@ -278,12 +297,20 @@ class _PlayerPickerBody extends StatelessWidget {
     required this.builtInEngine,
     required this.onSelectPlayer,
     required this.onCancel,
+    this.streamUrl = '',
+    this.torrentLocalhost = false,
+    this.needsWidevine = false,
+    this.separateAudioUrl = false,
   });
 
   final String playerName;
   final BuiltInPlayerEngine builtInEngine;
   final PlayerMenuSelectHandler onSelectPlayer;
   final VoidCallback onCancel;
+  final String streamUrl;
+  final bool torrentLocalhost;
+  final bool needsWidevine;
+  final bool separateAudioUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -310,9 +337,13 @@ class _PlayerPickerBody extends StatelessWidget {
               // Order 0: ↑ from first list row lands here (exit).
               FocusTraversalOrder(
                 order: const NumericFocusOrder(0),
-                child: ForjaCloseButton.compact(
+                child: Button(
+                  variant: ButtonVariant.plainIcon,
+                  size: ButtonSize.icon,
+                  icon: Icons.close_rounded,
+                  compact: true,
                   color: ForjaShellColors.textSecondary,
-                  onTap: onCancel,
+                  onPressed: onCancel,
                 ),
               ),
             ],
@@ -326,6 +357,11 @@ class _PlayerPickerBody extends StatelessWidget {
             builtInEngine: builtInEngine,
             externalPlayerName: playerName,
             physics: const NeverScrollableScrollPhysics(),
+            surface: BuiltInPlayerMenuSurface.catalogVod,
+            streamUrl: streamUrl,
+            torrentLocalhost: torrentLocalhost,
+            needsWidevine: needsWidevine,
+            separateAudioUrl: separateAudioUrl,
             onSelect: ({builtInEngine, externalPlayer}) async {
               onCancel();
               await onSelectPlayer(
@@ -454,7 +490,10 @@ class _HandoffActionRow extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                size: 20,
+                size: ShellPaintScope.iconOf(
+                  context,
+                  ShellTokens.playerChromeIconSize,
+                ),
                 color: highlight
                     ? ForjaShellColors.iconHover
                     : ForjaShellColors.iconActive,
@@ -473,7 +512,10 @@ class _HandoffActionRow extends StatelessWidget {
               if (showChevron)
                 Icon(
                   Icons.chevron_right_rounded,
-                  size: 20,
+                  size: ShellPaintScope.iconOf(
+                    context,
+                    ShellTokens.playerChromeIconSize,
+                  ),
                   color: highlight
                       ? ForjaShellColors.iconHover
                       : ForjaShellColors.iconMuted,

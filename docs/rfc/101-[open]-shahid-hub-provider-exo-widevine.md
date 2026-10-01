@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **4 / 4** components · **6 / 6** A · **4 / 4** B · **5 / 6** C · **3 / 3** D · **2 / 2** E |
-| **Current slice** | Catalog API retarget (top-ranking + search); Connected Services auth via [RFC-102](102-[open]-pack-connected-services-auth.md); manual DRM QA — [issue 258](../issues/258-[open]-shahid-android-drm-manual-qa.md) |
+| **Current slice** | Catalog API retarget (top-ranking + search); Connected Services auth via [RFC-102](fixed/102-[fixed]-pack-connected-services-auth.md); manual DRM QA — [issue 258](../issues/258-[open]-shahid-android-drm-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,7 +22,7 @@
 | 1 | R101-C01 | Generic stream `drm` contract + Android Exo Media3 Widevine / SmoothStreaming | ✅ |
 | 2 | R101-C02 | Pack settings `password`/`secret` → Keychain + inject into `runPlugin` config | ✅ |
 | 3 | R101-C03 | Shahid hub + provider packs + official onboarding | ✅ |
-| 4 | R101-C04 | Shahid login via pack Connected Services auth ([RFC-102](102-[open]-pack-connected-services-auth.md)) | ✅ |
+| 4 | R101-C04 | Shahid login via pack Connected Services auth ([RFC-102](fixed/102-[fixed]-pack-connected-services-auth.md)) | ✅ |
 
 ---
 
@@ -93,7 +93,7 @@ Generic host pieces (stream `drm` field, pack secrets) stay pack-agnostic so oth
 1. Browse Shahid catalog in Forja (kit hub).
 2. Play free/clear streams on Exo and MediaKit.
 3. Play DRM titles on Android Exo with official license URL.
-4. Store Shahid session in Keychain via pack Connected Services auth ([RFC-102](102-[open]-pack-connected-services-auth.md)).
+4. Store Shahid session in Keychain via pack Connected Services auth ([RFC-102](fixed/102-[fixed]-pack-connected-services-auth.md)).
 
 ## Out of scope
 

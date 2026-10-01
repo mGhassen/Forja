@@ -8,13 +8,11 @@ bool isInProgressResume(int position, int duration) {
   return progress >= 0.02 && progress < watchFinishedThreshold;
 }
 
-/// Continue Watching row — show once the player would persist (~10s), not only
-/// after 2% of a long runtime (45m episode ≈ 54s at 2%).
+/// Continue Watching row — same 2–85% window as [isInProgressResume].
 bool isContinueWatchingRowEntry(int position, int duration) {
   if (duration <= 0 || position <= 0) return false;
   if (isWatchFinished(position, duration)) return false;
-  if (isInProgressResume(position, duration)) return true;
-  return position > 10000;
+  return isInProgressResume(position, duration);
 }
 
 /// Resume from saved progress when CW would list the title (matches save gate).
@@ -84,6 +82,21 @@ Map<String, dynamic>? latestInProgressForShow(
     final pos = watchHistoryInt(item['position']);
     final dur = watchHistoryInt(item['duration']);
     if (!isContinueWatchingRowEntry(pos, dur)) continue;
+    final ts = watchHistoryInt(item['updatedAt']);
+    final bestTs = best == null ? -1 : watchHistoryInt(best['updatedAt'], -1);
+    if (ts > bestTs) best = item;
+  }
+  return best;
+}
+
+/// Latest history row for a show (any progress, including finished) by [updatedAt].
+Map<String, dynamic>? latestHistoryForShow(
+  int tmdbId,
+  List<Map<String, dynamic>> history,
+) {
+  Map<String, dynamic>? best;
+  for (final item in history) {
+    if (watchHistoryInt(item['tmdbId'], -1) != tmdbId) continue;
     final ts = watchHistoryInt(item['updatedAt']);
     final bestTs = best == null ? -1 : watchHistoryInt(best['updatedAt'], -1);
     if (ts > bestTs) best = item;

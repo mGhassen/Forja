@@ -1,7 +1,7 @@
 //! Process-wide provider runtime overlay (RFC-039).
 //!
 //! Dart fetches Supabase JSON, merges builtins, then pushes here via FFI so
-//! `stream::build_*_url` and anime extractors can retarget hosts without a rebuild.
+//! `stream::build_*_url` can retarget hosts without a rebuild.
 
 use std::sync::RwLock;
 
@@ -71,23 +71,6 @@ pub fn anime_string(path: &str) -> Option<String> {
         v.pointer(&format!("/anime/{path}"))
             .and_then(|x| x.as_str())
             .map(|s| s.to_string())
-    })
-    .flatten()
-}
-
-pub fn miruro_origins() -> Option<Vec<String>> {
-    with_overlay(|v| {
-        let arr = v.pointer("/anime/miruroOrigins")?.as_array()?;
-        let out: Vec<String> = arr
-            .iter()
-            .filter_map(|x| x.as_str().map(|s| s.to_string()))
-            .filter(|s| s.starts_with("http"))
-            .collect();
-        if out.is_empty() {
-            None
-        } else {
-            Some(out)
-        }
     })
     .flatten()
 }

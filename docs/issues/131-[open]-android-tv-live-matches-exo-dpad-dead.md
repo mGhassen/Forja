@@ -47,7 +47,7 @@ On **Android TV**, after Live Matches hands a Streamed/PPV stream to the native 
 
 ## Related
 
-- [104](104-[open]-android-tv-live-matches-embed-dpad.md) — embed WebView D-pad chrome
+- [104](canceled/104-[canceled]-android-tv-live-matches-embed-dpad.md) — embed WebView D-pad chrome
 - [110](110-[open]-android-tv-iptv-player-top-bar-dpad.md) — top-bar explicit edges
 - [122](122-[open]-android-tv-iptv-player-lost-dpad.md) — IPTV player D-pad parity
 - [130](130-[open]-android-tv-player-dpad-stuck-on-play.md) — focused-node `focusInDirection`

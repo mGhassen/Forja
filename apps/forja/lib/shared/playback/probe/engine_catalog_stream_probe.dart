@@ -7,16 +7,7 @@ import 'package:rust/rust.dart';
 List<Map<String, dynamic>> sortEngineMetaStreamRows(
   List<Map<String, dynamic>> rows,
 ) {
-  final copy = List<Map<String, dynamic>>.from(rows);
-  copy.sort((a, b) {
-    final aUrl = a['url']?.toString() ?? '';
-    final bUrl = b['url']?.toString() ?? '';
-    final aBox = isMovieBoxCdnStreamUrl(aUrl);
-    final bBox = isMovieBoxCdnStreamUrl(bUrl);
-    if (aBox != bBox) return aBox ? 1 : -1;
-    return 0;
-  });
-  return copy;
+  return List<Map<String, dynamic>>.from(rows);
 }
 
 /// Classify → proxy → HTTP probe (Sources panel hover / engine auto check-all).
@@ -31,8 +22,6 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
   Map<String, dynamic>? preferFirst,
   ValueNotifier<String>? messageNotifier,
 }) async {
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
   var ordered = sortEngineMetaStreamRows(rows);
   if (preferFirst != null) {
     final preferUrl = preferFirst['url']?.toString();
@@ -48,8 +37,6 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     final check = classifyStremioStream(
       row,
       profile,
-      useDebrid: useDebrid,
-      debridService: debridService,
     );
     if (check is! StremioPlayable) continue;
     if (streamDrmBlockedOffAndroid(row['drm'])) continue;
@@ -60,8 +47,6 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     final check = classifyStremioStream(
       row,
       profile,
-      useDebrid: useDebrid,
-      debridService: debridService,
     );
     if (check is! StremioPlayable) continue;
     // Widevine only on Android Exo (RFC-101) — skip before HTTP probe.
@@ -83,16 +68,14 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     final url = proxied.url;
     final resolvedCatalogUrl = row['url']?.toString() ?? url;
     final drm = StreamDrmConfig.tryParse(row['drm']);
-    final pluginId = row['_enginePluginId']?.toString() ?? '';
-    final type = urlLooksLikeHls(url)
-        ? 'hls'
-        : (pluginId == 'movieblast' ? 'mkv' : 'mp4');
+    final declared = row['type']?.toString().trim();
+    final type = (declared != null && declared.isNotEmpty)
+        ? declared
+        : (urlLooksLikeHls(url) ? 'hls' : 'mp4');
     sources.add(
       normalizeStreamSourcePlayUrl(
         StreamSource(
           url: url,
-          // Prefer plugin · server identity over media card title — player
-          // chrome / Source button need the mirror name (VidRock · Astra).
           title: (row['_addonName'] ?? row['name'] ?? row['title'] ?? 'Forja')
               .toString(),
           type: type,
@@ -100,6 +83,8 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
           providerId: catalogHttpPlayProviderId(row),
           catalogUrl: resolvedCatalogUrl,
           drm: drm,
+          probe: row['probe']?.toString(),
+          pngStrip: row['pngStrip']?.toString(),
         ),
       ),
     );
@@ -129,14 +114,10 @@ Future<Map<String, dynamic>?> firstEngineCatalogResolveRow({
   required PlaybackProfile profile,
   required SettingsService settings,
 }) async {
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
   for (final row in sortEngineMetaStreamRows(rows)) {
     final check = classifyStremioStream(
       row,
       profile,
-      useDebrid: useDebrid,
-      debridService: debridService,
     );
     if (check is StremioExternalLink || check is StremioResolveFailure) {
       continue;

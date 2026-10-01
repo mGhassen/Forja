@@ -13,6 +13,8 @@ Workspace crates consumed by Flutter via `packages/rust` (FFI, transitional).
 ./scripts/build_rust_mobile.sh all         # both mobile targets
 ```
 
+**macOS CLT note:** Apple’s default `MacOSX27.0.sdk` currently breaks `aws-lc-sys` linking (`ld: unknown architecture arm64e.x1`). `build_rust.sh` / `build_rust_release.sh` auto-select `MacOSX26.5.sdk` via `scripts/lib/macos_rust_sdk.sh`. For raw `cargo` in this shell: `source scripts/lib/macos_rust_sdk.sh`.
+
 Mobile defaults to **full features** (parsers + librqbit + proxy). Legacy parser-only: `RUST_MOBILE_PARSER_ONLY=1`.
 
 iOS librqbit uses a vendored patch for `librqbit-dualstack-sockets` (`crates/third_party/` — see README there). Probe: `./scripts/try_build_mobile_torrent.sh ios`.
@@ -67,4 +69,4 @@ cd apps/forja && flutter test test/engine_smoke_test.dart
 
 ## Crates
 
-Full map: [docs/ARCHITECTURE.md §3.1](../docs/ARCHITECTURE.md). Workspace members include `ffi`, domain crates (`webstreamr`, `resolver-engine`, `torrent`, `proxy`, `lan`, `scrapers`, `iptv`, catalog clients, hub scrapers, `debrid`, `indexer`, `engine`, …) — see `crates/Cargo.toml`.
+Full map: [docs/ARCHITECTURE.md §3.1](../docs/ARCHITECTURE.md). Workspace members include `ffi`, domain crates (`webstreamr`, `resolver-engine`, `torrent`, `proxy`, `lan`, `scrapers`, `iptv`, catalog clients, hub scrapers, `indexer`, `engine`, …) — see `crates/Cargo.toml`.

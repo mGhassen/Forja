@@ -36,9 +36,11 @@ class PlayerTitleMeta extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 18,
+            fontSize: ShellScope.metricsOf(context).usesTvDensity
+                ? ShellTokens.playerChromeHeroTitleFontSizeTv
+                : ShellTokens.playerChromeHeroTitleFontSize,
             fontWeight: FontWeight.w700,
             height: 1.2,
           ),
@@ -51,7 +53,9 @@ class PlayerTitleMeta extends StatelessWidget {
             meta,
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
-              fontSize: 12,
+              fontSize: ShellScope.metricsOf(context).usesTvDensity
+                  ? ShellTokens.playerChromeMetaFontSizeTv
+                  : ShellTokens.playerChromeMetaFontSize,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -97,31 +101,52 @@ class PlayerPausedHero extends StatelessWidget {
             rawOverview.trim().toLowerCase() == episode.trim().toLowerCase())
         ? ''
         : rawOverview;
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final padding = tv
+        ? ShellTokens.playerPausedHeroPaddingTv
+        : ShellTokens.playerPausedHeroPadding;
+    final maxWidth = tv
+        ? ShellTokens.playerPausedHeroMaxWidthTv
+        : ShellTokens.playerPausedHeroMaxWidth;
+    final logoMaxHeight = tv
+        ? ShellTokens.playerPausedHeroLogoMaxHeightTv
+        : ShellTokens.playerPausedHeroLogoMaxHeight;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+      padding: padding,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
+        constraints: BoxConstraints(maxWidth: maxWidth),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             HeroTitle(
-              movie: movie,
-              logoUrl: movie.logoPath.isNotEmpty
-                  ? TmdbApi.getImageUrl(movie.logoPath)
-                  : null,
+              title: movie.title,
+              logoUrl: tmdbLogoImageUrlFromPath(movie.logoPath),
               style: HeroTitleStyle.details,
+              logoMaxHeight: logoMaxHeight,
+              tvDensity: tv,
+              plainTitle:
+                  ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+              selectable: shellDesktopTextSelect(context),
             ),
             const SizedBox(height: 10),
-            HeroMetaLine(movie: movie, style: HeroMetaStyle.details),
+            MetaLine(
+              releaseDate: movie.releaseDate,
+              mediaType: movie.mediaType,
+              runtimeMinutes: movie.runtime,
+              voteAverage: movie.voteAverage,
+              genres: movie.genres,
+            ),
             if (episode != null) ...[
               const SizedBox(height: 6),
               Text(
                 episode,
                 style: TextStyle(
                   color: ForjaShellColors.cinematic.textSecondary,
-                  fontSize: 13,
+                  fontSize: tv
+                      ? ShellTokens.playerChromeMetaFontSizeTv
+                      : ShellTokens.playerChromeStatusFontSize,
                 ),
               ),
             ],
@@ -129,9 +154,11 @@ class PlayerPausedHero extends StatelessWidget {
               const SizedBox(height: 10),
               HeroOverviewText(
                 overview: overview,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 13,
+                  fontSize: tv
+                      ? ShellTokens.playerChromeMetaFontSizeTv
+                      : ShellTokens.playerChromeStatusFontSize,
                   height: 1.45,
                 ),
                 maxLines: 3,
@@ -158,11 +185,14 @@ class PlayerTimeRange extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fs = playerChromeScale(context, fontSize);
     return Text(
       '${_fmt(position)} / ${_fmt(duration)}',
       style: TextStyle(
         color: Colors.white.withValues(alpha: 0.9),
-        fontSize: fontSize,
+        fontSize: ShellPaintScope.usesTvDensityOf(context)
+            ? ShellTokens.playerChromeTimeFontSizeTv
+            : fs,
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
@@ -205,9 +235,20 @@ class PlayerCenterActionButton extends StatefulWidget {
 }
 
 class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _pressed = false;
   bool _focused = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
 
   Widget _buildCore({required bool highlight, required bool tvFocused}) {
     final borderColor = tvFocused
@@ -215,6 +256,8 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         : Colors.white.withValues(alpha: highlight ? 0.35 : 0.2);
     final fillAlpha = tvFocused ? 0.16 : (highlight ? 0.22 : 0.14);
     final iconColor = tvFocused ? ForjaShellColors.brandGreen : Colors.white;
+    final size = playerChromeScale(context, widget.size);
+    final iconSize = playerChromeScale(context, widget.iconSize);
     return GestureDetector(
       onTap: widget.onPressed,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -224,8 +267,8 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         scale: _pressed ? 0.9 : (highlight ? 1.06 : 1.0),
         duration: const Duration(milliseconds: 100),
         child: Container(
-          width: widget.size,
-          height: widget.size,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white.withValues(alpha: fillAlpha),
@@ -234,8 +277,8 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
           child: widget.showSpinner
               ? Center(
                   child: SizedBox(
-                    width: widget.iconSize,
-                    height: widget.iconSize,
+                    width: iconSize,
+                    height: iconSize,
                     child: const CircularProgressIndicator(
                       color: Colors.white,
                       strokeWidth: 2.5,
@@ -245,7 +288,7 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
               : Icon(
                   widget.icon,
                   color: iconColor,
-                  size: widget.iconSize,
+                  size: iconSize,
                 ),
         ),
       ),
@@ -262,13 +305,14 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         focused: _focused,
       );
       final tvFocused = playerChromeTvFocused(
+        context,
         tvFocusable: true,
         focused: _focused,
       );
       return FocusableControl(
         focusNode: widget.focusNode,
         onTap: widget.onPressed,
-        borderRadius: widget.size / 2,
+        borderRadius: playerChromeScale(context, widget.size) / 2,
         scaleOnFocus: 1.0,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange: (hovered) {
@@ -278,12 +322,6 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
       );
     }
 
-    final highlight = playerChromeFocusActive(
-      context,
-      tvFocusable: false,
-      hovered: _hovered,
-      focused: false,
-    );
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
@@ -293,18 +331,27 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         final policy =
             ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
         if (!policy.scaleOnHover) return;
-        setState(() => _hovered = true);
+        _setHovered(true);
       },
       onExit: (_) {
         final policy =
             ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
         if (!policy.scaleOnHover) return;
-        setState(() {
-          _hovered = false;
-          _pressed = false;
-        });
+        _setHovered(false);
+        setState(() => _pressed = false);
       },
-      child: _buildCore(highlight: highlight, tvFocused: false),
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final highlight = playerChromeFocusActive(
+            context,
+            tvFocusable: false,
+            hovered: _hoveredN.value,
+            focused: false,
+          );
+          return _buildCore(highlight: highlight, tvFocused: false);
+        },
+      ),
     );
   }
 }
@@ -341,14 +388,20 @@ class PlayerVolumeControl extends StatefulWidget {
 }
 
 class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
-  bool _hovering = false;
+  final ValueNotifier<bool> _hoveringN = ValueNotifier(false);
   bool _sliderPinned = false;
   double? _volumeBeforeMute;
   Timer? _hideSliderTimer;
 
-  bool get _showSlider => _hovering || _sliderPinned;
+  bool _showSliderFor(bool hovering) => hovering || _sliderPinned;
 
-  double get _sliderWidth => widget.compact ? 110.0 : 160.0;
+  void _setHovering(bool hovering) {
+    if (_hoveringN.value == hovering) return;
+    _hoveringN.value = hovering;
+  }
+
+  double get _sliderWidth =>
+      playerChromeScale(context, widget.compact ? 110.0 : 160.0);
 
   IconData _iconFor(double vol) {
     if (vol == 0) return Icons.volume_off_rounded;
@@ -359,6 +412,7 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
   @override
   void dispose() {
     _hideSliderTimer?.cancel();
+    _hoveringN.dispose();
     super.dispose();
   }
 
@@ -399,68 +453,74 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
     return MouseRegion(
       onEnter: (_) {
         playerChromeCancelSeekScrubs();
-        setState(() => _hovering = true);
+        _setHovering(true);
         _hideSliderTimer?.cancel();
       },
       onExit: (_) {
-        setState(() => _hovering = false);
+        _setHovering(false);
         _scheduleHideSlider();
       },
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onLongPress: _toggleSliderPinned,
-            child: PlayerFlatIconButton(
-              icon: _iconFor(widget.volume),
-              tooltip: widget.volume > 0 ? 'Mute' : 'Unmute',
-              size: widget.size,
-              iconSize: widget.iconSize,
-              tvFocusable: widget.tvFocusable,
-              onPressed: _toggleMute,
-            ),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            child: SizedBox(
-              width: _showSlider ? _sliderWidth : 0,
-              child: ClipRect(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      inactiveTrackColor: Colors.white24,
-                      activeTrackColor: Colors.white,
-                      thumbColor: Colors.white,
-                      trackHeight: 3,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 7,
+      child: ListenableBuilder(
+        listenable: _hoveringN,
+        builder: (context, _) {
+          final showSlider = _showSliderFor(_hoveringN.value);
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onLongPress: _toggleSliderPinned,
+                child: PlayerFlatIconButton(
+                  icon: _iconFor(widget.volume),
+                  tooltip: widget.volume > 0 ? 'Mute' : 'Unmute',
+                  size: widget.size,
+                  iconSize: widget.iconSize,
+                  tvFocusable: widget.tvFocusable,
+                  onPressed: _toggleMute,
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                child: SizedBox(
+                  width: showSlider ? _sliderWidth : 0,
+                  child: ClipRect(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          inactiveTrackColor: Colors.white24,
+                          activeTrackColor: Colors.white,
+                          thumbColor: Colors.white,
+                          trackHeight: 3,
+                          thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 7,
+                          ),
+                        ),
+                        child: Slider(
+                          value: widget.volume.clamp(0, widget.maxVolume),
+                          min: 0,
+                          max: widget.maxVolume,
+                          onChangeStart: (_) {
+                            widget.onDragStart?.call();
+                            _hideSliderTimer?.cancel();
+                          },
+                          onChanged: (v) {
+                            _setVolume(v);
+                            _scheduleHideSlider();
+                          },
+                          onChangeEnd: (_) {
+                            widget.onDragEnd?.call();
+                            _scheduleHideSlider();
+                          },
+                        ),
                       ),
-                    ),
-                    child: Slider(
-                      value: widget.volume.clamp(0, widget.maxVolume),
-                      min: 0,
-                      max: widget.maxVolume,
-                      onChangeStart: (_) {
-                        widget.onDragStart?.call();
-                        _hideSliderTimer?.cancel();
-                      },
-                      onChanged: (v) {
-                        _setVolume(v);
-                        _scheduleHideSlider();
-                      },
-                      onChangeEnd: (_) {
-                        widget.onDragEnd?.call();
-                        _scheduleHideSlider();
-                      },
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

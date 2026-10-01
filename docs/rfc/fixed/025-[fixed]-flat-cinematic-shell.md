@@ -4,7 +4,7 @@
 **Version:** v1.0.0  
 **Target version:** [1.0.0 Bab Souika](../backlog/done/1.0.0-[done].md)  
 **Scope (slice 1):** **desktop only** — hover-expand rail, flat shell bg, Home hero layout  
-**Depends on:** [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) (shell structure shipped), [RFC-016](016-[partial]-lazy-tab-mounting.md) (lazy tabs)  
+**Depends on:** [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) (shell structure shipped), [RFC-016](016-[fixed]-lazy-tab-mounting.md) (lazy tabs)  
 **Area:** `apps/forja/lib/shell/`, `apps/forja/lib/features/home/`, `apps/forja/lib/shared/foundation/primitives/`
 
 ## Status at a glance
@@ -109,7 +109,7 @@
 
 Replace the current glassmorphism + ambient-glow shell with a **flat, unified dark canvas**. Desktop nav collapses to icons; hover expands labels **over** the body. Home hero moves from full-bleed bottom overlay to a **left text column + right 2/3 backdrop** with a black left→right gradient for readability.
 
-Visual language is separate from [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) (structural shell extraction — shipped). Tab cache behavior stays in [RFC-024](024-[partial]-tab-cache-eviction-stale.md).
+Visual language is separate from [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) (structural shell extraction — shipped). Tab cache behavior stays in [RFC-024](024-[fixed]-tab-cache-eviction-stale.md).
 
 ## Reference mockups
 
@@ -138,7 +138,7 @@ Visual language is separate from [RFC-023](fixed/023-[fixed]-app-shell-redesign.
 
 - Mobile bottom nav redesign (R25-A13)
 - App-wide blur removal outside shell + Home (R25-A14)
-- Full Home god-file split ([RFC-019](019-[draft]-god-file-decomposition.md)) — optional small `home_hero.dart` extract only
+- Full Home god-file split ([RFC-019](019-[fixed]-god-file-decomposition.md)) — optional small `home_hero.dart` extract only
 - GoRouter / deep-link changes
 - Player overlay ([RFC-003](003-[partial]-player-overlay.md))
 
@@ -223,4 +223,4 @@ R25-A13–A15
 
 ## Related
 
-[RFC-023](fixed/023-[fixed]-app-shell-redesign.md), [RFC-024](024-[partial]-tab-cache-eviction-stale.md), [RFC-016](016-[partial]-lazy-tab-mounting.md), [RFC-019](019-[draft]-god-file-decomposition.md), [1.0.0 backlog](../backlog/done/1.0.0-[done].md)
+[RFC-023](fixed/023-[fixed]-app-shell-redesign.md), [RFC-024](024-[fixed]-tab-cache-eviction-stale.md), [RFC-016](016-[fixed]-lazy-tab-mounting.md), [RFC-019](019-[fixed]-god-file-decomposition.md), [1.0.0 backlog](../backlog/done/1.0.0-[done].md)

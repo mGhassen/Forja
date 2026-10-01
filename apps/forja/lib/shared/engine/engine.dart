@@ -1,9 +1,10 @@
 library;
 
-export 'hub/catalog_extract_context.dart';
-export 'live/live_goat_unlock.dart';
-export 'live/pack_unlock_files.dart';
-export 'live/live_sport_capabilities.dart';
+export 'cache/engine_cache.dart';
+export 'runtime/meta/catalog_extract_context.dart';
+export 'unlock/goat_unlock.dart';
+export 'unlock/pack_unlock_files.dart';
+export 'packs/live_sport_capabilities.dart';
 export 'models/categories.dart';
 export 'models/ids.dart';
 export 'models/lean_apply_result.dart';
@@ -12,6 +13,7 @@ export 'packs/forja_packs_root.dart';
 export 'packs/catalog/official_forjahq_install.dart';
 export 'packs/catalog/official_forjahq_packs.dart';
 export 'packs/catalog/plugin_catalog_remote.dart';
+export 'packs/install/pack_install_failures.dart';
 export 'packs/install/plugin_install_coordinator.dart';
 export 'packs/install/plugin_install_prompt.dart';
 export 'packs/install/plugin_install_prompt_service.dart';
@@ -21,10 +23,10 @@ export 'packs/registry/pack_device_state.dart';
 export 'packs/registry/plugin_contract.dart';
 export 'packs/registry/plugin_registry.dart';
 export 'packs/registry/plugin_script_disk_store.dart';
-export 'runtime/runtime.dart';
-export 'runtime/service.dart';
+export 'runtime/vm/runtime.dart';
+export 'runtime/vm/service.dart';
+export 'store/engine_store.dart';
+export 'vault/engine_vault.dart';
 
-/// Catalog hub wire types — `runCatalog` returns these envelopes. Cache /
-/// runtime / shell live behind `shared/foundation/catalog.dart` so the engine
-/// barrel stays widget-free.
-export '../foundation/protocol/protocol.dart';
+/// Catalog hub wire types — `runCatalog` returns these envelopes.
+export 'package:forja_foundation/protocol/protocol.dart';

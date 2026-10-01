@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
+import 'package:forja/features/settings/addons/catalog.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
-import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
+import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
+import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -106,6 +106,38 @@ void main() {
       expect(spec.fields.single.id, 'x');
     });
 
+    test('allows empty fields when addon bucket is set', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'hub-bucket-only',
+        'name': 'IPTV',
+        'entry': 'i.js',
+        'kind': 'catalog',
+        'settings': {
+          'addon': 'iptv',
+          'order': 10,
+        },
+      });
+      final spec = PackAddonSettingsSpec.fromPlugin(plugin);
+      expect(spec, isNotNull);
+      expect(spec!.addonId, 'iptv');
+      expect(spec.fields, isEmpty);
+      expect(spec.order, 10);
+    });
+
+    test('rejects empty fields without addon bucket', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'hub-empty',
+        'name': 'Empty',
+        'entry': 'e.js',
+        'kind': 'catalog',
+        'settings': {
+          'group': 'Nope',
+          'fields': [],
+        },
+      });
+      expect(PackAddonSettingsSpec.fromPlugin(plugin), isNull);
+    });
+
     test('listForAddon filters enabled plugins by addon id', () {
       final a = EnginePlugin.fromJson({
         'id': 'hub-a',
@@ -154,6 +186,48 @@ void main() {
         addonId: 'torrent',
       );
       expect(list.map((s) => s.pluginId), ['hub-a']);
+    });
+
+    test('packContributedAddonMetas omits plugins from disabled packs', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'live-hub',
+        'name': 'Live Hub',
+        'entry': 'l.js',
+        'kind': 'catalog',
+        'enabled': true,
+        'settings': {
+          'addon': 'live_sports',
+          'fields': [
+            {'id': 'x', 'type': 'toggle', 'label': 'X', 'default': false},
+          ],
+        },
+      });
+      final off = EnginePack.fromJson(
+        {
+          'id': 'pack-off',
+          'name': 'Off',
+          'version': '1.0.0',
+          'enabled': false,
+          'plugins': [plugin.toJson()],
+        },
+        sourceUrl: 'https://example.com/off/manifest.json',
+      );
+      final on = EnginePack.fromJson(
+        {
+          'id': 'pack-on',
+          'name': 'On',
+          'version': '1.0.0',
+          'enabled': true,
+          'plugins': [plugin.toJson()],
+        },
+        sourceUrl: 'https://example.com/on/manifest.json',
+      );
+      expect(
+        packContributedAddonMetas(activePluginsFromPacks([off])),
+        isEmpty,
+      );
+      final metas = packContributedAddonMetas(activePluginsFromPacks([on]));
+      expect(metas.map((m) => m.id).toList(), ['live_sports']);
     });
 
     test('listForPlugins returns specs without host addon filter', () {
@@ -223,13 +297,13 @@ void main() {
         },
       });
       final intoHost = EnginePlugin.fromJson({
-        'id': 'hub-iptv',
-        'name': 'Iptv Extra',
+        'id': 'hub-into-playback',
+        'name': 'Playback Extra',
         'entry': 'i.js',
         'kind': 'catalog',
         'enabled': true,
         'settings': {
-          'addon': 'iptv',
+          'addon': 'playback',
           'fields': [
             {'id': 'z', 'type': 'toggle', 'label': 'Z', 'default': false},
           ],
@@ -239,6 +313,45 @@ void main() {
       expect(metas.length, 1);
       expect(metas.single.id, 'live_sports');
       expect(metas.single.title, 'Live Sports');
+      expect(metas.single.packContributed, isTrue);
+      expect(metas.single.hasToggle, isFalse);
+    });
+
+    test('packContributedAddonMetas titles multi-plugin buckets from addon id',
+        () {
+      final a = EnginePlugin.fromJson({
+        'id': 'svc-a',
+        'name': 'Service A',
+        'entry': 'a.js',
+        'kind': 'debrid',
+        'enabled': true,
+        'settings': {
+          'addon': 'cloud_resolve',
+          'order': 10,
+          'fields': [
+            {'id': 'apiKey', 'type': 'password', 'label': 'API key'},
+          ],
+        },
+      });
+      final b = EnginePlugin.fromJson({
+        'id': 'svc-b',
+        'name': 'Service B',
+        'entry': 'b.js',
+        'kind': 'debrid',
+        'enabled': true,
+        'settings': {
+          'addon': 'cloud_resolve',
+          'order': 20,
+          'fields': [
+            {'id': 'apiKey', 'type': 'password', 'label': 'API key'},
+          ],
+        },
+      });
+      final metas = packContributedAddonMetas([a, b]);
+      expect(metas.length, 1);
+      expect(metas.single.id, 'cloud_resolve');
+      expect(metas.single.title, 'Cloud Resolve');
+      expect(metas.single.subtitle, '2 pack settings');
       expect(metas.single.packContributed, isTrue);
       expect(metas.single.hasToggle, isFalse);
     });
@@ -256,6 +369,35 @@ void main() {
         },
       });
       expect(PackAddonSettingsSpec.fromPlugin(plugin), isNull);
+    });
+
+    test('parses hub_select with hubTypes (options resolved at render)', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'my-list-hub',
+        'name': 'My List',
+        'entry': 'm.js',
+        'kind': 'catalog',
+        'settings': {
+          'addon': 'my_list',
+          'group': 'Open hubs',
+          'fields': [
+            {
+              'id': 'openDefault.drama',
+              'type': 'hub_select',
+              'hubTypes': ['drama'],
+              'listOpenDefault': true,
+              'label': 'Asian Drama',
+              'default': '',
+            },
+          ],
+        },
+      });
+      final spec = PackAddonSettingsSpec.fromPlugin(plugin);
+      expect(spec, isNotNull);
+      expect(spec!.fields.single.type, PackAddonSettingsFieldType.hubSelect);
+      expect(spec.fields.single.hubTypes, ['drama']);
+      expect(spec.fields.single.listOpenDefault, isTrue);
+      expect(spec.fields.single.options, isEmpty);
     });
 
     test('parses multi_select with options and default list', () {

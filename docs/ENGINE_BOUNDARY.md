@@ -49,7 +49,7 @@ Migration is sequenced in **two waves** (playback, then catalog) — scheduling 
 |----|-------|----------|-------------|
 | **C1** | REST/JSON/GraphQL | TMDB, Trakt, Jellyfin | **Engine** — `crates/*` |
 | **C2** | HTML/XML scrape + parse | webstreamr, manga, Knaben | **Engine** — `crates/*` |
-| **C3** | WebView embed sniff | `stream_extractor` (KissKh stream = Rust `kkey` + HTTP; WebView fallback) | **Host** / engine hybrid |
+| **C3** | WebView embed sniff | Embed sniff / host WebView paths (KissKh Episode is pack JS + HTTP) | **Host** |
 | **C4** | JS runtime (non-browser) | Nuvio `flutter_js` | **Host** |
 | **C5** | WASM host | Videasy extractor | **Host** |
 | **C6** | Video/audio decode | ExoPlayer/Media3 (Android default); media_kit (desktop + Android option) | **Host** |

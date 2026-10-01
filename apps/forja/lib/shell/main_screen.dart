@@ -5,28 +5,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/foundation/blocks/shell/kit_shell.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_layout_host.dart';
+import 'package:forja/shell/chrome/plugin_kit_top_bar.dart';
 import 'package:forja/shell/nav/nav_config.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/features/settings/settings_catalog.dart';
+import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/frame/shell_empty_features_screen.dart';
-import 'package:forja/shared/foundation/blocks/shell/kit_top_bar_host.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/platform/shell_find_shortcut.dart';
 import 'package:forja/shell/platform/macos_shell_channel.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/engine/runtime/service.dart';
+
+import 'package:forja/shared/engine/cache/engine_cache.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
+import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -71,21 +81,24 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   final Map<String, Widget> _tabCache = {};
+
   /// Empty until [_loadNavbarConfig] mounts the profile default tab.
   final Set<String> _mountedTabIds = {};
   final List<String> _tabLru = [];
+
   /// Empty until first [getNavbarConfig] — avoids all-tabs → filtered flash.
   List<String> _visibleIds = const [];
   bool _initialNavResolved = false;
+
   /// Drop stale navbar loads when toggles fire faster than async reloads.
   int _navbarLoadGen = 0;
+
   /// When every feature tab is hidden, show [ShellEmptyFeaturesScreen] until
   /// the user opens Settings from the rail or an empty-state CTA.
   bool _emptyFeaturesBodyDismissed = false;
   BuildContext? _shellScopedContext;
 
-  bool get _hasFeatureTabs =>
-      _visibleIds.any((id) => id != 'settings');
+  bool get _hasFeatureTabs => _visibleIds.any((id) => id != 'settings');
 
   bool get _showEmptyFeaturesGate =>
       _initialNavResolved && !_hasFeatureTabs && !_emptyFeaturesBodyDismissed;
@@ -103,26 +116,29 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   String? get _currentTabId =>
       _visibleIds.isEmpty || _selectedIndex >= _visibleIds.length
-          ? null
-          : _visibleIds[_selectedIndex];
+      ? null
+      : _visibleIds[_selectedIndex];
 
   Widget _tabFor(String id) {
+    final builder = navTabBuilders[id];
+    if (builder == null) {
+      // Ghost / mid-refresh — do NOT cache shrink (would blank the hub forever).
+      if (kDebugMode) {
+        debugPrint('[MainScreen] No tab builder for $id — neutral wait');
+      }
+      return Builder(
+        builder: (ctx) => hubNeutralLoadingSkeleton(ctx, tabId: id),
+      );
+    }
     final isNew = !_tabCache.containsKey(id);
     final tab = _tabCache.putIfAbsent(id, () {
-      final builder = navTabBuilders[id];
-      if (builder == null) {
-        // Ghost rail id (stale KV / pack mid-refresh) — never assert-crash.
-        if (kDebugMode) {
-          debugPrint('[MainScreen] No tab builder for $id — empty placeholder');
-        }
-        return const SizedBox.shrink();
-      }
       final key = _keyForTab(id);
       final child = builder();
-      if (child is KitShell) {
+      // PackLayoutHost keyed mount — keyed mount for ShellTabRefresh.
+      if (child is PackLayoutHost) {
         return _tabWithKey(key, child);
       }
-      if (key != null && id == 'iptv') {
+      if (key != null) {
         return KeyedSubtree(key: key, child: child);
       }
       return child;
@@ -133,16 +149,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
     return tab;
   }
 
-  /// Hub [KitShell] must own the tab [GlobalKey] so [ShellTabRefresh] works.
+  /// Hub [PackLayoutHost] must own the tab [GlobalKey] so [ShellTabRefresh] works.
   Widget _tabWithKey(GlobalKey<State<StatefulWidget>>? key, Widget child) {
     if (key == null) return child;
-    if (child is KitShell) {
-      return KitShell(
+    if (child is PackLayoutHost) {
+      return PackLayoutHost(
         key: key,
         pluginId: child.pluginId,
         tabId: child.tabId,
         packSourceUrl: child.packSourceUrl,
-        hostLayout: child.hostLayout,
+        pageAction: child.pageAction,
+        pageParams: child.pageParams,
       );
     }
     return KeyedSubtree(key: key, child: child);
@@ -154,9 +171,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   void _evictTab(String id) {
-    if (id == 'home') return;
     final current = _currentTabId;
     if (current != null && id == current) return;
+    if (_tabBlocksEviction(id)) return;
 
     if (!_mountedTabIds.contains(id)) return;
 
@@ -170,7 +187,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   /// Player-surface purge: keep only the shell tab under the player (the
   /// screen that opened it). Force-evict every other mounted tab — including
-  /// [home] and tabs that normally block LRU — so decode gets max RAM/GPU.
+  /// tabs that normally block LRU — so decode gets max RAM/GPU.
   void _forceEvictSiblingTab(String id) {
     final current = _currentTabId;
     if (current != null && id == current) return;
@@ -219,7 +236,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       final current = _currentTabId;
       String? victim;
       for (final id in _tabLru) {
-        if (id != 'home' && id != current && !_tabBlocksEviction(id)) {
+        if (id != current && !_tabBlocksEviction(id)) {
           victim = id;
           break;
         }
@@ -251,23 +268,20 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellTvFocus.currentNavTabId = _currentTabId;
   }
 
-  void _selectTab(int index) {
+  void _selectTab(int index, {bool fromOverlay = false}) {
     // Match nav-rail taps: dismiss details / hub overlays so the tab is visible
     // (e.g. Who's watching → Account settings via [ShellBus.requestTab]).
+    // A same-tab tap that only closed that overlay must not force-reload the
+    // hub (Home TMDB layout + rails). Re-tap with nothing open still reloads.
+    final dismissedOverlay = fromOverlay || shellOverlayCanPop();
     popShellOverlayUntilRoot();
-    // Cloud Features / profile settings: soft pull on side-nav use so web
-    // changes land (debounced 15s). Local toggles push only — syncFromCloud
-    // flushes dirty nav before applying cloud as SoT (224).
-    if (SyncService.instance.isSignedIn) {
-      unawaited(SyncDomainBridge.instance.syncFromCloud());
-    }
     final previousId = _currentTabId;
     final id = _visibleIds[index];
     final sameTab = previousId == id;
     if (previousId != null && previousId != id) {
       _notifyTabHidden(previousId);
       VerticalFiltersRegistry.onLeaveTab(previousId);
-    } else if (sameTab) {
+    } else if (sameTab && !dismissedOverlay) {
       VerticalFiltersRegistry.onNavRepress(id);
     }
     // Same-tab Home re-select must not dismiss the provider panel.
@@ -283,13 +297,19 @@ class _MainScreenState extends ConsumerState<MainScreen>
     unawaited(ProductAnalytics.screenTab(id));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Cloud pull after the tab paints. Running it on the click frame
+      // stalled the highlight (debounced 15s; 224).
+      if (SyncService.instance.isSignedIn) {
+        unawaited(SyncDomainBridge.instance.syncFromCloud());
+      }
       // Rapid tab switches queue multiple callbacks; only the still-selected
       // tab may run show/refresh (avoids setState/invalidate on a deactivated
       // keep-alive element → Riverpod ancestor lookup / inactive-elements assert).
       if (_currentTabId != id) return;
       _notifyTabShown(id);
       // Re-tap active tab = force reload (hubs / IPTV / …).
-      _refreshTabIfStale(id, force: sameTab);
+      // Closing details / search by tapping the current tab is not a reload.
+      _refreshTabIfStale(id, force: sameTab && !dismissedOverlay);
     });
   }
 
@@ -297,23 +317,25 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
       return false;
     }
-    return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
+    return MediaQuery.sizeOf(context).width >
+        ShellTokens.musicDesktopBreakpoint;
   }
 
   void _applyTabShellChrome(String tabId) {
+    // Overlays / tabs set [ShellBus.hideGlobalNav] themselves; clear on switch.
+    // Music desktop sidebar still needs its own rail hide while that tab is active.
     if (tabId == 'music') {
       ShellBus.hideGlobalNav.value = _musicUsesOwnSidebar(context);
-    } else if (tabId != 'iptv') {
-      ShellBus.hideGlobalNav.value = false;
+      ShellBus.notifyShellChromeChanged();
+      return;
     }
+    ShellBus.clearHideGlobalNav();
     ShellBus.notifyShellChromeChanged();
   }
 
   @override
   void initState() {
     super.initState();
-    ShellBus.selectedWatchProviderId.value = null;
-    ShellBus.homeProviderMenuVisible.value = false;
     WidgetsBinding.instance.addObserver(this);
     ShellBus.stremioSearchNotifier.addListener(_onStremioSearch);
     ShellBus.requestTab.addListener(_onRequestTab);
@@ -325,6 +347,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     MacOsShellChannel.listen(onFind: _onFindShortcut);
     EngineService.changeNotifier.addListener(_onEnginePackChanged);
     SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
+    ShellBus.completeNavbarReloadRevision.addListener(_onCompleteNavbarReload);
 
     unawaited(_refreshHubNavThenLoad());
     _syncCurrentNavTab();
@@ -335,60 +358,155 @@ class _MainScreenState extends ConsumerState<MainScreen>
     unawaited(_refreshHubNavThenLoad());
   }
 
-  Future<void>? _hubNavReloadInFlight;
+  void _onCompleteNavbarReload() {
+    unawaited(_forceCompleteNavbarReload());
+  }
 
-  Future<void> _refreshHubNavThenLoad() async {
-    final existing = _hubNavReloadInFlight;
-    if (existing != null) {
-      await existing;
-      if (!mounted) return;
-      await _loadNavbarConfig();
+  Future<void>? _completeNavbarReloadInFlight;
+
+  /// Hold-nav gesture: remount every hub, re-read Features rail, wipe pack caches.
+  Future<void> _forceCompleteNavbarReload() async {
+    if (_completeNavbarReloadInFlight != null) {
+      await _completeNavbarReloadInFlight;
       return;
     }
     final run = () async {
-      final changed = await PluginNavRegistry.refresh();
+      // Name the toast after the held rail item — not the selected tab.
+      final tabId = ShellBus.takeCompleteNavbarReloadTabId() ?? _currentTabId;
+      final tabName = (tabId != null ? navDestinationFor(tabId)?.label : null)
+          ?.trim();
+      final name = (tabName != null && tabName.isNotEmpty) ? tabName : 'Navbar';
+      ForjaToast.info('Reloading $name…');
+      // Abort in-flight hub catalog / flutter_js forks before wipe + remount so
+      // the new painter's layout is not stuck behind dead Stremio rail work
+      // (blank hub after hold-to-reload).
+      EngineService.instance.cancelCatalog();
+      EngineService.instance.cancelLiveCatalog();
+      for (final hubTabId in PluginNavRegistry.destinations.keys) {
+        final id = PluginNavRegistry.pluginIdForTabSync(hubTabId);
+        if (id != null && id.isNotEmpty) {
+          EngineCache.instance.wipePlugin(id);
+        }
+      }
+      _invalidateHubTabsAfterPackChange(remountBuilders: true);
+      await PluginNavRegistry.refresh();
       if (!mounted) return;
-      // Pack scripts can change without nav shape changes. Hub KitShell is
-      // keep-alive + 15m stale window — mark stale (and remount builders when
-      // nav actually changed) so returning to Home / Anime / … reloads rails.
-      _invalidateHubTabsAfterPackChange(remountBuilders: changed);
-      await _loadNavbarConfig();
+      await _loadNavbarConfig(force: true);
+      if (!mounted) return;
+      _ensureSelectedKitTabMounted(forceRefresh: true);
+      PluginRegistry.bumpHubFeedEpoch(all: true);
+      if (!mounted) return;
+      ForjaToast.success('$name reloaded');
     }();
-    _hubNavReloadInFlight = run;
+    _completeNavbarReloadInFlight = run;
     try {
       await run;
     } finally {
-      if (identical(_hubNavReloadInFlight, run)) {
-        _hubNavReloadInFlight = null;
+      if (identical(_completeNavbarReloadInFlight, run)) {
+        _completeNavbarReloadInFlight = null;
       }
     }
+  }
+
+  Future<void>? _hubNavReloadInFlight;
+  bool _hubNavReloadQueued = false;
+
+  Future<void> _refreshHubNavThenLoad() async {
+    if (_hubNavReloadInFlight != null) {
+      // Bulk Reload notifies per pack — finish current pass, then run again so
+      // later packs still invalidate hub layout (not navbar-only).
+      _hubNavReloadQueued = true;
+      return;
+    }
+    do {
+      _hubNavReloadQueued = false;
+      final run = () async {
+        final changed = await PluginNavRegistry.refresh();
+        if (!mounted) return;
+        // Only remount / hard-refresh hubs when nav shape changed. Lean sync and
+        // unrelated pack notifies used to mark every hub stale → soft return
+        // wiped rails while the hero kept slides. Script/install wipes go through
+        // [PluginRegistry.hubFeedEpoch] → PackLayoutHost.
+        if (changed) {
+          _invalidateHubTabsAfterPackChange(remountBuilders: true);
+        }
+        await _loadNavbarConfig();
+        if (!mounted) return;
+        // Invalidate drops hubs from [_mountedTabIds]; navbar reload may early-return
+        // when ids are unchanged (post-install promote already painted). Without
+        // remounting the selected hub, the rail stays on it but the body is empty
+        // until the user taps the tab again. forceRefresh when we wiped cache.
+        _ensureSelectedKitTabMounted(forceRefresh: changed);
+      }();
+      _hubNavReloadInFlight = run;
+      try {
+        await run;
+      } finally {
+        if (identical(_hubNavReloadInFlight, run)) {
+          _hubNavReloadInFlight = null;
+        }
+      }
+    } while (_hubNavReloadQueued && mounted);
   }
 
   void _invalidateHubTabsAfterPackChange({required bool remountBuilders}) {
     // Contributed hubs only — seed + last refresh; no frozen official-id list.
     final hubIds = PluginNavRegistry.destinations.keys.toSet();
+    final selected = _currentTabId;
     for (final id in hubIds) {
       _refreshStateFor(id)?.markShellTabStale();
       if (!remountBuilders) continue;
       _tabCache.remove(id);
       _mountedTabIds.remove(id);
       _tabLru.remove(id);
-      // Drop GlobalKey so a new KitShell State is created (same key would
+      // Drop GlobalKey so a new PackLayoutHost State is created (same key would
       // reparent and keep the old memoized rails).
       _tabKeys.remove(id);
     }
-    final current = _currentTabId;
-    if (current != null && PluginNavRegistry.isKitTab(current)) {
-      _refreshTabIfStale(current, force: true);
+    // Keep the open hub in [_mountedTabIds] so [ShellBody] never paints
+    // SizedBox.shrink for the selected slot (blank — no loading, no structure)
+    // between this wipe and [_ensureSelectedKitTabMounted].
+    if (selected != null && hubIds.contains(selected)) {
+      _mountedTabIds.add(selected);
+      _touchTab(selected);
     }
+    // Selected hub remount / show notify still runs after [_loadNavbarConfig]
+    // via [_ensureSelectedKitTabMounted] (promote / index must settle first).
   }
 
-  Future<void> _loadNavbarConfig() async {
+  /// Keep the selected hub body mounted after pack-nav invalidate.
+  ///
+  /// [ShellBody] only builds tabs in [_mountedTabIds]. Invalidate clears that
+  /// set; a no-op navbar reload must not leave the rail on an empty slot.
+  /// When [forceRefresh] is true (cache wiped), notify + force-refresh even if
+  /// the selected hub stayed mounted to avoid a blank shrink frame.
+  void _ensureSelectedKitTabMounted({bool forceRefresh = false}) {
+    final current = _currentTabId;
+    if (current == null || !PluginNavRegistry.isKitTab(current)) return;
+    final alreadyMounted = _mountedTabIds.contains(current);
+    if (alreadyMounted && !forceRefresh) return;
+    if (!alreadyMounted) {
+      setState(() {
+        _mountedTabIds.add(current);
+        _touchTab(current);
+      });
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _currentTabId != current) return;
+      _notifyTabShown(current);
+      _refreshTabIfStale(current, force: true);
+    });
+  }
+
+  Future<void> _loadNavbarConfig({bool force = false}) async {
     final gen = ++_navbarLoadGen;
+    await SettingsService().loadShellWritingDirection();
+    if (!mounted || gen != _navbarLoadGen) return;
     var visible = await SettingsService().getNavbarConfig();
     final defaultTab = await SettingsService().getDefaultNavTab();
     if (!mounted || gen != _navbarLoadGen) return;
-    final addonFeatures = await SettingsService().listAvailableAddonFeatureNavIds();
+    final addonFeatures = await SettingsService()
+        .listAvailableAddonFeatureNavIds();
     if (!mounted || gen != _navbarLoadGen) return;
     final addonSet = addonFeatures.toSet();
     final beforeFilter = List<String>.from(visible);
@@ -413,7 +531,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final nextIds = [...visible, 'settings'];
     // Skip no-op reloads — notifier storms were reprinting visible=[] forever.
     // Compare against what we would paint (post-filter), not raw KV.
-    if (_initialNavResolved &&
+    if (!force &&
+        _initialNavResolved &&
         listEquals(_visibleIds, nextIds) &&
         !ShellBus.selectDefaultTabOnNextNavLoad) {
       if (kDebugMode && !listEquals(beforeFilter, visible)) {
@@ -452,10 +571,14 @@ class _MainScreenState extends ConsumerState<MainScreen>
       // builders not ready) before the real Features rail lands. When feature
       // tabs appear while still on Settings, apply the starred default once
       // (same as profile switch) — issue 253.
-      final promoteFromSettingsOnly = !hadFeatureTabs &&
+      // Do not promote when the user already opened Settings (pack remove /
+      // install must not yank Forja Packs → Home / IPTV).
+      final promoteFromSettingsOnly =
+          !hadFeatureTabs &&
           visible.isNotEmpty &&
           currentId == 'settings' &&
-          defaultTab != 'settings';
+          defaultTab != 'settings' &&
+          !_emptyFeaturesBodyDismissed;
       if (!_initialNavResolved || applyDefaultTab || promoteFromSettingsOnly) {
         if (applyDefaultTab) {
           // Fresh tab trees for the incoming profile's settings/portals.
@@ -487,7 +610,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
           // while still on Settings, then preserve Settings forever.
           if (applyDefaultTab) {
             final matched = tabId == defaultTab;
-            final starMissing = defaultTab != 'settings' &&
+            final starMissing =
+                defaultTab != 'settings' &&
                 !visible.contains(defaultTab) &&
                 tabId != 'settings';
             if (matched || defaultTab == 'settings' || starMissing) {
@@ -591,12 +715,13 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   void _onShellLogoTap() {
     if (!mounted) return;
+    final hadOverlay = shellOverlayCanPop();
     popShellOverlayUntilRoot();
     if (!_hasFeatureTabs) {
       _returnToEmptyFeaturesHome();
       return;
     }
-    unawaited(_selectDefaultFeatureTab());
+    unawaited(_selectDefaultFeatureTab(fromOverlay: hadOverlay));
   }
 
   void _returnToEmptyFeaturesHome() {
@@ -610,18 +735,19 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _syncCurrentNavTab();
   }
 
-  Future<void> _selectDefaultFeatureTab() async {
+  Future<void> _selectDefaultFeatureTab({bool fromOverlay = false}) async {
     if (!mounted) return;
     final defaultTab = await SettingsService().getDefaultNavTab();
     if (!mounted) return;
-    final featureIds =
-        _visibleIds.where((id) => id != 'settings').toList(growable: false);
+    final featureIds = _visibleIds
+        .where((id) => id != 'settings')
+        .toList(growable: false);
     var target = defaultTab;
     if (!featureIds.contains(target)) {
       target = featureIds.isNotEmpty ? featureIds.first : 'settings';
     }
     final idx = _visibleIds.indexOf(target);
-    if (idx >= 0) _selectTab(idx);
+    if (idx >= 0) _selectTab(idx, fromOverlay: fromOverlay);
   }
 
   void _openFeaturesFromEmptyState() {
@@ -715,6 +841,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
+    ShellBus.completeNavbarReloadRevision.removeListener(
+      _onCompleteNavbarReload,
+    );
     ShellBus.clearOverlayShellTabId();
     ShellBus.activeShellTabId = null;
     ShellBus.clearHideGlobalNav();
@@ -731,17 +860,19 @@ class _MainScreenState extends ConsumerState<MainScreen>
       builder: (shellContext, profile) {
         _shellScopedContext = shellContext;
         final config = shellPlatformConfigFor(profile);
-        final showKitChromeTopBar = config.showHomeTopBar &&
-            !ShellBus.shellOverlayHasPage.value;
+        final showKitTopBar =
+            config.showKitTopBar && !ShellBus.shellOverlayHasPage.value;
         final Widget? shellTopBar;
-        if (!showKitChromeTopBar) {
+        if (!showKitTopBar) {
           shellTopBar = null;
         } else {
           shellTopBar = switch (_currentTabId) {
             null => null,
             // ValueKey: do not reuse State across hubs (Home caps ≠ Live Sports).
-            final id when PluginNavRegistry.isKitTab(id) =>
-              PluginKitTopBar(key: ValueKey(id), tabId: id),
+            final id when PluginNavRegistry.isKitTab(id) => PluginKitTopBar(
+              key: ValueKey(id),
+              tabId: id,
+            ),
             _ => null,
           };
         }
@@ -753,7 +884,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             visibleIds: _visibleIds,
             selectedIndex: _selectedIndex,
             mountedTabIds: _mountedTabIds,
-            onDestinationSelected: _selectTab,
+            onDestinationSelected: (index) => _selectTab(index),
             tabFor: _shellTabFor,
             shellHeader: _shellHeader(),
             shellTopBar: shellTopBar,

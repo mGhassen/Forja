@@ -2,17 +2,20 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/engine/packs/catalog/official_forjahq_install.dart';
 import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/components/packs/forja_pack_choice_cards.dart';
+import 'package:forja/features/settings/packs/forja_pack_choice_cards.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja_foundation/widgets/feedback/fractal_glass_gradient.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 TextStyle _onboardText({
   required Color color,
   required double size,
@@ -566,7 +569,7 @@ class _OfficialPicker extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        ForjaButton(
+        Button(
           label: selectedCount == 1
               ? 'Install 1 pack'
               : 'Install $selectedCount packs',
@@ -665,20 +668,34 @@ class _OnboardPackRow extends StatelessWidget {
       onChanged(!checked);
     }
 
-    final checkbox = SizedBox(
-      width: 28,
-      height: 28,
-      child: Checkbox(
-        value: checked,
-        onChanged: enabled ? (v) => onChanged(v == true) : null,
-        activeColor: ForjaShellColors.brandGreen,
-        checkColor: const Color(0xFF0B0A0A),
-        side: BorderSide(
-          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
-        ),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
-      ),
+    final checkbox = Builder(
+      builder: (context) {
+        final boxSize = SettingsTokens.checkboxSizeOf(context);
+        final boxScale = boxSize / SettingsTokens.checkboxSize;
+        return SizedBox(
+          width: boxSize,
+          height: boxSize,
+          child: Transform.scale(
+            scale: boxScale,
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: SettingsTokens.checkboxSize,
+              height: SettingsTokens.checkboxSize,
+              child: Checkbox(
+                value: checked,
+                onChanged: enabled ? (v) => onChanged(v == true) : null,
+                activeColor: ForjaShellColors.brandGreen,
+                checkColor: const Color(0xFF0B0A0A),
+                side: BorderSide(
+                  color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+        );
+      },
     );
 
     final row = Padding(

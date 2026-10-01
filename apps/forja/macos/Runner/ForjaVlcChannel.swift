@@ -1,0 +1,546 @@
+import Cocoa
+import FlutterMacOS
+import Darwin
+
+/// Optional libVLC backend (system VLC.app). Texture / NSView via PlatformView.
+final class ForjaVlcPlugin: NSObject, FlutterPlugin {
+  private var sessions: [Int64: VlcSession] = [:]
+  private var eventSink: FlutterEventSink?
+  private var libHandle: UnsafeMutableRawPointer?
+  private var available = false
+
+  // Minimal libVLC symbols we need (fileprivate — used by VlcSession via api).
+  fileprivate typealias LibVlcNew = @convention(c) (Int32, UnsafePointer<UnsafePointer<CChar>?>?) -> OpaquePointer?
+  fileprivate typealias LibVlcRelease = @convention(c) (OpaquePointer?) -> Void
+  fileprivate typealias MediaNew = @convention(c) (OpaquePointer?, UnsafePointer<CChar>?) -> OpaquePointer?
+  fileprivate typealias MediaRelease = @convention(c) (OpaquePointer?) -> Void
+  fileprivate typealias MediaAddOption = @convention(c) (OpaquePointer?, UnsafePointer<CChar>?) -> Void
+  fileprivate typealias PlayerNew = @convention(c) (OpaquePointer?) -> OpaquePointer?
+  fileprivate typealias PlayerRelease = @convention(c) (OpaquePointer?) -> Void
+  fileprivate typealias PlayerSetMedia = @convention(c) (OpaquePointer?, OpaquePointer?) -> Void
+  fileprivate typealias PlayerPlay = @convention(c) (OpaquePointer?) -> Int32
+  fileprivate typealias PlayerStop = @convention(c) (OpaquePointer?) -> Void
+  fileprivate typealias PlayerPause = @convention(c) (OpaquePointer?) -> Void
+  fileprivate typealias PlayerSetPause = @convention(c) (OpaquePointer?, Int32) -> Void
+  fileprivate typealias PlayerSetVolume = @convention(c) (OpaquePointer?, Int32) -> Int32
+  fileprivate typealias PlayerSetNsobject = @convention(c) (OpaquePointer?, UnsafeMutableRawPointer?) -> Void
+  fileprivate typealias PlayerSetTime = @convention(c) (OpaquePointer?, Int64) -> Int32
+  fileprivate typealias PlayerGetTime = @convention(c) (OpaquePointer?) -> Int64
+  fileprivate typealias PlayerGetLength = @convention(c) (OpaquePointer?) -> Int64
+  /// libvlc_state_t: NothingSpecial=0 … Error=7
+  fileprivate typealias PlayerGetState = @convention(c) (OpaquePointer?) -> Int32
+
+  private var libvlc_new: LibVlcNew?
+  private var libvlc_release: LibVlcRelease?
+  private var media_new: MediaNew?
+  private var media_release: MediaRelease?
+  private var media_add_option: MediaAddOption?
+  private var player_new: PlayerNew?
+  private var player_release: PlayerRelease?
+  private var player_set_media: PlayerSetMedia?
+  private var player_play: PlayerPlay?
+  private var player_stop: PlayerStop?
+  private var player_set_pause: PlayerSetPause?
+  private var player_set_volume: PlayerSetVolume?
+  private var player_set_nsobject: PlayerSetNsobject?
+  private var player_set_time: PlayerSetTime?
+  private var player_get_time: PlayerGetTime?
+  private var player_get_length: PlayerGetLength?
+  private var player_get_state: PlayerGetState?
+
+  private var instance: OpaquePointer?
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let instance = ForjaVlcPlugin()
+    instance.loadLibrary()
+    let channel = FlutterMethodChannel(
+      name: "com.forjahq.app/vlc",
+      binaryMessenger: registrar.messenger
+    )
+    registrar.addMethodCallDelegate(instance, channel: channel)
+    let events = FlutterEventChannel(
+      name: "com.forjahq.app/vlc_events",
+      binaryMessenger: registrar.messenger
+    )
+    events.setStreamHandler(instance)
+    registrar.register(
+      VlcViewFactory(plugin: instance),
+      withId: "forja-vlc"
+    )
+  }
+
+  private func loadLibrary() {
+    let appLib = "/Applications/VLC.app/Contents/MacOS/lib"
+    let appPlugins = "/Applications/VLC.app/Contents/MacOS/plugins"
+    let candidates = [
+      "\(appLib)/libvlc.dylib",
+      "/usr/local/lib/libvlc.dylib",
+      "/opt/homebrew/lib/libvlc.dylib",
+    ]
+
+    // Without this, libvlc_new returns null even when VLC.app is installed.
+    setenv("VLC_PLUGIN_PATH", appPlugins, 1)
+
+    for path in candidates {
+      let dir = (path as NSString).deletingLastPathComponent
+      // libvlc @rpath → libvlccore; load core first with GLOBAL.
+      _ = dlopen("\(dir)/libvlccore.dylib", RTLD_NOW | RTLD_GLOBAL)
+
+      guard let handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL) else {
+        let msg = dlerror().map { String(cString: $0) } ?? "unknown"
+        NSLog("[ForjaVLC] dlopen failed %@: %@", path, msg)
+        continue
+      }
+      libHandle = handle
+      libvlc_new = unsafeBitCast(dlsym(handle, "libvlc_new"), to: LibVlcNew?.self)
+      libvlc_release = unsafeBitCast(dlsym(handle, "libvlc_release"), to: LibVlcRelease?.self)
+      media_new = unsafeBitCast(dlsym(handle, "libvlc_media_new_location"), to: MediaNew?.self)
+      media_release = unsafeBitCast(dlsym(handle, "libvlc_media_release"), to: MediaRelease?.self)
+      media_add_option = unsafeBitCast(dlsym(handle, "libvlc_media_add_option"), to: MediaAddOption?.self)
+      player_new = unsafeBitCast(dlsym(handle, "libvlc_media_player_new"), to: PlayerNew?.self)
+      player_release = unsafeBitCast(dlsym(handle, "libvlc_media_player_release"), to: PlayerRelease?.self)
+      player_set_media = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_media"), to: PlayerSetMedia?.self)
+      player_play = unsafeBitCast(dlsym(handle, "libvlc_media_player_play"), to: PlayerPlay?.self)
+      player_stop = unsafeBitCast(dlsym(handle, "libvlc_media_player_stop"), to: PlayerStop?.self)
+      player_set_pause = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_pause"), to: PlayerSetPause?.self)
+      player_set_volume = unsafeBitCast(dlsym(handle, "libvlc_audio_set_volume"), to: PlayerSetVolume?.self)
+      player_set_nsobject = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_nsobject"), to: PlayerSetNsobject?.self)
+      player_set_time = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_time"), to: PlayerSetTime?.self)
+      player_get_time = unsafeBitCast(dlsym(handle, "libvlc_media_player_get_time"), to: PlayerGetTime?.self)
+      player_get_length = unsafeBitCast(dlsym(handle, "libvlc_media_player_get_length"), to: PlayerGetLength?.self)
+      player_get_state = unsafeBitCast(dlsym(handle, "libvlc_media_player_get_state"), to: PlayerGetState?.self)
+
+      guard libvlc_new != nil, player_new != nil, media_new != nil else { continue }
+
+      instance = libvlc_new?(0, nil)
+      available = instance != nil
+      if available {
+        NSLog("[ForjaVLC] libVLC ready (%@)", path)
+        break
+      }
+      NSLog("[ForjaVLC] libvlc_new failed for %@", path)
+    }
+
+    if !available {
+      NSLog("[ForjaVLC] not available — install VLC.app or Homebrew libvlc")
+    }
+  }
+
+  func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let viewId = (args["viewId"] as? NSNumber)?.int64Value
+      ?? (args["viewId"] as? Int).map { Int64($0) }
+      ?? -1
+
+    switch call.method {
+    case "isAvailable":
+      result(available)
+    case "create":
+      // Texture path unused on macOS — PlatformView hosts video. Return -1.
+      result(-1)
+    case "open":
+      guard available, viewId >= 0,
+            let url = args["url"] as? String
+      else {
+        result(FlutterError(code: "unavailable", message: "libVLC missing or bad args", details: nil))
+        return
+      }
+      let headers = (args["headers"] as? [String: String]) ?? [:]
+      let session = sessions[viewId] ?? VlcSession(viewId: viewId, plugin: self)
+      sessions[viewId] = session
+      session.open(url: url, headers: headers)
+      result(nil)
+    case "play":
+      sessions[viewId]?.play()
+      result(nil)
+    case "pause":
+      sessions[viewId]?.pause()
+      result(nil)
+    case "setVolume":
+      let volume = (args["volume"] as? NSNumber)?.intValue ?? 100
+      sessions[viewId]?.setVolume(volume)
+      result(nil)
+    case "seek":
+      let ms = (args["positionMs"] as? NSNumber)?.int64Value
+        ?? (args["positionMs"] as? Int).map { Int64($0) }
+        ?? 0
+      sessions[viewId]?.seek(positionMs: ms)
+      result(nil)
+    case "dispose":
+      sessions[viewId]?.dispose()
+      sessions.removeValue(forKey: viewId)
+      result(nil)
+    default:
+      result(FlutterMethodNotImplemented)
+    }
+  }
+
+  func emit(viewId: Int64, type: String, value: Any? = nil) {
+    var payload: [String: Any] = ["viewId": viewId, "type": type]
+    if let value { payload["value"] = value }
+    DispatchQueue.main.async { [weak self] in
+      self?.eventSink?(payload)
+    }
+  }
+
+  func emitProgress(viewId: Int64, positionMs: Int64, durationMs: Int64) {
+    let payload: [String: Any] = [
+      "viewId": viewId,
+      "type": "progress",
+      "position": positionMs,
+      "duration": max(0, durationMs),
+      "buffered": 0,
+    ]
+    DispatchQueue.main.async { [weak self] in
+      self?.eventSink?(payload)
+    }
+  }
+
+  func attachView(viewId: Int64, view: VlcContainerView) {
+    let session = sessions[viewId] ?? VlcSession(viewId: viewId, plugin: self)
+    sessions[viewId] = session
+    session.attach(view: view)
+  }
+
+  fileprivate func makePlayer() -> OpaquePointer? {
+    guard let instance, let player_new else { return nil }
+    return player_new(instance)
+  }
+
+  fileprivate func makeMedia(url: String) -> OpaquePointer? {
+    guard let instance, let media_new else { return nil }
+    return url.withCString { media_new(instance, $0) }
+  }
+
+  fileprivate var api: (
+    media_release: MediaRelease?,
+    media_add_option: MediaAddOption?,
+    player_release: PlayerRelease?,
+    player_set_media: PlayerSetMedia?,
+    player_play: PlayerPlay?,
+    player_stop: PlayerStop?,
+    player_set_pause: PlayerSetPause?,
+    player_set_volume: PlayerSetVolume?,
+    player_set_nsobject: PlayerSetNsobject?,
+    player_set_time: PlayerSetTime?,
+    player_get_time: PlayerGetTime?,
+    player_get_length: PlayerGetLength?,
+    player_get_state: PlayerGetState?
+  ) {
+    (
+      media_release,
+      media_add_option,
+      player_release,
+      player_set_media,
+      player_play,
+      player_stop,
+      player_set_pause,
+      player_set_volume,
+      player_set_nsobject,
+      player_set_time,
+      player_get_time,
+      player_get_length,
+      player_get_state
+    )
+  }
+}
+
+extension ForjaVlcPlugin: FlutterStreamHandler {
+  func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink)
+    -> FlutterError?
+  {
+    eventSink = events
+    return nil
+  }
+
+  func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    eventSink = nil
+    return nil
+  }
+}
+
+final class VlcViewFactory: NSObject, FlutterPlatformViewFactory {
+  private weak var plugin: ForjaVlcPlugin?
+
+  init(plugin: ForjaVlcPlugin) {
+    self.plugin = plugin
+    super.init()
+  }
+
+  func create(withViewIdentifier viewId: Int64, arguments args: Any?) -> NSView {
+    let params = args as? [String: Any]
+    let dartViewId = (params?["viewId"] as? NSNumber)?.int64Value
+      ?? (params?["viewId"] as? Int).map { Int64($0) }
+      ?? viewId
+    let view = VlcContainerView(frame: .zero)
+    plugin?.attachView(viewId: dartViewId, view: view)
+    return view
+  }
+
+  func createArgsCodec() -> (any FlutterMessageCodec & NSObjectProtocol)? {
+    FlutterStandardMessageCodec.sharedInstance()
+  }
+}
+
+final class VlcContainerView: NSView {
+  override init(frame frameRect: NSRect) {
+    super.init(frame: frameRect)
+    // Late VideoToolbox frames clear the GL layer to transparent. Flutter's
+    // AppKit platform-view host is an opaque white NSView, so those clears
+    // flash white. Keep this surface opaque black and paint the host the same.
+    wantsLayer = true
+    let backing = CALayer()
+    backing.backgroundColor = NSColor.black.cgColor
+    backing.isOpaque = true
+    layer = backing
+    layerContentsRedrawPolicy = .never
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError() }
+
+  override var isOpaque: Bool { true }
+
+  override func draw(_ dirtyRect: NSRect) {
+    NSColor.black.setFill()
+    dirtyRect.fill()
+  }
+
+  override func viewDidMoveToSuperview() {
+    super.viewDidMoveToSuperview()
+    blackenPlatformHole()
+  }
+
+  override func layout() {
+    super.layout()
+    blackenPlatformHole()
+    for sub in subviews {
+      sub.layer?.backgroundColor = NSColor.black.cgColor
+      sub.layerContentsRedrawPolicy = .never
+    }
+  }
+
+  /// Flutter inserts opaque host views between this drawable and FlutterView.
+  /// Their default fill is white. Stop before FlutterView so the shell stays
+  /// on its own background.
+  private func blackenPlatformHole() {
+    var view = superview
+    var depth = 0
+    while let current = view, depth < 6 {
+      let name = String(describing: type(of: current))
+      if name.contains("FlutterView") { break }
+      current.wantsLayer = true
+      current.layer?.isOpaque = true
+      current.layer?.backgroundColor = NSColor.black.cgColor
+      view = current.superview
+      depth += 1
+    }
+  }
+}
+
+final class VlcSession {
+  private let viewId: Int64
+  private weak var plugin: ForjaVlcPlugin?
+  private var player: OpaquePointer?
+  private weak var view: VlcContainerView?
+  private var progressTimer: Timer?
+  private var pendingSeekMs: Int64?
+  private var emittedReady = false
+  private var lastState: Int32 = -1
+  private var errorEmitted = false
+  private var openStartedAt: Date?
+
+  init(viewId: Int64, plugin: ForjaVlcPlugin) {
+    self.viewId = viewId
+    self.plugin = plugin
+  }
+
+  func attach(view: VlcContainerView) {
+    self.view = view
+    if let player {
+      plugin?.api.player_set_nsobject?(player, Unmanaged.passUnretained(view).toOpaque())
+    }
+  }
+
+  func open(url: String, headers: [String: String]) {
+    disposePlayerOnly()
+    emittedReady = false
+    lastState = -1
+    errorEmitted = false
+    openStartedAt = Date()
+    guard let plugin,
+          let media = plugin.makeMedia(url: url),
+          let player = plugin.makePlayer()
+    else {
+      plugin?.emit(viewId: viewId, type: "error", value: "libVLC open failed")
+      return
+    }
+    self.player = player
+    applyMediaOptions(media: media, url: url, headers: headers, plugin: plugin)
+    plugin.api.player_set_media?(player, media)
+    plugin.api.media_release?(media)
+    if let view {
+      plugin.api.player_set_nsobject?(player, Unmanaged.passUnretained(view).toOpaque())
+    }
+    plugin.emit(viewId: viewId, type: "buffering", value: true)
+    let rc = plugin.api.player_play?(player) ?? -1
+    if rc != 0 {
+      plugin.emit(viewId: viewId, type: "error", value: "libVLC play failed")
+      return
+    }
+    if let pending = pendingSeekMs {
+      pendingSeekMs = nil
+      seek(positionMs: pending)
+    }
+    startProgressTimer()
+  }
+
+  /// Live IPTV (esp. progressive MPEG-TS) needs loose clock + cache.
+  /// VideoToolbox + broken PCR → ~2–3s freezes ("no reference clock").
+  private func applyMediaOptions(
+    media: OpaquePointer,
+    url: String,
+    headers: [String: String],
+    plugin: ForjaVlcPlugin
+  ) {
+    func add(_ opt: String) {
+      opt.withCString { plugin.api.media_add_option?(media, $0) }
+    }
+
+    add(":network-caching=2000")
+    add(":live-caching=2000")
+    add(":clock-jitter=0")
+    add(":clock-synchro=0")
+    add(":drop-late-frames")
+    add(":skip-frames")
+    add(":no-audio-time-stretch")
+    add(":http-forward-cookies")
+
+    let lower = url.lowercased()
+    let progressiveTs = lower.contains(".ts") && !lower.contains(".m3u8")
+    if progressiveTs {
+      // SW decode avoids VT timestamp conversion failures on Xtream TS.
+      add(":avcodec-hw=none")
+    }
+
+    // Adaptive HLS needs Origin/Cookie on every segment — not just UA/Referer.
+    for (key, value) in headers {
+      guard !value.isEmpty else { continue }
+      switch key.lowercased() {
+      case "user-agent":
+        add(":http-user-agent=\(value)")
+      case "referer", "referrer":
+        add(":http-referrer=\(value)")
+      case "cookie":
+        add(":http-header=Cookie: \(value)")
+      default:
+        add(":http-header=\(key): \(value)")
+      }
+    }
+  }
+
+  func play() {
+    plugin?.api.player_set_pause?(player, 0)
+  }
+
+  func pause() {
+    plugin?.api.player_set_pause?(player, 1)
+  }
+
+  func setVolume(_ volume: Int) {
+    _ = plugin?.api.player_set_volume?(player, Int32(max(0, min(100, volume))))
+  }
+
+  func seek(positionMs: Int64) {
+    guard let player else {
+      pendingSeekMs = positionMs
+      return
+    }
+    _ = plugin?.api.player_set_time?(player, max(0, positionMs))
+    emitProgressNow()
+  }
+
+  func dispose() {
+    disposePlayerOnly()
+    view = nil
+  }
+
+  private func startProgressTimer() {
+    progressTimer?.invalidate()
+    progressTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+      self?.pollStateAndProgress()
+    }
+    // First tick soon — adaptive demux can fail before the first 250ms.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+      self?.pollStateAndProgress()
+    }
+  }
+
+  private func pollStateAndProgress() {
+    guard let plugin, let player else { return }
+    if let getState = plugin.api.player_get_state {
+      let state = getState(player)
+      if state != lastState {
+        lastState = state
+        switch state {
+        case 1, 2: // Opening, Buffering
+          plugin.emit(viewId: viewId, type: "buffering", value: true)
+        case 3: // Playing
+          if !emittedReady {
+            emittedReady = true
+            plugin.emit(viewId: viewId, type: "ready")
+          }
+          plugin.emit(viewId: viewId, type: "buffering", value: false)
+          plugin.emit(viewId: viewId, type: "playing", value: true)
+        case 4: // Paused
+          plugin.emit(viewId: viewId, type: "playing", value: false)
+        case 7: // Error
+          if !errorEmitted {
+            errorEmitted = true
+            plugin.emit(viewId: viewId, type: "error", value: "libVLC playback error")
+          }
+        default:
+          break
+        }
+      }
+      // Stuck opening/buffering with no progress → surface after ~8s.
+      if (state == 1 || state == 2) && !emittedReady && !errorEmitted {
+        let pos = plugin.api.player_get_time?(player) ?? -1
+        if pos < 0, let started = openStartedAt, Date().timeIntervalSince(started) > 8 {
+          errorEmitted = true
+          plugin.emit(viewId: viewId, type: "error", value: "libVLC demux timeout")
+        }
+      }
+    }
+    emitProgressNow()
+  }
+
+  private func emitProgressNow() {
+    guard let plugin, let player else { return }
+    let pos = plugin.api.player_get_time?(player) ?? -1
+    let len = plugin.api.player_get_length?(player) ?? -1
+    if pos < 0 && len < 0 { return }
+    plugin.emitProgress(
+      viewId: viewId,
+      positionMs: max(0, pos),
+      durationMs: max(0, len)
+    )
+  }
+
+  private func disposePlayerOnly() {
+    progressTimer?.invalidate()
+    progressTimer = nil
+    pendingSeekMs = nil
+    openStartedAt = nil
+    if let player {
+      plugin?.api.player_stop?(player)
+      plugin?.api.player_release?(player)
+    }
+    player = nil
+  }
+}
+
+func registerForjaVlc(_ controller: FlutterViewController) {
+  let registrar = controller.registrar(forPlugin: "ForjaVlcPlugin")
+  ForjaVlcPlugin.register(with: registrar)
+}

@@ -1,0 +1,343 @@
+import 'package:flutter/material.dart';
+
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
+/// Two quick-action cards: official ForjaHQ install + Community Packs browse.
+///
+/// Always D-pad focusable. Pass [installFocusNode] / [browseFocusNode] from
+/// onboarding; Settings leaves them null and registers settings-zone TV meta.
+class ForjaPackChoiceCards extends StatefulWidget {
+  const ForjaPackChoiceCards({
+    super.key,
+    required this.onInstallOfficial,
+    required this.onBrowseCommunity,
+    this.installFocusNode,
+    this.browseFocusNode,
+    this.compact = false,
+    this.communitySubtitle,
+    this.autofocusInstall = false,
+    this.settingsTvFocus = false,
+  });
+
+  final VoidCallback onInstallOfficial;
+  final VoidCallback onBrowseCommunity;
+  final FocusNode? installFocusNode;
+  final FocusNode? browseFocusNode;
+  final bool compact;
+  final String? communitySubtitle;
+  final bool autofocusInstall;
+
+  /// When true (Settings → Forja Packs), register in the settings TV focus graph.
+  final bool settingsTvFocus;
+
+  @override
+  State<ForjaPackChoiceCards> createState() => _ForjaPackChoiceCardsState();
+}
+
+class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
+  FocusNode? _ownedInstall;
+  FocusNode? _ownedBrowse;
+
+  FocusNode get _installNode =>
+      widget.installFocusNode ??
+      (_ownedInstall ??= FocusNode(debugLabel: 'forja_pack_choice_install'));
+
+  FocusNode get _browseNode =>
+      widget.browseFocusNode ??
+      (_ownedBrowse ??= FocusNode(debugLabel: 'forja_pack_choice_browse'));
+
+  @override
+  void dispose() {
+    _ownedInstall?.dispose();
+    _ownedBrowse?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gap = SettingsTokens.packChoiceGapOf(
+      context,
+      compact: widget.compact,
+    );
+    // Stretch so Official matches Community when the subtitle has more lines
+    // (e.g. TV Community URL). IntrinsicHeight sizes the row from content so TV
+    // is not forced to a desktop min height. ← exits to the Settings category
+    // rail (ShellTvLinearFocusEdges), same as other settings pages / Back.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ForjaPackChoiceCard(
+              focusNode: _installNode,
+              autofocus: widget.autofocusInstall,
+              compact: widget.compact,
+              settingsTvFocus: widget.settingsTvFocus,
+              tvItemIndex: 0,
+              onRightEdge: () => _browseNode.requestFocus(),
+              icon: Icons.inventory_2_rounded,
+              title: 'Official packs',
+              subtitle: 'Choose which ForjaHQ packs to install',
+              accent: true,
+              onTap: widget.onInstallOfficial,
+            ),
+          ),
+          SizedBox(width: gap),
+          Expanded(
+            child: ForjaPackChoiceCard(
+              focusNode: _browseNode,
+              compact: widget.compact,
+              settingsTvFocus: widget.settingsTvFocus,
+              tvItemIndex: 1,
+              // ← exits to the Settings category rail (same as Official / Back).
+              // → from Official still reaches this card.
+              icon: Icons.public_rounded,
+              title: 'Community Packs',
+              subtitle: widget.communitySubtitle ??
+                  (widget.compact
+                      ? 'Browse packs on the web'
+                      : 'Browse and pick packs on the web'),
+              onTap: widget.onBrowseCommunity,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ForjaPackChoiceCard extends StatefulWidget {
+  const ForjaPackChoiceCard({
+    super.key,
+    required this.focusNode,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.compact = false,
+    this.accent = false,
+    this.autofocus = false,
+    this.settingsTvFocus = false,
+    this.tvItemIndex,
+    this.onLeftEdge,
+    this.onRightEdge,
+  });
+
+  final FocusNode focusNode;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool compact;
+  final bool accent;
+  final bool autofocus;
+  final bool settingsTvFocus;
+  final int? tvItemIndex;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+
+  @override
+  State<ForjaPackChoiceCard> createState() => _ForjaPackChoiceCardState();
+}
+
+class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
+  final ValueNotifier<bool> _hovered = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _hovered.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = widget.compact;
+    final radius = SettingsTokens.packChoiceRadiusOf(context, compact: compact);
+    final minHeight =
+        SettingsTokens.packChoiceMinHeightOf(context, compact: compact);
+    final pad = SettingsTokens.packChoicePadOf(context, compact: compact);
+    final iconSize =
+        SettingsTokens.packChoiceIconSizeOf(context, compact: compact);
+    final iconTitleGap =
+        SettingsTokens.packChoiceIconTitleGapOf(context, compact: compact);
+    final titleSubGap =
+        SettingsTokens.packChoiceTitleSubGapOf(context, compact: compact);
+    final titleSize =
+        SettingsTokens.typeSizeOf(context, compact ? 13 : 16);
+    final subSize =
+        SettingsTokens.typeSizeOf(context, compact ? 11 : 13);
+
+    Widget card({required bool active}) {
+      final borderColor = widget.accent
+          ? ForjaShellColors.brandGreen.withValues(
+              alpha: active ? 0.95 : 0.55,
+            )
+          : ForjaShellColors.borderSubtle.withValues(
+              alpha: active ? 0.95 : 0.7,
+            );
+      // Desktop keeps a min height floor. TV hugs content; the parent
+      // IntrinsicHeight + stretch matches the taller sibling.
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        width: double.infinity,
+        constraints: minHeight > 0
+            ? BoxConstraints(minHeight: minHeight)
+            : const BoxConstraints(),
+        padding: pad,
+        alignment: Alignment.topLeft,
+        decoration: BoxDecoration(
+          color: active
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : Colors.black.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: borderColor, width: active ? 2 : 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              widget.icon,
+              size: iconSize,
+              color: widget.accent
+                  ? ForjaShellColors.brandGreen
+                  : ForjaShellColors.textPrimary,
+            ),
+            SizedBox(height: iconTitleGap),
+            Text(
+              widget.title,
+              style: TextStyle(
+                color: ForjaShellColors.textPrimary,
+                fontSize: titleSize,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+              ),
+            ),
+            SizedBox(height: titleSubGap),
+            _SubtitleBlock(
+              text: widget.subtitle,
+              fontSize: subSize,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final body = ListenableBuilder(
+      listenable: Listenable.merge([widget.focusNode, _hovered]),
+      builder: (context, _) => card(
+        active: widget.focusNode.hasFocus || _hovered.value,
+      ),
+    );
+
+    void onHover(bool hovered) {
+      if (_hovered.value == hovered) return;
+      _hovered.value = hovered;
+    }
+
+    // Card owns hover/focus chrome (light green fill) — no settings left rail.
+    if (widget.settingsTvFocus) {
+      return FocusableControl(
+        focusNode: widget.focusNode,
+        autoFocus: widget.autofocus,
+        onTap: widget.onTap,
+        borderRadius: radius,
+        scaleOnFocus: widget.compact ? 1.01 : 1.02,
+        showFocusBorder: false,
+        showFocusFill: false,
+        showFocusRail: false,
+        onHoverChange: onHover,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
+        tvMeta: ShellTvFocusMeta(
+          tabId: 'settings',
+          zone: ShellTvZone.settings,
+          itemIndex: widget.tvItemIndex,
+        ),
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
+        child: body,
+      );
+    }
+
+    return FocusableControl(
+      focusNode: widget.focusNode,
+      autoFocus: widget.autofocus,
+      onTap: widget.onTap,
+      borderRadius: radius,
+      scaleOnFocus: widget.compact ? 1.01 : 1.02,
+      showFocusBorder: false,
+      showFocusFill: false,
+      showFocusRail: false,
+      onHoverChange: onHover,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      child: body,
+    );
+  }
+}
+
+/// Renders subtitle; a trailing `http(s)://…` line uses monospace so TV users
+/// can read the Community Packs URL for their phone.
+class _SubtitleBlock extends StatelessWidget {
+  const _SubtitleBlock({required this.text, required this.fontSize});
+
+  final String text;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = text.split('\n');
+    if (lines.length < 2) {
+      return Text(
+        text,
+        style: TextStyle(
+          color: ForjaShellColors.textSecondary,
+          fontSize: fontSize,
+          height: 1.35,
+        ),
+      );
+    }
+    final head = lines.sublist(0, lines.length - 1).join('\n');
+    final tail = lines.last.trim();
+    final urlTail = RegExp(r'^https?://', caseSensitive: false).hasMatch(tail);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          head,
+          style: TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: fontSize,
+            height: 1.35,
+          ),
+        ),
+        SizedBox(
+          height: SettingsTokens.packChoiceTitleSubGapOf(
+            context,
+            compact: true,
+          ),
+        ),
+        Text(
+          tail,
+          style: urlTail
+              ? TextStyle(
+                  color: ForjaShellColors.textPrimary.withValues(alpha: 0.92),
+                  fontSize: fontSize,
+                  height: 1.35,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.w600,
+                )
+              : TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: fontSize,
+                  height: 1.35,
+                ),
+        ),
+      ],
+    );
+  }
+}

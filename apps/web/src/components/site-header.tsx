@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react'
-import { Link, useRouterState } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { Check, ChevronDown } from 'lucide-react'
 import { BrandLogo } from '@/components/brand-logo'
 import { LiquidGlass } from '@/components/liquid-glass'
+import { ProfileAvatar } from '@/components/profile-avatar'
 import { useAuth } from '@/hooks/use-auth'
+import { useProfiles } from '@/hooks/use-profiles'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
-  { to: '/' as const, label: 'Streaming Player', exact: true },
-  { to: '/iptv' as const, label: 'Live Player' },
-  { to: '/plugins' as const, label: 'Community Packs' },
+  { to: '/' as const, label: 'Home', exact: true },
+  { to: '/platform' as const, label: 'Platform' },
+  { to: '/plugins' as const, label: 'Packs' },
 ]
 
 function NavLink({
@@ -19,7 +23,15 @@ function NavLink({
   className,
   variant = 'desktop',
 }: {
-  to: '/' | '/iptv' | '/plugins' | '/download' | '/account' | '/login' | '/changelog'
+  to:
+    | '/'
+    | '/platform'
+    | '/plugins'
+    | '/iptv'
+    | '/download'
+    | '/account'
+    | '/login'
+    | '/changelog'
   children: string
   exact?: boolean
   onNavigate?: () => void
@@ -65,6 +77,317 @@ function NavLink({
         />
       ) : null}
     </Link>
+  )
+}
+
+function HeaderAccountMenu({
+  accountActive,
+  onNavigate,
+  variant = 'desktop',
+}: {
+  accountActive: boolean
+  onNavigate?: () => void
+  variant?: 'desktop' | 'mobile'
+}) {
+  const navigate = useNavigate()
+  const { user, signOut } = useAuth()
+  const { profiles, activeProfile, selectProfile, loading: profilesLoading } =
+    useProfiles()
+  const accountLabel = user?.email?.trim() || null
+  const profileLabel = activeProfile?.name?.trim() || 'Profile'
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const closeTimer = useRef<number | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 })
+
+  async function onSignOut() {
+    onNavigate?.()
+    setMenuOpen(false)
+    await signOut({ scope: 'local' })
+    void navigate({ to: '/' })
+  }
+
+  const clearCloseTimer = () => {
+    if (closeTimer.current != null) {
+      window.clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }
+
+  const updateMenuPos = () => {
+    const el = triggerRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setMenuPos({
+      top: rect.bottom + 10,
+      right: Math.max(8, window.innerWidth - rect.right),
+    })
+  }
+
+  const openMenu = () => {
+    clearCloseTimer()
+    updateMenuPos()
+    setMenuOpen(true)
+  }
+
+  const scheduleClose = () => {
+    clearCloseTimer()
+    closeTimer.current = window.setTimeout(() => setMenuOpen(false), 120)
+  }
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onReposition = () => updateMenuPos()
+    window.addEventListener('resize', onReposition)
+    window.addEventListener('scroll', onReposition, true)
+    return () => {
+      window.removeEventListener('resize', onReposition)
+      window.removeEventListener('scroll', onReposition, true)
+    }
+  }, [menuOpen])
+
+  useEffect(() => () => clearCloseTimer(), [])
+
+  if (variant === 'mobile') {
+    return (
+      <div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-6">
+        <Link
+          to="/account/settings"
+          onClick={onNavigate}
+          className="flex min-w-0 items-center gap-3"
+        >
+          {activeProfile ? (
+            <ProfileAvatar
+              avatarKey={activeProfile.avatar_key}
+              name={activeProfile.name}
+              className="size-14 shrink-0 rounded-[14px] ring-1 ring-white/10"
+            />
+          ) : (
+            <span className="size-14 shrink-0 rounded-[14px] bg-forja-elevated" />
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-forja-muted">
+              Watching as
+            </span>
+            <span className="mt-0.5 block truncate font-disp text-2xl font-bold uppercase tracking-tight text-[#EDE6DA]">
+              {profileLabel}
+            </span>
+            {accountLabel ? (
+              <span className="mt-1 block truncate font-mono text-[12px] font-medium normal-case tracking-normal text-[rgba(237,230,218,0.72)]">
+                {accountLabel}
+              </span>
+            ) : null}
+          </span>
+        </Link>
+        <div className="flex flex-col gap-1 pt-2">
+          {profiles.map((profile) => {
+            const selected = profile.id === activeProfile?.id
+            return (
+              <button
+                key={profile.id}
+                type="button"
+                onClick={() => {
+                  selectProfile(profile.id)
+                  onNavigate?.()
+                }}
+                className={cn(
+                  'flex items-center gap-3 rounded-xl px-1 py-2 text-left transition-colors',
+                  selected ? 'text-[#EDE6DA]' : 'text-[rgba(237,230,218,0.55)]',
+                )}
+              >
+                <ProfileAvatar
+                  avatarKey={profile.avatar_key}
+                  name={profile.name}
+                  className="size-10 shrink-0 rounded-lg ring-1 ring-white/10"
+                />
+                <span className="min-w-0 flex-1 truncate font-disp text-lg uppercase tracking-tight">
+                  {profile.name}
+                </span>
+                {selected ? (
+                  <Check className="size-5 shrink-0 text-forja-green" />
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+        <Link
+          to="/account/profiles"
+          onClick={onNavigate}
+          className="pt-1 text-sm font-medium text-[rgba(237,230,218,0.78)] transition-colors hover:text-forja-green"
+        >
+          Manage profiles
+        </Link>
+          <Link
+            to="/account/settings/account"
+            onClick={onNavigate}
+            className="text-sm font-medium text-[rgba(237,230,218,0.78)] transition-colors hover:text-forja-green"
+          >
+            Account settings
+          </Link>
+          <Link
+            to="/download"
+            onClick={onNavigate}
+            className="text-sm font-medium text-forja-green transition-colors hover:text-forja-green-dim"
+          >
+            Download
+          </Link>
+          <button
+            type="button"
+            onClick={() => void onSignOut()}
+            className="self-start text-sm font-medium text-red-400 transition-colors hover:text-red-300"
+          >
+            Log out
+          </button>
+      </div>
+    )
+  }
+
+  const menu = menuOpen
+    ? createPortal(
+        <div
+          role="menu"
+          onMouseEnter={openMenu}
+          onMouseLeave={scheduleClose}
+          style={{ top: menuPos.top, right: menuPos.right }}
+          className="fixed z-100 w-76 rounded-2xl border border-forja-border bg-[#121110] p-2 shadow-[0_28px_80px_-28px_rgba(0,0,0,0.9)]"
+        >
+          <p className="px-3 pb-1 pt-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-forja-muted">
+            Switch profile
+          </p>
+          {accountLabel ? (
+            <p className="truncate px-3 pb-2 font-mono text-[12px] font-medium normal-case tracking-normal text-[rgba(237,230,218,0.72)]">
+              {accountLabel}
+            </p>
+          ) : null}
+          <div className="mx-1 my-1 h-px bg-[rgba(237,230,218,0.1)]" />
+          <div className="max-h-88 space-y-1 overflow-y-auto py-1">
+            {profiles.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-forja-muted">No profiles yet</p>
+            ) : (
+              profiles.map((profile) => {
+                const selected = profile.id === activeProfile?.id
+                return (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      selectProfile(profile.id)
+                      setMenuOpen(false)
+                    }}
+                    className={cn(
+                      'flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors',
+                      selected
+                        ? 'bg-forja-green/10 text-[#EDE6DA]'
+                        : 'text-[rgba(237,230,218,0.78)] hover:bg-white/6',
+                    )}
+                  >
+                    <ProfileAvatar
+                      avatarKey={profile.avatar_key}
+                      name={profile.name}
+                      className="size-12 shrink-0 rounded-xl ring-1 ring-white/10"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-disp text-base uppercase tracking-tight">
+                        {profile.name}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-forja-muted">
+                        {selected ? 'Active now' : 'Tap to switch'}
+                      </span>
+                    </span>
+                    {selected ? (
+                      <Check className="size-5 shrink-0 text-forja-green" />
+                    ) : null}
+                  </button>
+                )
+              })
+            )}
+          </div>
+          <div className="mx-1 my-1 h-px bg-[rgba(237,230,218,0.1)]" />
+          <Link
+            to="/account/profiles"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            className="block rounded-xl px-3 py-2.5 text-sm font-medium text-[#EDE6DA] transition-colors hover:bg-white/6"
+          >
+            Manage profiles
+          </Link>
+          <Link
+            to="/account/settings/account"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            className="block rounded-xl px-3 py-2.5 text-sm font-medium text-[#EDE6DA] transition-colors hover:bg-white/6"
+          >
+            Account settings
+          </Link>
+          <Link
+            to="/download"
+            role="menuitem"
+            onClick={() => setMenuOpen(false)}
+            className="block rounded-xl px-3 py-2.5 text-sm font-medium text-forja-green transition-colors hover:bg-forja-green/10"
+          >
+            Download
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => void onSignOut()}
+            className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+          >
+            Log out
+          </button>
+        </div>,
+        document.body,
+      )
+    : null
+
+  return (
+    <div
+      ref={triggerRef}
+      className="relative"
+      onMouseEnter={openMenu}
+      onMouseLeave={scheduleClose}
+    >
+      <Link
+        to="/account/settings"
+        data-hover=""
+        onFocus={openMenu}
+        aria-label="Active profile"
+        aria-expanded={menuOpen}
+        className={cn(
+          'group inline-flex min-w-52 max-w-64 items-center gap-2.5 rounded-2xl border bg-[#121110] py-1.5 pl-1.5 pr-2.5 text-left outline-none transition duration-200',
+          'border-[rgba(237,230,218,0.16)] hover:border-forja-green/45 hover:bg-[#161412]',
+          (menuOpen || accountActive) &&
+            'border-forja-green/50 bg-[#161412]',
+          profilesLoading && 'opacity-50',
+        )}
+      >
+        {activeProfile ? (
+          <ProfileAvatar
+            avatarKey={activeProfile.avatar_key}
+            name={activeProfile.name}
+            className="size-10 shrink-0 rounded-[12px] shadow-[0_10px_28px_-16px_rgba(0,0,0,0.9)] ring-1 ring-white/10 transition duration-200 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <span className="size-10 shrink-0 rounded-[12px] bg-forja-elevated" />
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-forja-muted">
+            Watching as
+          </span>
+          <span className="mt-0.5 block truncate font-disp text-[15px] font-bold uppercase tracking-tight text-[#EDE6DA]">
+            {profileLabel}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            'size-4 shrink-0 text-forja-muted transition',
+            menuOpen && 'rotate-180',
+          )}
+        />
+      </Link>
+      {menu}
+    </div>
   )
 }
 
@@ -129,34 +452,25 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
 
             <div className="ml-auto hidden items-center gap-2 md:flex">
               {!loading && user ? (
-                <Link
-                  to="/account/settings"
-                  data-hover=""
-                  className={cn(
-                    'inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-all duration-200',
-                    accountActive
-                      ? 'text-forja-green'
-                      : 'text-[rgba(237,230,218,0.55)] hover:bg-forja-green/12 hover:text-forja-green',
-                  )}
-                >
-                  Account
-                </Link>
+                <HeaderAccountMenu accountActive={accountActive} />
               ) : (
-                <Link
-                  to="/login"
-                  data-hover=""
-                  className="inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.55)] transition-all duration-200 hover:bg-forja-green/12 hover:text-forja-green"
-                >
-                  Log in
-                </Link>
+                <>
+                  <Link
+                    to="/login"
+                    data-hover=""
+                    className="inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.55)] transition-all duration-200 hover:bg-forja-green/12 hover:text-forja-green"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    to="/download"
+                    data-hover=""
+                    className="inline-flex items-center justify-center rounded-full bg-forja-green px-5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#0B0A0A] shadow-[0_0_24px_rgba(28,231,131,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-forja-flame hover:shadow-[0_0_28px_rgba(255,77,28,0.35)]"
+                  >
+                    Download
+                  </Link>
+                </>
               )}
-              <Link
-                to="/download"
-                data-hover=""
-                className="inline-flex items-center justify-center rounded-full bg-forja-green px-5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#0B0A0A] shadow-[0_0_24px_rgba(28,231,131,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-forja-flame hover:shadow-[0_0_28px_rgba(255,77,28,0.35)]"
-              >
-                Get Forja
-              </Link>
             </div>
 
             <button
@@ -221,7 +535,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
 
         <nav
           aria-label="Primary"
-          className="flex flex-1 flex-col justify-center gap-2 px-[6vw] pb-10"
+          className="flex flex-1 flex-col justify-center gap-2 overflow-y-auto px-[6vw] pb-10"
         >
           {LINKS.map((link) => (
             <NavLink
@@ -234,26 +548,31 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
               {link.label}
             </NavLink>
           ))}
-          <NavLink
-            to="/download"
-            onNavigate={close}
-            variant="mobile"
-            className="text-forja-flame hover:text-forja-flame-dim"
-          >
-            Get Forja
-          </NavLink>
           {!loading && user ? (
-            <NavLink to="/account" onNavigate={close} variant="mobile">
-              Account
-            </NavLink>
+            <HeaderAccountMenu
+              accountActive={accountActive}
+              onNavigate={close}
+              variant="mobile"
+            />
           ) : (
-            <NavLink to="/login" onNavigate={close} variant="mobile">
-              Log in
-            </NavLink>
-          )}        </nav>
+            <>
+              <NavLink
+                to="/download"
+                onNavigate={close}
+                variant="mobile"
+                className="text-forja-flame hover:text-forja-flame-dim"
+              >
+                Download
+              </NavLink>
+              <NavLink to="/login" onNavigate={close} variant="mobile">
+                Log in
+              </NavLink>
+            </>
+          )}
+        </nav>
 
         <p className="px-[6vw] pb-8 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.35)]">
-          Free download
+          Modular player platform
         </p>
       </div>
     </header>

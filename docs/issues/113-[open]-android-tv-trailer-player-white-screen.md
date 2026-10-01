@@ -47,5 +47,5 @@ On released Android TV builds, opening the fullscreen trailer player left a **wh
 ## Related
 
 - [031](031-[workaround]-android-tv-webview-gles-crash.md) — GLES workaround (HA=false reverted as harmful)
-- [053](053-[workaround]-windows-live-embed-webview2-transparent.md) — Windows transparent embed parallel
+- [053](canceled/053-[canceled]-windows-live-embed-webview2-transparent.md) — Windows transparent embed parallel
 - [RFC-055](../rfc/055-[open]-native-youtube-trailer-player.md) — native fullscreen trailer player

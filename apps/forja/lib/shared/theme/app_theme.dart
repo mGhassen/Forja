@@ -1,14 +1,23 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+
+import 'package:forja/shell/focus/shell_hover_focus.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+export 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
+    show ShellPaintEnsureVisible;
 
 /// Fixed Forja theme descriptor (single preset, not user-selectable).
 class AppThemePreset {
@@ -87,13 +96,37 @@ class AppTheme {
         surface: preset.bgCard,
         onSurface: const Color(0xFFF5F5F7),
       ),
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme).copyWith(
-        displayLarge: GoogleFonts.oswald(fontSize: 48, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.white),
-        displayMedium: GoogleFonts.oswald(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 0.4, color: Colors.white),
-        titleLarge: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w600, color: const Color(0xFFF5F5F7)),
-        bodyMedium: GoogleFonts.plusJakartaSans(fontSize: 14, color: const Color(0xFF9CA3AF)),
-        labelLarge: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFFF5F5F7)),
-      ),
+      textTheme:
+          GoogleFonts.plusJakartaSansTextTheme(
+            ThemeData.dark().textTheme,
+          ).copyWith(
+            displayLarge: GoogleFonts.oswald(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+              color: Colors.white,
+            ),
+            displayMedium: GoogleFonts.oswald(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.4,
+              color: Colors.white,
+            ),
+            titleLarge: GoogleFonts.plusJakartaSans(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFF5F5F7),
+            ),
+            bodyMedium: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: const Color(0xFF9CA3AF),
+            ),
+            labelLarge: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFF5F5F7),
+            ),
+          ),
       iconTheme: const IconThemeData(color: Color(0xFF9CA3AF)),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -134,8 +167,10 @@ class AppTheme {
           foregroundColor: const Color(0xFFF5F5F7),
         ),
       ),
-      // Canonical Forja toggle - see [ForjaSwitch] / [forjaSwitchThemeData].
+      // Canonical Forja toggle - see package [Switch] / [forjaSwitchThemeData].
       switchTheme: forjaSwitchThemeData,
+      scrollbarTheme: ForjaScrollbarStyle.theme,
+      extensions: [ForjaThemeExtension.dark()],
     );
   }
 
@@ -147,6 +182,9 @@ class AppTheme {
 }
 
 class FocusableControl extends StatefulWidget {
+  /// Desktop: after hover, first keyboard/D-pad key lands on the hovered control.
+  static void focusHoverOwner() => ShellHoverFocus.focusOwner();
+
   final Widget child;
   final VoidCallback? onTap;
   final bool autoFocus;
@@ -160,10 +198,12 @@ class FocusableControl extends StatefulWidget {
   final ValueChanged<bool>? onHoverChange;
   final FocusNode? focusNode;
   final ShellTvFocusMeta? tvMeta;
-  final ShellTvEnsureVisibleMode ensureVisibleMode;
+  final ShellPaintEnsureVisible ensureVisibleMode;
   final bool showFocusBorder;
 
-  /// Flat focus (scale ≤ 1): when false, only the thin border - no gray fill.
+  /// Flat focus (scale ≤ 1): opt-in gray [ForjaShellColors.inkHover] fill.
+  /// Default false — hero gallery, mood chips, and other scale-1.0 CTAs stay
+  /// transparent; search helpers / filter tokens pass true.
   final bool showFocusFill;
 
   /// Settings-style chrome: green left bar + [ForjaShellColors.inkHover] fill
@@ -186,6 +226,11 @@ class FocusableControl extends StatefulWidget {
   /// (e.g. IPTV category double-OK / long-press gestures).
   final FocusOnKeyEventCallback? onKeyEvent;
 
+  /// Desktop mouse: run [onTap] on pointer down. A parent long-press or
+  /// double-tap recognizer otherwise holds the arena (~100–300ms) before
+  /// the click acts. Turn off when a parent owns that gesture.
+  final bool mouseDownActivates;
+
   const FocusableControl({
     super.key,
     required this.child,
@@ -194,12 +239,13 @@ class FocusableControl extends StatefulWidget {
     this.borderRadius = 12.0,
     this.scaleOnFocus = ShellTokens.focusActiveScale,
     this.showFocusBorder = false,
-    this.showFocusFill = true,
+    this.showFocusFill = false,
     this.showFocusRail = false,
     this.forceRailActive = false,
     this.focusBleedWidth,
     this.allowNestedFocus = false,
     this.onKeyEvent,
+    this.mouseDownActivates = true,
     this.onLeftEdge,
     this.onUpEdge,
     this.onDownEdge,
@@ -208,16 +254,22 @@ class FocusableControl extends StatefulWidget {
     this.onHoverChange,
     this.focusNode,
     this.tvMeta,
-    this.ensureVisibleMode = ShellTvEnsureVisibleMode.row,
+    this.ensureVisibleMode = ShellPaintEnsureVisible.row,
   });
 
   @override
   State<FocusableControl> createState() => _FocusableControlState();
 }
 
-class _FocusableControlState extends State<FocusableControl> with SingleTickerProviderStateMixin {
+class _FocusableControlState extends State<FocusableControl>
+    with SingleTickerProviderStateMixin {
   bool _isFocused = false;
-  bool _isHovered = false;
+
+  /// Never setState on hover — rebuilding [MouseRegion] mid-hit-test sticks
+  /// chrome across Settings / catalogs / chips (see pack choice cards).
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  static _FocusableControlState? _hoverOwner;
+  late final void Function() _hoverClaim = _requestHoverFocus;
   late AnimationController _controller;
   late Animation<double> _scale;
   FocusNode? _ownedNode;
@@ -229,6 +281,15 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   static const _activateCoalesce = Duration(milliseconds: 800);
 
   FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
+
+  bool get _isHovered => _hoveredN.value;
+
+  void _requestHoverFocus() {
+    if (!mounted) return;
+    final node = _effectiveNode;
+    if (node.hasFocus || !node.canRequestFocus) return;
+    node.requestFocus();
+  }
 
   String _tvDebugLabel(ShellTvFocusMeta? meta) {
     if (meta == null || meta.rowId == null) return 'focusable-control';
@@ -255,10 +316,14 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       _ownedNode = FocusNode(debugLabel: _tvDebugLabel(widget.tvMeta));
     }
     _registerTvItemNode();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
-    _scale = Tween<double>(begin: 1.0, end: widget.scaleOnFocus).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
     );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: widget.scaleOnFocus,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -331,6 +396,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
   @override
   void dispose() {
+    if (_hoverOwner == this) _hoverOwner = null;
+    ShellHoverFocus.release(_hoverClaim);
     _unregisterTvItemNode(widget.tvMeta);
     final owned = _ownedNode;
     if (owned != null) {
@@ -340,6 +407,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       owned.dispose();
       _ownedNode = null;
     }
+    _hoveredN.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -360,16 +428,71 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     }
   }
 
+  void _applyLocalHover(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+    if (!mounted) return;
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    if (!policy.scaleOnHover &&
+        !widget.showFocusRail &&
+        !widget.showFocusBorder) {
+      return;
+    }
+    _updateState(
+      ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: hovered,
+        focused: _isFocused,
+        context: context,
+      ),
+    );
+  }
+
+  void _onHover(bool hovered) {
+    if (hovered) {
+      final prev = _hoverOwner;
+      if (prev != null && prev != this && prev.mounted) {
+        prev._applyLocalHover(false);
+        final prevCb = prev.widget.onHoverChange;
+        if (prevCb != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => prevCb(false));
+        }
+      }
+      _hoverOwner = this;
+      ShellHoverFocus.claim(_hoverClaim);
+      _applyLocalHover(true);
+    } else {
+      if (_hoverOwner == this) _hoverOwner = null;
+      ShellHoverFocus.release(_hoverClaim);
+      _applyLocalHover(false);
+    }
+    // Defer parent callback — may setState; must not run inside deviceUpdate.
+    final cb = widget.onHoverChange;
+    if (cb == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (hovered && _hoverOwner != this) return;
+      if (!hovered && _hoveredN.value) return;
+      cb(hovered);
+    });
+  }
+
   void _ensureVisible(BuildContext context, ShellInputPolicy policy) {
     if (!policy.ensureVisibleOnFocus) return;
-    if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.off) return;
+    if (widget.ensureVisibleMode == ShellPaintEnsureVisible.off) return;
+
+    // Prefer an ancestor extent (Popular rank digit left of poster chrome) so
+    // keepVisible does not scroll the digit off the leading edge.
+    final scrollContext =
+        ShellPaintEnsureVisibleExtent.maybeContext(context) ?? context;
 
     // TV: jump instantly (no 200ms tween). Animated scroll leaves the focused
     // control clipped / hidden until the tween ends, and stacks into stutter.
-    if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.item) {
+    if (widget.ensureVisibleMode == ShellPaintEnsureVisible.item) {
       // Settings / vertical menus: first control snaps to content top so
       // section labels above it stay visible (keepVisible alone pins flush).
-      shellTvEnsureVisibleItem(context);
+      shellTvEnsureVisibleItem(scrollContext);
       return;
     }
 
@@ -377,13 +500,13 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     // Horizontal row ListViews still need this; vertical hub lift is below.
     const zero = Duration.zero;
     Scrollable.ensureVisible(
-      context,
+      scrollContext,
       alignment: 0.0,
       duration: zero,
       alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
     );
     Scrollable.ensureVisible(
-      context,
+      scrollContext,
       alignment: 1.0,
       duration: zero,
       alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
@@ -392,15 +515,15 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     // Catalog rows: nearest Scrollable is the horizontal ListView, so the
     // keepVisible pair above often never moves the page. Lift in the vertical
     // hub scroller when the card sits under the bottom inset (focus ring bleed).
-    final box = context.findRenderObject();
+    final box = scrollContext.findRenderObject();
     final h = box is RenderBox && box.hasSize
         ? box.size.height
-        : shellMovieCardHeight(context);
+        : shellPosterCardHeight(context);
     final bleed = widget.showFocusBorder && widget.scaleOnFocus > 1.0
         ? h * (widget.scaleOnFocus - 1) / 2 + 2.5
         : (widget.showFocusBorder ? 2.5 : 0.0);
     shellTvRevealCatalogRowFocus(
-      context,
+      scrollContext,
       extraBottomPx: bleed,
       extraTopPx: bleed,
     );
@@ -425,17 +548,13 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       onRightEdge: widget.onRightEdge,
       onUpEdge: widget.onUpEdge,
       onDownEdge: widget.onDownEdge,
+      containDpad: ShellTvContainDpad.activeOf(context),
     );
     if (handled == KeyEventResult.handled) return handled;
 
-    // Settings detail: ← → category even under ShellTvDisableLinearFocus
-    // (Forja Packs 2D) — linear menu path is skipped there.
-    final pageBack =
-        shellTvSettingsBackwardEdge(context: context, event: event);
-    if (pageBack == KeyEventResult.handled) return pageBack;
-
     // Opt-in linear hosts only (rare). Default TV D-pad is spatial 2D below.
-    final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
+    final linearScope =
+        ShellTvLinearFocusScope.activeOf(context) &&
         !ShellTvDisableLinearFocus.activeOf(context);
     if (linearScope) {
       final linear = shellTvLinearMenuArrows(context: context, event: event);
@@ -461,7 +580,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       // Focused control node — NOT FocusScope.focusInDirection (full-screen
       // chrome scopes find no neighbors from the scope rect).
       if (direction != null) {
-        final vertical = direction == TraversalDirection.up ||
+        final vertical =
+            direction == TraversalDirection.up ||
             direction == TraversalDirection.down;
         final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
         var node = _effectiveNode;
@@ -474,6 +594,16 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         if (movedAny) return KeyEventResult.handled;
       }
     }
+
+    // Settings detail: ← → category only when no left neighbor (spatial already
+    // tried). Must not run before focusInDirection — that stole ← between
+    // horizontal chips (Stremio Sources / Live Sports). Explicit onLeftEdge /
+    // row graph still win above. Same under ShellTvDisableLinearFocus.
+    final pageBack = shellTvSettingsBackwardEdge(
+      context: context,
+      event: event,
+    );
+    if (pageBack == KeyEventResult.handled) return pageBack;
 
     final trap = shellTvTrapRowGeometry(
       event: event,
@@ -527,42 +657,31 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         return KeyEventResult.ignored;
       },
       child: MouseRegion(
-        onEnter: (_) {
-          widget.onHoverChange?.call(true);
-          if (!policy.scaleOnHover) return;
-          setState(() => _isHovered = true);
-          _updateState(
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: true,
-              focused: _isFocused,
-              context: context,
-            ),
-          );
-        },
-        onExit: (_) {
-          widget.onHoverChange?.call(false);
-          if (!policy.scaleOnHover) return;
-          setState(() => _isHovered = false);
-          _updateState(
-            ShellInputPolicy.interactiveActive(
-              policy,
-              hovered: false,
-              focused: _isFocused,
-              context: context,
-            ),
-          );
-        },
+        // Sync exclusive paint via [_hoveredN]; parent [onHoverChange] is
+        // deferred in [_onHover] so setState never runs mid deviceUpdate.
+        onEnter: (_) => _onHover(true),
+        onExit: (_) => _onHover(false),
         cursor: SystemMouseCursors.click,
         // Leanback: DPAD_CENTER synthesizes a click after Select. Key path
-        // already ran onTap — a second pointer activate flips switches off
-        // (Addons IPTV looked dead on Android TV).
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap == null || policy.leanbackOnly
-              ? null
-              : () => _invokeOnTap(),
-          child: _buildFocusedChild(context),
+        // already ran onTap — [_invokeOnTap] coalesces the duplicate so
+        // switches do not flip twice. Pointer must still work (mouse on ATV /
+        // emulator); skipping onTap entirely made catalog rows look dead.
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (event) {
+            if (!widget.mouseDownActivates || widget.onTap == null) return;
+            if (event.kind != PointerDeviceKind.mouse) return;
+            if ((event.buttons & kPrimaryButton) == 0) return;
+            _invokeOnTap();
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap == null ? null : () => _invokeOnTap(),
+            child: ListenableBuilder(
+              listenable: _hoveredN,
+              builder: (context, _) => _buildFocusedChild(context),
+            ),
+          ),
         ),
       ),
     );
@@ -571,7 +690,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   Widget _buildFocusedChild(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final chromeActive = widget.forceRailActive ||
+    final chromeActive =
+        widget.forceRailActive ||
         ShellInputPolicy.interactiveActive(
           policy,
           hovered: _isHovered,
@@ -580,20 +700,29 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         );
 
     // Settings rail: green left bar + ink fill (no ring box).
-    // Flat menus (scale 1.0): gray fill + thin border.
+    // Flat menus (scale 1.0 + showFocusBorder): gray fill + thin border.
+    // Flat rows (scale 1.0, showFocusFill opt-in): inkHover — search helpers.
     // Catalog cards: white focus ring + lift scale.
     final railFocus = widget.showFocusRail;
     final flatMenuFocus =
         !railFocus && widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
-    final showFocusRing = widget.showFocusBorder &&
-        ((flatMenuFocus && _isHovered && policy.scaleOnHover) ||
-            policy.focusChromeVisible(context, focused: _isFocused));
+    // Desktop: hover OR focus — hover wins (no focus ring under the pointer).
+    final hoverOwnsChrome = _isHovered && policy.scaleOnHover;
+    final showFocusRing =
+        widget.showFocusBorder &&
+        ((flatMenuFocus && hoverOwnsChrome) ||
+            (!hoverOwnsChrome &&
+                policy.focusChromeVisible(context, focused: _isFocused)));
+    // Horizontal bleed is for leanback TV so focus scale stays in layout.
+    // Desktop hover must not inset idle cards — scale overlaps neighbors instead.
     // 0 = caller already reserved scale room (e.g. a grid cell).
-    final bleed = widget.showFocusBorder &&
+    final bleed =
+        widget.showFocusBorder &&
             !flatMenuFocus &&
             !railFocus &&
-            widget.focusBleedWidth != 0
-        ? shellMovieCardFocusBleed(
+            widget.focusBleedWidth != 0 &&
+            !policy.scaleOnHover
+        ? shellCardFocusBleed(
             context,
             scaleOnFocus: widget.scaleOnFocus,
             cardWidth: widget.focusBleedWidth,
@@ -608,6 +737,13 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
           // Clip so the left accent + ink fill follow [borderRadius].
           // (Directional Border + borderRadius is illegal in BoxDecoration.)
           final radius = BorderRadius.circular(widget.borderRadius);
+          final rtl = Directionality.of(context) == TextDirection.rtl;
+          final accent = BorderSide(
+            color: chromeActive
+                ? ForjaShellColors.brandGreen
+                : Colors.transparent,
+            width: 2.5,
+          );
           content = ClipRRect(
             borderRadius: radius,
             child: AnimatedContainer(
@@ -619,12 +755,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
                     ? ForjaShellColors.inkHover
                     : Colors.transparent,
                 border: Border(
-                  left: BorderSide(
-                    color: chromeActive
-                        ? ForjaShellColors.brandGreen
-                        : Colors.transparent,
-                    width: 2.5,
-                  ),
+                  left: rtl ? BorderSide.none : accent,
+                  right: rtl ? accent : BorderSide.none,
                 ),
               ),
               child: content,
@@ -655,8 +787,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
                   child: IgnorePointer(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(widget.borderRadius),
+                        borderRadius: BorderRadius.circular(
+                          widget.borderRadius,
+                        ),
                         border: Border.all(color: Colors.white, width: 1.5),
                       ),
                     ),
@@ -665,6 +798,19 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
               ],
             );
           }
+        } else if (widget.showFocusFill &&
+            widget.scaleOnFocus <= 1.0 &&
+            chromeActive) {
+          // Opt-in flat rows only (search helpers, filter tokens, …).
+          // Default showFocusFill is false — scale-1.0 CTAs / hero gallery /
+          // mood chips must not wash ink over full-bleed paint.
+          content = DecoratedBox(
+            decoration: BoxDecoration(
+              color: ForjaShellColors.inkHover,
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+            ),
+            child: content,
+          );
         }
         if (flatMenuFocus || railFocus) return content;
         return Transform.scale(

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Shared Android TV bottom transport for VOD (MediaKit + Exo).
 ///
@@ -32,6 +33,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
     required this.hasEpisodePicker,
     required this.catalogSourceLines,
     required this.streamPickerLines,
+    this.playingOffline = false,
     required this.onPlayPause,
     required this.onRewind10,
     required this.onForward10,
@@ -76,6 +78,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
   final bool hasEpisodePicker;
   final ({String label, String? server})? catalogSourceLines;
   final ({String label, String? server})? streamPickerLines;
+  final bool playingOffline;
 
   final VoidCallback onPlayPause;
   final VoidCallback onRewind10;
@@ -265,7 +268,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                     builder: (context, dur, _) => PlayerTimeRange(
                       position: pos,
                       duration: dur,
-                      fontSize: 11,
+                      fontSize: ShellTokens.playerChromeTimeFontSizeTv,
                     ),
                   ),
                 ),
@@ -288,6 +291,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                     iconSize: iconSz,
                     label: catalogSourceLines!.label,
                     server: catalogSourceLines!.server,
+                    offline: playingOffline,
                     onPressed: onOpenTorrentSources,
                   ),
                 ),
@@ -305,6 +309,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                     iconSize: iconSz - 2,
                     label: streamPickerLines!.label,
                     server: streamPickerLines!.server,
+                    offline: playingOffline,
                     onPressedWithContext: onOpenStreamPicker,
                   ),
                 ),

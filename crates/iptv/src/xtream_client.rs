@@ -10,6 +10,10 @@ use std::time::Duration;
 
 const UA: &str = "VLC/3.0.20 LibVLC/3.0.20";
 
+/// Match Stalker: one original attempt + up to two retries on gateway/transport blips.
+const TRANSIENT_MAX_ATTEMPTS: u32 = 3;
+const TRANSIENT_BACKOFF_MS: [u64; 2] = [300, 800];
+
 #[derive(Debug, Deserialize)]
 struct XtreamRequest {
     action: String,
@@ -262,9 +266,24 @@ async fn series_episodes(api: &str, series_id: &str, timeout: Duration) -> Resul
 }
 
 async fn http_get(url: &str, timeout: Duration) -> Result<String, String> {
-    if utils::engine_cancel::is_requested() {
-        return Err(utils::engine_cancel::cancelled_message().into());
+    let mut attempt = 0u32;
+    loop {
+        attempt += 1;
+        if utils::engine_cancel::is_requested() {
+            return Err(utils::engine_cancel::cancelled_message().into());
+        }
+        match http_get_once(url, timeout).await {
+            Ok(body) => return Ok(body),
+            Err(e) if is_retriable(&e) && attempt < TRANSIENT_MAX_ATTEMPTS => {
+                tokio::time::sleep(Duration::from_millis(transient_backoff_ms(attempt))).await;
+                continue;
+            }
+            Err(e) => return Err(finalize_http_err(e)),
+        }
     }
+}
+
+async fn http_get_once(url: &str, timeout: Duration) -> Result<String, String> {
     let client = crate::http::client(timeout)?;
     let resp = client
         .get(url)
@@ -272,17 +291,54 @@ async fn http_get(url: &str, timeout: Duration) -> Result<String, String> {
         .header("Accept", "application/json,*/*")
         .send()
         .await
-        .map_err(format_transport_err)?;
+        .map_err(|e| e.to_string())?;
     let status = resp.status().as_u16();
     if !(200..300).contains(&status) {
         return Err(format!("HTTP {status}"));
     }
-    resp.text().await.map_err(format_transport_err)
+    resp.text().await.map_err(|e| e.to_string())
 }
 
-/// User-facing transport errors — never echo the request URL (credentials in query).
-fn format_transport_err(err: reqwest::Error) -> String {
-    map_transport_message(&err.to_string(), err.is_timeout() || err.is_connect())
+fn transient_backoff_ms(failed_attempt: u32) -> u64 {
+    let idx = (failed_attempt.saturating_sub(1) as usize).min(TRANSIENT_BACKOFF_MS.len() - 1);
+    TRANSIENT_BACKOFF_MS[idx]
+}
+
+/// Gateway / transport blips are worth another try. Auth and cancel are not.
+fn is_retriable(err: &str) -> bool {
+    if err == "cancelled" || err.contains("cancel") {
+        return false;
+    }
+    if let Some(code) = err
+        .strip_prefix("HTTP ")
+        .and_then(|s| s.parse::<u16>().ok())
+    {
+        return code >= 500;
+    }
+    let lower = err.to_ascii_lowercase();
+    lower.contains("timeout")
+        || lower.contains("timed out")
+        || lower.contains("connection")
+        || lower.contains("dns")
+        || lower.contains("tls")
+        || lower.contains("ssl")
+        || lower.contains("reset")
+        || lower.contains("broken pipe")
+        || lower.contains("error sending request")
+        || lower.contains("error decoding response body")
+}
+
+fn finalize_http_err(err: String) -> String {
+    if err.starts_with("HTTP ") {
+        return err;
+    }
+    let lower = err.to_ascii_lowercase();
+    let force_unreachable = lower.contains("timed out")
+        || lower.contains("timeout")
+        || lower.contains("connection")
+        || lower.contains("dns")
+        || lower.contains("connect");
+    map_transport_message(&err, force_unreachable)
 }
 
 fn map_transport_message(raw: &str, force_unreachable: bool) -> String {
@@ -353,6 +409,19 @@ mod tests {
     #[test]
     fn transport_mapper_keeps_plain_errors() {
         assert_eq!(map_transport_message("invalid_section", false), "invalid_section");
+    }
+
+    #[test]
+    fn retriable_matches_gateway_and_transport() {
+        assert!(is_retriable("HTTP 502"));
+        assert!(is_retriable("HTTP 503"));
+        assert!(is_retriable("HTTP 520"));
+        assert!(is_retriable("operation timed out"));
+        assert!(is_retriable("error sending request for url (http://x): connection reset"));
+        assert!(!is_retriable("HTTP 404"));
+        assert!(!is_retriable("HTTP 401"));
+        assert!(!is_retriable("auth_failed"));
+        assert!(!is_retriable("cancelled"));
     }
 
     #[test]

@@ -70,6 +70,11 @@ pub unsafe extern "C" fn ffi_engine_take_job_result(job_id: u64) -> *mut c_char 
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_engine_take_job_events(job_id: u64) -> *mut c_char {
+    to_c_string(crate::engine_take_job_events(job_id))
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_add(a: i64, b: i64) -> i64 {
     crate::add(a, b)
 }
@@ -378,11 +383,6 @@ pub unsafe extern "C" fn ffi_indexer_request_json(request_json: *const c_char) -
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_debrid_request_json(request_json: *const c_char) -> *mut c_char {
-    to_c_string(crate::debrid_request_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ffi_filter_torrents_json(
     results_json: *const c_char,
     show_title: *const c_char,
@@ -527,6 +527,17 @@ pub unsafe extern "C" fn ffi_proxy_register_route(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_proxy_create_ext_session(
+    url: *const c_char,
+    headers_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::proxy_create_ext_session(
+        from_c_str(url),
+        from_c_str(headers_json),
+    ))
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_lan_server_start(bind_mode: u8, preferred_port: u16) -> i32 {
     crate::lan_server_start(bind_mode, preferred_port as u32)
 }
@@ -612,20 +623,6 @@ pub unsafe extern "C" fn ffi_seek111477_purge_cache_json(cache_dir: *const c_cha
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_site111477_index_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::site111477_index_request_json(from_c_str(
-        request_json,
-    )))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_mega_resolve_json(embed_url: *const c_char) -> *mut c_char {
-    to_c_string(crate::mega_resolve_json(from_c_str(embed_url)))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ffi_metadata_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::metadata_request_json(from_c_str(request_json)))
 }
@@ -645,6 +642,11 @@ pub unsafe extern "C" fn ffi_subtitle_request_json(request_json: *const c_char) 
 #[no_mangle]
 pub unsafe extern "C" fn ffi_provider_health_json(payload_json: *const c_char) -> *mut c_char {
     to_c_string(crate::provider_health_json(from_c_str(payload_json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_iptv_catalog_json(request_json: *const c_char) -> *mut c_char {
+    to_c_string(crate::iptv_catalog_json(from_c_str(request_json)))
 }
 
 #[no_mangle]

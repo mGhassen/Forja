@@ -1,0 +1,139 @@
+import 'package:flutter/material.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/components/mood_circle.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+
+export 'package:forja_foundation/components/mood_circle.dart'
+    show MoodCircle, MoodCircleLayout;
+
+/// Resolve helpers for [MoodCircleLayout] (reads [ShellPaintScope]).
+abstract final class ShellMoodCircleLayout {
+  static MoodCircleLayout get desktop => MoodCircleLayout.desktop;
+  static MoodCircleLayout get tvScrollable => MoodCircleLayout.tvScrollable;
+
+  static MoodCircleLayout resolve(
+    BuildContext context, {
+    required int itemCount,
+    required double maxWidth,
+  }) {
+    if (ShellPaintScope.usesTvDensityOf(context)) {
+      return MoodCircleLayout.tvScrollable;
+    }
+    return MoodCircleLayout.desktop;
+  }
+}
+
+/// Host TV/focus wrapper around accent [MoodCircle].
+class ShellMoodCircleItem extends StatefulWidget {
+  const ShellMoodCircleItem({
+    super.key,
+    required this.layout,
+    required this.label,
+    required this.icon,
+    required this.accent,
+    required this.selected,
+    required this.onTap,
+    this.listIndex,
+    this.onDownEdge,
+    this.onUpEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+  });
+
+  final MoodCircleLayout layout;
+  final String label;
+  final IconData icon;
+  final Color accent;
+  final bool selected;
+  final VoidCallback? onTap;
+  final int? listIndex;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+
+  @override
+  State<ShellMoodCircleItem> createState() => _ShellMoodCircleItemState();
+}
+
+class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  bool _focused = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool h) {
+    if (_hoveredN.value == h) return;
+    _hoveredN.value = h;
+  }
+
+  /// Hover / D-pad focus only — selection is [MoodCircle.selected].
+  bool _hoveredOrFocused(BuildContext context, bool hovered) {
+    return hovered ||
+        ShellPaintScope.focusStyledOf(context, focused: _focused);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final useTv = ShellPaintScope.useTvFocusOf(context);
+    final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
+    // Prefer live density over a desktop layout prop (kit mount / stale hosts).
+    final layout = ShellPaintScope.usesTvDensityOf(context)
+        ? MoodCircleLayout.tvScrollable
+        : widget.layout;
+
+    Widget paint(bool hovered) => MoodCircle(
+          label: widget.label,
+          icon: widget.icon,
+          accent: widget.accent,
+          layout: layout,
+          selected: widget.selected,
+          active: _hoveredOrFocused(context, hovered),
+          scaleOnActive: scaleOnHover,
+          size: layout.circleSize,
+        );
+
+    final painted = ListenableBuilder(
+      listenable: _hoveredN,
+      builder: (context, _) => paint(_hoveredN.value),
+    );
+
+    if (useTv) {
+      // Accent circle already paints hover/focus (glow + green label).
+      // Suppress host ink/fill — gray pill over the chip was a regression.
+      return ShellPaintScope.focusableTap(
+        context: context,
+        onTap: widget.onTap,
+        borderRadius: layout.circleSize / 2,
+        motion: ForjaMotionPreset.fillOnly,
+        showFocusFill: false,
+        suppressInkHover: true,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: scaleOnHover ? _setHovered : null,
+        listIndex: widget.listIndex,
+        tvItemIndex: widget.listIndex,
+        tvZone: ShellPaintTvZone.chipStrip,
+        onDownEdge: widget.onDownEdge,
+        onUpEdge: widget.onUpEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
+        child: painted,
+      );
+    }
+
+    return MouseRegion(
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: painted,
+      ),
+    );
+  }
+}

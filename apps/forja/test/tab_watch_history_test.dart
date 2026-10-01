@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
-import 'package:forja/shared/foundation/services/watch/watch_history.dart';
+import 'package:forja/shared/playback/play_hooks.dart';
+import 'package:forja/shared/playback/play_session.dart';
 import 'package:rust/rust.dart';
 
 Movie _movie({required int id, String mediaType = 'movie'}) => Movie(
@@ -47,57 +47,34 @@ void main() {
       expect(
         usesHomeWatchHistory(
           movie: movie,
-          onSaveProgress: (_, _) async {},
+          onSaveProgress: (_, _, {sourceId, streamUrl}) async {},
         ),
         isFalse,
       );
     });
-  });
 
-  group('isHomeTabWatchHistoryEntry', () {
-    test('filters hub rows out of Home CW', () {
+    test('TMDB home via pack still writes home history with kit callback', () {
+      final movie = _movie(id: 99, mediaType: 'tv');
       expect(
-        isHomeTabWatchHistoryEntry({'tmdbId': 1, 'mediaType': 'tv'}),
+        usesHomeWatchHistory(
+          movie: movie,
+          episodes: const [],
+          onSaveProgress: (_, _, {sourceId, streamUrl}) async {},
+          playSession: const PlaySession(useHomeEpisodeWatched: true),
+        ),
         isTrue,
       );
-      expect(
-        isHomeTabWatchHistoryEntry({'tmdbId': 1, 'mediaType': 'asian_drama'}),
-        isFalse,
-      );
-      expect(
-        isHomeTabWatchHistoryEntry({'tmdbId': -1, 'mediaType': 'tv'}),
-        isFalse,
-      );
-    });
-  });
-
-  group('catalogEntryFromHomeWatchHistory', () {
-    test('maps WatchHistoryService row to catalog continue entry', () {
-      final entry = catalogEntryFromHomeWatchHistory({
-        'uniqueId': '42_S1_E3',
-        'tmdbId': 42,
-        'title': 'Show',
-        'posterPath': '/p.jpg',
-        'backdropPath': '/b.jpg',
-        'position': 120000,
-        'duration': 3600000,
-        'season': 1,
-        'episode': 3,
-        'mediaType': 'tv',
-        'updatedAt': 1000,
-      });
-      expect(isHomeWatchHistoryEntry(entry), isTrue);
-      expect(entry['metaId'], '42_S1_E3');
-      expect(entry['episodeNumber'], 3);
-      expect(entry['positionMs'], 120000);
-      expect(entry['cover'], contains('image.tmdb.org'));
     });
   });
 
   group('isContinueWatchingRowEntry', () {
-    test('lists short saves on long runtimes once past player gate', () {
-      expect(isContinueWatchingRowEntry(15_000, 3_600_000), isTrue);
+    test('lists only inside 2–85% window', () {
+      // 15s of 1h ≈ 0.4% — under 2%
+      expect(isContinueWatchingRowEntry(15_000, 3_600_000), isFalse);
       expect(isInProgressResume(15_000, 3_600_000), isFalse);
+      // 72s of 1h = 2%
+      expect(isContinueWatchingRowEntry(72_000, 3_600_000), isTrue);
+      expect(isInProgressResume(72_000, 3_600_000), isTrue);
     });
 
     test('still hides finished and unsaved rows', () {

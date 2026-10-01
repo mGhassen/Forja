@@ -25,18 +25,22 @@ void main() {
     }
 
     LocalDataScope.addListener(listener);
+    final gen0 = LocalDataScope.generation;
     await LocalDataScope.configure(accountId: 'user-a', profileId: 'prof-1');
     expect(LocalDataScope.id, 'user-a:prof-1');
     expect(LocalDataScope.storageKey('episodes_watched'),
         'episodes_watched@user-a:prof-1');
     expect(hits, 1);
+    expect(LocalDataScope.generation, gen0 + 1);
 
     await LocalDataScope.configure(accountId: 'user-a', profileId: 'prof-1');
     expect(hits, 1); // unchanged scope — no notify
+    expect(LocalDataScope.generation, gen0 + 1);
 
     await LocalDataScope.configure(accountId: null, profileId: null);
     expect(LocalDataScope.isGuest, isTrue);
     expect(hits, 2);
+    expect(LocalDataScope.generation, gen0 + 2);
     LocalDataScope.removeListener(listener);
   });
 

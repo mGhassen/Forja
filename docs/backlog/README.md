@@ -2,7 +2,7 @@
 
 One file **per release version**. Specs live in [RFCs](../rfc/README.md); each file links RFCs, issues, and migration slices for that ship.
 
-**Rules:** [docs-rfc-issues](../../.cursor/rules/docs-rfc-issues.mdc)
+**Rules:** [docs law](../../.cursor/rules/docs-rfc-issues.mdc) · skill [forja-docs-rfc-issues](../../.cursor/skills/forja-docs-rfc-issues/SKILL.md) (do not edit backlog unless asked)
 
 ## Semver
 
@@ -14,7 +14,7 @@ One file **per release version**. Specs live in [RFCs](../rfc/README.md); each f
 
 **Codename applies to the minor only** (`1.2.0` → **Dabaghin**; `1.2.3` inherits it). Patch backlog files (`1.0.1`, `1.0.2`) are ship checklists under **1.0.x** — still **Bab Souika**, no new codename.
 
-[`kReleaseCodename`](../../apps/forja/lib/shared/services/app_version.dart) tracks **app semver minor** (today **1.5 → Berka**), not the patch backlog filename.
+[`kReleaseCodename`](../../apps/forja/lib/shared/services/app_version.dart) tracks **app semver minor** (today **2.0 → Serrajin**), not the patch backlog filename.
 
 Filename = `{semver}-[{status}].md`. Tag matches `**Status:**` in the body.
 
@@ -54,49 +54,55 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | **1.2** ✅ | **Dabaghin** | 
 | **1.3** ✅ | **Elblat** | 
 | **1.4** ✅ | **Atarin** | 
-| **1.5** 🔄 | **Berka** | 
-| **1.6** ⬜ | **Serrajin** | 
-| **1.7** ⬜ | **Leffa** | 
-| **1.8** ⬜ | **Belghajia** | 
-| **1.9** ⬜ | **Sabbaghin** | 
-| **1.10** ⬜ | **Grana** | 
-| **1.11** ⬜ | **Haddadin** | 
-| **1.12** ⬜ | **Bechmak** | 
-| **1.13** ⬜ | **Nhas** | 
-| **1.14** ⬜ | **Trouk** | 
+| **1.5** ✅ | **Berka** | 
 
-### v2 — Diwan
+### v2 — Souk
 
 | Minor | Codename | 
 |-------|----------|
-| **2.0** ⬜ | **Diwan** | 
-| **2.1** ⬜ | **Qoffa** | 
-| **2.2** ⬜ | **Chachia** | 
-| **2.3** ⬜ | **Herz** | 
-| **2.4** ⬜ | **Midha** |  
-| **2.5** ⬜ | **Mekhzan** |
+| **2.0** 🔄 | **Serrajin** | 
+| **2.1** ⬜ | **Leffa** | 
+| **2.2** ⬜ | **Belghajia** | 
+| **2.3** ⬜ | **Sabbaghin** | 
+| **2.4** ⬜ | **Grana** | 
+| **2.5** ⬜ | **Haddadin** | 
+| **2.6** ⬜ | **Bechmak** | 
+| **2.7** ⬜ | **Nhas** | 
+| **2.8** ⬜ | **Trouk** | 
 
-### v3 — Ink & stone
 
-| Minor | Codename | 
-|-------|----------|
-| **3.0** ⬜ | **Muqaddimah** | 
-| **3.1** ⬜ | **Capsa** | 
-| **3.2** ⬜ | **Kahina** | 
-| **3.3** ⬜ | **Uthina** | 
-| **3.4** ⬜ | **Tanit** | 
-| **3.5** ⬜ | **Magon** |
-
-### v4 — Ksour
+### v3 — Diwan
 
 | Minor | Codename | 
 |-------|----------|
-| **4.0** ⬜ | **Chambi** | 
-| **4.1** ⬜ | **Sened** | 
-| **4.2** ⬜ | **Sbeitla** | 
-| **4.3** ⬜ | **Jugurtha** | 
-| **4.4** ⬜ | **Jerid** | 
-| **4.5** ⬜ | **Borma** |
+| **3.0** ⬜ | **Diwan** | 
+| **3.1** ⬜ | **Qoffa** | 
+| **3.2** ⬜ | **Chachia** | 
+| **3.3** ⬜ | **Herz** | 
+| **3.4** ⬜ | **Midha** |  
+| **3.5** ⬜ | **Mekhzan** |
+
+### v4 — Ink & stone
+
+| Minor | Codename | 
+|-------|----------|
+| **4.0** ⬜ | **Muqaddimah** | 
+| **4.1** ⬜ | **Capsa** | 
+| **4.2** ⬜ | **Kahina** | 
+| **4.3** ⬜ | **Uthina** | 
+| **4.4** ⬜ | **Tanit** | 
+| **4.5** ⬜ | **Magon** |
+
+### v5 — Ksour
+
+| Minor | Codename | 
+|-------|----------|
+| **5.0** ⬜ | **Chambi** | 
+| **5.1** ⬜ | **Sened** | 
+| **5.2** ⬜ | **Sbeitla** | 
+| **5.3** ⬜ | **Jugurtha** | 
+| **5.4** ⬜ | **Jerid** | 
+| **5.5** ⬜ | **Borma** |
 
 ## Active
 

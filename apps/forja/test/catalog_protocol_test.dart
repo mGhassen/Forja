@@ -3,8 +3,18 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/foundation.dart';
-import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja/shared/engine/packs/forja_host_assets.dart';
+import 'package:forja/shared/engine/cache/engine_cache.dart';
+import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
+import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/packs/pack_assets.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
+import 'package:forja_foundation/protocol/deeplink.dart';
+import 'package:forja_foundation/protocol/filter.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/forja_packs_root.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
@@ -14,11 +24,32 @@ import 'package:forja/shell/bus/shell_bus.dart';
 
 String? _packsRoot() => ForjaPacksRoot.resolve(requireDebug: false);
 
-/// `sdk/fixtures/<name>.json` under forja-packs.
+/// Sibling [forja-sdk] or `FORJA_SDK_ROOT` — catalog fixtures.
+String? _sdkRoot() {
+  final env = Platform.environment['FORJA_SDK_ROOT']?.trim() ?? '';
+  if (env.isNotEmpty) {
+    final d = Directory(env);
+    if (d.existsSync()) return d.absolute.path.replaceAll('\\', '/');
+  }
+  var dir = Directory.current;
+  for (var i = 0; i < 8; i++) {
+    final sibling = Directory('${dir.path}/forja-sdk');
+    if (sibling.existsSync() &&
+        File('${sibling.path}/contract.json').existsSync()) {
+      return sibling.absolute.path.replaceAll('\\', '/');
+    }
+    final parent = dir.parent;
+    if (parent.path == dir.path) break;
+    dir = parent;
+  }
+  return null;
+}
+
+/// `fixtures/<name>.json` under forja-sdk.
 dynamic loadHubFixture(String name) {
-  final root = _packsRoot();
-  expect(root, isNotNull, reason: 'forja-packs not found');
-  final file = File('$root/sdk/fixtures/$name.json');
+  final root = _sdkRoot();
+  expect(root, isNotNull, reason: 'forja-sdk not found');
+  final file = File('$root/fixtures/$name.json');
   expect(file.existsSync(), isTrue, reason: 'missing fixture ${file.path}');
   return jsonDecode(file.readAsStringSync());
 }
@@ -34,15 +65,9 @@ Map<String, dynamic> loadHubPackManifest(String packDir) {
   );
 }
 
-/// `iptv/vod/manifest.json` — IPTV VOD details pack (not a hub tab).
-Map<String, dynamic> loadIptvVodPackManifest() {
-  final root = _packsRoot();
-  expect(root, isNotNull, reason: 'forja-packs not found');
-  final file = File('$root/iptv/vod/manifest.json');
-  expect(file.existsSync(), isTrue, reason: 'missing ${file.path}');
-  return Map<String, dynamic>.from(
-    jsonDecode(file.readAsStringSync()) as Map,
-  );
+/// `hubs/iptv/manifest.json` — IPTV hub (nav + details + enrich).
+Map<String, dynamic> loadIptvHubPackManifest() {
+  return loadHubPackManifest('iptv');
 }
 
 List<EnginePlugin> loadAllHubPlugins() {
@@ -54,8 +79,8 @@ List<EnginePlugin> loadAllHubPlugins() {
     'arabic',
     'cartoon',
     'aflem',
-    'my_list',
     'live_sports',
+    'iptv',
   ]) {
     final pack = EnginePack.fromJson(
       loadHubPackManifest(dir),
@@ -63,11 +88,6 @@ List<EnginePlugin> loadAllHubPlugins() {
     );
     out.addAll(pack.plugins);
   }
-  final iptv = EnginePack.fromJson(
-    loadIptvVodPackManifest(),
-    sourceUrl: 'file:///plugins/iptv/vod/manifest.json',
-  );
-  out.addAll(iptv.plugins);
   return out;
 }
 
@@ -174,10 +194,25 @@ void main() {
       expect(
         validateLayoutData({
           'pages': {
-            'home': {'widgets': [{'id': 'x'}]},
+            'home': {
+              'widgets': [
+                {'id': 'x'},
+              ],
+            },
           },
         }),
         isNotNull,
+      );
+    });
+
+    test('accepts empty widgets shell', () {
+      expect(
+        validateLayoutData({
+          'pages': {
+            'home': {'widgets': <dynamic>[]},
+          },
+        }),
+        isNull,
       );
     });
   });
@@ -351,48 +386,73 @@ void main() {
     });
   });
 
+  group('packRailParamsAreFeedShared', () {
+    test('allows chrome hubPage and host maxPages', () {
+      expect(
+        packRailParamsAreFeedShared({
+          'rail': 'popular',
+          'hubPage': 'home',
+          'maxPages': 2,
+          'filter': null,
+        }),
+        isTrue,
+      );
+    });
+
+    test('rejects per-row extras like genreRow', () {
+      expect(
+        packRailParamsAreFeedShared({
+          'rail': 'genre',
+          'hubPage': 'home',
+          'genreRow': 'action',
+        }),
+        isFalse,
+      );
+    });
+  });
+
   group('cache', () {
-    setUp(MetaCache.instance.wipeAll);
+    setUp(EngineCache.instance.wipeCatalog);
 
     test('key is stable across param order', () {
-      final a = MetaCache.keyFor(
+      final a = EngineCache.keyFor(
         pluginId: 'anilist',
         action: 'rail',
         params: {'rail': 'trending', 'limit': 20},
       );
-      final b = MetaCache.keyFor(
+      final b = EngineCache.keyFor(
         pluginId: 'anilist',
         action: 'rail',
         params: {'limit': 20, 'rail': 'trending'},
       );
       expect(a, b);
-      expect(a, startsWith('anilist|rail|'));
+      expect(a, startsWith('anilist||rail|'));
     });
 
     test('auth subject and params change the key', () {
-      final base = MetaCache.keyFor(pluginId: 'p', action: 'rail');
+      final base = EngineCache.keyFor(pluginId: 'p', action: 'rail');
       expect(
-        MetaCache.keyFor(pluginId: 'p', action: 'rail', authSubject: 'u1'),
+        EngineCache.keyFor(pluginId: 'p', action: 'rail', authSubject: 'u1'),
         isNot(base),
       );
       expect(
-        MetaCache.keyFor(pluginId: 'p', action: 'rail', params: {'a': 1}),
+        EngineCache.keyFor(pluginId: 'p', action: 'rail', params: {'a': 1}),
         isNot(base),
       );
     });
 
     test('honours maxAge then the swr window', () {
       const key = 'k';
-      MetaCache.instance.put(
+      EngineCache.instance.putEntry(
         key: key,
         pluginId: 'anilist',
         data: const {'items': []},
-        hints: const MetaCacheHints(
+        hints: const CatalogCacheHints(
           maxAge: Duration(seconds: 1),
           swr: Duration(minutes: 5),
         ),
       );
-      final entry = MetaCache.instance.get(key)!;
+      final entry = EngineCache.instance.getEntry(key)!;
       expect(entry.isFresh, isTrue);
       expect(entry.isExpired, isFalse);
 
@@ -409,28 +469,96 @@ void main() {
     });
 
     test('wipePlugin drops only that plugin', () {
-      MetaCache.instance.put(
+      EngineCache.instance.putEntry(
         key: 'a',
         pluginId: 'anilist',
         data: const {},
       );
-      MetaCache.instance.put(key: 'b', pluginId: 'kisskh-hub', data: const {});
-      MetaCache.instance.wipePlugin('anilist');
-      expect(MetaCache.instance.get('a'), isNull);
-      expect(MetaCache.instance.get('b'), isNotNull);
+      EngineCache.instance.putEntry(key: 'b', pluginId: 'kisskh-hub', data: const {});
+      EngineCache.instance.wipePlugin('anilist');
+      expect(EngineCache.instance.getEntry('a'), isNull);
+      expect(EngineCache.instance.getEntry('b'), isNotNull);
     });
 
     test('pack version change wipes everything', () {
-      MetaCache.instance.syncPackVersion('forjahq-home', '1.0.0');
-      MetaCache.instance.put(key: 'a', pluginId: 'anilist', data: const {});
-      MetaCache.instance.syncPackVersion('forjahq-home', '1.0.0');
-      expect(MetaCache.instance.get('a'), isNotNull);
-      MetaCache.instance.syncPackVersion('forjahq-home', '1.0.1');
-      expect(MetaCache.instance.get('a'), isNull);
+      EngineCache.instance.syncPackVersion('forjahq-home', '1.0.0');
+      EngineCache.instance.putEntry(key: 'a', pluginId: 'anilist', data: const {});
+      EngineCache.instance.syncPackVersion('forjahq-home', '1.0.0');
+      expect(EngineCache.instance.getEntry('a'), isNotNull);
+      EngineCache.instance.syncPackVersion('forjahq-home', '1.0.1');
+      expect(EngineCache.instance.getEntry('a'), isNull);
     });
   });
 
   group('enrich cache skip', () {
+    test('details does not skip when rails are still pending', () {
+      expect(
+        MetaRuntime.envelopeAlreadyEnriched(
+          'details',
+          {
+            'meta': {
+              'id': 'hub:1',
+              '_hubTmdbEnriched': true,
+              '_hubRecsPending': true,
+            },
+          },
+          const {},
+        ),
+        isFalse,
+      );
+    });
+
+    test('details enrich keeps deferRails for the follow-up', () {
+      final merged = MetaRuntime.overlayEnrichData(
+        action: 'details',
+        data: {
+          'meta': {'id': 'title:1'},
+        },
+        enrichData: {
+          'meta': {
+            'id': 'title:1',
+            '_hubRecsPending': true,
+            'recommendations': [
+              {'id': 'rec:1', 'name': 'Other'},
+            ],
+          },
+          'deferRails': {'phase': 'rails'},
+        },
+      );
+      expect(MetaRuntime.takeDeferRails(merged), {'phase': 'rails'});
+      expect(merged.containsKey('deferRails'), isFalse);
+      expect((merged['meta'] as Map)['_hubRecsPending'], isTrue);
+    });
+
+    test('details does not skip when recommendations never became a rail', () {
+      expect(
+        MetaRuntime.envelopeAlreadyEnriched(
+          'details',
+          {
+            'meta': {
+              'id': 'title:1',
+              '_hubTmdbEnriched': true,
+              'recommendations': [
+                {'id': 'rec:1', 'name': 'Other'},
+              ],
+            },
+          },
+          const {},
+        ),
+        isFalse,
+      );
+    });
+
+    test('takeDeferRails removes the follow-up map', () {
+      final data = <String, dynamic>{
+        'meta': {'id': 'hub:1'},
+        'deferRails': {'phase': 'rails'},
+      };
+      expect(MetaRuntime.takeDeferRails(data), {'phase': 'rails'});
+      expect(data.containsKey('deferRails'), isFalse);
+      expect(MetaRuntime.takeDeferRails(data), isNull);
+    });
+
     test('details skips when kit marker set', () {
       expect(
         MetaRuntime.envelopeAlreadyEnriched(
@@ -464,7 +592,7 @@ void main() {
       );
     });
 
-    test('spotlight rail skips on legacy tmdb backdrop', () {
+    test('spotlight rail does not skip on legacy tmdb backdrop alone', () {
       expect(
         MetaRuntime.envelopeAlreadyEnriched(
           'rail',
@@ -480,7 +608,7 @@ void main() {
           },
           const {'rail': 'spotlight'},
         ),
-        isTrue,
+        isFalse,
       );
     });
 
@@ -649,57 +777,72 @@ void main() {
       );
     });
 
-    test('iptv vod pack is under plugins/iptv/vod, not hubs', () {
+    test('iptv hub pack includes nav + details + enrich', () {
       final iptv = EnginePack.fromJson(
-        loadIptvVodPackManifest(),
-        sourceUrl: 'file:///plugins/iptv/vod/manifest.json',
+        loadIptvHubPackManifest(),
+        sourceUrl: 'file:///plugins/hubs/iptv/manifest.json',
       );
-      expect(iptv.packId, 'forjahq-iptv-vod');
-      expect(iptv.plugins.map((p) => p.id), ['iptv-vod', 'iptv-enrich-tmdb']);
+      expect(iptv.packId, 'forjahq-iptv');
       expect(
-        PluginRegistry.forjaHqSlot(
-          '/Users/me/Forja/plugins/iptv/vod/manifest.json',
-        ),
-        'iptv-vod',
+        iptv.plugins.map((p) => p.id),
+        ['iptv-hub', 'iptv-enrich-tmdb'],
       );
-      expect(
-        PluginRegistry.packKindKey(iptv),
-        PluginRegistry.packKindIptv,
-      );
-      expect(
-        PluginRegistry.packKindInfo(iptv),
-        'IPTV · Iptv Vod',
-      );
-      for (final plugin in iptv.plugins) {
-        expect(plugin.isKitPlugin, isTrue, reason: plugin.id);
-        expect(plugin.types, contains('iptv'), reason: plugin.id);
-        expect(plugin.hasCapability('nav'), isFalse, reason: plugin.id);
-      }
-      expect(File('../../plugins/iptv/vod/iptv_vod.js').existsSync(), isTrue);
-      expect(
-        File('../../plugins/iptv/vod/enrich_tmdb.js').existsSync(),
-        isTrue,
-      );
-    });
-
-    test('legacy hubs/iptv manifest url maps to iptv-vod slot', () {
       expect(
         PluginRegistry.forjaHqSlot(
           '/Users/me/Forja/plugins/hubs/iptv/manifest.json',
         ),
-        'iptv-vod',
+        'iptv',
       );
+      expect(
+        PluginRegistry.packKindKey(iptv),
+        PluginRegistry.packKindHubs,
+      );
+      final hub = iptv.plugins.firstWhere((p) => p.id == 'iptv-hub');
+      expect(hub.hasCapability('nav'), isTrue);
+      expect(hub.hasCapability('details'), isTrue);
+      expect(hub.enrich, 'iptv-enrich-tmdb');
+      expect(hub.nav?['tabId'], 'iptv');
+      expect(hub.settings?['addon'], 'iptv');
+      for (final plugin in iptv.plugins) {
+        expect(plugin.isKitPlugin, isTrue, reason: plugin.id);
+        expect(plugin.types, contains('iptv'), reason: plugin.id);
+      }
+      final root = _packsRoot();
+      expect(root, isNotNull);
+      expect(File('$root/hubs/iptv/iptv.js').existsSync(), isTrue);
+      expect(File('$root/hubs/iptv/_details.js').existsSync(), isTrue);
+      expect(File('$root/hubs/iptv/iptv_vod.js').existsSync(), isFalse);
+      expect(File('$root/hubs/iptv/enrich_tmdb.js').existsSync(), isTrue);
+    });
+
+    test('hubs/iptv manifest url is hub slot iptv (RFC-109)', () {
+      expect(
+        PluginRegistry.forjaHqSlot(
+          '/Users/me/Forja/plugins/hubs/iptv/manifest.json',
+        ),
+        'iptv',
+      );
+      expect(
+        PluginRegistry.isHubManifestSlot('iptv'),
+        isTrue,
+      );
+      // Legacy VOD-only slot still recognized for soft-pull of old installs.
       expect(
         PluginRegistry.isHubManifestSlot('iptv-vod'),
         isFalse,
       );
     });
 
-    test('iptv-vod details returns protocol envelope array', () {
-      final src =
-          File('../../plugins/iptv/vod/iptv_vod.js').readAsStringSync();
-      expect(src, isNot(contains('iptvVodDetails(params)[0]')));
-      expect(src, contains('return Promise.resolve(iptvVodDetails(params));'));
+    test('iptv hub details action is wired in entry', () {
+      final root = _packsRoot();
+      expect(root, isNotNull);
+      final entry = File('$root/hubs/iptv/iptv.js').readAsStringSync();
+      final details = File('$root/hubs/iptv/_details.js').readAsStringSync();
+      expect(entry, contains("action === 'details'"));
+      expect(entry, contains('iptvVodDetails'));
+      expect(details, contains('async function iptvVodDetails'));
+      expect(File('$root/hubs/iptv/_prelude.js').readAsStringSync(),
+          contains('async function iptvVodDetails'));
     });
 
     test('nav specs map plugins onto hub tabs', () {
@@ -711,7 +854,6 @@ void main() {
         'arabic',
         'cartoon',
         'aflem',
-        'my_list',
         'live_sports',
       ]) {
         final pack = EnginePack.fromJson(
@@ -736,8 +878,6 @@ void main() {
       expect(byRail['anime']!.pluginId, 'anilist');
       expect(byRail['asian_drama']!.pluginId, 'kisskh-hub');
       expect(byRail['arabic']!.pluginId, 'arabic-hub');
-      expect(byRail['mylist']!.pluginId, 'my-list-hub');
-      expect(byRail['mylist']!.icon, 'icons/nav.png');
       expect(byRail['live_sports']!.pluginId, 'live-sports-hub');
       expect(byRail['live_sports']!.icon, 'icons/nav.png');
       expect(byRail['cartoon']!.pluginId, 'dimatoon-hub');
@@ -748,12 +888,11 @@ void main() {
       // Packs omit tabId — chrome id comes from install URL slot.
       expect(byRail['home']!.tabId, isEmpty);
 
-      // Host seed empty — Live Sports is pack-owned (RFC-087).
+      // Host seed empty — Live Sports / IPTV are pack-owned (RFC-087 / RFC-109).
       PluginNavRegistry.seedBuiltIns();
       expect(PluginNavRegistry.isKitTab('live_sports'), isFalse);
       expect(PluginNavRegistry.isKitTab('settings'), isFalse);
-      expect(PluginNavRegistry.isContributed('mylist'), isFalse);
-      expect(PluginNavRegistry.isContributed('iptv'), isTrue);
+      expect(PluginNavRegistry.isContributed('iptv'), isFalse);
       expect(PluginNavRegistry.isContributed('live_sports'), isFalse);
       expect(
         PluginNavRegistry.featureTabIds(),
@@ -763,7 +902,7 @@ void main() {
         PluginNavRegistry.featureTabIds(
           availableAddonFeatureIds: const ['iptv'],
         ),
-        contains('iptv'),
+        isNot(contains('iptv')),
       );
       expect(
         PluginNavRegistry.featureTabIds(
@@ -782,7 +921,6 @@ void main() {
         'arabic',
         'cartoon',
         'aflem',
-        'my_list',
         'live_sports',
       ]) {
         final pack = EnginePack.fromJson(
@@ -808,7 +946,6 @@ void main() {
       expect(byRail['anime']!.icon, 'icons/nav.png');
       expect(byRail['asian_drama']!.icon, 'icons/nav.png');
       expect(byRail['cartoon']!.icon, 'icons/nav.png');
-      expect(byRail['mylist']!.icon, 'icons/nav.png');
 
       for (final e in byRail.entries) {
         final s = e.value;

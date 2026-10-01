@@ -2,8 +2,6 @@ library;
 
 export 'api/sync_service.dart';
 export 'auth/desktop_browser_auth.dart';
-export 'auth/forja_captcha.dart';
-export 'auth/turnstile_captcha.dart';
 export 'auth/tv_device_link_auth.dart';
 export 'bridge/packs_onboarding_store.dart';
 export 'bridge/sync_domain_bridge.dart';

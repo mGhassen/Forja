@@ -16,8 +16,8 @@ class SettingsService {
   factory SettingsService() => _instance;
   SettingsService._internal();
 
-  bool? _cachedUseDebridForStreams;
-  String? _cachedDebridService;
+  String? _cachedMagnetResolvePluginId;
+  bool _magnetResolveMigrated = false;
 
   static PlatformProfile _platformProfile = PlatformProfile.phone;
 
@@ -26,10 +26,6 @@ class SettingsService {
   static void configurePlatformProfile(PlatformProfile profile) {
     _platformProfile = profile;
   }
-
-  /// Run headless WebView stream extractors on Android TV (issue 031 workaround).
-  /// `true` = do not skip (dev testing). `false` = skip WebView sniffers on TV.
-  static bool allowAndroidTvHeadlessWebViewExtractors = true;
 
   PlatformDefaults get _defaults =>
       PlatformDefaults.forProfile(_platformProfile);
@@ -73,6 +69,7 @@ class SettingsService {
   static const String _sortPreferenceKey = 'sort_preference';
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
+  static const String _magnetResolvePluginIdKey = 'magnet_resolve_plugin_id';
   static const String _stremioAddonsKey = 'stremio_addons';
   static const String _externalPlayerKey = 'external_player';
   static const String _builtInPlayerEngineKey = 'built_in_player_engine';
@@ -121,6 +118,8 @@ class SettingsService {
   /// One-shot: stop honoring cloud-polluted `play_in_background` on phone/TV.
   static const String _playInBackgroundDeviceLocalKey =
       'play_in_background_device_local_v1';
+  /// Android TV D-pad focus / OK system UI sounds (default on). Device-local.
+  static const String _tvNavSoundKey = 'tv_nav_sound';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
   /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
@@ -148,7 +147,6 @@ class SettingsService {
   /// @deprecated RFC-093 — Live Sports is pack-only; not an Addons feature id.
   static const String liveSportsAddonFeatureId = 'live_sports';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
-  static const String _animeTitleLanguageKey = 'anime_title_language';
 
   /// Opt-in ceiling for IPTV **live** Exo adaptive variants. Default Auto = no cap.
   static const Map<String, int> iptvLiveMaxHeightOptions = {
@@ -305,17 +303,6 @@ class SettingsService {
     }
   }
 
-  /// Anime catalog display language (AniList). Default romaji.
-  static const List<String> animeTitleLanguageOptions = [
-    'Romaji',
-    'English',
-    'Native',
-  ];
-
-  /// Live value for [AnimeCard.displayTitle] (romaji / english / native).
-  static final ValueNotifier<String> animeTitleLanguageNotifier =
-      ValueNotifier<String>('romaji');
-
   /// Headless WebView sniff: iframe-wrap embed URLs vs load them directly.
   /// Always on — Source panel toggle removed; providers may still force direct.
   static final ValueNotifier<bool> playerWebViewUseEmbedNotifier =
@@ -356,6 +343,8 @@ class SettingsService {
       ValueNotifier<bool>(false);
   static final ValueNotifier<bool> playInBackgroundNotifier =
       ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> tvNavSoundNotifier =
+      ValueNotifier<bool>(true);
 
   Future<String> getPreferredAudioLanguage() async =>
       await kvGetString(_preferredAudioLangKey) ?? 'None';
@@ -462,7 +451,8 @@ class SettingsService {
     autoPipOnDesktopSwitchNotifier.value = v;
   }
 
-  /// Escape → in-Forja mini player (default off). Distinct from OS/window PiP.
+  /// Escape → in-Forja mini (default off). Distinct from OS/window PiP.
+  /// Does not gate the top-right mini button (always on desktop).
   /// Desktop-only — always off on phone / Android TV (not shown in Settings).
   Future<bool> getInAppMiniPlayer() async {
     if (platformProfile != PlatformProfile.desktop) {
@@ -501,6 +491,20 @@ class SettingsService {
   Future<void> setPlayInBackground(bool v) async {
     await kvSetBool(_playInBackgroundKey, v);
     playInBackgroundNotifier.value = v;
+  }
+
+  /// Android TV D-pad focus / OK system UI clicks. Default on. Device-local.
+  Future<bool> getTvNavSound() async {
+    final v = await kvGetBool(_tvNavSoundKey, fallback: true);
+    if (tvNavSoundNotifier.value != v) {
+      tvNavSoundNotifier.value = v;
+    }
+    return v;
+  }
+
+  Future<void> setTvNavSound(bool v) async {
+    await kvSetBool(_tvNavSoundKey, v);
+    tvNavSoundNotifier.value = v;
   }
 
   /// Lifecycle gate: Android TV always pauses on background (process stays warm).
@@ -594,47 +598,6 @@ class SettingsService {
 
   Future<void> setMaxPlaybackHeight(int height) async =>
       kvSetInt(_maxPlaybackHeightKey, height);
-
-  /// AniList title language for anime hub / details / player chrome.
-  /// Stored as `romaji` | `english` | `native`. Default romaji.
-  Future<String> getAnimeTitleLanguage() async {
-    final raw = (await kvGetString(_animeTitleLanguageKey) ?? 'romaji')
-        .trim()
-        .toLowerCase();
-    final v = switch (raw) {
-      'english' || 'native' || 'romaji' => raw,
-      _ => 'romaji',
-    };
-    if (animeTitleLanguageNotifier.value != v) {
-      animeTitleLanguageNotifier.value = v;
-    }
-    return v;
-  }
-
-  Future<void> setAnimeTitleLanguage(String language) async {
-    final v = switch (language.trim().toLowerCase()) {
-      'english' || 'native' || 'romaji' => language.trim().toLowerCase(),
-      _ => 'romaji',
-    };
-    await kvSetString(_animeTitleLanguageKey, v);
-    animeTitleLanguageNotifier.value = v;
-  }
-
-  static String animeTitleLanguageLabel(String stored) {
-    return switch (stored.trim().toLowerCase()) {
-      'english' => 'English',
-      'native' => 'Native',
-      _ => 'Romaji',
-    };
-  }
-
-  static String animeTitleLanguageStored(String label) {
-    return switch (label.trim().toLowerCase()) {
-      'english' => 'english',
-      'native' => 'native',
-      _ => 'romaji',
-    };
-  }
 
   Future<double> getSubSize({bool isDesktop = false}) async =>
       kvGetDouble(_subSizeKey, fallback: isDesktop ? 44.0 : _defaults.subSize);
@@ -797,8 +760,8 @@ class SettingsService {
 
   Future<bool> isAddonFeatureEnabled(String featureId) async {
     await ensureAddonFeaturesMigratedFromNav();
-    // Live Sports is pack-only (RFC-093) — never gate on retired KV.
-    if (featureId == liveSportsAddonFeatureId) {
+    // Live Sports / IPTV are pack-only — never gate on retired Addons KV.
+    if (featureId == liveSportsAddonFeatureId || featureId == 'iptv') {
       return false;
     }
     final key = _addonFeatureKey(featureId);
@@ -810,7 +773,7 @@ class SettingsService {
 
   Future<void> setAddonFeatureEnabled(String featureId, bool enabled) async {
     await ensureAddonFeaturesMigratedFromNav();
-    if (featureId == liveSportsAddonFeatureId) {
+    if (featureId == liveSportsAddonFeatureId || featureId == 'iptv') {
       return;
     }
     final key = _addonFeatureKey(featureId);
@@ -1296,46 +1259,96 @@ class SettingsService {
   Future<void> setSortPreference(String preference) async =>
       kvSetString(_sortPreferenceKey, preference);
 
-  Future<bool> useDebridForStreams() async => useDebridForStreamsSync();
+  Future<bool> useDebridForStreams() async =>
+      (await getMagnetResolvePluginId()).isNotEmpty;
 
   /// Sync — storage is sync under the hood; memoized after first read.
-  bool useDebridForStreamsSync() {
-    final cached = _cachedUseDebridForStreams;
-    if (cached != null) return cached;
-    final v = kvGetBoolSync(_useDebridKey, fallback: false);
-    _cachedUseDebridForStreams = v;
-    return v;
-  }
+  bool useDebridForStreamsSync() =>
+      getMagnetResolvePluginIdSync().isNotEmpty;
 
   Future<void> setUseDebridForStreams(bool enabled) async {
-    _cachedUseDebridForStreams = enabled;
-    await kvSetBool(_useDebridKey, enabled);
+    if (!enabled) {
+      await setMagnetResolvePluginId('');
+      return;
+    }
+    final current = getMagnetResolvePluginIdSync();
+    if (current.isNotEmpty) return;
+    // Caller should set a concrete plugin id; keep legacy toggle as empty→off.
+    await setMagnetResolvePluginId('');
   }
 
   Future<String> getDebridService() async {
-    // Off → no service read.
-    if (!useDebridForStreamsSync()) return 'None';
-    return getDebridServiceSync();
+    final id = await getMagnetResolvePluginId();
+    return id.isEmpty ? 'None' : id;
   }
 
   String getDebridServiceSync() {
-    final cached = _cachedDebridService;
-    if (cached != null) return cached;
-    final v = kvGetStringSync(_debridServiceKey) ?? 'None';
-    _cachedDebridService = v;
-    return v;
+    final id = getMagnetResolvePluginIdSync();
+    return id.isEmpty ? 'None' : id;
   }
 
-  /// Play-path snapshot: when debrid is off, skips the service key entirely.
+  /// Play-path snapshot: when magnet resolve is off, skips the service key.
   ({bool useDebrid, String service}) debridPlaybackPrefs() {
-    final use = useDebridForStreamsSync();
-    if (!use) return (useDebrid: false, service: 'None');
-    return (useDebrid: true, service: getDebridServiceSync());
+    final id = getMagnetResolvePluginIdSync();
+    if (id.isEmpty) return (useDebrid: false, service: 'None');
+    return (useDebrid: true, service: id);
   }
 
   Future<void> setDebridService(String service) async {
-    _cachedDebridService = service;
-    await kvSetString(_debridServiceKey, service);
+    final mapped = _legacyDebridServiceToPluginId(service) ??
+        (service == 'None' || service.trim().isEmpty ? '' : service.trim());
+    await setMagnetResolvePluginId(mapped);
+  }
+
+  static String? _legacyDebridServiceToPluginId(String service) {
+    return switch (service.trim()) {
+      'Real-Debrid' => 'realdebrid',
+      'TorBox' => 'torbox',
+      'AllDebrid' => 'alldebrid',
+      'Premiumize' => 'premiumize',
+      'Debrid-Link' => 'debrid_link',
+      _ => null,
+    };
+  }
+
+  /// Test hook for RFC-114 legacy service → plugin id map.
+  @visibleForTesting
+  static String? legacyDebridServiceToPluginIdForTest(String service) =>
+      _legacyDebridServiceToPluginId(service);
+
+  Future<void> _migrateMagnetResolvePluginIdIfNeeded() async {
+    if (_magnetResolveMigrated) return;
+    _magnetResolveMigrated = true;
+    if (await kvHasKey(_magnetResolvePluginIdKey)) return;
+    final use = await kvGetBool(_useDebridKey, fallback: false);
+    if (!use) {
+      await kvSetString(_magnetResolvePluginIdKey, '');
+      _cachedMagnetResolvePluginId = '';
+      return;
+    }
+    final service = await kvGetString(_debridServiceKey) ?? '';
+    final mapped = _legacyDebridServiceToPluginId(service) ?? '';
+    await kvSetString(_magnetResolvePluginIdKey, mapped);
+    _cachedMagnetResolvePluginId = mapped;
+  }
+
+  Future<String> getMagnetResolvePluginId() async {
+    await _migrateMagnetResolvePluginIdIfNeeded();
+    return getMagnetResolvePluginIdSync();
+  }
+
+  String getMagnetResolvePluginIdSync() {
+    final cached = _cachedMagnetResolvePluginId;
+    if (cached != null) return cached;
+    final v = kvGetStringSync(_magnetResolvePluginIdKey) ?? '';
+    _cachedMagnetResolvePluginId = v;
+    return v;
+  }
+
+  Future<void> setMagnetResolvePluginId(String id) async {
+    final next = id.trim();
+    _cachedMagnetResolvePluginId = next;
+    await kvSetString(_magnetResolvePluginIdKey, next);
   }
 
   Future<String> getExternalPlayer() async =>
@@ -1514,6 +1527,30 @@ class SettingsService {
   Future<void> setThemePreset(String preset) async =>
       kvSetString(_themePresetKey, preset);
 
+  static const String _shellWritingDirectionKey = 'shell_writing_direction';
+  static const String shellWritingLtr = 'ltr';
+  static const String shellWritingRtl = 'rtl';
+
+  /// App navbar side. Pack layout direction does not change this.
+  static final ValueNotifier<String> shellWritingDirection =
+      ValueNotifier<String>(shellWritingLtr);
+
+  static bool get shellWritingIsRtl =>
+      shellWritingDirection.value == shellWritingRtl;
+
+  Future<void> loadShellWritingDirection() async {
+    shellWritingDirection.value = shellWritingLtr;
+    await kvSetString(_shellWritingDirectionKey, shellWritingLtr);
+  }
+
+  Future<void> setShellWritingDirection(String direction) async {
+    final next = direction.trim().toLowerCase() == shellWritingRtl
+        ? shellWritingRtl
+        : shellWritingLtr;
+    shellWritingDirection.value = next;
+    await kvSetString(_shellWritingDirectionKey, next);
+  }
+
   static const String _navbarConfigKey = 'navbar_config';
   static const String _navbarTabOrderKey = 'navbar_tab_order';
   static const String _defaultNavTabKey = 'navbar_default_tab';
@@ -1563,20 +1600,6 @@ class SettingsService {
   static const List<String> defaultVisibleNavIds =
       PlatformDefaults.defaultNavIds;
 
-  /// Pre–RFC-081 first-run rail (hub pack tab ids baked into platform defaults).
-  /// Legacy shell migrations rewrite *to* this list — never to host-only defaults
-  /// — so upgrades do not strip Home / Anime / … from untouched installs.
-  static const List<String> _legacyPackSeededDefaultNavIds = [
-    'home',
-    'asian_drama',
-    'anime',
-    'iptv',
-    'live_sports',
-    'mylist',
-  ];
-
-
-
   static List<String> _migrateSearchFirstNavToHomeFirst(List<String> ids) {
     if (ids.length < 2 || ids[0] != 'search' || ids[1] != 'home') {
       return ids;
@@ -1586,69 +1609,6 @@ class SettingsService {
     migrated[1] = 'search';
     return migrated;
   }
-
-  /// Prior Android TV defaults — migrate to [_legacyPackSeededDefaultNavIds].
-  static const List<List<String>> _legacyAndroidTvNavOrders = [
-    [
-      'home',
-      'search',
-      'anime',
-      'asian_drama',
-      'iptv',
-      'live_sports',
-      'mylist',
-    ],
-    [
-      'home',
-      'search',
-      'asian_drama',
-      'anime',
-      'iptv',
-      'live_sports',
-      'mylist',
-    ],
-    [
-      'search',
-      'home',
-      'anime',
-      'asian_drama',
-      'iptv',
-      'live_sports',
-      'mylist',
-    ],
-  ];
-
-  static bool _isLegacyAndroidTvNav(List<String> ids) {
-    for (final legacy in _legacyAndroidTvNavOrders) {
-      if (listEquals(ids, legacy)) return true;
-    }
-    return false;
-  }
-
-  static bool _isLegacyPlatformDefaultNav(List<String> ids) =>
-      _isLegacyDefaultNav(ids) || _isLegacyAndroidTvNav(ids);
-
-  /// Interim default from shell 089 before Asian Drama was ordered ahead of Anime.
-  static const List<String> _legacyAnimeBeforeAsianDramaNavIds = [
-    'search',
-    'home',
-    'anime',
-    'asian_drama',
-    'iptv',
-    'live_sports',
-    'mylist',
-  ];
-
-  /// Default before Search was withheld from the shell (shell 090 era).
-  static const List<String> _legacySearchInDefaultNavIds = [
-    'search',
-    'home',
-    'asian_drama',
-    'anime',
-    'iptv',
-    'live_sports',
-    'mylist',
-  ];
 
   static int initialShellTabIndex(
     List<String> visibleIds, {
@@ -1692,42 +1652,38 @@ class SettingsService {
     navbarChangeNotifier.value++;
   }
 
-  static bool _isLegacyDefaultNav(List<String> ids) {
-    if (ids.length == 2) {
-      return ids[0] == 'home' && ids[1] == 'search';
-    }
-    if (ids.length == 3) {
-      return ids[0] == 'home' && ids[1] == 'search' && ids[2] == 'mylist';
-    }
-    return false;
-  }
-
   /// Host tabs gated by Settings → Addons unlock flags (RFC-086).
   /// [ensureNavIdsKnown] must not auto-insert these; Addons ON / Features
   /// hide write visibility explicitly.
-  /// Live Sports is pack-owned (RFC-087 / RFC-093) — not gated here.
-  static const Set<String> addonGatedNavIds = {
-    'iptv',
-  };
+  /// Live Sports / IPTV are pack-only (RFC-093 / RFC-109) — not gated here.
+  static const Set<String> addonGatedNavIds = <String>{};
 
-  /// Host / archived shell ids only. Catalog hub tab ids register via
+  /// Host shell ids only. Catalog hub tab ids register via
   /// [registerExtraNavIds] when packs contribute `nav` — never list VOD hubs
   /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
-  /// Live Sports tab id comes from pack `nav` only (RFC-087).
-  static const List<String> _baseAllNavIds = [
+  /// Live Sports / IPTV tab ids come from pack `nav` only.
+  /// Archived tabs live under `apps/archive/` — keep out of [allNavIds].
+  static const Set<String> archivedNavIds = {
+    'search',
     'discover',
     'similar',
-    'search',
     'downloader',
     'magnet',
-    'iptv',
     'audiobooks',
     'books',
     'music',
     'comics',
     'manga',
     'jellyfin',
-  ];
+    'anime_arabic',
+  };
+
+  static const List<String> _baseAllNavIds = [];
+
+  static bool _isArchivedNavId(String id) => archivedNavIds.contains(id);
+
+  static List<String> _withoutArchivedNavIds(Iterable<String> ids) =>
+      ids.where((id) => !_isArchivedNavId(id)).toList();
 
   static final List<String> _extraNavIds = [];
 
@@ -1741,7 +1697,7 @@ class SettingsService {
   static void registerExtraNavIds(Iterable<String> ids) {
     for (final id in ids) {
       final t = id.trim();
-      if (t.isEmpty) continue;
+      if (t.isEmpty || _isArchivedNavId(t)) continue;
       if (_baseAllNavIds.contains(t) || _extraNavIds.contains(t)) continue;
       _extraNavIds.add(t);
     }
@@ -1853,8 +1809,7 @@ class SettingsService {
       if (listEquals(raw, next)) return;
       debugPrint(
         '[Settings] syncActiveHubNavIds strip $raw → $next '
-        '(active=$activeHubIds known=$knownHubIds)\n'
-        '${StackTrace.current}',
+        '(active=$activeHubIds known=$knownHubIds)',
       );
       await _setNavbarConfigUnlocked(next, notify: notify);
       final defaultTab = await getDefaultNavTab();
@@ -1911,11 +1866,28 @@ class SettingsService {
         .toList();
   }
 
+  /// Drop in-memory settings that belong to the previous identity.
+  ///
+  /// [getNavbarConfig] returns [_navbarVisibleMemory] without re-reading KV.
+  /// A profile rebind must clear it or the next rail paint keeps the previous
+  /// store (guest on a signed-in cold start, or the last profile on switch).
+  static void forgetIdentitySessionCache() {
+    _navbarVisibleMemory = null;
+    _addonFeatureMemory.clear();
+    _crashReportingMemory = null;
+  }
+
   /// Test-only: reset exclusive lock and session rail mirror between stores.
   @visibleForTesting
   static void resetNavbarLockForTest() {
     _navbarExclusiveTail = Future<void>.value();
     _navbarVisibleMemory = null;
+  }
+
+  /// Test-only: drop in-memory addon feature overrides between stores.
+  @visibleForTesting
+  static void resetAddonFeatureMemoryForTest() {
+    _addonFeatureMemory.clear();
   }
 
   /// One-shot migration for schema v2: indexer API keys → secure storage.
@@ -2107,34 +2079,16 @@ class SettingsService {
     }
 
     if (!skipLegacyMigrations && !await kvHasKey(_navbarShell080Key)) {
-      await kvSetStringList(_navbarConfigKey, const ['home', 'search']);
+      await kvSetStringList(_navbarConfigKey, const []);
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
       await kvSetString(_navbarShell080Key, '1');
     }
     if (!skipLegacyMigrations && !await kvHasKey(_navbarShell081Key)) {
-      final raw = await kvHasKey(_navbarConfigKey)
-          ? await kvGetStringList(_navbarConfigKey, fallback: const [])
-          : List<String>.from(defaultVisibleNavIds);
-      final updated = raw.where((id) => allNavIds.contains(id)).toList();
-      if (!updated.contains('mylist')) {
-        final searchIdx = updated.indexOf('search');
-        if (searchIdx >= 0) {
-          updated.insert(searchIdx + 1, 'mylist');
-        } else {
-          updated.add('mylist');
-        }
-      }
-      await kvSetStringList(_navbarConfigKey, updated);
+      // Retired: once force-inserted pack tab ids. Leave stored prefs alone.
       await kvSetString(_navbarShell081Key, '1');
     }
     if (!await kvHasKey(_navbarShell084Key)) {
-      final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-      if (_isLegacyDefaultNav(raw)) {
-        await kvSetStringList(
-          _navbarConfigKey,
-          List<String>.from(_legacyPackSeededDefaultNavIds),
-        );
-      }
+      // Retired: once rewrote untouched defaults to a pack-seeded rail.
       await kvSetString(_navbarShell084Key, '1');
     }
     if (!await kvHasKey(_navbarShell085Key)) {
@@ -2168,52 +2122,19 @@ class SettingsService {
       await kvSetString(_navbarShell087Key, '1');
     }
     if (!await kvHasKey(_navbarShell088Key)) {
-      if (platformProfile == PlatformProfile.androidTv &&
-          await kvHasKey(_navbarConfigKey)) {
-        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        if (_isLegacyAndroidTvNav(raw)) {
-          await kvSetStringList(
-            _navbarConfigKey,
-            List<String>.from(_legacyPackSeededDefaultNavIds),
-          );
-        }
-      }
+      // Retired: pack-seeded Android TV rewrite.
       await kvSetString(_navbarShell088Key, '1');
     }
     if (!await kvHasKey(_navbarShell089Key)) {
-      if (await kvHasKey(_navbarConfigKey)) {
-        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        if (_isLegacyPlatformDefaultNav(raw)) {
-          await kvSetStringList(
-            _navbarConfigKey,
-            List<String>.from(_legacyPackSeededDefaultNavIds),
-          );
-        }
-      }
+      // Retired: pack-seeded platform default rewrite.
       await kvSetString(_navbarShell089Key, '1');
     }
     if (!await kvHasKey(_navbarShell090Key)) {
-      if (await kvHasKey(_navbarConfigKey)) {
-        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        if (listEquals(raw, _legacyAnimeBeforeAsianDramaNavIds)) {
-          await kvSetStringList(
-            _navbarConfigKey,
-            List<String>.from(_legacyPackSeededDefaultNavIds),
-          );
-        }
-      }
+      // Retired: anime/asian_drama order rewrite to pack-seeded rail.
       await kvSetString(_navbarShell090Key, '1');
     }
     if (!await kvHasKey(_navbarShell091Key)) {
-      if (await kvHasKey(_navbarConfigKey)) {
-        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        if (listEquals(raw, _legacySearchInDefaultNavIds)) {
-          await kvSetStringList(
-            _navbarConfigKey,
-            List<String>.from(_legacyPackSeededDefaultNavIds),
-          );
-        }
-      }
+      // Retired: search-in-default rewrite to pack-seeded rail.
       await kvSetString(_navbarShell091Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
@@ -2226,6 +2147,7 @@ class SettingsService {
     final filtered = raw
         .map((id) => id.trim())
         .where((id) => id.isNotEmpty)
+        .where((id) => !_isArchivedNavId(id))
         .toList();
     final known = (await kvGetStringList(
       _navbarKnownIdsKey,
@@ -2240,11 +2162,11 @@ class SettingsService {
       if (addonGatedNavIds.contains(id)) continue;
       unknown.add(id);
     }
-    if (unknown.isNotEmpty || allNavIds.any((id) => !known.contains(id))) {
-      await kvSetStringList(_navbarKnownIdsKey, {
-        ...known,
-        ...allNavIds,
-      }.toList());
+    final knownClean = _withoutArchivedNavIds({...known, ...allNavIds});
+    if (unknown.isNotEmpty ||
+        known.length != knownClean.length ||
+        allNavIds.any((id) => !known.contains(id))) {
+      await kvSetStringList(_navbarKnownIdsKey, knownClean);
     }
     return _applyStoredTabOrder(filtered);
   }
@@ -2253,24 +2175,28 @@ class SettingsService {
   /// [getNavbarConfig], which returns the visible subset in this order.
   Future<List<String>> getNavbarTabOrder() async {
     final visible = await getNavbarConfig();
-    final known = (await kvGetStringList(
-      _navbarKnownIdsKey,
-      fallback: const [],
-    )).toSet();
+    final known = _withoutArchivedNavIds(
+      await kvGetStringList(
+        _navbarKnownIdsKey,
+        fallback: const [],
+      ),
+    ).toSet();
     // Preserve hub ids (anime/home/…) — [allNavIds] alone drops them from
     // cloud `tabOrder` export so Features sort never landed (224).
-    final catalog = <String>{
+    final catalog = _withoutArchivedNavIds({
       ...allNavIds,
       ...visible,
       ...known,
-    }.toList();
+    });
     if (!await kvHasKey(_navbarTabOrderKey)) {
       final hidden = catalog.where((id) => !visible.contains(id)).toList();
       return [...visible, ...hidden];
     }
-    final stored = await kvGetStringList(
-      _navbarTabOrderKey,
-      fallback: const [],
+    final stored = _withoutArchivedNavIds(
+      await kvGetStringList(
+        _navbarTabOrderKey,
+        fallback: const [],
+      ),
     );
     return _mergeNavbarTabOrder(stored, catalog);
   }
@@ -2353,14 +2279,14 @@ class SettingsService {
         (await kvHasKey(_navbarTabOrderKey)
             ? await kvGetStringList(_navbarTabOrderKey, fallback: const [])
             : null);
+    final visibleClean = _withoutArchivedNavIds(visibleIds);
     final ids = (orderForVisible != null && orderForVisible.isNotEmpty)
-        ? _visibleInTabOrder(visibleIds, orderForVisible)
-        : List<String>.from(visibleIds);
+        ? _visibleInTabOrder(visibleClean, _withoutArchivedNavIds(orderForVisible))
+        : List<String>.from(visibleClean);
     final unchanged = raw != null && listEquals(raw, ids);
     if (kDebugMode && !unchanged) {
       debugPrint(
-        '[Settings] navbar write ${raw ?? const <String>[]} → $ids\n'
-        '${StackTrace.current}',
+        '[Settings] navbar write ${raw ?? const <String>[]} → $ids',
       );
     }
     _navbarVisibleMemory = List<String>.from(ids);
@@ -2381,19 +2307,25 @@ class SettingsService {
       _navbarKnownIdsKey,
       fallback: const [],
     )).toSet();
-    await kvSetStringList(_navbarKnownIdsKey, {
-      ...known,
-      ...allNavIds,
-      ...ids,
-    }.toList());
+    await kvSetStringList(
+      _navbarKnownIdsKey,
+      _withoutArchivedNavIds({
+        ...known,
+        ...allNavIds,
+        ...ids,
+      }),
+    );
     if (tabOrder != null) {
       await kvSetStringList(
         _navbarTabOrderKey,
-        _mergeNavbarTabOrder(tabOrder, {
-          ...allNavIds,
-          ...tabOrder,
-          ...ids,
-        }.toList()),
+        _mergeNavbarTabOrder(
+          _withoutArchivedNavIds(tabOrder),
+          _withoutArchivedNavIds({
+            ...allNavIds,
+            ...tabOrder,
+            ...ids,
+          }),
+        ),
       );
     }
     if (notify && !unchanged) navbarChangeNotifier.value++;
@@ -2428,7 +2360,11 @@ class SettingsService {
       _streamingModeKey,
       fallback: false,
     );
-    prefsMap[_useDebridKey] = await kvGetBool(_useDebridKey, fallback: false);
+    prefsMap[_magnetResolvePluginIdKey] =
+        await getMagnetResolvePluginId();
+    // Legacy keys kept readable for older backup importers.
+    prefsMap[_useDebridKey] =
+        (prefsMap[_magnetResolvePluginIdKey] as String).isNotEmpty;
     prefsMap[_playSourceTorrentKey] = await isPlaySourceTorrentStored();
     prefsMap[_playSourceStremioKey] = await isPlaySourceStremioStored();
     prefsMap[_playSourceNuvioKey] = await isPlaySourceNuvioStored();
@@ -2442,6 +2378,7 @@ class SettingsService {
     prefsMap[_addonFeatureIptvKey] = await isAddonFeatureEnabled('iptv');
     for (final key in [
       _sortPreferenceKey,
+      _magnetResolvePluginIdKey,
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,
@@ -2538,6 +2475,7 @@ class SettingsService {
     }
     for (final key in [
       _sortPreferenceKey,
+      _magnetResolvePluginIdKey,
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,
@@ -2547,6 +2485,16 @@ class SettingsService {
       if (prefsMap.containsKey(key)) {
         await kvSetString(key, prefsMap[key] as String);
       }
+    }
+    // Prefer magnet_resolve; else rebuild from legacy use_debrid + service.
+    if (prefsMap.containsKey(_magnetResolvePluginIdKey)) {
+      await setMagnetResolvePluginId(
+        prefsMap[_magnetResolvePluginIdKey]?.toString() ?? '',
+      );
+    } else if (prefsMap[_useDebridKey] == true) {
+      final service = prefsMap[_debridServiceKey]?.toString() ?? '';
+      final mapped = _legacyDebridServiceToPluginId(service) ?? '';
+      await setMagnetResolvePluginId(mapped);
     }
     if (prefsMap.containsKey(_torrentDiskCacheGbKey)) {
       await kvSetInt(

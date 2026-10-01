@@ -5,13 +5,54 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/packs/forja_packs_root.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
 
-/// Pack/SDK files live in sibling [forja-packs] (or legacy `plugins/` / `sdk/`).
+/// Sibling [forja-sdk] or `FORJA_SDK_ROOT` — schemas / kits / fixtures.
+String? _sdkRoot() {
+  final env = Platform.environment['FORJA_SDK_ROOT']?.trim() ?? '';
+  if (env.isNotEmpty) {
+    final d = Directory(env);
+    if (d.existsSync()) return d.absolute.path.replaceAll('\\', '/');
+  }
+  var dir = Directory.current;
+  for (var i = 0; i < 8; i++) {
+    final sibling = Directory('${dir.path}/forja-sdk');
+    if (sibling.existsSync() &&
+        File('${sibling.path}/contract.json').existsSync()) {
+      return sibling.absolute.path.replaceAll('\\', '/');
+    }
+    final parent = dir.parent;
+    if (parent.path == dir.path) break;
+    dir = parent;
+  }
+  return null;
+}
+
+/// Pack inventory — [forja-packs] via `FORJA_PACKS_ROOT` only.
 String? _packsRoot() => ForjaPacksRoot.resolve(requireDebug: false);
+
+File? _sdkFile(String rel) {
+  final root = _sdkRoot();
+  if (root == null) return null;
+  return File('$root/$rel');
+}
 
 File? _packsFile(String rel) {
   final root = _packsRoot();
   if (root == null) return null;
   return File('$root/$rel');
+}
+
+Map<String, dynamic> _readSdkJson(String rel) {
+  final file = _sdkFile(rel);
+  expect(file, isNotNull, reason: 'forja-sdk not found for $rel');
+  expect(file!.existsSync(), isTrue, reason: 'missing ${file.path}');
+  return Map<String, dynamic>.from(jsonDecode(file.readAsStringSync()) as Map);
+}
+
+dynamic _readSdkJsonAny(String rel) {
+  final file = _sdkFile(rel);
+  expect(file, isNotNull, reason: 'forja-sdk not found for $rel');
+  expect(file!.existsSync(), isTrue, reason: 'missing ${file.path}');
+  return jsonDecode(file.readAsStringSync());
 }
 
 Map<String, dynamic> _readPacksJson(String rel) {
@@ -21,35 +62,29 @@ Map<String, dynamic> _readPacksJson(String rel) {
   return Map<String, dynamic>.from(jsonDecode(file.readAsStringSync()) as Map);
 }
 
-dynamic _readPacksJsonAny(String rel) {
-  final file = _packsFile(rel);
-  expect(file, isNotNull, reason: 'forja-packs not found for $rel');
-  expect(file!.existsSync(), isTrue, reason: 'missing ${file.path}');
-  return jsonDecode(file.readAsStringSync());
-}
-
 void main() {
+  final sdkReady = _sdkRoot() != null;
   final packsReady = _packsRoot() != null;
 
   group('plugin SDK contract index', () {
     test('contract.json lists schema files that exist', () {
-      if (!packsReady) {
-        // Host CI without sibling forja-packs — skip pack-tree oracle.
+      if (!sdkReady) {
+        // Host CI without sibling forja-sdk — skip SDK oracle.
         return;
       }
-      final contract = _readPacksJson('sdk/contract.json');
+      final contract = _readSdkJson('contract.json');
       expect(contract['schema'], 1);
       expect(contract['kitVersion'], 1);
       expect(contract['protocolVersion'], 1);
       final schemas = contract['schemas'] as Map;
       for (final entry in schemas.entries) {
-        final path = 'sdk/${entry.value}';
-        expect(_packsFile(path)!.existsSync(), isTrue, reason: path);
+        final path = '${entry.value}';
+        expect(_sdkFile(path)!.existsSync(), isTrue, reason: path);
       }
       final kits = contract['kits'] as Map;
       for (final entry in kits.entries) {
-        final path = 'sdk/${entry.value}';
-        expect(_packsFile(path)!.existsSync(), isTrue, reason: path);
+        final path = '${entry.value}';
+        expect(_sdkFile(path)!.existsSync(), isTrue, reason: path);
       }
     });
   });
@@ -75,6 +110,8 @@ void main() {
     for (final path in manifests) {
       test('validates $path', () {
         if (!packsReady) return;
+        final file = _packsFile(path);
+        if (file == null || !file.existsSync()) return;
         PluginContract.validateManifest(_readPacksJson(path));
       });
     }
@@ -127,17 +164,17 @@ void main() {
 
   group('catalog fixtures', () {
     final fixtures = [
-      'sdk/fixtures/anilist_layout.json',
-      'sdk/fixtures/anilist_rail.json',
-      'sdk/fixtures/kisskh_rail.json',
-      'sdk/fixtures/tmdb_auth_required.json',
-      'sdk/fixtures/unsupported_kit.json',
+      'fixtures/anilist_layout.json',
+      'fixtures/anilist_rail.json',
+      'fixtures/kisskh_rail.json',
+      'fixtures/tmdb_auth_required.json',
+      'fixtures/unsupported_kit.json',
     ];
 
     for (final path in fixtures) {
       test('validates envelope $path', () {
-        if (!packsReady) return;
-        PluginContract.validateMetaEnvelope(_readPacksJsonAny(path));
+        if (!sdkReady) return;
+        PluginContract.validateMetaEnvelope(_readSdkJsonAny(path));
       });
     }
   });

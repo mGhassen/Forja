@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
@@ -13,11 +14,12 @@ import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
+import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -26,7 +28,15 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:rust/rust.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
-
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja/shell/desktop/desktop_window_geometry.dart';
+import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 part 'trailer_player_playback.dart';
 part 'trailer_player_menus.dart';
 part 'trailer_player_build.dart';
@@ -221,6 +231,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     _loadGeneration++;
     unawaited(_teardownPlayer());
     ShellBus.leavePlayerSurface();
+    DesktopWindowGeometry.abandonPlayerSession();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     PlayerBackExitGate.setTryFocusBack(null);
     _backFocus.dispose();

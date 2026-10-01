@@ -1,20 +1,29 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/forja_image_cache.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
-import 'package:forja/shared/foundation/components/media_details/episode_air_date.dart';
-import 'package:forja/shared/foundation/components/media_details/episode_range_bar.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/components/media_details/watch_progress_bar.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
+import 'package:forja_foundation/widgets/details/episode_air_date.dart';
+import 'package:forja_foundation/widgets/details/episode_range_bar.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/widgets/details/watch_progress_bar.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
-
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/tv_browse_text_field.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 const _kEpisodeTvTabId = 'player';
 const _kEpisodeTvListRowId = 'episode-list';
 
@@ -521,6 +530,8 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
               ranges: _episodeRanges,
               selectedIndex: _episodeChunk,
               onSelected: _selectChunk,
+              useFocusableChips:
+                  ShellScope.inputPolicyOf(context).useFocusableMoodChips,
             ),
           ),
         ],
@@ -629,19 +640,33 @@ class _SeasonDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     const radius = 20.0;
     final borderRadius = BorderRadius.circular(radius);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final triggerFs = tv ? ShellTokens.tvTitleFontSize : 15.0;
+    final menuFs = tv ? ShellTokens.tvTitleFontSize : 15.0;
+    final padH = ShellTokens.chromeScale(18, tv: tv);
+    final padV = ShellTokens.chromeScale(11, tv: tv);
 
     return MenuAnchor(
-      alignmentOffset: const Offset(0, 4),
+      alignmentOffset: Offset(0, ShellTokens.chromeScale(4, tv: tv)),
       style: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(
           ForjaShellColors.cinematic.menuSurface,
         ),
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+        padding: WidgetStatePropertyAll(
+          EdgeInsets.symmetric(
+            vertical: ShellTokens.chromeScale(4, tv: tv),
+            horizontal: ShellTokens.chromeScale(6, tv: tv),
+          ),
         ),
-        minimumSize: const WidgetStatePropertyAll(Size(168, 0)),
+        minimumSize: WidgetStatePropertyAll(
+          Size(ShellTokens.chromeScale(168, tv: tv), 0),
+        ),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              ShellTokens.chromeScale(10, tv: tv),
+            ),
+          ),
         ),
       ),
       menuChildren: List.generate(seasonCount, (i) {
@@ -650,9 +675,17 @@ class _SeasonDropdown extends StatelessWidget {
         return MenuItemButton(
           onPressed: () => onSelected(n),
           style: shellMenuItemStyle(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: ShellTokens.chromeScale(16, tv: tv),
+              vertical: ShellTokens.chromeScale(12, tv: tv),
+            ),
           ).merge(ButtonStyle(
-            minimumSize: const WidgetStatePropertyAll(Size(156, 52)),
+            minimumSize: WidgetStatePropertyAll(
+              Size(
+                ShellTokens.chromeScale(156, tv: tv),
+                ShellTokens.chromeScale(52, tv: tv),
+              ),
+            ),
             foregroundColor: WidgetStatePropertyAll(
               isSelected
                   ? ForjaShellColors.cinematic.textPrimary
@@ -660,7 +693,7 @@ class _SeasonDropdown extends StatelessWidget {
             ),
             textStyle: WidgetStatePropertyAll(
               TextStyle(
-                fontSize: 15,
+                fontSize: menuFs,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -693,13 +726,12 @@ class _SeasonDropdown extends StatelessWidget {
                   ? null
                   : toggle,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
                 child: Text(
                   'Season $selectedSeason',
                   style: TextStyle(
                     color: ForjaShellColors.brandGreen,
-                    fontSize: 15,
+                    fontSize: triggerFs,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1111,6 +1143,8 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
               ranges: _episodeRanges,
               selectedIndex: _episodeChunk,
               onSelected: _selectChunk,
+              useFocusableChips:
+                  ShellScope.inputPolicyOf(context).useFocusableMoodChips,
             ),
           ),
         ],
@@ -1232,8 +1266,7 @@ class _EpisodeRow extends StatelessWidget {
   final VoidCallback? onDownEdge;
 
   static const _thumbRadius = 6.0;
-  static const _thumbWidth = 184.0;
-  static const _thumbHeight = _thumbWidth * 9 / 16;
+  static const _thumbWidthDesktop = 184.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1242,35 +1275,46 @@ class _EpisodeRow extends StatelessWidget {
         WatchProgressBar.isResumable(positionMs, durationMs);
 
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final thumbW = ShellTokens.chromeScale(_thumbWidthDesktop, tv: tv);
+    final thumbH = thumbW * 9 / 16;
+    final thumbRadius = ShellTokens.chromeScale(_thumbRadius, tv: tv);
+    final tileRadius = ShellTokens.chromeScale(10, tv: tv);
     final tile = Material(
       color: selected
           ? Colors.white.withValues(alpha: 0.1)
           : Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(tileRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
         onTap: tvFocus ? null : onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(tileRadius),
         hoverColor: ForjaShellColors.inkHover,
         splashColor: ForjaShellColors.inkSplash,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+          padding: EdgeInsets.symmetric(
+            horizontal: ShellTokens.chromeScale(2, tv: tv),
+            vertical: ShellTokens.chromeScale(6, tv: tv),
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: _thumbWidth,
-                height: _thumbHeight,
+                width: thumbW,
+                height: thumbH,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(_thumbRadius),
+                    borderRadius: BorderRadius.circular(thumbRadius),
                     border: selected
-                        ? Border.all(color: Colors.white, width: 2)
+                        ? Border.all(
+                            color: Colors.white,
+                            width: ShellTokens.chromeScale(2, tv: tv),
+                          )
                         : null,
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(_thumbRadius),
+                    borderRadius: BorderRadius.circular(thumbRadius),
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
@@ -1328,7 +1372,9 @@ class _EpisodeRow extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: ForjaShellColors.cinematic.textPrimary,
-                              fontSize: 14,
+                              fontSize: ShellPaintScope.usesTvDensityOf(context)
+                                  ? ShellTokens.tvBodyFontSize
+                                  : 14,
                               fontWeight:
                                   selected ? FontWeight.w700 : FontWeight.w600,
                               height: 1.25,
@@ -1336,12 +1382,12 @@ class _EpisodeRow extends StatelessWidget {
                           ),
                         ),
                         if (selected)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 6),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
                             child: Icon(
                               Icons.play_circle_filled_rounded,
                               color: Colors.white,
-                              size: 18,
+                              size: ShellPaintScope.iconOf(context, 18),
                             ),
                           ),
                       ],
@@ -1357,7 +1403,9 @@ class _EpisodeRow extends StatelessWidget {
                             notShippedYet: dateNotShippedYet,
                             normal: ForjaShellColors.cinematic.textSecondary,
                           ),
-                          fontSize: 12,
+                          fontSize: ShellPaintScope.usesTvDensityOf(context)
+                              ? ShellTokens.tvMetaFontSize
+                              : 12,
                           fontWeight: dateNotShippedYet
                               ? FontWeight.w600
                               : FontWeight.w500,
@@ -1373,7 +1421,9 @@ class _EpisodeRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: ForjaShellColors.cinematic.textSecondary,
-                          fontSize: 12,
+                          fontSize: ShellPaintScope.usesTvDensityOf(context)
+                              ? ShellTokens.tvMetaFontSize
+                              : 12,
                           height: 1.4,
                         ),
                       ),
@@ -1396,7 +1446,7 @@ class _EpisodeRow extends StatelessWidget {
       borderRadius: 10,
       scaleOnFocus: 1.0,
       showFocusBorder: true,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       listIndex: tvItemIndex,
       tvTabId: _kEpisodeTvTabId,
       tvRowId: _kEpisodeTvListRowId,
@@ -1427,6 +1477,7 @@ class _EpisodeRow extends StatelessWidget {
       return [
         if (imageUrl != null)
           CachedNetworkImage(
+            cacheManager: ForjaImageCacheManager(),
             imageUrl: imageUrl,
             fit: BoxFit.cover,
             errorWidget: (_, _, _) => _thumbFallback(),
@@ -1441,6 +1492,7 @@ class _EpisodeRow extends StatelessWidget {
     if (imageUrl != null) {
       return [
         CachedNetworkImage(
+          cacheManager: ForjaImageCacheManager(),
           imageUrl: imageUrl,
           fit: BoxFit.cover,
           errorWidget: (_, _, _) => _thumbFallback(),
@@ -1463,17 +1515,21 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: tv ? 4 : 6,
+        vertical: tv ? 2 : 3,
+      ),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(tv ? 3 : 4),
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 10,
+          fontSize: tv ? ShellTokens.tvMetaFontSize : 10,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -1669,23 +1725,30 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
   Widget build(BuildContext context) {
     const radius = 22.0;
     final secondary = ForjaShellColors.cinematic.textSecondary;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
+    final fontSize = tvDensity
+        ? ShellTokens.torrentPanelSearchFontSizeTv
+        : ShellTokens.torrentPanelSearchFontSize;
+    final padV = tvDensity
+        ? ShellTokens.torrentPanelSearchPadVTv
+        : ShellTokens.torrentPanelSearchPadV;
     final fieldDecoration = InputDecoration(
       hintText: 'Search',
       hintStyle: TextStyle(
         color: secondary.withValues(alpha: 0.75),
-        fontSize: 13,
+        fontSize: fontSize,
       ),
       border: InputBorder.none,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+      contentPadding: EdgeInsets.symmetric(vertical: padV),
     );
     final fieldStyle = TextStyle(
       color: ForjaShellColors.cinematic.textPrimary,
-      fontSize: 13,
+      fontSize: fontSize,
     );
 
-    final searchField = tv
+    final searchField = tvFocus
         ? TvBrowseTextField(
             controller: _controller,
             focusNode: _searchFocus,
@@ -1707,28 +1770,39 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
           );
 
     return Container(
-      height: 40,
+      height: ShellTokens.chromeScale(40, tv: tvDensity),
       decoration: BoxDecoration(
         color: ForjaShellColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(
+          ShellTokens.chromeScale(radius, tv: tvDensity),
+        ),
         border: Border.all(color: ForjaShellColors.borderSubtle),
       ),
       child: Row(
         children: [
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(left: 12),
+              padding: EdgeInsets.only(
+                left: ShellTokens.chromeScale(12, tv: tvDensity),
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.search_rounded, size: 18, color: secondary),
-                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.search_rounded,
+                    size: ShellPaintScope.iconOf(context, 18),
+                    color: secondary,
+                  ),
+                  SizedBox(width: ShellTokens.chromeScale(8, tv: tvDensity)),
                   Expanded(child: searchField),
                   if (widget.searchQuery.isNotEmpty)
                     ExcludeFocus(
-                      child: ForjaCloseButton.compact(
-                        tooltip: null,
+                      child: Button(
+                        variant: ButtonVariant.plainIcon,
+                        size: ButtonSize.icon,
+                        icon: Icons.close_rounded,
+                        compact: true,
                         color: secondary,
-                        onTap: () => widget.onSearchChanged(''),
+                        onPressed: () => widget.onSearchChanged(''),
                       ),
                     ),
                 ],
@@ -1737,15 +1811,18 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
           ),
           Container(
             width: 1,
-            height: 22,
+            height: ShellTokens.chromeScale(22, tv: tvDensity),
             color: ForjaShellColors.borderSubtle,
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 10, right: 8),
+            padding: EdgeInsets.only(
+              left: ShellTokens.chromeScale(10, tv: tvDensity),
+              right: ShellTokens.chromeScale(8, tv: tvDensity),
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (tv)
+                if (tvFocus)
                   _EpisodeAutoNextFocus(
                     focusNode: widget.autoNextFocusNode!,
                     autoNext: widget.autoNext,
@@ -1761,16 +1838,19 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
                       message: 'Auto next episode',
                       child: Icon(
                         Icons.skip_next_rounded,
-                        size: 20,
+                        size: ShellPaintScope.iconOf(
+                          context,
+                          ShellTokens.playerChromeIconSize,
+                        ),
                         color: secondary,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  ForjaSwitch(
+                  SizedBox(width: ShellTokens.chromeScale(4, tv: tvDensity)),
+                  Switch(
                     value: widget.autoNext,
                     onChanged: widget.onAutoNextChanged,
-                    scale: ForjaSwitch.settingsScale,
+                    scale: Switch.settingsScale,
                   ),
                 ],
               ],
@@ -1823,14 +1903,21 @@ class _EpisodeAutoNextFocus extends StatelessWidget {
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.skip_next_rounded, size: 20, color: accent),
+              Icon(
+                Icons.skip_next_rounded,
+                size: ShellPaintScope.iconOf(
+                  context,
+                  ShellTokens.playerChromeIconSize,
+                ),
+                color: accent,
+              ),
               const SizedBox(width: 4),
               ExcludeFocus(
                 child: IgnorePointer(
-                  child: ForjaSwitch(
+                  child: Switch(
                     value: autoNext,
                     onChanged: onChanged,
-                    scale: ForjaSwitch.settingsScale,
+                    scale: Switch.settingsScale,
                   ),
                 ),
               ),
@@ -1862,7 +1949,10 @@ class _EpisodePanelCloseButton extends StatelessWidget {
       height: 40,
       child: Icon(
         Icons.close_rounded,
-        size: 20,
+        size: ShellPaintScope.iconOf(
+          context,
+          ShellTokens.playerChromeIconSize,
+        ),
         color: ForjaShellColors.cinematic.textSecondary,
       ),
     );

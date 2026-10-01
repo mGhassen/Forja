@@ -21,16 +21,17 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
-| **Addons** | Playback, IPTV, Live Sports, torrent, Stremio, Nuvio, Debrid, Connected services, LAN. Playback is first (player prefs, no switch). Other rows show a switch on the row. **OK / click the row** turns the addon on or off; the **chevron on the right** opens that addon's settings. Installed packs can declare typed settings that appear **inside** the matching addon (e.g. Live Sports hub → Setup: Forja Live / Sports, merge). | Always |
+| **Addons** | Playback, torrent, Stremio, Nuvio, Connected services, LAN. Playback is first (player prefs, no switch). Other host rows show a switch. **OK / click the row** turns the addon on or off; the **chevron on the right** opens that addon's settings. **Enabled** packs can add more rows (IPTV, Live Sports, Anime, My List, Debrid, …) and typed settings / **Green Play** (preferred Forja providers) / Connected services login inside those pages — pack off hides that pack’s settings. On the **web portal**, the same host list plus discovered pack rows appear; each addon detail page has a back link to the Addons list. Connected services / LAN / Debrid API keys stay in the app. | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | [Features](navigation-bar.md) | Tab visibility, order, default menu — Addons/packs unlock features and default them on; Features hide/reorder | Always |
+| [Downloads](../playback/offline-downloads.md) | Offline library, download progress, storage used / free | Phone and desktop |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [About](app-updates.md) | Check for updates, app version; Privacy / Developer rows for admins | Always |
 
 ## Tips
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
-- IPTV / Live Sports alone → **Addons** and **Forja Packs** stay in the category list. Built-in addons stay listed even when off — the switch turns them on. Pack install is **Forja Packs**; packs may also contribute settings fields inside the matching Addon detail (manifest `settings`), and host sections still list installed plugins (e.g. Stremio URLs under **Addons → Stremio**).
+- IPTV / Live Sports alone → **Addons** and **Forja Packs** stay in the category list. Built-in addons stay listed even when off — the switch turns them on. Pack install is **Forja Packs**; packs may also contribute Addon rows and settings fields (manifest `settings`). The web portal mirrors that list for the active profile.
 - On **desktop**, Tab / arrow keys show the same green left-bar focus chrome on
   category tiles and detail rows (hidden again while you use the mouse). Arrow
   focus on a category does **not** auto-switch the right pane — click or
@@ -41,17 +42,18 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   focus stays on the left). **OK** or **→** opens that category’s right pane
   and moves focus to the first control there (each category’s detail is its own
   focus zone). Detail rows use the **same green left bar + tint** on hover /
-  D-pad focus (not a bordered box). **↑/↓** (and **→** as next where the page
-  is a vertical list) walk controls **inside that page only** — they never jump
-  to the category rail. Long lists (e.g. Playback) scroll so the focused row
+  D-pad focus (not a bordered box). **↑/↓/→** walk controls **inside that
+  page only** (spatial neighbors — not a single next/prev line). They never
+  jump to the category rail or another settings page. Long lists (e.g.
+  Playback) scroll so the focused row
   stays visible; focusing the **first** control (or any control near the top of
   the page) snaps the detail scroll back to the top so the category title and
   section labels stay on screen; holding **↑/↓** speeds up the further you hold.
   **←** or **Back** leaves the page: nested drills first (e.g. **Addons →
   Stremio** returns to the Addons list), then the selected category on the left
   rail, then the nav rail — selection stays on that category (no hop to the
-  first item). **←** on the first category
-  also returns to the nav rail. **OK** in the detail pane flips a toggle or
+  first item). **←** from **any** category on the left rail returns to the
+  nav rail. **OK** in the page flips a toggle or
   opens a select’s option list (current choice highlighted; **Back** dismisses).
   Nested switches on ordinary toggle rows do not steal focus (**OK** flips the
   row). **Addons** and **Forja Packs**: **OK** on the row activates; **→** then

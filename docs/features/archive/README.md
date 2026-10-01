@@ -2,7 +2,7 @@
 
 Guides for tabs and verticals that are **not** in the default Forja product surface. Matching code:
 
-- **Flutter:** [`apps/forja/lib/features/archive/`](../../../apps/forja/lib/features/archive/README.md)
+- **Flutter (dead vault):** [`apps/archive/`](../../../apps/archive/README.md) — outside `apps/forja`, not compiled into the app
 - **Rust:** [`crates/archive/`](../../../crates/archive/README.md)
 
 **Active user guide:** [features README](../README.md)
@@ -11,7 +11,7 @@ Guides for tabs and verticals that are **not** in the default Forja product surf
 
 ## Hidden tabs
 
-Withheld from the shell and **Settings → Features** via `archivedNavIds` in [`nav_config.dart`](../../../apps/forja/lib/shell/nav/nav_config.dart) — code lives under `features/archive/`, tabs are not offered in the navbar list.
+Withheld from the shell and **Settings → Features** via `archivedNavIds` in [`nav_config.dart`](../../../apps/forja/lib/shell/nav/nav_config.dart) — vaulted under `apps/archive/`, not offered in the navbar list.
 
 | Guide | Tab |
 |-------|-----|

@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/macos_rust_sdk.sh
+source "$ROOT/scripts/lib/macos_rust_sdk.sh"
 cd "$ROOT/crates"
 
 PROFILE="${RUST_PROFILE:-release}"

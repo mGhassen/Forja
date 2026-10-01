@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
+import 'package:forja/features/settings/addons/catalog.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/foundation/services/pack/pack_connected_auth_spec.dart';
-import 'package:forja/shared/foundation/services/pack/pack_connected_auth_service.dart';
-import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
+import 'package:forja/shared/engine/packs/settings/pack_connected_auth_spec.dart';
+import 'package:forja/shared/engine/packs/settings/pack_connected_auth_service.dart';
+import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -82,6 +82,78 @@ void main() {
       });
       final list = PackConnectedAuthSpec.listEnabled([a, b]);
       expect(list.map((e) => e.label).toList(), ['Beta', 'Alpha']);
+    });
+
+    test('listEnabled skips disabled plugins', () {
+      final on = EnginePlugin.fromJson({
+        'id': 'on',
+        'name': 'On',
+        'entry': 'on.js',
+        'kind': 'catalog',
+        'enabled': true,
+        'settings': {
+          'addon': SettingsAddonId.connectedServices,
+          'auth': {'label': 'On'},
+        },
+      });
+      final off = EnginePlugin.fromJson({
+        'id': 'off',
+        'name': 'Off',
+        'entry': 'off.js',
+        'kind': 'catalog',
+        'enabled': false,
+        'settings': {
+          'addon': SettingsAddonId.connectedServices,
+          'auth': {'label': 'Off'},
+        },
+      });
+      final list = PackConnectedAuthSpec.listEnabled([on, off]);
+      expect(list.map((e) => e.label).toList(), ['On']);
+    });
+
+    test('activePluginsFromPacks requires pack and plugin on', () {
+      final authPlugin = EnginePlugin.fromJson({
+        'id': 'auth-hub',
+        'name': 'Auth Hub',
+        'entry': 'x.js',
+        'kind': 'catalog',
+        'enabled': true,
+        'settings': {
+          'addon': SettingsAddonId.connectedServices,
+          'auth': {'label': 'AuthSvc'},
+        },
+      });
+      final disabledPack = EnginePack.fromJson(
+        {
+          'id': 'pack-off',
+          'name': 'Off Pack',
+          'version': '1.0.0',
+          'enabled': false,
+          'plugins': [authPlugin.toJson()],
+        },
+        sourceUrl: 'https://example.com/pack-off/manifest.json',
+      );
+      final enabledPack = EnginePack.fromJson(
+        {
+          'id': 'pack-on',
+          'name': 'On Pack',
+          'version': '1.0.0',
+          'enabled': true,
+          'plugins': [authPlugin.toJson()],
+        },
+        sourceUrl: 'https://example.com/pack-on/manifest.json',
+      );
+      expect(activePluginsFromPacks([disabledPack]), isEmpty);
+      expect(
+        activePluginsFromPacks([enabledPack]).map((p) => p.id).toList(),
+        ['auth-hub'],
+      );
+      expect(
+        PackConnectedAuthSpec.listEnabled(
+          activePluginsFromPacks([disabledPack, enabledPack]),
+        ).map((e) => e.label).toList(),
+        ['AuthSvc'],
+      );
     });
   });
 

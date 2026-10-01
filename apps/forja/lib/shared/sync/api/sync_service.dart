@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
-import 'package:forja/shared/supabase/forja_passkeys.dart';
+import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
@@ -11,9 +12,6 @@ import 'package:forja/shared/sync/auth/desktop_browser_auth.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-// Passkeys are @experimental on GoTrueClient.
-// ignore_for_file: experimental_member_use
 
 class SyncProfile {
   const SyncProfile({
@@ -52,6 +50,11 @@ class SyncService {
   String? get userEmail => session?.user.email;
   Session? get session => ForjaSupabase.clientOrNull?.auth.currentSession;
   static const _activeProfileKeyPrefix = 'forja_sync_active_profile_';
+
+  /// Name/avatar/color of the last resolved active profile, per user. Lets
+  /// chrome paint the real profile on cold start before `listProfiles` lands
+  /// (or when it never does — TV boots offline more often than desktop).
+  static const _activeProfileCardKeyPrefix = 'forja_sync_active_profile_card_';
   static const _refreshDebounce = Duration(seconds: 30);
   static const _featuresPullMinInterval = Duration(seconds: 2);
 
@@ -81,6 +84,11 @@ class SyncService {
   void _notifyIdentityChanged() {
     identityRevision.value++;
   }
+
+  /// Announce an identity that became real without passing through sign-in or
+  /// [selectProfile] — a restored session resolving its profile after boot.
+  /// Profile chrome mounted before that point has no other reload trigger.
+  void notifyIdentityResolved() => _notifyIdentityChanged();
 
   /// Single in-flight refresh (Guepard desktop-boot pattern) so boot/resume/
   /// focus never rotate the same RT twice in parallel.
@@ -223,6 +231,25 @@ class SyncService {
     return s.contains('jwt expired') || s.contains('pgrst303');
   }
 
+  /// Transient Auth `/token` failure (DNS blip, offline, socket). gotrue emits
+  /// [AuthRetryableFetchException] on [onAuthStateChange] — keep the cached
+  /// session; do not treat as sign-out.
+  static bool isRetryableAuthNetworkError(Object? error) {
+    if (error == null) return false;
+    if (error is AuthRetryableFetchException) return true;
+    if (error is SyncProfileFetchException) {
+      return isRetryableAuthNetworkError(error.cause);
+    }
+    final s = error.toString().toLowerCase();
+    return s.contains('authretryablefetchexception') ||
+        s.contains('failed host lookup') ||
+        s.contains('socketexception') ||
+        s.contains('network is unreachable') ||
+        s.contains('connection reset') ||
+        s.contains('connection refused') ||
+        s.contains('timed out');
+  }
+
   /// One retry of [run] after Auth/API `iat` skew. Does not mint a new JWT.
   static Future<T> retryAfterJwtIatSkew<T>(Future<T> Function() run) async {
     try {
@@ -251,8 +278,8 @@ class SyncService {
   }
 
   /// Refresh when the access JWT is missing expiry, already expired, or nearly
-  /// expired. Does **not** refresh a seemingly-valid AT (use [refreshSession]
-  /// with `force: true` on cold start, or retry after [isJwtExpiredError]).
+  /// expired. Does **not** refresh a seemingly-valid AT (cold start uses
+  /// [refreshSession] with `force: true` once in bootstrap).
   Future<void> ensureFreshAccessToken() async {
     if (!isSignedIn) return;
     final current = session;
@@ -333,63 +360,6 @@ class SyncService {
     );
     _notifyIdentityChanged();
     return response;
-  }
-
-  Future<AuthResponse> signInWithPasskey({String? captchaToken}) async {
-    if (!ForjaPasskeys.supported) {
-      throw const AuthException(
-        'Passkeys are only available on macOS and Windows.',
-      );
-    }
-    await ForjaSupabase.ensureInitialized();
-    final client = ForjaSupabase.clientOrNull;
-    if (client == null) {
-      throw const AuthException('Supabase is not configured for this build.');
-    }
-    final response = await client.auth.signInWithPasskey(
-      ForjaPasskeys.authenticator,
-      captchaToken: captchaToken,
-    );
-    _notifyIdentityChanged();
-    return response;
-  }
-
-  Future<Passkey> registerPasskey() async {
-    if (!ForjaPasskeys.supported) {
-      throw const AuthException(
-        'Passkeys are only available on macOS and Windows.',
-      );
-    }
-    await ForjaSupabase.ensureInitialized();
-    final client = ForjaSupabase.clientOrNull;
-    if (client == null) {
-      throw const AuthException('Supabase is not configured for this build.');
-    }
-    return client.auth.registerPasskey(ForjaPasskeys.authenticator);
-  }
-
-  Future<List<Passkey>> listPasskeys() async {
-    if (!ForjaPasskeys.supported) return const [];
-    await ForjaSupabase.ensureInitialized();
-    final client = ForjaSupabase.clientOrNull;
-    if (client == null || client.auth.currentSession == null) {
-      return const [];
-    }
-    return client.auth.passkey.list();
-  }
-
-  Future<void> deletePasskey(String passkeyId) async {
-    if (!ForjaPasskeys.supported) {
-      throw const AuthException(
-        'Passkeys are only available on macOS and Windows.',
-      );
-    }
-    await ForjaSupabase.ensureInitialized();
-    final client = ForjaSupabase.clientOrNull;
-    if (client == null) {
-      throw const AuthException('Supabase is not configured for this build.');
-    }
-    await client.auth.passkey.delete(passkeyId: passkeyId);
   }
 
   Future<AuthResponse> createAccount({
@@ -675,15 +645,61 @@ class SyncService {
     if (saved != active.id) {
       await prefs.setString('$_activeProfileKeyPrefix$userId', active.id);
     }
+    await prefs.setString(
+      '$_activeProfileCardKeyPrefix$userId',
+      jsonEncode({
+        'id': active.id,
+        'name': active.name,
+        'color': active.color,
+        'avatar_key': active.avatarKey,
+      }),
+    );
     await _syncPluginDiskScope(accountId: userId, profileId: active.id);
     return active;
   }
 
-  Future<bool> selectProfile(String profileId) async {
+  /// Last active profile this device resolved, from local prefs only — no
+  /// network, no throw. Returns null when signed out or never resolved here.
+  /// Name/avatar can be stale until the next [activeProfile] lands.
+  Future<SyncProfile?> lastKnownActiveProfile() async {
+    final userId = session?.user.id;
+    if (userId == null) return null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_activeProfileCardKeyPrefix$userId');
+      if (raw == null || raw.isEmpty) return null;
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      final id = map['id'] as String?;
+      if (id == null || id.isEmpty) return null;
+      // A profile switch that never reached the cloud must not resurrect the
+      // previous card — the id prefs key is the source of truth for "active".
+      final saved = prefs.getString('$_activeProfileKeyPrefix$userId');
+      if (saved != null && saved != id) return null;
+      return SyncProfile(
+        id: id,
+        name: map['name'] as String? ?? 'Profile',
+        color: map['color'] as String? ?? '#1ce783',
+        avatarKey: map['avatar_key'] as String? ?? 'forge',
+      );
+    } catch (e) {
+      debugPrint('[Sync] lastKnownActiveProfile: $e');
+      return null;
+    }
+  }
+
+  Future<bool> selectProfile(
+    String profileId, {
+    /// When true, skip [listProfiles] (Who's watching / splash already have
+    /// the [SyncProfile] from the loaded list). Avoids a network round-trip
+    /// before the avatar splash can paint.
+    bool skipRemoteCheck = false,
+  }) async {
     final userId = session?.user.id;
     if (userId == null) return false;
-    final profiles = await listProfiles();
-    if (!profiles.any((profile) => profile.id == profileId)) return false;
+    if (!skipRemoteCheck) {
+      final profiles = await listProfiles();
+      if (!profiles.any((profile) => profile.id == profileId)) return false;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_activeProfileKeyPrefix$userId', profileId);
     await _syncPluginDiskScope(accountId: userId, profileId: profileId);
@@ -702,10 +718,16 @@ class SyncService {
       accountId: accountId,
       profileId: profileId,
     );
-    await IptvCatalogDiskStore.configureScope(
+    await PortalCatalogShelfStore.configureScope(
       accountId: accountId,
       profileId: profileId,
     );
+    await Engine.rebindLocalStores(
+      accountId: accountId,
+      profileId: profileId,
+    );
+    SettingsService.forgetIdentitySessionCache();
+    await PortalStore.migrateLegacyInventoryIfNeeded();
     await ProviderScoreMemory.syncIdentityScope();
   }
 
@@ -713,6 +735,23 @@ class SyncService {
   /// Launching guest is launching a profile — same as [selectProfile] for pack init.
   Future<void> useGuestPluginDiskScope() =>
       _syncPluginDiskScope(accountId: null, profileId: null);
+
+  /// Engine store for a restored sign-in, or null when there is no saved profile.
+  ///
+  /// Guest (`accounts/local`) is only for a real signed-out launch. A persisted
+  /// session with a saved profile id must open that file before the shell reads
+  /// the navbar.
+  Future<String?> engineStorePathForCurrentSession() async {
+    final userId = session?.user.id;
+    if (userId == null) return null;
+    final prefs = await SharedPreferences.getInstance();
+    final profileId = prefs.getString('$_activeProfileKeyPrefix$userId')?.trim();
+    if (profileId == null || profileId.isEmpty) return null;
+    return Engine.storagePathForIdentity(
+      accountId: userId.replaceAll(RegExp(r'[^\w\-.]'), '_'),
+      profileId: profileId.replaceAll(RegExp(r'[^\w\-.]'), '_'),
+    );
+  }
 
   /// Bind pack disk for the launched profile before pack I/O.
   ///
@@ -1122,7 +1161,7 @@ class SyncService {
   }
 
   /// Deal portals from the catalog pool (burns 1 credit). Returns portal UUIDs.
-  Future<List<String>> dealIptvPortals({
+  Future<List<String>> dealPortals({
     required String profileId,
     String region = 'ANY',
     int count = 5,
@@ -1142,7 +1181,7 @@ class SyncService {
     ];
   }
 
-  Future<String?> upsertIptvPortal({
+  Future<String?> upsertPortal({
     required String url,
     required String username,
     required String password,
@@ -1168,12 +1207,12 @@ class SyncService {
       );
       return id as String?;
     } catch (e) {
-      debugPrint('[Sync] upsertIptvPortal error: $e');
+      debugPrint('[Sync] upsertPortal error: $e');
       return null;
     }
   }
 
-  Future<List<Map<String, dynamic>>> getIptvPortals(List<String> ids) async {
+  Future<List<Map<String, dynamic>>> getPortals(List<String> ids) async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null || ids.isEmpty) return const [];
     final rows = await client.rpc('get_iptv_portals', params: {'p_ids': ids});
@@ -1188,7 +1227,7 @@ class SyncService {
   ///
   /// Returns `-1` when auth/profile/count is unavailable — **never** `0` on
   /// "not ready" (that fail-open let a thin local cache replace hundreds).
-  Future<int> countUserIptvPortals() async {
+  Future<int> countUserPortals() async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) return -1;
@@ -1202,7 +1241,7 @@ class SyncService {
           .eq('account_id', userId)
           .eq('profile_id', profile.id);
     } catch (e) {
-      debugPrint('[Sync] countUserIptvPortals error: $e');
+      debugPrint('[Sync] countUserPortals error: $e');
       // Fail closed for shrink checks - caller should not replace.
       return -1;
     }
@@ -1212,7 +1251,7 @@ class SyncService {
   ///
   /// Throws when assignments exist but credentials cannot be loaded - callers
   /// must not treat that as an empty inventory (would wipe local store).
-  Future<List<Map<String, dynamic>>> pullUserIptvPortals() async {
+  Future<List<Map<String, dynamic>>> pullUserPortals() async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) return const [];
@@ -1234,7 +1273,7 @@ class SyncService {
         if ((a['portal_id'] as String?)?.isNotEmpty == true)
           a['portal_id'] as String,
     ];
-    final globals = await getIptvPortals(ids);
+    final globals = await getPortals(ids);
     if (ids.isNotEmpty && globals.isEmpty) {
       throw StateError(
         'Failed to load portal credentials for ${ids.length} assignment(s)',
@@ -1266,7 +1305,7 @@ class SyncService {
   /// Server refuses shrink when false (issue 118).
   ///
   /// Uses `replace_user_iptv_portals` RPC (grandfather over-limit + atomic).
-  Future<void> replaceUserIptvPortals(
+  Future<void> replaceUserPortals(
     List<({String portalId, String portalName, bool favorite})> assignments, {
     bool allowShrink = false,
   }) async {
@@ -1293,7 +1332,7 @@ class SyncService {
         },
       );
     } catch (e) {
-      debugPrint('[Sync] replaceUserIptvPortals error: $e');
+      debugPrint('[Sync] replaceUserPortals error: $e');
     }
   }
 }

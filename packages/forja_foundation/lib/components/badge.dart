@@ -1,0 +1,134 @@
+import 'package:flutter/material.dart' hide Badge;
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+/// Visual tone for [Badge].
+enum BadgeVariant {
+  default_,
+  secondary,
+  destructive,
+  outline,
+}
+
+/// Size scale for [Badge].
+enum BadgeSize {
+  sm,
+  md,
+}
+
+/// Compact status / count badge.
+class Badge extends StatelessWidget {
+  const Badge({
+    super.key,
+    this.label,
+    this.child,
+    this.variant = BadgeVariant.default_,
+    this.size = BadgeSize.md,
+  }) : assert(label != null || child != null);
+
+  final String? label;
+  final Widget? child;
+  final BadgeVariant variant;
+  final BadgeSize size;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ForjaThemeExtension.of(context);
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final dims = _dims(size, tv: tv);
+    final colors = _resolve(theme, variant);
+
+    return Container(
+      constraints: BoxConstraints(minHeight: dims.height),
+      padding: dims.padding,
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(999),
+        border: colors.border != null
+            ? Border.all(color: colors.border!)
+            : null,
+      ),
+      child: DefaultTextStyle(
+        style: TextStyle(
+          color: colors.foreground,
+          fontSize: dims.fontSize,
+          fontWeight: FontWeight.w700,
+          height: 1.1,
+        ),
+        child: child ?? Text(label!),
+      ),
+    );
+  }
+
+  static _BadgeDims _dims(BadgeSize size, {required bool tv}) => switch (size) {
+        BadgeSize.sm => _BadgeDims(
+            height: tv ? 12 : 18,
+            fontSize: tv ? ShellTokens.tvMetaFontSize : 10,
+            padding: EdgeInsets.symmetric(
+              horizontal: tv ? 4 : 6,
+              vertical: tv ? 1 : 2,
+            ),
+          ),
+        BadgeSize.md => _BadgeDims(
+            height: tv ? 14 : 22,
+            fontSize: tv ? ShellTokens.tvMetaFontSize : 11,
+            padding: EdgeInsets.symmetric(
+              horizontal: tv ? 5 : 8,
+              vertical: tv ? 2 : 3,
+            ),
+          ),
+      };
+
+  static _BadgeColors _resolve(
+    ForjaThemeExtension theme,
+    BadgeVariant variant,
+  ) {
+    return switch (variant) {
+      BadgeVariant.default_ => _BadgeColors(
+          foreground: theme.bgDark,
+          background: theme.brandGreen,
+          border: null,
+        ),
+      BadgeVariant.secondary => _BadgeColors(
+          foreground: theme.textSecondary,
+          background: Colors.white.withValues(alpha: 0.08),
+          border: null,
+        ),
+      BadgeVariant.destructive => const _BadgeColors(
+          foreground: Color(0xFFF87171),
+          background: Color(0x1FF87171),
+          border: null,
+        ),
+      BadgeVariant.outline => _BadgeColors(
+          foreground: theme.textSecondary,
+          background: Colors.transparent,
+          border: theme.borderSubtle,
+        ),
+    };
+  }
+}
+
+class _BadgeDims {
+  const _BadgeDims({
+    required this.height,
+    required this.fontSize,
+    required this.padding,
+  });
+
+  final double height;
+  final double fontSize;
+  final EdgeInsetsGeometry padding;
+}
+
+class _BadgeColors {
+  const _BadgeColors({
+    required this.foreground,
+    required this.background,
+    required this.border,
+  });
+
+  final Color foreground;
+  final Color background;
+  final Color? border;
+}

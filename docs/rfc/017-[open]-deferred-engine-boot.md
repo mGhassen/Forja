@@ -1,7 +1,7 @@
 # RFC-017: Deferred / profile-gated engine boot
 
 **Status:** open  
-**Depends on:** [RFC-016](016-[partial]-lazy-tab-mounting.md) (lazy tabs), [RFC-036](036-[open]-accounts-iptv-profile-settings.md) (profile nav + play sources)  
+**Depends on:** [RFC-016](fixed/016-[fixed]-lazy-tab-mounting.md) (lazy tabs), [RFC-036](036-[open]-accounts-iptv-profile-settings.md) (profile nav + play sources)  
 **Area:** `apps/forja/lib/app/bootstrap.dart`, `apps/forja/lib/app/boot_needs.dart`, `apps/forja/lib/app/profile_engine_warm.dart`
 
 ## Status at a glance
@@ -112,7 +112,6 @@ Users who only browse IPTV still waited for catalog / torrent / music init.
 | TMDB bulk prefetch (4 lists) | **no** | Home tab mount (trending first only) |
 | `MusicPlayerService.init()` | **no** | Music or Audiobooks tab first visit |
 | `AudioService.init()` | **no** | First background audio session |
-| `PlayerPoolService` | **no** | First `PlayerScreen` open |
 
 ## Design: EngineRegistry (historical — deferred)
 

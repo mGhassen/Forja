@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_source_filters.dart';
+import 'package:forja/shared/player/sources/torrent/torrent_source_filters.dart';
 import 'package:rust/rust.dart';
 
 void main() {
@@ -450,11 +450,41 @@ void main() {
       CatalogSourcesSessionCache.writeStremio(key, [
         {'url': 'https://example.com/s'},
       ]);
+      CatalogSourcesSessionCache.writeProbeHealth(
+        'https://cdn.example/a.m3u8',
+        true,
+      );
       expect(CatalogSourcesSessionCache.readEngine(key), isNotNull);
       expect(CatalogSourcesSessionCache.readStremio(key), isNotNull);
+      expect(
+        CatalogSourcesSessionCache.readProbeHealth('https://cdn.example/a.m3u8'),
+        isTrue,
+      );
       CatalogSourcesSessionCache.clearAll();
       expect(CatalogSourcesSessionCache.readEngine(key), isNull);
       expect(CatalogSourcesSessionCache.readStremio(key), isNull);
+      expect(
+        CatalogSourcesSessionCache.readProbeHealth('https://cdn.example/a.m3u8'),
+        isNull,
+      );
+    });
+
+    test('probe health read/write and magnet keys', () {
+      const url = 'https://cdn.example/stream.m3u8';
+      CatalogSourcesSessionCache.writeProbeHealth(url, true);
+      expect(CatalogSourcesSessionCache.readProbeHealth(url), isTrue);
+      CatalogSourcesSessionCache.writeProbeHealth(url, false);
+      expect(CatalogSourcesSessionCache.readProbeHealth(url), isFalse);
+      expect(
+        CatalogSourcesSessionCache.probeKeyForStream({'url': url}),
+        url,
+      );
+      expect(
+        CatalogSourcesSessionCache.probeKeyForStream({'url': 'magnet:?xt=x'}),
+        isNull,
+      );
+      CatalogSourcesSessionCache.clearAll();
+      expect(CatalogSourcesSessionCache.readProbeHealth(url), isNull);
     });
 
     test('hub cacheKey prefers open over TMDB mediaType flip', () {
@@ -489,6 +519,42 @@ void main() {
         'drama:88:E2',
       );
     });
+
+    test('green Play and player Sources share the hub plugin cache key', () {
+      const open = MetaOpen(surface: 'hub', id: '42');
+      final play = CatalogSourcesSessionCache.cacheKey(
+        mediaId: 1,
+        mediaType: 'tv',
+        season: 1,
+        episode: 3,
+        open: open,
+        pluginId: 'hub-plugin',
+        metaId: '42',
+        audioCategory: 'sub',
+      );
+      final panel = CatalogSourcesSessionCache.cacheKey(
+        mediaId: 1,
+        mediaType: 'tv',
+        season: 1,
+        episode: 3,
+        open: open,
+        pluginId: 'hub-plugin',
+        metaId: '42',
+        audioCategory: 'sub',
+      );
+      expect(play, panel);
+      expect(play, 'hub-plugin:42:E3:sub');
+      expect(
+        CatalogSourcesSessionCache.cacheKey(
+          mediaId: 1,
+          mediaType: 'tv',
+          episode: 3,
+          open: open,
+          audioCategory: 'sub',
+        ),
+        isNot(play),
+      );
+    });
   });
 
   group('Torrent session cache', () {
@@ -497,17 +563,34 @@ void main() {
       CatalogSourcesSessionCache.writeTorrents(key, const []);
       expect(CatalogSourcesSessionCache.readTorrents(key), isNull);
 
-      CatalogSourcesSessionCache.writeTorrents(key, [
-        TorrentResult(
-          name: 'Show.S01E03',
-          magnet: 'magnet:?xt=urn:btih:abc',
-          seeders: '10',
-          size: '1 GB',
-          source: 'YTS',
-        ),
-      ]);
-      expect(CatalogSourcesSessionCache.readTorrents(key), isNotEmpty);
+      CatalogSourcesSessionCache.writeTorrents(
+        key,
+        [
+          TorrentResult(
+            name: 'Show.S01E03',
+            magnet: 'magnet:?xt=urn:btih:abc',
+            seeders: '10',
+            size: '1 GB',
+            source: 'YTS',
+          ),
+        ],
+        fetchedProviderIds: const {'yts'},
+      );
+      final cached = CatalogSourcesSessionCache.readTorrents(key);
+      expect(cached, isNotNull);
+      expect(cached!.results, isNotEmpty);
+      expect(cached.fetchedProviderIds, contains('yts'));
       CatalogSourcesSessionCache.invalidate(key, kind: 'torrents');
+    });
+  });
+
+  group('Sources session TTL', () {
+    test('stream and probe health use separate TTLs', () {
+      expect(CatalogSourcesSessionCache.streamTtl, const Duration(hours: 1));
+      expect(
+        CatalogSourcesSessionCache.probeHealthTtl,
+        const Duration(minutes: 15),
+      );
     });
   });
 

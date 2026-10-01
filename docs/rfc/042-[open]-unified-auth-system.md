@@ -1,7 +1,7 @@
 # RFC-042 — Unified auth system (web + Flutter)
 
 **Status:** open  
-**Depends on:** [RFC-034](034-[partial]-web-portal-landing.md), [RFC-006](006-[partial]-supabase-sync.md)  
+**Depends on:** [RFC-034](fixed/034-[fixed]-web-portal-landing.md), [RFC-006](006-[partial]-supabase-sync.md)  
 **Area:** `apps/web` auth · `apps/forja` SyncService / account entry  
 **Version:** v1.0 theme (Bab Souika)
 

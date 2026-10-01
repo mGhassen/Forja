@@ -1,0 +1,14 @@
+{
+  "pluginId": "test-hub-live",
+  "layout": [
+    {
+      "type": "kit.stack",
+      "id": "root",
+      "children": [
+        { "type": "kit.topBar", "id": "top" },
+        { "type": "kit.row", "id": "upcoming", "source": "test-schedule" },
+        { "type": "watch_providers", "id": "providers" }
+      ]
+    }
+  ]
+}

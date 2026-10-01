@@ -1,0 +1,28 @@
+---
+description: Pack-product host law — empty shell; packs = product; foundation = DS paint only. Detail — skill forja-pack-product-host
+alwaysApply: true
+---
+
+# Pack-product host (law)
+
+Read skill **forja-pack-product-host** when deciding pack vs host vs foundation, editing the kit painter, or `open.surface` routing.
+
+**One-liner:** Empty shell + engines. Packs are product. Foundation paints only. Host validates + paints pack JSON — never invents product fields or verbs.
+
+### Sniff tests
+
+| Layer | Test |
+|-------|------|
+| **Host** | Pack uninstalled — does this Dart still make sense as a **generic** capability? No → pack (or delete) |
+| **Foundation** | shadcn-style props in → UI out? Else host engine or pack |
+| **Painter** | Names schedule/feed/panel/tabs or invents `title`/`poster` heuristics? Illegal — validate props → DS mount only |
+
+### Hard forbidden (summary)
+
+- Product folders / pack-id branches / hub inventory in `apps/forja`
+- Field mappers (`title`/`poster`/`homeTeam`) or product runtimes in host
+- Orchestrators / hooks / registries in `forja_foundation`
+- Painter branches on product verbs (`feed`/`layout`/`rail`)
+- Assert shipped pack ids in host tests
+
+Specialists: [host tests](./forja-host-tests-no-pack-contracts.mdc) · [playback](./forja-playback-host-generic.mdc) · [design system](./forja-design-system.mdc) · [RFC-109](../../docs/rfc/109-[open]-forja-pack-product-host.md)

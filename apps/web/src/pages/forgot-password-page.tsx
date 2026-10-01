@@ -96,7 +96,7 @@ function ForgotPasswordForm() {
                   Check{' '}
                   <span className="text-[#EDE6DA]">{sentFromSearch}</span> for a
                   message from Forja. Open the link in that email to choose a new
-                  password, then sign in. The link expires soon — if you
+                  password, then sign in. The link expires soon. If you
                   don&apos;t see it, check spam.
                 </CardDescription>
               </CardHeader>

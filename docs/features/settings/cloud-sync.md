@@ -56,12 +56,13 @@ Per profile:
 |---------|------------------|
 | **`accounts.features`** | Lean account flags (default `{}` = all off). Enabled boolean keys only — e.g. `iptvScrape` (Find Portals) and `dealPortal` (Deal from catalog pool). Numeric `maxIptvPortals` when raised above the default **5** (omit when 5). Admins (`is_admin`) are unlimited for portals. The app re-pulls flags/credits on IPTV open and when the app resumes. |
 | **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals` (passwords encrypted at rest). |
-| **`profile_settings` → Playback** | Full prefs: torrent / Stremio / Nuvio / webstreaming play sources, Simple resolve, auto next/skip intro, IPTV EPG, preferred audio / subtitle, max quality, anime title language, **Addons IPTV unlock** (`addon_feature_iptv`). Devices only push that unlock key on intentional Addons toggles. Web **Profile → Addons** (hub + Playback detail). |
-| **`profile_settings` → Navigation** | Features rail `visibleIds` + `tabOrder` among **available** tabs only (unlocked Addons + hub packs on the profile). Written by **Addons** / pack enable (default-on) and by **Features** (hide/reorder). Web **Profile → Features** (and Addons when unlocking IPTV). |
-| **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features**. Empty list means no feature tabs (Settings only). The portal lists **IPTV** (host) plus hub tab ids from packs **on this profile** — it does not invent Home/Anime/…. |
+| **`profile_settings` → Playback** | Player prefs (audio / subtitle, auto next/skip, content warnings, auto PiP, max quality) plus play-source masters (torrent / Stremio / Nuvio). Web **Profile → Addons** owns the play-source switches; **Addons → Playback** is player prefs only. IPTV EPG is under **Addons → IPTV** when the IPTV pack is on. Webstreaming / Simple resolve keys still sync from the app but are not editable on the portal. Legacy `anime_title_language` under Playback is migrated into pack settings and stripped on the next write. |
+| **`profile_settings` → Navigation** | Features rail `visibleIds` + `tabOrder` among **available** tabs only (hub packs on the profile). Written by pack enable (default-on) and by **Features** (hide/reorder). Web **Profile → Features**. |
+| **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features**. Empty list means no feature tabs (Settings only). The portal lists hub tab ids from **enabled** packs on this profile. |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs — web **Addons → Stremio** |
 | **`profile_settings` → Forja** | Forja plugin pack **membership** (manifest URLs) plus **`onboarded`**. Cloud/web only records which packs are **on the profile**. The **app** downloads and installs scripts (and asks mid-session before download/uninstall). Soft-pull remaps membership URLs to the published catalog when an official pack slot moved hosts, then pushes the new URLs back. Synced with web **Profile → Forja Packs** / Community Packs. Web **Addons → Direct torrent** can also manage the torrent pack; Live Sports packs are Forja Packs only. |
 | **`profile_settings` → Nuvio** | Installed Nuvio scraper manifest URLs — web **Addons → Nuvio** |
+| **`profile_settings` → Pack settings** | Non-secret pack Addon fields (`connectedServices.packSettings`, keyed by plugin id) — web **Addons →** pack rows (Live Sports Setup, My List open hubs, …). Passwords / Debrid API keys stay device-local. |
 
 ## What stays local
 
@@ -84,23 +85,21 @@ Not synced — device-specific or sensitive:
   offers the official ForjaHQ bundle, Community Packs, or Skip (see
   [Forja Packs](forja-packs.md)). Guest gets the same packs step once per
   device (local flag). Device-link sessions show as **Forja Android TV** under
-  Account → Connections. From **Settings → Profile & account** (guest), you can
-  still sign in with email and password (Cloudflare Turnstile when Auth captcha
-  is configured), **Sign in with passkey** on macOS and Windows (Touch ID /
-  Windows Hello), or **Web login** in the browser (one portal tab; the app
-  finishes when you sign in there — no second localhost page). After Web login
-  handoff the portal mints a **separate** session for the desktop app and
-  **stays signed in** in the browser. Optional **Google OAuth** appears on web
-  login when configured. Optional **authenticator (TOTP)** is under web
-  **Account** — after you enable it, sign-in asks for a 6-digit code (Web login
-  completes MFA in the browser before minting the desktop session; in-app
-  password sign-in shows the same challenge). Portal **Sign out** clears this
-  browser only; **Account → Connections** lists every active session (device,
-  location with flag, IP, signed-in / last active) and can revoke one or
-  **Sign out all devices** (including the desktop app). Already signed in on the
-  portal? Web login skips the credentials form and finishes the handoff (or use
-  **Return to Forja**). Create accounts only on the web (`/signup`). Forgot
-  password is web-only: `/forgot-password` → `/reset-password`.
+  Account → Connections. From **Settings → Profile & account** (guest): desktop
+  uses **code / QR** device link; mobile can use email/password, **passkey**
+  (macOS / Windows), or **Web login** (one portal tab; the app finishes when you
+  sign in there). After Web login handoff the portal mints a **separate** session
+  for the desktop app and **stays signed in** in the browser. Optional **Google
+  OAuth** appears on web login when configured. Optional **authenticator (TOTP)**
+  is under web **Account** — Web login completes MFA in the browser before
+  minting the desktop session. Portal **Sign out** clears this browser only;
+  **Account → Connections** lists every active session (device, location with
+  flag, IP, signed-in / last active) and can revoke one or **Sign out all
+  devices** (including the desktop app). Already signed in on the portal? Web
+  login skips the credentials form and finishes the handoff (or use **Return to
+  Forja**). Create accounts only on the web (`/signup`). Forgot password is
+  web-only: `/forgot-password` → `/reset-password`. Captcha (Turnstile) is
+  web-portal only — the Flutter app does not embed it.
 - Continue as a guest; the current local-only app behavior remains available
 - Tap **Watching now** under **Settings → Profile & account** (desktop rail
   avatar opens that page) to open **Who’s watching?** / **Manage profiles**
@@ -157,7 +156,9 @@ Not synced — device-specific or sensitive:
 - The desktop chooser, rail, and Profile & account page use the same avatar
   artwork selected on the web
 - Add, edit, search, favorite, share, or remove IPTV portals from
-  the web (share codes match the app peer-code flow). On the web IPTV page,
+  the web (share codes match the app peer-code flow). Portals you **Add** or
+  **Import** in the app sync to this list for the same profile (open **Portals**
+  or resume the app if an older local-only portal is missing). On the web IPTV page,
   portals are a compact list (expiry, name, URL, seats). Lists paginate every 10 items.
   Checkboxes support **Select all** (matching search results) and batch **Export** /
   **Remove** (with confirm). Remove drops the portal from this profile only — the shared
@@ -188,31 +189,17 @@ Optional portal origin for **Web login** / signup links:
 --dart-define=FORJA_WEB_URL=https://your-portal.example
 ```
 
-When Supabase Auth captcha is enabled, also pass the public Turnstile site key
-(same value as `VITE_TURNSTILE_SITE_KEY` on the web portal):
-
-```text
---dart-define=TURNSTILE_SITE_KEY=…
-```
-
-Local always-pass dummy: `1x00000000000000000000AA` (matches
-`apps/web/supabase/config.toml`). Hosted projects need the real widget site key
-that matches the Auth captcha secret.
-
-Put the same keys in repo-root `.env` (see `.env.example`) so local
+Put Supabase + portal keys in repo-root `.env` (see `.env.example`) so local
 `flutter run --dart-define-from-file=../../.env` picks them up. Local default
 portal is `http://127.0.0.1:3000`. **Release / CI** must set GitHub secret
 `FORJA_WEB_URL` to the deployed portal (Vercel URL, custom domain, etc.) —
-builds fail if it is missing or still localhost. Set optional secret
-`TURNSTILE_SITE_KEY` so in-app password login works when Auth captcha is on.
-This does **not** go in `apps/web/.env` alone (that file configures the portal;
-the desktop app needs its own dart-defines).
+builds fail if it is missing or still localhost.
 
 Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in `apps/web/.env`.
-For signup/sign-in captcha, also set `VITE_TURNSTILE_SITE_KEY` (Cloudflare Turnstile
-site key) on the web and the matching `TURNSTILE_SITE_KEY` for Flutter.
-Local dummy keys are documented in `apps/web/.env.example` and root `.env.example`.
-Local Flutter development can load the repo-root `.env` directly:
+For signup/sign-in captcha on the **portal only**, set `VITE_TURNSTILE_SITE_KEY`
+(Cloudflare Turnstile site key). Local dummy keys are documented in
+`apps/web/.env.example`. Local Flutter development can load the repo-root `.env`
+directly:
 
 ```text
 flutter run -d macos --dart-define-from-file=../../.env

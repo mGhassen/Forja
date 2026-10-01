@@ -1,0 +1,184 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+/// Constrained column below the full-bleed media details hero.
+///
+/// Horizontal inset is **not** applied here — catalog rows are edge-to-edge;
+/// wrap text-only blocks in [padContent].
+///
+/// When [bodyOverlap] > 0, the body is translated up onto the hero backdrop
+/// (no solid fill in that band — backdrop + soft gradient stay visible).
+class DetailsBody extends StatelessWidget {
+  const DetailsBody({
+    super.key,
+    required this.child,
+    this.backgroundColor,
+    this.bodyOverlap,
+    this.topSpacing,
+  });
+
+  final Widget child;
+  final Color? backgroundColor;
+  final double? bodyOverlap;
+  final double? topSpacing;
+
+  /// Standard horizontal inset for synopsis blocks, episode headers, etc.
+  static EdgeInsets contentPadding(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final inset = DetailsTokens.contentHorizontalPadding(width);
+    return EdgeInsets.symmetric(horizontal: inset);
+  }
+
+  static Widget padContent(BuildContext context, Widget child) {
+    return Padding(
+      padding: contentPadding(context),
+      child: child,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shellBg =
+        backgroundColor ?? ForjaThemeExtension.of(context).bgDark;
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final overlap = bodyOverlap ??
+        (tv ? DetailsTokens.heroBodyOverlapTv : DetailsTokens.heroBodyOverlap);
+    final top = topSpacing ??
+        (tv ? DetailsTokens.bodyTopSpacingTv : DetailsTokens.bodyTopSpacing);
+    final bottom = tv
+        ? DetailsTokens.bodyBottomSpacingTv
+        : DetailsTokens.bodyBottomSpacing;
+
+    final content = Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: ShellTokens.bodyMaxWidthDesktop,
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            0,
+            top,
+            0,
+            bottom,
+          ),
+          child: child,
+        ),
+      ),
+    );
+
+    if (overlap > 0) {
+      // Pull paint onto the backdrop and shrink layout by the same amount —
+      // otherwise scroll height keeps the overlap band as dead space at the
+      // bottom. Stock Transform.translate fails hit tests in the overflow
+      // band (y < 0) — seasons/cast never see hover. Do not wrap this in
+      // Opacity / AnimatedOpacity / other size.contains hit-testers — they
+      // reject y < 0 before this runs (see DetailsScrollPage fade placement).
+      return _OverlapPullUp(
+        overlap: overlap,
+        child: content,
+      );
+    }
+
+    return ColoredBox(color: shellBg, child: content);
+  }
+}
+
+/// Host alias — same paint as [DetailsBody].
+typedef MediaDetailsBody = DetailsBody;
+
+/// Paints [child] shifted up by [overlap] and hit-tests that painted region.
+class _OverlapPullUp extends SingleChildRenderObjectWidget {
+  const _OverlapPullUp({
+    required this.overlap,
+    required Widget child,
+  }) : super(child: child);
+
+  final double overlap;
+
+  @override
+  _RenderOverlapPullUp createRenderObject(BuildContext context) {
+    return _RenderOverlapPullUp(overlap: overlap);
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderOverlapPullUp renderObject,
+  ) {
+    renderObject.overlap = overlap;
+  }
+}
+
+class _RenderOverlapPullUp extends RenderProxyBox {
+  _RenderOverlapPullUp({required double overlap}) : _overlap = overlap;
+
+  double _overlap;
+  double get overlap => _overlap;
+  set overlap(double value) {
+    if (_overlap == value) return;
+    _overlap = value;
+    markNeedsLayout();
+  }
+
+  Matrix4 get _paintTransform =>
+      Matrix4.translationValues(0, -_overlap, 0);
+
+  @override
+  bool get alwaysNeedsCompositing => _overlap != 0;
+
+  @override
+  void performLayout() {
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+    child!.layout(constraints, parentUsesSize: true);
+    final childSize = child!.size;
+    final pulled = (childSize.height - _overlap).clamp(0.0, double.infinity);
+    size = constraints.constrain(Size(childSize.width, pulled));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (_overlap == 0) {
+      super.paint(context, offset);
+      return;
+    }
+    layer = context.pushTransform(
+      needsCompositing,
+      offset,
+      _paintTransform,
+      super.paint,
+      oldLayer: layer as TransformLayer?,
+    );
+  }
+
+  @override
+  void applyPaintTransform(RenderObject child, Matrix4 transform) {
+    transform.translateByDouble(0, -_overlap, 0, 1);
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    // Layout height is child − overlap; paint shifts up so the painted band is
+    // [-overlap, size.height).
+    if (position.dx < 0 ||
+        position.dx >= size.width ||
+        position.dy < -_overlap ||
+        position.dy >= size.height) {
+      return false;
+    }
+    return result.addWithPaintTransform(
+      transform: _paintTransform,
+      position: position,
+      hitTest: (BoxHitTestResult result, Offset transformed) {
+        return child?.hitTest(result, position: transformed) ?? false;
+      },
+    );
+  }
+}

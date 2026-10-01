@@ -12,9 +12,8 @@ use rquickjs::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 
-/// Same key as `crates/archive/anime/src/extractors/miruro.rs` PIPE_OBF_KEY.
+/// Miruro pipe XOR key. `miruro.js` calls `ctx.crypto.decodePipe`.
 const PIPE_OBF_KEY: [u8; 16] = [
     0x71, 0x95, 0x10, 0x34, 0xf8, 0xfb, 0xcf, 0x53, 0xd8, 0x9d, 0xb5, 0x2c, 0xeb, 0x3d, 0xc2, 0x2c,
 ];
@@ -379,7 +378,6 @@ const HOST_JS: &str = r#"
 "#;
 
 const CRYPTO_JS: &str = include_str!("crypto_js_polyfill.js");
-const STREAMCRYPTO_JS: &str = include_str!("_streamcrypto.js");
 const CHEERIO_BUNDLE: &str =
     include_str!("../../../apps/forja/assets/nuvio/cheerio.bundle.js");
 
@@ -562,43 +560,16 @@ async fn native_fetch(
     .to_string())
 }
 
-fn solve_pow(challenge: String, difficulty: i32, max: i32) -> String {
-    if challenge.is_empty() || !(0..=8).contains(&difficulty) {
-        return String::new();
-    }
-    let cap = max.clamp(1, 5_000_000) as u32;
-    let prefix = "0".repeat(difficulty as usize);
-    for n in 0..cap {
-        if cancelled() {
-            return String::new();
-        }
-        let h = format!("{:x}", Sha256::digest(format!("{challenge}{n}").as_bytes()));
-        if h.starts_with(&prefix) {
-            return serde_json::json!({ "challenge": challenge, "nonce": n.to_string() })
-                .to_string();
-        }
-    }
-    String::new()
-}
-
-/// Consumet-compatible KissKh Episode/Sub `kkey` (same as Dart/flutter_js host).
-fn kisskh_kkey(episode_id: i32, kind: String) -> String {
-    if episode_id <= 0 {
-        return String::new();
-    }
-    let k = if kind == "sub" || kind == "subtitle" {
-        crate::kisskh_kkey::KkeyKind::Subtitle
-    } else {
-        crate::kisskh_kkey::KkeyKind::Video
-    };
-    crate::kisskh_kkey::generate_kkey(episode_id, k)
-}
-
 pub async fn extract(req: ExtractRequest) -> ExtractResult {
+    extract_in_job(req, 0).await
+}
+
+/// Same as [extract], but `ctx.emit` rows land on [crate::extract_events] for `job_id`.
+pub async fn extract_in_job(req: ExtractRequest, job_id: u64) -> ExtractResult {
     let timeout = Duration::from_millis(req.timeout_ms.max(1_000));
     let token = utils::engine_cancel::cancellation_token();
     tokio::select! {
-        r = tokio::time::timeout(timeout, extract_inner(req)) => match r {
+        r = tokio::time::timeout(timeout, extract_inner(req, job_id)) => match r {
             Ok(r) => r,
             Err(_) => ExtractResult {
                 streams: vec![],
@@ -648,7 +619,7 @@ fn with_tmdb_api_key(mut meta: Value) -> Value {
     meta
 }
 
-async fn extract_inner(req: ExtractRequest) -> ExtractResult {
+async fn extract_inner(req: ExtractRequest, job_id: u64) -> ExtractResult {
     if cancelled() {
         return ExtractResult {
             streams: vec![],
@@ -693,7 +664,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
     let allow_host = req.allow_host_fallback;
 
     let result = async_with!(ctx => |ctx| {
-        run_in_ctx(ctx, plugin_id, code, meta, plugin_label, hops, hop_depth, allow_host).await
+        run_in_ctx(ctx, plugin_id, code, meta, plugin_label, hops, hop_depth, allow_host, job_id).await
     })
     .await;
 
@@ -733,6 +704,7 @@ async fn run_in_ctx<'js>(
     hops: std::sync::Arc<Vec<HopScript>>,
     hop_depth: u32,
     allow_host: bool,
+    job_id: u64,
 ) -> Result<(Vec<Value>, Option<String>, Vec<String>), String> {
     let fetch_fn = Function::new(ctx.clone(), Async(native_fetch))
         .map_err(|e| e.to_string())?
@@ -758,14 +730,6 @@ async fn run_in_ctx<'js>(
         .set("__native_tmdb_match", tmdb_match_fn)
         .map_err(|e| e.to_string())?;
 
-    let pow_fn = Function::new(ctx.clone(), solve_pow)
-        .map_err(|e| e.to_string())?
-        .with_name("__native_solve_pow")
-        .map_err(|e| e.to_string())?;
-    ctx.globals()
-        .set("__native_solve_pow", pow_fn)
-        .map_err(|e| e.to_string())?;
-
     let encode_pipe_fn = Function::new(ctx.clone(), encode_pipe)
         .map_err(|e| e.to_string())?
         .with_name("__native_encode_pipe")
@@ -780,14 +744,6 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
     ctx.globals()
         .set("__native_decode_pipe", decode_pipe_fn)
-        .map_err(|e| e.to_string())?;
-
-    let kisskh_kkey_fn = Function::new(ctx.clone(), kisskh_kkey)
-        .map_err(|e| e.to_string())?
-        .with_name("__native_kisskh_kkey")
-        .map_err(|e| e.to_string())?;
-    ctx.globals()
-        .set("__native_kisskh_kkey", kisskh_kkey_fn)
         .map_err(|e| e.to_string())?;
 
     let plugin_logs: std::sync::Arc<std::sync::Mutex<Vec<String>>> =
@@ -855,9 +811,9 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
     ctx.globals()
         .set(
-            "__native_solve_scrypt_pow",
+            "__native_crypto_scrypt",
             Function::new(ctx.clone(), |payload: String| {
-                crate::scrypt_pow::solve_scrypt_pow_json(&payload)
+                crate::scrypt_kdf::scrypt_bridge_json(&payload)
             })
             .map_err(|e| e.to_string())?,
         )
@@ -967,13 +923,20 @@ async fn run_in_ctx<'js>(
         .set("__native_set_interval", set_interval)
         .map_err(|e| e.to_string())?;
 
+    let emit_fn = Function::new(ctx.clone(), move |row: String| {
+        crate::extract_events::push(job_id, row);
+    })
+    .map_err(|e| e.to_string())?
+    .with_name("__native_emit")
+    .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set("__native_emit", emit_fn)
+        .map_err(|e| e.to_string())?;
+
     ctx.eval::<(), _>(HOST_JS)
         .catch(&ctx)
         .map_err(|e| e.to_string())?;
     ctx.eval::<(), _>(CRYPTO_JS)
-        .catch(&ctx)
-        .map_err(|e| e.to_string())?;
-    ctx.eval::<(), _>(STREAMCRYPTO_JS)
         .catch(&ctx)
         .map_err(|e| e.to_string())?;
 
@@ -1006,15 +969,6 @@ async fn run_in_ctx<'js>(
   if (typeof fn !== 'function') return JSON.stringify([]);
   var meta = {meta};
   var pluginLabel = {label};
-  var streamDecrypt = function(body, seed, tmdbId) {{
-    var fn = globalThis.__engineStreamDecrypt;
-    if (typeof fn !== 'function') throw new Error('STREAMCRYPTO: not loaded');
-    return fn(
-      String(body == null ? '' : body),
-      String(seed == null ? '' : seed),
-      String(tmdbId == null ? '' : tmdbId),
-    );
-  }};
   var ctx = {{
     tmdbId: meta.tmdbId,
     imdbId: meta.imdbId || '',
@@ -1049,6 +1003,10 @@ async fn run_in_ctx<'js>(
     pluginId: meta.pluginId || '',
     log: function(msg) {{ console.log('[' + pluginLabel + '] ' + String(msg == null ? '' : msg)); }},
     error: function(msg) {{ console.error('[' + pluginLabel + '] Error: ' + String(msg == null ? '' : msg)); }},
+    emit: function(row) {{
+      if (row == null || typeof row !== 'object') return;
+      try {{ __native_emit(JSON.stringify(row)); }} catch (e) {{}}
+    }},
     fetch: globalThis.fetch,
     chromeFetch: globalThis.__engineChromeFetch || globalThis.fetch,
     html: globalThis.__engineHtml,
@@ -1067,10 +1025,6 @@ async fn run_in_ctx<'js>(
     }})(),
     hop: globalThis.__engineHop,
     crypto: Object.assign({{}}, globalThis.CryptoJS || {{}}, {{
-      streamDecrypt: streamDecrypt,
-      kisskhKkey: function(episodeId, kind) {{
-        return __native_kisskh_kkey((episodeId|0), String(kind == null ? 'video' : kind)) || '';
-      }},
       encodePipe: function(payload) {{
         var raw = typeof payload === 'string' ? payload : JSON.stringify(payload == null ? {{}} : payload);
         return __native_encode_pipe(String(raw)) || '';
@@ -1079,18 +1033,8 @@ async fn run_in_ctx<'js>(
         var raw = __native_decode_pipe(String(body == null ? '' : body), String(xObf == null ? '' : xObf)) || '';
         if (!raw) return null;
         try {{ return JSON.parse(raw); }} catch (e) {{ return null; }}
-      }},
-      solvePow: function(challenge, difficulty, max) {{
-        var raw = __native_solve_pow(String(challenge||''), difficulty|0, (max==null?5000000:max)|0);
-        if (!raw) return null;
-        try {{ return JSON.parse(raw); }} catch (e) {{ return null; }}
-      }},
-      solveScryptPow: function(challenge) {{
-        var raw = __native_solve_scrypt_pow(JSON.stringify(challenge == null ? {{}} : challenge));
-        return raw || null;
       }}
-    }}),
-    streamcrypto: {{ decrypt: streamDecrypt }}
+    }})
   }};
   var r = await fn(ctx);
   return JSON.stringify(r == null ? [] : r);
@@ -1145,6 +1089,37 @@ function extract(ctx) {
         assert_eq!(b.streams.len(), 1);
         assert!(a.error.is_none());
         assert!(b.error.is_none());
+    }
+
+    #[tokio::test]
+    async fn emit_rows_before_done() {
+        let code = r#"
+function extract(ctx) {
+  ctx.emit({ url: 'https://example.com/a.m3u8', name: 'A' });
+  ctx.emit({ url: 'https://example.com/b.m3u8', name: 'B' });
+  return Promise.resolve([{ url: 'https://example.com/a.m3u8', name: 'A' }]);
+}
+"#;
+        let job_id = 119_001u64;
+        let r = extract_in_job(
+            ExtractRequest {
+                plugin_id: "emit".into(),
+                code: code.into(),
+                ctx: serde_json::json!({ "tmdbId": "1", "type": "movie", "title": "x" }),
+                timeout_ms: 5_000,
+                allow_host_fallback: false,
+                hops: vec![],
+                hop_depth: 0,
+            },
+            job_id,
+        )
+        .await;
+        assert!(r.error.is_none());
+        assert_eq!(r.streams.len(), 1);
+        let events = crate::extract_events::take(job_id);
+        assert!(events.contains("https://example.com/a.m3u8"), "{events}");
+        assert!(events.contains("https://example.com/b.m3u8"), "{events}");
+        assert_eq!(crate::extract_events::take(job_id), "[]");
     }
 
     #[tokio::test]

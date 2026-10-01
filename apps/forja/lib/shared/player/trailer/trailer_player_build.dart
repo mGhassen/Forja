@@ -91,13 +91,16 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 )
               else if (_s._controller != null)
                 Positioned.fill(
-                  child: Video(
-                    controller: _s._controller!,
-                    controls: NoVideoControls,
-                    fit: BoxFit.contain,
-                    fill: Colors.black,
-                    subtitleViewConfiguration: const SubtitleViewConfiguration(
-                      visible: true,
+                  child: SizedBox.expand(
+                    child: Video(
+                      controller: _s._controller!,
+                      controls: NoVideoControls,
+                      fit: BoxFit.contain,
+                      fill: Colors.black,
+                      subtitleViewConfiguration:
+                          const SubtitleViewConfiguration(
+                        visible: true,
+                      ),
                     ),
                   ),
                 ),
@@ -196,11 +199,16 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
     );
   }
 
+  double _chrome(double desktop) => playerChromeScale(context, desktop);
+
   /// Age-gate embed: YouTube owns transport; we only keep Back / Player / More.
   Widget _buildEmbedChromeOverlay({required bool tvFocus}) {
+    final edge = _chrome(16);
     final top = DesktopWindowChrome.isDesktop
-        ? DesktopWindowChrome.topInset(context) + 6
-        : MediaQuery.paddingOf(context).top + 6;
+        ? DesktopWindowChrome.topInset(context) + _chrome(6)
+        : MediaQuery.paddingOf(context).top + _chrome(6);
+    final btn = ShellTokens.playerChromeBtnSize;
+    final icon = ShellTokens.playerChromeIconSize;
     final layers = Stack(
       clipBehavior: Clip.none,
       children: [
@@ -214,13 +222,15 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         ),
         Positioned(
           top: top,
-          left: 16,
+          left: edge,
           child: tvFocus
               ? FocusTraversalOrder(
                   order: const NumericFocusOrder(1),
                   child: PlayerFlatIconButton(
                     icon: Icons.arrow_back_rounded,
                     tooltip: 'Back',
+                    size: btn,
+                    iconSize: icon,
                     tvFocusable: true,
                     focusNode: _s._backFocus,
                     onRightEdge: () => _s._playerMenuFocus.requestFocus(),
@@ -231,12 +241,14 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               : PlayerFlatIconButton(
                   icon: Icons.arrow_back_rounded,
                   tooltip: 'Back',
+                  size: btn,
+                  iconSize: icon,
                   onPressed: () => unawaited(_s._exitTrailer()),
                 ),
         ),
         Positioned(
           top: top,
-          right: 16,
+          right: edge,
           child: tvFocus
               ? FocusTraversalOrder(
                   order: const NumericFocusOrder(1.5),
@@ -258,8 +270,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         ),
         if (_s._hasMoreTrailers)
           Positioned(
-            right: 16,
-            bottom: MediaQuery.paddingOf(context).bottom + 16,
+            right: edge,
+            bottom: MediaQuery.paddingOf(context).bottom + edge,
             child: _buildMoreVideosButton(tvFocus: tvFocus),
           ),
       ],
@@ -279,6 +291,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   Widget _buildChromeOverlay({required bool tvFocus}) {
     if (_s._embedFallback) return _buildEmbedChromeOverlay(tvFocus: tvFocus);
 
+    final edge = _chrome(16);
+    final top = DesktopWindowChrome.isDesktop
+        ? DesktopWindowChrome.topInset(context) + _chrome(6)
+        : MediaQuery.paddingOf(context).top + _chrome(6);
+    final btn = ShellTokens.playerChromeBtnSize;
+    final icon = ShellTokens.playerChromeIconSize;
     final layers = Stack(
       clipBehavior: Clip.none,
       children: [
@@ -291,16 +309,16 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           ),
         ),
         Positioned(
-          top: DesktopWindowChrome.isDesktop
-              ? DesktopWindowChrome.topInset(context) + 6
-              : MediaQuery.paddingOf(context).top + 6,
-          left: 16,
+          top: top,
+          left: edge,
           child: tvFocus
               ? FocusTraversalOrder(
                   order: const NumericFocusOrder(1),
                   child: PlayerFlatIconButton(
                     icon: Icons.arrow_back_rounded,
                     tooltip: 'Back',
+                    size: btn,
+                    iconSize: icon,
                     tvFocusable: true,
                     focusNode: _s._backFocus,
                     onRightEdge: () => _s._playerMenuFocus.requestFocus(),
@@ -311,14 +329,14 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               : PlayerFlatIconButton(
                   icon: Icons.arrow_back_rounded,
                   tooltip: 'Back',
+                  size: btn,
+                  iconSize: icon,
                   onPressed: () => unawaited(_s._exitTrailer()),
                 ),
         ),
         Positioned(
-          top: DesktopWindowChrome.isDesktop
-              ? DesktopWindowChrome.topInset(context) + 6
-              : MediaQuery.paddingOf(context).top + 6,
-          right: 16,
+          top: top,
+          right: edge,
           child: tvFocus
               ? FocusTraversalOrder(
                   order: const NumericFocusOrder(1.5),
@@ -353,7 +371,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                         _s._onPointerActivity();
                       },
                     ),
-                    const SizedBox(width: 28),
+                    SizedBox(width: _chrome(28)),
                     PlayerCenterActionButton(
                       icon: _s._showReplayControl
                           ? Icons.replay_rounded
@@ -368,7 +386,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                         _s._onPointerActivity();
                       },
                     ),
-                    const SizedBox(width: 28),
+                    SizedBox(width: _chrome(28)),
                     PlayerCenterActionButton(
                       icon: Icons.forward_10_rounded,
                       onPressed: () {
@@ -399,6 +417,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   }
 
   Widget _buildBottomChrome({required bool tvFocus}) {
+    final tvType = ShellPaintScope.usesTvDensityOf(context);
     return Positioned(
       left: 0,
       right: 0,
@@ -418,7 +437,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 32, 16, 14),
+            padding: EdgeInsets.fromLTRB(
+              _chrome(16),
+              _chrome(32),
+              _chrome(16),
+              _chrome(14),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,14 +457,16 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     _s._trailer.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: tvType
+                          ? ShellTokens.playerChromeTitleFontSizeTv
+                          : ShellTokens.playerChromeTitleFontSize,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 if (_s._hasMoreTrailers) ...[
-                  const SizedBox(height: 14),
+                  SizedBox(height: _chrome(14)),
                   Align(
                     alignment: Alignment.centerRight,
                     child: tvFocus
@@ -452,7 +478,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                         : _buildMoreVideosButton(tvFocus: false),
                   ),
                 ],
-                const SizedBox(height: 12),
+                SizedBox(height: _chrome(12)),
                 tvFocus
                     ? FocusTraversalOrder(
                         order: const NumericFocusOrder(2),
@@ -479,20 +505,20 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                               onSeek: _s._seek,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: _chrome(12)),
                           PlayerTimeRange(
                             position: _s._position,
                             duration: _s._duration,
                           ),
                         ],
                       ),
-                const SizedBox(height: 10),
+                SizedBox(height: _chrome(10)),
                 if (tvFocus)
                   _buildTvTransportRow()
                 else
                   _buildDesktopTransportRow(),
                 if (tvFocus) ...[
-                  const SizedBox(height: 6),
+                  SizedBox(height: _chrome(6)),
                   ExcludeFocus(
                     child: PlayerTimeRange(
                       position: _s._position,
@@ -528,9 +554,13 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   }
 
   Widget _buildVolumeControl({required bool tvFocus}) {
+    final btn = ShellTokens.playerChromeBtnSize;
+    final icon = ShellTokens.playerChromeIconSize;
     if (tvFocus) {
       return PlayerFlatIconButton(
         tvFocusable: true,
+        size: btn,
+        iconSize: icon,
         icon: _s._muted || _s._volume <= 0
             ? Icons.volume_off_rounded
             : Icons.volume_up_rounded,
@@ -556,6 +586,10 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
 
   Widget _buildTvTransportRow() {
     void upToSeek() => _s._focusSeekbar();
+    final btn = ShellTokens.playerChromeBtnSize;
+    final icon = ShellTokens.playerChromeIconSize;
+    final gap = _chrome(2);
+    final tvType = ShellPaintScope.usesTvDensityOf(context);
 
     Widget ordered(int order, Widget child) => FocusTraversalOrder(
           order: NumericFocusOrder(order.toDouble()),
@@ -575,6 +609,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _s._playFocus,
+                  size: btn,
+                  iconSize: icon,
                   icon: _s._showReplayControl
                       ? Icons.replay_rounded
                       : _s._playing
@@ -593,12 +629,14 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: 2),
+              SizedBox(width: gap),
               ordered(
                 4,
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _s._rewindFocus,
+                  size: btn,
+                  iconSize: icon,
                   icon: Icons.replay_10_rounded,
                   tooltip: 'Back 10s',
                   onUpEdge: upToSeek,
@@ -610,12 +648,14 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: 2),
+              SizedBox(width: gap),
               ordered(
                 5,
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _s._forwardFocus,
+                  size: btn,
+                  iconSize: icon,
                   icon: Icons.forward_10_rounded,
                   tooltip: 'Forward 10s',
                   onUpEdge: upToSeek,
@@ -637,6 +677,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _s._subsFocus,
+                  size: btn,
+                  iconSize: icon,
                   icon: Icons.subtitles_outlined,
                   tooltip: 'Subtitles',
                   onUpEdge: upToSeek,
@@ -645,12 +687,14 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   onPressedWithContext: _s._showSubtitleMenu,
                 ),
               ),
-              const SizedBox(width: 2),
+              SizedBox(width: gap),
               ordered(
                 8,
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _s._qualityFocus,
+                  size: btn,
+                  iconSize: icon,
                   icon: Icons.hd_outlined,
                   tooltip: 'Quality',
                   onUpEdge: upToSeek,
@@ -659,12 +703,14 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   onPressedWithContext: _s._showQualityMenu,
                 ),
               ),
-              const SizedBox(width: 2),
+              SizedBox(width: gap),
               ordered(
                 9,
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _s._speedFocus,
+                  size: btn,
+                  iconSize: icon,
                   icon: Icons.speed_rounded,
                   tooltip: 'Playback speed',
                   onUpEdge: upToSeek,
@@ -673,13 +719,15 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 ),
               ),
               if (!_s._ready) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: _chrome(8)),
                 ExcludeFocus(
                   child: Text(
                     'Loading…',
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
-                      fontSize: 13,
+                      fontSize: tvType
+                          ? ShellTokens.playerChromeStatusFontSizeTv
+                          : ShellTokens.playerChromeStatusFontSize,
                     ),
                   ),
                 ),
@@ -692,12 +740,17 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   }
 
   Widget _buildDesktopTransportRow() {
+    final btn = ShellTokens.playerChromeBtnSize;
+    final icon = ShellTokens.playerChromeIconSize;
+    final gap = _chrome(2);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
             PlayerFlatIconButton(
+              size: btn,
+              iconSize: icon,
               icon: _s._showReplayControl
                   ? Icons.replay_rounded
                   : _s._playing
@@ -713,8 +766,10 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 unawaited(_s._togglePlayPause());
               },
             ),
-            const SizedBox(width: 2),
+            SizedBox(width: gap),
             PlayerFlatIconButton(
+              size: btn,
+              iconSize: icon,
               icon: Icons.replay_10_rounded,
               tooltip: 'Back 10s',
               onPressed: () {
@@ -722,8 +777,10 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 unawaited(_s._skip(-10));
               },
             ),
-            const SizedBox(width: 2),
+            SizedBox(width: gap),
             PlayerFlatIconButton(
+              size: btn,
+              iconSize: icon,
               icon: Icons.forward_10_rounded,
               tooltip: 'Forward 10s',
               onPressed: () {
@@ -731,33 +788,41 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 unawaited(_s._skip(10));
               },
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: _chrome(6)),
             _buildVolumeControl(tvFocus: false),
           ],
         ),
         Row(
           children: [
-            const SizedBox(width: 2),
+            SizedBox(width: gap),
             PlayerFlatIconButton(
+              size: btn,
+              iconSize: icon,
               icon: Icons.subtitles_outlined,
               tooltip: 'Subtitles',
               onPressedWithContext: _s._showSubtitleMenu,
             ),
-            const SizedBox(width: 2),
+            SizedBox(width: gap),
             PlayerFlatIconButton(
+              size: btn,
+              iconSize: icon,
               icon: Icons.hd_outlined,
               tooltip: 'Quality',
               onPressedWithContext: _s._showQualityMenu,
             ),
-            const SizedBox(width: 2),
+            SizedBox(width: gap),
             PlayerFlatIconButton(
+              size: btn,
+              iconSize: icon,
               icon: Icons.speed_rounded,
               tooltip: 'Playback speed',
               onPressedWithContext: _s._showSpeedMenu,
             ),
             if (_s._supportsWindowFullscreen) ...[
-              const SizedBox(width: 2),
+              SizedBox(width: gap),
               PlayerFlatIconButton(
+                size: btn,
+                iconSize: icon,
                 icon: _s._isFullscreen
                     ? Icons.fullscreen_exit_rounded
                     : Icons.fullscreen_rounded,
@@ -766,12 +831,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               ),
             ],
             if (!_s._ready) ...[
-              const SizedBox(width: 8),
+              SizedBox(width: _chrome(8)),
               Text(
                 'Loading…',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
-                  fontSize: 13,
+                  fontSize: ShellTokens.playerChromeStatusFontSize,
                 ),
               ),
             ],
@@ -822,15 +887,35 @@ class _TrailerMoreVideosCard extends StatefulWidget {
 }
 
 class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
-  bool _hovered = false;
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
   int _slideDir = 1;
 
-  static const double _w = 280;
-  static const double _h = 158;
-  static const double _radius = 12;
+  static const double _wDesktop = 280;
+  static const double _hDesktop = 158;
+  static const double _radiusDesktop = 12;
 
-  bool get _active => _hovered || _focused;
+  double get _w => playerChromeScale(context, _wDesktop);
+  double get _h => playerChromeScale(context, _hDesktop);
+  double get _radius => playerChromeScale(context, _radiusDesktop);
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  bool _activeFor(bool hovered) => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: hovered,
+        focused: _focused,
+        context: context,
+      );
 
   @override
   void didUpdateWidget(covariant _TrailerMoreVideosCard oldWidget) {
@@ -849,8 +934,7 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildFace(bool hovered) {
     final type = widget.trailer.type.trim();
     final autoLeft = widget.autoNextSecondsLeft;
     final meta = widget.autoNext
@@ -860,9 +944,25 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
             '${widget.index + 1}/${widget.count}',
             if (widget.playing) 'Playing',
           ].join(' · ');
+    final active = _activeFor(hovered);
+    final tvType = ShellPaintScope.usesTvDensityOf(context);
+    final titleFs = tvType
+        ? ShellTokens.playerChromeTitleFontSizeTv
+        : 15.0;
+    final metaFs = tvType
+        ? ShellTokens.playerChromeMetaFontSizeTv
+        : 12.0;
+    final subFs = tvType
+        ? ShellTokens.playerChromeTimeFontSizeTv
+        : 11.0;
+    final edge = playerChromeScale(context, 12);
+    final bottom = playerChromeScale(context, 10);
+    final ring = playerChromeScale(context, 40);
+    final ringInner = playerChromeScale(context, 30);
+    final ringPad = playerChromeScale(context, 8);
 
-    final face = AnimatedScale(
-      scale: _active || widget.autoNext ? 1.06 : 1.0,
+    return AnimatedScale(
+      scale: active || widget.autoNext ? 1.06 : 1.0,
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       alignment: Alignment.bottomRight,
@@ -874,15 +974,17 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(_radius),
           border: Border.all(
-            color: (_active || widget.autoNext) ? Colors.white : Colors.white24,
-            width: (_active || widget.autoNext) ? 2.5 : 1,
+            color: (active || widget.autoNext) ? Colors.white : Colors.white24,
+            width: (active || widget.autoNext)
+                ? playerChromeScale(context, 2.5)
+                : 1,
           ),
-          boxShadow: (_active || widget.autoNext)
+          boxShadow: (active || widget.autoNext)
               ? [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.55),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
+                    blurRadius: playerChromeScale(context, 18),
+                    offset: Offset(0, playerChromeScale(context, 8)),
                   ),
                 ]
               : null,
@@ -914,6 +1016,7 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
                     fit: StackFit.expand,
                     children: [
                       CachedNetworkImage(
+                        cacheManager: ForjaImageCacheManager(),
                         imageUrl: widget.trailer.youtubeThumbnail,
                         fit: BoxFit.cover,
                         errorWidget: (_, _, _) => ColoredBox(
@@ -943,20 +1046,20 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
               ),
               if (widget.autoNext && autoLeft != null)
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: ringPad,
+                  right: ringPad,
                   child: SizedBox(
-                    width: 40,
-                    height: 40,
+                    width: ring,
+                    height: ring,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
                         SizedBox(
-                          width: 40,
-                          height: 40,
+                          width: ring,
+                          height: ring,
                           child: CircularProgressIndicator(
                             value: autoLeft / widget.autoNextTotal,
-                            strokeWidth: 2.5,
+                            strokeWidth: playerChromeScale(context, 2.5),
                             backgroundColor: Colors.white24,
                             color: Colors.white,
                           ),
@@ -967,14 +1070,16 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
                             shape: BoxShape.circle,
                           ),
                           child: SizedBox(
-                            width: 30,
-                            height: 30,
+                            width: ringInner,
+                            height: ringInner,
                             child: Center(
                               child: Text(
                                 '$autoLeft',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.black,
-                                  fontSize: 13,
+                                  fontSize: tvType
+                                      ? ShellTokens.playerChromeStatusFontSizeTv
+                                      : 13,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -987,18 +1092,18 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
                 ),
               ShellCardPlayOverlay(
                 active: false,
-                visible: _active || widget.tvFocus || widget.autoNext,
-                diameter: 44,
-                iconSize: 26,
+                visible: active || widget.tvFocus || widget.autoNext,
+                diameter: playerChromeScale(context, 44),
+                iconSize: playerChromeScale(context, 26),
                 onTap: () {
                   widget.onPointerActivity();
                   widget.onPlay();
                 },
               ),
               Positioned(
-                left: 12,
-                right: 44,
-                bottom: 10,
+                left: edge,
+                right: playerChromeScale(context, 44),
+                bottom: bottom,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -1007,33 +1112,33 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
                       widget.autoNext ? 'Up next' : widget.trailer.name,
                       maxLines: widget.autoNext ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
+                        fontSize: titleFs,
                         fontWeight: FontWeight.w700,
                         height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    SizedBox(height: playerChromeScale(context, 3)),
                     Text(
                       widget.autoNext ? widget.trailer.name : meta,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 12,
+                        fontSize: metaFs,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     if (widget.autoNext) ...[
-                      const SizedBox(height: 2),
+                      SizedBox(height: playerChromeScale(context, 2)),
                       Text(
                         meta,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 11,
+                          fontSize: subFs,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1046,95 +1151,107 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
         ),
       ),
     );
+  }
 
-    Widget withChevrons(Widget child) {
-      if (widget.count <= 1 || widget.autoNext) return child;
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          child,
-          Positioned(
-            left: 4,
-            top: 0,
-            bottom: 0,
-            width: 36,
-            child: Center(
-              child: _ChevronButton(
-                icon: Icons.chevron_left_rounded,
-                visible: _active || widget.tvFocus,
-                onTap: () {
-                  widget.onPointerActivity();
-                  widget.onPrev();
-                },
-              ),
+  Widget _withChevrons(Widget child, bool active) {
+    if (widget.count <= 1 || widget.autoNext) return child;
+    final chevronSlot = playerChromeScale(context, 36);
+    final chevronInset = playerChromeScale(context, 4);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          left: chevronInset,
+          top: 0,
+          bottom: 0,
+          width: chevronSlot,
+          child: Center(
+            child: _ChevronButton(
+              icon: Icons.chevron_left_rounded,
+              visible: active || widget.tvFocus,
+              onTap: () {
+                widget.onPointerActivity();
+                widget.onPrev();
+              },
             ),
           ),
-          Positioned(
-            right: 4,
-            top: 0,
-            bottom: 0,
-            width: 36,
-            child: Center(
-              child: _ChevronButton(
-                icon: Icons.chevron_right_rounded,
-                visible: _active || widget.tvFocus,
-                onTap: () {
-                  widget.onPointerActivity();
-                  widget.onNext();
-                },
-              ),
+        ),
+        Positioned(
+          right: chevronInset,
+          top: 0,
+          bottom: 0,
+          width: chevronSlot,
+          child: Center(
+            child: _ChevronButton(
+              icon: Icons.chevron_right_rounded,
+              visible: active || widget.tvFocus,
+              onTap: () {
+                widget.onPointerActivity();
+                widget.onNext();
+              },
             ),
           ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     void play() {
       widget.onPointerActivity();
       widget.onPlay();
     }
 
     if (widget.tvFocus) {
-      return withChevrons(
-        FocusableControl(
-          focusNode: widget.focusNode,
-          // OK on the card plays — ←/→ cycle the preview (cancels Up next).
-          onTap: play,
-          borderRadius: _radius,
-          scaleOnFocus: 1.0,
-          showFocusBorder: true,
-          showFocusFill: false,
-          onLeftEdge: widget.count > 1
-              ? () {
-                  widget.onPointerActivity();
-                  widget.onPrev();
-                }
-              : null,
-          onRightEdge: widget.count > 1
-              ? () {
-                  widget.onPointerActivity();
-                  widget.onNext();
-                }
-              : null,
-          onUpEdge: widget.onFocusUp == null
-              ? null
-              : () {
-                  widget.onPointerActivity();
-                  widget.onFocusUp!();
-                },
-          onDownEdge: widget.onFocusDown == null
-              ? null
-              : () {
-                  widget.onPointerActivity();
-                  widget.onFocusDown!();
-                },
-          onFocusChange: (f) {
-            if (_focused == f) return;
-            setState(() => _focused = f);
-            if (f) widget.onPointerActivity();
-          },
-          child: face,
-        ),
+      return ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final face = _buildFace(_hoveredN.value);
+          return _withChevrons(
+            FocusableControl(
+              focusNode: widget.focusNode,
+              // OK on the card plays — ←/→ cycle the preview (cancels Up next).
+              onTap: play,
+              borderRadius: _radius,
+              scaleOnFocus: 1.0,
+              showFocusBorder: true,
+              showFocusFill: false,
+              onLeftEdge: widget.count > 1
+                  ? () {
+                      widget.onPointerActivity();
+                      widget.onPrev();
+                    }
+                  : null,
+              onRightEdge: widget.count > 1
+                  ? () {
+                      widget.onPointerActivity();
+                      widget.onNext();
+                    }
+                  : null,
+              onUpEdge: widget.onFocusUp == null
+                  ? null
+                  : () {
+                      widget.onPointerActivity();
+                      widget.onFocusUp!();
+                    },
+              onDownEdge: widget.onFocusDown == null
+                  ? null
+                  : () {
+                      widget.onPointerActivity();
+                      widget.onFocusDown!();
+                    },
+              onFocusChange: (f) {
+                if (_focused == f) return;
+                setState(() => _focused = f);
+                if (f) widget.onPointerActivity();
+              },
+              child: face,
+            ),
+            _activeFor(_hoveredN.value),
+          );
+        },
       );
     }
 
@@ -1142,13 +1259,17 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
     return MouseRegion(
       onEnter: (_) {
         widget.onPointerActivity();
-        if (!_hovered) setState(() => _hovered = true);
+        _setHovered(true);
       },
-      onExit: (_) {
-        if (_hovered) setState(() => _hovered = false);
-      },
+      onExit: (_) => _setHovered(false),
       onHover: (_) => widget.onPointerActivity(),
-      child: withChevrons(face),
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final active = _activeFor(_hoveredN.value);
+          return _withChevrons(_buildFace(_hoveredN.value), active);
+        },
+      ),
     );
   }
 }
@@ -1166,6 +1287,7 @@ class _ChevronButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hit = playerChromeScale(context, 28);
     return IgnorePointer(
       ignoring: !visible,
       child: AnimatedOpacity(
@@ -1178,9 +1300,16 @@ class _ChevronButton extends StatelessWidget {
             customBorder: const CircleBorder(),
             onTap: onTap,
             child: SizedBox(
-              width: 28,
-              height: 28,
-              child: Icon(icon, color: Colors.white, size: 20),
+              width: hit,
+              height: hit,
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: ShellPaintScope.iconOf(
+                  context,
+                  ShellTokens.playerChromeIconSize,
+                ),
+              ),
             ),
           ),
         ),

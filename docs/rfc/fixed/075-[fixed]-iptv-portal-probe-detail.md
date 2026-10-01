@@ -1,7 +1,7 @@
 # RFC-075: IPTV portal probe status + desktop detail card
 
 **Status:** fixed  
-**Depends on:** [RFC-040](../040-[open]-iptv-catalog-ops.md) · [RFC-051](../051-[open]-iptv-multi-protocol-portals.md)  
+**Depends on:** [RFC-040](040-[fixed]-iptv-catalog-ops.md) · [RFC-051](../051-[open]-iptv-multi-protocol-portals.md)  
 **Area:** `crates/iptv/`, `apps/forja/lib/features/iptv/`, `apps/admin/` verify
 
 ## Status at a glance
@@ -53,6 +53,6 @@ Portal status dots were a boolean. Admin Check status marked portals green whene
 
 ### Related
 
-- [RFC-040](../040-[open]-iptv-catalog-ops.md) — R40-A31 admin tighten
+- [RFC-040](040-[fixed]-iptv-catalog-ops.md) — R40-A31 admin tighten
 - [iptv-xtream](../../features/live/iptv-xtream.md)
 - [iptv-catalog-ops](../../features/live/iptv-catalog-ops.md)

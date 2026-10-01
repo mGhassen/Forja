@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:rust/src/engine.dart';
-import 'package:rust/src/models/stream_drm.dart';
 import 'package:rust/src/models/stream_source.dart';
 
 export 'package:rust/src/models/stream_source.dart' show StreamSource;

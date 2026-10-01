@@ -1,0 +1,93 @@
+/// Absolute / CDN cover URL helpers (no host TMDB client).
+library;
+
+import 'package:flutter/widgets.dart';
+
+/// Hub thumbnail URL normalization (pack-agnostic).
+/// Official TMDB image hosts → Forja gateway (`tmdb.forjahq.xyz`).
+String normalizeCoverUrl(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) return value;
+  final uri = Uri.tryParse(value);
+  if (uri == null) return paintableNetworkImageUrl(value);
+  if (uri.host == 'media.themoviedb.org' || uri.host == 'image.tmdb.org') {
+    return paintableNetworkImageUrl(
+      uri.replace(host: 'tmdb.forjahq.xyz').toString(),
+    );
+  }
+  return paintableNetworkImageUrl(value);
+}
+
+/// Absolute `http(s)` URLs only. Relative `/path` keys stay unchanged
+/// (invalid pack data — packs must ship absolute covers).
+String resolveAbsoluteCoverUrl(String raw) {
+  final value = normalizeCoverUrl(raw.trim());
+  if (value.isEmpty) return value;
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return value;
+  }
+  return value;
+}
+
+/// Poster or backdrop saved next to an offline download (`file://` or `/path`).
+bool isLocalCoverUrl(String raw) {
+  final value = raw.trim();
+  return value.startsWith('file://') || value.startsWith('/');
+}
+
+/// Filesystem path for [isLocalCoverUrl].
+String localCoverFilePath(String raw) {
+  final value = raw.trim();
+  if (value.startsWith('file://')) return Uri.parse(value).toFilePath();
+  return value;
+}
+
+/// URL safe for Flutter [Image.network] / Android [ImageDecoder].
+///
+/// TMDB title logos are often `.svg`. Android cannot decode SVG, so http(s)
+/// paths ending in `.svg` are rewritten to `.png` (same asset on TMDB / our
+/// gateway). Pack-local `file://` / relative SVGs are left alone — paint those
+/// with `SvgPicture`, not [Image.network].
+/// `serveproxy.com/?url=` always answers `image/avif`. Android then decodes
+/// the still with the AV1 video codec. The address after `url=` is the JPEG.
+String directCoverUrl(String raw) {
+  final value = raw.trim();
+  final uri = Uri.tryParse(value);
+  if (uri == null || uri.host != 'serveproxy.com') return value;
+  final inner = uri.queryParameters['url']?.trim() ?? '';
+  final decoded = Uri.tryParse(inner);
+  if (decoded == null) return value;
+  if (decoded.scheme != 'http' && decoded.scheme != 'https') return value;
+  return inner;
+}
+
+String paintableNetworkImageUrl(String raw) {
+  final value = directCoverUrl(raw.trim());
+  if (value.isEmpty) return value;
+  final lower = value.toLowerCase();
+  final http = lower.startsWith('http://') || lower.startsWith('https://');
+  if (!http || !lower.endsWith('.svg')) return value;
+  return '${value.substring(0, value.length - 4)}.png';
+}
+
+/// Decode [url] into [ImageCache] without reporting load failures as
+/// framework errors (hero warm must not spam tests / logs on a miss).
+void warmNetworkImage(BuildContext context, String url) {
+  final paint = paintableNetworkImageUrl(url);
+  if (paint.isEmpty) return;
+  if (!(paint.startsWith('http://') || paint.startsWith('https://'))) return;
+  final stream = NetworkImage(paint).resolve(
+    createLocalImageConfiguration(context),
+  );
+  late final ImageStreamListener listener;
+  listener = ImageStreamListener(
+    (ImageInfo image, bool synchronousCall) {
+      stream.removeListener(listener);
+      image.dispose();
+    },
+    onError: (Object _, StackTrace? _) {
+      stream.removeListener(listener);
+    },
+  );
+  stream.addListener(listener);
+}

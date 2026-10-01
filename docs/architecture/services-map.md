@@ -36,7 +36,7 @@
 | Asian Drama | `asian_drama` | `KissKhService` → `kisskh` ✅ |
 | Live Sports | `live_sports` | `live-sports` ✅ |
 | IPTV | `iptv` | `iptv` Reddit + probe ✅ |
-| Lists | `mylist` | `MyListService`, watch history (host + engine) |
+| Lists | pack `nav.tabId` | `BookmarkStore`, watch history (host + engine) |
 | Settings | `settings` | Host prefs / platform |
 
 **Out of scope for now** — do not schedule Rust ports or tab UX work unless explicitly reopened:
@@ -56,18 +56,18 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | Item | Crate / FFI | Dart after |
 |------|-------------|------------|
 | KissKh catalog API | `crates/kisskh` · `kisskh_catalog_json` | `kisskh_service.dart` — history + models + `KissKhExtractor` (C3) |
-| Anime extractors (archived) | `crates/archive/anime/extractors/*` | Superseded by `plugins/providers/**` JS |
+| Anime extractors | Pack JS `extract(ctx)` | Rust anime extractors removed |
 | Live sports fetch | `crates/live-sports` · `live_sports_fetch_json` | IPTV portal sports match + pack resolve — no host Live Sports screen |
 | IPTV Reddit scraper | `crates/iptv` (`reddit_catalog` + `portal_extract`) · `scrape_page` | Thin `IptvScraper` host glue |
 
-| Anime Anikoto resolve (archived) | `crates/archive/anime/resolve/*` | Superseded by provider packs |
+| Anime resolve | Provider packs | Rust anime resolve removed |
 
 ### ✅ Correct today — do not move
 
 | Component | Location | Why |
 |-----------|----------|-----|
 | TMDB, Trakt, Jellyfin API calls | `packages/rust` + `crates/*-core` | C1 engine |
-| Webstreamr, torrent, indexers, debrid, proxy | `crates/webstreamr`, `scrapers`, `debrid`, `proxy` | C2/C7 engine |
+| Webstreamr, torrent, indexers, proxy | `crates/webstreamr`, `scrapers`, `proxy` | C2/C7 engine |
 | AniList GraphQL | archived — hub is JS `plugins/hubs/anime` | Was `crates/archive/anilist` |
 | Subtitle search (Wyzie / Levrx / …) | `crates/subtitles` | Engine |
 | mdblist + introdb | `crates/media-metadata` | Engine |
@@ -79,7 +79,7 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | IPTV probe | `runIptvProbeStreamJson` → `iptv` | Engine |
 | IPTV Reddit catalog | `runIptvRedditCatalogJson` → `iptv` | Engine |
 | KissKh catalog | `runKisskhCatalogJson` → `kisskh` | Engine |
-| Anime extractors + resolve | `runAnimeExtractorJson` → `anime` | Engine |
+| Anime extract | Pack `extract(ctx)` in the JS host | Engine runner, not site scrapers |
 | Live Sports APIs | `runLiveSportsFetchJson` → `live-sports` | Engine |
 | Manga catalog | `runMangaCatalogJson` → `manga` | Engine |
 | LibGen books | `runBooksCatalogJson` → `books` | Engine |
@@ -95,7 +95,7 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | `NuvioService` / `NuvioScraper` | — | C4 | `flutter_js` |
 | `VideasyExtractor` | 803 | C5 | WASM host (Rust plugin delegates back to host) |
 | `TraktService` / `SimklService` | — | C12 | OAuth + secure storage |
-| `PipService`, `ExternalPlayerService`, `PlayerPoolService`, `AppUpdaterService` | — | C6/C12 | Platform |
+| `PipService`, `ExternalPlayerService`, `AppUpdaterService` | — | C6/C12 | Platform |
 | `MusicPlayerService`, `AudiobookPlayerService`, storage/download | — | C6/C9 | Host playback + files |
 | `CastingService`, `SyncService` | — | C12 | Platform / LAN |
 | `PlaybackEngine`, `DomainStreamProviderResolver`, resume/cache | `shared/playback/` (`open/`, `cache/`, `probe/`, `sources/`) | C11 | Orchestration UX |
@@ -149,7 +149,7 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 | `IptvScraper` (in `iptv_network.dart`) | thin | `iptv` | Host glue to Rust `scrape_page` / `extract_portals` | ✅ |
 | IPTV channel search (Live TV) | thin | hub `liveTv` → `ctx.host.iptv.searchChannels` → `IptvChannelSearch` | Pack triggers; host portal/Rust only | ✅ |
 | Portals chrome (design) | — | `foundation` `KitPortalsChip` / overlay / list panel + IPTV hooks | Props-only chip + panel; IPTV wires (RFC-095) | ✅ |
-| Kit list status (design/data) | — | `KitListStatusPin` + `services/follow/kit_list_status_button` | Props pin; follow wires Simkl (RFC-095 B) | ✅ |
+| Kit list status (design/data) | — | `KitListStatusPin` + `shared/engine/details/kit_list_status_button` | Props pin; follow wires Simkl (RFC-095 B) | ✅ |
 | Kit IPTV / resolve hooks | — | `KitIptvPlayHooks` / `KitResolveStreamsHooks` / `KitPanelSourceFlagsHooks` | Features register at boot (RFC-095 C–D) | ✅ |
 | `JellyfinService` models + OAuth | ~400 of 1272 | stay host | API already `runJellyfinRequestJson`; optional: move models to `packages/rust/models` | ✅ split |
 
@@ -195,16 +195,16 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 | `SubtitleApi` + `SubtitleCatService`, `MysubsService` | `catalog/subtitle_*.dart` | C1/C2 subtitles | ✅ Engine |
 | `SettingsService` | `settings_service.dart` | C9 prefs | ✅ Engine |
 | `WatchHistoryService` | `watch_history_service.dart` | C9 history | ✅ Engine |
-| `MyListService` | `my_list_service.dart` | C9 lists | ✅ Engine |
+| Lists | `BookmarkStore` | C9 lists | ✅ Engine |
 | `BookProgressService` | `book_progress_service.dart` | C9 reading progress | ✅ Engine |
 | `EpisodeWatchedService` | `episode_watched_service.dart` | C9 + tracker sync callback | ✅ Engine |
 | `WebStreamrService` | `playback/providers/services/webstreamr_service.dart` | C2 direct streaming | ✅ Engine |
 | `JackettService` / `ProwlarrService` | `playback/torrent/jackett_service.dart`, `prowlarr_service.dart` | C2 indexers | ✅ Engine |
 | `LinkResolver` | `playback/torrent/link_resolver.dart` | C2 magnet resolve | ✅ Engine |
-| `DebridApi` | `playback/torrent/debrid_api.dart` | C2 debrid | ✅ Engine |
+| `DebridPackBridge` | `playback/torrent/debrid_pack_bridge.dart` | C2 magnet→URL via pack | ✅ Host bridge |
 | `TorrentStreamService` | `playback/torrent/torrent_stream_service.dart` | C7 torrent playback | ✅ Engine |
 | `LocalServerService` | `playback/proxy/local_server_service.dart` | C7 loopback | ✅ Engine |
-| `Site111477Service` | `playback/providers/services/site111477_service.dart` | C2 index + C7 proxy glue | ✅ Engine |
+| `site111477_proxy` | `playback/proxy/site111477_proxy.dart` | C7 seek proxy | ✅ Engine |
 | `DeviceCapabilitiesService` | `playback/platform/device_capabilities_service.dart` | C6 probe | ✅ FFI helper |
 
 ---
@@ -222,8 +222,8 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 
 | Service | Path |
 |---------|------|
-| `ExternalPlayerService`, `PipService`, `PlayerPoolService`, … | `shared/player/platform/` |
-| `ListFollow`, `ListFollowFromWatched` | `shared/foundation/services/follow/` |
+| `ExternalPlayerService`, `PipService`, … | `shared/player/platform/` |
+| `ListFollow`, `ListFollowFromWatched` | `shared/engine/lists/` |
 | `MatchStreams`, `LiveMatchesEngine`, IPTV sports match, … | `shared/foundation/services/live/` |
 
 ---
@@ -241,7 +241,7 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 
 ---
 
-## Host orchestration (`shared/playback/`, `features/archive/audio/`, `shared/foundation/`)
+## Host orchestration (`shared/playback/`, `apps/archive/lib/audio/`, foundation)
 
 | Component | Path | Role | Target |
 |-----------|------|------|--------|
@@ -250,10 +250,10 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 | `PlayerStreamExtractCache` | `shared/playback/cache/player_stream_extract_cache.dart` | C11 session cache | ✅ Host |
 | `HistoryPlaybackResume` | `shared/playback/open/history_playback_resume.dart` | C11 resume routing | ✅ Host |
 | `BestSimilarScraper` | `shared/foundation/bestsimilar_scraper.dart` | C2 TMDB-adjacent recs | 🔄 Port to `crates/*` when touched |
-| `MusicPlayerService` | `features/archive/audio/music_player_service.dart` | C6 audio playback UI glue (archived) | ✅ Host |
-| `MusicStorageService` / `MusicDownloaderService` | `features/archive/audio/` | C6/C9 local files (archived) | ✅ Host |
-| `LyricsService` | `features/archive/audio/lyrics_service.dart` | C1 via engine (archived) | ✅ Thin host over engine |
-| `AudiobookPlayerService` / `AudiobookDownloadService` | `features/archive/audio/` | C6 host playback (archived) | ✅ Host |
+| `MusicPlayerService` | `apps/archive/lib/audio/music_player_service.dart` | C6 audio playback UI glue (vaulted) | ⏭️ Outside forja |
+| `MusicStorageService` / `MusicDownloaderService` | `apps/archive/lib/audio/` | C6/C9 local files (vaulted) | ⏭️ Outside forja |
+| `LyricsService` | `apps/archive/lib/audio/lyrics_service.dart` | C1 via engine (vaulted) | ⏭️ Outside forja |
+| `AudiobookPlayerService` / `AudiobookDownloadService` | `apps/archive/lib/audio/` | C6 host playback (vaulted) | ⏭️ Outside forja |
 | `CastingService` | `shared/casting/` | C12 AirPlay/Chromecast (RFC-005) | ✅ Host |
 | `SyncService` | `shared/sync/` | C12 LAN sync (RFC-013) | ✅ Host |
 

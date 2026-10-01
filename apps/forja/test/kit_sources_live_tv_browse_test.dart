@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/components/panel/kit_sources_live_tv_browse.dart';
-import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
+import 'package:forja/shared/player/sources/kit/kit_sources_panel.dart';
 
 void main() {
   KitSourcesRow row({
@@ -81,9 +80,31 @@ void main() {
       );
     });
 
-    test('empty query returns all', () {
-      final rows = [row(id: '1', title: 'A')];
-      expect(kitSourcesFilterByQuery(rows, '  '), rows);
+    test('live tv rail is the IPTV category, not the portal host', () {
+      expect(
+        sourcesBrowseRailLabel(
+          categoryBrowse: true,
+          category: 'FR | CANAL',
+          provider: 'tstv8k.com',
+        ),
+        'FR | CANAL',
+      );
+      expect(
+        sourcesBrowseRailLabel(
+          categoryBrowse: true,
+          category: '  ',
+          provider: 'tstv8k.com',
+        ),
+        isNull,
+      );
+      expect(
+        sourcesBrowseRailLabel(
+          categoryBrowse: false,
+          category: 'Sports',
+          provider: 'PPV',
+        ),
+        'PPV',
+      );
     });
   });
 }

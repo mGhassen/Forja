@@ -106,8 +106,6 @@ void main() {
           },
         },
         desktop,
-        useDebrid: false,
-        debridService: 'None',
       );
       expect(out, isA<StremioPlayable>());
       expect(
@@ -121,8 +119,6 @@ void main() {
       final out = classifyStremioStream(
         {'url': 'https://cdn.example/a.m3u8', 'title': '1080p'},
         desktop,
-        useDebrid: false,
-        debridService: 'None',
       );
       expect(out, isA<StremioPlayable>());
       expect((out as StremioPlayable).streamUrl, 'https://cdn.example/a.m3u8');
@@ -132,8 +128,6 @@ void main() {
       final out = classifyStremioStream(
         {'url': 'https://cdn.example/a.m3u8', 'title': '1080p'},
         PlaybackProfile.androidTv,
-        useDebrid: false,
-        debridService: 'None',
       );
       expect(out, isA<StremioPlayable>());
     });
@@ -156,8 +150,6 @@ void main() {
           'title': 'S01E01',
         },
         desktop,
-        useDebrid: false,
-        debridService: 'None',
       );
       expect(out, isNull);
     });
@@ -166,8 +158,6 @@ void main() {
       final out = classifyStremioStream(
         {'infoHash': 'c3b7fe335840a824e2ab9131fdeebabc58b126e8'},
         desktop,
-        useDebrid: false,
-        debridService: 'None',
       );
       expect(out, isNull);
     });

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex};
 
-use stremio::{fetch_get, fetch_get_with_headers, fetch_post_with_headers};
+use stremio::{fetch_get, fetch_get_job, fetch_get_with_headers, fetch_post_with_headers};
 use utils::engine_cancel::CancellationToken;
 
 use crate::RUNTIME;
@@ -34,6 +34,9 @@ static JOBS: LazyLock<Mutex<JobStore>> = LazyLock::new(|| {
 #[derive(Clone, Copy, Debug)]
 pub enum JobKind {
     StremioHttpGet = 2,
+    /// Sources stream-list GET. Cancel this kind when a Stremio addon chip
+    /// turns off — do not cancel [StremioHttpGet] (catalog / manifest).
+    StremioStreamGet = 17,
     HttpGet = 5,
     HttpPost = 6,
     IptvProbeStream = 7,
@@ -43,6 +46,9 @@ pub enum JobKind {
     IptvRedditCatalog = 13,
     IptvXtream = 14,
     EngineJsExtract = 15,
+    /// IPTV catalog SQLite (`iptv::catalog_db::handle_json`) — page / has_shelf
+    /// must not run on the UI isolate (issue 351).
+    IptvCatalog = 16,
 }
 
 pub fn submit(kind: u32, payload_json: String) -> u64 {
@@ -60,7 +66,7 @@ pub fn submit(kind: u32, payload_json: String) -> u64 {
     // slot — parallel EngineJsExtract peers would overwrite each other mid-fetch.
     RUNTIME.spawn(async move {
         let json = utils::engine_cancel::scope_job_token(token, async {
-            run_job_async(kind, &payload_json).await
+            run_job_async(kind, &payload_json, job_id).await
         })
         .await;
 
@@ -75,10 +81,18 @@ pub fn submit(kind: u32, payload_json: String) -> u64 {
     job_id
 }
 
+pub fn take_events(job_id: u64) -> String {
+    engine::take_extract_events(job_id)
+}
+
 pub fn take_result(job_id: u64) -> Option<String> {
     let mut store = JOBS.lock().unwrap();
     match store.outcomes.remove(&job_id) {
-        Some(JobOutcome::Done(s)) => Some(s),
+        Some(JobOutcome::Done(s)) => {
+            drop(store);
+            engine::clear_extract_events(job_id);
+            Some(s)
+        }
         Some(JobOutcome::Pending) => {
             store.outcomes.insert(job_id, JobOutcome::Pending);
             None
@@ -147,15 +161,28 @@ pub fn cancel_kind(kind: u32) {
     }
 }
 
-async fn run_job_async(kind: u32, payload_json: &str) -> String {
-    match run_job_inner(kind, payload_json).await {
+async fn run_job_async(kind: u32, payload_json: &str, job_id: u64) -> String {
+    match run_job_inner(kind, payload_json, job_id).await {
         Ok(s) => s,
         Err(e) => serde_json::json!({ "error": e }).to_string(),
     }
 }
 
-async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> {
+async fn run_job_inner(kind: u32, payload_json: &str, job_id: u64) -> Result<String, String> {
     match kind {
+        k if k == JobKind::StremioStreamGet as u32 => {
+            let req: StremioHttpReq = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let token = utils::engine_cancel::cancellation_token();
+            tokio::task::spawn_blocking(move || {
+                utils::engine_cancel::attach_job_token(token);
+                match fetch_get_job(&req.url, req.timeout_secs) {
+                    Ok(resp) => serde_json::to_string(&resp).map_err(|e| e.to_string()),
+                    Err(e) => Ok(serde_json::json!({ "error": e }).to_string()),
+                }
+            })
+            .await
+            .map_err(|e| e.to_string())?
+        }
         k if k == JobKind::StremioHttpGet as u32 => {
             let req: StremioHttpReq = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
             let token = utils::engine_cancel::cancellation_token();
@@ -279,8 +306,21 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
         k if k == JobKind::EngineJsExtract as u32 => {
             let req: engine::ExtractRequest =
                 serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
-            let result = engine::extract(req).await;
+            let result = engine::extract_in_job(req, job_id).await;
             serde_json::to_string(&result).map_err(|e| e.to_string())
+        }
+        k if k == JobKind::IptvCatalog as u32 => {
+            let req: RequestJsonPayload =
+                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let request_json = req.request_json;
+            let token = utils::engine_cancel::cancellation_token();
+            // rusqlite + Mutex — keep off the UI isolate (issue 351).
+            tokio::task::spawn_blocking(move || {
+                utils::engine_cancel::attach_job_token(token);
+                Ok(iptv::catalog_db::handle_json(&request_json))
+            })
+            .await
+            .map_err(|e| e.to_string())?
         }
         _ => Err(format!("unknown job kind {kind}")),
     }

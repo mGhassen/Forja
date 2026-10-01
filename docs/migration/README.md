@@ -4,7 +4,7 @@
 **Status:** fixed — Phases 1–3 complete  
 **Boundary rules:** [ENGINE_BOUNDARY.md](../ENGINE_BOUNDARY.md)
 
-**Rules:** [docs-rfc-issues](../../.cursor/rules/docs-rfc-issues.mdc)
+**Rules:** [docs law](../../.cursor/rules/docs-rfc-issues.mdc) · skill [forja-docs-rfc-issues](../../.cursor/skills/forja-docs-rfc-issues/SKILL.md)
 
 Every phase file has a status tag in the filename matching `**Status:**` in the body. Complete phases live in [fixed/](fixed/).
 

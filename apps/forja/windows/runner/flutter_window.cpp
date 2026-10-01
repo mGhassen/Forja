@@ -31,6 +31,9 @@ bool FlutterWindow::OnCreate() {
       flutter_controller_->engine()->messenger(), GetHandle());
   desktop_pip_channel_ = DesktopPipChannel::Register(
       flutter_controller_->engine()->messenger(), GetHandle());
+  forja_vlc_channel_ = ForjaVlcChannel::Register(
+      flutter_controller_->engine()->messenger(),
+      flutter_controller_->engine()->texture_registrar());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -45,6 +48,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  forja_vlc_channel_.reset();
   desktop_pip_channel_.reset();
   desktop_space_channel_.reset();
   if (flutter_controller_) {

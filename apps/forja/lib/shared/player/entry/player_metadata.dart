@@ -1,3 +1,4 @@
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:rust/rust.dart';
 
 class PlayerHeroMetadata {
@@ -18,12 +19,19 @@ bool playerNeedsRichMetadata(Movie movie) {
 
 String? tmdbLogoImageUrlFromPath(String rawPath) {
   final path = rawPath.trim();
-  if (path.isEmpty || path.toLowerCase().endsWith('.svg')) return null;
-  if (path.startsWith('http')) return path;
-  return TmdbApi.getImageUrl(path);
+  if (path.isEmpty) return null;
+  final absolute = path.startsWith('http')
+      ? path
+      : (path.startsWith('/') ? TmdbApi.getImageUrl(path) : '');
+  if (absolute.isEmpty) return null;
+  final paint = paintableNetworkImageUrl(absolute);
+  return paint.isEmpty ? null : paint;
 }
 
-/// TMDB title logo for hero / loading chrome when [Movie.logoPath] is empty.
+/// Title logo for hero / loading chrome when [Movie.logoPath] is empty.
+///
+/// Absolute pack URLs paint as-is; relative TMDB `/file_path` keys go through
+/// the Forja gateway. Fetches a logo when [Movie.id] is a positive TMDB id.
 Future<String?> resolveTmdbLogoImageUrl(Movie movie) async {
   final fromMovie = tmdbLogoImageUrlFromPath(movie.logoPath);
   if (fromMovie != null) return fromMovie;
@@ -31,8 +39,7 @@ Future<String?> resolveTmdbLogoImageUrl(Movie movie) async {
   try {
     final logoPath =
         await TmdbApi().getLogoPath(movie.id, mediaType: movie.mediaType);
-    if (logoPath.isEmpty) return null;
-    return TmdbApi.getImageUrl(logoPath);
+    return tmdbLogoImageUrlFromPath(logoPath);
   } catch (_) {
     return null;
   }

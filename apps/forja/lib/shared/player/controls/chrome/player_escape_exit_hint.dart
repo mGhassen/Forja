@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Top-right toast while player exit is armed (second Esc / Back / Exit leaves).
 class PlayerEscapeExitHint extends StatelessWidget {
@@ -16,18 +18,22 @@ class PlayerEscapeExitHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
     return Positioned(
-      top: 16,
-      right: 16,
+      top: tv ? 10 : 16,
+      right: tv ? 10 : 16,
       child: IgnorePointer(
         child: SafeArea(
           child: Material(
             color: Colors.transparent,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: tv ? 10 : 14,
+                vertical: tv ? 6 : 10,
+              ),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.78),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(tv ? 6 : 10),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.14),
                 ),
@@ -36,7 +42,9 @@ class PlayerEscapeExitHint extends StatelessWidget {
                 message,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontSize: 13,
+                  fontSize: tv
+                      ? ShellTokens.playerChromeStatusFontSizeTv
+                      : ShellTokens.playerChromeStatusFontSize,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.1,
                 ),

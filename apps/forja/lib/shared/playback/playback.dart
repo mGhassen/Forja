@@ -15,7 +15,7 @@ export 'probe/hubcloud_drive_quota.dart';
 export 'probe/playback_stream_guards.dart';
 export 'probe/provider_score_probe_sync.dart';
 export 'probe/sources_panel_stream_probe.dart';
-export 'sources/provider_runtime_config.dart';
+export 'sources/stream_playback_knobs.dart';
 export 'sources/stremio_external_link.dart';
 export 'sources/torrent_js_search.dart';
 export 'sources/torrent_loading_sink.dart';

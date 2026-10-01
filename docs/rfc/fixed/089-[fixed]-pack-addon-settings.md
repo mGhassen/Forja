@@ -90,3 +90,4 @@ Field types: `toggle` · `select` · `text` · `multi_select`. Prefs: `pack_sett
 - [RFC-087](087-[fixed]-live-sports-pack-only.md) — Live Sports pack-only
 - [Addons overview](../../features/settings/overview.md)
 - [Forja Sports](../../features/settings/forja-sports.md)
+- [RFC-110](../110-[draft]-pack-surface-contributions.md) — `addons.settings` as contribution slot alias

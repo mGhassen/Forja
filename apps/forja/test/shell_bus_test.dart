@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/frame/shell_body.dart';
@@ -18,8 +18,6 @@ void main() {
     ShellBus.settingsHubCategoryId.value = 'profile';
     ShellBus.takeEnterSettingsDetail();
     ShellBus.selectDefaultTabOnNextNavLoad = false;
-    ShellBus.homeProviderMenuVisible.value = false;
-    ShellBus.selectedWatchProviderId.value = null;
     while (ShellBus.playerSurfaceActive.value) {
       ShellBus.leavePlayerSurface();
     }
@@ -59,6 +57,29 @@ void main() {
     expect(ShellBus.invokeFindShortcut(), isFalse);
   });
 
+  test('ShellBus find shortcut continues when newest handler declines', () {
+    var declined = 0;
+    var accepted = 0;
+    bool decline() {
+      declined++;
+      return false;
+    }
+
+    bool accept() {
+      accepted++;
+      return true;
+    }
+
+    ShellBus.registerFindShortcutHandler(accept);
+    ShellBus.registerFindShortcutHandler(decline);
+    expect(ShellBus.invokeFindShortcut(), isTrue);
+    expect(declined, 1);
+    expect(accepted, 1);
+
+    ShellBus.unregisterFindShortcutHandler(decline);
+    ShellBus.unregisterFindShortcutHandler(accept);
+  });
+
   test('ShellBus.requestTab can be set and read', () {
     ShellBus.requestTab.value = 'search';
     expect(ShellBus.requestTab.value, 'search');
@@ -80,7 +101,7 @@ void main() {
     ShellBus.settingsHubCategoryId.value = 'profile';
   });
 
-  test('ShellBus provider menu show + top logo clear filter', () {
+  test('VerticalFiltersRegistry menu show + top logo clear filter', () {
     VerticalFiltersRegistry.register(
       VerticalFiltersSpec(
         widgetId: 'watch_providers',
@@ -99,28 +120,89 @@ void main() {
         ],
       ),
     );
-    ShellBus.homeProviderMenuVisible.value = false;
+    VerticalFiltersRegistry.menuVisibleFor('home').value = false;
     VerticalFiltersRegistry.selectedIdFor('home').value = null;
 
-    ShellBus.showHomeProviderMenu();
-    expect(ShellBus.homeProviderMenuVisible.value, isTrue);
+    VerticalFiltersRegistry.showMenu('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isTrue);
 
     VerticalFiltersRegistry.selectedIdFor('home').value = 'netflix';
-    ShellBus.onTopProviderLogoTap();
-    expect(ShellBus.homeProviderMenuVisible.value, isTrue);
+    VerticalFiltersRegistry.onTopLogoTap('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isTrue);
     expect(VerticalFiltersRegistry.selectedIdFor('home').value, isNull);
 
-    ShellBus.homeProviderMenuVisible.value = false;
-    ShellBus.onTopProviderLogoTap();
-    expect(ShellBus.homeProviderMenuVisible.value, isTrue);
+    VerticalFiltersRegistry.menuVisibleFor('home').value = false;
+    VerticalFiltersRegistry.onTopLogoTap('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isTrue);
 
-    ShellBus.onLeaveHomeTab();
-    expect(ShellBus.homeProviderMenuVisible.value, isFalse);
+    VerticalFiltersRegistry.onLeaveTab('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isFalse);
 
-    ShellBus.showHomeProviderMenu();
-    ShellBus.hideHomeProviderMenu();
-    expect(ShellBus.homeProviderMenuVisible.value, isFalse);
+    VerticalFiltersRegistry.showMenu('home');
+    VerticalFiltersRegistry.hideMenu('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isFalse);
+
+    VerticalFiltersRegistry.onNavRepress('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isTrue);
+    VerticalFiltersRegistry.onNavRepress('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isFalse);
   });
+
+  testWidgets(
+    'shared TapRegion group keeps menu open on the open tap',
+    (tester) async {
+      final group = Object();
+      var visible = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                return Stack(
+                  children: [
+                    if (visible)
+                      Positioned(
+                        left: 80,
+                        top: 0,
+                        child: TapRegion(
+                          groupId: group,
+                          onTapOutside: (_) => setState(() => visible = false),
+                          child: const SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: ColoredBox(color: Colors.blue),
+                          ),
+                        ),
+                      ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TapRegion(
+                        groupId: group,
+                        child: GestureDetector(
+                          key: const Key('vf-nav'),
+                          onTap: () => setState(() => visible = true),
+                          child: const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: ColoredBox(color: Colors.red),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('vf-nav')));
+      await tester.pump();
+      expect(visible, isTrue);
+    },
+  );
 
   test('ShellBus.selectDefaultTabOnNextNavLoad defaults false and is mutable', () {
     expect(ShellBus.selectDefaultTabOnNextNavLoad, isFalse);

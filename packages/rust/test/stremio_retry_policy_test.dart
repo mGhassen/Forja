@@ -7,6 +7,8 @@ void main() {
     expect(stremioErrorIsTimeout('Connection timed out'), isTrue);
     expect(stremioErrorIsTimeout('deadline has elapsed'), isTrue);
     expect(stremioErrorIsTimeout('HTTP 503'), isFalse);
+    expect(stremioErrorIsCancelled(Exception('cancelled')), isTrue);
+    expect(stremioErrorIsCancelled('HTTP 400'), isFalse);
   });
 
   test('4xx including 429 is no-retry; 403/429/5xx cooldown', () {

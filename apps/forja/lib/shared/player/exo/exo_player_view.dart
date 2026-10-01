@@ -59,7 +59,7 @@ class ExoPlayerView extends StatelessWidget {
               );
         return KeyedSubtree(
           key: ValueKey<String>('exo-$viewId-$surfaceType'),
-          child: view,
+          child: SizedBox.expand(child: view),
         );
       },
     );

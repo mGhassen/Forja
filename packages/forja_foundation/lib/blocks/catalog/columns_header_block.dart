@@ -1,0 +1,194 @@
+import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
+import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
+import 'package:forja_foundation/blocks/props_map.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
+/// Prebuilt IPTV-style catalog screen: top chrome + side categories + card grid.
+///
+/// Composes [CatalogTopChrome], side rail ([side] or [CatalogSideRail]), and
+/// [CatalogCardsGrid] — not an empty slot shell.
+///
+/// ```json
+/// {
+///   "type": "columnsHeader",
+///   "props": {
+///     "sideWidth": 220,
+///     "actions": [{ "id": "catalog", "label": "Section", "items": […] }],
+///     "sideItems": [{ "id": "all", "label": "All" }],
+///     "selectedSideId": "all",
+///     "items": [{ "paint": { "type": "posterCard", "props": { … } } }]
+///   }
+/// }
+/// ```
+class ColumnsHeaderBlock extends StatelessWidget {
+  const ColumnsHeaderBlock({
+    super.key,
+    this.actions = const [],
+    this.actionSelections = const {},
+    this.actionSlots = const {},
+    this.sideItems = const [],
+    this.selectedSideId,
+    this.items = const [],
+    this.body,
+    this.side,
+    this.sideWidth,
+    this.sideOnLeading = true,
+    this.sideGap = 0,
+    this.backgroundColor,
+    this.title,
+    required this.emptyTitle,
+    this.emptyDescription,
+    this.hideSide = false,
+    this.onActionSelect,
+    this.onSideSelect,
+    this.onItemTap,
+    this.onDownEdge,
+    this.wrapBody,
+    this.wrapChrome,
+  });
+
+  factory ColumnsHeaderBlock.fromProps(
+    Map<String, dynamic> props, {
+    Widget? body,
+    Widget? side,
+    Map<String, String> actionSelections = const {},
+    Map<String, Widget> actionSlots = const {},
+    bool hideSide = false,
+    void Function(String actionId, String value)? onActionSelect,
+    ValueChanged<String>? onSideSelect,
+    void Function(Map<String, dynamic> item)? onItemTap,
+    VoidCallback? onDownEdge,
+    Widget Function(Widget body)? wrapBody,
+    Widget Function(Widget child)? wrapChrome,
+  }) {
+    return ColumnsHeaderBlock(
+      actions: propsActionMaps(props),
+      actionSelections: actionSelections,
+      actionSlots: actionSlots,
+      sideItems: propsIdLabelList(props, 'sideItems'),
+      selectedSideId: propsString(props, 'selectedSideId') ??
+          propsString(props, 'defaultSideId'),
+      items: CatalogCardsGrid.itemsFromProps(props),
+      body: body,
+      side: side,
+      sideWidth: propsNum(props, 'sideWidth'),
+      sideOnLeading: propsBool(props, 'sideOnLeading', true),
+      sideGap: propsNumOr(props, 'sideGap', 0),
+      backgroundColor: propsColor(props, 'backgroundColor'),
+      title: propsString(props, 'title'),
+      emptyTitle: propsStringOr(props, 'emptyTitle', ''),
+      emptyDescription: propsString(props, 'emptyDescription'),
+      hideSide: hideSide,
+      onActionSelect: onActionSelect,
+      onSideSelect: onSideSelect,
+      onItemTap: onItemTap,
+      onDownEdge: onDownEdge,
+      wrapBody: wrapBody,
+      wrapChrome: wrapChrome,
+    );
+  }
+
+  final List<Map<String, dynamic>> actions;
+  final Map<String, String> actionSelections;
+  final Map<String, Widget> actionSlots;
+  final List<({String id, String label})> sideItems;
+  final String? selectedSideId;
+  final List<Map<String, dynamic>> items;
+  /// Host-fed grid (e.g. live feed). When set, replaces [items] grid.
+  final Widget? body;
+
+  /// Host-fed side rail (e.g. [CatalogCategoryRail]). When null, [sideItems].
+  final Widget? side;
+  /// Null → [catalogSideRailWidth] (TV denser).
+  final double? sideWidth;
+  final bool sideOnLeading;
+  final double sideGap;
+  final Color? backgroundColor;
+  final String? title;
+  final String emptyTitle;
+  final String? emptyDescription;
+
+  /// Hide category rail — full-width body (catalog load ticker / choose portal).
+  final bool hideSide;
+  final void Function(String actionId, String value)? onActionSelect;
+  final ValueChanged<String>? onSideSelect;
+  final void Function(Map<String, dynamic> item)? onItemTap;
+
+  /// Pack top-bar `focusDown` (TV).
+  final VoidCallback? onDownEdge;
+
+  /// Host wrap below the top bar (e.g. Portals side panel over cats + grid).
+  final Widget Function(Widget body)? wrapBody;
+
+  /// Host wraps the top chrome strip in a TV row (Live/Movies/Series + Portals).
+  final Widget Function(Widget child)? wrapChrome;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = backgroundColor ?? ForjaShellColors.bgDark;
+    final railW = sideWidth ?? catalogSideRailWidth(context);
+    final header = CatalogTopChrome(
+      actions: actions,
+      selections: actionSelections,
+      actionSlots: actionSlots,
+      onSelect: onActionSelect,
+      title: title,
+      onDownEdge: onDownEdge,
+      wrapRow: wrapChrome,
+    );
+    final side = this.side ??
+        CatalogSideRail(
+          items: sideItems,
+          selectedId: selectedSideId ??
+              (sideItems.isEmpty ? null : sideItems.first.id),
+          onSelect: onSideSelect,
+          width: railW,
+        );
+    final grid = body ??
+        CatalogCardsGrid(
+          items: items,
+          onItemTap: onItemTap,
+          emptyTitle: emptyTitle,
+          emptyDescription: emptyDescription,
+          cardKind: 'poster',
+        );
+
+    // Pre-wipe CatalogSplit hairline between categories and channels.
+    const divider = VerticalDivider(
+      width: 1,
+      thickness: 1,
+      color: Color(0xFF2A2A2A),
+    );
+    final showSide = !hideSide;
+    Widget row = Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showSide && sideOnLeading) ...[
+          SizedBox(width: railW, child: side),
+          divider,
+          if (sideGap > 0) SizedBox(width: sideGap),
+        ],
+        Expanded(child: grid),
+        if (showSide && !sideOnLeading) ...[
+          if (sideGap > 0) SizedBox(width: sideGap),
+          divider,
+          SizedBox(width: railW, child: side),
+        ],
+      ],
+    );
+    final wrap = wrapBody;
+    if (wrap != null) row = wrap(row);
+
+    return ColoredBox(
+      color: bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          Expanded(child: row),
+        ],
+      ),
+    );
+  }
+}

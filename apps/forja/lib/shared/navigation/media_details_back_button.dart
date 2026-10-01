@@ -2,10 +2,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Floating chevron back control for media details - sits below macOS traffic lights.
+///
+/// Horizontal placement mirrors the details hero title column: centered
+/// [ShellTokens.bodyMaxWidthDesktop] band + [DetailsTokens] gutter, measured
+/// against the overlay stack width (already rail-inset) — not full-window
+/// [MediaQuery], which would double-count the nav rail on wide desktops.
 class MediaDetailsBackButton extends StatelessWidget {
   const MediaDetailsBackButton({super.key, this.onPressed, this.focusNode});
 
@@ -30,15 +36,34 @@ class MediaDetailsBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final iconSize = DetailsTokens.backIconSizeOf(tv);
+    final hitSize = DetailsTokens.backHitSizeOf(tv);
     return Positioned(
       top: topInset(context),
-      left: DetailsTokens.backButtonLeftInset(context),
-      child: ShellBackIconButton(
-        icon: Icons.chevron_left_rounded,
-        size: 28,
-        tooltip: 'Back',
-        focusNode: focusNode,
-        onTap: onPressed ?? () => popDetails(context),
+      left: 0,
+      right: 0,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final inset = DetailsTokens.contentLeftInset(constraints.maxWidth);
+          final rtl = Directionality.of(context) == TextDirection.rtl;
+          return Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(start: inset),
+              child: ShellBackIconButton(
+                icon: rtl
+                    ? Icons.chevron_right_rounded
+                    : Icons.chevron_left_rounded,
+                size: iconSize,
+                hitSize: hitSize,
+                tooltip: 'Back',
+                focusNode: focusNode,
+                onTap: onPressed ?? () => popDetails(context),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

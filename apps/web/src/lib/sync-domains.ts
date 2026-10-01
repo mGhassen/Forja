@@ -99,12 +99,17 @@ export type PreferencesPayload = {
   play_source_torrent_enabled?: boolean
   play_source_stremio_enabled?: boolean
   play_source_nuvio_enabled?: boolean
+  /** Synced key — no Settings UI in app or web (defaults off). */
   play_source_webstreaming_enabled?: boolean
+  /** Synced key — admin/device only in app; not exposed on web. */
   simple_streaming_resolve_enabled?: boolean
   preferred_audio_lang?: string
+  preferred_subtitle_lang?: string
   avoid_unsupported_audio?: boolean
   auto_next_episode?: boolean
   auto_skip_intro?: boolean
+  content_warnings?: boolean
+  auto_pip_on_desktop_switch?: boolean
   iptv_epg_enabled?: boolean
   max_playback_height?: number
   /** Host Addons → IPTV unlocked (RFC-086). Rail default-on via navigation. */
@@ -147,6 +152,8 @@ export type ForjaPackRow = {
   name?: string
   version?: string
   addedAt?: string
+  /** Master on/off — omit / true = enabled; false = installed but skipped */
+  enabled?: boolean
 }
 
 export type ForjaPayload = {
@@ -155,12 +162,23 @@ export type ForjaPayload = {
   onboarded?: boolean
 }
 
+/**
+ * Non-secret pack Addon settings (RFC-089) — pluginId → fieldId → value.
+ * Passwords / secrets stay device-local and must never be written here.
+ */
+export type PackSettingsPayload = Record<
+  string,
+  Record<string, boolean | string | string[]>
+>
+
 export type ConnectedServicesPayload = {
   /** @deprecated Provider order is device-local — never write to cloud. */
   providers?: ProvidersPayload
   stremio?: StremioPayload
   nuvio?: NuvioPayload
   forja?: ForjaPayload
+  /** Pack-declared settings fields (non-secret). */
+  packSettings?: PackSettingsPayload
 }
 
 export type NavigationPayload = {
@@ -170,14 +188,11 @@ export type NavigationPayload = {
   defaultTab?: string
 }
 
-/** Host-owned shell tabs (Addons / Features). Catalog hubs are opaque pack
- * `nav.tabId` values synced from the app — never bake hub inventory here
- * (RFC-081 · RFC-087). Live Sports is pack-only — not listed. */
-export const HOST_CORE_NAV_TABS = [
-  { id: 'iptv', label: 'IPTV' },
-] as const
+/** Host-owned shell tabs for Features inventory. Empty — IPTV / Live Sports /
+ * hubs are pack-contributed (matches Flutter `addonGatedNavIds` = {}). */
+export const HOST_CORE_NAV_TABS = [] as const
 
-export const HOST_CORE_NAV_IDS: string[] = HOST_CORE_NAV_TABS.map((t) => t.id)
+export const HOST_CORE_NAV_IDS: string[] = []
 
 /** @deprecated RFC-093 — always false; Live Sports is pack-only. */
 export function playbackLiveSportsUnlocked(
@@ -208,25 +223,31 @@ export const ARCHIVED_NAV_IDS = new Set([
   'anime_arabic',
 ])
 
-/** Display-only hints when a pack tab id is already in cloud — not an inventory. */
-const NAV_LABEL_HINTS: Record<string, string> = {
-  iptv: 'IPTV',
-  live_sports: 'Live Sports',
-  home: 'Home',
-  anime: 'Anime',
-  asian_drama: 'Asian Drama',
-  mylist: 'My List',
-}
-
-export function navTabLabel(id: string): string {
-  if (id === 'settings') return 'Settings'
-  const hint = NAV_LABEL_HINTS[id]
-  if (hint) return hint
+function titleCaseNavId(id: string): string {
   return id
     .split(/[_-]+/)
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
+}
+
+/**
+ * Features row label — synced pack `name` for that hub slot, else title-case
+ * of the opaque id. Never bake pack/plugin names here.
+ */
+export function navTabLabel(id: string, packs?: ForjaPackRow[]): string {
+  const t = id.trim()
+  if (!t || t === 'settings') return 'Settings'
+  if (packs?.length) {
+    for (const pack of packs) {
+      if (pack.enabled === false) continue
+      const hubId = hubTabIdFromPackManifestUrl(pack.manifestUrl ?? '')
+      if (hubId !== t) continue
+      const name = pack.name?.trim()
+      if (name) return name
+    }
+  }
+  return titleCaseNavId(t)
 }
 
 function isPersistedNavId(id: string): boolean {
@@ -321,6 +342,9 @@ export const AUDIO_LANGUAGE_OPTIONS = [
   'Chinese',
 ] as const
 
+/** Same list as preferred audio — subtitle “None” starts with subs off. */
+export const SUBTITLE_LANGUAGE_OPTIONS = AUDIO_LANGUAGE_OPTIONS
+
 export type RemoteSettingSection = {
   key: keyof ProfileSettingsPayload | 'stremio' | 'nuvio' | 'forja' | 'iptv' | 'addons'
   title: string
@@ -333,21 +357,21 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
     key: 'addons',
     title: 'Addons',
     description:
-      'Host product surfaces (Playback, IPTV, Live Sports, torrent, Stremio, Nuvio). Detail routes under /addons.',
+      'Same list as the app: Playback, torrent, Stremio, Nuvio, plus pack settings rows from enabled Forja Packs.',
     href: '/account/settings/addons',
   },
   {
     key: 'iptv',
     title: 'IPTV portals',
     description:
-      'Assign Xtream portals for this profile (user_iptv_portals). Open from Addons → IPTV.',
+      'Assign Xtream portals and IPTV EPG for this profile. Open from Addons → IPTV when the IPTV pack is on.',
     href: '/account/settings/iptv',
   },
   {
     key: 'playback',
     title: 'Playback',
     description:
-      'Play sources, auto next, audio language, quality cap — Addons → Playback.',
+      'Player prefs — audio, subtitles, auto next/skip, quality. Play sources live on the Addons hub.',
     href: '/account/settings/playback',
   },
   {
@@ -408,31 +432,64 @@ function mergeNavTabOrder(stored: string[], extras: string[]): string[] {
 }
 
 /**
+ * Path segment used to detect `hubs/<slot>/…` — works for http(s), `file://`,
+ * and absolute local checkout paths (`/Users/…/hubs/home/manifest.json`).
+ * `new URL('/Users/…')` throws; that used to drop every local pack from
+ * Features inventory.
+ */
+function manifestPathForHubSlot(raw: string): string | null {
+  const normalized = raw.trim().replace(/\\/g, '/')
+  if (!normalized) return null
+  if (
+    normalized.startsWith('http://') ||
+    normalized.startsWith('https://') ||
+    normalized.startsWith('file://')
+  ) {
+    try {
+      return decodeURIComponent(new URL(normalized).pathname)
+    } catch {
+      return null
+    }
+  }
+  // Local checkout / bare path (Mac, Linux, Windows `C:/…`).
+  if (
+    normalized.startsWith('/') ||
+    /^[A-Za-z]:\//.test(normalized) ||
+    normalized.includes('/hubs/')
+  ) {
+    return normalized
+  }
+  return null
+}
+
+/**
  * Hub shell tab from a pack manifest URL (`…/hubs/<slot>/manifest.json`).
  * Non-hub packs (providers, live, torrent, …) return null.
+ * Local absolute paths are accepted as-is (same as Flutter `forjaHqSlot`).
  */
 export function hubTabIdFromPackManifestUrl(manifestUrl: string): string | null {
-  const raw = manifestUrl.trim()
-  if (!raw) return null
-  try {
-    const path = new URL(raw).pathname
-    const parts = path.split('/').filter(Boolean)
-    const hubsIdx = parts.findIndex((p) => p === 'hubs')
-    const slot = hubsIdx >= 0 ? parts[hubsIdx + 1] : undefined
-    if (!slot || slot === 'manifest.json') return null
-    const id = slot.replace(/-/g, '_')
-    if (!isPersistedNavId(id)) return null
-    if ((HOST_CORE_NAV_IDS as string[]).includes(id)) return null
-    return id
-  } catch {
-    return null
+  const path = manifestPathForHubSlot(manifestUrl)
+  if (!path) return null
+  const lower = path.toLowerCase()
+  // Flutter: hubs/manifest.json → home
+  if (lower.endsWith('hubs/manifest.json')) {
+    return isPersistedNavId('home') ? 'home' : null
   }
+  const parts = lower.split('/').filter(Boolean)
+  const hubsIdx = parts.findIndex((p) => p === 'hubs')
+  const slot = hubsIdx >= 0 ? parts[hubsIdx + 1] : undefined
+  if (!slot || slot === 'manifest.json') return null
+  const folderId = slot.replace(/-/g, '_')
+  const id = folderId
+  if (!isPersistedNavId(id)) return null
+  return id
 }
 
 export function hubTabIdsFromForjaPacks(packs: ForjaPackRow[]): string[] {
   const out: string[] = []
   const seen = new Set<string>()
   for (const pack of packs) {
+    if (pack.enabled === false) continue
     const id = hubTabIdFromPackManifestUrl(pack.manifestUrl ?? '')
     if (!id || seen.has(id)) continue
     seen.add(id)
@@ -441,9 +498,12 @@ export function hubTabIdsFromForjaPacks(packs: ForjaPackRow[]): string[] {
   return out
 }
 
-/** RFC-086 / RFC-087 derived Features inventory — not `tabOrder` alone.
- * Live Sports is pack-only — hub tabs come from packs. */
+/** RFC-086 / RFC-087 Features inventory — same rule as the app:
+ * hub tabs from **enabled** packs on the profile (IPTV / Live Sports / Home / …).
+ * Cloud `visibleIds` / `tabOrder` are visibility/order only — never inventory.
+ * `addonFeatureIptv` is ignored (IPTV is pack-only; Flutter `addonGatedNavIds` is empty). */
 export function availableFeatureTabIds(opts: {
+  /** @deprecated IPTV is pack-only — ignored. */
   addonFeatureIptv?: boolean
   /** Ignored (RFC-093). */
   addonFeatureLiveSports?: boolean
@@ -452,8 +512,12 @@ export function availableFeatureTabIds(opts: {
   packs: ForjaPackRow[]
 }): string[] {
   const ids: string[] = []
-  if (opts.addonFeatureIptv === true) ids.push('iptv')
-  ids.push(...hubTabIdsFromForjaPacks(opts.packs))
+  const seen = new Set<string>()
+  for (const id of hubTabIdsFromForjaPacks(opts.packs)) {
+    if (!isPersistedNavId(id) || seen.has(id)) continue
+    seen.add(id)
+    ids.push(id)
+  }
   return ids
 }
 
@@ -535,12 +599,15 @@ export function emptyPreferencesPayload(): PreferencesPayload {
     play_source_torrent_enabled: true,
     play_source_stremio_enabled: true,
     play_source_nuvio_enabled: true,
-    play_source_webstreaming_enabled: true,
+    play_source_webstreaming_enabled: false,
     simple_streaming_resolve_enabled: true,
     preferred_audio_lang: 'None',
+    preferred_subtitle_lang: 'English',
     avoid_unsupported_audio: true,
     auto_next_episode: true,
     auto_skip_intro: false,
+    content_warnings: true,
+    auto_pip_on_desktop_switch: false,
     iptv_epg_enabled: true,
     max_playback_height: 2160,
   }
@@ -569,7 +636,56 @@ function compactPlayback(p: PreferencesPayload | undefined): PreferencesPayload 
     out.addon_feature_iptv = p.addon_feature_iptv
   }
   delete out.addon_feature_live_sports
+  // Host Playback → Anime pack (`anilist` / `titleLanguage`).
+  delete (out as Record<string, unknown>).anime_title_language
   return out
+}
+
+/** Normalize legacy `playback.anime_title_language` into packSettings. */
+export function migrateAnimeTitleLanguagePayload(
+  full: ProfileSettingsPayload,
+): ProfileSettingsPayload {
+  const pb = full.playback as Record<string, unknown> | undefined
+  const raw =
+    typeof pb?.anime_title_language === 'string'
+      ? pb.anime_title_language.trim().toLowerCase()
+      : ''
+  const legacy =
+    raw === 'english' || raw === 'native' || raw === 'romaji' ? raw : ''
+
+  const packSettings: PackSettingsPayload = {
+    ...(full.connectedServices?.packSettings ?? {}),
+  }
+  const anilist = { ...(packSettings.anilist ?? {}) }
+  let changed = false
+
+  if (legacy && anilist.titleLanguage === undefined) {
+    anilist.titleLanguage = legacy
+    packSettings.anilist = anilist
+    changed = true
+  }
+
+  if (pb && 'anime_title_language' in pb) {
+    const { anime_title_language: _drop, ...rest } = pb
+    void _drop
+    return {
+      ...full,
+      playback: rest as PreferencesPayload,
+      connectedServices: {
+        ...full.connectedServices,
+        packSettings,
+      },
+    }
+  }
+
+  if (!changed) return full
+  return {
+    ...full,
+    connectedServices: {
+      ...full.connectedServices,
+      packSettings,
+    },
+  }
 }
 
 function compactStremio(s: StremioPayload | undefined): StremioPayload | undefined {
@@ -621,6 +737,7 @@ function compactForja(s: ForjaPayload | undefined): ForjaPayload | undefined {
       if (version) row.version = version
       const addedAt = a.addedAt?.trim()
       if (addedAt) row.addedAt = addedAt
+      if (a.enabled === false) row.enabled = false
       return row
     })
     .filter((a): a is ForjaPackRow => a != null)
@@ -640,21 +757,52 @@ function compactNavigation(n: NavigationPayload | undefined): NavigationPayload 
   return out
 }
 
-/** Compact before DB write: full playback; stremio/nuvio/forja under connectedServices.
+/** Compact pack settings — drop empty plugins; keep bool/string/string[]. */
+export function compactPackSettings(
+  raw: PackSettingsPayload | undefined,
+): PackSettingsPayload | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const out: PackSettingsPayload = {}
+  for (const [pluginId, fields] of Object.entries(raw)) {
+    const pid = pluginId.trim()
+    if (!pid || !fields || typeof fields !== 'object') continue
+    const next: Record<string, boolean | string | string[]> = {}
+    for (const [fieldId, value] of Object.entries(fields)) {
+      const fid = fieldId.trim()
+      if (!fid) continue
+      if (typeof value === 'boolean') {
+        next[fid] = value
+      } else if (typeof value === 'string') {
+        next[fid] = value
+      } else if (Array.isArray(value)) {
+        next[fid] = value.map((e) => String(e).trim()).filter(Boolean)
+      }
+    }
+    if (Object.keys(next).length) out[pid] = next
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+/** Compact before DB write: full playback; stremio/nuvio/forja/packSettings under connectedServices.
  * Provider order is device-local — never persist. Never write iptv (portals/M3U). */
 export function compactProfileSettingsPayload(
   full: ProfileSettingsPayload,
 ): ProfileSettingsPayload {
-  const playback = compactPlayback(full.playback)
-  const stremio = compactStremio(full.connectedServices?.stremio)
-  const nuvio = compactNuvio(full.connectedServices?.nuvio)
-  const forja = compactForja(full.connectedServices?.forja)
-  const navigation = compactNavigation(full.navigation)
+  const migrated = migrateAnimeTitleLanguagePayload(full)
+  const playback = compactPlayback(migrated.playback)
+  const stremio = compactStremio(migrated.connectedServices?.stremio)
+  const nuvio = compactNuvio(migrated.connectedServices?.nuvio)
+  const forja = compactForja(migrated.connectedServices?.forja)
+  const packSettings = compactPackSettings(
+    migrated.connectedServices?.packSettings,
+  )
+  const navigation = compactNavigation(migrated.navigation)
 
   const connectedServices: ConnectedServicesPayload = {}
   if (stremio) connectedServices.stremio = stremio
   if (nuvio) connectedServices.nuvio = nuvio
   if (forja) connectedServices.forja = forja
+  if (packSettings) connectedServices.packSettings = packSettings
 
   const out: ProfileSettingsPayload = {}
   if (playback) out.playback = playback
@@ -686,14 +834,16 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
       ? { onboarded: true as const }
       : {}),
   }
+  const packSettings =
+    compactPackSettings(p.connectedServices?.packSettings) ?? {}
 
   void p.films
 
-  return {
+  return migrateAnimeTitleLanguagePayload({
     playback: { ...base.playback, ...p.playback },
-    connectedServices: { stremio, nuvio, forja },
+    connectedServices: { stremio, nuvio, forja, packSettings },
     navigation: normalizeNavigationPayload(p.navigation),
-  }
+  })
 }
 
 /** @deprecated films no longer synced */

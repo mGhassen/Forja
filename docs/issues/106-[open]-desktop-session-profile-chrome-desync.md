@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix · **0 / 4** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -26,6 +26,7 @@
 | 4 | I106-T04 | Rail avatar keeps last profile on failed reload (no stuck Guest while signed in) | ✅ |
 | 5 | I106-T05 | About Check for Updates — failed check is an error toast, not “latest version” | ✅ |
 | 6 | I106-T06 | Settings profile load (loading + error) always offers Sign out; refresh/listProfiles fail-fast on hung DNS; `signOut` survives revoke failure | ✅ |
+| 7 | I106-T07 | Narrow focus/resume wake — JWT only; drop cloud/Simkl/telemetry storm → [364](fixed/364-[fixed]-desktop-focus-sync-storm.md) | ✅ |
 
 ---
 
@@ -48,4 +49,4 @@ After leaving the Mac app open a long time, the rail could show **Guest** while 
 
 **Escape hatch (I106-T06):** Profile-load error chrome in Settings only offered **Retry**. With an expired access token and dead DNS, Retry kept failing and **Sign out** was hidden behind the successful Synced hero — user trapped “signed in” with no cloud and no logout. Worse: loading was **spinner-only** while `ensureFreshAccessToken` / gotrue refresh hung (timeout only wrapped PostgREST, not refresh), so Sign out never appeared. Fix: Sign out on loading + error chrome; `refreshSession` 12s cap; fail fast when AT still expired after refresh; `signOut` swallows remote revoke failures after gotrue local clear.
 
-**Related:** [085](085-[open]-desktop-involuntary-signout-dumps-login.md) (hard sign-out wipe) · [RFC-042](../rfc/042-[open]-unified-auth-system.md)
+**Related:** [085](085-[open]-desktop-involuntary-signout-dumps-login.md) (hard sign-out wipe) · [364](fixed/364-[fixed]-desktop-focus-sync-storm.md) (focus wake narrowed) · [RFC-042](../rfc/042-[open]-unified-auth-system.md)

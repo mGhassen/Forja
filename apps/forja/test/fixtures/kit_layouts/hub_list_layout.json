@@ -1,0 +1,17 @@
+{
+  "pluginId": "test-hub-list",
+  "layout": [
+    {
+      "type": "kit.list",
+      "id": "list_grid"
+    },
+    {
+      "type": "host.continue",
+      "id": "continue_host"
+    },
+    {
+      "type": "host.because",
+      "id": "because_host"
+    }
+  ]
+}

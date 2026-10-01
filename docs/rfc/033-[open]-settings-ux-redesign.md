@@ -2,7 +2,7 @@
 
 **Status:** open  
 **Depends on:** RFC-023 (shell), RFC-025 (flat cinematic shell)  
-**Area:** `apps/forja/lib/features/settings/`, `apps/forja/lib/shared/foundation/primitives/`
+**Area:** `apps/forja/lib/features/settings/{shell,profile,addons,packs,features,data,about,ui}/`, `apps/forja/lib/shared/foundation/primitives/`
 
 ## Status at a glance
 
@@ -112,6 +112,6 @@ Replace the single long accordion Settings tab with a **category hub**: desktop/
 
 ## Related
 
-- [RFC-019](019-[draft]-god-file-decomposition.md) — settings file map (remainder)
+- [RFC-019](fixed/019-[fixed]-god-file-decomposition.md) — settings file map (remainder)
 - [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) — app shell
 - [docs/features/settings/](../features/settings/)

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/lib/pack_assets.dart';
+import 'package:forja/shared/engine/packs/pack_assets.dart';
 
 class NavDestination {
   const NavDestination({
@@ -17,7 +17,7 @@ class NavDestination {
   final IconData activeIcon;
   final String label;
 
-  /// Display source: Flutter `assets/…`, absolute pack file path, or http(s).
+  /// Display source: pack file path, http(s), or rare Flutter `assets/…`.
   final String? iconAsset;
 }
 

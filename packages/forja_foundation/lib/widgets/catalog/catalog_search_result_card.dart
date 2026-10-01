@@ -1,0 +1,358 @@
+import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/crossfade_swap.dart';
+import 'package:forja_foundation/components/settled_network_image.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+/// Search result card paint — film (wide grid) or compact poster.
+///
+/// Host injects TV / focus via [interactiveBuilder].
+class CatalogSearchResultCard extends StatelessWidget {
+  const CatalogSearchResultCard.film({
+    super.key,
+    required this.title,
+    required this.posterUrl,
+    this.subtitle,
+    this.rating,
+    this.selected = false,
+    this.titleFontSize,
+    this.onTap,
+    this.interactiveBuilder,
+  })  : compact = false,
+        compactWidth = null;
+
+  const CatalogSearchResultCard.compact({
+    super.key,
+    required this.title,
+    required this.posterUrl,
+    this.subtitle,
+    this.rating,
+    this.titleFontSize,
+    this.compactWidth,
+    this.onTap,
+    this.interactiveBuilder,
+  })  : compact = true,
+        selected = false;
+
+  final String title;
+  final String posterUrl;
+  final String? subtitle;
+  final double? rating;
+  final bool selected;
+  final bool compact;
+  final double? titleFontSize;
+  final double? compactWidth;
+  final VoidCallback? onTap;
+  final Widget Function({
+    required Widget child,
+    required VoidCallback onTap,
+  })? interactiveBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ForjaThemeExtension.of(context);
+    final child = compact
+        ? _compactBody(context, theme)
+        : _filmBody(context, theme);
+    final tap = onTap ?? () {};
+    final wrap = interactiveBuilder;
+    if (wrap != null) {
+      return wrap(child: child, onTap: tap);
+    }
+    return GestureDetector(onTap: onTap, child: child);
+  }
+
+  Widget _filmBody(BuildContext context, ForjaThemeExtension theme) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final size = titleFontSize ??
+        (tv
+            ? ShellTokens.posterTitleFontSizeTv
+            : ShellTokens.posterTitleFontSizeDesktop);
+    final ratingFont = tv
+        ? ShellTokens.posterRatingFontSizeTv
+        : ShellTokens.posterRatingFontSize;
+    final ratingIcon = tv
+        ? ShellTokens.posterRatingIconSizeTv
+        : ShellTokens.posterRatingIconSize;
+    final ratingPadH =
+        tv ? ShellTokens.posterRatingPadHTv : ShellTokens.posterRatingPadH;
+    final ratingPadV =
+        tv ? ShellTokens.posterRatingPadVTv : ShellTokens.posterRatingPadV;
+    final ratingRadius =
+        tv ? ShellTokens.posterRatingRadiusTv : ShellTokens.posterRatingRadius;
+    final ratingGap =
+        tv ? ShellTokens.posterRatingGapTv : ShellTokens.posterRatingGap;
+    final metaFont =
+        tv ? ShellTokens.tvMetaFontSize : 11.0;
+    final inset = tv ? 6.0 : 10.0;
+    final ratingInset = tv ? 5.0 : 8.0;
+    return SizedBox.expand(
+      child: AnimatedContainer(
+        duration: ShellTokens.navSelectionAnimation,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: selected ? Border.all(color: Colors.white, width: 2) : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: selected ? 0.65 : 0.5),
+              blurRadius: selected ? 20 : 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(
+                color: theme.bgDark,
+                child: posterUrl.isNotEmpty
+                    ? SettledNetworkImage(
+                        imageUrl: posterUrl,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.medium,
+                        errorWidget: Center(
+                          child: Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: metaFont,
+                              color: Colors.white24,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: metaFont,
+                            color: Colors.white24,
+                          ),
+                        ),
+                      ),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.7),
+                      Colors.black.withValues(alpha: 0.95),
+                    ],
+                    stops: const [0.0, 0.45, 0.8, 1.0],
+                  ),
+                ),
+              ),
+              if (rating != null)
+                Positioned(
+                  top: ratingInset,
+                  right: ratingInset,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: ratingPadH,
+                      vertical: ratingPadV,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(ratingRadius),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.star_rounded,
+                          size: ratingIcon,
+                          color: Colors.amber,
+                        ),
+                        SizedBox(width: ratingGap),
+                        CrossfadeSwap(
+                          child: Text(
+                            rating!.toStringAsFixed(1),
+                            key: ValueKey(rating!.toStringAsFixed(1)),
+                            style: TextStyle(
+                              fontSize: ratingFont,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1.0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Positioned(
+                bottom: inset,
+                left: inset,
+                right: inset,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CrossfadeSwap(
+                      child: Text(
+                        title,
+                        key: ValueKey(title),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: size,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    if (subtitle != null && subtitle!.isNotEmpty) ...[
+                      SizedBox(height: tv ? 2 : 4),
+                      CrossfadeSwap(
+                        child: Text(
+                          subtitle!,
+                          key: ValueKey(subtitle),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: metaFont,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _compactBody(BuildContext context, ForjaThemeExtension theme) {
+    final cardWidth = compactWidth ?? ShellTokens.searchCardWidthCompact;
+    final cardHeight = cardWidth * 1.5;
+    final bgCard = theme.surfaceElevated;
+
+    return Container(
+      width: cardWidth,
+      height: cardHeight,
+      decoration: BoxDecoration(
+        color: bgCard,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (posterUrl.isNotEmpty)
+            SettledNetworkImage(
+              imageUrl: posterUrl,
+              fit: BoxFit.cover,
+              errorWidget: const Center(
+                child: Icon(Icons.broken_image, color: Colors.white24),
+              ),
+            )
+          else
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+          if (rating != null)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: CrossfadeSwap(
+                  child: Text(
+                    rating!.toStringAsFixed(1),
+                    key: ValueKey(rating!.toStringAsFixed(1)),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black87, Colors.transparent],
+                ),
+              ),
+              child: CrossfadeSwap(
+                child: Text(
+                  title,
+                  key: ValueKey(title),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Loading placeholder for search result grids.
+class CatalogSearchSkeletonCard extends StatelessWidget {
+  const CatalogSearchSkeletonCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: Colors.white.withValues(alpha: 0.06),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
+    );
+  }
+}

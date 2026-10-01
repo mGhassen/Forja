@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/settings/settings_catalog.dart';
-import 'package:forja/features/settings/settings_visibility.dart';
+import 'package:forja/features/settings/shell/catalog.dart';
+import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:rust/rust.dart';
@@ -37,6 +37,8 @@ void main() {
   setUp(() async {
     PlatformPlayback.clearOverride();
     SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    SettingsService.resetNavbarLockForTest();
+    SettingsService.resetAddonFeatureMemoryForTest();
     PlaySourceEffective.debugForceLanDesktopOnline = null;
     await openFreshStore();
   });
@@ -57,7 +59,7 @@ void main() {
       final service = SettingsService();
       // Seed shell migration markers so getNavbarConfig won't rewrite our nav.
       await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-      await service.setNavbarConfig(['home', 'anime', 'iptv', 'mylist']);
+      await service.setNavbarConfig(['home', 'anime', 'iptv', 'lists']);
       await service.setPlaySourceTorrentEnabled(true);
       await service.setPlaySourceStremioEnabled(true);
       await service.setPlaySourceNuvioEnabled(true);
@@ -72,30 +74,22 @@ void main() {
       expect(v.lanPlaySourcesEditable, isTrue);
       expect(v.showSourcesCategory, isTrue);
       expect(v.showForjaPacksCategory, isTrue);
+      expect(v.showDownloadsCategory, isFalse);
       expect(v.showDataCategory, isFalse);
       expect(v.showDebrid, isFalse);
       expect(v.showAccounts, isTrue);
       expect(v.showMdblist, isFalse);
 
       final ids = settingsCategories(v).map((c) => c.id).toList();
-      expect(ids.contains(SettingsCategoryId.sources), isTrue);
-      expect(ids.contains(SettingsCategoryId.forjaPacks), isTrue);
-      expect(ids.contains(SettingsCategoryId.lists), isFalse);
+      expect(ids, [
+        SettingsCategoryId.profile,
+        SettingsCategoryId.sources,
+        SettingsCategoryId.forjaPacks,
+        SettingsCategoryId.navigation,
+        SettingsCategoryId.about,
+      ]);
+      expect(ids.contains(SettingsCategoryId.downloads), isFalse);
       expect(ids.contains(SettingsCategoryId.data), isFalse);
-      expect(ids.contains(SettingsCategoryId.debrid), isFalse);
-      expect(ids.contains(SettingsCategoryId.playback), isFalse);
-      expect(ids.contains(SettingsCategoryId.accounts), isFalse);
-      expect(ids.contains(SettingsCategoryId.navigation), isTrue);
-      expect(ids.contains(SettingsCategoryId.about), isTrue);
-      expect(ids.contains(SettingsCategoryId.lan), isFalse);
-      expect(
-        ids.indexOf(SettingsCategoryId.sources),
-        lessThan(ids.indexOf(SettingsCategoryId.forjaPacks)),
-      );
-      expect(
-        ids.indexOf(SettingsCategoryId.forjaPacks),
-        lessThan(ids.indexOf(SettingsCategoryId.navigation)),
-      );
     },
   );
 
@@ -108,7 +102,7 @@ void main() {
 
       final service = SettingsService();
       await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-      await service.setNavbarConfig(['home', 'anime', 'iptv', 'mylist']);
+      await service.setNavbarConfig(['home', 'anime', 'iptv', 'lists']);
       await LanPrefs.instance.setServer(host: '192.168.1.10', port: 8787);
       await LanPrefs.instance.setToken('test-token');
       await service.setPlaySourceTorrentEnabled(true);
@@ -140,7 +134,7 @@ void main() {
 
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-    await service.setNavbarConfig(['home', 'anime', 'iptv', 'mylist']);
+    await service.setNavbarConfig(['home', 'anime', 'iptv', 'lists']);
     await LanPrefs.instance.setServer(host: '192.168.1.10', port: 8787);
     await LanPrefs.instance.setToken('test-token');
     await service.setPlaySourceTorrentEnabled(true);
@@ -185,6 +179,7 @@ void main() {
       expect(v.showNuvio, isTrue);
       expect(v.showTorrentEngine, isTrue);
       expect(v.showSourcesCategory, isTrue);
+      expect(v.showDownloadsCategory, isTrue);
       expect(v.showAccounts, isTrue);
     },
   );

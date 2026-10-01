@@ -1,0 +1,233 @@
+import 'package:flutter/material.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+/// Kit primitive — underline text tab (My List kind menus).
+///
+/// Paint matches hub top-bar category tabs (Home Films / TV Shows): idle muted,
+/// hover/focus bright white + short underline, selected white + slightly longer
+/// underline — never brand green on the label.
+class ForjaUnderlineTab extends StatefulWidget {
+  const ForjaUnderlineTab({
+    super.key,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+    required this.tvFocus,
+    required this.tabId,
+    required this.rowId,
+    required this.listIndex,
+    required this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.focusNode,
+  });
+
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+  final bool tvFocus;
+  final String tabId;
+  final String rowId;
+  final int listIndex;
+  final VoidCallback onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final FocusNode? focusNode;
+
+  @override
+  State<ForjaUnderlineTab> createState() => _ForjaUnderlineTabState();
+}
+
+class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
+  static const _animDuration = ShellTokens.kitTopBarTabAnimation;
+  static const _animCurve = Curves.easeInOutCubic;
+  static const _hoverT = 0.62;
+  static const _selectedT = 1.0;
+
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  bool _focused = false;
+  /// After toggle-deselect, pointer/focus is still on the tab — hover paint
+  /// looks like selection. Hold idle until the pointer/focus actually leaves.
+  bool _suppressHighlightUntilLeave = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+    if (!hovered && _suppressHighlightUntilLeave) {
+      setState(() => _suppressHighlightUntilLeave = false);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ForjaUnderlineTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      _suppressHighlightUntilLeave = true;
+    } else if (!oldWidget.isActive && widget.isActive) {
+      _suppressHighlightUntilLeave = false;
+    }
+  }
+
+  double _visualTargetFor(bool hovered) {
+    if (widget.isActive) return _selectedT;
+    if (_suppressHighlightUntilLeave) return 0;
+    if (hovered ||
+        ShellPaintScope.focusStyledOf(context, focused: _focused)) {
+      return _hoverT;
+    }
+    return 0;
+  }
+
+  Color _lerpTabColor(double t) {
+    final idle = ForjaShellColors.cinematic.textSecondary;
+    const white = Colors.white;
+    final hoverWhite = Colors.white.withValues(alpha: 0.92);
+    if (t <= 0) return idle;
+    if (t < _hoverT) {
+      return Color.lerp(idle, hoverWhite, t / _hoverT)!;
+    }
+    return Color.lerp(
+      hoverWhite,
+      white,
+      (t - _hoverT) / (_selectedT - _hoverT),
+    )!;
+  }
+
+  double _underlineWidth(double t, bool tv) {
+    final hoverW = tv
+        ? ShellTokens.kitTopBarUnderlineHoverWidth * ShellTokens.tvChromeScale
+        : ShellTokens.kitTopBarUnderlineHoverWidth;
+    final selectedExtra = tv
+        ? ShellTokens.kitTopBarUnderlineSelectedExtra * ShellTokens.tvChromeScale
+        : ShellTokens.kitTopBarUnderlineSelectedExtra;
+    if (t <= 0) return 0;
+    if (t < _hoverT) return hoverW * (t / _hoverT);
+    return hoverW +
+        selectedExtra * ((t - _hoverT) / (_selectedT - _hoverT));
+  }
+
+  void _onFocusChange(bool focused) {
+    setState(() {
+      _focused = focused;
+      if (!focused) _suppressHighlightUntilLeave = false;
+    });
+  }
+
+  Widget _buildContent(bool hovered) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: _visualTargetFor(hovered)),
+      duration: _animDuration,
+      curve: _animCurve,
+      builder: (context, t, _) {
+        final textColor = _lerpTabColor(t);
+        final fontWeight = FontWeight.lerp(
+          FontWeight.w500,
+          FontWeight.w700,
+          t,
+        )!;
+        final underlineWidth = _underlineWidth(
+          t,
+          ShellPaintScope.usesTvDensityOf(context),
+        );
+        final tv = ShellPaintScope.usesTvDensityOf(context);
+        final tabHeight = tv
+            ? ShellTokens.homeMenuRowHeightTv
+            : ShellTokens.homeMenuRowHeight;
+        final tabFont = tv
+            ? ShellTokens.kitTopBarTabFontSizeTv
+            : ShellTokens.kitTopBarTabFontSize;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: tabHeight,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  widget.label,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: tabFont,
+                    fontWeight: fontWeight,
+                    color: textColor,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: tv
+                  ? ShellTokens.shellCategoryUnderlineGap *
+                      ShellTokens.tvChromeScale
+                  : ShellTokens.shellCategoryUnderlineGap,
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                height: ShellTokens.shellNavUnderlineHeight,
+                width: underlineWidth,
+                decoration: BoxDecoration(
+                  color:
+                      underlineWidth > 0 ? textColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(
+                    ShellTokens.shellNavUnderlineRadius,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.tvFocus) {
+      return ShellPaintScope.focusableTap(
+        context: context,
+        onTap: widget.onTap,
+        borderRadius: ShellTokens.kitTopBarFocusRadius,
+        scaleOnFocus: 1.0,
+        listIndex: widget.listIndex,
+        tvTabId: widget.tabId,
+        tvRowId: widget.rowId,
+        tvZone: ShellPaintTvZone.row,
+        tvItemIndex: widget.listIndex,
+        onDownEdge: widget.onDownEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
+        focusNode: widget.focusNode,
+        onFocusChange: _onFocusChange,
+        onHoverChange: _setHovered,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => _buildContent(_hoveredN.value),
+        ),
+      );
+    }
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: ListenableBuilder(
+          listenable: _hoveredN,
+          builder: (context, _) => _buildContent(_hoveredN.value),
+        ),
+      ),
+    );
+  }
+}

@@ -2,7 +2,8 @@ import 'dart:async';
 
 import '../../engine_jobs.dart';
 import '../lan_playback_bridge.dart';
-import 'debrid_api.dart';
+import 'debrid_errors.dart';
+import 'debrid_pack_bridge.dart';
 import 'torrent_stream_service.dart';
 
 enum TorrentPlaybackSource { debrid, localEngine }
@@ -21,23 +22,15 @@ class TorrentPlaybackUrl {
   });
 }
 
-String playbackResolveLabel({
-  required bool useDebrid,
-  required String debridService,
-}) {
-  if (useDebrid && debridService != 'None') {
-    return 'Resolving with $debridService';
-  }
+String playbackResolveLabel({String? debridLabel}) {
+  final label = debridLabel?.trim() ?? '';
+  if (label.isNotEmpty) return 'Resolving with $label';
   return 'Starting Local Torrent Engine';
 }
 
-String playbackSourceHint({
-  required bool useDebrid,
-  required String debridService,
-}) {
-  if (useDebrid && debridService != 'None') {
-    return 'Source: $debridService (cloud)';
-  }
+String playbackSourceHint({String? debridLabel}) {
+  final label = debridLabel?.trim() ?? '';
+  if (label.isNotEmpty) return 'Source: $label (cloud)';
   return 'Source: Local torrent engine';
 }
 
@@ -195,46 +188,42 @@ String formatTorrentEngineLoadingMessage(TorrentStats? stats) {
   return torrentLoadingStatusFromStats(stats).displayMessage;
 }
 
-/// Resolves a magnet to a playable HTTP URL via debrid or the local engine.
+/// Resolves a magnet to a playable HTTP URL via debrid pack or the local engine.
 ///
-/// When [useDebrid] is true, only debrid is used — invalid credentials fail
-/// fast with [DebridAuthException] (no silent fallback to local engine).
+/// When a debrid pack plugin is active, only that path is used — auth failures
+/// throw [DebridAuthException] (no silent fallback to local engine).
 ///
 /// [onStatus] receives live peer/buffer lines while the local engine resolves.
 /// Status FFI runs on the EngineJobs waiter isolate — not the UI isolate.
 Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
   required String magnet,
-  required bool useDebrid,
-  required String debridService,
   required bool localTorrentEngine,
   int? season,
   int? episode,
   int? fileIdx,
   void Function(TorrentLoadingStatus status)? onStatus,
 }) async {
-  if (useDebrid && debridService != 'None') {
+  final pluginId = DebridPackBridge.activePluginId?.call()?.trim() ?? '';
+  if (pluginId.isNotEmpty) {
+    final resolve = DebridPackBridge.resolve;
+    if (resolve == null) {
+      throw StateError('DebridPackBridge not registered');
+    }
+    final label =
+        DebridPackBridge.activePluginLabel?.call()?.trim() ?? pluginId;
     try {
-      final files = await DebridApi().resolveByService(
-        debridService,
-        magnet,
+      return await resolve(
+        magnet: magnet,
         season: season,
         episode: episode,
+        fileIdx: fileIdx,
       );
-      if (files.isNotEmpty) {
-        return TorrentPlaybackUrl(
-          files.first.downloadUrl,
-          fileIndex: 0,
-          source: TorrentPlaybackSource.debrid,
-          sourceLabel: debridService,
-        );
-      }
     } catch (e) {
       if (isDebridAuthFailure(e)) {
-        throw DebridAuthException(debridService, e);
+        throw DebridAuthException(label, e);
       }
       rethrow;
     }
-    return null;
   }
 
   if (!localTorrentEngine) {

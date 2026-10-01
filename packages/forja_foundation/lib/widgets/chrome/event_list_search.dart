@@ -1,0 +1,525 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+const kEventListSearchCollapsed = ShellTokens.eventSearchCollapsed;
+const kEventListSearchExpanded = ShellTokens.eventSearchExpanded;
+
+/// Expanding list search for `kit.topBar` (`action: eventSearch`) — Zone A.
+///
+/// Circle tool → inline field. Typing stays local until Enter / OK / submit
+/// (or clear). Host owns committed query / TV browse field / Cmd+F via
+/// [fieldBuilder].
+class EventListSearch extends StatefulWidget {
+  const EventListSearch({
+    super.key,
+    required this.query,
+    required this.onQueryChanged,
+    this.tooltip = 'Search',
+    this.placeholder = 'Search…',
+    this.compact = false,
+    this.alwaysOpen = false,
+    this.onCompactSearch,
+    this.focusNode,
+    this.debugLabel = 'event-list-search',
+    this.fieldBuilder,
+    this.collapsedSize = kEventListSearchCollapsed,
+    this.expandedWidth = kEventListSearchExpanded,
+    this.fontSize,
+    this.iconSize = ShellTokens.eventSearchIconSize,
+    this.fieldIconSize = ShellTokens.eventSearchClearIconSize,
+    this.tvItemIndex,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onDownEdge,
+    this.openFieldSlot,
+  });
+
+  final String query;
+
+  /// Committed query only — fired on submit / clear, not per keystroke.
+  final ValueChanged<String> onQueryChanged;
+  final String tooltip;
+  final String placeholder;
+
+  /// Narrow layouts — host opens a dialog instead of expanding inline.
+  final bool compact;
+  final VoidCallback? onCompactSearch;
+
+  /// Always show the open input (no circle tool). Used on category rail.
+  final bool alwaysOpen;
+
+  final FocusNode? focusNode;
+  final String debugLabel;
+
+  final Widget Function(
+    BuildContext context, {
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required ValueChanged<String> onChanged,
+    required ValueChanged<String> onSubmitted,
+    required VoidCallback onEscape,
+  })? fieldBuilder;
+
+  final double collapsedSize;
+  final double expandedWidth;
+  /// Null → [ShellTokens.eventSearchFontSize] / [ShellTokens.eventSearchFontSizeTv].
+  final double? fontSize;
+  final double iconSize;
+  final double fieldIconSize;
+
+  final int? tvItemIndex;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onDownEdge;
+
+  /// Host wraps the open field so that TV row slot stays on the input.
+  /// Collapsed search icon keeps [tvItemIndex] only while this is unset or
+  /// the field is closed.
+  final Widget Function({
+    required FocusNode focusNode,
+    required Widget child,
+  })? openFieldSlot;
+
+  @override
+  State<EventListSearch> createState() => EventListSearchState();
+}
+
+class EventListSearchState extends State<EventListSearch>
+    with SingleTickerProviderStateMixin {
+  late final TextEditingController _ctrl;
+  late final FocusNode _focus;
+  late final bool _ownsFocus;
+  late final AnimationController _anim;
+  late final Animation<double> _expand;
+  bool _open = false;
+  bool _fieldFocused = false;
+  bool _toolFocused = false;
+  final ValueNotifier<bool> _toolHoveredN = ValueNotifier(false);
+  bool _closeFocused = false;
+  final ValueNotifier<bool> _closeHoveredN = ValueNotifier(false);
+  late final FocusNode _toolFocus;
+  late final FocusNode _closeFocus;
+
+  bool get _tv => ShellPaintScope.useTvFocusOf(context);
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.query);
+    _ownsFocus = widget.focusNode == null;
+    _focus = widget.focusNode ?? FocusNode(debugLabel: widget.debugLabel);
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    _expand = CurvedAnimation(
+      parent: _anim,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _toolFocus = FocusNode(debugLabel: '${widget.debugLabel}-tool');
+    _closeFocus = FocusNode(debugLabel: '${widget.debugLabel}-close');
+    _focus.addListener(_onFieldFocus);
+    _focus.onKeyEvent = (node, event) {
+      if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+        return KeyEventResult.ignored;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.escape ||
+          event.logicalKey == LogicalKeyboardKey.goBack) {
+        _close(clearQuery: true);
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+        // Mid-query: let the caret move. At the end → focus the ×.
+        final sel = _ctrl.selection;
+        final atEnd = !sel.isValid ||
+            (sel.isCollapsed && sel.baseOffset >= _ctrl.text.length);
+        if (!atEnd) return KeyEventResult.ignored;
+        _closeFocus.requestFocus();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    };
+    if (widget.query.trim().isNotEmpty) {
+      _open = true;
+      _anim.value = 1;
+    } else if (widget.alwaysOpen) {
+      _open = true;
+      _anim.value = 1;
+    }
+  }
+
+  @override
+  void didUpdateWidget(EventListSearch oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.query != widget.query && _ctrl.text != widget.query) {
+      _ctrl.value = TextEditingValue(
+        text: widget.query,
+        selection: TextSelection.collapsed(offset: widget.query.length),
+      );
+      if (widget.query.trim().isNotEmpty && !_open) {
+        _open = true;
+        _anim.value = 1;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    _ctrl.dispose();
+    _toolHoveredN.dispose();
+    _closeHoveredN.dispose();
+    _focus.removeListener(_onFieldFocus);
+    _toolFocus.dispose();
+    _closeFocus.dispose();
+    if (_ownsFocus) _focus.dispose();
+    super.dispose();
+  }
+
+  void _onFieldFocus() {
+    final focused = _focus.hasFocus;
+    if (_fieldFocused == focused || !mounted) return;
+    setState(() => _fieldFocused = focused);
+  }
+
+  /// Open input owns the TV slot; the circle icon must not keep it.
+  bool get _fieldOwnsTvSlot =>
+      widget.openFieldSlot != null && (_open || widget.alwaysOpen);
+
+  void _setToolHovered(bool h) {
+    if (_toolHoveredN.value == h) return;
+    _toolHoveredN.value = h;
+  }
+
+  void _setCloseHovered(bool h) {
+    if (_closeHoveredN.value == h) return;
+    _closeHoveredN.value = h;
+  }
+
+  void openSearch({bool edit = true}) {
+    if (widget.alwaysOpen) {
+      _focus.requestFocus();
+      return;
+    }
+    if (widget.compact) {
+      widget.onCompactSearch?.call();
+      return;
+    }
+    if (_open) {
+      _focus.requestFocus();
+      return;
+    }
+    setState(() => _open = true);
+    unawaited(_anim.forward());
+    _scheduleFieldFocus();
+  }
+
+  /// The field is mounted only after the expand animation starts. Retry until
+  /// that [Focus] is in the tree, then keep it selected.
+  void _scheduleFieldFocus() {
+    var tries = 0;
+    void attempt() {
+      if (!mounted || (!_open && !widget.alwaysOpen)) return;
+      if (_focus.context != null) {
+        if (!_focus.hasPrimaryFocus) _focus.requestFocus();
+        return;
+      }
+      if (tries++ >= 12) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
+  /// Keep focus on the field (empty search results).
+  void focusField() => openSearch();
+
+  void _commit(String value) {
+    widget.onQueryChanged(value);
+  }
+
+  void _close({required bool clearQuery}) {
+    _focus.unfocus();
+    if (clearQuery) {
+      _ctrl.clear();
+      _commit('');
+    }
+    if (widget.alwaysOpen) {
+      setState(() {});
+      return;
+    }
+    setState(() => _open = false);
+    unawaited(_anim.reverse());
+    // Collapsed icon remounts once open is false (even mid-collapse). TV /
+    // keyboard: put focus back on the search tool after Back / Escape / ×.
+    _restoreToolFocus();
+  }
+
+  void _restoreToolFocus() {
+    var frames = 0;
+    void attempt() {
+      if (!mounted || _open || widget.alwaysOpen || widget.compact) return;
+      if (_toolFocus.context != null) {
+        _toolFocus.requestFocus();
+        return;
+      }
+      if (frames++ >= 8) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.alwaysOpen) {
+      return SizedBox(
+        height: widget.collapsedSize,
+        width: double.infinity,
+        child: _fieldChrome(),
+      );
+    }
+    if (widget.compact) {
+      return _collapsedIcon(hasQuery: widget.query.trim().isNotEmpty);
+    }
+
+    return AnimatedBuilder(
+      animation: _expand,
+      builder: (context, _) {
+        final t = _expand.value;
+        final collapsed = widget.collapsedSize;
+        final expanded = widget.expandedWidth;
+        final width = collapsed + (expanded - collapsed) * t;
+        // Keep the tool mounted as soon as we leave open so close can
+        // requestFocus before the collapse anim finishes.
+        final showTool = !_open || t < 0.98;
+        return SizedBox(
+          width: width,
+          height: collapsed,
+          child: Stack(
+            alignment: Alignment.centerRight,
+            children: [
+              if (t > 0.02)
+                Opacity(
+                  opacity: t.clamp(0.0, 1.0),
+                  child: OverflowBox(
+                    maxWidth: expanded,
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: expanded,
+                      child: _fieldChrome(),
+                    ),
+                  ),
+                ),
+              if (showTool)
+                Opacity(
+                  opacity: (1 - t).clamp(0.0, 1.0),
+                  child: _collapsedIcon(
+                    hasQuery: widget.query.trim().isNotEmpty,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _collapsedIconPaint({required bool hasQuery, required bool hovered}) {
+    final chromeActive = ShellPaintScope.interactiveActive(
+      context,
+      hovered: hovered,
+      focused: _toolFocused,
+    );
+    final tvFocused = _tv && _toolFocused;
+    final lit = chromeActive || tvFocused;
+    final idleAlpha = hasQuery ? 0.12 : 0.08;
+    final size = widget.collapsedSize;
+    return Tooltip(
+      message: widget.tooltip,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: lit
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : Colors.white.withValues(alpha: idleAlpha),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: tvFocused
+                ? ForjaShellColors.brandGreen
+                : chromeActive
+                    ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+                    : hasQuery
+                        ? ForjaShellColors.brandGreen.withValues(alpha: 0.35)
+                        : Colors.white.withValues(alpha: 0.12),
+            width: tvFocused ? 1.5 : 1,
+          ),
+        ),
+        child: Icon(
+          Icons.search_rounded,
+          color: lit || hasQuery
+              ? ForjaShellColors.brandGreen
+              : Colors.white60,
+          size: widget.iconSize,
+        ),
+      ),
+    );
+  }
+
+  Widget _collapsedIcon({required bool hasQuery}) {
+    final size = widget.collapsedSize;
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: () => openSearch(),
+      borderRadius: size / 2,
+      motion: ForjaMotionPreset.fillOnly,
+      suppressInkHover: true,
+      showFocusFill: false,
+      focusNode: _toolFocus,
+      tvItemIndex: _fieldOwnsTvSlot ? null : widget.tvItemIndex,
+      tvZone: ShellPaintTvZone.topBar,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onDownEdge: widget.onDownEdge,
+      onFocusChange: (f) => setState(() => _toolFocused = f),
+      onHoverChange: _setToolHovered,
+      child: ListenableBuilder(
+        listenable: _toolHoveredN,
+        builder: (context, _) => _collapsedIconPaint(
+          hasQuery: hasQuery,
+          hovered: _toolHoveredN.value,
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldChrome() {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final fieldPadV = ShellTokens.chromeScale(10, tv: tv);
+    final fontSize = widget.fontSize ??
+        (tv
+            ? ShellTokens.eventSearchFontSizeTv
+            : ShellTokens.eventSearchFontSize);
+    final field = widget.fieldBuilder?.call(
+          context,
+          controller: _ctrl,
+          focusNode: _focus,
+          onChanged: (_) {},
+          onSubmitted: (v) {
+            _commit(v);
+          },
+          onEscape: () => _close(clearQuery: true),
+        ) ??
+        // Desktop Enter is swallowed by the text-field shortcut
+        // (DoNothingAndStopPropagation) before the IME calls onSubmitted.
+        // Commit here so OK / Return actually searches.
+        CallbackShortcuts(
+          bindings: <ShortcutActivator, VoidCallback>{
+            const SingleActivator(LogicalKeyboardKey.enter): () =>
+                _commit(_ctrl.text),
+            const SingleActivator(LogicalKeyboardKey.numpadEnter): () =>
+                _commit(_ctrl.text),
+          },
+          child: TextField(
+            controller: _ctrl,
+            focusNode: _focus,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (v) {
+              _commit(v);
+            },
+            style: TextStyle(color: Colors.white, fontSize: fontSize),
+            cursorColor: ForjaShellColors.brandGreen,
+            decoration: InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              hintText: widget.placeholder,
+              hintStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.38),
+                fontSize: fontSize,
+              ),
+              contentPadding: EdgeInsets.symmetric(vertical: fieldPadV),
+            ),
+          ),
+        );
+
+    final pad = ShellTokens.chromeScale(4, tv: tv);
+    final lead = ShellTokens.chromeScale(8, tv: tv);
+    final mid = ShellTokens.chromeScale(6, tv: tv);
+    final closePad = ShellTokens.chromeScale(6, tv: tv);
+    final closeRadius = ShellTokens.chromeScale(16, tv: tv);
+
+    // Focus owns the selected ring. Hover on other chrome must not clear it.
+    final fieldFocused = _fieldFocused;
+    final chrome = Container(
+      height: widget.collapsedSize,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(widget.collapsedSize / 2),
+        border: Border.all(
+          color: fieldFocused
+              ? ForjaShellColors.brandGreen
+              : Colors.white.withValues(alpha: 0.18),
+          width: fieldFocused ? 1.5 : 1,
+        ),
+      ),
+      padding: EdgeInsets.only(left: pad, right: pad),
+      child: Row(
+        children: [
+          SizedBox(width: lead),
+          Icon(
+            Icons.search_rounded,
+            color: Colors.white70,
+            size: widget.fieldIconSize,
+          ),
+          SizedBox(width: mid),
+          Expanded(child: field),
+          ShellPaintScope.focusableTap(
+            context: context,
+            onTap: () => _close(clearQuery: true),
+            borderRadius: closeRadius,
+            motion: ForjaMotionPreset.fillOnly,
+            suppressInkHover: true,
+            showFocusFill: false,
+            focusNode: _closeFocus,
+            onRightEdge: widget.onRightEdge,
+            onDownEdge: widget.onDownEdge,
+            onFocusChange: (f) => setState(() => _closeFocused = f),
+            onHoverChange: _setCloseHovered,
+            child: ListenableBuilder(
+              listenable: _closeHoveredN,
+              builder: (context, _) {
+                final closeActive = ShellPaintScope.interactiveActive(
+                  context,
+                  hovered: _closeHoveredN.value,
+                  focused: _closeFocused,
+                );
+                final closeTv = _tv && _closeFocused;
+                return Padding(
+                  padding: EdgeInsets.all(closePad),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: widget.fieldIconSize,
+                    color: closeActive || closeTv
+                        ? ForjaShellColors.brandGreen
+                        : Colors.white54,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+    final slot = widget.openFieldSlot;
+    if (slot == null || !_fieldOwnsTvSlot) return chrome;
+    return slot(focusNode: _focus, child: chrome);
+  }
+}

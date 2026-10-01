@@ -3,15 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
+import 'package:forja/features/settings/packs/engine_plugin_pack.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/engine/live/live_plugin_engine.dart';
-import 'package:forja/shared/engine/packs/forja_packs_root.dart';
-import 'package:forja/shared/foundation/lib/match_event.dart';
+import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/screens/utils.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_source_filters.dart';
+import 'package:forja/shared/player/sources/torrent/torrent_source_filters.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:rust/rust.dart';
@@ -417,10 +415,18 @@ void main() {
       expect(
         PluginRegistry.hostNavId(
           sourceUrl:
-              'https://raw.githubusercontent.com/ForjaHQ/Forja/main/plugins/hubs/my_list/manifest.json',
+              'https://example.com/plugins/hubs/user_lists/manifest.json',
           authorTabId: '',
         ),
-        'mylist',
+        'user_lists',
+      );
+      expect(
+        PluginRegistry.hostNavId(
+          sourceUrl:
+              'https://example.com/plugins/hubs/user_lists/manifest.json',
+          authorTabId: 'lists',
+        ),
+        'lists',
       );
       const community = 'https://cdn.example.com/packs/my-anime/manifest.json';
       expect(
@@ -1320,26 +1326,17 @@ void main() {
       );
     });
 
-    test('All pool is 10 desktop and 5 TV', () {
-      expect(engineSourcesBatchLimit(tv: false), 10);
-      expect(engineSourcesBatchLimit(tv: true), 5);
+    test('Forja extract starts every selected provider', () {
+      expect(engineSourcesBatchLimit(selected: 12), 12);
+      expect(engineSourcesBatchLimit(selected: 0), 1);
       expect(
         nextEnginePluginBatch(
           orderedIds: List<String>.generate(12, (i) => '$i'),
           selectedIds: {for (var i = 0; i < 12; i++) '$i'},
           fetchedIds: const {},
-          limit: engineSourcesBatchLimit(tv: false),
+          limit: engineSourcesBatchLimit(selected: 12),
         ),
-        hasLength(10),
-      );
-      expect(
-        nextEnginePluginBatch(
-          orderedIds: List<String>.generate(12, (i) => '$i'),
-          selectedIds: {for (var i = 0; i < 12; i++) '$i'},
-          fetchedIds: const {},
-          limit: engineSourcesBatchLimit(tv: true),
-        ),
-        hasLength(5),
+        hasLength(12),
       );
     });
 
@@ -1862,7 +1859,8 @@ void main() {
       expect(parsed.firstWhere((p) => p.id == 'xprime').entry, 'xprime.js');
       expect(parsed.firstWhere((p) => p.id == 'dvdplay').entry, 'dvdplay.js');
       expect(await loadForjaHqFile('providers/xprime.js'), contains('https://backend.xprime.tv'));
-      expect(await loadForjaHqFile('providers/dvdplay.js'), contains('https://dvdplay.xyz/search.php?q='));
+      expect(await loadForjaHqFile('providers/dvdplay.js'), contains('https://mallumv.space'));
+      expect(await loadForjaHqFile('providers/dvdplay.js'), contains('/search.php?q='));
       expect(await loadForjaHqFile('providers/4khdhub.js'), contains('domains.json'));
       expect(parsed.firstWhere((p) => p.id == 'hdhub4u').entry, 'hdhub4u.js');
       expect(await loadForjaHqFile('providers/hdhub4u.js'), contains('https://search.pingora.fyi/collections/post/documents/search'));
@@ -1870,7 +1868,7 @@ void main() {
         parsed.firstWhere((p) => p.id == 'moviesmod').entry,
         'moviesmod.js',
       );
-      expect(await loadForjaHqFile('providers/moviesmod.js'), contains('https://moviesmod.cc'));
+      expect(await loadForjaHqFile('providers/moviesmod.js'), contains('https://moviesmod.ai.in'));
       expect(
         parsed.firstWhere((p) => p.id == 'uhdmovies').entry,
         'uhdmovies.js',
@@ -1880,7 +1878,7 @@ void main() {
         parsed.firstWhere((p) => p.id == 'allmovieland').entry,
         'allmovieland.js',
       );
-      expect(await loadForjaHqFile('providers/allmovieland.js'), contains('https://allmovieland.one'));
+      expect(await loadForjaHqFile('providers/allmovieland.js'), contains('https://allmovieland.art'));
       expect(
         parsed.firstWhere((p) => p.id == 'moviesdrive').entry,
         'moviesdrive.js',
@@ -1899,7 +1897,7 @@ void main() {
       expect(parsed.firstWhere((p) => p.id == 'kurage').entry, 'kurage.js');
       expect(await loadForjaHqFile('providers/kurage.js'), contains('https://kurage.live'));
       expect(parsed.firstWhere((p) => p.id == 'mallumv').entry, 'mallumv.js');
-      expect(await loadForjaHqFile('providers/mallumv.js'), contains('https://mallumv.gay'));
+      expect(await loadForjaHqFile('providers/mallumv.js'), contains('https://mallumv.space'));
       expect(
         parsed.firstWhere((p) => p.id == 'animepahe').entry,
         'animepahe.js',
@@ -1971,9 +1969,6 @@ void main() {
       expect(await loadForjaHqFile('providers/mkissa.js'), contains('https://mkissa.to'));
       expect(parsed.firstWhere((p) => p.id == 'hop-abyss').isHop, isTrue);
       expect(parsed.firstWhere((p) => p.id == 'hop-megaup').isHop, isTrue);
-      expect(parsed.firstWhere((p) => p.id == 'cinejoy').entry, 'cinejoy.js');
-      expect(await loadForjaHqFile('providers/cinejoy.js'), contains('https://cinejoy.to'));
-      expect(await loadForjaHqFile('providers/cinejoy.js'), contains('https://api.shegu.st'));
       expect(await loadForjaHqFile('providers/vidrock.js'), contains('https://vidrock.ru'));
       expect(await loadForjaHqFile('providers/vidrock.js'), contains('"aesKey"'));
       expect(
@@ -2013,6 +2008,7 @@ void main() {
 
       final flixcloud = await loadForjaHqFile('providers/flixcloud.js');
       expect(flixcloud.contains('dec-flixcloud'), isTrue);
+      expect(flixcloud.contains('parse-flixcloud'), isTrue);
       expect(flixcloud.contains('ctx.host'), isFalse);
 
       final multiembed = await loadForjaHqFile('providers/multiembed.js');
@@ -2036,12 +2032,6 @@ void main() {
       expect(goated.contains('/api/challenge'), isTrue);
       expect(goated.contains('solvePow'), isTrue);
 
-      final cinejoy = await loadForjaHqFile('providers/cinejoy.js');
-      expect(cinejoy.contains('api.shegu.st'), isTrue);
-      expect(cinejoy.contains('enc-cinejoy'), isTrue);
-      expect(cinejoy.contains('dec-cinejoy'), isTrue);
-      expect(cinejoy.contains('solveScryptPow'), isTrue);
-
       final meowtv = await loadForjaHqFile('providers/meowtv.js');
       expect(meowtv.contains('/streams/'), isTrue);
       expect(meowtv.contains('dec-meowtv'), isTrue);
@@ -2060,6 +2050,9 @@ void main() {
       final vidup = await loadForjaHqFile('providers/vidup.js');
       expect(vidup.contains('enc-vidup'), isTrue);
       expect(vidup.contains('dec-vidup'), isTrue);
+      // Page GET must not share X-Requested-With with API POSTs (nginx 403).
+      expect(vidup.contains('pageHeaders'), isTrue);
+      expect(vidup.contains('apiHeaders'), isTrue);
 
       final moviebox = await loadForjaHqFile('providers/moviebox.js');
       expect(moviebox.contains('wefeed-mobile-bff/subject-api/search/v2'), isTrue);
@@ -2071,6 +2064,10 @@ void main() {
       expect(fourkhdhub.contains('article h2 a'), isTrue);
       expect(fourkhdhub.contains('.movie-card'), isTrue);
       expect(fourkhdhub.contains(r'pixel\.hubcloud'), isTrue);
+      expect(fourkhdhub.contains(r'gpdl\.hubcloud'), isTrue);
+      expect(fourkhdhub.contains('directizeHubCloudUrl'), isTrue);
+      expect(fourkhdhub.contains('gamerxyt.com/dl.php'), isTrue);
+      expect(fourkhdhub.contains('video-downloads.googleusercontent.com'), isTrue);
       expect(fourkhdhub.contains('pixeldrain.net/api/file/'), isTrue);
       // /drive/<id> is the HubCloud entry hop — must follow, not bail.
       expect(
@@ -2096,11 +2093,11 @@ void main() {
       final movieblast = await loadForjaHqFile('providers/movieblast.js');
       expect(movieblast.contains('HmacSHA256'), isTrue);
       expect(movieblast.contains('/api/search/'), isTrue);
-      expect(movieblast.contains('themoviedb.org'), isTrue);
+      expect(movieblast.contains('tmdb.forjahq.xyz'), isTrue);
 
       final streamflix = await loadForjaHqFile('providers/streamflix.js');
       expect(streamflix.contains('/data.json'), isTrue);
-      expect(streamflix.contains('config-streamflixapp.json'), isTrue);
+      expect(streamflix.contains('config-streamflix2.json'), isTrue);
 
       final animex = await loadForjaHqFile('providers/animex.js');
       expect(animex.contains('cfg.gql'), isTrue);
@@ -2113,9 +2110,11 @@ void main() {
 
       final netmirror = await loadForjaHqFile('providers/netmirror.js');
       expect(netmirror.contains('checknewtv.php'), isTrue);
+      expect(netmirror.contains('check.php'), isTrue);
       expect(netmirror.contains('embed-tmdb'), isTrue);
       expect(netmirror.contains('videodownloader.site'), isTrue);
       expect(netmirror.contains('fetchFromNetflixDirect'), isTrue);
+      expect(netmirror.contains('type=tv&se='), isTrue);
       expect(netmirror.contains('mobidetect.art') || netmirror.contains('aHR0cHM6Ly9tb2JpZGV0ZWN0LmFydA=='), isTrue);
 
       final castle = await loadForjaHqFile('providers/castle.js');
@@ -2142,11 +2141,16 @@ void main() {
       expect(hdhub4u.contains('HDHUB4u'), isTrue);
       expect(hdhub4u.contains('hubCloudExtractor'), isTrue);
       expect(hdhub4u.contains('pixeldrain.net/api/file'), isTrue);
+      expect(hdhub4u.contains('https://new6.hdhub4u.cl'), isTrue);
+      expect(hdhub4u.contains('hubcloud.ist'), isTrue);
+      expect(hdhub4u.contains('greenmotors'), isTrue);
+      expect(hdhub4u.contains('hblinks'), isTrue);
 
       final moviesmod = await loadForjaHqFile('providers/moviesmod.js');
       expect(moviesmod.contains('moviesmod'), isTrue);
       expect(moviesmod.contains('driveseed'), isTrue);
       expect(moviesmod.contains('bypassHrefli'), isTrue);
+      expect(moviesmod.contains('lp-land'), isTrue);
 
       final uhdmovies = await loadForjaHqFile('providers/uhdmovies.js');
       expect(uhdmovies.contains('UHDMovies'), isTrue);
@@ -2154,7 +2158,8 @@ void main() {
       expect(uhdmovies.contains('extractVideoSeed'), isTrue);
 
       final allmovieland = await loadForjaHqFile('providers/allmovieland.js');
-      expect(allmovieland.contains('allmovieland'), isTrue);
+      expect(allmovieland.contains('allmovieland.art'), isTrue);
+      expect(allmovieland.contains('player.js'), isTrue);
       expect(allmovieland.contains('AwsIndStreamDomain'), isTrue);
       expect(allmovieland.contains('X-CSRF-TOKEN'), isTrue);
 
@@ -2172,9 +2177,10 @@ void main() {
       expect(dahmermovies.contains('a.111477.xyz'), isTrue);
       expect(dahmermovies.contains('/stream/movie/'), isTrue);
       expect(dahmermovies.contains('generateManifestBaseUrl'), isTrue);
+      expect(dahmermovies.contains('rateLimitWaitMs'), isTrue);
+      expect(dahmermovies.contains('isRateLimited'), isTrue);
       // Must not scrape HTML directory listings (CF on p.111477/bulk).
       expect(dahmermovies.contains('data-entry'), isFalse);
-      expect(dahmermovies.contains('you are being rate limited'), isFalse);
 
       final kurage = await loadForjaHqFile('providers/kurage.js');
       expect(kurage.contains('graphql.anilist.co'), isTrue);
@@ -2190,7 +2196,9 @@ void main() {
 
       final mallumv = await loadForjaHqFile('providers/mallumv.js');
       expect(mallumv.contains('search.php?q='), isTrue);
-      expect(mallumv.contains('extractHubCloudLinks'), isTrue);
+      expect(mallumv.contains('resolveHubCloud'), isTrue);
+      expect(mallumv.contains('/internal/'), isTrue);
+      expect(mallumv.contains('pixeldrain.net/api/file'), isTrue);
       expect(mallumv.contains('function extract(ctx)'), isTrue);
 
       final animepahe = await loadForjaHqFile('providers/animepahe.js');
@@ -2227,6 +2235,10 @@ void main() {
       expect(kisskh.contains('fetchDrama'), isTrue);
       expect(kisskh.contains('dramaId'), isTrue);
       expect(kisskh.contains('if (episodeId)'), isTrue);
+      // Home/TMDB has no kisskhId; Search never returns tmdbID — title score, not list[0].
+      expect(kisskh.contains('searchDramaByTitle'), isTrue);
+      expect(kisskh.contains('scoreHit'), isTrue);
+      expect(kisskh.contains('pickFromRows'), isTrue);
 
       final animedunya = await loadForjaHqFile('providers/animedunya.js');
       expect(animedunya.contains('anime-dunya.com'), isTrue);
@@ -2326,7 +2338,7 @@ void main() {
       expect(src, contains('preferHlsMaster'));
       expect(src, contains('quality:'));
       expect(src, contains('language:'));
-      expect(src, contains('ctx.crypto.streamDecrypt'));
+      expect(src, contains('__engineStreamDecrypt'));
       expect(src, contains('var SPECS ='));
       expect(src, contains('"endpoint": "cdn"'));
       expect(src, contains('"name": "Yoru"'));
@@ -2361,7 +2373,6 @@ void main() {
           'catalog-streamfree',
           'catalog-watchfooty',
           'catalog-streamic',
-          'catalog-espn',
           'catalog-liveonsat',
           'catalog-livesoccertv',
         ];
@@ -2413,10 +2424,6 @@ void main() {
         expect(
           await loadForjaHqFile('live/streamed.js'),
           contains("action !== 'resolve'"),
-        );
-        expect(
-          await loadForjaHqFile('catalog/espn.js'),
-          contains('LEAGUE_ENDPOINTS'),
         );
         expect(
           LiveSportCapabilities.normalizePluginId('live-streamed'),
@@ -2491,40 +2498,6 @@ void main() {
         );
       },
     );
-
-    test('schedule catalog rows drop iframe and streams on ingest', () {
-      final event = MatchEvent.fromLegacyRow({
-        'id': 'ppv_1',
-        'title': 'Team A vs Team B',
-        'category': 'football',
-        'date': DateTime.now().millisecondsSinceEpoch,
-        'pluginId': 'catalog-test-streams',
-        'iframe': 'https://embed.example/x',
-        'streams': [
-          {
-            'id': '1',
-            'streamNo': 1,
-            'language': '',
-            'hd': false,
-            'embedUrl': 'https://embed.example/y',
-            'source': 'ppv',
-            'viewers': 0,
-          },
-        ],
-        'sources': [
-          {
-            'source': 'ppv',
-            'id': '1',
-            'iframe': 'https://embed.example/z',
-          },
-        ],
-      });
-      expect(event.inlineStreams, isEmpty);
-      expect(event.sources, hasLength(1));
-      expect(event.sources.single.source, 'ppv');
-      expect(event.sources.single.id, '1');
-      expect(event.sources.single.iframe, isEmpty);
-    });
 
     test('vidnest.js uses the Forja custom-alphabet cipher', () async {
       final src = await loadForjaHqFile('providers/vidnest.js');
@@ -2750,6 +2723,22 @@ void main() {
       },
     );
 
+    test('keeps pack pngStrip and probe on the stream row', () {
+      final mapped = mapEngineStream(
+        raw: {
+          'url': 'https://cdn.example/a.m3u8',
+          'name': 'Yoru',
+          'pngStrip': 'auto',
+          'probe': 'masterOnly',
+        },
+        plugin: plugin,
+        mediaTitle: 'Sterling Point',
+        type: 'tv',
+      )!;
+      expect(mapped['pngStrip'], 'auto');
+      expect(mapped['probe'], 'masterOnly');
+    });
+
     test('folds HubCloud release title into description for badges', () {
       final mapped = mapEngineStream(
         raw: {
@@ -2936,56 +2925,6 @@ void main() {
   });
 
   group('EngineRuntime host', () {
-    test('extract(ctx) decrypts via ctx.streamcrypto', () async {
-      const seed = 'test-seed';
-      const mediaId = '550';
-      const json = '{"ok":true}';
-      final rt = EngineRuntime.instance;
-      await rt.loadPlugin(
-        pluginId: 'crypto-test',
-        code:
-            '''
-function extract(ctx) {
-  var payload = globalThis.__engineStreamEncryptForTest(${jsonEncode(json)}, ${jsonEncode(seed)}, ctx.tmdbId);
-  var body = ctx.streamcrypto.decrypt(payload, ${jsonEncode(seed)}, ctx.tmdbId);
-  return Promise.resolve([{ url: 'https://cdn.example/a.m3u8', title: body }]);
-}
-''',
-      );
-      final streams = await rt.extract(
-        pluginId: 'crypto-test',
-        tmdbId: mediaId,
-        type: 'movie',
-      );
-      expect(streams, hasLength(1));
-      expect(streams.single['url'], 'https://cdn.example/a.m3u8');
-      expect(streams.single['title'], json);
-    });
-
-    test('extract(ctx) decrypts via ctx.crypto.streamDecrypt alias', () async {
-      const seed = 'alias-seed';
-      const mediaId = '42';
-      const json = '{"alias":true}';
-      final rt = EngineRuntime.instance;
-      await rt.loadPlugin(
-        pluginId: 'crypto-alias',
-        code:
-            '''
-function extract(ctx) {
-  var payload = globalThis.__engineStreamEncryptForTest(${jsonEncode(json)}, ${jsonEncode(seed)}, ctx.tmdbId);
-  var body = ctx.crypto.streamDecrypt(payload, ${jsonEncode(seed)}, ctx.tmdbId);
-  return Promise.resolve([{ url: 'https://cdn.example/b.m3u8', title: body }]);
-}
-''',
-      );
-      final streams = await rt.extract(
-        pluginId: 'crypto-alias',
-        tmdbId: mediaId,
-        type: 'movie',
-      );
-      expect(streams.single['title'], json);
-    });
-
     test('extract(ctx) receives imdbId and config', () async {
       final rt = EngineRuntime.instance;
       await rt.loadPlugin(

@@ -38,7 +38,7 @@ flowchart BT
 - **Playback + catalog glue** in `packages/rust/lib/src/` (`playback/`, `catalog/`, `engine.dart`, jobs).
 - **Nuvio** in `apps/forja/lib/shared/nuvio/` (permanent C4 host).
 - **Long FFI** routes through `EngineWorkerPool` / `isolate_runner.dart` / `engine_jobs`.
-- **C3 WebView** extractors remain in `apps/forja` (KissKh stream fallback, embed sniff, …).
+- **C3 WebView** extractors remain in `apps/forja` (embed sniff, …).
 
 ---
 
@@ -77,7 +77,7 @@ Exact LOC drifts quickly — re-run `wc -l` when needed. Feature god-file invent
 | `anime` / `live-matches` | **Yes** | Hub extract/catalog pipelines |
 | `manga` / `books` / `catalog` | **Yes** | Vertical scrape/catalog |
 | `indexer` | **Yes** | Jackett / Prowlarr |
-| `debrid` | **Yes** | RD / AD / Premiumize / TorBox / Debrid-Link |
+| `debrid` | **Pack** | `forja-packs/debrid/` — RD / AD / Premiumize / TorBox / Debrid-Link |
 | `music` | **Yes** | Deezer / YouTube helpers |
 | `engine` | Mixed | QuickJS extract / StreamCrypto-style jobs |
 
@@ -129,8 +129,8 @@ Apps import `package:rust/...` — there is no `packages/api`.
 | `shared/extractors/`, `shared/nuvio/` | Permanent C3–C5 |
 | `shared/playback/` | Provider-race UX, resume handoff (`open/`, `probe/`, `cache/`, `sources/`) |
 | `shared/player/` | Decode, controls, Exo ↔ MediaKit (`screens/`, `controls/`, `entry/`, `resolvers/`, `trailer/`, `platform/`) |
-| `shared/foundation/services/follow/` | My List follow + providers |
-| `shared/foundation/services/live/` | Live Sports match/stream host libs |
+| `shared/engine/lists/` | My List follow + providers |
+| `shared/engine/live/` | Live feed / resolve |
 | `shared/services/` | Cross-cutting only (`app/`, `update/`, `tracker/`) |
 | IPTV feature UI | Portal forms / scrape UI; catalog scrape in `crates/iptv` |
 
@@ -147,7 +147,7 @@ Detail: [services-map.md](architecture/services-map.md).
 | Torrent search | `scrapers` | Jackett/Prowlarr via `indexer` + host config |
 | KV | `crates/storage` | `kv.dart` + migration leftovers |
 | Local proxy | Rust axum | Token registration from Dart |
-| KissKh streams | Rust kkey + HTTP | WebView fallback extractor |
+| KissKh streams | Pack provider JS (`kkey` in prelude) + HTTP | |
 
 ---
 
@@ -166,7 +166,7 @@ Detail: [services-map.md](architecture/services-map.md).
 
 ## 8. Observations
 
-1. **Rust engine is broad** — playback resolve, catalog APIs, hub scrapers, debrid, indexers, LAN — not just webstreamr/torrent.
+1. **Rust engine is broad** — playback resolve, catalog APIs, hub scrapers, indexers, LAN — not just webstreamr/torrent. Debrid magnet resolve is pack JS.
 2. **Host still owns platform** — WebView, Nuvio, WASM, player surfaces, OAuth.
 3. **Riverpod migration is partial** — bootstrap has `ProviderScope`; many features still singleton + `setState`.
 4. **Product scope ≠ nav map** — `nav_config` lists ~20 tabs; active polish scope is smaller (Home / Search / Anime / Asian Drama / IPTV / Live Matches / Lists / Settings).

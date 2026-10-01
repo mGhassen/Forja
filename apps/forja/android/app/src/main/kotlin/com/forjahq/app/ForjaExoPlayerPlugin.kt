@@ -3,6 +3,7 @@ package com.forjahq.app
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -10,6 +11,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
 import androidx.media3.common.AudioAttributes
@@ -26,9 +28,11 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.text.CueGroup
 import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
 import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LivePlaybackSpeedControl
@@ -75,7 +79,7 @@ private const val LIVE_TARGET_OFFSET_MS = 8_000L
 private const val LIVE_MIN_OFFSET_MS = 3_000L
 private const val LIVE_MAX_OFFSET_MS = 25_000L
 // Android TV (Xiaomi A11 etc.): sit further behind the edge + deeper LoadControl
-// so CDN jitter / continuity-proxy overlap skip does not clockwork-rebuffer.
+// so CDN jitter does not clockwork-rebuffer.
 // Live speed catch-up stays off on ATV — 0.97–1.03 drains the cushion and
 // re-triggers STATE_BUFFERING (issue 233).
 private const val LIVE_ATV_MIN_BUFFER_MS = 25_000
@@ -455,6 +459,11 @@ class ExoPlayerHost(
         }
         val mediaSourceFactory = DefaultMediaSourceFactory(context)
             .setDataSourceFactory(dataSourceFactory)
+            .setDrmSessionManagerProvider { mediaItem ->
+                val drm = DefaultDrmSessionManagerProvider()
+                drm.setDrmHttpDataSourceFactory(httpFactory)
+                drm.get(mediaItem)
+            }
 
         val builder = mediaItemBuilder(url, subtitles, options)
 
@@ -579,8 +588,8 @@ class ExoPlayerHost(
         )
     }
 
-    private fun buildHttpFactory(headers: Map<String, String>): DefaultHttpDataSource.Factory {
-        val httpFactory = DefaultHttpDataSource.Factory()
+    private fun buildHttpFactory(headers: Map<String, String>): HttpDataSource.Factory {
+        val httpFactory = OkHttpDataSource.Factory(ForjaPlaybackHttp.client)
         val requestHeaders = headers.toMutableMap()
         val userAgent = requestHeaders.remove("User-Agent")
             ?: requestHeaders.remove("user-agent")
@@ -731,7 +740,9 @@ class ExoPlayerHost(
     private fun subtitleConfiguration(sub: Map<String, String>): MediaItem.SubtitleConfiguration? {
         val subUrl = sub["url"]?.trim().orEmpty()
         if (subUrl.isEmpty()) return null
-        val mime = mimeForSubtitleUrl(subUrl) ?: return null
+        val mime = sub["mime"]?.takeIf { it.isNotBlank() }
+            ?: mimeForSubtitleUrl(subUrl)
+            ?: return null
         val lang = sub["lang"]?.takeIf { it.isNotBlank() } ?: "und"
         val label = sub["label"]?.takeIf { it.isNotBlank() } ?: lang
         return MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl))
@@ -817,15 +828,43 @@ class ExoPlayerHost(
         refreshContentFrameLayout()
     }
 
-    /** Re-assert FIT/user mode + requestLayout after surface races (issue 129). */
+    /**
+     * Re-assert FIT/user mode + content aspect after surface races (issue 129).
+     *
+     * ATV TextureView cold-open (emulator SurfaceProducer / goldfish) can keep a
+     * zoomed matrix until remount — clear transform + re-apply VideoSize aspect
+     * before Dart's one-shot PlatformView remount.
+     */
     private fun refreshContentFrameLayout() {
         val view = playerView ?: return
         view.post {
             if (playerView !== view) return@post
-            view.resizeMode = resizeMode
-            view.requestLayout()
-            view.invalidate()
+            applyContentFramePass(view)
+            // Second pass after layout — TextureView matrix sometimes sticks
+            // until the frame after requestLayout (cold-open zoom).
+            view.post {
+                if (playerView !== view) return@post
+                applyContentFramePass(view)
+            }
         }
+    }
+
+    private fun applyContentFramePass(view: PlayerView) {
+        view.resizeMode = resizeMode
+        val videoSize = player?.videoSize
+        if (videoSize != null && videoSize.height > 0) {
+            val ratio =
+                videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
+            view.findViewById<AspectRatioFrameLayout>(
+                androidx.media3.ui.R.id.exo_content_frame,
+            )?.setAspectRatio(ratio)
+        }
+        (view.videoSurfaceView as? TextureView)?.let { texture ->
+            texture.setTransform(Matrix())
+            texture.requestLayout()
+        }
+        view.requestLayout()
+        view.invalidate()
     }
 
     fun getTracks(): Map<String, Any?> {
@@ -989,7 +1028,11 @@ class ExoPlayerHost(
             val group = tracks.groups[gi]
             if (group.type != type) continue
             for (ti in 0 until group.length) {
-                if (!group.isTrackSupported(ti)) continue
+                // HLS subtitle groups often report unsupported until a text
+                // track is selected. Keep them in the menu anyway.
+                if (!group.isTrackSupported(ti) && type != C.TRACK_TYPE_TEXT) {
+                    continue
+                }
                 val format = group.getTrackFormat(ti)
                 val id = "$type:$gi:$ti"
                 val label = when (type) {

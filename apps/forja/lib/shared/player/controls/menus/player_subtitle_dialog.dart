@@ -2,21 +2,21 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
-import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
-import 'package:forja/shared/player/controls/sources/player_stream_menu.dart';
-import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
+import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.dart';
+import 'package:forja/shared/player/controls/sources/stream/player_stream_menu.dart';
+import 'package:forja/shared/player/controls/sources/torrent/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/screens/utils.dart';
-import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/utils/language_display.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel.dart';
-
+import 'package:forja/shared/player/sources/torrent/torrent_sources_panel.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Two-column Subtitles dialog — left languages, right tracks in the group.
 ///
 /// Same chrome as [PlayerServerStreamDialog] (Sources). Used by ExoPlayer.
@@ -250,50 +250,27 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     );
   }
 
-  /// Tune control — [ForjaPlainIcon] traps D-pad (no spatial arrows).
+  /// Tune control — same bordered green chrome as panel Close.
   Widget _settingsChip() {
     final onSettings = widget.onSubtitleSettings;
     if (onSettings == null) return const SizedBox.shrink();
-    final face = SizedBox(
-      width: 32,
-      height: 32,
-      child: Icon(
-        Icons.tune_rounded,
-        size: 18,
-        color: ForjaShellColors.cinematic.textSecondary,
-      ),
-    );
-    if (!_tvFocus) {
-      return ForjaPlainIcon(
-        icon: Icons.tune_rounded,
-        size: 18,
-        hitSize: 32,
-        color: ForjaShellColors.cinematic.textSecondary,
-        tooltip: 'Subtitle settings',
-        onTap: () {
-          PlayerSubtitleDialog.dismiss();
-          onSettings();
-        },
-      );
-    }
-    return FocusableControl(
+    return PlayerPopupChromeButton(
+      icon: Icons.tune_rounded,
+      tooltip: 'Subtitle settings',
       focusNode: _settingsFocus,
       onTap: () {
         PlayerSubtitleDialog.dismiss();
         onSettings();
       },
-      borderRadius: PlayerPopupTokens.chipRadius,
-      scaleOnFocus: 1.0,
-      showFocusBorder: false,
-      showFocusFill: false,
-      onRightEdge: _focusClose,
-      child: face,
+      onRightEdge: _tvFocus ? _focusClose : null,
     );
   }
 
-  /// Bordered X — same chrome as Off; [ForjaPlainIcon] was not in the D-pad chain.
+  /// Close X — plain icon (same as panel Close).
   Widget _closeChip({required bool autoFocus}) {
-    return _SubtitleCloseChip(
+    return PlayerPopupChromeButton(
+      icon: Icons.close_rounded,
+      tooltip: 'Close',
       focusNode: _closeFocus,
       autoFocus: autoFocus,
       onTap: widget.onClose,
@@ -449,7 +426,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PlayerSidePanelHeader(
-          title: '',
+          title: 'Subtitles',
           onClose: widget.onClose,
           showClose: !tv,
           trailing: Row(
@@ -614,58 +591,6 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SubtitleCloseChip extends StatefulWidget {
-  const _SubtitleCloseChip({
-    required this.focusNode,
-    required this.autoFocus,
-    required this.onTap,
-    this.onLeftEdge,
-  });
-
-  final FocusNode focusNode;
-  final bool autoFocus;
-  final VoidCallback onTap;
-  final VoidCallback? onLeftEdge;
-
-  @override
-  State<_SubtitleCloseChip> createState() => _SubtitleCloseChipState();
-}
-
-class _SubtitleCloseChipState extends State<_SubtitleCloseChip> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final border = _focused
-        ? PlayerPopupTokens.accentBorder
-        : PlayerPopupTokens.border;
-    final iconColor =
-        _focused ? PlayerPopupTokens.accent : PlayerPopupTokens.muted;
-    final face = Container(
-      width: 28,
-      height: 28,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        border: Border.all(color: border),
-      ),
-      child: Icon(Icons.close_rounded, size: 14, color: iconColor),
-    );
-    return FocusableControl(
-      focusNode: widget.focusNode,
-      autoFocus: widget.autoFocus,
-      onTap: widget.onTap,
-      borderRadius: PlayerPopupTokens.chipRadius,
-      scaleOnFocus: 1.0,
-      showFocusBorder: false,
-      showFocusFill: false,
-      onFocusChange: (f) => setState(() => _focused = f),
-      onLeftEdge: widget.onLeftEdge,
-      child: face,
     );
   }
 }

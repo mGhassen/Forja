@@ -1,0 +1,388 @@
+import 'package:flutter/material.dart';
+import 'package:forja/shared/player/sources/resolve/resolve_panel_host.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_entry.dart';
+import 'package:forja_foundation/widgets/sources/panel_tabs.dart';
+import 'package:forja/shared/player/sources/kit/kit_sources_panel.dart';
+
+import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
+import 'package:forja/shared/navigation/media_details_back_button.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shell/desktop/desktop_selectable_title.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play_row.dart';
+import 'package:forja/shared/engine/details/sources_panel_tv.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/details/details_hero.dart';
+import 'package:forja_foundation/blocks/details/match_details_block.dart';
+
+/// Pack-emitted paint props for match details (no host field heuristics).
+class _PackEntryPaint {
+  const _PackEntryPaint({
+    required this.title,
+    required this.poster,
+    required this.categoryLabel,
+    required this.timeLabel,
+    required this.viewers,
+    required this.isLive,
+  });
+
+  final String title;
+  final String poster;
+  final String categoryLabel;
+  final String timeLabel;
+  final int viewers;
+  final bool isLive;
+
+  factory _PackEntryPaint.from(KitListEntry entry) {
+    final paint = entry.legacyRow['paint'];
+    var props = <String, dynamic>{};
+    if (paint is Map) {
+      final p = paint['props'];
+      props = p is Map
+          ? Map<String, dynamic>.from(p)
+          : Map<String, dynamic>.from(paint);
+    }
+    String s(String key, [String fb = '']) {
+      final v = props[key];
+      if (v == null) return fb;
+      final t = v.toString().trim();
+      return t.isEmpty ? fb : t;
+    }
+
+    int viewers = 0;
+    final raw = props['viewers'];
+    if (raw is num) {
+      viewers = raw.toInt();
+    } else if (raw is String) {
+      viewers = int.tryParse(raw.replaceAll(',', '')) ?? 0;
+    }
+
+    return _PackEntryPaint(
+      title: s('title', entry.meta.name),
+      poster: s(
+        'posterUrl',
+        s('imageUrl', entry.meta.poster),
+      ),
+      categoryLabel: s('categoryLabel'),
+      timeLabel: s('timeLabel'),
+      viewers: viewers,
+      isLive: props['live'] == true,
+    );
+  }
+}
+/// Full-bleed list-entry details — [DetailsHero] + pack [panelTabs].
+class KitMatchDetailsPage extends StatefulWidget {
+  const KitMatchDetailsPage({
+    super.key,
+    required this.entry,
+    this.layoutWidgets = const [],
+    this.refreshEpoch = 0,
+  });
+
+  final KitListEntry entry;
+  final List<Map<String, dynamic>> layoutWidgets;
+  final int refreshEpoch;
+
+  @override
+  State<KitMatchDetailsPage> createState() => _KitMatchDetailsPageState();
+}
+
+class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
+  final _backFocus = FocusNode(debugLabel: 'kit-match-details-back');
+  KitUrlHealthProbe? _healthProbe;
+  late String _tabId;
+  bool _streamsVisible = false;
+  bool _heroFocusDone = false;
+  String _liveTvChannelQuery = '';
+  bool _streamsLoading = true;
+  int _sourcesReloadNonce = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabId = panelChromeFromLayouts(widget.layoutWidgets).initial ?? '';
+    _streamsVisible = true;
+    final create = KitResolveStreamsHooks.createHealthProbe;
+    _healthProbe = create?.call(
+      onResult: (_, _) {
+        if (mounted) setState(() {});
+      },
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Land D-pad on Providers (first hero tab) when match details opens.
+      ShellTvFocusCoordinator.focusRowItem(
+        MediaDetailsTv.tabId,
+        MediaDetailsTv.heroRowId,
+        0,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _backFocus.dispose();
+    _healthProbe?.dispose();
+    super.dispose();
+  }
+
+  _PackEntryPaint get _paint => _PackEntryPaint.from(widget.entry);
+
+  ({List<PanelTabSpec> tabs, String? initial}) get _chrome =>
+      panelChromeFromLayouts(widget.layoutWidgets);
+
+  /// Catalog merge sum, or Providers sheet total once streams load.
+  int? _providersViewerTotal;
+
+  List<String> get _metaParts {
+    final m = _paint;
+    final parts = <String>[];
+    if (m.isLive) {
+      parts.add('Live');
+    } else {
+      final t = m.timeLabel;
+      if (t.isNotEmpty) parts.add(t);
+    }
+    final viewers = _providersViewerTotal ?? m.viewers;
+    if (viewers > 0) parts.add('$viewers viewers');
+    return parts;
+  }
+
+  Future<List<KitSourcesRow>> _loadTab(
+    String tabId, {
+    void Function(List<KitSourcesRow> rows)? onPartial,
+    bool force = false,
+  }) async {
+    final rows = await KitResolvePanelHost.loadTab(
+      widget.entry.legacyRow,
+      tabId,
+      healthProbe: _healthProbe,
+      layoutWidgets: widget.layoutWidgets,
+      force: force,
+      onPartial: onPartial == null
+          ? null
+          : (partial) {
+              onPartial(partial);
+              if (mounted) {
+                _updateProvidersViewerTotal(partial);
+              }
+            },
+    );
+    if (mounted) {
+      _updateProvidersViewerTotal(rows);
+    }
+    return rows;
+  }
+
+  void _updateProvidersViewerTotal(List<KitSourcesRow> rows) {
+    final catalog = _paint.viewers;
+    final streamSum = rows.fold<int>(
+      0,
+      (n, r) => n + (r.viewerCount ?? 0),
+    );
+    final next = streamSum > catalog ? streamSum : catalog;
+    if (next != (_providersViewerTotal ?? catalog)) {
+      setState(() => _providersViewerTotal = next > 0 ? next : null);
+    }
+  }
+
+  void _selectTab(String id) {
+    if (_tabId == id && _streamsVisible) return;
+    setState(() {
+      _tabId = id;
+      _streamsVisible = true;
+      if (!panelBrowseTabIds(_chrome.tabs).contains(id)) {
+        _liveTvChannelQuery = '';
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = _paint;
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
+    final backdrop = m.poster;
+    final viewport = MediaQuery.sizeOf(context);
+    final title = m.title.trim().isEmpty ? widget.entry.meta.name : m.title;
+    final probe = _healthProbe;
+    final chrome = _chrome;
+    final browseIds = panelBrowseTabIds(chrome.tabs);
+    final showBrowseSearch =
+        _streamsVisible && browseIds.contains(_tabId);
+
+    if (policy.heroPlayAutoFocus && !_heroFocusDone) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _heroFocusDone) return;
+        _heroFocusDone = true;
+        if (_backFocus.canRequestFocus) _backFocus.requestFocus();
+      });
+    }
+
+    Widget? streamsPanel;
+    if (_streamsVisible) {
+      Widget panelBuilder() => KitSourcesPanel(
+            key: ValueKey(
+              'live-details-${widget.entry.meta.id}-$_tabId-${widget.refreshEpoch}',
+            ),
+            title: title,
+            subtitle: m.categoryLabel,
+            embedded: true,
+            tabs: [
+              for (final t in chrome.tabs)
+                KitSourcesTab(id: t.id, label: t.label, icon: t.icon),
+            ],
+            initialTabId: _tabId,
+            showTabs: false,
+            showInlineSearch: false,
+            channelQuery: browseIds.contains(_tabId) ? _liveTvChannelQuery : '',
+            browseCategoryTabIds: browseIds,
+            reloadNonce: _sourcesReloadNonce,
+            onLoadingChanged: (loading) {
+              if (!mounted || loading == _streamsLoading) return;
+              setState(() => _streamsLoading = loading);
+            },
+            loadTab: _loadTab,
+            onPlayRow: (row) => KitResolvePanelHost.playRow(
+              context,
+              row,
+              title: title,
+            ),
+            tvTabId: MediaDetailsTv.tabId,
+          );
+      streamsPanel = probe == null
+          ? panelBuilder()
+          : ListenableBuilder(
+              listenable: probe,
+              builder: (context, _) => panelBuilder(),
+            );
+    }
+
+    final page = MatchDetailsPage(
+      backgroundColor: AppTheme.bgDark,
+      overlay: MediaDetailsBackButton(focusNode: _backFocus),
+      hero: DetailsHero(
+            backdropUrl: backdrop,
+            title: title,
+            subtitle: m.categoryLabel,
+            genres: const [],
+            metaParts: _metaParts,
+            overview: '',
+            height: viewport.height,
+            enableKenBurns: policy.kenBurnsBackdrop,
+            tvDensity: ShellScope.metricsOf(context).usesTvDensity,
+            plainTitle: policy.useFocusableMoodChips,
+            selectableTitle: shellDesktopTextSelect(context),
+            factsValueMaxLines: policy.useFocusableMoodChips ? 2 : 1,
+            actionRow: DetailsHeroTvActionScope(
+              tabId: MediaDetailsTv.tabId,
+              itemCount: chrome.tabs.length,
+              onFocusUp: tvFocus ? () => _backFocus.requestFocus() : null,
+              onFocusDown: tvFocus
+                  ? () => SourcesPanelTv.focusListItem(
+                        index: 0,
+                        listOnly: true,
+                        forTabId: MediaDetailsTv.tabId,
+                      )
+                  : null,
+              // Keep intrinsic height — FittedBox scaleDown shrinks the search.
+              child: SizedBox(
+                width: double.infinity,
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: HeroPillSegmentedChoice<String>(
+                          segments: [
+                            for (final t in chrome.tabs)
+                              HeroPillSegment(
+                                value: t.id,
+                                label: t.label,
+                                icon: kitPanelTabIcon(t.icon),
+                              ),
+                          ],
+                          selected: _tabId,
+                          onSelected: _selectTab,
+                          onUpEdge:
+                              tvFocus ? () => _backFocus.requestFocus() : null,
+                          onDownEdge: tvFocus
+                              ? () => SourcesPanelTv.focusListItem(
+                                    index: 0,
+                                    listOnly: true,
+                                    forTabId: MediaDetailsTv.tabId,
+                                  )
+                              : null,
+                          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                          tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                          tvItemIndexStart: 0,
+                        ),
+                      ),
+                    ),
+                    if (showBrowseSearch) ...[
+                      const SizedBox(width: 16),
+                      KitSourcesExpandingSearch(
+                        query: _liveTvChannelQuery,
+                        onQueryChanged: (q) {
+                          if (q == _liveTvChannelQuery) return;
+                          setState(() => _liveTvChannelQuery = q);
+                        },
+                        debugLabel: 'live-match-details-live-tv-search',
+                      ),
+                    ],
+                    const SizedBox(width: 12),
+                    if (_streamsLoading)
+                      ExcludeFocus(
+                        child: Text(
+                          browseIds.contains(_tabId)
+                              ? 'Matching Live TV…'
+                              : 'Fetching streams…',
+                          style: TextStyle(
+                            color: ForjaShellColors.textSecondary,
+                            fontSize: ShellScope.metricsOf(context)
+                                .torrentPanelMetaFontSize,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    else
+                      Button(
+                        variant: ButtonVariant.plainIcon,
+                        size: ButtonSize.icon,
+                        icon: Icons.refresh_rounded,
+                        tooltip: 'Reload',
+                        color: ForjaShellColors.textSecondary,
+                        iconSize: ShellScope.metricsOf(context)
+                            .torrentPanelLeadingIconSize,
+                        onPressed: () =>
+                            setState(() => _sourcesReloadNonce++),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            belowActionRowFullWidth: true,
+            scaleActionRow: false,
+            belowActionRowGap: 16,
+            contentScrim: true,
+            belowActionRow: streamsPanel,
+          ),
+    );
+    final tab = ShellBus.activeShellTabId?.trim() ?? '';
+    return ValueListenableBuilder<bool>(
+      valueListenable: ShellBus.hubLayoutRtlFor(tab),
+      builder: (context, rtl, _) {
+        if (!rtl) return page;
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: page,
+        );
+      },
+    );
+  }
+}

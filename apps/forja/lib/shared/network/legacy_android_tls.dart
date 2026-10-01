@@ -66,11 +66,11 @@ tL4ndQavEi51mI38AjEAi/V3bNTIZargCyzuFJ0nN6T5U6VR5CmD1/iQMVtCnwr1
 -----END CERTIFICATE-----
 ''';
 
-/// Install once at process start (before any TMDB image fetch).
+/// Install once at process start (before any TMDB image fetch / Supabase).
 void installLegacyAndroidTlsTrust() {
   if (kIsWeb || !Platform.isAndroid) return;
   HttpOverrides.global = _LegacyAndroidTlsHttpOverrides();
-  debugPrint('[TLS] Android: added ISRG Root X1/X2 to HttpClient trust');
+  debugPrint('[TLS] Android: ISRG Root X1/X2 on HttpClient');
 }
 
 class _LegacyAndroidTlsHttpOverrides extends HttpOverrides {

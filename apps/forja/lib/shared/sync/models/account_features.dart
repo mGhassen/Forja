@@ -5,17 +5,17 @@ import 'package:flutter/foundation.dart';
 ///
 /// Empty / missing cloud payload means all boolean features off. Guests and
 /// signed-out sessions stay disabled until a signed-in pull applies enabled
-/// keys. Portal cap defaults to [defaultMaxIptvPortals] when
+/// keys. Portal cap defaults to [defaultMaxPortals] when
 /// `features.maxIptvPortals` is omitted (admins unlimited).
 class AccountFeatures {
   AccountFeatures._();
   static final AccountFeatures instance = AccountFeatures._();
 
   /// Default max Xtream portals per profile when the lean key is absent.
-  static const int defaultMaxIptvPortals = 5;
+  static const int defaultMaxPortals = 5;
 
   /// Hard ceiling matching the admin RPC clamp.
-  static const int absoluteMaxIptvPortals = 500;
+  static const int absoluteMaxPortals = 500;
 
   /// Bumps when any flag changes (IPTV UI listens).
   final ValueNotifier<int> revision = ValueNotifier<int>(0);
@@ -24,7 +24,7 @@ class AccountFeatures {
   bool _dealPortal = false;
   int _iptvCredits = 0;
   bool _isAdmin = false;
-  int _maxIptvPortals = defaultMaxIptvPortals;
+  int _maxPortals = defaultMaxPortals;
   int? _memberNumber;
 
   /// Reddit / Find Portals scrape in the IPTV tab.
@@ -47,39 +47,40 @@ class AccountFeatures {
   bool get isAdmin => _isAdmin;
 
   /// Configured max portals per profile (`features.maxIptvPortals`, default 5).
-  /// Ignored when [hasUnlimitedIptvPortals].
-  int get maxIptvPortals => _maxIptvPortals;
+  /// Ignored when [hasUnlimitedPortals].
+  int get maxPortals => _maxPortals;
 
   /// Admin accounts skip the portal inventory cap.
-  bool get hasUnlimitedIptvPortals => _isAdmin;
+  bool get hasUnlimitedPortals => _isAdmin;
 
   /// Whether [currentCount] portals can accept one more assignment.
-  bool canAddIptvPortal(int currentCount) {
-    if (hasUnlimitedIptvPortals) return true;
-    return currentCount < _maxIptvPortals;
+  bool canAddPortal(int currentCount) {
+    if (hasUnlimitedPortals) return true;
+    return currentCount < _maxPortals;
   }
 
   /// How many more portals may be added (very large when unlimited).
   int iptvPortalSlotsRemaining(int currentCount) {
-    if (hasUnlimitedIptvPortals) return absoluteMaxIptvPortals;
-    final left = _maxIptvPortals - currentCount;
+    if (hasUnlimitedPortals) return absoluteMaxPortals;
+    final left = _maxPortals - currentCount;
     return left < 0 ? 0 : left;
   }
 
   /// User-facing limit label (e.g. for tooltips).
   String iptvPortalLimitLabel() {
-    if (hasUnlimitedIptvPortals) return 'Unlimited';
-    return '$_maxIptvPortals';
+    if (hasUnlimitedPortals) return 'Unlimited';
+    return '$_maxPortals';
   }
 
   /// Message when Add / scrape / deal / import hits the cap.
   String iptvPortalLimitReachedMessage() {
-    if (hasUnlimitedIptvPortals) return 'Portal limit reached.';
-    return 'Maximum of $_maxIptvPortals portals per profile';
+    if (hasUnlimitedPortals) return 'Portal limit reached.';
+    return 'Maximum of $_maxPortals portals per profile';
   }
 
-  static int _parseMaxIptvPortals(Map<String, dynamic>? raw) {
-    if (raw == null) return defaultMaxIptvPortals;
+  static int _parseMaxPortals(Map<String, dynamic>? raw) {
+    if (raw == null) return defaultMaxPortals;
+    // Cloud / admin / SQL lean key (RFC-036).
     final v = raw['maxIptvPortals'];
     final n = switch (v) {
       int i => i,
@@ -87,8 +88,8 @@ class AccountFeatures {
       String s => int.tryParse(s),
       _ => null,
     };
-    if (n == null) return defaultMaxIptvPortals;
-    return n.clamp(1, absoluteMaxIptvPortals);
+    if (n == null) return defaultMaxPortals;
+    return n.clamp(1, absoluteMaxPortals);
   }
 
   /// Apply lean cloud JSON
@@ -103,13 +104,13 @@ class AccountFeatures {
     final nextDeal = raw != null && raw['dealPortal'] == true;
     final nextCredits = (iptvCredits ?? _iptvCredits).clamp(0, 1 << 30);
     final nextAdmin = isAdmin ?? _isAdmin;
-    final nextMax = _parseMaxIptvPortals(raw);
+    final nextMax = _parseMaxPortals(raw);
     final nextMember = memberNumber ?? _memberNumber;
     if (nextScrape == _iptvScrape &&
         nextDeal == _dealPortal &&
         nextCredits == _iptvCredits &&
         nextAdmin == _isAdmin &&
-        nextMax == _maxIptvPortals &&
+        nextMax == _maxPortals &&
         nextMember == _memberNumber) {
       return;
     }
@@ -117,7 +118,7 @@ class AccountFeatures {
     _dealPortal = nextDeal;
     _iptvCredits = nextCredits;
     _isAdmin = nextAdmin;
-    _maxIptvPortals = nextMax;
+    _maxPortals = nextMax;
     _memberNumber = nextMember;
     revision.value++;
   }
@@ -143,7 +144,7 @@ class AccountFeatures {
         !_dealPortal &&
         _iptvCredits == 0 &&
         !_isAdmin &&
-        _maxIptvPortals == defaultMaxIptvPortals &&
+        _maxPortals == defaultMaxPortals &&
         _memberNumber == null) {
       return;
     }
@@ -151,7 +152,7 @@ class AccountFeatures {
     _dealPortal = false;
     _iptvCredits = 0;
     _isAdmin = false;
-    _maxIptvPortals = defaultMaxIptvPortals;
+    _maxPortals = defaultMaxPortals;
     _memberNumber = null;
     revision.value++;
   }

@@ -15,7 +15,5 @@ futures-util = "0.3"
 urlencoding = "2"
 regex = { workspace = true }
 url = { workspace = true }
+flate2 = "1"
 utils = { path = "../utils" }
-aes = { workspace = true }
-ctr = { workspace = true }
-base64 = { workspace = true }

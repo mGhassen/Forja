@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 2** acceptance |
+| **Progress** | **9 / 9** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 6 | I118-T06 | `countUserIptvPortals` fail-closed (`-1` when not ready) + exact head count | ✅ |
 | 7 | I118-T07 | Server `replace_user_iptv_portals` refuse shrink unless `p_allow_shrink` | ✅ |
 | 8 | I118-T08 | Flutter/web pass `p_allow_shrink` only for intentional delete; refuse partial upsert | ✅ |
+| 9 | I118-T09 | Re-wire pack `removePortal` → `PortalStore.save(scheduleSync: false)` + `unawaited(pushIptvInventoryAfterDelete)` (lost in vault cutover) | ✅ |
 
 ---
 
@@ -52,7 +53,7 @@
 1. Morning: re-inserted **608** personal orphans → **613** on Streaming.
 2. Evening: re-inserted **220** personal orphans → **673** on Streaming. Live unchanged (89).
 
-**Symptom fix:** Client count refuse + delete path flag (T02–T04).
+**Symptom fix:** Client count refuse + delete path flag (T02–T04). Pack cutover dropped the delete call site — restored in T09 (`PortalsHost.remove`).
 
 **Root fix:** Server refuses shrink unless `p_allow_shrink`; client count fail-closed + exact count; partial upsert never replace (T06–T08). Migration must be **pushed to prod** before A02.
 

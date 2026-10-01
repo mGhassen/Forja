@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_release_metadata.dart';
+import 'package:forja/shared/utils/torrent_meta_parser.dart';
 
 import 'ids.dart';
 
@@ -62,7 +62,7 @@ class EnginePlugin {
   /// Catalog hub `ctx` kit version the plugin needs ([hostKitVersion]).
   final int? kit;
 
-  /// Declared hub features (`nav`, `search`, `host_search`, `structured_search`, `details`, `filters`, `auth`, `settings`, …).
+  /// Declared hub features (`nav`, `search`, `structured_search`, `details`, `filters`, `auth`, `settings`, …).
   final List<String> capabilities;
 
   /// Nav contribution — parsed by `MetaNavSpec.fromPluginNav`.
@@ -89,22 +89,39 @@ class EnginePlugin {
   bool get isHost => kind == 'host';
   bool get isHop => kind == 'hop';
   bool get isTorrent => kind == 'torrent';
+  bool get isDebrid => kind == 'debrid';
 
   /// Catalog hub plugin — serves shell tabs through the catalog protocol.
   bool get isKitPlugin => kind == 'catalog';
 
-  /// Hub feed that calls `ctx.host.liveFeed.load` (Live Sports packs).
-  /// EngineJS has no liveFeed bridge yet — [EngineService.runCatalog] must use
+  /// Hub feed that calls `ctx.host.plugin` (Live Sports packs).
+  /// EngineJS has no host bridges yet — [EngineService.runCatalog] must use
   /// flutter_js for `feed`/`rail` on these plugins (not layout/filters).
   bool get needsLiveFeedHost => isKitPlugin && types.contains('live_match');
 
-  /// Hub feed that calls `ctx.host.myList.load` (My List packs).
-  /// EngineJS has no myList bridge yet — [EngineService.runCatalog] must use
+  /// Hub feed that calls `ctx.host.store` / `ctx.host.simkl` (list packs; `bookmarks` alias).
+  /// EngineJS has no host bridges — [EngineService.runCatalog] must use
   /// flutter_js for `feed`/`rail` on these plugins (not layout).
-  bool get needsMyListHost => isKitPlugin && types.contains('list');
+  bool get needsListsHost => isKitPlugin && types.contains('list');
+
+  /// Hub that calls `ctx.host.http` / `vault` / `playback` (portal packs).
+  /// EngineJS has no host bridges — flutter_js for feed, details, + pack actions.
+  bool get needsPortalPackHost => isKitPlugin && types.contains('iptv');
+
+  /// Hub that calls `ctx.host.engine.request('stremio', …)` (VOD catalog hub).
+  /// EngineJS has no host bridges — flutter_js for layout / rail / search.
+  bool get needsStremioCatalogHost => isKitPlugin && types.contains('stremio');
+
+  /// Any kit hub that must skip EngineJS-first for host-bridge actions.
+  bool get needsHostBridge =>
+      needsLiveFeedHost ||
+      needsListsHost ||
+      needsPortalPackHost ||
+      needsStremioCatalogHost;
 
   /// Pack install must cache JS for this plugin.
-  bool get needsScript => isHttp || isHop || isKitPlugin || isTorrent;
+  bool get needsScript =>
+      isHttp || isHop || isKitPlugin || isTorrent || isDebrid;
 
   bool hasCapability(String name) {
     final want = name.trim().toLowerCase();
@@ -491,10 +508,10 @@ class EnginePack {
       'catalog/manifest.json': 'catalog',
       'live/manifest.json': 'live',
       'torrent/manifest.json': 'torrent',
+      'debrid/manifest.json': 'debrid',
       'hubs/home/manifest.json': 'home',
       'hubs/manifest.json': 'home',
       'iptv/vod/manifest.json': 'iptv-vod',
-      'hubs/iptv/manifest.json': 'iptv-vod',
     };
     for (final e in core.entries) {
       if (path.endsWith(e.key)) return e.value;
@@ -651,6 +668,15 @@ class EngineExtractResult {
   final List<Map<String, dynamic>> streams;
 }
 
+/// Plugins that contribute to Settings / runtime because **pack and plugin**
+/// are both on. Use for Addon discovery, Connected services auth, and field
+/// injection — never flatten [EnginePack.plugins] without this gate.
+List<EnginePlugin> activePluginsFromPacks(Iterable<EnginePack> packs) => [
+      for (final pack in packs)
+        for (final p in pack.plugins)
+          if (pack.isPluginActive(p)) p,
+    ];
+
 Set<String> enabledEnginePluginIds(List<EnginePack> packs) => {
   for (final pack in packs)
     if (pack.enabled)
@@ -795,11 +821,10 @@ String? nextEnginePluginId({
   return null;
 }
 
-const kEngineSourcesBatchDesktop = 10;
-const kEngineSourcesBatchTv = 5;
-
-int engineSourcesBatchLimit({required bool tv}) =>
-    tv ? kEngineSourcesBatchTv : kEngineSourcesBatchDesktop;
+/// Every selected Forja provider starts together. Rust runs one fresh
+/// QuickJS runtime per plugin. Desktop and TV use the same rule.
+int engineSourcesBatchLimit({required int selected}) =>
+    selected < 1 ? 1 : selected;
 
 List<String> nextEnginePluginBatch({
   required Iterable<String> orderedIds,
@@ -1113,7 +1138,7 @@ Map<String, dynamic>? mapEngineStream({
     final a = (raw['audio'] ?? '').toString().trim();
     return a.isEmpty ? null : a;
   }();
-  final size = TorrentReleaseMetadata.resolveSizeLabel(
+  final size = TorrentMetaParser.resolveSizeLabel(
     sizeText: (raw['size'] ?? '').toString(),
     fallbackText: '$rawTitle $rawName',
   );
@@ -1160,6 +1185,8 @@ Map<String, dynamic>? mapEngineStream({
       raw['requires_proxy'] == true ||
       (Uri.tryParse(url)?.host.toLowerCase().contains('111477') ?? false);
   final typeHint = (raw['type'] ?? '').toString().trim();
+  final pngStrip = (raw['pngStrip'] ?? '').toString().trim();
+  final probe = (raw['probe'] ?? '').toString().trim();
   return {
     'url': url,
     'title': cardTitle,
@@ -1180,6 +1207,8 @@ Map<String, dynamic>? mapEngineStream({
     if (raw['subtitles'] is List && (raw['subtitles'] as List).isNotEmpty)
       'subtitles': raw['subtitles'],
     if (raw['drm'] is Map) 'drm': raw['drm'],
+    if (pngStrip.isNotEmpty) 'pngStrip': pngStrip,
+    if (probe.isNotEmpty) 'probe': probe,
     '_addonBaseUrl': 'engine:${plugin.id}',
     '_addonName': addonName,
     '_enginePluginId': plugin.id,

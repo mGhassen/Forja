@@ -1,33 +1,26 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
-import { useRef, useState } from 'react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
-import { useProfileSettings } from '@/hooks/use-profile-settings'
 import {
   useForjaSetting,
-  useNavigationSetting,
   usePlaybackSetting,
 } from '@/hooks/use-user-setting'
 import {
-  availableFeatureTabIds,
+  discoverPackAddonBuckets,
+  packAddonBucketsFromUrls,
+  type PackAddonBucket,
+} from '@/lib/pack-addon-discovery'
+import {
   emptyForjaPayload,
   emptyPreferencesPayload,
-  DEFAULT_NAV_TAB,
-  pruneNavigationToAvailable,
   type ForjaPayload,
-  type NavigationPayload,
   type PreferencesPayload,
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
-
-type NavDraft = {
-  order: string[]
-  visible: Set<string>
-  defaultTab: string
-}
 
 type AddonRowProps = {
   title: string
@@ -107,37 +100,6 @@ function AddonRow({
   )
 }
 
-function navFromServer(value: unknown): NavDraft {
-  const n = value as NavigationPayload | undefined
-  return {
-    order: [...(n?.tabOrder ?? [])],
-    visible: new Set(n?.visibleIds ?? []),
-    defaultTab: n?.defaultTab ?? DEFAULT_NAV_TAB,
-  }
-}
-
-function emptyNavDraft(): NavDraft {
-  return {
-    order: [],
-    visible: new Set(),
-    defaultTab: DEFAULT_NAV_TAB,
-  }
-}
-
-function navToPayload(
-  draft: NavDraft,
-  availableIds: string[],
-): NavigationPayload {
-  return pruneNavigationToAvailable(
-    {
-      visibleIds: draft.order.filter((id) => draft.visible.has(id)),
-      tabOrder: draft.order,
-      defaultTab: draft.defaultTab,
-    },
-    availableIds,
-  )
-}
-
 function playbackFromServer(value: unknown): PreferencesPayload {
   return {
     ...emptyPreferencesPayload(),
@@ -145,19 +107,23 @@ function playbackFromServer(value: unknown): PreferencesPayload {
   }
 }
 
+function forjaFromServer(value: unknown): ForjaPayload {
+  const payload = value as ForjaPayload | undefined
+  return {
+    packs: payload?.packs ?? [],
+    ...(payload?.onboarded === true ? { onboarded: true as const } : {}),
+  }
+}
+
 /**
- * Cloud Addons hub — mirrors Settings → Addons in the app.
- * Master switches + links into detail pages (Playback prefs, IPTV portals,
- * Stremio/Nuvio manifests). Hub packs are Plugins, not Addons.
+ * Cloud Addons hub — same host rows + pack-discovered buckets as
+ * Settings → Addons in the app (RFC-089).
  */
 export function AccountSettingsAddonsPage() {
-  const settings = useProfileSettings()
   const playback = usePlaybackSetting()
-  const navigation = useNavigationSetting()
   const forja = useForjaSetting()
-  const [hostBusy, setHostBusy] = useState(false)
-  const [hostError, setHostError] = useState<Error | null>(null)
-  const [hostFlash, setHostFlash] = useState(false)
+  const [packBuckets, setPackBuckets] = useState<PackAddonBucket[]>([])
+  const [packLoading, setPackLoading] = useState(true)
 
   const playDraft = useCommitDraft({
     profileId: playback.profileId,
@@ -174,151 +140,83 @@ export function AccountSettingsAddonsPage() {
     updatedAt: forja.data?.updated_at,
     isReady: Boolean(forja.data) && !forja.isLoading,
     serverValue: forja.data?.payload,
-    mapServer: (value: unknown) => ({
-      packs: (value as ForjaPayload | undefined)?.packs ?? [],
-      onboarded: (value as ForjaPayload | undefined)?.onboarded,
-    }),
+    mapServer: forjaFromServer,
     makeEmpty: emptyForjaPayload,
     save: forja.save,
   })
 
-  const availableIds = availableFeatureTabIds({
-    addonFeatureIptv: playDraft.draft.addon_feature_iptv,
-    packs: packsDraft.draft.packs,
-  })
-  const availableIdsRef = useRef(availableIds)
-  availableIdsRef.current = availableIds
+  const forjaReady = Boolean(forja.data) && !forja.isLoading
+  const packs = packsDraft.draft.packs
+  const packsKey = useMemo(
+    () =>
+      packs
+        .map((p) => `${p.manifestUrl}|${p.enabled !== false ? 1 : 0}`)
+        .sort()
+        .join('\n'),
+    [packs],
+  )
 
-  const navDraft = useCommitDraft({
-    profileId: navigation.profileId,
-    updatedAt: navigation.data?.updated_at,
-    isReady: Boolean(navigation.data) && !navigation.isLoading,
-    serverValue: navigation.data?.payload,
-    mapServer: navFromServer,
-    makeEmpty: emptyNavDraft,
-    save: navigation.save,
-    toPayload: (draft) => navToPayload(draft, availableIdsRef.current),
-  })
+  useEffect(() => {
+    if (!forjaReady) {
+      setPackLoading(true)
+      setPackBuckets([])
+      return
+    }
 
-  const busy =
-    hostBusy ||
-    playDraft.controlsLocked ||
-    playDraft.isSaving ||
-    navDraft.controlsLocked ||
-    navDraft.isSaving ||
-    packsDraft.controlsLocked
+    let cancelled = false
+    // Sync seed from URLs so IPTV Portals appears even when manifest fetch fails
+    // (Flutter often syncs local `/Users/…/hubs/iptv/manifest.json` paths).
+    const seeded = packAddonBucketsFromUrls(packs)
+    setPackBuckets(seeded)
+    setPackLoading(seeded.length === 0)
+
+    void (async () => {
+      try {
+        const buckets = await discoverPackAddonBuckets(packs)
+        if (!cancelled) setPackBuckets(buckets)
+      } catch {
+        if (!cancelled) setPackBuckets(seeded)
+      } finally {
+        if (!cancelled) setPackLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [packsKey, packs, forjaReady])
+
+  const busy = playDraft.controlsLocked || playDraft.isSaving
 
   const setPlayBool = (key: keyof PreferencesPayload, value: boolean) => {
     void playDraft.commit((prev) => ({ ...prev, [key]: value }))
   }
 
-  /** IPTV: unlock + default Features rail. */
-  const setIptvAddon = (on: boolean) => {
-    void (async () => {
-      const prevPlay = playDraft.draft
-      const prevNav = navDraft.draft
-      const nextPlayback: PreferencesPayload = {
-        ...prevPlay,
-        addon_feature_iptv: on,
-        ...(on ? {} : { iptv_epg_enabled: false }),
-      }
-      const nextAvailable = availableFeatureTabIds({
-        addonFeatureIptv: nextPlayback.addon_feature_iptv,
-        packs: packsDraft.draft.packs,
-      })
-
-      let nextNav = pruneNavigationToAvailable(
-        {
-          visibleIds: [...prevNav.visible],
-          tabOrder: prevNav.order,
-          defaultTab: prevNav.defaultTab,
-        },
-        nextAvailable,
-      )
-      const visible = new Set(nextNav.visibleIds)
-      if (on) visible.add('iptv')
-      else visible.delete('iptv')
-      const order = nextNav.tabOrder.includes('iptv')
-        ? nextNav.tabOrder
-        : on
-          ? [...nextNav.tabOrder, 'iptv']
-          : nextNav.tabOrder
-      nextNav = pruneNavigationToAvailable(
-        {
-          visibleIds: order.filter((id) => visible.has(id)),
-          tabOrder: order,
-          defaultTab: nextNav.defaultTab,
-        },
-        nextAvailable,
-      )
-
-      playDraft.setDraft(nextPlayback)
-      navDraft.setDraft({
-        order: nextNav.tabOrder,
-        visible: new Set(nextNav.visibleIds),
-        defaultTab: nextNav.defaultTab,
-      })
-      availableIdsRef.current = nextAvailable
-
-      setHostBusy(true)
-      setHostError(null)
-      try {
-        await settings.patch({
-          playback: nextPlayback,
-          navigation: nextNav,
-        })
-        setHostFlash(true)
-        window.setTimeout(() => setHostFlash(false), 2000)
-      } catch (e) {
-        playDraft.setDraft(prevPlay)
-        navDraft.setDraft(prevNav)
-        setHostError(e instanceof Error ? e : new Error('Save failed'))
-      } finally {
-        setHostBusy(false)
-      }
-    })()
-  }
-
-  const footerSaving = hostBusy || playDraft.isSaving || navDraft.isSaving
-  const footerFlash = hostFlash || playDraft.savedFlash || navDraft.savedFlash
-  const footerError =
-    hostError ?? playDraft.saveError ?? navDraft.saveError
-
   return (
     <AccountSettingsShell
       title="Addons"
-      description="Host product surfaces — same list as Settings → Addons in the app. Switches activate each addon; open a row to configure. Live Sports and other hubs are Forja Packs (app downloads scripts), then show under Features."
+      description="Same list as Settings → Addons in the app. Host surfaces below; pack settings rows appear when those packs are enabled on this profile."
       footer={
         <SettingsAutosaveFooter
-          isSaving={footerSaving}
-          savedFlash={footerFlash}
-          error={footerError}
+          isSaving={playDraft.isSaving}
+          savedFlash={playDraft.savedFlash}
+          error={playDraft.saveError}
         />
       }
     >
       <SettingsSection
         label="Built-in addons"
-        description="Always listed. Packs do not add rows here — they contribute settings under Forja Packs or hub tabs under Features."
+        description="Playback, Direct torrent, Stremio, and Nuvio. Connected services and LAN stay in the app."
       >
         <AddonRow
           title="Playback"
-          description="Quality, audio, auto-play, web streaming"
+          description="Quality, audio, auto-play"
           hasToggle={false}
           href="/account/settings/playback"
           disabled={busy}
         />
         <AddonRow
-          title="IPTV"
-          description="Xtream portals, EPG, live quality"
-          checked={playDraft.draft.addon_feature_iptv === true}
-          onCheckedChange={(v) => setIptvAddon(v)}
-          href="/account/settings/iptv"
-          hrefLabel="Portals"
-          disabled={busy}
-        />
-        <AddonRow
           title="Direct torrent"
-          description="Torrent indexer packs, Jackett / Prowlarr in the app"
+          description="Jackett, Prowlarr, torrent engine"
           checked={playDraft.draft.play_source_torrent_enabled ?? true}
           onCheckedChange={(v) => setPlayBool('play_source_torrent_enabled', v)}
           href="/account/settings/torrent"
@@ -327,7 +225,7 @@ export function AccountSettingsAddonsPage() {
         />
         <AddonRow
           title="Stremio"
-          description="Install and manage Stremio addon URLs"
+          description="Stremio addons"
           checked={playDraft.draft.play_source_stremio_enabled ?? true}
           onCheckedChange={(v) => setPlayBool('play_source_stremio_enabled', v)}
           href="/account/settings/stremio"
@@ -336,19 +234,54 @@ export function AccountSettingsAddonsPage() {
         />
         <AddonRow
           title="Nuvio"
-          description="Install and manage Nuvio scraper manifests"
+          description="Nuvio scrapers"
           checked={playDraft.draft.play_source_nuvio_enabled ?? true}
           onCheckedChange={(v) => setPlayBool('play_source_nuvio_enabled', v)}
           href="/account/settings/nuvio"
           hrefLabel="Scrapers"
           disabled={busy}
         />
-        <p className="px-0.5 pb-2 pt-4 text-xs text-forja-muted">
-          Debrid, Connected services, and LAN stay in the app. Live Sports and
-          other hub packs are added under Forja Packs on this profile; the app
-          downloads and installs them.
-        </p>
       </SettingsSection>
+
+      <SettingsSection
+        label="Pack settings"
+        description="Discovered from enabled Forja Packs on this profile (same as the app). Install packs under Forja Packs."
+      >
+        {packLoading ? (
+          <p className="px-0.5 py-2 text-sm text-forja-muted">
+            Loading pack settings…
+          </p>
+        ) : packBuckets.length === 0 ? (
+          <p className="px-0.5 py-2 text-sm text-forja-muted">
+            No pack settings yet. Enable IPTV, Live Sports, My List, Debrid, or
+            other packs with Addon settings under{' '}
+            <Link
+              to="/account/settings/forja"
+              className="text-forja-green hover:underline"
+            >
+              Forja Packs
+            </Link>
+            .
+          </p>
+        ) : (
+          packBuckets.map((bucket) => (
+            <AddonRow
+              key={bucket.id}
+              title={bucket.title}
+              description={bucket.subtitle}
+              hasToggle={false}
+              href={bucket.href}
+              hrefLabel={bucket.id === 'iptv' ? 'Portals' : 'Settings'}
+            />
+          ))
+        )}
+      </SettingsSection>
+
+      <p className="px-0.5 pb-2 text-xs text-forja-muted">
+        Debrid API keys, Connected services (Simkl), and LAN stay in the app.
+        Non-secret pack settings (Live Sports Setup, My List open hubs, …) sync
+        with your devices.
+      </p>
     </AccountSettingsShell>
   )
 }

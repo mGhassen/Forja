@@ -25,4 +25,19 @@ void main() {
     expect(m['error'], 'cancelled');
   });
 
+  test('iptvCatalog job returns JSON off UI path', () async {
+    final raw = await EngineJobs.run(
+      EngineAsyncJob.iptvCatalog,
+      {
+        'requestJson': jsonEncode({
+          'action': 'has_shelf',
+          'portal_hash': 'parity-test',
+          'section': 'live',
+        }),
+      },
+    ).timeout(const Duration(seconds: 10));
+    final m = jsonDecode(raw) as Map<String, dynamic>;
+    // DB may be closed in unit tests — still must not hang / throw.
+    expect(m.containsKey('has') || m.containsKey('error'), isTrue);
+  });
 }

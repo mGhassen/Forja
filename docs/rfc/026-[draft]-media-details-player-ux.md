@@ -1,7 +1,7 @@
 # RFC-026: Media details & player UX redesign
 
 **Status:** partial  
-**Depends on:** [RFC-019](019-[draft]-god-file-decomposition.md) (details + player splits), [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) (flat shell tokens)  
+**Depends on:** [RFC-019](fixed/019-[fixed]-god-file-decomposition.md) (details + player splits), [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) (flat shell tokens)  
 **Area:** `features/media/`, `shared/player/`
 
 ## Status at a glance
@@ -107,7 +107,7 @@
 
 ## Summary
 
-Full UX redesign of media details (torrent + streaming) and the unified player. Structural cleanup ([RFC-019](019-[draft]-god-file-decomposition.md) splits, [RFC-020](020-[draft]-media-details-routing.md) module move) is a **prerequisite**, not optional. Visual language extends the shipped [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) flat cinematic shell into details and player — no frosted glass, no ambient glows.
+Full UX redesign of media details (torrent + streaming) and the unified player. Structural cleanup ([RFC-019](fixed/019-[fixed]-god-file-decomposition.md) splits, [RFC-020](020-[draft]-media-details-routing.md) module move) is a **prerequisite**, not optional. Visual language extends the shipped [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) flat cinematic shell into details and player — no frosted glass, no ambient glows.
 
 ## Problem
 
@@ -202,4 +202,4 @@ flowchart LR
 
 ## Related
 
-[RFC-019](019-[draft]-god-file-decomposition.md), [RFC-020](020-[draft]-media-details-routing.md), [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md), [Issue 018](../issues/018-[draft]-migration-playback-parity-unverified.md)
+[RFC-019](fixed/019-[fixed]-god-file-decomposition.md), [RFC-020](020-[draft]-media-details-routing.md), [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md), [Issue 018](../issues/018-[draft]-migration-playback-parity-unverified.md)

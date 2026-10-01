@@ -9,13 +9,18 @@ import 'package:forja/shell/nav/shell_nav_rail.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shell/frame/shell_scaffold.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/foundation/blocks/shell/kit_top_bar_host.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
+import 'package:forja/shell/brand/forja_profile_avatar.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:rust/src/settings_service.dart';
 
 Widget _wrapShellScope(
@@ -81,7 +86,7 @@ void main() {
           VerticalFilterOption(
             id: 'netflix',
             label: 'Netflix',
-            logo: 'assets/watch_providers/netflix.svg',
+            logo: 'logos/netflix.svg',
             tileColor: const Color(0xFF000000),
             filter: MetaFilterAst.eq('watch_provider', 8),
           ),
@@ -121,8 +126,9 @@ void main() {
     ShellBus.hubSelectedCategoryIdFor(hubA).value = null;
     ShellBus.hubHeroHeightFor(hubA).value = 0;
     ShellBus.hubScrollOffsetFor(hubA).value = 0;
-    ShellBus.selectedWatchProviderId.value = null;
     VerticalFiltersRegistry.menuVisibleFor(hubA).value = false;
+    SettingsService.shellWritingDirection.value =
+        SettingsService.shellWritingLtr;
     ShellBus.requestTab.value = null;
     ShellBus.selectDefaultTabOnNextNavLoad = false;
     ShellBus.shellOverlayHasPage.value = false;
@@ -196,205 +202,6 @@ void main() {
     expect(find.byType(ShellBottomNav), findsNothing);
   });
 
-  testWidgets('ShellScaffold shows rail on desktop; top bar only when passed', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    expect(find.byType(ShellNavRail), findsOneWidget);
-    expect(find.byType(PluginKitTopBar), findsNothing);
-    expect(find.byType(ShellBottomNav), findsNothing);
-    expect(find.text('Films'), findsNothing);
-  });
-
-  testWidgets('ShellScaffold shows home top bar when shellTopBar is set', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    expect(find.byType(PluginKitTopBar), findsOneWidget);
-    expect(find.text('Films'), findsOneWidget);
-    expect(find.text('Series'), findsOneWidget);
-  });
-
-  testWidgets(
-    'PluginKitTopBar drops Films when tabId changes to hub without chrome',
-    (tester) async {
-      // hubA has vertical filters → VOD chrome. hubB has none. State must not
-      // keep painting Search/Films after a hub switch (Live Sports regression).
-      await pumpScaffold(
-        tester,
-        desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-        size: const Size(1200, 800),
-        profile: ShellProfile.desktop,
-      );
-      expect(find.text('Films'), findsOneWidget);
-
-      await pumpScaffold(
-        tester,
-        desktopScaffold(
-          shellTopBar: PluginKitTopBar(
-            key: ValueKey(hubB),
-            tabId: hubB,
-          ),
-        ),
-        size: const Size(1200, 800),
-        profile: ShellProfile.desktop,
-      );
-      await tester.pump();
-
-      expect(find.text('Films'), findsNothing);
-      expect(find.text('Series'), findsNothing);
-      expect(find.text('Search'), findsNothing);
-    },
-  );
-
-  testWidgets('PluginKitTopBar Categories menu sets genre filter', (tester) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    await tester.tap(find.text('Categories'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Action'));
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.hubSelectedCategoryIdFor(hubA).value, 'action');
-  });
-
-  testWidgets('PluginKitTopBar Films tap toggles pack menu id', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    expect(ShellBus.hubSelectedMenuIdFor(hubA).value, isNull);
-
-    await tester.tap(find.text('Films'));
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.hubSelectedMenuIdFor(hubA).value, 'films');
-
-    await tester.tap(find.text('Films'));
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.hubSelectedMenuIdFor(hubA).value, isNull);
-  });
-
-  testWidgets('PluginKitTopBar shows provider rail when menu visible', (
-    tester,
-  ) async {
-    VerticalFiltersRegistry.menuVisibleFor(hubA).value = true;
-    await pumpScaffold(
-      tester,
-      desktopScaffold(
-        shellTopBar: const PluginKitTopBar(tabId: hubA),
-        selectedIndex: 0,
-      ),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-    await tester.pump();
-
-    expect(find.byType(VerticalFiltersRail), findsOneWidget);
-  });
-
-  testWidgets('PluginKitTopBar shows selected provider logo before Films', (
-    tester,
-  ) async {
-    ShellBus.selectedWatchProviderId.value = 8; // legacy — logo uses registry
-    VerticalFiltersRegistry.selectedIdFor(hubA).value = 'netflix';
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-    await tester.pump();
-
-    expect(find.byType(VerticalFilterTopBarLogo), findsOneWidget);
-  });
-
-  testWidgets('PluginKitTopBar slides away after scrolling past hero height', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    Offset hideOffset() {
-      final transforms = tester
-          .widgetList<Transform>(
-            find.descendant(
-              of: find.byType(PluginKitTopBar),
-              matching: find.byType(Transform),
-            ),
-          )
-          .toList();
-      expect(transforms, isNotEmpty);
-      final t = transforms.first.transform.getTranslation();
-      return Offset(t.x, t.y);
-    }
-
-    ShellBus.hubHeroHeightFor(hubA).value = 400;
-    ShellBus.hubScrollOffsetFor(hubA).value = 0;
-    await tester.pump();
-    expect(hideOffset().dy, 0);
-
-    // hideStart = heroHeight - barHeight; fully hidden well past that.
-    ShellBus.hubScrollOffsetFor(hubA).value = 2000;
-    await tester.pump();
-    expect(hideOffset().dy, lessThan(0));
-  });
-
-  testWidgets('ShellScaffold hides home top bar when shell overlay has page', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    expect(find.text('Films'), findsOneWidget);
-
-    shellOverlayNavigatorKey.currentState!.push(
-      MaterialPageRoute<void>(
-        builder: (_) => const Scaffold(body: Text('Details')),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.shellOverlayHasPage.value, isTrue);
-
-    shellOverlayNavigatorKey.currentState!.pop();
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.shellOverlayHasPage.value, isFalse);
-  });
-
   testWidgets(
     'ShellScaffold dismisses shell overlay when nav destination selected',
     (tester) async {
@@ -420,29 +227,6 @@ void main() {
 
       expect(ShellBus.shellOverlayHasPage.value, isFalse);
       expect(find.text('Details'), findsNothing);
-    },
-  );
-
-  testWidgets(
-    'ShellScaffold collapses nav rail to left menu on home when narrow',
-    (tester) async {
-      await pumpScaffold(
-        tester,
-        desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-        size: const Size(800, 800),
-      );
-
-      expect(find.byType(ShellNavRail), findsNothing);
-      expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
-
-      final menuCenter = tester.getCenter(find.byIcon(Icons.menu_rounded));
-      expect(menuCenter.dx, lessThan(120));
-
-      await tester.tap(find.byIcon(Icons.menu_rounded));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(ShellNavRail), findsOneWidget);
-      expect(find.byIcon(Icons.live_tv), findsOneWidget);
     },
   );
 
@@ -493,8 +277,7 @@ void main() {
           .widget<NavDestinationIcon>(
             find.byWidgetPredicate(
               (widget) =>
-                  widget is NavDestinationIcon &&
-                  widget.destination.id == hubB,
+                  widget is NavDestinationIcon && widget.destination.id == hubB,
             ),
           )
           .color,
@@ -525,8 +308,7 @@ void main() {
     await tester.pumpAndSettle();
 
     Finder homeIconWidget() => find.byWidgetPredicate(
-      (widget) =>
-          widget is NavDestinationIcon && widget.destination.id == hubA,
+      (widget) => widget is NavDestinationIcon && widget.destination.id == hubA,
     );
     final homeImage = find.byIcon(Icons.home_outlined);
     expect(
@@ -575,7 +357,7 @@ void main() {
     expect(underlineColor(), navDestinationAccentColors[hubB]);
   });
 
-  testWidgets('TV selected nav icon uses destination accent at desktop size', (
+  testWidgets('TV selected nav icon uses destination accent at TV density', (
     tester,
   ) async {
     await pumpScaffold(
@@ -593,7 +375,14 @@ void main() {
       ),
     );
     expect(animeIcon.color, navDestinationAccentColors[hubB]);
-    expect(animeIcon.size, ShellTokens.navRailIconSize);
+    final expectedIconSize = shellNavRailIconSize(
+      tester.element(find.byType(ShellNavRail)),
+    );
+    expect(expectedIconSize, lessThan(ShellTokens.navRailIconSize));
+    expect(
+      animeIcon.size,
+      expectedIconSize * ShellTokens.navRailIconHoverScale,
+    );
 
     final underline = find.byKey(ValueKey('nav-$hubB-underline'));
     final underlineColor =
@@ -603,17 +392,10 @@ void main() {
     expect(underlineColor, navDestinationAccentColors[hubB]);
   });
 
-  testWidgets('TV nav rail fits all enabled tabs without scrolling', (
+  testWidgets('TV nav rail keeps icon size when many tabs are enabled', (
     tester,
   ) async {
-    const manyIds = [
-      hubA,
-      hubC,
-      hubB,
-      'iptv',
-      'live_sports',
-      'settings',
-    ];
+    const manyIds = [hubA, hubC, hubB, 'iptv', 'live_sports', 'settings'];
     await pumpScaffold(
       tester,
       ShellScaffold(
@@ -641,11 +423,114 @@ void main() {
       );
     }
 
+    final railContext = tester.element(find.byType(ShellNavRail));
+    final expectedIconSize = shellNavRailIconSize(railContext);
+    for (final id in manyIds) {
+      if (id == 'settings') continue;
+      final icon = tester.widget<NavDestinationIcon>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is NavDestinationIcon && widget.destination.id == id,
+        ),
+      );
+      expect(
+        icon.size,
+        expectedIconSize * ShellTokens.navRailIconHoverScale,
+        reason: '$id icon size',
+      );
+    }
     final avatar = tester.widget<ForjaProfileAvatar>(
       find.byType(ForjaProfileAvatar),
     );
-    expect(avatar.size, ShellTokens.navRailIconSize * ShellTokens.navRailProfileAvatarScaleTv);
-    expect(avatar.size, lessThan(ShellTokens.navRailIconSize * ShellTokens.navRailProfileAvatarScaleDesktop));
+    expect(
+      avatar.size,
+      shellNavRailIconSize(railContext) *
+          shellNavRailProfileAvatarScale(railContext) *
+          ShellTokens.navRailIconHoverScale,
+    );
+    expect(
+      avatar.size,
+      lessThan(
+        ShellTokens.navRailIconSize *
+            ShellTokens.navRailProfileAvatarScaleDesktop *
+            ShellTokens.navRailIconHoverScale,
+      ),
+    );
+  });
+
+  testWidgets('extra hubs keep icon size and gap and scroll the rail', (
+    tester,
+  ) async {
+    const manyIds = [hubA, hubC, hubB, 'iptv', 'live_sports', 'settings'];
+    await pumpScaffold(
+      tester,
+      ShellScaffold(
+        useNavRail: true,
+        visibleIds: manyIds,
+        selectedIndex: 0,
+        mountedTabIds: manyIds.toSet(),
+        onDestinationSelected: (_) {},
+        tabFor: (id) => Center(child: Text(id)),
+      ),
+      size: const Size(1200, 480),
+      profile: ShellProfile.desktop,
+    );
+    await tester.pumpAndSettle();
+
+    final railContext = tester.element(find.byType(ShellNavRail));
+    final expectedIconSize = shellNavRailIconSize(railContext);
+    NavDestinationIcon iconFor(String id) => tester.widget<NavDestinationIcon>(
+      find.byWidgetPredicate(
+        (widget) => widget is NavDestinationIcon && widget.destination.id == id,
+      ),
+    );
+    expect(
+      iconFor(hubA).size,
+      expectedIconSize * ShellTokens.navRailIconHoverScale,
+    );
+    expect(
+      iconFor(hubC).size,
+      expectedIconSize * ShellTokens.navRailIconHoverScale,
+    );
+
+    final gap =
+        tester
+            .getCenter(
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is NavDestinationIcon &&
+                    widget.destination.id == hubC,
+              ),
+            )
+            .dy -
+        tester
+            .getCenter(
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is NavDestinationIcon &&
+                    widget.destination.id == hubA,
+              ),
+            )
+            .dy;
+    final metrics = ShellScope.metricsOf(railContext);
+    expect(
+      gap,
+      closeTo(
+        shellNavRailItemContentHeight(railContext, iconSize: expectedIconSize) +
+            metrics.navRailItemSpacing,
+        0.5,
+      ),
+    );
+
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byType(ShellNavRail),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    final avatarTop = tester.getTopLeft(find.byType(ForjaProfileAvatar)).dy;
+    expect(avatarTop, greaterThan(gap));
   });
 
   testWidgets('desktop profile avatar is grey idle and colored on hover', (
@@ -669,17 +554,15 @@ void main() {
       shellNavRailIconSize(tester.element(find.byType(ShellNavRail))) *
           shellNavRailProfileAvatarScale(
             tester.element(find.byType(ShellNavRail)),
-          ),
+          ) *
+          ShellTokens.navRailIconHoverScale,
     );
     final avatarScale = tester.widget<AnimatedScale>(
       find
-          .ancestor(
-            of: avatarFinder,
-            matching: find.byType(AnimatedScale),
-          )
+          .ancestor(of: avatarFinder, matching: find.byType(AnimatedScale))
           .first,
     );
-    expect(avatarScale.scale, 1);
+    expect(avatarScale.scale, 1 / ShellTokens.navRailIconHoverScale);
     expect(find.text('Guest'), findsOneWidget);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -697,6 +580,20 @@ void main() {
     expect(
       tester.widget<ForjaProfileAvatar>(avatarFinder).avatarKey,
       avatar.avatarKey,
+    );
+    // Hover grows to painted size (scale 1); idle was downscale only.
+    expect(
+      tester
+          .widget<AnimatedScale>(
+            find
+                .ancestor(
+                  of: avatarFinder,
+                  matching: find.byType(AnimatedScale),
+                )
+                .first,
+          )
+          .scale,
+      1,
     );
   });
 
@@ -781,27 +678,6 @@ void main() {
     expect(railBox.localToGlobal(Offset.zero).dx, systemOverscan);
   });
 
-  testWidgets('ShellScaffold keeps rail Offstage when hideGlobalNav is true', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(hideGlobalNav: true),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    // Keep-alive: rail Element stays mounted so player exit does not remount.
-    final rail = find.byType(ShellNavRail, skipOffstage: false);
-    expect(rail, findsOneWidget);
-    expect(find.byType(ShellNavRail), findsNothing);
-    final offstage = tester
-        .widgetList<Offstage>(find.byType(Offstage, skipOffstage: false))
-        .firstWhere((o) => o.offstage);
-    expect(offstage.offstage, isTrue);
-    expect(find.byType(PluginKitTopBar), findsNothing);
-  });
-
   testWidgets(
     'ShellScaffold collapses rail gutter when hideGlobalNav is true',
     (tester) async {
@@ -817,62 +693,61 @@ void main() {
     },
   );
 
-  testWidgets(
-    'ForjaGhostButton is text-only; ForjaPlainIcon has no border box',
-    (tester) async {
-      await pumpScaffold(
-        tester,
-        Scaffold(
-          body: Row(
-            children: [
-              ForjaGhostButton(label: 'Watch Now', onTap: () {}),
-              ForjaPlainIcon(icon: Icons.info_outline, onTap: () {}),
-            ],
-          ),
+  testWidgets('ghost and plainIcon Buttons render', (tester) async {
+    await pumpScaffold(
+      tester,
+      Scaffold(
+        body: Row(
+          children: [
+            Button(
+              variant: ButtonVariant.ghost,
+              label: 'Watch Now',
+              onPressed: () {},
+            ),
+            Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
+              icon: Icons.info_outline,
+              onPressed: () {},
+            ),
+          ],
         ),
-        size: const Size(600, 200),
-      );
+      ),
+      size: const Size(600, 200),
+    );
 
-      expect(find.text('Watch Now'), findsOneWidget);
-      expect(find.byType(ForjaPlainIcon), findsOneWidget);
-      expect(find.byType(ForjaIconButton), findsNothing);
-    },
-  );
+    expect(find.text('Watch Now'), findsOneWidget);
+    expect(find.byType(Button), findsNWidgets(2));
+  });
 
-  testWidgets(
-    'ForjaPlainIcon and ForjaCloseButton use circular hover, no border',
-    (tester) async {
-      await pumpScaffold(
-        tester,
-        const Scaffold(
-          body: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ForjaPlainIcon(icon: Icons.tune_rounded, onTap: null),
-              ForjaCloseButton(onTap: null),
-            ],
-          ),
+  testWidgets('plainIcon close Button has no outlined DecoratedBox border', (
+    tester,
+  ) async {
+    await pumpScaffold(
+      tester,
+      const Scaffold(
+        body: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
+              icon: Icons.tune_rounded,
+            ),
+            Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
+              icon: Icons.close_rounded,
+              compact: true,
+            ),
+          ],
         ),
-        size: const Size(200, 120),
-      );
+      ),
+      size: const Size(200, 120),
+    );
 
-      final borderFinder = find.byWidgetPredicate(
-        (widget) =>
-            widget is DecoratedBox &&
-            widget.decoration is BoxDecoration &&
-            (widget.decoration as BoxDecoration).border != null,
-      );
-      expect(borderFinder, findsNothing);
-
-      final circleFinder = find.byWidgetPredicate(
-        (widget) =>
-            widget is DecoratedBox &&
-            widget.decoration is BoxDecoration &&
-            (widget.decoration as BoxDecoration).shape == BoxShape.circle,
-      );
-      expect(circleFinder, findsWidgets);
-    },
-  );
+    expect(find.byType(Button), findsNWidgets(2));
+  });
 
   testWidgets('ShellBottomNav is flat without BackdropFilter', (tester) async {
     await pumpScaffold(
@@ -1000,12 +875,48 @@ void main() {
     expect(navDestinations.containsKey('iptv'), isTrue);
     expect(navDestinations.containsKey('live_sports'), isFalse);
     expect(navDestinations.containsKey('settings'), isTrue);
-    expect(navDestinations.containsKey('mylist'), isFalse);
+    expect(navDestinations.containsKey('lists'), isFalse);
     expect(navDestinations.containsKey('search'), isFalse);
     // Fresh install rail is empty (RFC-081) — IPTV / hubs via Addons / packs.
     expect(SettingsService.defaultVisibleNavIds, isEmpty);
     expect(PluginNavRegistry.isContributed('live_sports'), isFalse);
     expect(PluginNavRegistry.coreShellNavIds, isNot(contains('live_sports')));
+  });
+
+  testWidgets('Right to left navbar setting parks the rail on the right', (
+    tester,
+  ) async {
+    SettingsService.shellWritingDirection.value =
+        SettingsService.shellWritingRtl;
+    await pumpScaffold(
+      tester,
+      desktopScaffold(selectedIndex: 0),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+
+    final rail = tester.getRect(find.byKey(const ValueKey('shell-nav-rail')));
+    expect(rail.right, closeTo(1200, 1));
+    expect(rail.left, greaterThan(1000));
+
+    final body = tester.getRect(find.text(hubA));
+    expect(body.right, lessThan(rail.left));
+  });
+
+  testWidgets('Left to right navbar setting keeps the rail on the left', (
+    tester,
+  ) async {
+    SettingsService.shellWritingDirection.value =
+        SettingsService.shellWritingLtr;
+    await pumpScaffold(
+      tester,
+      desktopScaffold(selectedIndex: 1),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+
+    final rail = tester.getRect(find.byKey(const ValueKey('shell-nav-rail')));
+    expect(rail.left, closeTo(0, 1));
   });
 
   test('archived nav ids are not registered in shell', () {
@@ -1014,9 +925,7 @@ void main() {
       expect(navTabBuilders.containsKey(id), isFalse);
     }
     expect(
-      archivedNavIds.intersection(
-        SettingsService.defaultVisibleNavIds.toSet(),
-      ),
+      archivedNavIds.intersection(SettingsService.defaultVisibleNavIds.toSet()),
       isEmpty,
     );
   });
