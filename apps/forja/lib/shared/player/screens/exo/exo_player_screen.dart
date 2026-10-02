@@ -739,8 +739,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           _durationNotifier.value = _duration;
         }
         _buffered = Duration(milliseconds: bufMs);
+        final chipAppeared = nearEnd && !_nearEndOfEpisode;
         _nearEndOfEpisode = nearEnd;
         if (needsRepaint) setState(() {});
+        // Auto-next starts the moment the Next Episode chip appears.
+        if (chipAppeared &&
+            _isPlaying &&
+            SettingsService.autoNextEpisodeNotifier.value &&
+            !_loadingNextEp) {
+          unawaited(_nextEpisode());
+        }
         break;
       case 'ended':
         _isPlaying = false;

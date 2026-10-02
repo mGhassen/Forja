@@ -1415,6 +1415,14 @@ mixin _DesktopPlayerPlayback
         final nearEnd = isNearEndOfEpisode(uiPos, _s._durationNotifier.value);
         if (nearEnd != _s._nearEndOfEpisode) {
           setState(() => _s._nearEndOfEpisode = nearEnd);
+          // Auto-next starts the moment the Next Episode chip appears.
+          if (nearEnd &&
+              _s._player.state.playing &&
+              SettingsService.autoNextEpisodeNotifier.value &&
+              !_s._loopEnabled &&
+              !_s._isLoadingNextEp) {
+            unawaited(_s._nextEpisode());
+          }
         }
       } else if (_s._nearEndOfEpisode) {
         setState(() => _s._nearEndOfEpisode = false);
