@@ -140,7 +140,7 @@ mixin _DesktopPlayerEpisodes
   double get _torrentStatsLift => 0;
 
   /// Call inside setState when the Next Episode chip shows or hides. Auto next
-  /// arms the 3-2-1 ring; leaving the window clears the X for the next pass.
+  /// arms the countdown ring; leaving the window clears the X for the next pass.
   void _onNearEndChanged(bool nearEnd) {
     if (!nearEnd) {
       _s._autoNextCountdown = false;
@@ -1431,6 +1431,15 @@ mixin _DesktopPlayerEpisodes
                   value: SettingsService.autoSkipIntroNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoSkipIntro(on);
+                    setPage(() {});
+                  },
+                ),
+                const SizedBox(height: 12),
+                PlayerPopupToggleRow(
+                  label: 'Auto next episode',
+                  value: SettingsService.autoNextEpisodeNotifier.value,
+                  onChanged: (on) async {
+                    await SettingsService().setAutoNextEpisode(on);
                     setPage(() {});
                   },
                 ),

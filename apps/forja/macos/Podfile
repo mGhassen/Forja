@@ -42,6 +42,11 @@ post_install do |installer|
       # Flutter/Xcode may bump a pod above the app. Keep every pod on macOS 11
       # so Intel Macs that stop at Big Sur can still launch.
       config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
+      # flutter_inappwebview_macos 1.1.2 (latest) ships Swift deprecation and
+      # lint warnings we cannot patch. Silence that pod only.
+      if target.name == 'flutter_inappwebview_macos'
+        config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
+      end
     end
   end
 end

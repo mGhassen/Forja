@@ -444,6 +444,15 @@ abstract final class ExoPlayerMenus {
                     ),
                     const SizedBox(height: 12),
                     PlayerPopupToggleRow(
+                      label: 'Auto next episode',
+                      value: SettingsService.autoNextEpisodeNotifier.value,
+                      onChanged: (on) async {
+                        await SettingsService().setAutoNextEpisode(on);
+                        setPage(() {});
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    PlayerPopupToggleRow(
                       label: 'Content warnings',
                       value: SettingsService.contentWarningsNotifier.value,
                       onChanged: (on) async {

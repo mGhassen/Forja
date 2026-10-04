@@ -10,9 +10,10 @@ const String kPlayerUpNextFocusLabel = 'player-up-next';
 
 /// Floating Next Episode chip.
 ///
-/// With [countdown], a 3-2-1 ring runs, then [onCountdownComplete] fires.
+/// With [countdown], a 10-second ring runs, then [onCountdownComplete] fires.
 /// The X inside the chip calls [onCancel]. The ring holds while
-/// [countdownPaused]. D-pad → from the chip lands on the X; ← goes back.
+/// [countdownPaused], while hovered, and while the user has focus on it.
+/// D-pad → from the chip lands on the X; ← goes back.
 class PlayerNextEpisodeChip extends StatefulWidget {
   const PlayerNextEpisodeChip({
     super.key,
@@ -25,9 +26,10 @@ class PlayerNextEpisodeChip extends StatefulWidget {
     this.tvFocusable = false,
     this.onArrowUp,
     this.onArrowDown,
+    this.pauseOnFocus = true,
   });
 
-  static const Duration countdownDuration = Duration(seconds: 3);
+  static const Duration countdownDuration = Duration(seconds: 10);
 
   final VoidCallback onPressed;
   final bool countdown;
@@ -39,6 +41,9 @@ class PlayerNextEpisodeChip extends StatefulWidget {
   /// D-pad ↑ / ↓ from the chip. Return true when focus moved.
   final bool Function()? onArrowUp;
   final bool Function()? onArrowDown;
+  /// False when the host moved focus here on its own (TV chip appearing) —
+  /// that focus must not hold the countdown until the user presses a key.
+  final bool pauseOnFocus;
 
   @override
   State<PlayerNextEpisodeChip> createState() => _PlayerNextEpisodeChipState();
@@ -56,6 +61,15 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
   final ValueNotifier<bool> _cancelHovered = ValueNotifier(false);
   bool _mainFocused = false;
   bool _cancelFocused = false;
+  /// User pressed a key on the chip since the countdown started.
+  bool _userNavigated = false;
+
+  /// Hover or user focus holds the countdown.
+  bool get _heldByUser =>
+      _mainHovered.value ||
+      _cancelHovered.value ||
+      _cancelFocused ||
+      (_mainFocused && (widget.pauseOnFocus || _userNavigated));
 
   FocusNode get _mainNode =>
       widget.focusNode ??
@@ -66,14 +80,19 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
   @override
   void initState() {
     super.initState();
+    _mainHovered.addListener(_onHoldChanged);
+    _cancelHovered.addListener(_onHoldChanged);
     _syncRing(restart: widget.countdown);
   }
+
+  void _onHoldChanged() => _syncRing(restart: false);
 
   @override
   void didUpdateWidget(covariant PlayerNextEpisodeChip oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.countdown != widget.countdown ||
-        oldWidget.countdownPaused != widget.countdownPaused) {
+        oldWidget.countdownPaused != widget.countdownPaused ||
+        oldWidget.pauseOnFocus != widget.pauseOnFocus) {
       _syncRing(restart: widget.countdown && !oldWidget.countdown);
     }
     if (!_showCancel && _cancelNode.hasFocus && _mainNode.canRequestFocus) {
@@ -88,8 +107,11 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
         ..value = 0;
       return;
     }
-    if (restart) _ring.value = 0;
-    if (widget.countdownPaused) {
+    if (restart) {
+      _ring.value = 0;
+      _userNavigated = false;
+    }
+    if (widget.countdownPaused || _heldByUser) {
       _ring.stop();
     } else if (!_ring.isAnimating) {
       _ring.forward();
@@ -119,8 +141,15 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
     return KeyEventResult.ignored;
   }
 
+  void _noteUserKey() {
+    if (_userNavigated) return;
+    _userNavigated = true;
+    _syncRing(restart: false);
+  }
+
   KeyEventResult _onMainKey(FocusNode node, KeyEvent event) {
     if (event is KeyUpEvent) return KeyEventResult.ignored;
+    _noteUserKey();
     if (_onVertical(event) == KeyEventResult.handled) {
       return KeyEventResult.handled;
     }
@@ -133,6 +162,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
 
   KeyEventResult _onCancelKey(FocusNode node, KeyEvent event) {
     if (event is KeyUpEvent) return KeyEventResult.ignored;
+    _noteUserKey();
     if (_onVertical(event) == KeyEventResult.handled) {
       return KeyEventResult.handled;
     }
@@ -185,8 +215,8 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
       builder: (context, _) {
         final left = (total * (1 - _ring.value)).ceil().clamp(1, total);
         return SizedBox(
-          width: 20,
-          height: 20,
+          width: 22,
+          height: 22,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -323,7 +353,11 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
                 onTap: widget.onPressed,
                 focusNode: _mainNode,
                 onKey: _onMainKey,
-                onFocusChange: (f) => setState(() => _mainFocused = f),
+                onFocusChange: (f) {
+                  if (!mounted) return;
+                  setState(() => _mainFocused = f);
+                  _syncRing(restart: false);
+                },
               ),
               if (_showCancel) ...[
                 Container(
@@ -337,7 +371,11 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
                   onTap: _cancel,
                   focusNode: _cancelNode,
                   onKey: _onCancelKey,
-                  onFocusChange: (f) => setState(() => _cancelFocused = f),
+                  onFocusChange: (f) {
+                    if (!mounted) return;
+                    setState(() => _cancelFocused = f);
+                    _syncRing(restart: false);
+                  },
                 ),
               ],
             ],

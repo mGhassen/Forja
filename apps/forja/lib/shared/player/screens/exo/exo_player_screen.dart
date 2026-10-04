@@ -239,10 +239,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;
   bool _nearEndOfEpisode = false;
-  /// 3-2-1 auto next ring is running on the Next Episode chip.
+  /// Auto next countdown ring is running on the Next Episode chip.
   bool _autoNextCountdown = false;
   /// X on the chip — no auto next until the chip hides again.
   bool _autoNextDismissed = false;
+  /// TV focus landed on the chip on its own (not by the user).
+  bool _nextEpChipAutoFocus = false;
   final FocusNode _nextEpChipFocus = FocusNode(debugLabel: 'exo-next-ep-chip');
 
   late List<_ExoSource> _sources;
@@ -1092,6 +1094,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _focusUpFromSeekbar() {
     if (_showNextEpChip && _nextEpChipFocus.canRequestFocus) {
+      setState(() => _nextEpChipAutoFocus = false);
       _nextEpChipFocus.requestFocus();
       return;
     }
@@ -1938,11 +1941,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       !_loadingNextEp;
 
   /// Next Episode chip shows or hides (caller repaints). Auto next arms the
-  /// 3-2-1 ring; leaving the window clears the X for the next pass.
+  /// countdown ring; leaving the window clears the X for the next pass.
   void _onNearEndChanged(bool nearEnd) {
     if (!nearEnd) {
       _autoNextCountdown = false;
       _autoNextDismissed = false;
+      _nextEpChipAutoFocus = false;
       return;
     }
     _autoNextCountdown =
@@ -1977,8 +1981,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     return true;
   }
 
+  /// Key scope claim while chrome is hidden — does not hold the countdown.
   void _claimNextEpChipFocus() {
-    if (_nextEpChipFocus.canRequestFocus) _nextEpChipFocus.requestFocus();
+    if (!_nextEpChipFocus.canRequestFocus) return;
+    if (!_nextEpChipAutoFocus) setState(() => _nextEpChipAutoFocus = true);
+    _nextEpChipFocus.requestFocus();
   }
 
   Future<void> _nextEpisode() async {
@@ -2722,6 +2729,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       tvFocusable: _isTv,
                       onArrowUp: _focusUpFromNextEpChip,
                       onArrowDown: _focusDownFromNextEpChip,
+                      pauseOnFocus: !_nextEpChipAutoFocus,
                     ),
                   ),
                 ),

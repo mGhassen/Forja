@@ -134,11 +134,12 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       !_s._isLoadingNextEp;
 
   /// Call inside setState when the Next Episode chip shows or hides. Auto next
-  /// arms the 3-2-1 ring; leaving the window clears the X for the next pass.
+  /// arms the countdown ring; leaving the window clears the X for the next pass.
   void _onNearEndChanged(bool nearEnd) {
     if (!nearEnd) {
       _s._autoNextCountdown = false;
       _s._autoNextDismissed = false;
+      _s._nextEpChipAutoFocus = false;
       return;
     }
     _s._autoNextCountdown = SettingsService.autoNextEpisodeNotifier.value &&
@@ -161,10 +162,13 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     });
   }
 
+  /// Key scope claim while chrome is hidden — does not hold the countdown.
   void _claimNextEpChipFocus() {
-    if (_s._nextEpChipFocus.canRequestFocus) {
-      _s._nextEpChipFocus.requestFocus();
+    if (!_s._nextEpChipFocus.canRequestFocus) return;
+    if (!_s._nextEpChipAutoFocus) {
+      setState(() => _s._nextEpChipAutoFocus = true);
     }
+    _s._nextEpChipFocus.requestFocus();
   }
 
   /// Chrome hidden: false — the key scope reveals chrome instead.
@@ -201,6 +205,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         tvFocusable: tvFocusable,
         onArrowUp: _focusUpFromNextEpChip,
         onArrowDown: _focusDownFromNextEpChip,
+        pauseOnFocus: !_s._nextEpChipAutoFocus,
       ),
     );
   }
@@ -211,6 +216,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   /// Progress bar ↑: Next Episode (closest) → Skip → top Back.
   void _focusUpFromSeekbar() {
     if (_showNextEpButton && _s._nextEpChipFocus.canRequestFocus) {
+      setState(() => _s._nextEpChipAutoFocus = false);
       _s._nextEpChipFocus.requestFocus();
       return;
     }

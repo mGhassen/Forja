@@ -631,10 +631,12 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   // ── Next Episode State ────────────────────────────────────────────────────
   bool _isLoadingNextEp = false;
   bool _nearEndOfEpisode = false;
-  /// 3-2-1 auto next ring is running on the Next Episode chip.
+  /// Auto next countdown ring is running on the Next Episode chip.
   bool _autoNextCountdown = false;
   /// X on the chip — no auto next until the chip hides again.
   bool _autoNextDismissed = false;
+  /// TV focus landed on the chip on its own (not by the user).
+  bool _nextEpChipAutoFocus = false;
   bool _hasPrevEpisodeAdjacent = false;
   bool _hasNextEpisodeAdjacent = false;
 
