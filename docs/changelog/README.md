@@ -21,13 +21,14 @@ Changelogs track **releases** (git tags), not individual commits. The draft file
 
 | File | Codename | Since tag | Status |
 |------|----------|-----------|--------|
-| [2.0.x-[draft].md](2.0.x-[draft].md) | Serrajin | v2.0.18 | drafting |
+| [2.0.x-[draft].md](2.0.x-[draft].md) | Serrajin | v2.0.35 | drafting |
 | [1.5.x-[draft].md](1.5.x-[draft].md) | Berka | v1.5.36 | drafting |
 
 ## Released
 
 | Version | Codename | File |
 |---------|----------|------|
+| 2.0.35 | Serrajin | [done/2.0.35-[released].md](done/2.0.35-[released].md) |
 | 2.0.18 | Serrajin | [done/2.0.18-[released].md](done/2.0.18-[released].md) |
 | 2.0.9 | Serrajin | [done/2.0.9-[released].md](done/2.0.9-[released].md) |
 | 2.0.6 | Serrajin | [done/2.0.6-[released].md](done/2.0.6-[released].md) |
