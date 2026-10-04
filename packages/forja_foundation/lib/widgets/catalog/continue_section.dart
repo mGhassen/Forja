@@ -278,9 +278,18 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
         ShellPaintTvRowScope.maybeOf(context) != null) {
       return ShellPaintScope.focusableTap(
         context: context,
-        onTap: widget.onResume == null
+        // Card and buttons handle their own taps — keep focusableTap for
+        // focus/hover paint and TV key activation only.
+        onTap: null,
+        onKeyEvent: widget.onResume == null
             ? null
-            : () => widget.onResume!(widget.entry),
+            : (_, event) {
+                if (ShellPaintScope.isActivateKeyOf(context, event)) {
+                  widget.onResume!(widget.entry);
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
         borderRadius: 12,
         motion: ForjaMotionPreset.fillOnly,
         listIndex: widget.listIndex,
@@ -288,7 +297,6 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
         tvZone: ShellPaintTvZone.row,
         onFocusChange: _setActive,
         onHoverChange: _setActive,
-        mouseDownActivates: false,
         child: painted,
       );
     }
