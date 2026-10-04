@@ -29,7 +29,7 @@ Tap **Anime** in the navigation bar.
 - Browse loads as **one** AniList feed (cached ~15 minutes) shared across Spotlight / rails — opening details still fetches synopsis and episodes when needed.
 - On **desktop**, drag-select hub and details hero titles to copy them.
 - Hero paints from AniList in parallel; TMDB backdrops + logo swap in when enrich returns (English title match, season suffixes stripped).
-- Reorder sources under **Settings → Playback → Anime provider order** — default starts with **Megaplay**, then pinned **AniKoto**, VidNest / AllAnime, **VidLink** (MAL + webstreaming), Miruro pipes.
+- Reorder sources under **Settings → Playback → Anime provider order** — default starts with **Megaplay**, then pinned **AniKoto**, VidNest / AllAnime, **VidLink** (MAL + webstreaming), Miruro.
 - **Megaplay** uses AniList id (+ MAL when mapped) — no Anikoto title remap. **VidLink** needs MAL via Jikan; skipped on Android TV unless WebView override is on.
 - Forja Auto green Play races the full category provider pool (same as movies/TV; session cache shared with Sources → Forja). Panel chips do not narrow green Play.
 - Part of [content hub scrapers](../scrapers/content-hub-scrapers.md)

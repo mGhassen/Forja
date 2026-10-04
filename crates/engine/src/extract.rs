@@ -147,26 +147,60 @@ const HOST_JS: &str = r#"
       bodyOut = typeof options.body === 'string' ? options.body : String(options.body);
     }
     return __native_fetch(String(url), method, JSON.stringify(headers), bodyOut).then(function(raw){
-      var env = {};
-      try { env = JSON.parse(raw || '{}'); } catch (e) { env = { ok:false, status:0, body:'', headers:{} }; }
-      var lowered = {};
-      if (env.headers) for (var k in env.headers) if (Object.prototype.hasOwnProperty.call(env.headers, k))
-        lowered[String(k).toLowerCase()] = String(env.headers[k]);
-      var body = env.body == null ? '' : String(env.body);
-      return {
-        ok: !!env.ok,
-        status: env.status | 0,
-        statusText: env.statusText || '',
-        url: env.url || url,
-        headers: { get: function(name){ return lowered[String(name).toLowerCase()] || null; } },
-        text: function(){ return Promise.resolve(body); },
-        json: function(){
-          try { return Promise.resolve(body ? JSON.parse(body) : null); }
-          catch (e) { return Promise.resolve(null); }
-        }
-      };
+      return wrapFetchEnv(raw, url);
     });
   };
+  function wrapFetchEnv(raw, url){
+    var env = {};
+    try { env = JSON.parse(raw || '{}'); } catch (e) { env = { ok:false, status:0, body:'', headers:{} }; }
+    var lowered = {};
+    if (env.headers) for (var k in env.headers) if (Object.prototype.hasOwnProperty.call(env.headers, k))
+      lowered[String(k).toLowerCase()] = String(env.headers[k]);
+    var body = env.body == null ? '' : String(env.body);
+    var bodyB64 = env.bodyB64 == null ? '' : String(env.bodyB64);
+    function decodeBodyText(){
+      if (bodyB64) {
+        var bin = atob(bodyB64);
+        try {
+          if (typeof TextDecoder !== 'undefined') {
+            var bytes = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xff;
+            return new TextDecoder('utf-8').decode(bytes);
+          }
+        } catch (e) {}
+        return bin;
+      }
+      return body;
+    }
+    return {
+      ok: !!env.ok,
+      status: env.status | 0,
+      statusText: env.statusText || '',
+      url: env.url || url,
+      headers: { get: function(name){ return lowered[String(name).toLowerCase()] || null; } },
+      text: function(){ return Promise.resolve(decodeBodyText()); },
+      json: function(){
+        try {
+          var t = decodeBodyText();
+          return Promise.resolve(t ? JSON.parse(t) : null);
+        }
+        catch (e) { return Promise.resolve(null); }
+      },
+      arrayBuffer: function(){
+        if (bodyB64) {
+          var bin = atob(bodyB64);
+          var buf = new ArrayBuffer(bin.length);
+          var view = new Uint8Array(buf);
+          for (var i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+          return Promise.resolve(buf);
+        }
+        var buf = new ArrayBuffer(body.length);
+        var view = new Uint8Array(buf);
+        for (var i = 0; i < body.length; i++) view[i] = body.charCodeAt(i) & 0xff;
+        return Promise.resolve(buf);
+      }
+    };
+  }
   // Chrome TLS fingerprint (JA3) — for CDNs that 403 plain reqwest (Dailymotion cdndirector, …).
   globalThis.__engineChromeFetch = function(url, options){
     options = options || {};
@@ -177,24 +211,7 @@ const HOST_JS: &str = r#"
       bodyOut = typeof options.body === 'string' ? options.body : String(options.body);
     }
     return __native_chrome_fetch(String(url), method, JSON.stringify(headers), bodyOut).then(function(raw){
-      var env = {};
-      try { env = JSON.parse(raw || '{}'); } catch (e) { env = { ok:false, status:0, body:'', headers:{} }; }
-      var lowered = {};
-      if (env.headers) for (var k in env.headers) if (Object.prototype.hasOwnProperty.call(env.headers, k))
-        lowered[String(k).toLowerCase()] = String(env.headers[k]);
-      var body = env.body == null ? '' : String(env.body);
-      return {
-        ok: !!env.ok,
-        status: env.status | 0,
-        statusText: env.statusText || '',
-        url: env.url || url,
-        headers: { get: function(name){ return lowered[String(name).toLowerCase()] || null; } },
-        text: function(){ return Promise.resolve(body); },
-        json: function(){
-          try { return Promise.resolve(body ? JSON.parse(body) : null); }
-          catch (e) { return Promise.resolve(null); }
-        }
-      };
+      return wrapFetchEnv(raw, url);
     });
   };
   globalThis.setTimeout = function(fn, ms){
@@ -545,19 +562,45 @@ async fn native_fetch(
             hdrs.insert(k.to_string(), Value::String(s.to_string()));
         }
     }
-    let text = tokio::select! {
-        t = resp.text() => t.unwrap_or_default(),
+    let bytes = tokio::select! {
+        t = resp.bytes() => t.unwrap_or_default().to_vec(),
         _ = token.cancelled() => return Ok(fetch_cancelled_json(&url)),
     };
-    Ok(serde_json::json!({
-        "ok": status >= 200 && status < 300,
-        "status": status,
-        "statusText": "",
-        "url": final_url,
-        "body": text,
-        "headers": hdrs
-    })
-    .to_string())
+    Ok(pack_http_envelope(status, final_url, hdrs, bytes))
+}
+
+pub(crate) fn pack_http_envelope(
+    status: u16,
+    final_url: String,
+    hdrs: serde_json::Map<String, Value>,
+    bytes: Vec<u8>,
+) -> String {
+    let ct = hdrs
+        .get("content-type")
+        .or_else(|| hdrs.get("Content-Type"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let binary = ct.contains("application/octet-stream");
+    let mut obj = serde_json::Map::new();
+    obj.insert("ok".into(), Value::Bool((200..300).contains(&status)));
+    obj.insert("status".into(), Value::from(status));
+    obj.insert("statusText".into(), Value::String(String::new()));
+    obj.insert("url".into(), Value::String(final_url));
+    obj.insert("headers".into(), Value::Object(hdrs));
+    if binary {
+        obj.insert("body".into(), Value::String(String::new()));
+        obj.insert(
+            "bodyB64".into(),
+            Value::String(base64::engine::general_purpose::STANDARD.encode(bytes)),
+        );
+    } else {
+        obj.insert(
+            "body".into(),
+            Value::String(String::from_utf8_lossy(&bytes).into_owned()),
+        );
+    }
+    Value::Object(obj).to_string()
 }
 
 pub async fn extract(req: ExtractRequest) -> ExtractResult {
@@ -1306,6 +1349,22 @@ function extract(ctx) {
                 .and_then(|c| c.get("apiKey"))
                 .and_then(|v| v.as_str()),
             Some("user-key"),
+        );
+    }
+
+    #[test]
+    fn pack_http_envelope_keeps_octet_stream_bytes() {
+        let mut hdrs = serde_json::Map::new();
+        hdrs.insert(
+            "content-type".into(),
+            serde_json::json!("application/octet-stream"),
+        );
+        let raw = pack_http_envelope(200, "https://x".into(), hdrs, vec![0xff, 0x00, 0x7b]);
+        let v: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["body"], "");
+        assert_eq!(
+            v["bodyB64"].as_str(),
+            Some(base64::engine::general_purpose::STANDARD.encode([0xff, 0x00, 0x7b]).as_str())
         );
     }
 }

@@ -121,6 +121,32 @@ class YoutubeStreamService {
       {};
   static final Map<String, Future<List<YoutubeCaptionTrack>>> _captionsInFlight =
       {};
+  static final Set<String> _geoblockedVideoIds = {};
+
+  /// Bumps when a video is marked / cleared as geo-blocked (details trailer cards).
+  static final ValueNotifier<int> geoblockEpoch = ValueNotifier(0);
+
+  /// True when the last resolve for [videoId] failed with a country restriction.
+  static bool isGeoblocked(String videoId) =>
+      _geoblockedVideoIds.contains(videoId);
+
+  /// Detect YouTube country / region blocks from explode / isolate errors.
+  static bool isGeoblockedError(Object error) {
+    final s = error.toString().toLowerCase();
+    return s.contains('available in your country') ||
+        s.contains('not available in your') ||
+        s.contains('blocked in your country') ||
+        s.contains('geo-restricted') ||
+        s.contains('geoblocked');
+  }
+
+  static void _setGeoblocked(String videoId, bool value) {
+    if (videoId.isEmpty) return;
+    final changed = value
+        ? _geoblockedVideoIds.add(videoId)
+        : _geoblockedVideoIds.remove(videoId);
+    if (changed) geoblockEpoch.value++;
+  }
 
   /// Warm the resolve cache for upcoming trailer opens (no captions / metadata).
   static void prefetch(Iterable<String> videoIds, {int limit = 3}) {
@@ -219,6 +245,7 @@ class YoutubeStreamService {
         );
       });
       if (streams != null) {
+        _setGeoblocked(videoId, false);
         _resolveCache.removeWhere(
           (_, e) => DateTime.now().difference(e.at) >= _resolveCacheTtl,
         );
@@ -232,6 +259,7 @@ class YoutubeStreamService {
       return streams;
     } catch (e) {
       debugPrint('YoutubeStreamService: resolve failed for $videoId — $e');
+      if (isGeoblockedError(e)) _setGeoblocked(videoId, true);
       return null;
     }
   }

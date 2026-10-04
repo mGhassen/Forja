@@ -397,6 +397,23 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [400-[fixed]-…](fixed/400-[fixed]-my-list-status-tab-slow.md) | My List status tabs reload the whole library | P1 | High | fixed | Complete · 3/3 · A 1/1 | — |
 | [401-[open]-…](401-[open]-iptv-stalker-reconnect-wipes-cache.md) | IPTV Stalker live restarts every ~20s and wipes the cache | P0 | High | open | 4/4 · A 0/2 | [399](399-[open]-live-sports-xtream-continuity-proxy.md) · [RFC-113](../rfc/113-[open]-iptv-mediakit-direct-reconnect.md) |
 | [402-[fixed]-…](fixed/402-[fixed]-macos-intel-continue-watching-empty.md) | macOS Intel Continue Watching row empty | P1 | High | fixed | Complete · 4/4 · A 0/1 | [176](176-[workaround]-macos-intel-metal-text-glitch.md) |
+| [403-[fixed]-…](fixed/403-[fixed]-details-trailer-geoblocked-ribbon.md) | Details trailer Geoblocked ribbon | P2 | Medium | fixed | Complete · 3/3 · A 0/1 | [RFC-055](../rfc/055-[open]-native-youtube-trailer-player.md) |
+| [404-[fixed]-…](fixed/404-[fixed]-kisskh-anime-episode-number-as-api-id.md) | KissKh Anime treats episode number as Episode API id | P1 | High | fixed | Complete · 3/3 · A 0/1 | [369](fixed/369-[fixed]-kisskh-home-movie-title-match.md) |
+| [405-[fixed]-…](fixed/405-[fixed]-reanime-flixcloud-cf-false-positive.md) | ReAnime Sources empty (FlixCloud CF false positive) | P1 | High | fixed | Complete · 3/3 · A 0/1 | [332](fixed/332-[fixed]-flixcloud-encrypted-master-parse.md) |
+| [405-[fixed]-…](fixed/405-[fixed]-kurage-hover-probe-false-red.md) | Kurage Sources hover status hangs then red | P2 | Medium | fixed | Complete · 3/3 · A 0/1 | [218](fixed/218-[fixed]-dimatoon-green-play-probe-false-fail.md) |
+| [406-[fixed]-…](fixed/406-[fixed]-2dhive-empty-stale-hadfree.md) | 2DHive Sources empty (stale HAdfree scrape) | P1 | High | fixed | Complete · 2/2 · A 0/1 | — |
+| [407-[fixed]-…](fixed/407-[fixed]-animegg-episode-list-div.md) | AnimeGG Sources empty (episode list scrape) | P1 | High | fixed | Complete · 3/3 · A 0/1 | — |
+| [408-[fixed]-…](fixed/408-[fixed]-mkissa-empty-obfuscated-crypto.md) | MKissa Sources empty (obfuscated client-crypto) | P1 | High | fixed | Complete · 3/3 · A 0/1 | — |
+| [408-[fixed]-…](fixed/408-[fixed]-senshi-url-senshi-to.md) | Senshi Sources empty (site moved to senshi.to) | P1 | High | fixed | Complete · 1/1 · A 0/1 | — |
+| [408-[fixed]-…](fixed/408-[fixed]-animedunya-cloudflare-en-play.md) | AnimeDunya Sources empty (Cloudflare on `/en/play`) | P1 | High | fixed | Complete · 3/3 · A 0/1 | — |
+| [409-[fixed]-…](fixed/409-[fixed]-kickassanime-catstream-dead-hls.md) | KickAssAnime CatStream dead HLS URL | P1 | High | fixed | Complete · 2/2 · A 0/1 | — |
+| [410-[fixed]-…](fixed/410-[fixed]-anidao-url-anidao-es.md) | AniDao Sources empty (site moved to anidao.es) | P1 | High | fixed | Complete · 1/1 · A 0/1 | — |
+| [410-[fixed]-…](fixed/410-[fixed]-animeheaven-search-episode-scrape.md) | AnimeHeaven Sources empty (search/episode scrape) | P1 | High | fixed | Complete · 3/3 · A 0/1 | — |
+| [411-[fixed]-…](fixed/411-[fixed]-tryembed-bootstrap-ticket.md) | TryEmbed Sources empty (bootstrap ticket) | P1 | High | fixed | Complete · 2/2 · A 0/1 | — |
+| [412-[fixed]-…](fixed/412-[fixed]-aniwaves-server-list-echovideo.md) | AniWaves Sources empty (server list + EchoVideo) | P1 | High | fixed | Complete · 2/2 · A 0/1 | — |
+| [413-[fixed]-…](fixed/413-[fixed]-anihq-voe-iframe-search.md) | AniHQ Sources empty (VOE iframe + search) | P1 | High | fixed | Complete · 3/3 · A 0/1 | — |
+| [414-[fixed]-…](fixed/414-[fixed]-luna-stale-next-action.md) | Luna Sources empty (stale Next-Action) | P1 | High | fixed | Complete · 2/2 · A 0/1 | — |
+| [415-[fixed]-…](fixed/415-[fixed]-miruro-catalog-v1-api.md) | Miruro Sources empty (catalog v1 API) | P1 | High | fixed | Complete · 2/2 · A 0/1 | [080](080-[open]-miruro-cf-pipe-webview-unlock.md) |
 | [375-[fixed]-…](fixed/375-[fixed]-hub-keep-alive-keeps-fetching-off-tab.md) | Hub keep-alive keeps fetching after leaving the tab | P1 | High | fixed | Complete · 4/4 · A 2/2 | [RFC-024](../rfc/fixed/024-[fixed]-tab-cache-eviction-stale.md) · [311](fixed/311-[fixed]-pack-reload-eager-hub-refetch.md) |
 | [360-[fixed]-…](fixed/360-[fixed]-portal-form-dialog-desktop-tv-shrink.md) | IPTV Add/Edit portal dialog TV-shrinks on desktop | P1 | High | fixed | Complete · 2/2 · A 0/2 | — |
 | [350-[fixed]-…](fixed/350-[fixed]-iptv-search-category-click-ignored.md) | IPTV search ignores category click | P1 | High | fixed | Complete · 5/5 · A 3/5 | [315](fixed/315-[fixed]-iptv-search-no-categories.md) · [290](290-[open]-iptv-catalog-page-host-shelf.md) |

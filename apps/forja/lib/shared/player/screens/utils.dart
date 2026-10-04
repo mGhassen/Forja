@@ -3101,20 +3101,50 @@ Future<bool> _probeHlsMasterOnly(
   }
 }
 
-Future<bool> _probeHeadOrRange(String catalog, Map<String, String> hdrs) async {
-  try {
-    var res = await engineHttp('HEAD', catalog, headers: hdrs, timeoutSecs: 8);
-    if (res.status >= 200 && res.status < 400) return true;
-    res = await engineHttp(
-      'GET',
-      catalog,
-      headers: {...hdrs, 'Range': 'bytes=0-0'},
-      timeoutSecs: 8,
-    );
-    return res.status == 200 || res.status == 206;
-  } catch (_) {
-    return false;
+Future<bool> _firstTrue(List<Future<bool>> futures) {
+  if (futures.isEmpty) return Future<bool>.value(false);
+  final done = Completer<bool>();
+  var pending = futures.length;
+  for (final f in futures) {
+    f.then((ok) {
+      if (ok && !done.isCompleted) done.complete(true);
+      pending--;
+      if (pending == 0 && !done.isCompleted) done.complete(false);
+    }, onError: (_) {
+      pending--;
+      if (pending == 0 && !done.isCompleted) done.complete(false);
+    });
   }
+  return done.future;
+}
+
+Future<bool> _probeHeadOrRange(String catalog, Map<String, String> hdrs) {
+  Future<bool> head() async {
+    try {
+      final res =
+          await engineHttp('HEAD', catalog, headers: hdrs, timeoutSecs: 8);
+      return res.status >= 200 && res.status < 400;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> range() async {
+    try {
+      final res = await engineHttp(
+        'GET',
+        catalog,
+        headers: {...hdrs, 'Range': 'bytes=0-0'},
+        timeoutSecs: 8,
+      );
+      return res.status == 200 || res.status == 206;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // HEAD on some proxies hangs until timeout while Range returns 206 quickly.
+  return _firstTrue([head(), range()]);
 }
 
 /// Lightweight reachability check. [probe] is the pack field on the stream row.
@@ -3137,9 +3167,8 @@ Future<bool> probeStreamSourceUrl(
   final mode = streamProbeModeFrom(probe);
 
   bool looksHls() =>
-      catalog.contains('.m3u8') ||
-      catalog.toLowerCase().contains('/api/proxy') ||
-      normalized.contains('/hls-proxy');
+      streamUrlLooksLikeHlsPlaylist(catalog) ||
+      streamUrlLooksLikeHlsPlaylist(normalized);
 
   switch (mode) {
     case StreamProbeMode.skip:

@@ -27,6 +27,13 @@ enum PngStripMode {
   never,
 }
 
+/// Playlist-shaped URL — master GET looking for `#EXTM3U`.
+/// `/api/proxy` is not enough: that path also wraps progressive MP4.
+bool streamUrlLooksLikeHlsPlaylist(String url) {
+  final lower = url.toLowerCase();
+  return lower.contains('.m3u8') || lower.contains('/hls-proxy');
+}
+
 /// Probe mode from a pack stream field. Empty / unknown → null (URL heuristic).
 StreamProbeMode? streamProbeModeFrom(String? raw) {
   final key = raw?.trim().toLowerCase() ?? '';

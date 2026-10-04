@@ -42,6 +42,7 @@ class _MediaDetailsTrailersSectionState
   @override
   void initState() {
     super.initState();
+    YoutubeStreamService.geoblockEpoch.addListener(_onGeoblockEpoch);
     _prefetch();
   }
 
@@ -53,8 +54,21 @@ class _MediaDetailsTrailersSectionState
     }
   }
 
+  @override
+  void dispose() {
+    YoutubeStreamService.geoblockEpoch.removeListener(_onGeoblockEpoch);
+    super.dispose();
+  }
+
+  void _onGeoblockEpoch() {
+    if (mounted) setState(() {});
+  }
+
   void _prefetch() {
-    YoutubeStreamService.prefetch(widget.trailers.map((t) => t.key));
+    YoutubeStreamService.prefetch(
+      widget.trailers.map((t) => t.key),
+      limit: widget.trailers.length,
+    );
   }
 
   bool _sameKeys(List<MediaTrailer> a, List<MediaTrailer> b) {
@@ -80,6 +94,7 @@ class _MediaDetailsTrailersSectionState
           name: t.name,
           thumbnailUrl: t.youtubeThumbnail,
           official: t.official,
+          geoblocked: YoutubeStreamService.isGeoblocked(t.key),
         ),
     ];
 

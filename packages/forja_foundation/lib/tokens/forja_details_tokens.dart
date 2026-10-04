@@ -92,6 +92,24 @@ abstract final class DetailsTokens {
   static const double castGapTv = castGap * _s;
   static const double trailerCardWidth = 200;
   static const double trailerCardWidthTv = trailerCardWidth * _s;
+
+  /// Diagonal corner ribbon on geo-blocked trailer thumbs.
+  static const double trailerGeoblockedRibbonWidth = 112;
+  static const double trailerGeoblockedRibbonWidthTv =
+      trailerGeoblockedRibbonWidth * _s;
+  static const double trailerGeoblockedRibbonTop = 18;
+  static const double trailerGeoblockedRibbonTopTv =
+      trailerGeoblockedRibbonTop * _s;
+  static const double trailerGeoblockedRibbonRight = -34;
+  static const double trailerGeoblockedRibbonRightTv =
+      trailerGeoblockedRibbonRight * _s;
+  static const double trailerGeoblockedRibbonPadV = 3;
+  static const double trailerGeoblockedRibbonPadVTv =
+      trailerGeoblockedRibbonPadV * _s;
+  static const double trailerGeoblockedRibbonFontSize = 9;
+  static const double trailerGeoblockedRibbonFontSizeTv =
+      trailerGeoblockedRibbonFontSize * _s;
+  static const double trailerGeoblockedRibbonLetterSpacing = 0.3;
   static const double episodeSeasonWidth = 104;
   static const double episodeSeasonWidthTv = episodeSeasonWidth * _s;
   static const double episodeSeasonHeight = 156;

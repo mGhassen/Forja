@@ -86,20 +86,12 @@ pub async fn chrome_fetch(
             hdrs.insert(k.to_string(), Value::String(s.to_string()));
         }
     }
-    let text = tokio::select! {
-        t = resp.text() => match t {
-            Ok(t) => t,
+    let bytes = tokio::select! {
+        t = resp.bytes() => match t {
+            Ok(t) => t.to_vec(),
             Err(e) => return fetch_error(&url, e),
         },
         _ = token.cancelled() => return cancelled_json(&url),
     };
-    json!({
-        "ok": (200..300).contains(&status),
-        "status": status,
-        "statusText": "",
-        "url": final_url,
-        "body": text,
-        "headers": hdrs
-    })
-    .to_string()
+    crate::extract::pack_http_envelope(status, final_url, hdrs, bytes)
 }

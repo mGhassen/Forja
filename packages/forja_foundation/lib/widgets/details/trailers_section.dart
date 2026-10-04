@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -14,12 +17,14 @@ class DetailsTrailerItem {
     required this.name,
     required this.thumbnailUrl,
     this.official = false,
+    this.geoblocked = false,
   });
 
   final String key;
   final String name;
   final String thumbnailUrl;
   final bool official;
+  final bool geoblocked;
 }
 
 /// Horizontal trailers row — same gutters / scroller as Home catalog rails.
@@ -159,6 +164,49 @@ class DetailsTrailersSection extends StatelessWidget {
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (trailer.geoblocked)
+                        Positioned(
+                          top: tv
+                              ? DetailsTokens.trailerGeoblockedRibbonTopTv
+                              : DetailsTokens.trailerGeoblockedRibbonTop,
+                          right: tv
+                              ? DetailsTokens.trailerGeoblockedRibbonRightTv
+                              : DetailsTokens.trailerGeoblockedRibbonRight,
+                          child: Transform.rotate(
+                            angle: math.pi / 4,
+                            child: Container(
+                              width: tv
+                                  ? DetailsTokens
+                                      .trailerGeoblockedRibbonWidthTv
+                                  : DetailsTokens.trailerGeoblockedRibbonWidth,
+                              padding: EdgeInsets.symmetric(
+                                vertical: tv
+                                    ? DetailsTokens
+                                        .trailerGeoblockedRibbonPadVTv
+                                    : DetailsTokens
+                                        .trailerGeoblockedRibbonPadV,
+                              ),
+                              color: const Color(0xFFEF4444),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Geoblocked',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: ForjaShellColors.textPrimary,
+                                  fontSize: tv
+                                      ? DetailsTokens
+                                          .trailerGeoblockedRibbonFontSizeTv
+                                      : DetailsTokens
+                                          .trailerGeoblockedRibbonFontSize,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: DetailsTokens
+                                      .trailerGeoblockedRibbonLetterSpacing,
+                                  height: 1,
+                                ),
                               ),
                             ),
                           ),
