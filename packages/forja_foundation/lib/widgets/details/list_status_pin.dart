@@ -346,7 +346,12 @@ class _ListStatusPinState extends State<ListStatusPin> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentStatus != widget.currentStatus ||
         oldWidget.busy != widget.busy) {
-      _entry?.markNeedsBuild();
+      final entry = _entry;
+      if (entry != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          entry.markNeedsBuild();
+        });
+      }
     }
   }
 
