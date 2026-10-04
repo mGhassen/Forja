@@ -183,7 +183,54 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
   Future<SettingsPlaybackSnapshot> build() async {
     ref.watch(playSourceRevisionProvider);
     ref.watch(accountFeaturesRevisionProvider);
+    // The player and sync write these too — keep Settings on the live value.
+    _follow(
+      SettingsService.autoNextEpisodeNotifier,
+      (s, v) => s.copyWith(autoNextEpisode: v),
+    );
+    _follow(
+      SettingsService.autoSkipIntroNotifier,
+      (s, v) => s.copyWith(autoSkipIntro: v),
+    );
+    _follow(
+      SettingsService.contentWarningsNotifier,
+      (s, v) => s.copyWith(contentWarnings: v),
+    );
+    _follow(
+      SettingsService.autoPipOnDesktopSwitchNotifier,
+      (s, v) => s.copyWith(autoPipOnDesktopSwitch: v),
+    );
+    _follow(
+      SettingsService.inAppMiniPlayerNotifier,
+      (s, v) => s.copyWith(inAppMiniPlayer: v),
+    );
+    _follow(
+      SettingsService.playInBackgroundNotifier,
+      (s, v) => s.copyWith(playInBackground: v),
+    );
+    _follow(
+      SettingsService.tvNavSoundNotifier,
+      (s, v) => s.copyWith(tvNavSound: v),
+    );
+    _follow(
+      SettingsService.iptvEpgEnabledNotifier,
+      (s, v) => s.copyWith(iptvEpgEnabled: v),
+    );
     return _load();
+  }
+
+  void _follow(
+    ValueNotifier<bool> notifier,
+    SettingsPlaybackSnapshot Function(SettingsPlaybackSnapshot, bool) apply,
+  ) {
+    void onChange() {
+      final cur = state.value;
+      if (cur == null) return;
+      _patch(apply(cur, notifier.value));
+    }
+
+    notifier.addListener(onChange);
+    ref.onDispose(() => notifier.removeListener(onChange));
   }
 
   Future<SettingsPlaybackSnapshot> _load() async {

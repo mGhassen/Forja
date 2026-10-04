@@ -15,6 +15,7 @@ import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/widgets/details/watch_progress_bar.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/switch.dart';
@@ -215,6 +216,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   Future<void> _setAutoNext(bool value) async {
     setState(() => _autoNextEpisode = value);
     await _settings.setAutoNextEpisode(value);
+    schedulePreferencesSyncPush();
   }
 
   @override
@@ -942,6 +944,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   Future<void> _setAutoNext(bool value) async {
     setState(() => _autoNextEpisode = value);
     await _settings.setAutoNextEpisode(value);
+    schedulePreferencesSyncPush();
   }
 
   bool get _tvFocus =>

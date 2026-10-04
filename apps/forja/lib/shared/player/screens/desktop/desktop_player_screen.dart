@@ -24,6 +24,7 @@ import 'package:forja/shared/player/screens/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/screens/playable_source_bridge.dart';
 
 import 'package:rust/rust.dart';
+import 'package:forja/shared/sync/sync.dart';
 
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';

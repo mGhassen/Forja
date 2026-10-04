@@ -9,6 +9,7 @@ import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 
 /// Exo track / settings menus — same popup chrome as MediaKit.
@@ -439,6 +440,7 @@ abstract final class ExoPlayerMenus {
                       value: SettingsService.autoSkipIntroNotifier.value,
                       onChanged: (on) async {
                         await SettingsService().setAutoSkipIntro(on);
+                        schedulePreferencesSyncPush();
                         setPage(() {});
                       },
                     ),
@@ -448,6 +450,7 @@ abstract final class ExoPlayerMenus {
                       value: SettingsService.autoNextEpisodeNotifier.value,
                       onChanged: (on) async {
                         await SettingsService().setAutoNextEpisode(on);
+                        schedulePreferencesSyncPush();
                         setPage(() {});
                       },
                     ),
@@ -457,6 +460,7 @@ abstract final class ExoPlayerMenus {
                       value: SettingsService.contentWarningsNotifier.value,
                       onChanged: (on) async {
                         await SettingsService().setContentWarnings(on);
+                        schedulePreferencesSyncPush();
                         setPage(() {});
                       },
                     ),

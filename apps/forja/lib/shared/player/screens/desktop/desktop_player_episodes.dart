@@ -1431,6 +1431,7 @@ mixin _DesktopPlayerEpisodes
                   value: SettingsService.autoSkipIntroNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoSkipIntro(on);
+                    schedulePreferencesSyncPush();
                     setPage(() {});
                   },
                 ),
@@ -1440,6 +1441,7 @@ mixin _DesktopPlayerEpisodes
                   value: SettingsService.autoNextEpisodeNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoNextEpisode(on);
+                    schedulePreferencesSyncPush();
                     setPage(() {});
                   },
                 ),
@@ -1449,6 +1451,7 @@ mixin _DesktopPlayerEpisodes
                   value: SettingsService.contentWarningsNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setContentWarnings(on);
+                    schedulePreferencesSyncPush();
                     setPage(() {});
                   },
                 ),

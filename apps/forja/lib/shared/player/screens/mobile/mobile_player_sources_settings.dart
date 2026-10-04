@@ -162,6 +162,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                   value: SettingsService.autoSkipIntroNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoSkipIntro(on);
+                    schedulePreferencesSyncPush();
                     setPage(() {});
                   },
                 ),
@@ -171,6 +172,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                   value: SettingsService.autoNextEpisodeNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoNextEpisode(on);
+                    schedulePreferencesSyncPush();
                     setPage(() {});
                   },
                 ),
@@ -180,6 +182,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                   value: SettingsService.contentWarningsNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setContentWarnings(on);
+                    schedulePreferencesSyncPush();
                     setPage(() {});
                   },
                 ),
