@@ -1277,7 +1277,16 @@ mixin _DesktopPlayerEpisodes
         widget.externalSubtitles!,
       );
     }
-    if (_s._providerExternalSubUrls.isNotEmpty) return;
+    if (_s._providerExternalSubUrls.isNotEmpty) {
+      // Let embedded tracks replace an auto-picked scraped sub (Wyzie/Levrx)
+      // that isn't from the provider itself.
+      final ext = _s._selectedExternalSubUrl;
+      if (ext == null ||
+          _s._userPickedExternalSubtitle ||
+          _s._providerExternalSubUrls.contains(ext)) {
+        return;
+      }
+    }
 
     final settings = SettingsService();
     final preferred = await settings.getPreferredSubtitleLanguage();

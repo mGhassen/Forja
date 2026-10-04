@@ -11,7 +11,14 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
         widget.externalSubtitles!,
       );
     }
-    if (_s._providerExternalSubUrls.isNotEmpty) return;
+    if (_s._providerExternalSubUrls.isNotEmpty) {
+      final ext = _s._selectedExternalSubUrl;
+      if (ext == null ||
+          _s._userPickedExternalSubtitle ||
+          _s._providerExternalSubUrls.contains(ext)) {
+        return;
+      }
+    }
 
     final settings = SettingsService();
     final preferred = await settings.getPreferredSubtitleLanguage();

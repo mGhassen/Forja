@@ -485,7 +485,7 @@ mixin _DesktopPlayerTracks
     final playUrl = _s._hlsMasterUrl ?? _s._currentUrl ?? widget.mediaPath;
     final pick = await preferredHlsInStreamSubtitle(
       playUrl: playUrl,
-      headers: _s._hlsMasterHeaders,
+      headers: _s._hlsMasterHeaders ?? widget.headers,
       preferredLang: preferred,
     );
     if (_subtitleAutoCancelled(gen) || pick == null) return false;
