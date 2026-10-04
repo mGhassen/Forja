@@ -46,6 +46,7 @@ import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.da
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/chrome/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/entry/player_metadata.dart';
@@ -576,6 +577,10 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   // ── Next Episode State ────────────────────────────────────────────────────
   bool _isLoadingNextEp = false;
   bool _nearEndOfEpisode = false;
+  /// 3-2-1 auto next ring is running on the Next Episode chip.
+  bool _autoNextCountdown = false;
+  /// X on the chip — no auto next until the chip hides again.
+  bool _autoNextDismissed = false;
   bool _hasPrevEpisodeAdjacent = false;
   bool _hasNextEpisodeAdjacent = false;
 

@@ -1414,18 +1414,16 @@ mixin _DesktopPlayerPlayback
       if (_s._isNextEpisodeAvailable) {
         final nearEnd = isNearEndOfEpisode(uiPos, _s._durationNotifier.value);
         if (nearEnd != _s._nearEndOfEpisode) {
-          setState(() => _s._nearEndOfEpisode = nearEnd);
-          // Auto-next starts the moment the Next Episode chip appears.
-          if (nearEnd &&
-              _s._player.state.playing &&
-              SettingsService.autoNextEpisodeNotifier.value &&
-              !_s._loopEnabled &&
-              !_s._isLoadingNextEp) {
-            unawaited(_s._nextEpisode());
-          }
+          setState(() {
+            _s._nearEndOfEpisode = nearEnd;
+            _s._onNearEndChanged(nearEnd);
+          });
         }
       } else if (_s._nearEndOfEpisode) {
-        setState(() => _s._nearEndOfEpisode = false);
+        setState(() {
+          _s._nearEndOfEpisode = false;
+          _s._onNearEndChanged(false);
+        });
       }
 
       // Skip segment detection (IntroDB)
@@ -1584,6 +1582,7 @@ mixin _DesktopPlayerPlayback
         final autoNext = SettingsService.autoNextEpisodeNotifier.value;
         if (autoNext &&
             !_s._loopEnabled &&
+            !_s._autoNextDismissed &&
             _s._isNextEpisodeAvailable &&
             !_s._isLoadingNextEp) {
           unawaited(_s._nextEpisode());

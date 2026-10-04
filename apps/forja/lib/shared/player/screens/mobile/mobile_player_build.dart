@@ -237,14 +237,13 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   ),
 
                 // ── 8. Next Episode Overlay ──────────────────────────────
-                if (!widget.tvRemoteEnabled && _s._showNextEpButton)
+                // Lives outside the chrome: shows alone while chrome is hidden.
+                if (_s._showNextEpButton)
                   Positioned(
                     bottom: 120,
                     right: 16,
-                    child: PlayerFloatingChip(
-                      label: 'Next Episode',
-                      trailingIcon: Icons.arrow_forward_rounded,
-                      onPressed: _s._nextEpisode,
+                    child: _s._buildNextEpisodeChip(
+                      tvFocusable: widget.tvRemoteEnabled,
                     ),
                   ),
 
@@ -312,6 +311,8 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
       },
       onClaimPlayFocus: _s._claimPlayFocus,
       onControlsActivity: _s._startHideTimer,
+      upNextVisible: _s._showNextEpButton,
+      onClaimUpNextFocus: _s._claimNextEpChipFocus,
       child: body,
     );
   }
@@ -812,24 +813,6 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               onPressed: _s._performSkip,
               tvFocusable: true,
               focusNode: _s._skipChipFocus,
-            ),
-          ),
-        ),
-      );
-    }
-    if (tvFocus && _s._showNextEpButton) {
-      overlayChildren.add(
-        Positioned(
-          bottom: 120,
-          right: 16,
-          child: FocusTraversalOrder(
-            order: const NumericFocusOrder(16),
-            child: PlayerFloatingChip(
-              label: 'Next Episode',
-              trailingIcon: Icons.arrow_forward_rounded,
-              onPressed: _s._nextEpisode,
-              tvFocusable: true,
-              focusNode: _s._nextEpChipFocus,
             ),
           ),
         ),

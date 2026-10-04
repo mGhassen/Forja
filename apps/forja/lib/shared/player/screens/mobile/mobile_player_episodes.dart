@@ -133,6 +133,78 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       _s._nearEndOfEpisode &&
       !_s._isLoadingNextEp;
 
+  /// Call inside setState when the Next Episode chip shows or hides. Auto next
+  /// arms the 3-2-1 ring; leaving the window clears the X for the next pass.
+  void _onNearEndChanged(bool nearEnd) {
+    if (!nearEnd) {
+      _s._autoNextCountdown = false;
+      _s._autoNextDismissed = false;
+      return;
+    }
+    _s._autoNextCountdown = SettingsService.autoNextEpisodeNotifier.value &&
+        !_s._loopEnabled &&
+        !_s._autoNextDismissed;
+  }
+
+  void _onAutoNextCountdownDone() {
+    if (!mounted || !_s._autoNextCountdown) return;
+    setState(() => _s._autoNextCountdown = false);
+    if (_s._loopEnabled || !_showNextEpButton) return;
+    unawaited(_nextEpisode());
+  }
+
+  void _cancelAutoNext() {
+    if (!mounted) return;
+    setState(() {
+      _s._autoNextCountdown = false;
+      _s._autoNextDismissed = true;
+    });
+  }
+
+  void _claimNextEpChipFocus() {
+    if (_s._nextEpChipFocus.canRequestFocus) {
+      _s._nextEpChipFocus.requestFocus();
+    }
+  }
+
+  /// Chrome hidden: false — the key scope reveals chrome instead.
+  bool _focusUpFromNextEpChip() {
+    if (!_s._showControls) return false;
+    if (_showSkipChip && _s._skipChipFocus.canRequestFocus) {
+      _s._skipChipFocus.requestFocus();
+      return true;
+    }
+    if (!_s._backFocus.canRequestFocus) return false;
+    _s._backFocus.requestFocus();
+    return true;
+  }
+
+  bool _focusDownFromNextEpChip() {
+    if (!_s._showControls || !_s._seekbarFocus.canRequestFocus) return false;
+    _s._seekbarFocus.requestFocus();
+    return true;
+  }
+
+  Widget _buildNextEpisodeChip({required bool tvFocusable}) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _s._isPlayingNotifier,
+      builder: (context, playing, _) => PlayerNextEpisodeChip(
+        onPressed: () {
+          setState(() => _s._autoNextCountdown = false);
+          unawaited(_nextEpisode());
+        },
+        countdown: _s._autoNextCountdown,
+        countdownPaused: !playing,
+        onCountdownComplete: _onAutoNextCountdownDone,
+        onCancel: _cancelAutoNext,
+        focusNode: tvFocusable ? _s._nextEpChipFocus : null,
+        tvFocusable: tvFocusable,
+        onArrowUp: _focusUpFromNextEpChip,
+        onArrowDown: _focusDownFromNextEpChip,
+      ),
+    );
+  }
+
   bool get _showSkipChip =>
       _s._activeSkipLabel != null && !_s._skipDismissed;
 

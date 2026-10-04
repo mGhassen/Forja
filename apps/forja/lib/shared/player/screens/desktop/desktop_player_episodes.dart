@@ -139,6 +139,50 @@ mixin _DesktopPlayerEpisodes
 
   double get _torrentStatsLift => 0;
 
+  /// Call inside setState when the Next Episode chip shows or hides. Auto next
+  /// arms the 3-2-1 ring; leaving the window clears the X for the next pass.
+  void _onNearEndChanged(bool nearEnd) {
+    if (!nearEnd) {
+      _s._autoNextCountdown = false;
+      _s._autoNextDismissed = false;
+      return;
+    }
+    _s._autoNextCountdown = SettingsService.autoNextEpisodeNotifier.value &&
+        !_s._loopEnabled &&
+        !_s._autoNextDismissed;
+  }
+
+  void _onAutoNextCountdownDone() {
+    if (!mounted || !_s._autoNextCountdown) return;
+    setState(() => _s._autoNextCountdown = false);
+    if (_s._loopEnabled || !_showNextEpButton) return;
+    unawaited(_nextEpisode());
+  }
+
+  void _cancelAutoNext() {
+    if (!mounted) return;
+    setState(() {
+      _s._autoNextCountdown = false;
+      _s._autoNextDismissed = true;
+    });
+  }
+
+  Widget _buildNextEpisodeChip() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _s._isPlayingNotifier,
+      builder: (context, playing, _) => PlayerNextEpisodeChip(
+        onPressed: () {
+          setState(() => _s._autoNextCountdown = false);
+          unawaited(_nextEpisode());
+        },
+        countdown: _s._autoNextCountdown,
+        countdownPaused: !playing,
+        onCountdownComplete: _onAutoNextCountdownDone,
+        onCancel: _cancelAutoNext,
+      ),
+    );
+  }
+
   void _beginEpisodeLoading({
     required String label,
     String status = 'Loading episode info…',

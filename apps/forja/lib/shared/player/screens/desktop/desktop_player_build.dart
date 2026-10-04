@@ -180,6 +180,13 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
               child: _buildControlsOverlay(),
             ),
           ),
+        // Outside the chrome: shows alone while chrome is hidden.
+        if (!mini && !pipMode && _s._showNextEpButton)
+          Positioned(
+            bottom: 100,
+            right: 24,
+            child: _s._buildNextEpisodeChip(),
+          ),
         if (!mini && !pipMode && _s._escapeExitArmed)
           const PlayerEscapeExitHint(),
         if (!mini && pipMode) _buildPipRevertOverlay(),
@@ -464,17 +471,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             child: PlayerFloatingChip(
               label: _s._activeSkipLabel!,
               onPressed: _s._performSkip,
-            ),
-          ),
-
-        if (_s._showNextEpButton)
-          Positioned(
-            bottom: 100,
-            right: 24,
-            child: PlayerFloatingChip(
-              label: 'Next Episode',
-              trailingIcon: Icons.arrow_forward_rounded,
-              onPressed: _s._nextEpisode,
             ),
           ),
 

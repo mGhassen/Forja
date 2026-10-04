@@ -15,6 +15,7 @@ import 'package:forja/shared/playback/open/player_source_resolve.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
@@ -238,6 +239,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;
   bool _nearEndOfEpisode = false;
+  /// 3-2-1 auto next ring is running on the Next Episode chip.
+  bool _autoNextCountdown = false;
+  /// X on the chip — no auto next until the chip hides again.
+  bool _autoNextDismissed = false;
+  final FocusNode _nextEpChipFocus = FocusNode(debugLabel: 'exo-next-ep-chip');
 
   late List<_ExoSource> _sources;
   int _sourceIndex = 0;
@@ -739,16 +745,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           _durationNotifier.value = _duration;
         }
         _buffered = Duration(milliseconds: bufMs);
-        final chipAppeared = nearEnd && !_nearEndOfEpisode;
+        if (nearEnd != _nearEndOfEpisode) _onNearEndChanged(nearEnd);
         _nearEndOfEpisode = nearEnd;
         if (needsRepaint) setState(() {});
-        // Auto-next starts the moment the Next Episode chip appears.
-        if (chipAppeared &&
-            _isPlaying &&
-            SettingsService.autoNextEpisodeNotifier.value &&
-            !_loadingNextEp) {
-          unawaited(_nextEpisode());
-        }
         break;
       case 'ended':
         _isPlaying = false;
@@ -1092,6 +1091,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   void _focusRightFromSeekbar() => _focusFirstRightTransport();
 
   void _focusUpFromSeekbar() {
+    if (_showNextEpChip && _nextEpChipFocus.canRequestFocus) {
+      _nextEpChipFocus.requestFocus();
+      return;
+    }
     if (_backFocus.canRequestFocus) {
       _backFocus.requestFocus();
     }
@@ -1928,6 +1931,56 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     }
   }
 
+  bool get _showNextEpChip =>
+      widget.hasNextEpisode &&
+      widget.onNextEpisode != null &&
+      _nearEndOfEpisode &&
+      !_loadingNextEp;
+
+  /// Next Episode chip shows or hides (caller repaints). Auto next arms the
+  /// 3-2-1 ring; leaving the window clears the X for the next pass.
+  void _onNearEndChanged(bool nearEnd) {
+    if (!nearEnd) {
+      _autoNextCountdown = false;
+      _autoNextDismissed = false;
+      return;
+    }
+    _autoNextCountdown =
+        SettingsService.autoNextEpisodeNotifier.value && !_autoNextDismissed;
+  }
+
+  void _onAutoNextCountdownDone() {
+    if (!mounted || !_autoNextCountdown) return;
+    setState(() => _autoNextCountdown = false);
+    if (!_showNextEpChip) return;
+    unawaited(_nextEpisode());
+  }
+
+  void _cancelAutoNext() {
+    if (!mounted) return;
+    setState(() {
+      _autoNextCountdown = false;
+      _autoNextDismissed = true;
+    });
+  }
+
+  /// Chrome hidden: false — the key scope reveals chrome instead.
+  bool _focusUpFromNextEpChip() {
+    if (!_showControls || !_backFocus.canRequestFocus) return false;
+    _backFocus.requestFocus();
+    return true;
+  }
+
+  bool _focusDownFromNextEpChip() {
+    if (!_showControls || !_seekFocus.canRequestFocus) return false;
+    _seekFocus.requestFocus();
+    return true;
+  }
+
+  void _claimNextEpChipFocus() {
+    if (_nextEpChipFocus.canRequestFocus) _nextEpChipFocus.requestFocus();
+  }
+
   Future<void> _nextEpisode() async {
     if (_loadingNextEp) return;
 
@@ -2031,6 +2084,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _retryFocus.dispose();
     _streamActionFocus.dispose();
     _tvKeyFocus.dispose();
+    _nextEpChipFocus.dispose();
     playerChromeOnOverlayDismissed = null;
     _statusController.removeListener(_onPlayerStatusForChromeHide);
     playerMenuClearReturnFocus();
@@ -2648,56 +2702,26 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 ),
               ),
               if (_tvBackExitArmed) const PlayerEscapeExitHint.tv(),
-              if (widget.hasNextEpisode &&
-                  widget.onNextEpisode != null &&
-                  _nearEndOfEpisode &&
-                  !_loadingNextEp)
+              // Outside the chrome: shows alone while chrome is hidden.
+              if (_showNextEpChip)
                 Positioned(
                   bottom: 120,
                   right: 16,
-                  child: AnimatedOpacity(
-                    opacity: _showControls ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => unawaited(_nextEpisode()),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white24),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Next Episode',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: _isTv
-                                      ? ShellTokens.playerChromeStatusFontSizeTv
-                                      : ShellTokens.playerChromeStatusFontSize,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
-                                size: _isTv
-                                    ? ShellTokens.playerChromeIconSizeTv
-                                    : 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _isPlayingNotifier,
+                    builder: (context, playing, _) => PlayerNextEpisodeChip(
+                      onPressed: () {
+                        setState(() => _autoNextCountdown = false);
+                        unawaited(_nextEpisode());
+                      },
+                      countdown: _autoNextCountdown,
+                      countdownPaused: !playing,
+                      onCountdownComplete: _onAutoNextCountdownDone,
+                      onCancel: _cancelAutoNext,
+                      focusNode: _isTv ? _nextEpChipFocus : null,
+                      tvFocusable: _isTv,
+                      onArrowUp: _focusUpFromNextEpChip,
+                      onArrowDown: _focusDownFromNextEpChip,
                     ),
                   ),
                 ),
@@ -2749,6 +2773,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       },
       onClaimPlayFocus: _claimPlayFocus,
       onControlsActivity: _syncChromeHideTimer,
+      upNextVisible: _showNextEpChip,
+      onClaimUpNextFocus: _claimNextEpChipFocus,
       child: body,
     );
   }

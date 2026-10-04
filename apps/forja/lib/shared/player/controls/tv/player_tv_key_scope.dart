@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_remote.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 
@@ -30,6 +31,8 @@ class PlayerTvKeyScope extends StatefulWidget {
     required this.onFocusPlay,
     required this.onClaimPlayFocus,
     this.onControlsActivity,
+    this.upNextVisible = false,
+    this.onClaimUpNextFocus,
     required this.child,
   });
 
@@ -53,6 +56,11 @@ class PlayerTvKeyScope extends StatefulWidget {
   /// Fired on D-pad / remote keys while chrome is visible so auto-hide can
   /// restart from idle (focus traversal alone does not touch the timer).
   final VoidCallback? onControlsActivity;
+  /// Next Episode chip is on screen. While chrome is hidden it owns D-pad
+  /// focus instead of the video key node.
+  final bool upNextVisible;
+  /// Move focus onto the Next Episode chip.
+  final VoidCallback? onClaimUpNextFocus;
   final Widget child;
 
   @override
@@ -98,7 +106,8 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   void didUpdateWidget(PlayerTvKeyScope oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.enabled) return;
-    if (oldWidget.showControls != widget.showControls) {
+    if (oldWidget.showControls != widget.showControls ||
+        oldWidget.upNextVisible != widget.upNextVisible) {
       _scheduleEnsureFocus();
     }
   }
@@ -136,10 +145,22 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
       }
       return;
     }
+    if (_upNextHoldsFocus) {
+      if (lost || identical(primary, widget.focusNode)) {
+        widget.onClaimUpNextFocus!();
+      }
+      return;
+    }
     if (lost && widget.focusNode.canRequestFocus) {
       widget.focusNode.requestFocus();
     }
   }
+
+  /// Chrome hidden + Next Episode chip up: the chip takes D-pad focus.
+  bool get _upNextHoldsFocus =>
+      !widget.showControls &&
+      widget.upNextVisible &&
+      widget.onClaimUpNextFocus != null;
 
   /// Chrome hidden: handle remote keys even when focus claim lost the race to
   /// app-root [DirectionalFocusAction] (←/→ otherwise no-op).
@@ -159,6 +180,8 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
       return false;
     }
     if (playerChromeOverlayBlocksSeek()) return false;
+    // Focused Next Episode chip: let focus dispatch reach the chip first.
+    if (playerTvUpNextHasFocus()) return false;
     return _handler.handle(event, showControls: false);
   }
 
@@ -187,6 +210,15 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
         return KeyEventResult.handled;
       }
     }
+    // Chrome hidden + chip focused: keys the chip did not use (↑/↓, Back,
+    // play/pause) act like on the video node.
+    if (!widget.showControls &&
+        shellTvIsNavigationKey(event) &&
+        playerTvUpNextHasFocus()) {
+      if (event is KeyUpEvent) return KeyEventResult.handled;
+      _handler.handle(event, showControls: false);
+      return KeyEventResult.handled;
+    }
     // Chrome hidden: [_onHardwareKey] already handled navigation keys.
     if (!widget.showControls && shellTvIsNavigationKey(event)) {
       return KeyEventResult.handled;
@@ -208,8 +240,8 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     return Focus(
       focusNode: widget.focusNode,
       autofocus: !playerChromeOverlayBlocksFocusClaim(),
-      descendantsAreFocusable: widget.showControls,
-      descendantsAreTraversable: widget.showControls,
+      descendantsAreFocusable: widget.showControls || _upNextHoldsFocus,
+      descendantsAreTraversable: widget.showControls || _upNextHoldsFocus,
       onKeyEvent: _onKey,
       child: widget.child,
     );
@@ -225,9 +257,20 @@ bool playerTvChromeHasFocus(FocusNode playerKeyNode) {
     final label = node.debugLabel;
     if (label == 'player-chrome' ||
         label == 'exo-player-chrome' ||
-        label == 'player-tv-menu') {
+        label == 'player-tv-menu' ||
+        label == kPlayerUpNextFocusLabel) {
       return true;
     }
+    node = node.parent;
+  }
+  return false;
+}
+
+/// True when TV focus is on the floating Next Episode chip.
+bool playerTvUpNextHasFocus() {
+  FocusNode? node = FocusManager.instance.primaryFocus;
+  while (node != null) {
+    if (node.debugLabel == kPlayerUpNextFocusLabel) return true;
     node = node.parent;
   }
   return false;

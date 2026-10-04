@@ -6,6 +6,7 @@ import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_remote.dart';
@@ -303,6 +304,67 @@ void main() {
     keyFocus.dispose();
     playFocus.dispose();
   });
+
+  testWidgets(
+    'PlayerTvKeyScope gives the Next Episode chip focus when chrome is hidden',
+    (tester) async {
+      final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
+      final chipFocus = FocusNode(debugLabel: 'test-next-ep');
+      var focusBack = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlayerTvKeyScope(
+              enabled: true,
+              focusNode: keyFocus,
+              showControls: false,
+              onBack: () {},
+              onPlayPause: () {},
+              onShowControls: () {},
+              onSeekBack: () {},
+              onSeekForward: () {},
+              onToggleControls: () {},
+              onFocusBack: () => focusBack++,
+              onFocusPlay: () {},
+              onClaimPlayFocus: () {},
+              upNextVisible: true,
+              onClaimUpNextFocus: chipFocus.requestFocus,
+              child: Center(
+                child: PlayerNextEpisodeChip(
+                  onPressed: () {},
+                  countdown: true,
+                  countdownPaused: true,
+                  onCancel: () {},
+                  focusNode: chipFocus,
+                  tvFocusable: true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(chipFocus.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player-up-next-cancel',
+      );
+
+      // ↑ with chrome hidden reveals chrome via the key scope.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(focusBack, 1);
+
+      keyFocus.dispose();
+      chipFocus.dispose();
+    },
+  );
 
   testWidgets(
     'PlayerTvKeyScope restores play focus on ←/→ when chrome is visible',
