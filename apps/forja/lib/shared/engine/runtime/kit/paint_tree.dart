@@ -4170,18 +4170,23 @@ class _ContinueMountState extends State<_ContinueMount> {
   @override
   void initState() {
     super.initState();
-    WatchHistory.revision.addListener(_reload);
+    WatchHistory.revision.addListener(_onRevision);
     if (widget.mergeHomeWatchHistory) {
-      _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
+      final history = WatchHistoryService();
+      _homeHistorySub = history.historyStream.listen((_) {
         unawaited(_reload());
       });
+      // Broadcast stream skips the seed emit — reload if history already loaded.
+      if (history.isLoaded) unawaited(_reload());
     }
     unawaited(_reload());
   }
 
+  void _onRevision() => unawaited(_reload());
+
   @override
   void dispose() {
-    WatchHistory.revision.removeListener(_reload);
+    WatchHistory.revision.removeListener(_onRevision);
     unawaited(_homeHistorySub?.cancel());
     _scroll.dispose();
     super.dispose();
@@ -4195,7 +4200,9 @@ class _ContinueMountState extends State<_ContinueMount> {
       );
       if (!mounted) return;
       setState(() => _entries = list);
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[ContinueMount] reload failed: $e\n$st');
+    }
   }
 
   Map<String, dynamic>? _byId(String metaId) {

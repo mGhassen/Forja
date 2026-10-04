@@ -28,8 +28,10 @@ String _coverUrl(String? path) {
 
 Map<String, dynamic> catalogEntryFromHomeWatchHistory(Map<String, dynamic> item) {
   final tmdbId = watchHistoryInt(item['tmdbId']);
-  final season = item['season'] as int?;
-  final episode = item['episode'] as int?;
+  // Engine-store JSON / older rows may store season/episode as double or string.
+  // A hard `as int?` cast threw and wiped the whole Continue Watching row.
+  final season = watchHistoryIntOrNull(item['season']);
+  final episode = watchHistoryIntOrNull(item['episode']);
   final mediaType =
       item['mediaType'] as String? ?? (season != null ? 'tv' : 'movie');
   final uniqueId = item['uniqueId']?.toString() ?? '$tmdbId';

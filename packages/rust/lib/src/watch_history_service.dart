@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import 'facade.dart';
 import 'kv.dart';
 import 'local_data_scope.dart';
+import 'watch_history_resume.dart';
 
 class WatchHistoryService {
   static final WatchHistoryService _instance = WatchHistoryService._internal();
@@ -35,6 +39,7 @@ class WatchHistoryService {
   Future<void> _ensureKvMigrated() async {
     if (_kvMigrated) return;
     _kvMigrated = true;
+    if (!Engine.isReady) return;
     await LocalDataScope.migrateKvStringListIfNeeded(
       base: _baseKey,
       readList: kvGetJsonList,
@@ -92,6 +97,15 @@ class WatchHistoryService {
     String? stremioType,
     String? mediaType,
   }) async {
+    // duration 0 is not a real save — never replace a good row with a poison
+    // handoff (external player / early lifecycle).
+    if (duration <= 0) {
+      debugPrint(
+        '[WatchHistory] Skip save for $title — duration=$duration',
+      );
+      return;
+    }
+
     final uniqueId = season != null && episode != null
         ? '${tmdbId}_S${season}_E$episode'
         : '$tmdbId';
@@ -128,9 +142,9 @@ class WatchHistoryService {
       final existingIdx = list.indexWhere((item) => item['uniqueId'] == uniqueId);
       if (existingIdx >= 0) {
         final existing = list[existingIdx];
-        final existingPos = existing['position'];
-        final existingDur = existing['duration'];
-        final updatedAt = existing['updatedAt'] as int? ?? 0;
+        final existingPos = watchHistoryInt(existing['position']);
+        final existingDur = watchHistoryInt(existing['duration']);
+        final updatedAt = watchHistoryInt(existing['updatedAt']);
         final ageMs = DateTime.now().millisecondsSinceEpoch - updatedAt;
         if (existingPos == position &&
             existingDur == duration &&
@@ -143,12 +157,12 @@ class WatchHistoryService {
       if (list.length > 50) {
         list.removeRange(50, list.length);
       }
-      await kvSetJsonList(_key, list);
+      await _writeJsonList(_key, list);
 
-      final dismissed = await kvGetJsonStringList(_dismissedKey);
+      final dismissed = await _readJsonStringList(_dismissedKey);
       if (dismissed.contains(uniqueId)) {
         dismissed.remove(uniqueId);
-        await kvSetJsonStringList(_dismissedKey, dismissed);
+        await _writeJsonStringList(_dismissedKey, dismissed);
         debugPrint(
           '[WatchHistory] Removed $uniqueId from dismissed list (re-watching)',
         );
@@ -167,7 +181,7 @@ class WatchHistoryService {
   Future<List<Map<String, dynamic>>> getHistory() async {
     try {
       await _ensureKvMigrated();
-      return await kvGetJsonList(_key);
+      return await _readJsonList(_key, legacyKey: _baseKey);
     } catch (e) {
       debugPrint('[WatchHistory] Error fetching history: $e');
       return [];
@@ -198,17 +212,17 @@ class WatchHistoryService {
     try {
       final list = await getHistory();
       list.removeWhere((item) => item['uniqueId'] == uniqueId);
-      await kvSetJsonList(_key, list);
+      await _writeJsonList(_key, list);
       _current = list;
       _controller.add(_current);
 
-      final dismissed = await kvGetJsonStringList(_dismissedKey);
+      final dismissed = await _readJsonStringList(_dismissedKey);
       if (!dismissed.contains(uniqueId)) {
         dismissed.add(uniqueId);
         if (dismissed.length > 100) {
           dismissed.removeRange(0, dismissed.length - 100);
         }
-        await kvSetJsonStringList(_dismissedKey, dismissed);
+        await _writeJsonStringList(_dismissedKey, dismissed);
         debugPrint('[WatchHistory] Added $uniqueId to dismissed list');
       }
     } catch (e) {
@@ -219,8 +233,8 @@ class WatchHistoryService {
   /// Clear continue-watching for the **active** account/profile/guest only.
   Future<void> clearAll() async {
     try {
-      await kvSetJsonList(_key, []);
-      await kvSetJsonStringList(_dismissedKey, []);
+      await _writeJsonList(_key, []);
+      await _writeJsonStringList(_dismissedKey, []);
       _current = [];
       _controller.add(_current);
       debugPrint('[WatchHistory] Cleared all history');
@@ -232,7 +246,7 @@ class WatchHistoryService {
 
   Future<bool> isDismissed(String uniqueId) async {
     try {
-      final dismissed = await kvGetJsonStringList(_dismissedKey);
+      final dismissed = await _readJsonStringList(_dismissedKey);
       return dismissed.contains(uniqueId);
     } catch (e) {
       return false;
@@ -241,5 +255,99 @@ class WatchHistoryService {
 
   void dispose() {
     _controller.close();
+  }
+
+  // ── Engine KV, or direct JSON-file I/O when libffi failed to load ────────
+
+  Future<List<Map<String, dynamic>>> _readJsonList(
+    String key, {
+    String? legacyKey,
+  }) async {
+    if (Engine.isReady) {
+      final scoped = await kvGetJsonList(key);
+      if (scoped.isNotEmpty || legacyKey == null) return scoped;
+      return kvGetJsonList(legacyKey);
+    }
+    final map = await _readStoreFile();
+    final scoped = _mapsFromStore(map, key);
+    if (scoped.isNotEmpty || legacyKey == null) return scoped;
+    return _mapsFromStore(map, legacyKey);
+  }
+
+  Future<void> _writeJsonList(String key, List<Map<String, dynamic>> list) async {
+    if (Engine.isReady) {
+      await kvSetJsonList(key, list);
+      return;
+    }
+    final map = await _readStoreFile();
+    map[key] = list;
+    if (key != _baseKey) map.remove(_baseKey);
+    await _writeStoreFile(map);
+  }
+
+  Future<List<String>> _readJsonStringList(String key) async {
+    if (Engine.isReady) return kvGetJsonStringList(key);
+    final map = await _readStoreFile();
+    return _stringsFromStore(map, key);
+  }
+
+  Future<void> _writeJsonStringList(String key, List<String> list) async {
+    if (Engine.isReady) {
+      await kvSetJsonStringList(key, list);
+      return;
+    }
+    final map = await _readStoreFile();
+    map[key] = list;
+    if (key != _baseDismissedKey) map.remove(_baseDismissedKey);
+    await _writeStoreFile(map);
+  }
+
+  Future<String> _storePath() => Engine.storagePathForIdentity(
+        accountId: LocalDataScope.accountId,
+        profileId: LocalDataScope.profileId,
+      );
+
+  Future<Map<String, dynamic>> _readStoreFile() async {
+    try {
+      final path = await _storePath();
+      for (final candidate in [path, '$path.bak']) {
+        final file = File(candidate);
+        if (!await file.exists()) continue;
+        final raw = await file.readAsString();
+        if (raw.trim().isEmpty) continue;
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      }
+    } catch (e) {
+      debugPrint('[WatchHistory] store file read failed: $e');
+    }
+    return {};
+  }
+
+  Future<void> _writeStoreFile(Map<String, dynamic> map) async {
+    final path = await _storePath();
+    final file = File(path);
+    await file.parent.create(recursive: true);
+    final tmp = File('$path.tmp');
+    await tmp.writeAsString(const JsonEncoder.withIndent('  ').convert(map));
+    await tmp.rename(path);
+    try {
+      await File(path).copy('$path.bak');
+    } catch (_) {}
+  }
+
+  List<Map<String, dynamic>> _mapsFromStore(Map<String, dynamic> map, String key) {
+    final v = map[key];
+    if (v is! List) return [];
+    return [
+      for (final e in v)
+        if (e is Map) Map<String, dynamic>.from(e),
+    ];
+  }
+
+  List<String> _stringsFromStore(Map<String, dynamic> map, String key) {
+    final v = map[key];
+    if (v is! List) return [];
+    return [for (final e in v) '$e'];
   }
 }

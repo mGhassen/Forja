@@ -31,10 +31,31 @@ bool isWatchFinished(int position, int duration) {
 const watchHistoryStaleResumeThreshold = Duration(days: 7);
 
 /// Coerce JSON / FFI numbers (`int` or `double`) to [int].
+///
+/// Also accepts numeric strings (`"550"`, `"72.0"`) — engine-store / prefs
+/// round-trips and older imports sometimes store ids that way.
 int watchHistoryInt(Object? value, [int fallback = 0]) {
   if (value is int) return value;
   if (value is num) return value.toInt();
+  if (value is String) {
+    final t = value.trim();
+    if (t.isEmpty) return fallback;
+    return int.tryParse(t) ?? double.tryParse(t)?.toInt() ?? fallback;
+  }
   return fallback;
+}
+
+/// Like [watchHistoryInt] but keeps JSON `null` / missing as `null`.
+int? watchHistoryIntOrNull(Object? value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) {
+    final t = value.trim();
+    if (t.isEmpty) return null;
+    return int.tryParse(t) ?? double.tryParse(t)?.toInt();
+  }
+  return null;
 }
 
 /// True when saved progress is older than [threshold] (missing timestamp = stale).

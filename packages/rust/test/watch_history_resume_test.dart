@@ -56,6 +56,15 @@ void main() {
       expect(watchHistoryInt(null), 0);
       expect(watchHistoryInt('x', 7), 7);
     });
+
+    test('parses numeric strings', () {
+      expect(watchHistoryInt('550'), 550);
+      expect(watchHistoryInt('72.0'), 72);
+      expect(watchHistoryIntOrNull(null), isNull);
+      expect(watchHistoryIntOrNull(3.0), 3);
+      expect(watchHistoryIntOrNull('2'), 2);
+      expect(watchHistoryIntOrNull(''), isNull);
+    });
   });
 
   group('resumeStartPositionFromProgress', () {
