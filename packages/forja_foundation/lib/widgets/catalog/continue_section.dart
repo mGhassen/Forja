@@ -288,6 +288,7 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
         tvZone: ShellPaintTvZone.row,
         onFocusChange: _setActive,
         onHoverChange: _setActive,
+        mouseDownActivates: false,
         child: painted,
       );
     }

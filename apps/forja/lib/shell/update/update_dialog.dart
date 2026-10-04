@@ -195,7 +195,10 @@ class UpdateDialog extends StatefulWidget {
 
   const UpdateDialog({super.key, required this.updateInfo});
 
-  static Future<void> show(BuildContext hostContext, UpdateInfo updateInfo) async {
+  static Future<void> show(
+    BuildContext hostContext,
+    UpdateInfo updateInfo,
+  ) async {
     try {
       await showGeneralDialog<void>(
         context: hostContext,
@@ -262,12 +265,18 @@ class _UpdateDialogState extends State<UpdateDialog> {
   int _selectedChangelog = 0;
   bool _changelogActive = false;
   bool _changelogOnRail = true;
+  final FocusScopeNode _gateScope = FocusScopeNode(debugLabel: 'update-gate');
+  ModalRoute<Object?>? _route;
+  bool _guardFocus = false;
+  bool _focusGuardScheduled = false;
+  FocusNode? _lastGateFocus;
 
   @override
   void initState() {
     super.initState();
     _desktopDownload.state.addListener(_onDesktopDownloadChanged);
     _changelogFocus.addListener(_onChangelogFocusChanged);
+    FocusManager.instance.addListener(_onGlobalFocusChange);
     final current = _desktopDownload.state.value;
     if (current.phase == AppUpdateDownloadPhase.downloading &&
         current.updateInfo?.latestVersion == widget.updateInfo.latestVersion) {
@@ -280,6 +289,45 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
     // Non-opaque showGeneralDialog leaves shell focusable; claim Install (or
     // Continue) so ATV D-pad cannot drive IPTV/channels under the gate.
+    _claimPrimaryFocus();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _route = ModalRoute.of(context);
+    _guardFocus =
+        ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ??
+        resolveShellProfile(context) == ShellProfile.tv;
+  }
+
+  /// The shell under this gate stays focusable (cold start mounts it while the
+  /// gate is up) and its autofocus / nav restore can pull D-pad focus onto
+  /// hidden controls. While this gate is the top route, focus stays inside it.
+  void _onGlobalFocusChange() {
+    if (!mounted || !_guardFocus || _focusGuardScheduled) return;
+    _focusGuardScheduled = true;
+    scheduleMicrotask(() {
+      _focusGuardScheduled = false;
+      _keepFocusInGate();
+    });
+  }
+
+  void _keepFocusInGate() {
+    final route = _route;
+    if (!mounted || route == null || !route.isCurrent) return;
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary != null &&
+        primary is! FocusScopeNode &&
+        primary.ancestors.contains(_gateScope)) {
+      _lastGateFocus = primary;
+      return;
+    }
+    final back = _lastGateFocus;
+    if (back != null && back.context != null && back.canRequestFocus) {
+      back.requestFocus();
+      return;
+    }
     _claimPrimaryFocus();
   }
 
@@ -438,6 +486,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
     return KeyEventResult.ignored;
   }
+
   void _claimPrimaryFocus({int attempt = 0}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -462,10 +511,12 @@ class _UpdateDialogState extends State<UpdateDialog> {
   void dispose() {
     _desktopDownload.state.removeListener(_onDesktopDownloadChanged);
     _changelogFocus.removeListener(_onChangelogFocusChanged);
+    FocusManager.instance.removeListener(_onGlobalFocusChange);
     _installFocus.dispose();
     _skipFocus.dispose();
     _changelogFocus.dispose();
     _downloadFocus.dispose();
+    _gateScope.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -517,75 +568,76 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return TvOverlayScope(
-      debugLabel: 'update-dialog',
-      autofocusFirst: false,
-      child: Material(
-        color: AppTheme.bgDark,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final layout = _UpdateLayout.of(
-                context,
-                width: constraints.maxWidth,
-                height: constraints.maxHeight,
-              );
+    return FocusScope(
+      node: _gateScope,
+      child: TvOverlayScope(
+        debugLabel: 'update-dialog',
+        autofocusFirst: false,
+        child: Material(
+          color: AppTheme.bgDark,
+          child: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final layout = _UpdateLayout.of(
+                  context,
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                );
 
-              if (_isDownloading) {
-                return SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: layout.padHorizontal,
-                    vertical: layout.padTop,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - layout.padTop * 2,
-                      maxWidth: layout.contentWidth,
+                if (_isDownloading) {
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: layout.padHorizontal,
+                      vertical: layout.padTop,
                     ),
-                    child: Center(
-                      child: _buildDownloadingBody(layout),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight - layout.padTop * 2,
+                        maxWidth: layout.contentWidth,
+                      ),
+                      child: Center(child: _buildDownloadingBody(layout)),
+                    ),
+                  );
+                }
+
+                // Fill the viewport: header + footer pinned, only changelog scrolls.
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: layout.contentWidth,
+                    height: constraints.maxHeight,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        layout.padTop,
+                        24,
+                        layout.padBottom,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildOfferHeader(layout),
+                          Expanded(child: _buildReleaseNotes(layout)),
+                          SizedBox(height: layout.footerGap),
+                          ExcludeFocus(
+                            excluding: layout.isTv && _changelogActive,
+                            child: _UpdateFooter(
+                              layout: layout,
+                              installFocus: _installFocus,
+                              skipFocus: layout.isTv ? _skipFocus : null,
+                              onUpdate: _handleUpdate,
+                              onSkip: () => Navigator.of(context).pop(),
+                              onInstallKey: layout.isTv ? _onInstallKey : null,
+                              onSkipKey: layout.isTv ? _onSkipKey : null,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
-              }
-
-              // Fill the viewport: header + footer pinned, only changelog scrolls.
-              return Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: layout.contentWidth,
-                  height: constraints.maxHeight,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      24,
-                      layout.padTop,
-                      24,
-                      layout.padBottom,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildOfferHeader(layout),
-                        Expanded(child: _buildReleaseNotes(layout)),
-                        SizedBox(height: layout.footerGap),
-                        ExcludeFocus(
-                          excluding: layout.isTv && _changelogActive,
-                          child: _UpdateFooter(
-                            layout: layout,
-                            installFocus: _installFocus,
-                            skipFocus: layout.isTv ? _skipFocus : null,
-                            onUpdate: _handleUpdate,
-                            onSkip: () => Navigator.of(context).pop(),
-                            onInstallKey: layout.isTv ? _onInstallKey : null,
-                            onSkipKey: layout.isTv ? _onSkipKey : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
@@ -707,9 +759,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     changelogs: changelogs,
                     selected: _selectedChangelog,
                     interactive: !layout.isTv,
-                    railActive: layout.isTv &&
-                        _changelogActive &&
-                        _changelogOnRail,
+                    railActive:
+                        layout.isTv && _changelogActive && _changelogOnRail,
                     selectedItemKey: layout.isTv ? _selectedRailItemKey : null,
                     onSelect: _selectChangelog,
                   ),
@@ -750,12 +801,12 @@ class _UpdateDialogState extends State<UpdateDialog> {
     final multi = showRail;
     final hint = layout.isTv && _changelogFocus.hasFocus
         ? (!_changelogActive
-            ? 'OK to browse'
-            : _changelogOnRail && multi
-            ? '↑↓ versions  ·  → notes  ·  OK to exit'
-            : multi
-            ? '↑↓ scroll  ·  ← versions  ·  OK to exit'
-            : '↑↓ scroll  ·  OK to exit')
+              ? 'OK to browse'
+              : _changelogOnRail && multi
+              ? '↑↓ versions  ·  → notes  ·  OK to exit'
+              : multi
+              ? '↑↓ scroll  ·  ← versions  ·  OK to exit'
+              : '↑↓ scroll  ·  OK to exit')
         : null;
 
     return Column(
@@ -1093,9 +1144,7 @@ class _ChangelogVersionRail extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(color: ForjaShellColors.borderSubtle),
-        ),
+        border: Border(right: BorderSide(color: ForjaShellColors.borderSubtle)),
       ),
       child: ListView.builder(
         padding: EdgeInsets.only(
@@ -1120,7 +1169,9 @@ class _ChangelogVersionRail extends StatelessWidget {
                   : active
                   ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(ShellTokens.shellButtonRadius),
+              borderRadius: BorderRadius.circular(
+                ShellTokens.shellButtonRadius,
+              ),
               border: Border.all(
                 width: 2,
                 color: focused
@@ -1178,8 +1229,9 @@ class _ChangelogVersionRail extends StatelessWidget {
                           'v$version',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: layout.isTv ? 11 : 13,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w600,
+                            fontWeight: active
+                                ? FontWeight.w700
+                                : FontWeight.w600,
                             color: active
                                 ? ForjaShellColors.brandGreen
                                 : ForjaShellColors.textSecondary,
@@ -1294,13 +1346,13 @@ class _ReleaseNotesScrollerState extends State<_ReleaseNotesScroller> {
       child: forjaSuppressAutoScrollbar(
         context: context,
         child: SingleChildScrollView(
-        controller: _controller,
-        padding: EdgeInsets.only(
-          right: widget.layout.isTv ? 0 : 10,
-          bottom: widget.layout.isTv ? 8 : 12,
+          controller: _controller,
+          padding: EdgeInsets.only(
+            right: widget.layout.isTv ? 0 : 10,
+            bottom: widget.layout.isTv ? 8 : 12,
+          ),
+          child: widget.child,
         ),
-        child: widget.child,
-      ),
       ),
     );
   }

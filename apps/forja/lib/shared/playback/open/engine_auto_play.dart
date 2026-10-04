@@ -770,7 +770,12 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     }
 
     if (!race.isCompleted && !playAborted()) {
-      poolLimit = engineSourcesBatchLimit(selected: pluginIds.length);
+      if (pinActive) {
+        soloId = pinPlugin;
+        poolLimit = 1;
+      } else {
+        poolLimit = engineSourcesBatchLimit(selected: pluginIds.length);
+      }
       var gen = ++fetchGen;
       fillPool(gen);
       while (!playAborted() && !race.isCompleted) {
@@ -782,6 +787,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
             !probingIds.contains(pinPlugin)) {
           pinActive = false;
           soloId = null;
+          poolLimit = engineSourcesBatchLimit(selected: pluginIds.length);
           gen = ++fetchGen;
           fillPool(gen);
         }

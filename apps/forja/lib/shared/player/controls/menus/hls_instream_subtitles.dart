@@ -252,9 +252,14 @@ Future<List<HlsInStreamSubtitle>> _loadHlsInStreamSubtitles(
     targets.add(uri);
   }
 
-  // Upstream master still has TYPE=SUBTITLES after the proxy drops them.
-  addTarget(hlsInStreamFetchTarget(playUrl));
-  if (_localPlaylist(play)) addTarget(play.toString());
+  if (_localPlaylist(play)) {
+    // Proxy carries #FORJA-SUB lines — no need to also hit the upstream
+    // master whose TYPE=SUBTITLES renditions resolve to different URIs and
+    // double the list.
+    addTarget(play.toString());
+  } else {
+    addTarget(hlsInStreamFetchTarget(playUrl));
+  }
 
   if (targets.isEmpty) return const [];
 

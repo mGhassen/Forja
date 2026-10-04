@@ -414,9 +414,7 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
               final hls = byLangHls[key] ?? const [];
               final active = widget.player.state.track.subtitle;
               final hlsSelected = hls.any(
-                (s) =>
-                    active.id == s.uri ||
-                    (active.title != null && active.title == s.name),
+                (s) => active.id == s.uri,
               );
               final hasSelected = !subtitlesOff &&
                   (online.any((s) => s['url'] == widget.selectedExternalSubUrl) ||
@@ -595,8 +593,7 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
                     language: s.language,
                   ),
             subtitle: 'In-stream',
-            selected: active.id == s.uri ||
-                (active.title != null && active.title == s.name),
+            selected: active.id == s.uri,
             onTap: () => unawaited(_pickHls(s)),
           ),
         for (final s in widget.online)
