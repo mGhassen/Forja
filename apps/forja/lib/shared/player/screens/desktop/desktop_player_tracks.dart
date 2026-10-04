@@ -464,6 +464,10 @@ mixin _DesktopPlayerTracks
     if (_subtitleAutoCancelled(gen)) return;
     if (await _applyPreferredHlsInStreamSubtitle(preferred, gen)) return;
     if (_subtitleAutoCancelled(gen)) return;
+    // During init, embedded tracks may not have arrived yet. Defer the
+    // scraped-sub fallback so in-stream tracks get a chance once the
+    // player settles (post-init handler re-runs auto-pick).
+    if (_s._isInitPlaybackRunning && !forcePlayerApply) return;
     await _autoLoadExternalSubtitleCandidates(
       externalSubtitleAutoCandidates(
         preferredLang: preferred,

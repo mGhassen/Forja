@@ -447,6 +447,7 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     if (_subtitleAutoCancelled(gen)) return;
     if (await _applyPreferredHlsInStreamSubtitle(preferred, gen)) return;
     if (_subtitleAutoCancelled(gen)) return;
+    if (_s._isInitPlaybackRunning && !forcePlayerApply) return;
     await _autoLoadExternalSubtitleCandidates(
       externalSubtitleAutoCandidates(
         preferredLang: preferred,

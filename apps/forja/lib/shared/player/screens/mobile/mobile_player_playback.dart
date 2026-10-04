@@ -720,6 +720,11 @@ mixin _MobilePlayerPlayback
         // online subtitle is on, switch to the stream track now.
         if (!_s._disposed && mounted) {
           _scheduleEmbeddedSubtitleAuto(_s._player.state.tracks);
+          if (!_s._embeddedSubtitleAutoApplied &&
+              !_playerHasActiveSubtitle() &&
+              _s._selectedExternalSubUrl == null) {
+            unawaited(_s._maybeAutoPickExternalSubtitle());
+          }
         }
       }
       if (!_s._disposed && mounted) _s._flushPendingRemountSeek();

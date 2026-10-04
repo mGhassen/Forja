@@ -709,6 +709,14 @@ mixin _DesktopPlayerPlayback
         // online subtitle is on, switch to the stream track now.
         if (!_s._disposed && mounted) {
           _scheduleEmbeddedSubtitleAuto(_s._player.state.tracks);
+          // When no embedded tracks exist, the scheduler above returns
+          // early. Re-run the external auto-pick now that init is done
+          // so scraped subs (deferred during init) still get applied.
+          if (!_s._embeddedSubtitleAutoApplied &&
+              !_playerHasActiveSubtitle() &&
+              _s._selectedExternalSubUrl == null) {
+            unawaited(_s._maybeAutoPickExternalSubtitle());
+          }
         }
       }
       if (!_s._disposed && mounted) _s._flushPendingRemountSeek();
