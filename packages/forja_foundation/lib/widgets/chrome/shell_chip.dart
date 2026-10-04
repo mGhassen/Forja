@@ -197,6 +197,8 @@ class ForjaShellChip extends StatefulWidget {
   State<ForjaShellChip> createState() => _ForjaShellChipState();
 }
 
+enum _ChipIconAction { reload, cancel }
+
 class _ForjaShellChipState extends State<ForjaShellChip> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   final ValueNotifier<bool> _busyHoveredN = ValueNotifier(false);
@@ -205,6 +207,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
   Timer? _holdTimer;
   bool _longPressFired = false;
   LogicalKeyboardKey? _holdActivateKey;
+  _ChipIconAction? _iconAction;
 
   @override
   void dispose() {
@@ -256,7 +259,45 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
       _longPressFired = false;
       return;
     }
+    // Nested GestureDetector loses to the chip InkWell; pointer-down on the
+    // trailing icon is recorded so this tap reloads / cancels instead of
+    // toggling the chip.
+    final icon = _iconAction;
+    _iconAction = null;
+    if (icon == _ChipIconAction.reload) {
+      widget.onReload?.call();
+      return;
+    }
+    if (icon == _ChipIconAction.cancel) {
+      widget.onCancel?.call();
+      return;
+    }
     widget.onTap?.call();
+  }
+
+  void _markIconAction(_ChipIconAction action) {
+    _iconAction = action;
+  }
+
+  void _clearIconAction(_ChipIconAction action) {
+    if (_iconAction == action) _iconAction = null;
+  }
+
+  Widget _iconPointerTarget({
+    required _ChipIconAction action,
+    required Widget child,
+  }) {
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) => _markIconAction(action),
+      onPointerCancel: (_) => _clearIconAction(action),
+      onPointerUp: (_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _clearIconAction(action);
+        });
+      },
+      child: child,
+    );
   }
 
   KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
@@ -386,23 +427,25 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             ),
             if (widget.loading) ...[
               SizedBox(width: gapTight),
-              ForjaBusyCancelGlyph(
-                color: fg,
-                size: trailingSize,
-                hovered: busyHovered,
-                onHover: _setBusyHovered,
-                onCancel: widget.onCancel,
+              _iconPointerTarget(
+                action: _ChipIconAction.cancel,
+                child: ForjaBusyCancelGlyph(
+                  color: fg,
+                  size: trailingSize,
+                  hovered: busyHovered,
+                  onHover: _setBusyHovered,
+                  onCancel: widget.onCancel,
+                ),
               ),
             ] else if (showReload) ...[
               SizedBox(width: gap),
               ExcludeFocus(
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  onEnter: (_) => _setReloadHovered(true),
-                  onExit: (_) => _setReloadHovered(false),
-                  child: GestureDetector(
-                    onTap: widget.onReload,
-                    behavior: HitTestBehavior.opaque,
+                child: _iconPointerTarget(
+                  action: _ChipIconAction.reload,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onEnter: (_) => _setReloadHovered(true),
+                    onExit: (_) => _setReloadHovered(false),
                     child: AnimatedRotation(
                       turns: reloadHovered ? 0.5 : 0,
                       duration: const Duration(milliseconds: 320),

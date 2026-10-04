@@ -100,4 +100,36 @@ void main() {
       reason: 'provider chip label should sit on the chip vertical center',
     );
   });
+
+  testWidgets('ForjaShellChip reload icon does not toggle the chip',
+      (tester) async {
+    var taps = 0;
+    var reloads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShellPaintScope(
+          useTvFocus: false,
+          scaleOnHover: false,
+          usesTvDensity: false,
+          focusStyled: (_, {required focused}) => focused,
+          child: Scaffold(
+            body: Center(
+              child: ForjaShellChip(
+                label: 'Provider',
+                selected: true,
+                onTap: () => taps++,
+                onReload: () => reloads++,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.pump();
+
+    expect(reloads, 1);
+    expect(taps, 0);
+  });
 }
