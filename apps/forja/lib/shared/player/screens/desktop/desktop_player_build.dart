@@ -593,6 +593,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                             onInteraction: _s._onMouseMove,
                             onDragStart: () => _s._hideTimer?.cancel(),
                             onDragEnd: _s._startHideTimer,
+                            onSelectedChanged: (selected) =>
+                                _s._volumeControlSelected = selected,
                           ),
                         ),
                       ],

@@ -377,9 +377,11 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       if (newPos < Duration.zero) newPos = Duration.zero;
       if (newPos > _s._durationNotifier.value) newPos = _s._durationNotifier.value;
       unawaited(_s._seekTo(newPos));
-    } else if (key == LogicalKeyboardKey.arrowUp) {
+    } else if (key == LogicalKeyboardKey.arrowUp &&
+        _s._volumeControlSelected) {
       _s._player.setVolume((_s._volumeNotifier.value + 5).clamp(0, 150));
-    } else if (key == LogicalKeyboardKey.arrowDown) {
+    } else if (key == LogicalKeyboardKey.arrowDown &&
+        _s._volumeControlSelected) {
       _s._player.setVolume((_s._volumeNotifier.value - 5).clamp(0, 150));
     } else if (key == LogicalKeyboardKey.keyM) {
       _s._player.setVolume(_s._volumeNotifier.value > 0 ? 0.0 : 100.0);

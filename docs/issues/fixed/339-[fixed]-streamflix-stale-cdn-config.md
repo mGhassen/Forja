@@ -48,7 +48,9 @@ The live app config is **`config-streamflix2.json`** (`s1` / `s2` / `s3.streamfl
 
 ### Known gap (upstream)
 
-TV episode paths (`tv/{moviekey}/s{N}/episode{M}.mkv`) still **404** on the new CDN across sampled shows. StreamFlix’s own config notice says playback issues are being worked on. Extract still emits the historical TV path when a catalog match exists; movies are restored.
+TV episode paths (`tv/{moviekey}/s{N}/episode{M}.mkv`) still **404** on the new CDN across sampled shows (re-probed 2026-10-06: Westworld, The Witcher, You — 307 → 404 on s1–s3). The app reads episodes from a Firebase RTDB (`chilflix-410be-default-rtdb.asia-southeast1`) that denies unauthenticated reads.
+
+Follow-up (providers **1.6.47**): extract HEAD-probes every row and emits only rows that resolve, so dead TV paths no longer reach the player. Catalog match is now same-kind only (`isTV`) — by TMDB id, else exact title + year. Before this, TV "Lanterns" (TMDB 95350) word-matched the movie "Valley of the Lanterns" and built a TV path from the movie's key.
 
 ### Related
 

@@ -313,6 +313,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
   final ValueNotifier<double> _volumeNotifier = ValueNotifier(100.0);
 
+  /// Up / Down change volume only while the volume control is selected.
+  bool _volumeControlSelected = false;
+
   // ── Subtitles ────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _externalSubtitles = [];
   Set<String> _providerExternalSubUrls = {};

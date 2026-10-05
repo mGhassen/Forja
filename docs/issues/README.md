@@ -414,6 +414,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [413-[fixed]-…](fixed/413-[fixed]-anihq-voe-iframe-search.md) | AniHQ Sources empty (VOE iframe + search) | P1 | High | fixed | Complete · 3/3 · A 0/1 | — |
 | [414-[fixed]-…](fixed/414-[fixed]-luna-stale-next-action.md) | Luna Sources empty (stale Next-Action) | P1 | High | fixed | Complete · 2/2 · A 0/1 | — |
 | [415-[fixed]-…](fixed/415-[fixed]-miruro-catalog-v1-api.md) | Miruro Sources empty (catalog v1 API) | P1 | High | fixed | Complete · 2/2 · A 0/1 | [080](080-[open]-miruro-cf-pipe-webview-unlock.md) |
+| [416-[open]-…](416-[open]-cinesrc-glendale-cdn-dead-challenge-gate.md) | CineSrc/CineSu/Bcine CDN dead, challenge gate | P1 | High | open | 1/3 · A 0/1 | — |
 | [375-[fixed]-…](fixed/375-[fixed]-hub-keep-alive-keeps-fetching-off-tab.md) | Hub keep-alive keeps fetching after leaving the tab | P1 | High | fixed | Complete · 4/4 · A 2/2 | [RFC-024](../rfc/fixed/024-[fixed]-tab-cache-eviction-stale.md) · [311](fixed/311-[fixed]-pack-reload-eager-hub-refetch.md) |
 | [360-[fixed]-…](fixed/360-[fixed]-portal-form-dialog-desktop-tv-shrink.md) | IPTV Add/Edit portal dialog TV-shrinks on desktop | P1 | High | fixed | Complete · 2/2 · A 0/2 | — |
 | [350-[fixed]-…](fixed/350-[fixed]-iptv-search-category-click-ignored.md) | IPTV search ignores category click | P1 | High | fixed | Complete · 5/5 · A 3/5 | [315](fixed/315-[fixed]-iptv-search-no-categories.md) · [290](290-[open]-iptv-catalog-page-host-shelf.md) |

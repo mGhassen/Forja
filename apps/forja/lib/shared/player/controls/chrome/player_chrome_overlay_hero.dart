@@ -370,6 +370,7 @@ class PlayerVolumeControl extends StatefulWidget {
     this.iconSize = 22,
     this.compact = false,
     this.tvFocusable = false,
+    this.onSelectedChanged,
   });
 
   final double volume;
@@ -383,6 +384,10 @@ class PlayerVolumeControl extends StatefulWidget {
   final bool compact;
   final bool tvFocusable;
 
+  /// True while the control is hovered, its slider is pinned, or focus is
+  /// inside it. Hosts gate Up / Down volume keys on this.
+  final ValueChanged<bool>? onSelectedChanged;
+
   @override
   State<PlayerVolumeControl> createState() => _PlayerVolumeControlState();
 }
@@ -392,12 +397,22 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
   bool _sliderPinned = false;
   double? _volumeBeforeMute;
   Timer? _hideSliderTimer;
+  bool _focusWithin = false;
+  bool _selected = false;
 
   bool _showSliderFor(bool hovering) => hovering || _sliderPinned;
+
+  void _syncSelected() {
+    final next = _hoveringN.value || _sliderPinned || _focusWithin;
+    if (next == _selected) return;
+    _selected = next;
+    widget.onSelectedChanged?.call(next);
+  }
 
   void _setHovering(bool hovering) {
     if (_hoveringN.value == hovering) return;
     _hoveringN.value = hovering;
+    _syncSelected();
   }
 
   double get _sliderWidth =>
@@ -412,6 +427,7 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
   @override
   void dispose() {
     _hideSliderTimer?.cancel();
+    if (_selected) widget.onSelectedChanged?.call(false);
     _hoveringN.dispose();
     super.dispose();
   }
@@ -432,6 +448,7 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
 
   void _toggleSliderPinned() {
     setState(() => _sliderPinned = !_sliderPinned);
+    _syncSelected();
     if (_sliderPinned) {
       _hideSliderTimer?.cancel();
     } else {
@@ -445,82 +462,91 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
     _hideSliderTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
       setState(() => _sliderPinned = false);
+      _syncSelected();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) {
-        playerChromeCancelSeekScrubs();
-        _setHovering(true);
-        _hideSliderTimer?.cancel();
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (hasFocus) {
+        _focusWithin = hasFocus;
+        _syncSelected();
       },
-      onExit: (_) {
-        _setHovering(false);
-        _scheduleHideSlider();
-      },
-      child: ListenableBuilder(
-        listenable: _hoveringN,
-        builder: (context, _) {
-          final showSlider = _showSliderFor(_hoveringN.value);
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onLongPress: _toggleSliderPinned,
-                child: PlayerFlatIconButton(
-                  icon: _iconFor(widget.volume),
-                  tooltip: widget.volume > 0 ? 'Mute' : 'Unmute',
-                  size: widget.size,
-                  iconSize: widget.iconSize,
-                  tvFocusable: widget.tvFocusable,
-                  onPressed: _toggleMute,
+      child: MouseRegion(
+        onEnter: (_) {
+          playerChromeCancelSeekScrubs();
+          _setHovering(true);
+          _hideSliderTimer?.cancel();
+        },
+        onExit: (_) {
+          _setHovering(false);
+          _scheduleHideSlider();
+        },
+        child: ListenableBuilder(
+          listenable: _hoveringN,
+          builder: (context, _) {
+            final showSlider = _showSliderFor(_hoveringN.value);
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onLongPress: _toggleSliderPinned,
+                  child: PlayerFlatIconButton(
+                    icon: _iconFor(widget.volume),
+                    tooltip: widget.volume > 0 ? 'Mute' : 'Unmute',
+                    size: widget.size,
+                    iconSize: widget.iconSize,
+                    tvFocusable: widget.tvFocusable,
+                    onPressed: _toggleMute,
+                  ),
                 ),
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOut,
-                child: SizedBox(
-                  width: showSlider ? _sliderWidth : 0,
-                  child: ClipRect(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          inactiveTrackColor: Colors.white24,
-                          activeTrackColor: Colors.white,
-                          thumbColor: Colors.white,
-                          trackHeight: 3,
-                          thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 7,
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  child: SizedBox(
+                    width: showSlider ? _sliderWidth : 0,
+                    child: ClipRect(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            inactiveTrackColor: Colors.white24,
+                            activeTrackColor: Colors.white,
+                            thumbColor: Colors.white,
+                            trackHeight: 3,
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 7,
+                            ),
                           ),
-                        ),
-                        child: Slider(
-                          value: widget.volume.clamp(0, widget.maxVolume),
-                          min: 0,
-                          max: widget.maxVolume,
-                          onChangeStart: (_) {
-                            widget.onDragStart?.call();
-                            _hideSliderTimer?.cancel();
-                          },
-                          onChanged: (v) {
-                            _setVolume(v);
-                            _scheduleHideSlider();
-                          },
-                          onChangeEnd: (_) {
-                            widget.onDragEnd?.call();
-                            _scheduleHideSlider();
-                          },
+                          child: Slider(
+                            value: widget.volume.clamp(0, widget.maxVolume),
+                            min: 0,
+                            max: widget.maxVolume,
+                            onChangeStart: (_) {
+                              widget.onDragStart?.call();
+                              _hideSliderTimer?.cancel();
+                            },
+                            onChanged: (v) {
+                              _setVolume(v);
+                              _scheduleHideSlider();
+                            },
+                            onChangeEnd: (_) {
+                              widget.onDragEnd?.call();
+                              _scheduleHideSlider();
+                            },
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
