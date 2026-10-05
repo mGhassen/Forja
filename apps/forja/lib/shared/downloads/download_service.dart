@@ -232,7 +232,17 @@ class DownloadService {
     }
   }
 
-  Future<void> _persistTasks() async {
+  /// Serializes task writes: overlapping writers shared one `.tmp` and the
+  /// loser's rename failed, leaving an older snapshot on disk.
+  Future<void> _persistChain = Future<void>.value();
+
+  Future<void> _persistTasks() {
+    final next = _persistChain.then((_) => _writeTasksFile());
+    _persistChain = next;
+    return next;
+  }
+
+  Future<void> _writeTasksFile() async {
     try {
       final file = await _getStorageFile();
       final jsonList = tasksNotifier.value.map((t) => t.toJson()).toList();
@@ -794,8 +804,9 @@ class DownloadService {
                 }());
                 return;
               }
-              // Flush buffered head into the file once.
-              sink.add(headBuffer);
+              // Flush buffered head into the file once. IOSink keeps the list
+              // by reference, so hand it a copy before clearing the buffer.
+              sink.add(Uint8List.fromList(headBuffer));
               receivedSoFar += headBuffer.length;
               speedSampler.addBytes(headBuffer.length);
               headBuffer.clear();
