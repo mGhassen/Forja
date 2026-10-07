@@ -1375,6 +1375,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     });
   }
 
+  /// Drop category / kind selections — Live↔Movies↔Series flip and portal
+  /// switch. The rail re-lands (remembered Live category or first group).
   void _resetCategorySelectionAfterCatalogChange() {
     walkLayoutWidgets(_widgets, (spec) {
       final type = LayoutTypes.normalize((spec['type'] ?? '').toString(), spec);
@@ -1446,6 +1448,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         setState(() {
           _catalogHoldEpoch++;
           _dynamicBarItems.clear();
+          // Portal switch — the category rail selection belongs to the old
+          // portal. Feeding its id to the new portal's catalog_page filters
+          // to zero rows ("No channels" / "No movies") until a hub reload.
+          _resetCategorySelectionAfterCatalogChange();
+          _categoryBeforeSearch = null;
         });
       },
       onBumpRefresh: ({bool forceNetwork = true}) {

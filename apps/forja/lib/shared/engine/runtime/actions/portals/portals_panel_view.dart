@@ -10,12 +10,14 @@ import 'package:forja/shared/engine/portals/portal_form_dialog.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_page.dart';
 import 'package:forja/shared/engine/portals/store/portal_live_tv_search.dart';
+import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_tv.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -125,10 +127,23 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
 
   /// Mutate path (add/edit/delete/deal) — wipe in-memory feed, soft-bump.
   /// Pack disk catalog still OK (`forceNetwork: false`).
-  void _reloadHubCatalog(String pluginId) {
+  ///
+  /// Add / import / deal select the new portal in the pack. When the active
+  /// portal changed under us, wipe the catalog first so the category rail
+  /// selection from the previous portal does not scope the new feed.
+  Future<void> _reloadHubCatalog(String pluginId) async {
+    final before = (_activeKey ?? '').trim();
+    final afterRaw = await EngineVault.get(PortalVaultKeys.active);
+    if (!mounted) return;
+    final after = (afterRaw ?? '').trim();
+    final activeChanged = before.isEmpty
+        ? after.isNotEmpty
+        : (after.isEmpty || !PortalsHost.samePortalKey(before, after));
     EngineCache.instance.wipePlugin(pluginId);
     PackLoadedPaint.clearMemosForPlugin(pluginId);
-    PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+    final chrome = PackChromeScope.maybeOf(context);
+    if (activeChanged) chrome?.onClearCatalog();
+    chrome?.onBumpRefresh(forceNetwork: false);
   }
 
   /// Soft switch — paint clear first, vault/prefs after (issue 351).
@@ -336,7 +351,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         PortalChannelGuideOpen.invalidateLiveCatalog();
         invalidatePortalsChrome(ref, widget.tabId);
       }
-      if (reloadCatalog) _reloadHubCatalog(pluginId);
+      if (reloadCatalog) unawaited(_reloadHubCatalog(pluginId));
       return true;
     } catch (e) {
       ForjaToast.error(e.toString());
@@ -349,7 +364,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   Future<void> _afterPortalMutated({required String pluginId}) async {
     PortalChannelGuideOpen.invalidateLiveCatalog();
     invalidatePortalsChrome(ref, widget.tabId);
-    _reloadHubCatalog(pluginId);
+    unawaited(_reloadHubCatalog(pluginId));
   }
 
   Future<void> _openPortalForm({VerifiedPortal? existing}) async {
@@ -457,7 +472,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         final pluginId = await _pluginId();
         if (pluginId != null && pluginId.isNotEmpty && mounted) {
           PortalChannelGuideOpen.invalidateLiveCatalog();
-          _reloadHubCatalog(pluginId);
+          unawaited(_reloadHubCatalog(pluginId));
         }
       }
       invalidatePortalsChrome(ref, widget.tabId);

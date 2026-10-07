@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
@@ -20,8 +21,8 @@ class PluginCatalogRemote {
         () => client
             .from('plugin_packs')
             .select(
-              'id, name, description, kind, tags, recommended, official, '
-              'manifest_url, sort_order',
+              'id, name, description, kind, tags, platforms, recommended, '
+              'official, manifest_url, sort_order',
             )
             .eq('published', true)
             .order('sort_order', ascending: true)
@@ -48,6 +49,7 @@ class PluginCatalogRemote {
             description: (raw['description'] as String?)?.trim(),
             kind: (raw['kind'] as String?)?.trim(),
             tags: tags,
+            platforms: packPlatformIds(raw['platforms']),
             recommended: raw['recommended'] == true,
             official: raw['official'] == true,
           ),

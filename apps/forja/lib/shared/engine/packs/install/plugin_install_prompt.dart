@@ -1,3 +1,5 @@
+import 'package:forja/shared/platform/platform_info.dart';
+
 /// How the install/uninstall overlay was requested.
 enum PluginInstallSource { deepLink, remoteProfile, settings }
 
@@ -26,6 +28,7 @@ class PluginInstallCandidate {
     this.displayName,
     this.description,
     this.tags = const [],
+    this.platforms = const [],
     this.catalogKind,
     this.version,
     this.official = false,
@@ -43,6 +46,13 @@ class PluginInstallCandidate {
 
   /// Topic tags (`anime`, `live`, …) for the meta line.
   final List<String> tags;
+
+  /// Devices the pack runs on (`desktop` · `phone` · `tv`). Empty → all.
+  final List<String> platforms;
+
+  /// Manifest gate says this pack does not run on this device.
+  bool get unavailableHere =>
+      !PlatformInfo.supportsPlugin(platforms: platforms);
 
   /// Catalog kind (`hubs`, `providers`, `live`, …).
   final String? catalogKind;

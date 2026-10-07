@@ -223,10 +223,38 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
         headers: resolved,
         sourceName: sourceName,
         providerId: providerId,
+        subtitles: _subtitleRowsForDownload(stream, sourceName),
         headersAlreadyResolved: true,
       );
     },
   );
+}
+
+/// Subtitle rows on the stream row, as plain strings for the task record.
+/// A row without a source label takes the provider's name so the offline
+/// subtitle menu shows where it came from.
+List<Map<String, String>>? _subtitleRowsForDownload(
+  Map<String, dynamic> stream,
+  String sourceName,
+) {
+  final rows = catalogStreamExternalSubtitles(stream);
+  if (rows == null) return null;
+  final provider = (catalogStreamAddonIdentity(stream) ?? '').trim();
+  final label = provider.isNotEmpty ? provider : sourceName.trim();
+  final out = <Map<String, String>>[];
+  for (final row in rows) {
+    final copy = <String, String>{};
+    row.forEach((k, v) {
+      if (v == null) return;
+      copy[k] = v.toString();
+    });
+    if (copy.isEmpty) continue;
+    if ((copy['sourceName'] ?? '').trim().isEmpty && label.isNotEmpty) {
+      copy['sourceName'] = label;
+    }
+    out.add(copy);
+  }
+  return out.isEmpty ? null : out;
 }
 
 /// Enqueues an HTTP/HLS VOD download and toasts with a View → Downloads action.
@@ -246,6 +274,7 @@ Future<DownloadTask?> enqueueVodDownload({
   String? sourceName,
   String? providerId,
   String? addonName,
+  List<Map<String, String>>? subtitles,
   bool headersAlreadyResolved = false,
 }) async {
   if (!PlatformInfo.offlineDownloadsEnabled) return null;
@@ -284,6 +313,7 @@ Future<DownloadTask?> enqueueVodDownload({
       headers: resolved,
       sourceName: sourceName,
       addonName: addonName ?? providerId,
+      subtitles: subtitles,
     );
     final sameSlot = existing != null && existing.id == task.id;
     if (sameSlot && existing.isCompleted) {

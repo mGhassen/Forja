@@ -20,6 +20,7 @@ import {
   isRecommendedPluginPack,
   packAuthorLabel,
   packHasTag,
+  packPlatformsLabel,
   pluginKindLabel,
   pluginKindsFromPacks,
   pluginTagLabel,
@@ -206,6 +207,14 @@ function PluginDetailPanel({
               <dd className="mt-0.5 text-[#EDE6DA]">{pack.pluginCount}</dd>
             </div>
           ) : null}
+          <div>
+            <dt className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+              Devices
+            </dt>
+            <dd className="mt-0.5 text-[#EDE6DA]">
+              {packPlatformsLabel(pack.platforms) ?? 'All devices'}
+            </dd>
+          </div>
           {author ? (
             <div className="min-w-0">
               <dt className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
@@ -314,6 +323,11 @@ function PluginListRow({
         {(pack.tags?.length ?? 0) > 0 ? (
           <p className="mt-0.5 truncate font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
             {pack.tags!.map((t) => pluginTagLabel(t)).join(' · ')}
+          </p>
+        ) : null}
+        {packPlatformsLabel(pack.platforms) ? (
+          <p className="mt-0.5 truncate font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.5)]">
+            {packPlatformsLabel(pack.platforms)} only
           </p>
         ) : null}
       </div>

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,6 +24,8 @@
 | 3 | I205-T03 | ExoPlayer: mid-watch error → remount same URL before Failed / Retry | ✅ |
 | 4 | I205-T04 | VOD MediaKit: lavf `reconnect=*` (parity with IPTV) for brief socket blips | ✅ |
 | 5 | I205-T05 | Unit: classifier + remount-only-when-online logic | ✅ |
+| 6 | I205-T06 | Remount / hop / Retry resume from a last-healthy playhead snapshot, not the seek bar value the EOF guards rewrite (dead CDN jumps to duration, `completed` zeroes it → remount restarted at 0:00) | ✅ |
+| 7 | I205-T07 | Prevalidated engine streams: pass a headless engine re-resolve hook so a stream that dies after reconnect hops to a fresh link instead of Failed / Retry on the same stale URL | ✅ |
 
 ---
 
@@ -33,6 +35,7 @@
 |--:|----|-------------|--------|
 | 1 | I205-A01 | MediaKit VOD: kill Wi‑Fi mid-watch, restore → Reconnecting… then resume near prior position (no Failed / Retry) | ⬜ |
 | 2 | I205-A02 | Exo VOD: same offline→online remount; if remount still fails after retries → existing Retry / Auto hop | ⬜ |
+| 3 | I205-A03 | Desktop, Forja anime stream: kill Wi‑Fi mid-episode for ~1 min, restore → resumes near prior position (not 0:00, not end); if the link is dead → fresh resolve plays; Retry keeps the position | ⬜ |
 
 ---
 

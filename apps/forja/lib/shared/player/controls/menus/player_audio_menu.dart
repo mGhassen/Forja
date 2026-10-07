@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/player/controls/menus/hls_instream_audio.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:media_kit/media_kit.dart';
@@ -8,13 +9,19 @@ class PlayerAudioMenu {
     BuildContext context, {
     required Player player,
     VoidCallback? onTrackSelected,
+    String? playUrl,
+    Map<String, String>? headers,
     BuildContext? anchorContext,
     Alignment alignment = Alignment.bottomLeft,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
-    final tracks = player.state.tracks.audio
-        .where((t) => t.id != 'no' && t.id != 'auto')
-        .toList();
+    final tracks = await hlsLabeledAudioTracks(
+      player.state.tracks.audio
+          .where((t) => t.id != 'no' && t.id != 'auto')
+          .toList(),
+      playUrl: playUrl,
+      headers: headers,
+    );
     final current = player.state.track.audio;
     final active = await resolveActiveAudioTrack(player);
     final selectedId = active?.id ?? current.id;

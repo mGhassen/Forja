@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+/// Source label for subtitle tracks found inside the HLS stream itself.
+const kInStreamSubtitleSourceName = 'In-stream';
+
 /// One `#EXT-X-MEDIA:TYPE=SUBTITLES` rendition on a master playlist.
 class HlsSubtitleRendition {
   const HlsSubtitleRendition({
@@ -206,8 +209,132 @@ Future<void> saveHlsInStreamSubtitles({
     } catch (_) {}
   }
   if (tracks.isEmpty) return;
+  await _appendSidecarTracks(videoPath, tracks);
+}
+
+/// Save the subtitle rows a stream row carried (provider sidecar links or
+/// inline text) next to [videoPath], after the video itself is complete.
+///
+/// Rows come from `catalogStreamExternalSubtitles`: `url` or `content`,
+/// `language`, `name`, optional `sourceName`. A row that fails to fetch or is
+/// not a text subtitle is skipped. The video save still finishes.
+Future<void> saveStreamSubtitleRows({
+  required String videoPath,
+  required List<Map<String, String>>? rows,
+  Map<String, String>? headers,
+  Future<String> Function(Uri uri)? fetchText,
+  bool Function()? isPausedOrCanceled,
+}) async {
+  if (rows == null || rows.isEmpty) return;
+  final fetch = fetchText ?? (uri) => fetchSubtitleText(uri, headers);
+  final dir = Directory('$videoPath.subs');
+  if (!await dir.exists()) await dir.create(recursive: true);
+  final used = await _sidecarFileNames(videoPath);
+  final tracks = <Map<String, String>>[];
+  for (final row in rows) {
+    if (isPausedOrCanceled?.call() == true) return;
+    final url = row['url']?.trim() ?? '';
+    final inline = (row['content'] ?? row['text'])?.trim() ?? '';
+    final language = row['language']?.trim().isNotEmpty == true
+        ? row['language']!.trim()
+        : (row['lang']?.trim().isNotEmpty == true ? row['lang']!.trim() : 'und');
+    final name = row['name']?.trim().isNotEmpty == true
+        ? row['name']!.trim()
+        : language;
+    final sourceName = row['sourceName']?.trim() ?? '';
+    try {
+      String body;
+      if (inline.isNotEmpty) {
+        body = inline;
+      } else if (url.isNotEmpty) {
+        body = await fetch(Uri.parse(url));
+      } else {
+        continue;
+      }
+      if (!_looksLikeTextSub(body)) continue;
+      final ext = body.trimLeft().startsWith('WEBVTT') ? 'vtt' : 'srt';
+      final fileName = _uniqueFileName(
+        used,
+        HlsSubtitleRendition(name: name, language: language, uri: Uri()),
+        extension: ext,
+      );
+      await File('${dir.path}/$fileName').writeAsString(body);
+      tracks.add({
+        'name': name,
+        'language': language,
+        'file': fileName,
+        if (sourceName.isNotEmpty) 'sourceName': sourceName,
+      });
+    } catch (_) {}
+  }
+  if (tracks.isEmpty) return;
+  await _appendSidecarTracks(videoPath, tracks);
+}
+
+/// GET [uri] as text with the stream's playback [headers].
+Future<String> fetchSubtitleText(Uri uri, Map<String, String>? headers) async {
+  final client = HttpClient();
+  client.connectionTimeout = const Duration(seconds: 15);
+  try {
+    final req = await client.getUrl(uri);
+    headers?.forEach((k, v) => req.headers.set(k, v));
+    final res = await req.close();
+    if (res.statusCode != 200) {
+      throw Exception('Failed to fetch subtitle: HTTP ${res.statusCode}');
+    }
+    final bytes = await res.fold<List<int>>([], (p, e) => p..addAll(e));
+    return utf8.decode(bytes, allowMalformed: true);
+  } finally {
+    client.close();
+  }
+}
+
+/// Track entries already in the sidecar index. Empty when there is none.
+Future<List<Map<String, String>>> _existingSidecarTracks(
+  String videoPath,
+) async {
+  final index = File('$videoPath.subs.json');
+  if (!await index.exists()) return [];
+  try {
+    final decoded = jsonDecode(await index.readAsString());
+    if (decoded is! Map) return [];
+    final raw = decoded['tracks'];
+    if (raw is! List) return [];
+    final out = <Map<String, String>>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final row = <String, String>{};
+      item.forEach((k, v) {
+        if (v == null) return;
+        row[k.toString()] = v.toString();
+      });
+      if (row['file']?.isNotEmpty == true) out.add(row);
+    }
+    return out;
+  } catch (_) {
+    return [];
+  }
+}
+
+Future<Set<String>> _sidecarFileNames(String videoPath) async {
+  final existing = await _existingSidecarTracks(videoPath);
+  return {for (final t in existing) t['file']!};
+}
+
+/// Append [tracks] to the sidecar index, keeping entries already there.
+Future<void> _appendSidecarTracks(
+  String videoPath,
+  List<Map<String, String>> tracks,
+) async {
+  final existing = await _existingSidecarTracks(videoPath);
+  final files = {for (final t in existing) t['file']};
+  final merged = [
+    ...existing,
+    for (final t in tracks)
+      if (!files.contains(t['file'])) t,
+  ];
   await File('$videoPath.subs.json').writeAsString(
-    jsonEncode({'tracks': tracks}),
+    jsonEncode({'tracks': merged}),
   );
 }
 
@@ -232,12 +359,15 @@ Future<List<Map<String, dynamic>>> offlineSavedSubtitleRows(
       if (!await File(path).exists()) continue;
       final name = item['name']?.toString().trim() ?? '';
       final language = item['language']?.toString().trim() ?? '';
+      final sourceName = item['sourceName']?.toString().trim() ?? '';
       out.add({
         'url': Uri.file(path).toString(),
         'language': language.isNotEmpty ? language : 'und',
         'name': name.isNotEmpty ? name : language,
         'display': name.isNotEmpty ? name : language,
-        'sourceName': 'In-stream',
+        'sourceName': sourceName.isNotEmpty
+            ? sourceName
+            : kInStreamSubtitleSourceName,
       });
     }
     return out;
@@ -289,17 +419,21 @@ Future<String?> _renditionToVtt({
   ]);
 }
 
-String _uniqueFileName(Set<String> used, HlsSubtitleRendition rendition) {
+String _uniqueFileName(
+  Set<String> used,
+  HlsSubtitleRendition rendition, {
+  String extension = 'vtt',
+}) {
   final raw = rendition.language.trim().isNotEmpty
       ? rendition.language.trim()
       : rendition.name.trim();
   var slug = raw.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
   slug = slug.replaceAll(RegExp(r'^-+|-+$'), '');
   if (slug.isEmpty) slug = 'sub';
-  var name = '$slug.vtt';
+  var name = '$slug.$extension';
   var n = 2;
   while (!used.add(name)) {
-    name = '$slug-$n.vtt';
+    name = '$slug-$n.$extension';
     n++;
   }
   return name;

@@ -552,10 +552,10 @@ class _PackPromptRow extends StatelessWidget {
     final actionLabel = uninstall ? 'Uninstall' : 'Install';
     final settledLabel = uninstall ? 'Already removed' : 'Already on device';
     final desc = candidate.description?.trim();
-    final tagsLine = candidate.tags
-        .map(_labelize)
-        .where((t) => t.isNotEmpty)
-        .join(' · ');
+    final tagsLine = [
+      if (candidate.unavailableHere) 'Not on this device',
+      ...candidate.tags.map(_labelize).where((t) => t.isNotEmpty),
+    ].join(' · ');
     final version = candidate.version?.trim();
     final muted = settled
         ? ForjaShellColors.textSecondary
@@ -598,10 +598,15 @@ class _PackPromptRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // TV: row owns focus — Checkbox must not steal a second node.
+          // TV: row owns focus and tap. Checkbox must not steal a second
+          // focus node, and must not flip again on tap-up after the row's
+          // pointer-down already flipped (two flips = no change).
           Padding(
             padding: const EdgeInsets.only(top: 2),
-            child: ExcludeFocus(excluding: tv, child: checkbox),
+            child: IgnorePointer(
+              ignoring: tv,
+              child: ExcludeFocus(excluding: tv, child: checkbox),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(

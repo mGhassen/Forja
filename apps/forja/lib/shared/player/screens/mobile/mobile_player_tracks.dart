@@ -639,6 +639,8 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     PlayerAudioMenu.show(
       context,
       player: _s._player,
+      playUrl: _s._hlsMasterUrl ?? _s._currentUrl ?? widget.mediaPath,
+      headers: _s._hlsMasterHeaders ?? widget.headers,
       onTrackSelected: () async {
         await SettingsService().setPlayerAutoAudio(false);
         setState(() {

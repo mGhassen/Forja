@@ -127,6 +127,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
             displayName: c.displayName,
             description: c.description,
             tags: c.tags,
+            platforms: c.platforms,
             catalogKind: c.catalogKind,
             version: c.version,
             official: c.official,

@@ -28,6 +28,9 @@ case "$PLATFORM" in
     require_file "$RELEASE/ffi.dll"
     require_file "$RELEASE/msvcp140.dll"
     require_file "$RELEASE/vcruntime140.dll"
+    # Full Material icon font; the tree-shaken subset fails to load on some
+    # Windows machines and every icon paints as an empty box.
+    require_file "$RELEASE/data/flutter_assets/fonts/MaterialIcons-Regular.otf"
     if compgen -G "$RELEASE/libmpv"*.dll > /dev/null; then
       echo "ok: $RELEASE/libmpv*.dll"
     else

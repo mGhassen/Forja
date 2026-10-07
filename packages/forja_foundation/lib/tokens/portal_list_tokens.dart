@@ -9,6 +9,10 @@ abstract final class PortalListTokens {
   static const double rowHeight = 98;
   /// Hand — denser than desktop but room for seats/meta (not × chromeScale).
   static const double rowHeightTv = 72;
+
+  /// Gap above and below the bordered card inside a list row slot. Stripe
+  /// overlays (shelf warm, delete) inset by this so they stay inside the card.
+  static const double rowCardInsetV = 2;
   static const double actionWidth = 108;
   static const double actionWidthTv = 72;
   static const double titleFontSize = 13;

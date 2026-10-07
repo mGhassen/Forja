@@ -141,7 +141,7 @@ jobs:
         run: |
           flutter pub get
           ../../scripts/ci_with_heartbeat.sh "windows release" \
-            flutter build windows --release \
+            flutter build windows --release --no-tree-shake-icons \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \

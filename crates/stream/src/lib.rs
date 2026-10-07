@@ -42,15 +42,25 @@ pub fn build_tv_url(provider_id: &str, tmdb_id: i64, season: i32, episode: i32) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    /// Process-wide overlay is shared; serialize tests that mutate it.
+    static OVERLAY_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn unknown_provider_returns_none() {
+        let _guard = OVERLAY_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         utils::provider_runtime::clear_overlay();
         assert_eq!(build_movie_url("vidlink", 550), None);
     }
 
     #[test]
     fn overlay_movie_template() {
+        let _guard = OVERLAY_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         utils::provider_runtime::clear_overlay();
         utils::provider_runtime::set_overlay_json(
             r#"{

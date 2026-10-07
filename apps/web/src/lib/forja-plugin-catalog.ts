@@ -15,6 +15,28 @@ export type ForjaPluginCatalogEntry = {
   pluginCount?: number
   /** Topic tags for filters (anime, arabic, kids, …). */
   tags?: string[]
+  /** Devices the pack runs on (desktop, phone, tv). Empty / absent = all. */
+  platforms?: PackPlatform[]
+}
+
+export const PACK_PLATFORMS = ['desktop', 'phone', 'tv'] as const
+export type PackPlatform = (typeof PACK_PLATFORMS)[number]
+
+const PACK_PLATFORM_LABELS: Record<PackPlatform, string> = {
+  desktop: 'Desktop',
+  phone: 'Phone',
+  tv: 'TV',
+}
+
+/** Null when the pack runs everywhere, else "Desktop · Phone". */
+export function packPlatformsLabel(
+  platforms: readonly string[] | null | undefined,
+): string | null {
+  const known = (platforms ?? []).filter((p): p is PackPlatform =>
+    (PACK_PLATFORMS as readonly string[]).includes(p),
+  )
+  if (known.length === 0 || known.length === PACK_PLATFORMS.length) return null
+  return known.map((p) => PACK_PLATFORM_LABELS[p]).join(' · ')
 }
 
 export type ForjaPluginPackLive = ForjaPluginCatalogEntry & {
@@ -96,6 +118,7 @@ function rowToLivePack(row: {
   cached_version: string | null
   plugin_count: number | null
   tags: string[] | null
+  platforms?: string[] | null
   manifest_url: string | null
 }): ForjaPluginPackLive | null {
   const id = row.id?.trim()
@@ -115,6 +138,9 @@ function rowToLivePack(row: {
     version: row.cached_version ?? undefined,
     pluginCount: row.plugin_count ?? undefined,
     tags: row.tags ?? [],
+    platforms: (row.platforms ?? []).filter((p): p is PackPlatform =>
+      (PACK_PLATFORMS as readonly string[]).includes(p),
+    ),
     manifestUrl,
   }
 }
@@ -129,7 +155,7 @@ export async function fetchPublishedPluginPacksFromSupabase(): Promise<
   const { data, error } = await supabase
     .from('plugin_packs')
     .select(
-      'id, kind, name, description, accent, official, recommended, author, cached_version, plugin_count, tags, manifest_url, sort_order',
+      'id, kind, name, description, accent, official, recommended, author, cached_version, plugin_count, tags, platforms, manifest_url, sort_order',
     )
     .eq('published', true)
     .order('sort_order', { ascending: true })

@@ -328,7 +328,7 @@ abstract final class PluginNavRegistry {
         final m = Map<String, dynamic>.from(raw);
         final rawTabId = m['tabId']?.toString() ?? '';
         if (rawTabId.isEmpty) continue;
-        if (!_navHostAllowed(m['hostRequires']?.toString())) continue;
+        if (!_cachedNavAllowed(m)) continue;
         final tabId = rawTabId;
         if (dests.containsKey(tabId)) continue;
         final iconAsset = m['iconAsset']?.toString();
@@ -430,10 +430,9 @@ abstract final class PluginNavRegistry {
     final packs = await PluginRegistry.instance.listPacksRaw();
     final out = <EnginePlugin>[];
     for (final p in packs) {
-      if (requireEnabled && !p.enabled) continue;
       for (final pl in p.plugins) {
         if (!pl.isKitPlugin) continue;
-        if (requireEnabled && !pl.enabled) continue;
+        if (requireEnabled && !p.isPluginActive(pl)) continue;
         out.add(pl);
       }
     }
@@ -446,10 +445,9 @@ abstract final class PluginNavRegistry {
     if (packs == null) return null;
     final out = <EnginePlugin>[];
     for (final p in packs) {
-      if (requireEnabled && !p.enabled) continue;
       for (final pl in p.plugins) {
         if (!pl.isKitPlugin) continue;
-        if (requireEnabled && !pl.enabled) continue;
+        if (requireEnabled && !p.isPluginActive(pl)) continue;
         out.add(pl);
       }
     }
@@ -462,10 +460,9 @@ abstract final class PluginNavRegistry {
     final packs = await EngineService.instance.listPacks();
     final out = <(EnginePack, EnginePlugin, MetaNavSpec)>[];
     for (final pack in packs) {
-      if (requireEnabled && !pack.enabled) continue;
       for (final pl in pack.plugins) {
         if (!pl.isKitPlugin) continue;
-        if (requireEnabled && !pl.enabled) continue;
+        if (requireEnabled && !pack.isPluginActive(pl)) continue;
         // Valid `nav` block is enough — older stored packs sometimes omit the
         // `nav` capability string and would leave Features empty after install.
         final spec = MetaNavSpec.fromPluginNav(
@@ -594,7 +591,9 @@ abstract final class PluginNavRegistry {
     final cacheRows = <Map<String, dynamic>>[];
 
     for (final (pack, pl, nav) in hubs) {
-      if (!_navHostAllowed(nav.hostRequires)) continue;
+      // Device gate (manifest `platforms`) — the hub stays installed and
+      // known; only this device's rail / Features skip it.
+      if (!pack.isPluginAvailable(pl)) continue;
       final railId = hostNavId(
         sourceUrl: pack.sourceUrl,
         authorTabId: nav.tabId,
@@ -645,7 +644,8 @@ abstract final class PluginNavRegistry {
         'icon': nav.icon,
         'iconAsset': iconAsset,
         'packSourceUrl': pack.sourceUrl,
-        if (nav.hostRequires != null) 'hostRequires': nav.hostRequires,
+        if (pl.platforms.isNotEmpty || pack.platforms.isNotEmpty)
+          'platforms': pl.platforms.isNotEmpty ? pl.platforms : pack.platforms,
       });
     }
 
@@ -1068,13 +1068,9 @@ abstract final class PluginNavRegistry {
     return true;
   }
 
-  /// Drop a hub tab when its pack `nav.hostRequires` capability is off.
-  static bool _navHostAllowed(String? hostRequires) {
-    final need = hostRequires?.trim() ?? '';
-    if (need.isEmpty) return true;
-    if (need == 'offlineDownloads') return PlatformInfo.offlineDownloadsEnabled;
-    return true;
-  }
+  /// Cached nav row device gate — same rule as [EnginePack.isPluginAvailable].
+  static bool _cachedNavAllowed(Map<String, dynamic> m) =>
+      PlatformInfo.supportsPlugin(platforms: packPlatformIds(m['platforms']));
 }
 
 class _NavSnapshot {

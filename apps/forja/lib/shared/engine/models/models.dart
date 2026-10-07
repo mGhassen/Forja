@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 
 import 'ids.dart';
@@ -27,6 +28,7 @@ class EnginePlugin {
     this.ctxConfigMap = const {},
     this.defaultCapabilities = const {},
     this.liveLegacyIds,
+    this.platforms = const [],
   });
 
   final String id;
@@ -84,6 +86,10 @@ class EnginePlugin {
 
   /// Retired twin-pack ids for one-time capability-pref migration (`catalog-*`, `live-*`).
   final LiveSportLegacyIds? liveLegacyIds;
+
+  /// Manifest `platforms` — device ids this plugin may run on
+  /// (`desktop` · `phone` · `tv`). Empty → every platform.
+  final List<String> platforms;
 
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
@@ -230,6 +236,7 @@ class EnginePlugin {
       ctxConfigMap: _ctxConfigMap(j['ctxConfigMap']),
       defaultCapabilities: _defaultCapabilitiesMap(j['defaultCapabilities']),
       liveLegacyIds: LiveSportLegacyIds.fromJson(j['legacyIds']),
+      platforms: packPlatformIds(j['platforms']),
     );
   }
 
@@ -258,6 +265,7 @@ class EnginePlugin {
       'defaultCapabilities': defaultCapabilities,
     if (liveLegacyIds != null && !liveLegacyIds!.isEmpty)
       'legacyIds': liveLegacyIds!.toJson(),
+    if (platforms.isNotEmpty) 'platforms': platforms,
   };
 
   EnginePlugin copyWith({bool? enabled, String? prelude}) => EnginePlugin(
@@ -283,7 +291,25 @@ class EnginePlugin {
     ctxConfigMap: ctxConfigMap,
     defaultCapabilities: defaultCapabilities,
     liveLegacyIds: liveLegacyIds,
+    platforms: platforms,
   );
+}
+
+/// Manifest `platforms` list → canonical ids (`desktop` · `phone` · `tv`).
+/// Accepts common aliases; unknown entries are dropped.
+List<String> packPlatformIds(dynamic raw) {
+  if (raw is! List) return const [];
+  final out = <String>[];
+  for (final e in raw) {
+    final v = switch (e?.toString().trim().toLowerCase() ?? '') {
+      'desktop' => 'desktop',
+      'phone' || 'mobile' => 'phone',
+      'tv' || 'androidtv' || 'android_tv' || 'android-tv' || 'leanback' => 'tv',
+      _ => '',
+    };
+    if (v.isNotEmpty && !out.contains(v)) out.add(v);
+  }
+  return out;
 }
 
 /// Hop scripts to attach to one EngineJS extract for [plugin].
@@ -401,6 +427,7 @@ class EnginePack {
     this.prelude = '',
     this.bundle = const [],
     this.enabled = true,
+    this.platforms = const [],
   });
 
   final String sourceUrl;
@@ -421,8 +448,24 @@ class EnginePack {
   /// Pack master switch — independent of per-plugin [EnginePlugin.enabled].
   final bool enabled;
 
-  /// Plugin contributes only when the pack and the plugin are both on.
-  bool isPluginActive(EnginePlugin p) => enabled && p.enabled;
+  /// Manifest root `platforms` — default for plugins that omit their own.
+  final List<String> platforms;
+
+  /// Plugin contributes only when the pack and the plugin are both on **and**
+  /// this device supports it ([isPluginAvailable]).
+  bool isPluginActive(EnginePlugin p) =>
+      enabled && p.enabled && isPluginAvailable(p);
+
+  /// Device gate — manifest `platforms`. Runtime only: the stored `enabled`
+  /// flags stay as the user set them so cloud sync carries the same profile
+  /// to devices that do support the plugin.
+  bool isPluginAvailable(EnginePlugin p) => PlatformInfo.supportsPlugin(
+        platforms: p.platforms.isNotEmpty ? p.platforms : platforms,
+      );
+
+  /// Every plugin in the pack is gated off on this device.
+  bool get isUnavailableHere =>
+      plugins.isNotEmpty && !plugins.any(isPluginAvailable);
 
   factory EnginePack.fromJson(
     Map<String, dynamic> j, {
@@ -463,6 +506,7 @@ class EnginePack {
       prelude: packPrelude,
       bundle: _bundlePathsFromJson(j['bundle']),
       enabled: (j['enabled'] as bool?) ?? true,
+      platforms: packPlatformIds(j['platforms']),
     );
   }
 
@@ -543,6 +587,7 @@ class EnginePack {
     if (prelude.isNotEmpty) 'prelude': prelude,
     if (bundle.isNotEmpty) 'bundle': bundle,
     'enabled': enabled,
+    if (platforms.isNotEmpty) 'platforms': platforms,
     'plugins': [for (final p in plugins) p.toJson()],
   };
 
@@ -557,6 +602,7 @@ class EnginePack {
       enabled: (j['enabled'] as bool?) ?? true,
       prelude: (j['prelude'] as String?)?.trim() ?? '',
       bundle: _bundlePathsFromJson(j['bundle']),
+      platforms: packPlatformIds(j['platforms']),
       plugins: [
         for (final raw in (j['plugins'] as List? ?? const []))
           if (raw is Map)
@@ -583,6 +629,7 @@ class EnginePack {
     prelude: prelude,
     bundle: bundle ?? this.bundle,
     enabled: enabled ?? this.enabled,
+    platforms: platforms,
   );
 
   EnginePack copyWithPlugins(List<EnginePlugin> next) =>
@@ -679,18 +726,16 @@ List<EnginePlugin> activePluginsFromPacks(Iterable<EnginePack> packs) => [
 
 Set<String> enabledEnginePluginIds(List<EnginePack> packs) => {
   for (final pack in packs)
-    if (pack.enabled)
-      for (final p in pack.plugins)
-        if (p.enabled && p.isHttp) p.id,
+    for (final p in pack.plugins)
+      if (p.isHttp && pack.isPluginActive(p)) p.id,
 };
 
 /// Walk order for the Forja tab: HTTP/JS plugins only (no sniff hosts).
 List<String> orderedEnginePluginIds(List<EnginePack> packs) {
   final ids = <String>[];
   for (final pack in packs) {
-    if (!pack.enabled) continue;
     for (final p in pack.plugins) {
-      if (p.enabled && p.isHttp) ids.add(p.id);
+      if (p.isHttp && pack.isPluginActive(p)) ids.add(p.id);
     }
   }
   return ids;

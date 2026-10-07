@@ -26,6 +26,10 @@ class DownloadTask {
 
   final String targetFilePath;
 
+  /// Subtitle rows the stream row carried (url or content, language, name,
+  /// sourceName). Saved next to the video once the file is complete.
+  final List<Map<String, String>>? subtitles;
+
   final DownloadStatus status;
   final int receivedBytes;
   final int totalBytes;
@@ -53,6 +57,7 @@ class DownloadTask {
     this.rawUrl,
     this.headers,
     required this.targetFilePath,
+    this.subtitles,
     this.status = DownloadStatus.queued,
     this.receivedBytes = 0,
     this.totalBytes = 0,
@@ -145,6 +150,7 @@ class DownloadTask {
       rawUrl: rawUrl ?? this.rawUrl,
       headers: headers ?? this.headers,
       targetFilePath: targetFilePath ?? this.targetFilePath,
+      subtitles: subtitles,
       status: status ?? this.status,
       receivedBytes: receivedBytes ?? this.receivedBytes,
       totalBytes: totalBytes ?? this.totalBytes,
@@ -174,6 +180,7 @@ class DownloadTask {
       'rawUrl': rawUrl,
       'headers': headers,
       'targetFilePath': targetFilePath,
+      'subtitles': subtitles,
       'status': status.name,
       'receivedBytes': receivedBytes,
       'totalBytes': totalBytes,
@@ -206,6 +213,7 @@ class DownloadTask {
         (k, v) => MapEntry(k, v.toString()),
       ),
       targetFilePath: json['targetFilePath'] as String? ?? '',
+      subtitles: _subtitleRowsFromJson(json['subtitles']),
       status: DownloadStatus.values.firstWhere(
         (e) => e.name == json['status'],
         orElse: () => DownloadStatus.queued,
@@ -220,5 +228,20 @@ class DownloadTask {
           : null,
       error: json['error'] as String?,
     );
+  }
+
+  static List<Map<String, String>>? _subtitleRowsFromJson(Object? raw) {
+    if (raw is! List) return null;
+    final out = <Map<String, String>>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final row = <String, String>{};
+      item.forEach((k, v) {
+        if (v == null) return;
+        row[k.toString()] = v.toString();
+      });
+      if (row.isNotEmpty) out.add(row);
+    }
+    return out.isEmpty ? null : out;
   }
 }

@@ -148,6 +148,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
           title: SettingsEnginePackTitle(
             name: pack.name,
             deprecated: deprecated,
+            unavailableHere: pack.isUnavailableHere,
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,6 +180,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
             if (pack.enabled) PackGreenPlaySection(plugins: plugins),
             SettingsEnginePluginGroupList(
               sourceUrl: pack.sourceUrl,
+              pack: pack,
               byGroup: grouped.byGroup,
               orderedGroups: grouped.orderedGroups,
               groupLabel: groupLabel,
@@ -199,10 +201,13 @@ class SettingsEnginePluginGroupList extends StatefulWidget {
     required this.byGroup,
     required this.orderedGroups,
     required this.groupLabel,
+    this.pack,
     this.tabRowId = 'engine-pack-tabs',
   });
 
   final String sourceUrl;
+  /// Owning pack — device gate for each plugin row. Null → all available.
+  final EnginePack? pack;
   final Map<String, List<EnginePlugin>> byGroup;
   final List<String> orderedGroups;
   final String Function(String) groupLabel;
@@ -252,6 +257,7 @@ class _SettingsEnginePluginGroupListState
           ),
         SettingsEnginePluginToggleList(
           sourceUrl: widget.sourceUrl,
+          pack: widget.pack,
           plugins: plugins,
         ),
       ],
@@ -265,10 +271,16 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
     super.key,
     required this.sourceUrl,
     required this.plugins,
+    this.pack,
   });
 
   final String sourceUrl;
   final List<EnginePlugin> plugins;
+  /// Owning pack — device gate for each row. Null → all available.
+  final EnginePack? pack;
+
+  /// Row copy for a plugin the manifest gates off this device.
+  static const String unavailableHereLabel = 'Not available on this device';
 
   @override
   Widget build(BuildContext context) {
@@ -280,12 +292,16 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
             key: ValueKey('engine-plugin-${sourceUrl.hashCode}-${p.id}'),
             title: p.name,
             subtitle: [
+              if (!(pack?.isPluginAvailable(p) ?? true)) unavailableHereLabel,
               if (p.description != null && p.description!.isNotEmpty)
                 p.description!,
               if (p.types.isNotEmpty) p.types.join(', '),
               p.kind,
             ].join(' · '),
             value: p.enabled,
+            // Gated rows keep the stored value (it syncs to devices that do
+            // support the plugin) but cannot be flipped from here.
+            enabled: pack?.isPluginAvailable(p) ?? true,
             onChanged: (val) async {
               await EngineService.instance.setPluginEnabled(
                 sourceUrl: sourceUrl,
@@ -365,6 +381,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
       title: SettingsEnginePackTitle(
         name: pack.name,
         deprecated: deprecated,
+        unavailableHere: pack.isUnavailableHere,
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

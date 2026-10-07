@@ -216,6 +216,16 @@ class HlsDownloadEngine {
       } catch (e) {
         debugPrint('[HlsDownloadEngine] subtitle save failed: $e');
       }
+      try {
+        await saveStreamSubtitleRows(
+          videoPath: task.targetFilePath,
+          rows: task.subtitles,
+          headers: headers,
+          isPausedOrCanceled: isPausedOrCanceled,
+        );
+      } catch (e) {
+        debugPrint('[HlsDownloadEngine] stream subtitle save failed: $e');
+      }
 
       final completedBytes = await File(task.targetFilePath).length();
 

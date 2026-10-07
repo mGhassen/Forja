@@ -358,6 +358,7 @@ export type Database = {
           name: string
           official: boolean
           plugin_count: number | null
+          platforms: string[]
           published: boolean
           recommended: boolean
           sort_order: number
@@ -378,6 +379,7 @@ export type Database = {
           name: string
           official?: boolean
           plugin_count?: number | null
+          platforms?: string[]
           published?: boolean
           recommended?: boolean
           sort_order?: number
@@ -398,6 +400,7 @@ export type Database = {
           name?: string
           official?: boolean
           plugin_count?: number | null
+          platforms?: string[]
           published?: boolean
           recommended?: boolean
           sort_order?: number

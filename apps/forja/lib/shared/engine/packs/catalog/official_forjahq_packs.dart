@@ -12,6 +12,7 @@ class OfficialForjaHqPack {
     this.kind,
     this.recommended = false,
     this.official = false,
+    this.platforms = const [],
   });
 
   final String id;
@@ -32,6 +33,9 @@ class OfficialForjaHqPack {
 
   /// Admin Official flag — ForjaHQ / first-party set for install prompts.
   final bool official;
+
+  /// Devices the pack runs on (`desktop` · `phone` · `tv`). Empty → all.
+  final List<String> platforms;
 }
 
 const kCommunityPacksUrl = 'https://www.forjahq.xyz/plugins';

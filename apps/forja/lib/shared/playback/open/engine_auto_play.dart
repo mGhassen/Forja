@@ -964,6 +964,66 @@ bool _pluginVisible(
   return false;
 }
 
+/// Fresh engine race for the same title / episode, without the loading
+/// overlay. The player calls this after a reconnect or Retry when the probed
+/// stream died, so it can hop to a working link instead of stopping.
+Future<List<StreamSource>?> reloadEngineStreams({
+  required BuildContext context,
+  required Movie movie,
+  required EnginePlaySession? session,
+  int? season,
+  int? episode,
+  num? hubEpisodeNumber,
+  String? stremioId,
+  String? preferredPluginId,
+}) async {
+  if (!context.mounted) return null;
+  final extract = engineExtractContext(
+    open: session?.effectiveOpen,
+    movie: movie,
+    episode: episode,
+    episodeVideoId: session?.episodeVideoIdFor(episode ?? 1),
+    panelCategoryHint: engineCategoryForSession(session, movie),
+  );
+  final headless = StreamLoadingSession(
+    movie: movie,
+    kindNotifier: ValueNotifier(StreamLoadingKind.direct),
+    messageNotifier: ValueNotifier('Finding Forja servers…'),
+    torrentStatusNotifier: ValueNotifier(null),
+    probeNotifier: ValueNotifier(const []),
+    fadeOutNotifier: ValueNotifier(false),
+    failureNotifier: ValueNotifier(null),
+  );
+  try {
+    final pick = await runEngineAutoPlay(
+      context: context,
+      movie: movie,
+      engineCategory: extract.panelCategory,
+      season: season,
+      episode: episode,
+      malId: extract.intVal('malId') ?? session?.malId,
+      audioCategory: session?.audioCategory,
+      stremioId: stremioIdFromSourcesBag(
+        movie: movie,
+        session: session,
+        stremioId: stremioId,
+        season: season,
+        episode: episode,
+      ),
+      playSession: session,
+      hubEpisodeNumber: hubEpisodeNumber,
+      preferredPluginId: preferredPluginId,
+      downloadOnly: true,
+      existingLoading: headless,
+    );
+    final sources = pick?.sources;
+    if (sources == null || sources.isEmpty) return null;
+    return sources;
+  } finally {
+    disposeStreamLoadingNotifiers(headless);
+  }
+}
+
 Future<void> _playFromProbedSources({
   required BuildContext context,
   required Movie movie,
@@ -1036,6 +1096,16 @@ Future<void> _playFromProbedSources({
       sources: sources,
       pinSource: false,
       streamsPrevalidated: true,
+      onReloadStreams: () => reloadEngineStreams(
+        context: context,
+        movie: playMovie,
+        session: enginePlaySession,
+        season: season,
+        episode: episode,
+        hubEpisodeNumber: epNum,
+        stremioId: stremioId,
+        preferredPluginId: EngineIds.pluginIdFromChip(activeChip),
+      ),
       externalSubtitles: catalogStreamExternalSubtitles(stream),
       stremioId: stremioId,
       stremioAddonBaseUrl: stremioAddonBaseUrl,

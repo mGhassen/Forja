@@ -260,6 +260,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     PlayerAudioMenu.show(
       context,
       player: _s._player!,
+      playUrl: _s._sources.isNotEmpty ? _s._sources[_s._sourceIdx].url : null,
       onTrackSelected: () {},
       anchorContext: anchorContext,
       margin: EdgeInsets.only(

@@ -563,8 +563,8 @@ mixin _MobilePlayerPlayback
         await _invalidatePlayerStreamExtractCacheForCurrent();
 
         final hostOwnsReload = widget.onReloadStreams != null;
-        if (widget.streamsPrevalidated ||
-            (_s._providerPinned && !hostOwnsReload)) {
+        if (!hostOwnsReload &&
+            (widget.streamsPrevalidated || _s._providerPinned)) {
           await _failPlaybackNoFailover(
             message: 'Playback failed. Open Sources and choose another stream.',
           );
@@ -841,12 +841,15 @@ mixin _MobilePlayerPlayback
     if (_s._hasError || _s._disposed || _s._isInitPlaybackRunning) return;
 
     final pinned = _s._providerPinned || _s._sourcePinned || widget.pinSource;
+    // Prevalidated streams skip re-probing, not re-resolving: a host reload
+    // hook fetches fresh links, so a dead stream after reconnect can hop.
+    final hostOwnsReload = widget.onReloadStreams != null;
     final canAutoHop =
         !pinned &&
-        !widget.streamsPrevalidated &&
+        (!widget.streamsPrevalidated || hostOwnsReload) &&
         widget.movie != null &&
         ((widget.providers != null && widget.providers!.isNotEmpty) ||
-            widget.onReloadStreams != null);
+            hostOwnsReload);
 
     if (!canAutoHop) {
       debugPrint(
@@ -873,7 +876,7 @@ mixin _MobilePlayerPlayback
       return;
     }
 
-    final resumeAt = _s._positionNotifier.value;
+    final resumeAt = _s._recoveryResumePosition();
     final failedIdx = _s._currentFallbackSourceIndex;
     final seek = resumeAt.inSeconds > 0 ? resumeAt : null;
 
@@ -949,8 +952,13 @@ mixin _MobilePlayerPlayback
       idx = (idx < 0 ? 0 : idx - 1).clamp(0, len - 1);
     }
     _s._failedSourceIndices.remove(idx);
+    // Read before init: it resets the EOF guards (and this snapshot).
+    final resume = _s._lastHealthyPosition;
     await _invalidatePlayerStreamExtractCacheForCurrent();
-    await _initPlayback(sourceStartIndex: idx);
+    await _initPlayback(
+      sourceStartIndex: idx,
+      seekOverride: resume > Duration.zero ? resume : null,
+    );
   }
 
   /// Mid-watch fatal: remount same URL after connectivity returns, then hop / Retry.
@@ -977,7 +985,7 @@ mixin _MobilePlayerPlayback
     }
 
     _s._networkRemountInFlight = true;
-    final resumeAt = _s._positionNotifier.value;
+    final resumeAt = _s._recoveryResumePosition();
     _s._statusController.upsert(
       'network-remount',
       'Reconnecting…',
@@ -1416,6 +1424,13 @@ mixin _MobilePlayerPlayback
       )) {
         return;
       }
+      if (isHealthyPlayheadSample(
+        previous: shownPos,
+        reported: uiPos,
+        duration: shownDur,
+      )) {
+        _s._lastHealthyPosition = uiPos;
+      }
       _s._positionNotifier.value = uiPos;
       _s._postSeekStall?.onPosition(uiPos);
 
@@ -1711,6 +1726,8 @@ mixin _MobilePlayerPlayback
       await applyPreferredPlayerAudioTrack(
         _s._player,
         audioPinned: _s._audioPinned,
+        playUrl: _s._hlsMasterUrl ?? _s._currentUrl ?? widget.mediaPath,
+        headers: _s._hlsMasterHeaders ?? widget.headers,
       );
       if (_s._disposed || !mounted) return;
       final active = await resolveActiveAudioTrack(_s._player);

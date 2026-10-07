@@ -91,6 +91,7 @@ List<PluginInstallCandidate> officialPackCandidatesMissing({
         displayName: pack.name,
         description: pack.description,
         tags: pack.tags,
+        platforms: pack.platforms,
         catalogKind: pack.kind,
         official: pack.official,
         recommended: pack.recommended,

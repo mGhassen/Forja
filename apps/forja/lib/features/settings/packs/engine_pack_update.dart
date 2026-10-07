@@ -184,12 +184,19 @@ class SettingsEnginePackTitle extends StatelessWidget {
     super.key,
     required this.name,
     this.deprecated = false,
+    this.unavailableHere = false,
   });
 
   final String name;
   final bool deprecated;
 
+  /// Every plugin in the pack is gated off this device (manifest
+  /// `platforms`). Tag only — the row still toggles the profile state that
+  /// other devices use.
+  final bool unavailableHere;
+
   static const _deprecatedRed = Color(0xFFF87171);
+  static const String unavailableHereTag = 'not on this device';
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +238,34 @@ class SettingsEnginePackTitle extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     letterSpacing: tv ? 0.2 : 0.4,
                     color: _deprecatedRed,
+                  ),
+                ),
+              );
+            },
+          ),
+        ] else if (unavailableHere) ...[
+          const SizedBox(width: 8),
+          Builder(
+            builder: (context) {
+              final tv = ShellPaintScope.usesTvDensityOf(context);
+              final muted = ForjaShellColors.textSecondary;
+              return Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: tv ? 4 : 6,
+                  vertical: tv ? 1 : 2,
+                ),
+                decoration: BoxDecoration(
+                  color: muted.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(tv ? 3 : 4),
+                  border: Border.all(color: muted.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  unavailableHereTag,
+                  style: TextStyle(
+                    fontSize: SettingsTokens.groupLabelSizeOf(context),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: tv ? 0.2 : 0.4,
+                    color: muted,
                   ),
                 ),
               );

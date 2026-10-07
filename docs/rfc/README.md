@@ -141,6 +141,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [117-[open]-…](117-[open]-vod-offline-downloads.md) | VOD offline Downloads (dual entry + Settings) | — | open | **21 / 23** · **25 / 27** | [365](../issues/365-[open]-vod-offline-downloads.md) · [382](../issues/382-[open]-downloads-hub.md) |
 | [118-[open]-…](118-[open]-pack-green-play.md) | Pack-owned green Play (multi-tech race) | — | open | **4 / 4** · **8 / 8** | [366](../issues/366-[open]-pack-green-play.md) |
 | [119-[open]-…](119-[open]-stream-orchestrator.md) | Stream orchestrator — discover, then enrich | — | open | **8 / 8** · **8 / 9** | [386](../issues/386-[open]-stream-orchestrator-discover.md) |
+| [120-[open]-…](120-[open]-pack-plugin-platform-gating.md) | Pack plugin platform gating (manifest `platforms`) | [117](117-[open]-vod-offline-downloads.md) | open | **11 / 11** · **2 / 7** | — |
 
 ## Related
 

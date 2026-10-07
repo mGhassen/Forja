@@ -66,12 +66,12 @@ List<HlsInStreamSubtitle> parseHlsInStreamSubtitles(
     final line = raw.trim();
     if (line.isEmpty) continue;
     if (!line.toUpperCase().startsWith('#EXT-X-MEDIA:')) continue;
-    final type = _hlsAttr(line, 'TYPE');
+    final type = hlsMediaAttr(line, 'TYPE');
     if (type == null || type.toUpperCase() != 'SUBTITLES') continue;
-    final rawUri = _hlsAttr(line, 'URI')?.trim() ?? '';
+    final rawUri = hlsMediaAttr(line, 'URI')?.trim() ?? '';
     if (rawUri.isEmpty) continue;
-    final name = (_hlsAttr(line, 'NAME') ?? '').trim();
-    final lang = (_hlsAttr(line, 'LANGUAGE') ?? '').trim();
+    final name = (hlsMediaAttr(line, 'NAME') ?? '').trim();
+    final lang = (hlsMediaAttr(line, 'LANGUAGE') ?? '').trim();
     add(
       HlsInStreamSubtitle(
         language: lang.isNotEmpty ? lang : (name.isNotEmpty ? name : 'und'),
@@ -86,7 +86,8 @@ List<HlsInStreamSubtitle> parseHlsInStreamSubtitles(
   return out;
 }
 
-String? _hlsAttr(String line, String key) {
+/// `KEY="value"` or bare `KEY=value` on an HLS tag line, case-insensitive.
+String? hlsMediaAttr(String line, String key) {
   final quoted = RegExp(
     '${RegExp.escape(key)}\\s*=\\s*"([^"]*)"',
     caseSensitive: false,
@@ -235,13 +236,22 @@ Future<List<HlsInStreamSubtitle>> loadHlsInStreamSubtitles(
   return future;
 }
 
-Future<List<HlsInStreamSubtitle>> _loadHlsInStreamSubtitles(
-  String playUrl,
-  Map<String, String>? headers,
-) async {
-  final play = Uri.tryParse(playUrl);
-  if (play == null) return const [];
+/// One fetched HLS master: the URI we read and its text.
+class HlsPlaylistText {
+  const HlsPlaylistText({required this.uri, required this.body});
 
+  final Uri uri;
+  final String body;
+}
+
+final Map<String, HlsPlaylistText> _hlsPlaylistTextCache = {};
+final Map<String, Future<HlsPlaylistText?>> _hlsPlaylistTextInflight = {};
+
+/// Playlists to read for [playUrl]: the local proxy copy when the play URL is
+/// local (it carries `#FORJA-SUB` lines), else the unwrapped upstream master.
+List<Uri> hlsPlaylistReadTargets(String playUrl) {
+  final play = Uri.tryParse(playUrl.trim());
+  if (play == null) return const [];
   final targets = <Uri>[];
   void addTarget(String? url) {
     final value = url?.trim() ?? '';
@@ -253,24 +263,56 @@ Future<List<HlsInStreamSubtitle>> _loadHlsInStreamSubtitles(
   }
 
   if (_localPlaylist(play)) {
-    // Proxy carries #FORJA-SUB lines — no need to also hit the upstream
-    // master whose TYPE=SUBTITLES renditions resolve to different URIs and
-    // double the list.
     addTarget(play.toString());
   } else {
     addTarget(hlsInStreamFetchTarget(playUrl));
   }
+  return targets;
+}
 
-  if (targets.isEmpty) return const [];
-
+/// Headers for a playlist read: the proxy query's own headers, then [headers].
+Map<String, String> hlsPlaylistRequestHeaders(
+  String playUrl,
+  Map<String, String>? headers,
+) {
+  final play = Uri.tryParse(playUrl.trim());
   final merged = <String, String>{
-    ..._headersFromProxyQuery(play),
+    if (play != null) ..._headersFromProxyQuery(play),
     ...?headers,
   };
-  final reqHeaders = _requestHeaders(merged.isEmpty ? null : merged);
-  final out = <HlsInStreamSubtitle>[];
-  final seen = <String>{};
+  return _requestHeaders(merged.isEmpty ? null : merged);
+}
 
+/// Read the HLS master behind [playUrl] once; later calls reuse the text.
+/// Null when the URL is not a playlist we can read or the fetch failed.
+Future<HlsPlaylistText?> loadHlsPlaylistText(
+  String? playUrl, {
+  Map<String, String>? headers,
+}) async {
+  final raw = playUrl?.trim() ?? '';
+  if (raw.isEmpty) return null;
+  final key = _cacheKey(raw, headers);
+  final cached = _hlsPlaylistTextCache[key];
+  if (cached != null) return cached;
+  final pending = _hlsPlaylistTextInflight[key];
+  if (pending != null) return pending;
+
+  final future = _fetchHlsPlaylistText(raw, headers).then((text) {
+    if (text != null) _hlsPlaylistTextCache[key] = text;
+    _hlsPlaylistTextInflight.remove(key);
+    return text;
+  });
+  _hlsPlaylistTextInflight[key] = future;
+  return future;
+}
+
+Future<HlsPlaylistText?> _fetchHlsPlaylistText(
+  String playUrl,
+  Map<String, String>? headers,
+) async {
+  final targets = hlsPlaylistReadTargets(playUrl);
+  if (targets.isEmpty) return null;
+  final reqHeaders = hlsPlaylistRequestHeaders(playUrl, headers);
   for (final uri in targets) {
     try {
       final res = await http
@@ -279,13 +321,26 @@ Future<List<HlsInStreamSubtitle>> _loadHlsInStreamSubtitles(
       if (res.statusCode != 200) continue;
       final body = res.body;
       if (!body.contains('#EXTM3U') && !body.contains('#FORJA-SUB:')) continue;
-      for (final sub in parseHlsInStreamSubtitles(body, playlistUri: uri)) {
-        if (!seen.add(sub.uri)) continue;
-        out.add(sub);
-      }
+      return HlsPlaylistText(uri: uri, body: body);
     } catch (e) {
-      debugPrint('[Subtitles] in-stream playlist read failed: $e');
+      debugPrint('[Player] HLS playlist read failed: $e');
     }
+  }
+  return null;
+}
+
+Future<List<HlsInStreamSubtitle>> _loadHlsInStreamSubtitles(
+  String playUrl,
+  Map<String, String>? headers,
+) async {
+  final text = await loadHlsPlaylistText(playUrl, headers: headers);
+  if (text == null) return const [];
+
+  final out = <HlsInStreamSubtitle>[];
+  final seen = <String>{};
+  for (final sub in parseHlsInStreamSubtitles(text.body, playlistUri: text.uri)) {
+    if (!seen.add(sub.uri)) continue;
+    out.add(sub);
   }
 
   if (out.isNotEmpty) {

@@ -90,7 +90,8 @@ class PackChromeScope extends InheritedWidget {
   final void Function({bool forceNetwork}) onBumpRefresh;
 
   /// Immediate empty + loading — no fetch until [onBumpRefresh].
-  /// Clears [selectedListItem] (portal wipe).
+  /// Clears [selectedListItem] and the category rail selection (portal wipe —
+  /// the old portal's category id must not scope the new portal's feed).
   final VoidCallback onClearCatalog;
   final void Function(String style) onViewStyle;
   final void Function(String barId, List<Map<String, dynamic>> items)

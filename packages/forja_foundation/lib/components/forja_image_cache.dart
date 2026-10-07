@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -9,6 +10,10 @@ import 'package:sqflite/sqflite.dart';
 /// A hit is a memory lookup. The SQLite row is not rewritten on each view —
 /// that exclusive write is what locked `libCachedImageData.db` for 10s when a
 /// details page opened a pile of covers at once.
+///
+/// sqflite ships Android, iOS and macOS plugins only. Windows and Linux use
+/// the JSON index instead (the same choice as the upstream default config);
+/// opening the SQLite index there throws and every cover fails to load.
 class ForjaImageCacheManager extends CacheManager with ImageCacheManager {
   static const key = 'libCachedImageData';
 
@@ -17,7 +22,16 @@ class ForjaImageCacheManager extends CacheManager with ImageCacheManager {
   factory ForjaImageCacheManager() => _instance;
 
   ForjaImageCacheManager._()
-    : super(Config(key, repo: ForjaCacheIndex(databaseName: key)));
+    : super(Config(key, repo: cacheIndexFor(sqflite: sqfliteAvailable)));
+
+  /// SQLite index where sqflite has a plugin; JSON index elsewhere.
+  static CacheInfoRepository cacheIndexFor({required bool sqflite}) {
+    if (sqflite) return ForjaCacheIndex(databaseName: key);
+    return JsonCacheInfoRepository(databaseName: key);
+  }
+
+  static bool get sqfliteAvailable =>
+      Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
 
   final Map<String, Future<FileInfo>> _avifRewrite = {};
 

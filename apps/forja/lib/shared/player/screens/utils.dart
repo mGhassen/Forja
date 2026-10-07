@@ -32,6 +32,7 @@ export 'package:forja/shared/playback/probe/playback_stream_guards.dart'
 import 'package:forja/shared/playback/sources/stream_playback_knobs.dart';
 import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
+import 'package:forja/shared/player/controls/menus/hls_instream_audio.dart';
 import 'package:forja/shared/player/screens/peakstorm_hls_trim.dart';
 import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
@@ -1727,6 +1728,35 @@ bool shouldSuppressEarlyEofSeekBarPosition({
   return positionMs >= durationMs - 5000;
 }
 
+/// Largest step between two position reports that still reads as the
+/// playhead advancing normally. A dead CDN jumps straight to duration; a user
+/// seek lands far from the last shown value. Neither is a resume point.
+const kHealthyPlayheadMaxStep = Duration(seconds: 5);
+
+/// Whether [reported] continues from [previous] and is not sitting at EOF, so
+/// it is safe to remember as the resume point for reconnect / Retry.
+bool isHealthyPlayheadSample({
+  required Duration previous,
+  required Duration reported,
+  required Duration duration,
+  Duration maxStep = kHealthyPlayheadMaxStep,
+}) {
+  if (reported <= Duration.zero) return false;
+  if (shouldPinSeekBarAtEof(uiPosition: reported, duration: duration)) {
+    return false;
+  }
+  final step = reported - previous;
+  return step.abs() <= maxStep;
+}
+
+/// Resume point for reconnect / Retry: the last healthy sample when there is
+/// one, else the shown position (fresh open, nothing sampled yet).
+Duration recoveryResumePosition({
+  required Duration lastHealthy,
+  required Duration shown,
+}) =>
+    lastHealthy > Duration.zero ? lastHealthy : shown;
+
 /// keep-open EOF: `completed` can re-fire while mpv position is still 0/end.
 /// If the UI already scrubbed away, do not yank the bar back to duration.
 bool shouldPinSeekBarAtEof({
@@ -2321,6 +2351,8 @@ Future<void> applyDefaultPlayerAudioTrack(Player player) async {
 Future<void> applyPreferredPlayerAudioTrack(
   Player player, {
   required bool audioPinned,
+  String? playUrl,
+  Map<String, String>? headers,
 }) async {
   final tracks = concreteAudioTracks(player.state.tracks.audio);
   if (tracks.isEmpty) return;
@@ -2331,13 +2363,19 @@ Future<void> applyPreferredPlayerAudioTrack(
   } else {
     final settings = SettingsService();
     final best = pickBestAudioTrack(
-      audioTracks: player.state.tracks.audio,
+      audioTracks: await hlsLabeledAudioTracks(
+        player.state.tracks.audio,
+        playUrl: playUrl,
+        headers: headers,
+      ),
       preferredAudioLang: await settings.getPreferredAudioLanguage(),
       avoidUnsupportedAudio: await settings.getAvoidUnsupportedAudio(),
     );
     target = best ?? tracks.first;
   }
 
+  // The playlist read above may have outlived this source.
+  if (findAudioTrack(player.state.tracks.audio, target.id) == null) return;
   if (player.state.track.audio.id == target.id) return;
   await selectPlayerAudioTrack(player, target);
 }

@@ -392,6 +392,7 @@ class DownloadService {
     required Map<String, String> headers,
     String? sourceName,
     String? addonName,
+    List<Map<String, String>>? subtitles,
     String? customDownloadDir,
   }) async {
     await initialize();
@@ -480,6 +481,7 @@ class DownloadService {
       rawUrl: rawUrl,
       headers: Map<String, String>.from(headers),
       targetFilePath: targetPath,
+      subtitles: subtitles,
       status: DownloadStatus.queued,
       createdAt: now,
     );
@@ -1131,6 +1133,17 @@ class DownloadService {
         try {
           await partFile.delete();
         } catch (_) {}
+      }
+
+      try {
+        await saveStreamSubtitleRows(
+          videoPath: task.targetFilePath,
+          rows: task.subtitles,
+          headers: task.headers,
+          isPausedOrCanceled: () => _canceledOrPausedTaskIds.contains(task.id),
+        );
+      } catch (e) {
+        debugPrint('[DownloadService] stream subtitle save failed: $e');
       }
 
       final completedBytes = await File(task.targetFilePath).length();

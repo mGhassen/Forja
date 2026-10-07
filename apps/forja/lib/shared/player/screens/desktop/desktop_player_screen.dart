@@ -380,6 +380,16 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   /// Pins seek bar position/duration while peakstorm trim remount runs.
   bool _lockSeekBarPosition = false;
   bool _networkRemountInFlight = false;
+
+  /// Last playhead seen while playback advanced normally. Reconnect and Retry
+  /// resume here: the seek bar value is rewritten by the EOF guards when a
+  /// dead CDN jumps to duration or `completed` zeroes it.
+  Duration _lastHealthyPosition = Duration.zero;
+
+  Duration _recoveryResumePosition() => recoveryResumePosition(
+        lastHealthy: _lastHealthyPosition,
+        shown: _positionNotifier.value,
+      );
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
 
@@ -405,6 +415,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _abortiveCompletedLatched = false;
     _sessionFirstConfirmedAt = null;
     _seekAwayFromEofAt = null;
+    _lastHealthyPosition = Duration.zero;
   }
 
   void _resetTrackAutoSelectForSource() {

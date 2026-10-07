@@ -526,7 +526,8 @@ class _PortalListRowState extends State<PortalListRow>
     final railAnim = widget.leanback
         ? Duration.zero
         : ForjaMotionTheme.of(context).cardLift.duration;
-    final cardHeight = _rowHeight - 4;
+    const cardInsetV = PortalListTokens.rowCardInsetV;
+    final cardHeight = _rowHeight - cardInsetV * 2;
 
     Widget tile = ExcludeFocus(
       excluding: blocked,
@@ -540,7 +541,7 @@ class _PortalListRowState extends State<PortalListRow>
               SizedBox(
                 height: _rowHeight,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.symmetric(vertical: cardInsetV),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: _backgroundColor(),
@@ -584,29 +585,40 @@ class _PortalListRowState extends State<PortalListRow>
                   ),
                 ),
               ),
+              // Stripes cover the card only — inset to the card's vertical gap
+              // and clip, since CustomPaint lets diagonal strokes bleed past
+              // its bounds into the neighbouring rows.
               if (deleting)
                 Positioned.fill(
-                  child: CustomPaint(
-                    painter: _DeletingStripePainter(
-                      spacing: PortalListTokens.itemSpacingOf(_tvDensity),
-                      strokeWidth: ShellTokens.rowQuietStripeStrokeOf(
-                        _tvDensity,
+                  top: cardInsetV,
+                  bottom: cardInsetV,
+                  child: ClipRect(
+                    child: CustomPaint(
+                      painter: _DeletingStripePainter(
+                        spacing: PortalListTokens.itemSpacingOf(_tvDensity),
+                        strokeWidth: ShellTokens.rowQuietStripeStrokeOf(
+                          _tvDensity,
+                        ),
                       ),
                     ),
                   ),
                 ),
               if (shelfLoading && _shelfStripeCtrl != null)
                 Positioned.fill(
-                  child: AnimatedBuilder(
-                    animation: _shelfStripeCtrl!,
-                    builder: (context, _) => CustomPaint(
-                      painter: _ShelfLoadingStripePainter(
-                        progress: _shelfStripeCtrl!.value,
-                        spacing: ShellTokens.rowProgressStripeSpacingOf(
-                          _tvDensity,
-                        ),
-                        strokeWidth: ShellTokens.rowProgressStripeStrokeOf(
-                          _tvDensity,
+                  top: cardInsetV,
+                  bottom: cardInsetV,
+                  child: ClipRect(
+                    child: AnimatedBuilder(
+                      animation: _shelfStripeCtrl!,
+                      builder: (context, _) => CustomPaint(
+                        painter: _ShelfLoadingStripePainter(
+                          progress: _shelfStripeCtrl!.value,
+                          spacing: ShellTokens.rowProgressStripeSpacingOf(
+                            _tvDensity,
+                          ),
+                          strokeWidth: ShellTokens.rowProgressStripeStrokeOf(
+                            _tvDensity,
+                          ),
                         ),
                       ),
                     ),
