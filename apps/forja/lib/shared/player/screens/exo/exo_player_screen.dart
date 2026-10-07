@@ -2120,6 +2120,18 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         : _teardownExoPlayer();
     MpvExclusiveSession.instance.trackVideoDispose(teardown);
     unawaited(teardown);
+    // Stop the swarm this player reads — the one switched to in-player when
+    // Sources / episodes changed it, else the one it opened with. A
+    // replacement player owns the engine now; leave its resolve alone.
+    if (!TorrentStreamService().retainForExternalHandoff &&
+        !TorrentStreamService().replacementPlayerAlive) {
+      final torrentId = _activeMagnet ?? widget.magnetLink;
+      if (torrentId != null && torrentId.isNotEmpty) {
+        TorrentStreamService().removeTorrent(torrentId);
+      } else if (isLocalTorrentStreamUrl(widget.mediaPath)) {
+        TorrentStreamService().removeTorrent(widget.mediaPath);
+      }
+    }
     WakelockPlus.disable();
     super.dispose();
   }

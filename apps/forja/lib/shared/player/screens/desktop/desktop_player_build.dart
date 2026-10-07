@@ -221,7 +221,10 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
               type: MaterialType.transparency,
               child: MouseRegion(
                 onHover: _s._onPointerHover,
-                cursor: SystemMouseCursors.basic,
+                // Pointer hides with the chrome; hover reveals both.
+                cursor: _s._showControls
+                    ? SystemMouseCursors.basic
+                    : SystemMouseCursors.none,
                 child: stack,
               ),
             ),

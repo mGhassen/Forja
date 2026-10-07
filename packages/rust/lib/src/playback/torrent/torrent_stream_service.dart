@@ -171,6 +171,98 @@ class TorrentDownloadCacheSnapshot {
   }
 }
 
+/// One swarm in the engine session ([TorrentStreamService.listSessionTorrents]).
+class TorrentSessionEntry {
+  const TorrentSessionEntry({
+    required this.id,
+    required this.infoHash,
+    required this.name,
+    required this.progressBytes,
+    required this.totalBytes,
+    required this.downloadRate,
+    required this.uploadRate,
+    required this.numPeers,
+    required this.numSeen,
+    required this.state,
+    required this.finished,
+    required this.active,
+  });
+
+  final int id;
+  final String infoHash;
+  final String name;
+  final int progressBytes;
+  final int totalBytes;
+  /// Bytes per second.
+  final int downloadRate;
+  final int uploadRate;
+  final int numPeers;
+  final int numSeen;
+  /// `initializing` · `live` · `paused` · `finished` · `error`.
+  final String state;
+  final bool finished;
+  /// The swarm the player is reading from right now.
+  final bool active;
+
+  double get progressFraction =>
+      totalBytes <= 0 ? 0 : (progressBytes / totalBytes).clamp(0.0, 1.0);
+
+  String get displayName => name.isNotEmpty ? name : infoHash;
+
+  String get speedLabel => TorrentStats._formatMbps(downloadRate / 1024 / 1024);
+
+  /// "1.2 GB / 4.5 GB · 3 peers · 2.1 MB/s" style status line.
+  String get statusLine {
+    final loaded = TorrentStreamService.formatStorageBytes(progressBytes);
+    final parts = <String>[];
+    if (totalBytes > 0) {
+      parts.add('$loaded / ${TorrentStreamService.formatStorageBytes(totalBytes)}');
+    } else {
+      parts.add(loaded);
+    }
+    if (finished) {
+      parts.add('complete');
+    } else if (state == 'paused') {
+      parts.add('paused');
+    } else if (state == 'error') {
+      parts.add('error');
+    } else if (state == 'initializing') {
+      parts.add('starting');
+    } else {
+      parts.add(numPeers == 1 ? '1 peer' : '$numPeers peers');
+      if (downloadRate > 0) parts.add(speedLabel);
+    }
+    if (active) parts.add('playing now');
+    return parts.join(' · ');
+  }
+
+  static List<TorrentSessionEntry> listFromJson(String json) {
+    if (json.isEmpty) return const [];
+    final parsed = jsonDecode(json);
+    if (parsed is! Map<String, dynamic>) return const [];
+    final rows = parsed['torrents'];
+    if (rows is! List) return const [];
+    return rows
+        .whereType<Map>()
+        .map((m) => TorrentSessionEntry(
+              id: (m['id'] as num?)?.toInt() ?? -1,
+              infoHash: (m['info_hash'] as String? ?? '').toLowerCase(),
+              name: m['name'] as String? ?? '',
+              progressBytes: (m['progress_bytes'] as num?)?.toInt() ?? 0,
+              totalBytes: (m['total_bytes'] as num?)?.toInt() ?? 0,
+              downloadRate: (m['download_rate'] as num?)?.toInt() ?? 0,
+              uploadRate: (m['upload_rate'] as num?)?.toInt() ?? 0,
+              numPeers: (m['num_peers'] as num?)?.toInt() ?? 0,
+              numSeen: (m['num_seen'] as num?)?.toInt() ?? 0,
+              state: m['state'] as String? ?? '',
+              finished: m['finished'] == true,
+              active: m['active'] == true,
+            ))
+        .where((e) => e.id >= 0)
+        .toList();
+  }
+}
+
 /// librqbit download dir usage from [TorrentStreamService.queryDiskCacheStats].
 class TorrentDiskCacheStats {
   const TorrentDiskCacheStats({
@@ -222,7 +314,21 @@ class TorrentStreamService {
   void Function(String line)? onLogLine;
 
   int _rustEnginePort = 0;
+  /// Hex info hash of the swarm the player reads (from the Rust response).
   String? _rustActiveHash;
+  /// Raw magnet the host passed to [streamTorrent] for that swarm.
+  String? _rustActiveMagnet;
+  int? _rustActiveTorrentId;
+  /// Magnet resolving in [streamTorrent] right now; null when idle.
+  String? _pendingMagnet;
+  String? _pendingHash;
+  /// Host left (loading Cancel / Back, player closed) while [_pendingMagnet]
+  /// was still resolving — stop the swarm as soon as the job returns.
+  bool _abandonPending = false;
+  /// Player entry surfaces mounted right now. A route replacement (next
+  /// episode, resume) briefly has two; the outgoing one must not stop the
+  /// swarm the incoming one is resolving.
+  int _playerSurfaces = 0;
 
   /// When true, [removeTorrent] is a no-op so an external player can keep
   /// reading the localhost librqbit URL after the built-in player disposes.
@@ -292,7 +398,7 @@ class TorrentStreamService {
     if (_state == EngineState.ready && _rustReady) {
       RustLib.instance.torrentEngineStop();
       _rustEnginePort = 0;
-      _rustActiveHash = null;
+      _clearActive();
       _setState(EngineState.stopped);
       await start();
     }
@@ -356,6 +462,9 @@ class TorrentStreamService {
     final hash = _extractHash(magnetLink);
     if (!RustLib.isInitialized) return null;
 
+    _pendingMagnet = magnetLink;
+    _pendingHash = hash;
+    _abandonPending = false;
     try {
       _log('Submitting torrentStream job…');
       final json = await EngineJobs.run(EngineAsyncJob.torrentStream, {
@@ -368,35 +477,174 @@ class TorrentStreamService {
       final err = parsed['error'];
       if (err != null) {
         _log('torrentStream failed: $err');
+        if (_abandonPending) _removeByHandle(hash, null);
         return null;
       }
       final url = parsed['url'];
       if (url is String && url.isNotEmpty) {
-        if (hash != null) _rustActiveHash = hash;
+        final rustHash = (parsed['info_hash'] as String?)?.trim().toLowerCase();
+        final torrentId = (parsed['torrent_id'] as num?)?.toInt();
+        final resolvedHash =
+            (rustHash != null && rustHash.isNotEmpty) ? rustHash : hash;
+        if (_abandonPending) {
+          // Nobody will read this URL — the host left while we resolved.
+          _log('Stream resolved after cancel — stopping $resolvedHash');
+          _removeByHandle(resolvedHash, torrentId);
+          return null;
+        }
+        _rustActiveHash = resolvedHash;
+        _rustActiveMagnet = magnetLink;
+        _rustActiveTorrentId = torrentId;
         _log('Stream started (Rust): $url');
         return url;
       }
       _log('torrentStream returned no url: $json');
     } catch (e) {
       _log('Rust streamTorrent error: $e');
+    } finally {
+      _pendingMagnet = null;
+      _pendingHash = null;
+      _abandonPending = false;
     }
     return null;
   }
 
-  void removeTorrent(String magnetOrHash) {
+  /// Abort an in-flight [streamTorrent] (loading page Cancel / Back).
+  ///
+  /// The Rust job aborts at its next cancel check and deletes the half-added
+  /// swarm; if it already returned a URL, [streamTorrent] stops it instead.
+  void cancelResolve() {
+    if (_pendingMagnet == null) return;
+    _abandonPending = true;
+    if (RustLib.isInitialized) {
+      RustLib.instance.engineCancelJobsOfKind(EngineAsyncJob.torrentStream);
+    }
+    _log('Cancelled torrent resolve');
+  }
+
+  /// A player entry screen mounted. Pair with [leavePlayerSurface].
+  void enterPlayerSurface() => _playerSurfaces++;
+
+  /// A player entry screen left. Returns true when another player is still
+  /// mounted (route replacement) — the swarm now belongs to that one.
+  bool leavePlayerSurface() {
+    if (_playerSurfaces > 0) _playerSurfaces--;
+    return _playerSurfaces > 0;
+  }
+
+  /// True while a replacement player is mounted beside the outgoing one.
+  bool get replacementPlayerAlive => _playerSurfaces > 1;
+
+  /// Stop the swarm the host opened for [magnetOrUrl] — a magnet, a hex or
+  /// base32 info hash, or the localhost stream URL — and delete its files.
+  ///
+  /// Only touches that swarm: a swarm another player is resolving right now
+  /// is left alone, and an in-flight resolve for the same magnet is aborted.
+  void removeTorrent(String magnetOrUrl) {
     if (retainForExternalHandoff) return;
-    final hash = _extractHash(magnetOrHash);
-    if (hash == null || hash != _rustActiveHash) return;
-    if (RustLib.isInitialized) RustLib.instance.torrentStop();
-    _rustActiveHash = null;
-    _log('Removed torrent $hash (Rust)');
+    final hash = _extractHash(magnetOrUrl);
+    final streamId = _streamUrlTorrentId(magnetOrUrl);
+    if (_matchesPending(magnetOrUrl, hash)) cancelResolve();
+    if (_matchesActive(magnetOrUrl, hash, streamId)) {
+      _removeByHandle(_rustActiveHash ?? hash, _rustActiveTorrentId ?? streamId);
+      _clearActive();
+      return;
+    }
+    // Not tracked (engine restart, stale bookkeeping) — still make sure no
+    // session swarm with this hash keeps downloading.
+    if (hash != null || streamId != null) _removeByHandle(hash, streamId);
   }
 
   TorrentStats? getTorrentStats(String magnetOrHash) {
     final hash = _extractHash(magnetOrHash);
-    if (hash == null || hash != _rustActiveHash) return null;
+    final streamId = _streamUrlTorrentId(magnetOrHash);
+    if (!_matchesActive(magnetOrHash, hash, streamId)) return null;
     if (!RustLib.isInitialized) return null;
-    return _rustStatsFromJson(RustLib.instance.torrentStatusJson(), hash);
+    return _rustStatsFromJson(
+      RustLib.instance.torrentStatusJson(),
+      _rustActiveHash ?? hash ?? '',
+    );
+  }
+
+  void _clearActive() {
+    _rustActiveHash = null;
+    _rustActiveMagnet = null;
+    _rustActiveTorrentId = null;
+  }
+
+  bool _matchesPending(String raw, String? hash) {
+    final pending = _pendingMagnet;
+    if (pending == null) return false;
+    if (raw == pending) return true;
+    final pendingHash = _pendingHash;
+    return hash != null && pendingHash != null && hash == pendingHash;
+  }
+
+  bool _matchesActive(String raw, String? hash, int? streamId) {
+    if (_rustActiveMagnet != null && raw == _rustActiveMagnet) return true;
+    if (hash != null && _rustActiveHash != null && hash == _rustActiveHash) {
+      return true;
+    }
+    return streamId != null &&
+        _rustActiveTorrentId != null &&
+        streamId == _rustActiveTorrentId;
+  }
+
+  /// Delete one session swarm by hex hash (preferred) or session id.
+  void _removeByHandle(String? hash, int? id) {
+    if (!RustLib.isInitialized) return;
+    final handle = (hash != null && hash.isNotEmpty) ? hash : id?.toString();
+    if (handle == null || handle.isEmpty) return;
+    try {
+      final json = RustLib.instance.torrentRemoveJson(handle);
+      _log('Removed torrent $handle (Rust): $json');
+    } catch (e) {
+      _log('Rust removeTorrent error: $e');
+    }
+  }
+
+  /// Every swarm in the engine session — Settings → Direct torrent list.
+  ///
+  /// Does not start the engine: an idle engine has nothing to list.
+  Future<List<TorrentSessionEntry>> listSessionTorrents() async {
+    if (!PlatformPlayback.capabilities.localTorrentEngine) return const [];
+    if (!RustLib.isInitialized) return const [];
+    if (RustLib.instance.torrentEnginePort() <= 0) return const [];
+    try {
+      return TorrentSessionEntry.listFromJson(RustLib.instance.torrentListJson());
+    } catch (e) {
+      _log('Rust listSessionTorrents error: $e');
+      return const [];
+    }
+  }
+
+  /// Stop one listed swarm and delete its files.
+  Future<bool> removeSessionTorrent(TorrentSessionEntry entry) async {
+    if (!RustLib.isInitialized) return false;
+    try {
+      final json = RustLib.instance.torrentRemoveJson(entry.infoHash);
+      final parsed = jsonDecode(json) as Map<String, dynamic>;
+      final removed = parsed['removed'] == true;
+      if (removed &&
+          (_rustActiveHash == entry.infoHash ||
+              _rustActiveTorrentId == entry.id)) {
+        _clearActive();
+      }
+      _log('Removed session torrent ${entry.infoHash}: $removed');
+      return removed;
+    } catch (e) {
+      _log('Rust removeSessionTorrent error: $e');
+      return false;
+    }
+  }
+
+  /// Stop every swarm in the session and delete their files.
+  Future<int> removeAllSessionTorrents() async {
+    var removed = 0;
+    for (final entry in await listSessionTorrents()) {
+      if (await removeSessionTorrent(entry)) removed++;
+    }
+    return removed;
   }
 
   /// Active swarm stats — readable while [streamTorrent] is still resolving.
@@ -441,8 +689,9 @@ class TorrentStreamService {
 
   Future<void> stop() async {
     if (!RustLib.isInitialized) return;
+    cancelResolve();
     RustLib.instance.torrentStop();
-    _rustActiveHash = null;
+    _clearActive();
     _log('All torrents stopped (Rust).');
   }
 
@@ -588,11 +837,44 @@ class TorrentStreamService {
     return TorrentDownloadCacheSnapshot.empty;
   }
 
-  static final _hashRegExp = RegExp(r'[0-9a-fA-F]{40}');
+  static final _hexHashRegExp = RegExp(r'[0-9a-fA-F]{40}');
+  static final _base32HashRegExp = RegExp(r'[A-Za-z2-7]{32}');
+  static final _streamUrlIdRegExp = RegExp(r'/torrents/(\d+)/stream/');
 
+  /// Lower-case hex info hash from a magnet / bare hash (base32 is decoded).
   String? _extractHash(String magnetOrHash) {
-    final match = _hashRegExp.firstMatch(magnetOrHash);
-    return match?.group(0)?.toLowerCase();
+    final hex = _hexHashRegExp.firstMatch(magnetOrHash)?.group(0);
+    if (hex != null) return hex.toLowerCase();
+    final match = _base32HashRegExp.firstMatch(magnetOrHash);
+    if (match == null) return null;
+    return _base32ToHex(match.group(0)!);
+  }
+
+  /// Session torrent id from a localhost stream URL, else null.
+  int? _streamUrlTorrentId(String url) {
+    if (!url.startsWith('http')) return null;
+    final match = _streamUrlIdRegExp.firstMatch(url);
+    return match == null ? null : int.tryParse(match.group(1)!);
+  }
+
+  static const _base32Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+  static String? _base32ToHex(String base32) {
+    final bytes = <int>[];
+    var buffer = 0;
+    var bits = 0;
+    for (final rune in base32.toUpperCase().runes) {
+      final value = _base32Alphabet.indexOf(String.fromCharCode(rune));
+      if (value < 0) return null;
+      buffer = (buffer << 5) | value;
+      bits += 5;
+      if (bits >= 8) {
+        bits -= 8;
+        bytes.add((buffer >> bits) & 0xff);
+      }
+    }
+    if (bytes.length != 20) return null;
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
   List<TorrentFileEntry> _parseFileList(String json) {

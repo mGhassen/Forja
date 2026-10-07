@@ -452,6 +452,15 @@ class RustLib {
   String torrentClearAllDownloadsJson() =>
       _readString(_native.ffi_torrent_clear_all_downloads_json());
 
+  /// Every swarm in the librqbit session with live stats (`{"torrents":[…]}`).
+  String torrentListJson() => _readString(_native.ffi_torrent_list_json());
+
+  /// Stop one swarm by session id or hex info hash and delete its files.
+  String torrentRemoveJson(String idOrHash) => using((arena) {
+    final ptr = idOrHash.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_torrent_remove_json(ptr));
+  });
+
   String torrentStreamJson(
     String magnet, {
     int? season,
@@ -913,6 +922,14 @@ final class _FfiNative {
             'ffi_torrent_clear_all_downloads_json',
           )
           .asFunction(),
+      ffi_torrent_list_json = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>('ffi_torrent_list_json')
+          .asFunction(),
+      ffi_torrent_remove_json = lib
+          .lookup<ffi.NativeFunction<_TorrentJsonNative>>(
+            'ffi_torrent_remove_json',
+          )
+          .asFunction(),
       ffi_torrent_stream_json = lib
           .lookup<ffi.NativeFunction<_TorrentStreamJsonNative>>(
             'ffi_torrent_stream_json',
@@ -1191,6 +1208,9 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function()
   ffi_torrent_download_cache_snapshot_json;
   final ffi.Pointer<ffi.Char> Function() ffi_torrent_clear_all_downloads_json;
+  final ffi.Pointer<ffi.Char> Function() ffi_torrent_list_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+  ffi_torrent_remove_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int, int, int)
   ffi_torrent_stream_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

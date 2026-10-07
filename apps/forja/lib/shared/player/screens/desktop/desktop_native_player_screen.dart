@@ -492,6 +492,10 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       onKeyEvent: _onKey,
       child: MouseRegion(
         onHover: (_) => _bumpControls(),
+        // Pointer hides with the chrome; hover reveals both.
+        cursor: _controlsVisible
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.none,
         child: Scaffold(
           backgroundColor: Colors.black,
           body: Stack(

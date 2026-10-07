@@ -195,6 +195,10 @@ String formatTorrentEngineLoadingMessage(TorrentStats? stats) {
 ///
 /// [onStatus] receives live peer/buffer lines while the local engine resolves.
 /// Status FFI runs on the EngineJobs waiter isolate — not the UI isolate.
+///
+/// [isCancelled] is polled while the local engine resolves: once it flips the
+/// Rust job aborts and the half-added swarm is deleted, so Back on the loading
+/// page never leaves a torrent downloading. Returns null after a cancel.
 Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
   required String magnet,
   required bool localTorrentEngine,
@@ -202,6 +206,7 @@ Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
   int? episode,
   int? fileIdx,
   void Function(TorrentLoadingStatus status)? onStatus,
+  bool Function()? isCancelled,
 }) async {
   final pluginId = DebridPackBridge.activePluginId?.call()?.trim() ?? '';
   if (pluginId.isNotEmpty) {
@@ -266,13 +271,29 @@ Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
     });
   }
 
+  final engine = TorrentStreamService();
+  Timer? cancelPoll;
+  if (isCancelled != null) {
+    if (isCancelled()) return null;
+    cancelPoll = Timer.periodic(_cancelPollInterval, (timer) {
+      if (!isCancelled()) return;
+      timer.cancel();
+      engine.cancelResolve();
+    });
+  }
+
   try {
-    final url = await TorrentStreamService().streamTorrent(
+    final url = await engine.streamTorrent(
       magnet,
       season: season,
       episode: episode,
       fileIdx: fileIdx,
     );
+    if (isCancelled?.call() ?? false) {
+      // Resolved in the same tick the host cancelled — nobody will open it.
+      if (url != null && url.isNotEmpty) engine.removeTorrent(magnet);
+      return null;
+    }
     if (url == null || url.isEmpty) return null;
 
     int? fileIndex = fileIdx;
@@ -285,6 +306,10 @@ Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
       sourceLabel: 'Local Torrent Engine',
     );
   } finally {
+    cancelPoll?.cancel();
     await statusSub?.cancel();
   }
 }
+
+/// How often a local-engine resolve checks the host's cancel flag.
+const _cancelPollInterval = Duration(milliseconds: 200);

@@ -85,6 +85,14 @@ pub fn torrent_clear_all_downloads_json() -> String {
     TORRENT.clear_all_downloads_json()
 }
 
+pub fn torrent_list_json() -> String {
+    TORRENT.list_session_torrents_json()
+}
+
+pub fn torrent_remove_json(id_or_hash: String) -> String {
+    TORRENT.remove_torrent_json(&id_or_hash)
+}
+
 pub fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
     let season = if season < 0 { None } else { Some(season) };
     let episode = if episode < 0 { None } else { Some(episode) };

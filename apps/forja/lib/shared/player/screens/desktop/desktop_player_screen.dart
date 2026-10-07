@@ -699,10 +699,13 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
       unawaited(disposeFuture);
     }
 
-    // Remove torrent from engine on player exit (use magnetLink for hash,
-    // fall back to mediaPath which may be a stream URL).
-    if (!TorrentStreamService().retainForExternalHandoff) {
-      final torrentId = widget.magnetLink ?? widget.mediaPath;
+    // Stop the swarm this player reads — the one switched to in-player when
+    // Sources / episodes changed it, else the one it opened with. A
+    // replacement player owns the engine now; leave its resolve alone.
+    if (!TorrentStreamService().retainForExternalHandoff &&
+        !TorrentStreamService().replacementPlayerAlive) {
+      final torrentId =
+          _activeMagnet ?? widget.magnetLink ?? widget.mediaPath;
       TorrentStreamService().removeTorrent(torrentId);
     }
 

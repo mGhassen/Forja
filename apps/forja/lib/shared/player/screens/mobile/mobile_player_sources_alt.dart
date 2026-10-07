@@ -395,6 +395,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
           session.torrentStatusNotifier,
           cancelled: () => cancelled || session.cancelled || !mounted,
         ),
+        isCancelled: () => cancelled || session.cancelled || !mounted,
       );
       if (!mounted || cancelled || session.cancelled) {
         dismissStreamLoading(session);

@@ -12,7 +12,7 @@ use librqbit::api::{Api, TorrentDetailsResponseFile, TorrentIdOrHash};
 use librqbit::dht::DhtPersistenceConfig;
 use librqbit::{
     AddTorrent, AddTorrentOptions, AddTorrentResponse, DhtSessionConfig, ListenerMode,
-    ListenerOptions, Session, SessionOptions,
+    ListenerOptions, ManagedTorrent, Session, SessionOptions,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -78,6 +78,29 @@ pub struct DownloadCacheSnapshot {
     pub total_bytes: u64,
     pub torrent_count: u32,
     pub active: bool,
+}
+
+/// One swarm in the librqbit session — Settings → Direct torrent list.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SessionTorrentEntry {
+    pub id: usize,
+    pub info_hash: String,
+    pub name: String,
+    pub progress_bytes: u64,
+    pub total_bytes: u64,
+    pub download_rate: u64,
+    pub upload_rate: u64,
+    pub num_peers: u32,
+    pub num_seen: u32,
+    pub state: String,
+    pub finished: bool,
+    /// The swarm the player is reading from right now.
+    pub active: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionTorrentList {
+    pub torrents: Vec<SessionTorrentEntry>,
 }
 
 #[derive(Debug, Serialize)]
@@ -561,6 +584,14 @@ impl TorrentEngine {
             return Err(e);
         }
 
+        // Host cancelled (Back on the loading page) after the head landed —
+        // nobody will read this URL, so do not leave the swarm downloading.
+        if utils::engine_cancel::is_requested() {
+            self.restore_active_after_failed_switch(&api, prepared.torrent_id, previous)
+                .await;
+            return Err(utils::engine_cancel::cancelled_message());
+        }
+
         // New stream is ready — drop the previous swarm (player will replace).
         if let Some(prev) = previous {
             Self::delete_torrent_files(&api, prev.id).await;
@@ -757,13 +788,24 @@ impl TorrentEngine {
         if utils::engine_cancel::is_requested() {
             return Err(utils::engine_cancel::cancelled_message());
         }
-        let response = utils::engine_cancel::with_cancel(async {
+        let response = match utils::engine_cancel::with_cancel(async {
             tokio::time::timeout(add_timeout, session.add_torrent(add, Some(add_opts)))
                 .await
                 .map_err(|_| add_timeout_msg.clone())?
                 .map_err(|e| e.to_string())
         })
-        .await?;
+        .await
+        {
+            Ok(response) => response,
+            Err(e) => {
+                // A cancelled or timed-out add may already have registered the
+                // swarm — drop it so it does not keep downloading unowned.
+                if let Some(hash) = expected_info_hash {
+                    self.discard_unowned_by_hash(&api, hash).await;
+                }
+                return Err(e);
+            }
+        };
 
         let handle = match response {
             AddTorrentResponse::Added(_, handle) => handle,
@@ -773,6 +815,27 @@ impl TorrentEngine {
             }
         };
 
+        // Re-adding the swarm the player is reading returns the same id —
+        // never delete that one on a failed / cancelled prepare.
+        let torrent_id = handle.id();
+        let owned_by_player = self.is_active_id(torrent_id);
+        let prepared = self.finish_prepare(&api, handle, expected_info_hash).await;
+        if prepared.is_err() && !owned_by_player {
+            Self::delete_torrent_files(&api, torrent_id).await;
+        }
+        prepared
+    }
+
+    /// Wait for storage, validate the hash, publish as the active swarm.
+    ///
+    /// Any `Err` leaves the swarm in the session; [`Self::prepare_add`] deletes
+    /// it unless the player already owns it.
+    async fn finish_prepare(
+        &self,
+        api: &Api,
+        handle: Arc<ManagedTorrent>,
+        expected_info_hash: Option<&str>,
+    ) -> Result<PreparedTorrent, String> {
         if utils::engine_cancel::is_requested() {
             return Err(utils::engine_cancel::cancelled_message());
         }
@@ -796,7 +859,6 @@ impl TorrentEngine {
         if let Some(expected) = expected_info_hash.filter(|expected| {
             !details.info_hash.eq_ignore_ascii_case(expected)
         }) {
-            Self::delete_torrent_files(&api, torrent_id).await;
             return Err(format!(
                 "Torrent metadata info hash mismatch (expected {expected}, got {})",
                 details.info_hash
@@ -818,6 +880,29 @@ impl TorrentEngine {
             info_hash: details.info_hash,
             files,
         })
+    }
+
+    fn is_active_id(&self, id: usize) -> bool {
+        self.inner
+            .lock()
+            .ok()
+            .and_then(|inner| inner.active.as_ref().map(|a| a.id == id))
+            .unwrap_or(false)
+    }
+
+    /// Delete the session swarm with this info hash unless the player reads it.
+    async fn discard_unowned_by_hash(&self, api: &Api, hash: &str) {
+        let victim = api
+            .api_torrent_list()
+            .torrents
+            .into_iter()
+            .find(|t| t.info_hash.eq_ignore_ascii_case(hash))
+            .and_then(|t| t.id);
+        if let Some(id) = victim {
+            if !self.is_active_id(id) {
+                Self::delete_torrent_files(api, id).await;
+            }
+        }
     }
 
     async fn restore_active_after_failed_switch(
@@ -1102,6 +1187,119 @@ impl TorrentEngine {
             torrent_count,
             active,
         }
+    }
+
+    /// Every swarm in the session with live stats — Settings → Direct torrent.
+    pub fn list_session_torrents(&self) -> SessionTorrentList {
+        let mut torrents = Vec::new();
+        if let Ok(inner) = self.inner.lock() {
+            let active_id = inner.active.as_ref().map(|a| a.id);
+            if let (Some(api), Some(session)) = (inner.api.as_ref(), inner.session.as_ref()) {
+                for torrent in api.api_torrent_list().torrents {
+                    let Some(id) = torrent.id else {
+                        continue;
+                    };
+                    let Some(handle) = session.get(TorrentIdOrHash::Id(id)) else {
+                        continue;
+                    };
+                    let stats = handle.stats();
+                    let (download_rate, upload_rate, num_peers, num_seen) = stats
+                        .live
+                        .as_ref()
+                        .map(|live| {
+                            (
+                                live.download_speed.as_bytes(),
+                                live.upload_speed.as_bytes(),
+                                live.snapshot.peer_stats.live,
+                                live.snapshot.peer_stats.seen,
+                            )
+                        })
+                        .unwrap_or((0, 0, 0, 0));
+                    let state = if stats.error.is_some() {
+                        "error".to_string()
+                    } else if stats.finished {
+                        "finished".to_string()
+                    } else {
+                        format!("{}", stats.state)
+                    };
+                    torrents.push(SessionTorrentEntry {
+                        id,
+                        info_hash: torrent.info_hash.to_ascii_lowercase(),
+                        name: torrent.name.unwrap_or_default(),
+                        progress_bytes: stats.progress_bytes,
+                        total_bytes: stats.total_bytes,
+                        download_rate,
+                        upload_rate,
+                        num_peers,
+                        num_seen,
+                        state,
+                        finished: stats.finished,
+                        active: active_id == Some(id),
+                    });
+                }
+            }
+        }
+        SessionTorrentList { torrents }
+    }
+
+    pub fn list_session_torrents_json(&self) -> String {
+        serde_json::to_string(&self.list_session_torrents())
+            .unwrap_or_else(|_| r#"{"torrents":[]}"#.into())
+    }
+
+    /// Stop one swarm (by session id or hex info hash) and delete its files.
+    ///
+    /// Clears the active slot when the player's swarm is removed. Returns
+    /// `true` when a matching swarm existed.
+    pub fn remove_torrent(&self, id_or_hash: &str) -> bool {
+        self.runtime
+            .block_on(async { self.remove_torrent_async(id_or_hash).await })
+    }
+
+    pub fn remove_torrent_json(&self, id_or_hash: &str) -> String {
+        let removed = self.remove_torrent(id_or_hash);
+        format!(r#"{{"removed":{removed}}}"#)
+    }
+
+    async fn remove_torrent_async(&self, id_or_hash: &str) -> bool {
+        let needle = id_or_hash.trim();
+        if needle.is_empty() {
+            return false;
+        }
+        let (api, victim, was_active) = {
+            let Ok(mut inner) = self.inner.lock() else {
+                return false;
+            };
+            let Some(api) = inner.api.clone() else {
+                return false;
+            };
+            let by_id = needle.parse::<usize>().ok();
+            let victim = api
+                .api_torrent_list()
+                .torrents
+                .into_iter()
+                .find(|t| {
+                    t.id.is_some()
+                        && (t.id == by_id || t.info_hash.eq_ignore_ascii_case(needle))
+                })
+                .and_then(|t| t.id);
+            let was_active = victim.is_some()
+                && inner.active.as_ref().map(|a| Some(a.id) == victim).unwrap_or(false);
+            if was_active {
+                Self::abort_prefetch_locked(&mut inner);
+                inner.active = None;
+            }
+            (api, victim, was_active)
+        };
+        let Some(id) = victim else {
+            return false;
+        };
+        Self::delete_torrent_files(&api, id).await;
+        if was_active {
+            self.clear_head_wait_progress();
+        }
+        self.reclaim_disk_cache(u64::MAX);
+        true
     }
 
     pub fn download_cache_snapshot_json(&self) -> String {

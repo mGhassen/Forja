@@ -14,6 +14,7 @@ import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
+import 'package:forja_foundation/widgets/chrome/pointer_down_claim.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 export 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
@@ -672,6 +673,8 @@ class _FocusableControlState extends State<FocusableControl>
             if (!widget.mouseDownActivates || widget.onTap == null) return;
             if (event.kind != PointerDeviceKind.mouse) return;
             if ((event.buttons & kPrimaryButton) == 0) return;
+            // Nested control (card list pin) owns this click.
+            if (PointerDownClaim.isClaimed(event.pointer)) return;
             _invokeOnTap();
           },
           child: GestureDetector(

@@ -148,6 +148,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void initState() {
     super.initState();
     ShellBus.enterPlayerSurface();
+    TorrentStreamService().enterPlayerSurface();
     _sessionStreamUrl = widget.streamUrl;
     _sessionActiveProvider = widget.activeProvider;
     _sessionSources = widget.sources;
@@ -223,9 +224,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (site111477_proxy.is111477ProxyRunning) {
       unawaited(site111477_proxy.stop111477Proxy(force: true));
     }
+    // Stop the swarm this player opened so Back never leaves it downloading.
+    // A replacement player (next episode, resume) now owns the engine — the
+    // outgoing screen must not stop what the incoming one is resolving.
+    final replacementAlive = TorrentStreamService().leavePlayerSurface();
     final torrentId = widget.magnetLink ?? _sessionStreamUrl;
-    if (widget.magnetLink != null ||
-        isLocalTorrentStreamUrl(_sessionStreamUrl)) {
+    if (!replacementAlive &&
+        (widget.magnetLink != null ||
+            isLocalTorrentStreamUrl(_sessionStreamUrl))) {
       TorrentStreamService().removeTorrent(torrentId);
     }
     // LAN close is fired from [_exitPlayer] / deferred helper — not here.

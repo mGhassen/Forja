@@ -1250,7 +1250,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
           onControlsActivity: _scheduleHideControls,
           child: MouseRegion(
             onHover: (_) => _onPlayerMouseMove(),
-            cursor: SystemMouseCursors.basic,
+            // Pointer hides with the chrome; hover reveals both.
+            cursor: _s._controlsVisible
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.none,
             child: Stack(
               fit: StackFit.expand,
               children: [

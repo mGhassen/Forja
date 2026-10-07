@@ -238,6 +238,7 @@ Future<void> _playTorrent({
         session.torrentStatusNotifier,
         cancelled: () => cancelled || session.cancelled,
       ),
+      isCancelled: () => cancelled || session.cancelled,
     );
     if (cancelled || session.cancelled) {
       if (playback != null) {

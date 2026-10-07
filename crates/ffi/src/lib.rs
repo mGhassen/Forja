@@ -500,6 +500,29 @@ fn torrent_clear_all_downloads_json() -> String {
     }
 }
 
+fn torrent_list_json() -> String {
+    #[cfg(feature = "torrent-engine")]
+    {
+        engine_torrent::torrent_list_json()
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        r#"{"torrents":[]}"#.into()
+    }
+}
+
+fn torrent_remove_json(id_or_hash: String) -> String {
+    #[cfg(feature = "torrent-engine")]
+    {
+        engine_torrent::torrent_remove_json(id_or_hash)
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        let _ = id_or_hash;
+        r#"{"removed":false}"#.into()
+    }
+}
+
 fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
     #[cfg(feature = "torrent-engine")]
     {

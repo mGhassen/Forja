@@ -3,6 +3,7 @@ import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/pointer_down_claim.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -474,10 +475,13 @@ class _ListStatusPinState extends State<ListStatusPin> {
     // Card overlays: keep the icon flush with the rating badge (no 40×40
     // focus pad that vertically centers the pin below the score).
     if (!widget.useFocusableChips || widget.excludeFromTvTraversal) {
-      return GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: child,
+      // Claim mouse-down so the card's pointer-down open does not fire.
+      return PointerDownClaim(
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: child,
+        ),
       );
     }
     return ShellPaintScope.focusableTap(
