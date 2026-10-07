@@ -173,11 +173,11 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
 
   /// Chrome hidden: false — the key scope reveals chrome instead.
   bool _focusUpFromNextEpChip() {
-    if (!_s._showControls) return false;
     if (_showSkipChip && _s._skipChipFocus.canRequestFocus) {
       _s._skipChipFocus.requestFocus();
       return true;
     }
+    if (!_s._showControls) return false;
     if (!_s._backFocus.canRequestFocus) return false;
     _s._backFocus.requestFocus();
     return true;
@@ -212,6 +212,33 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
 
   bool get _showSkipChip =>
       _s._activeSkipLabel != null && !_s._skipDismissed;
+
+  /// Chrome hidden: Next Episode first (it carries the countdown), else Skip.
+  void _claimFloatingChipFocus() {
+    if (_showNextEpButton) {
+      _claimNextEpChipFocus();
+      return;
+    }
+    if (_showSkipChip && _s._skipChipFocus.canRequestFocus) {
+      _s._skipChipFocus.requestFocus();
+    }
+  }
+
+  /// Chrome hidden: false — the key scope reveals chrome instead.
+  bool _focusUpFromSkipChip() {
+    if (!_s._showControls || !_s._backFocus.canRequestFocus) return false;
+    _s._backFocus.requestFocus();
+    return true;
+  }
+
+  bool _focusDownFromSkipChip() {
+    if (_showNextEpButton && _s._nextEpChipFocus.canRequestFocus) {
+      setState(() => _s._nextEpChipAutoFocus = false);
+      _s._nextEpChipFocus.requestFocus();
+      return true;
+    }
+    return _focusDownFromNextEpChip();
+  }
 
   /// Progress bar ↑: Next Episode (closest) → Skip → top Back.
   void _focusUpFromSeekbar() {

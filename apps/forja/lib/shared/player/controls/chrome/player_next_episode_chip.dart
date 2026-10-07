@@ -5,9 +5,6 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
-/// Focus label of the chip subtree — the TV key scope treats it like chrome.
-const String kPlayerUpNextFocusLabel = 'player-up-next';
-
 /// Floating Next Episode chip.
 ///
 /// With [countdown], a 10-second ring runs, then [onCountdownComplete] fires.
@@ -215,8 +212,8 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
       builder: (context, _) {
         final left = (total * (1 - _ring.value)).ceil().clamp(1, total);
         return SizedBox(
-          width: 22,
-          height: 22,
+          width: PlayerFloatingChipMetrics.ringSize,
+          height: PlayerFloatingChipMetrics.ringSize,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -230,7 +227,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
                 '$left',
                 style: TextStyle(
                   color: fg,
-                  fontSize: 11,
+                  fontSize: PlayerFloatingChipMetrics.ringFontSize,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -246,7 +243,13 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
     return ColoredBox(
       color: _fill(hovered: hovered, focused: _mainFocused),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: playerChromeScale(
+            context,
+            PlayerFloatingChipMetrics.padH,
+          ),
+          vertical: playerChromeScale(context, PlayerFloatingChipMetrics.padV),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -258,15 +261,21 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
               'Next Episode',
               style: TextStyle(
                 color: fg,
-                fontSize: 13,
+                fontSize: playerChromeTypeSize(
+                  context,
+                  PlayerFloatingChipMetrics.fontSize,
+                ),
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Icon(
               Icons.arrow_forward_rounded,
               color: fg,
-              size: ShellPaintScope.iconOf(context, 18),
+              size: ShellPaintScope.iconOf(
+                context,
+                PlayerFloatingChipMetrics.iconSize,
+              ),
             ),
           ],
         ),
@@ -279,11 +288,20 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
     return ColoredBox(
       color: _fill(hovered: hovered, focused: _cancelFocused),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: playerChromeScale(
+            context,
+            PlayerFloatingChipMetrics.cancelPadH,
+          ),
+          vertical: playerChromeScale(context, PlayerFloatingChipMetrics.padV),
+        ),
         child: Icon(
           Icons.close_rounded,
           color: fg,
-          size: ShellPaintScope.iconOf(context, 18),
+          size: ShellPaintScope.iconOf(
+            context,
+            PlayerFloatingChipMetrics.iconSize,
+          ),
         ),
       ),
     );
@@ -328,13 +346,13 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
   Widget build(BuildContext context) {
     final anyTvFocus = _tvFocused(_mainFocused) || _tvFocused(_cancelFocused);
     return Focus(
-      debugLabel: kPlayerUpNextFocusLabel,
+      debugLabel: kPlayerFloatingChipFocusLabel,
       canRequestFocus: false,
       skipTraversal: true,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(PlayerFloatingChipMetrics.radius),
           border: Border.all(
             color: anyTvFocus
                 ? ForjaShellColors.brandGreen
@@ -343,7 +361,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
           ),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(PlayerFloatingChipMetrics.radius),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -362,7 +380,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
               if (_showCancel) ...[
                 Container(
                   width: 1,
-                  height: 20,
+                  height: PlayerFloatingChipMetrics.ringSize,
                   color: ForjaShellColors.borderSubtle,
                 ),
                 _part(

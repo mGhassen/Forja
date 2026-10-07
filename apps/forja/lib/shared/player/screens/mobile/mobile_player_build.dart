@@ -223,27 +223,36 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                     ),
                   ),
 
-                // ── 7.5 Skip Segment Overlay (IntroDB) ─────────────────────
-                if (!widget.tvRemoteEnabled &&
-                    _s._activeSkipLabel != null &&
-                    !_s._skipDismissed)
-                  Positioned(
-                    bottom: _s._showNextEpButton ? 170 : 120,
-                    right: 16,
-                    child: PlayerFloatingChip(
-                      label: _s._activeSkipLabel!,
-                      onPressed: _s._performSkip,
-                    ),
-                  ),
-
-                // ── 8. Next Episode Overlay ──────────────────────────────
-                // Lives outside the chrome: shows alone while chrome is hidden.
-                if (_s._showNextEpButton)
+                // ── 8. Skip Segment (IntroDB) + Next Episode ─────────────
+                // Outside the chrome: they show alone while chrome is hidden.
+                if (_s._showSkipChip || _s._showNextEpButton)
                   Positioned(
                     bottom: 120,
                     right: 16,
-                    child: _s._buildNextEpisodeChip(
-                      tvFocusable: widget.tvRemoteEnabled,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (_s._showSkipChip)
+                          PlayerFloatingChip(
+                            label: _s._activeSkipLabel!,
+                            onPressed: _s._performSkip,
+                            tvFocusable: widget.tvRemoteEnabled,
+                            focusNode: widget.tvRemoteEnabled
+                                ? _s._skipChipFocus
+                                : null,
+                            onArrowUp: _s._focusUpFromSkipChip,
+                            onArrowDown: _s._focusDownFromSkipChip,
+                          ),
+                        if (_s._showSkipChip && _s._showNextEpButton)
+                          const SizedBox(
+                            height: PlayerFloatingChipMetrics.stackGap,
+                          ),
+                        if (_s._showNextEpButton)
+                          _s._buildNextEpisodeChip(
+                            tvFocusable: widget.tvRemoteEnabled,
+                          ),
+                      ],
                     ),
                   ),
 
@@ -311,8 +320,8 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
       },
       onClaimPlayFocus: _s._claimPlayFocus,
       onControlsActivity: _s._startHideTimer,
-      upNextVisible: _s._showNextEpButton,
-      onClaimUpNextFocus: _s._claimNextEpChipFocus,
+      floatingChipVisible: _s._showNextEpButton || _s._showSkipChip,
+      onClaimFloatingChipFocus: _s._claimFloatingChipFocus,
       child: body,
     );
   }
@@ -800,24 +809,6 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
           ),
         ),
       ];
-
-    if (tvFocus && _s._activeSkipLabel != null && !_s._skipDismissed) {
-      overlayChildren.add(
-        Positioned(
-          bottom: _s._showNextEpButton ? 170 : 120,
-          right: 16,
-          child: FocusTraversalOrder(
-            order: const NumericFocusOrder(15),
-            child: PlayerFloatingChip(
-              label: _s._activeSkipLabel!,
-              onPressed: _s._performSkip,
-              tvFocusable: true,
-              focusNode: _s._skipChipFocus,
-            ),
-          ),
-        ),
-      );
-    }
 
     final overlay = Stack(children: overlayChildren);
     if (!tvFocus) return overlay;

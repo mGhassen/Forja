@@ -328,8 +328,8 @@ void main() {
               onFocusBack: () => focusBack++,
               onFocusPlay: () {},
               onClaimPlayFocus: () {},
-              upNextVisible: true,
-              onClaimUpNextFocus: chipFocus.requestFocus,
+              floatingChipVisible: true,
+              onClaimFloatingChipFocus: chipFocus.requestFocus,
               child: Center(
                 child: PlayerNextEpisodeChip(
                   onPressed: () {},
@@ -357,6 +357,65 @@ void main() {
       );
 
       // ↑ with chrome hidden reveals chrome via the key scope.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(focusBack, 1);
+
+      keyFocus.dispose();
+      chipFocus.dispose();
+    },
+  );
+
+  testWidgets(
+    'PlayerTvKeyScope gives the Skip chip focus when chrome is hidden',
+    (tester) async {
+      final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
+      final chipFocus = FocusNode(debugLabel: 'test-skip');
+      var skipped = 0;
+      var focusBack = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlayerTvKeyScope(
+              enabled: true,
+              focusNode: keyFocus,
+              showControls: false,
+              onBack: () {},
+              onPlayPause: () {},
+              onShowControls: () {},
+              onSeekBack: () {},
+              onSeekForward: () {},
+              onToggleControls: () {},
+              onFocusBack: () => focusBack++,
+              onFocusPlay: () {},
+              onClaimPlayFocus: () {},
+              floatingChipVisible: true,
+              onClaimFloatingChipFocus: chipFocus.requestFocus,
+              child: Center(
+                child: PlayerFloatingChip(
+                  label: 'Skip Intro',
+                  onPressed: () => skipped++,
+                  focusNode: chipFocus,
+                  tvFocusable: true,
+                  onArrowUp: () => false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(chipFocus.hasFocus, isTrue);
+      expect(playerTvFloatingChipHasFocus(), isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(skipped, 1);
+
+      // ↑ the chip did not use reveals chrome via the key scope.
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
       expect(focusBack, 1);

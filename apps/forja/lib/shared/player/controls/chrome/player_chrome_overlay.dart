@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -36,6 +37,24 @@ double playerChromeTypeSize(BuildContext context, double desktop) =>
     ShellPaintScope.usesTvDensityOf(context)
         ? ShellTokens.tvTypeSize(desktop)
         : desktop;
+
+/// Focus label of the floating Skip / Next Episode chips — the TV key scope
+/// treats them like chrome and lets them hold D-pad while chrome is hidden.
+const String kPlayerFloatingChipFocusLabel = 'player-floating-chip';
+
+/// Floating Skip / Next Episode chip metrics (desktop; × leanback density).
+abstract final class PlayerFloatingChipMetrics {
+  static const double padH = 20;
+  static const double padV = 13;
+  static const double cancelPadH = 14;
+  static const double fontSize = 15;
+  static const double iconSize = 22;
+  static const double ringSize = 26;
+  static const double ringFontSize = 12;
+  static const double radius = 10;
+  /// Vertical gap when Skip sits above Next Episode.
+  static const double stackGap = 12;
+}
 
 /// D-pad / hover highlight for player chrome - works even without [ShellScope].
 /// Desktop: mouse → hover only; keyboard/D-pad → focus chrome.
@@ -745,6 +764,8 @@ class PlayerFloatingChip extends StatefulWidget {
     this.trailingIcon = Icons.skip_next_rounded,
     this.focusNode,
     this.tvFocusable = false,
+    this.onArrowUp,
+    this.onArrowDown,
   });
 
   final String label;
@@ -753,6 +774,9 @@ class PlayerFloatingChip extends StatefulWidget {
   final IconData trailingIcon;
   final FocusNode? focusNode;
   final bool tvFocusable;
+  /// D-pad ↑ / ↓ from the chip. Return true when focus moved.
+  final bool Function()? onArrowUp;
+  final bool Function()? onArrowDown;
 
   @override
   State<PlayerFloatingChip> createState() => _PlayerFloatingChipState();
@@ -771,6 +795,18 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
   void _setHovered(bool hovered) {
     if (_hoveredN.value == hovered) return;
     _hoveredN.value = hovered;
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is KeyUpEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final move = key == LogicalKeyboardKey.arrowUp
+        ? widget.onArrowUp
+        : key == LogicalKeyboardKey.arrowDown
+            ? widget.onArrowDown
+            : null;
+    if (move != null && move()) return KeyEventResult.handled;
+    return KeyEventResult.ignored;
   }
 
   bool get _tvFocused =>
@@ -797,21 +833,31 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
         : Colors.white.withValues(alpha: highlight ? 0.22 : 0.15);
     final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
 
+    final iconSz = ShellPaintScope.iconOf(
+      context,
+      PlayerFloatingChipMetrics.iconSize,
+    );
     return DecoratedBox(
       decoration: BoxDecoration(
         color: fill,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(PlayerFloatingChipMetrics.radius),
         border: Border.all(color: borderColor, width: _tvFocused ? 1.5 : 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: playerChromeScale(
+            context,
+            PlayerFloatingChipMetrics.padH,
+          ),
+          vertical: playerChromeScale(context, PlayerFloatingChipMetrics.padV),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (widget.loading)
               SizedBox(
-                width: 16,
-                height: 16,
+                width: iconSz,
+                height: iconSz,
                 child: CircularProgressIndicator(strokeWidth: 2, color: fg),
               )
             else
@@ -819,17 +865,16 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
                 widget.label,
                 style: TextStyle(
                   color: fg,
-                  fontSize: 13,
+                  fontSize: playerChromeTypeSize(
+                    context,
+                    PlayerFloatingChipMetrics.fontSize,
+                  ),
                   fontWeight: FontWeight.w600,
                 ),
               ),
             if (!widget.loading) ...[
-              const SizedBox(width: 6),
-              Icon(
-                widget.trailingIcon,
-                color: fg,
-                size: ShellPaintScope.iconOf(context, 18),
-              ),
+              const SizedBox(width: 8),
+              Icon(widget.trailingIcon, color: fg, size: iconSz),
             ],
           ],
         ),
@@ -845,13 +890,19 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
     );
 
     if (widget.tvFocusable) {
-      return FocusableControl(
-        focusNode: widget.focusNode,
-        onTap: widget.onPressed,
-        borderRadius: 8,
-        scaleOnFocus: 1.0,
-        onFocusChange: (focused) => setState(() => _focused = focused),
-        child: painted,
+      return Focus(
+        debugLabel: kPlayerFloatingChipFocusLabel,
+        canRequestFocus: false,
+        skipTraversal: true,
+        child: FocusableControl(
+          focusNode: widget.focusNode,
+          onTap: widget.onPressed,
+          onKeyEvent: _onKey,
+          borderRadius: PlayerFloatingChipMetrics.radius,
+          scaleOnFocus: 1.0,
+          onFocusChange: (focused) => setState(() => _focused = focused),
+          child: painted,
+        ),
       );
     }
 
@@ -864,7 +915,7 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
         child: InkWell(
           canRequestFocus: false,
           onTap: widget.onPressed,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(PlayerFloatingChipMetrics.radius),
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
           child: painted,

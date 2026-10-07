@@ -2795,8 +2795,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       },
       onClaimPlayFocus: _claimPlayFocus,
       onControlsActivity: _syncChromeHideTimer,
-      upNextVisible: _showNextEpChip,
-      onClaimUpNextFocus: _claimNextEpChipFocus,
+      floatingChipVisible: _showNextEpChip,
+      onClaimFloatingChipFocus: _claimNextEpChipFocus,
       child: body,
     );
   }

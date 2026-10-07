@@ -51,6 +51,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
     // Include enter-pending: window shrinks before the stream sets _isPipMode.
     final pipMode =
         _s._isPipMode || PipService.instance.isDesktopActive;
+    final showSkip = _s._activeSkipLabel != null && !_s._skipDismissed;
 
     // Same MediaKit [Video] always — only the [Positioned] box resizes.
     // Do not swap Scaffold ↔ bare stack (that remounts texture → black + audio).
@@ -180,12 +181,25 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
               child: _buildControlsOverlay(),
             ),
           ),
-        // Outside the chrome: shows alone while chrome is hidden.
-        if (!mini && !pipMode && _s._showNextEpButton)
+        // Outside the chrome: they show alone while chrome is hidden.
+        if (!mini && !pipMode && (showSkip || _s._showNextEpButton))
           Positioned(
             bottom: 100,
             right: 24,
-            child: _s._buildNextEpisodeChip(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (showSkip)
+                  PlayerFloatingChip(
+                    label: _s._activeSkipLabel!,
+                    onPressed: _s._performSkip,
+                  ),
+                if (showSkip && _s._showNextEpButton)
+                  const SizedBox(height: PlayerFloatingChipMetrics.stackGap),
+                if (_s._showNextEpButton) _s._buildNextEpisodeChip(),
+              ],
+            ),
           ),
         if (!mini && !pipMode && _s._escapeExitArmed)
           const PlayerEscapeExitHint(),
@@ -466,16 +480,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             );
           },
         ),
-
-        if (_s._activeSkipLabel != null && !_s._skipDismissed)
-          Positioned(
-            bottom: _s._showNextEpButton ? 155 : 100,
-            right: 24,
-            child: PlayerFloatingChip(
-              label: _s._activeSkipLabel!,
-              onPressed: _s._performSkip,
-            ),
-          ),
 
         Positioned(
           bottom: 0,

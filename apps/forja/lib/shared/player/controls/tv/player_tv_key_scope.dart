@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_remote.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 
@@ -31,8 +31,8 @@ class PlayerTvKeyScope extends StatefulWidget {
     required this.onFocusPlay,
     required this.onClaimPlayFocus,
     this.onControlsActivity,
-    this.upNextVisible = false,
-    this.onClaimUpNextFocus,
+    this.floatingChipVisible = false,
+    this.onClaimFloatingChipFocus,
     required this.child,
   });
 
@@ -56,11 +56,11 @@ class PlayerTvKeyScope extends StatefulWidget {
   /// Fired on D-pad / remote keys while chrome is visible so auto-hide can
   /// restart from idle (focus traversal alone does not touch the timer).
   final VoidCallback? onControlsActivity;
-  /// Next Episode chip is on screen. While chrome is hidden it owns D-pad
-  /// focus instead of the video key node.
-  final bool upNextVisible;
-  /// Move focus onto the Next Episode chip.
-  final VoidCallback? onClaimUpNextFocus;
+  /// A floating Skip / Next Episode chip is on screen. While chrome is hidden
+  /// it owns D-pad focus instead of the video key node.
+  final bool floatingChipVisible;
+  /// Move focus onto the floating chip.
+  final VoidCallback? onClaimFloatingChipFocus;
   final Widget child;
 
   @override
@@ -107,7 +107,7 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     super.didUpdateWidget(oldWidget);
     if (!widget.enabled) return;
     if (oldWidget.showControls != widget.showControls ||
-        oldWidget.upNextVisible != widget.upNextVisible) {
+        oldWidget.floatingChipVisible != widget.floatingChipVisible) {
       _scheduleEnsureFocus();
     }
   }
@@ -145,9 +145,9 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
       }
       return;
     }
-    if (_upNextHoldsFocus) {
+    if (_floatingChipHoldsFocus) {
       if (lost || identical(primary, widget.focusNode)) {
-        widget.onClaimUpNextFocus!();
+        widget.onClaimFloatingChipFocus!();
       }
       return;
     }
@@ -156,11 +156,11 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     }
   }
 
-  /// Chrome hidden + Next Episode chip up: the chip takes D-pad focus.
-  bool get _upNextHoldsFocus =>
+  /// Chrome hidden + floating chip up: the chip takes D-pad focus.
+  bool get _floatingChipHoldsFocus =>
       !widget.showControls &&
-      widget.upNextVisible &&
-      widget.onClaimUpNextFocus != null;
+      widget.floatingChipVisible &&
+      widget.onClaimFloatingChipFocus != null;
 
   /// Chrome hidden: handle remote keys even when focus claim lost the race to
   /// app-root [DirectionalFocusAction] (←/→ otherwise no-op).
@@ -180,8 +180,8 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
       return false;
     }
     if (playerChromeOverlayBlocksSeek()) return false;
-    // Focused Next Episode chip: let focus dispatch reach the chip first.
-    if (playerTvUpNextHasFocus()) return false;
+    // Focused floating chip: let focus dispatch reach the chip first.
+    if (playerTvFloatingChipHasFocus()) return false;
     return _handler.handle(event, showControls: false);
   }
 
@@ -214,7 +214,7 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     // play/pause) act like on the video node.
     if (!widget.showControls &&
         shellTvIsNavigationKey(event) &&
-        playerTvUpNextHasFocus()) {
+        playerTvFloatingChipHasFocus()) {
       if (event is KeyUpEvent) return KeyEventResult.handled;
       _handler.handle(event, showControls: false);
       return KeyEventResult.handled;
@@ -240,8 +240,8 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     return Focus(
       focusNode: widget.focusNode,
       autofocus: !playerChromeOverlayBlocksFocusClaim(),
-      descendantsAreFocusable: widget.showControls || _upNextHoldsFocus,
-      descendantsAreTraversable: widget.showControls || _upNextHoldsFocus,
+      descendantsAreFocusable: widget.showControls || _floatingChipHoldsFocus,
+      descendantsAreTraversable: widget.showControls || _floatingChipHoldsFocus,
       onKeyEvent: _onKey,
       child: widget.child,
     );
@@ -258,7 +258,7 @@ bool playerTvChromeHasFocus(FocusNode playerKeyNode) {
     if (label == 'player-chrome' ||
         label == 'exo-player-chrome' ||
         label == 'player-tv-menu' ||
-        label == kPlayerUpNextFocusLabel) {
+        label == kPlayerFloatingChipFocusLabel) {
       return true;
     }
     node = node.parent;
@@ -266,11 +266,11 @@ bool playerTvChromeHasFocus(FocusNode playerKeyNode) {
   return false;
 }
 
-/// True when TV focus is on the floating Next Episode chip.
-bool playerTvUpNextHasFocus() {
+/// True when TV focus is on a floating Skip / Next Episode chip.
+bool playerTvFloatingChipHasFocus() {
   FocusNode? node = FocusManager.instance.primaryFocus;
   while (node != null) {
-    if (node.debugLabel == kPlayerUpNextFocusLabel) return true;
+    if (node.debugLabel == kPlayerFloatingChipFocusLabel) return true;
     node = node.parent;
   }
   return false;
