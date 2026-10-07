@@ -1,10 +1,10 @@
 # Arabic
 
-> Browse and watch Arabic movies and series from Larozaa.
+> Browse and watch Arabic and dubbed series, films, plays, and TV shows from Larozaa.
 
 ## What it is
 
-The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). It browses **Larozaa** only — multi-row layout like Home (spotlight, latest, Continue Watching, category rails). Playback uses the **Larozaa** Forja provider plugin. **Aflem** (Brstej) and **كرتون** (DimaToon) are separate hub packs. The host renders Catalog Shell (`surface: arabic`). The tab appears in **Settings → Features** (on by default) while the Arabic pack is enabled under **Forja Packs → Hubs**.
+The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). It browses the whole **Larozaa** catalog — most-viewed shows in the hero, latest episodes, Continue Watching, one row per Larozaa section, and every series. Playback uses the **Larozaa** Forja provider plugin. **Aflem** (Brstej) and **كرتون** (DimaToon) are separate hub packs. The host renders Catalog Shell (`surface: arabic`). The tab appears in **Settings → Features** (on by default) while the Arabic pack is enabled under **Forja Packs → Hubs**.
 
 ## How to open it
 
@@ -12,10 +12,10 @@ Enable the ForjaHQ Arabic pack under **Settings → Forja Packs → Hubs**, turn
 
 ## What you can do
 
-- Browse Larozaa rails (latest, Arabic/Turkish/foreign/Indian/Asian series & movies, anime, dubbed, Ramadan, TV programs, plays)
-- Scroll a rail or Categories results to load more titles from Larozaa (paginated)
-- Top menu from pack `filters` — **Search**, **Films**, **Series**, **Categories** (Larozaa sections); Films/Series/Categories refilter rails
-- Search Larozaa titles (scroll for more hits)
+- Browse one row per Larozaa section: Arabic, Turkish, Ramadan 2026, foreign, Indian, Asian, and anime series, TV shows, and Arabic, foreign, Indian, Asian, anime, dubbed, and Turkish films, and plays
+- Scroll any row to keep loading — **كل المسلسلات** at the bottom pages through every series on the site
+- **Films** and **Series** in the top menu show only that kind of row; **Categories** narrows the tab to one section, with its most-viewed titles in the hero
+- Search Larozaa titles — closest title matches come first
 - Like titles for quick access
 - Open pack-backed details and play episodes/servers in the player
 - After a pack update, use **Settings → Forja Packs → Refresh** so details/stream scripts reload
