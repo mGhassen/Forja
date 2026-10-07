@@ -607,9 +607,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (feedIds.isNotEmpty) {
       // Reuse in-flight / completed page feed when layout soft-reloads so
       // PackLoadedPaint does not remount every rail (skeleton flash).
+      // A failed feed (offline, upstream down) is never reused: rebind below
+      // so the rails refetch instead of replaying the error.
       if (reuseFeed &&
           !forceFeed &&
           _pageFeedFuture != null &&
+          _pageFeedError == null &&
           setEquals(feedIds, _pageFeedRailIds)) {
         feedFuture = _pageFeedFuture;
         feedRails = _pageFeedRails;
@@ -841,7 +844,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       });
     }
 
-    await PluginInstallCoordinator.instance.waitUntilIdle();
+    // Scripts on disk → open now. Only a lean stub waits for boot hydrate.
+    await PluginInstallCoordinator.instance.waitUntilReadyFor(
+      widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+    );
     if (!_layoutStillCurrent(layoutGen)) return;
 
     final enabled = await PluginNavRegistry.isKitPluginEnabled(
@@ -888,6 +895,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (!_layoutStillCurrent(layoutGen)) return;
 
     if (!envelope.ok) {
+      // Next show of this tab must refetch instead of keeping the error.
+      markShellTabStale();
       if (_widgets.isNotEmpty) return;
       setState(() {
         _loading = false;
@@ -1133,6 +1142,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         '[catalog] ${widget.pluginId} page-feed fail '
         '${hardError?.code.wire} ${hardError?.message}',
       );
+      // Next show of this tab must refetch (the layout already marked fresh).
+      markShellTabStale();
       if (mounted) {
         setState(() {
           _pageFeedRails = null;

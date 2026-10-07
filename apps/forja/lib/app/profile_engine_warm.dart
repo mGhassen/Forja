@@ -25,6 +25,8 @@ class ProfileEngineWarm {
     bool startTorrent = true,
     bool startPlaySources = true,
     bool awaitOfficialPacks = true,
+    /// Pull cloud pack membership before hydrate. Offline boot passes false.
+    bool awaitCloudLean = true,
     bool prefetchDefaultHub = false,
     String reason = 'boot',
     void Function(String status)? onStatus,
@@ -55,7 +57,7 @@ class ProfileEngineWarm {
             .ensureAllInstalled(
               notifyUpdates: true,
               includeNuvio: needs.nuvio,
-              awaitCloudLean: true,
+              awaitCloudLean: awaitCloudLean,
             )
             .catchError((Object e) {
               debugPrint('[Init] Plugin install error (non-fatal): $e');

@@ -104,6 +104,8 @@ class PluginInstallCoordinator {
   final ValueNotifier<bool> suppressBanner = ValueNotifier<bool>(false);
 
   Future<void>? _inFlight;
+  /// Cap on the splash cloud pull — pack hydrate continues offline past it.
+  static const Duration _bootCloudSyncTimeout = Duration(seconds: 20);
   /// In-flight manual installs keyed by manifest URL (sequential batch safe).
   final Map<String, Future<EnginePack>> _manualByUrl = {};
   bool _bootWarm = false;
@@ -126,6 +128,34 @@ class PluginInstallCoordinator {
     if (_manualByUrl.isNotEmpty) {
       await Future.wait(_manualByUrl.values);
     }
+  }
+
+  /// Join boot / manual installs only when [pluginId] still needs its scripts.
+  ///
+  /// A hub whose scripts are already on disk (or a local checkout) must open
+  /// at once. Boot hydrate can sit on cloud sync or pack downloads with no
+  /// internet — gating every hub on it left the Downloads hub on its
+  /// skeleton offline.
+  Future<void> waitUntilReadyFor(
+    String pluginId, {
+    String? packSourceUrl,
+  }) async {
+    if (await scriptsOnDisk(pluginId, packSourceUrl: packSourceUrl)) return;
+    await waitUntilIdle();
+  }
+
+  /// True when [pluginId] resolves to an installed pack whose scripts are on
+  /// disk. False for lean stubs, unknown plugins, or missing scripts.
+  Future<bool> scriptsOnDisk(String pluginId, {String? packSourceUrl}) async {
+    final want = pluginId.trim();
+    if (want.isEmpty) return false;
+    final hit = PluginRegistry.packPluginFromPacks(
+      await PluginRegistry.instance.listPacksRaw(),
+      want,
+      sourceUrl: packSourceUrl,
+    );
+    if (hit == null) return false;
+    return !(await PluginRegistry.instance.packNeedsDiskInstall(hit.pack));
   }
 
   /// Settings → Add plugin (or refresh one pack) with visible download progress.
@@ -459,7 +489,11 @@ class PluginInstallCoordinator {
         ),
       );
       try {
-        await SyncDomainBridge.instance.syncFromCloud();
+        // Bounded: a connected-but-dead network must not pin boot hydrate
+        // (and every hub that joins it) on a socket that never answers.
+        await SyncDomainBridge.instance
+            .syncFromCloud()
+            .timeout(_bootCloudSyncTimeout);
       } catch (e) {
         debugPrint('[PluginInstall] cloud sync failed (non-fatal): $e');
       }

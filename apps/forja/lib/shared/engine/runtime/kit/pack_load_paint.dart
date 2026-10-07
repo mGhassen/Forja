@@ -243,6 +243,19 @@ class PackLoadedPaint extends StatefulWidget {
   static final Map<String, ({MetaEnvelope env, Map<String, dynamic> feedParams})>
       _sectionResolved = {};
 
+  /// Memo a settled envelope. A failed fetch (offline, upstream down) is
+  /// dropped instead, so the next bind refetches rather than replaying the
+  /// error until process death.
+  static void _settle(String key, String warmKey, MetaEnvelope env) {
+    if (!env.ok) {
+      _resolved.remove(key);
+      _memo.remove(key);
+      return;
+    }
+    _resolved[key] = env;
+    _resolved[warmKey] = env;
+  }
+
   /// Drop soft feed memos so portal switch cannot sync-paint a stale grid.
   static void clearMemosForPlugin(String pluginId) {
     final id = pluginId.trim();
@@ -479,6 +492,20 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       return;
     }
 
+    // Back to a hub whose rail failed (offline, upstream down): refetch now.
+    // Failed envelopes are never memoized, so this is a real network retry.
+    if (becameVisible &&
+        !refreshBumped &&
+        !shelfSectionFlipped &&
+        !held &&
+        _envelope != null &&
+        !_envelope!.ok) {
+      _scopeEpoch = epoch;
+      _bind();
+      _promotePageFeedRailIfReady(chrome);
+      return;
+    }
+
     // Only rebind on epoch change. `_envelope == null` alone used to restart the
     // in-flight Movies/Series feed when clearing the category bar notified
     // PackChromeScope — duplicate flutter_js → timeout → "did not answer".
@@ -585,8 +612,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       widget.packSourceUrl ?? '',
       _scopeEpoch,
     ].join('|');
-    PackLoadedPaint._resolved[key] = env;
-    PackLoadedPaint._resolved[_warmPaintKey] = env;
+    PackLoadedPaint._settle(key, _warmPaintKey, env);
     _promotedPageFeedEpoch = _scopeEpoch;
     _envelope = env;
     _inFlight = null;
@@ -702,7 +728,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     _inFlight = future;
     future.then((env) {
       if (!mounted || gen != _bindGen) return;
-      PackLoadedPaint._resolved[_warmPaintKey] = env;
+      if (env.ok) PackLoadedPaint._resolved[_warmPaintKey] = env;
       _rememberSectionEnvelope(env);
       setState(() {
         _envelope = env;
@@ -795,6 +821,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
             ),
           );
         }
+        PackLoadedPaint._memo.remove(key);
         if (!mounted || gen != _bindGen) return;
         _setScheduleBusy(busy: false, label: null);
         setState(() => _inFlight = null);
@@ -802,7 +829,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       onDone: () {
         final env = last ??
             const MetaEnvelope(ok: true, action: 'feed', data: {'items': []});
-        PackLoadedPaint._resolved[key] = env;
+        if (env.ok) {
+          PackLoadedPaint._resolved[key] = env;
+        } else {
+          PackLoadedPaint._resolved.remove(key);
+          PackLoadedPaint._memo.remove(key);
+        }
         if (!completer.isCompleted) completer.complete(env);
         if (!mounted || gen != _bindGen) return;
         setState(() {
@@ -1065,8 +1097,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           action: 'rail',
           error: feedErr,
         );
-        PackLoadedPaint._resolved[key] = env;
-        PackLoadedPaint._resolved[_warmPaintKey] = env;
+        PackLoadedPaint._settle(key, _warmPaintKey, env);
         return Future.value(env);
       }
       // Sync snapshot from layout (EngineCache peek / progressive publish) —
@@ -1082,16 +1113,14 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
             action: 'rail',
             data: {'items': items},
           );
-          PackLoadedPaint._resolved[key] = env;
-          PackLoadedPaint._resolved[_warmPaintKey] = env;
+          PackLoadedPaint._settle(key, _warmPaintKey, env);
           return Future.value(env);
         }
         if (!syncRails.containsKey(rail) && feedFuture != null) {
           final hit = PackLoadedPaint._memo[key];
           if (hit != null) {
             return hit.then((env) {
-              PackLoadedPaint._resolved[key] = env;
-              PackLoadedPaint._resolved[_warmPaintKey] = env;
+              PackLoadedPaint._settle(key, _warmPaintKey, env);
               return env;
             });
           }
@@ -1104,8 +1133,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
                   action: 'rail',
                   data: {'items': slice},
                 );
-                PackLoadedPaint._resolved[key] = env;
-                PackLoadedPaint._resolved[_warmPaintKey] = env;
+                PackLoadedPaint._settle(key, _warmPaintKey, env);
                 return env;
               }
               final direct = await packOpaqueRun(
@@ -1114,8 +1142,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
                 params: runParams,
                 packSourceUrl: widget.packSourceUrl,
               );
-              PackLoadedPaint._resolved[key] = direct;
-              PackLoadedPaint._resolved[_warmPaintKey] = direct;
+              PackLoadedPaint._settle(key, _warmPaintKey, direct);
               return direct;
             },
             onError: (Object e, StackTrace _) {
@@ -1130,8 +1157,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
                       message: e.toString(),
                       action: 'rail',
                     );
-              PackLoadedPaint._resolved[key] = env;
-              PackLoadedPaint._resolved[_warmPaintKey] = env;
+              PackLoadedPaint._settle(key, _warmPaintKey, env);
               return env;
             },
           );
@@ -1142,8 +1168,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         final hit = PackLoadedPaint._memo[key];
         if (hit != null) {
           return hit.then((env) {
-            PackLoadedPaint._resolved[key] = env;
-            PackLoadedPaint._resolved[_warmPaintKey] = env;
+            PackLoadedPaint._settle(key, _warmPaintKey, env);
             return env;
           });
         }
@@ -1156,8 +1181,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
                 action: 'rail',
                 data: {'items': items},
               );
-              PackLoadedPaint._resolved[key] = env;
-              PackLoadedPaint._resolved[_warmPaintKey] = env;
+              PackLoadedPaint._settle(key, _warmPaintKey, env);
               return env;
             }
             // Batched feed missed this rail — use the rail cache, or fetch once.
@@ -1167,8 +1191,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
               params: runParams,
               packSourceUrl: widget.packSourceUrl,
             );
-            PackLoadedPaint._resolved[key] = direct;
-            PackLoadedPaint._resolved[_warmPaintKey] = direct;
+            PackLoadedPaint._settle(key, _warmPaintKey, direct);
             return direct;
           },
           onError: (Object e, StackTrace _) {
@@ -1183,8 +1206,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
                     message: e.toString(),
                     action: 'rail',
                   );
-            PackLoadedPaint._resolved[key] = env;
-            PackLoadedPaint._resolved[_warmPaintKey] = env;
+            PackLoadedPaint._settle(key, _warmPaintKey, env);
             return env;
           },
         );
@@ -1233,8 +1255,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
             PackLoadedPaint._resolved.remove(_warmPaintKey);
             PackLoadedPaint._memo.remove(key);
           } else {
-            PackLoadedPaint._resolved[key] = env;
-            PackLoadedPaint._resolved[_warmPaintKey] = env;
+            PackLoadedPaint._settle(key, _warmPaintKey, env);
           }
           return env;
         });
@@ -1276,8 +1297,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         PackLoadedPaint._memo.remove(key);
         return env;
       }
-      PackLoadedPaint._resolved[key] = env;
-      PackLoadedPaint._resolved[_warmPaintKey] = env;
+      PackLoadedPaint._settle(key, _warmPaintKey, env);
       return env;
     });
     PackLoadedPaint._memo[key] = future;

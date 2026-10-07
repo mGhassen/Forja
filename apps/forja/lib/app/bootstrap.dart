@@ -837,6 +837,7 @@ class _SplashScreenState extends State<SplashScreen> {
       startTorrent: false,
       startPlaySources: false,
       awaitOfficialPacks: true,
+      awaitCloudLean: false,
       prefetchDefaultHub: false,
       reason: 'intro-splash-offline',
       onStatus: _setBootStatus,
