@@ -511,6 +511,18 @@ fn torrent_list_json() -> String {
     }
 }
 
+fn torrent_stop_json(id_or_hash: String) -> String {
+    #[cfg(feature = "torrent-engine")]
+    {
+        engine_torrent::torrent_stop_json(id_or_hash)
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        let _ = id_or_hash;
+        r#"{"stopped":false}"#.into()
+    }
+}
+
 fn torrent_remove_json(id_or_hash: String) -> String {
     #[cfg(feature = "torrent-engine")]
     {

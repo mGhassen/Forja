@@ -89,6 +89,10 @@ pub fn torrent_list_json() -> String {
     TORRENT.list_session_torrents_json()
 }
 
+pub fn torrent_stop_json(id_or_hash: String) -> String {
+    TORRENT.stop_torrent_json(&id_or_hash)
+}
+
 pub fn torrent_remove_json(id_or_hash: String) -> String {
     TORRENT.remove_torrent_json(&id_or_hash)
 }

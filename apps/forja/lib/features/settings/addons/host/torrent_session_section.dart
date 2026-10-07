@@ -7,7 +7,10 @@ import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:rust/rust.dart';
 
-/// Torrents in the local engine — progress, peers, speed, Stop / Stop all.
+/// Torrents in the local engine — progress, peers, speed; Stop / Delete.
+///
+/// A live row stops on tap (file kept on disk, resumes on the next play).
+/// A stopped row deletes on tap. Delete all wipes every file.
 class SettingsTorrentSessionSection extends StatefulWidget {
   const SettingsTorrentSessionSection({super.key});
 
@@ -22,8 +25,8 @@ class _SettingsTorrentSessionSectionState
 
   List<TorrentSessionEntry> _entries = const [];
   bool _loading = true;
-  bool _stoppingAll = false;
-  String? _stoppingHash;
+  bool _deletingAll = false;
+  String? _busyHash;
   Timer? _poll;
   int _loadGen = 0;
 
@@ -50,11 +53,13 @@ class _SettingsTorrentSessionSectionState
     });
   }
 
+  bool get _busy => _busyHash != null || _deletingAll;
+
   Future<void> _stop(TorrentSessionEntry entry) async {
-    if (_stoppingHash != null || _stoppingAll) return;
-    setState(() => _stoppingHash = entry.infoHash);
+    if (_busy) return;
+    setState(() => _busyHash = entry.infoHash);
     try {
-      final ok = await TorrentStreamService().removeSessionTorrent(entry);
+      final ok = await TorrentStreamService().stopSessionTorrent(entry);
       if (!mounted) return;
       if (ok) {
         ForjaToast.success('Stopped ${entry.displayName}');
@@ -62,22 +67,39 @@ class _SettingsTorrentSessionSectionState
         ForjaToast.error('Could not stop ${entry.displayName}');
       }
     } finally {
-      if (mounted) setState(() => _stoppingHash = null);
+      if (mounted) setState(() => _busyHash = null);
       await _load();
     }
   }
 
-  Future<void> _stopAll() async {
-    if (_stoppingAll || _stoppingHash != null) return;
-    setState(() => _stoppingAll = true);
+  Future<void> _delete(TorrentSessionEntry entry) async {
+    if (_busy) return;
+    setState(() => _busyHash = entry.infoHash);
+    try {
+      final ok = await TorrentStreamService().removeSessionTorrent(entry);
+      if (!mounted) return;
+      if (ok) {
+        ForjaToast.success('Deleted ${entry.displayName}');
+      } else {
+        ForjaToast.error('Could not delete ${entry.displayName}');
+      }
+    } finally {
+      if (mounted) setState(() => _busyHash = null);
+      await _load();
+    }
+  }
+
+  Future<void> _deleteAll() async {
+    if (_busy) return;
+    setState(() => _deletingAll = true);
     try {
       final removed = await TorrentStreamService().removeAllSessionTorrents();
       if (!mounted) return;
       ForjaToast.success(
-        removed == 1 ? 'Stopped 1 torrent' : 'Stopped $removed torrents',
+        removed == 1 ? 'Deleted 1 torrent' : 'Deleted $removed torrents',
       );
     } finally {
-      if (mounted) setState(() => _stoppingAll = false);
+      if (mounted) setState(() => _deletingAll = false);
       await _load();
     }
   }
@@ -111,8 +133,9 @@ class _SettingsTorrentSessionSectionState
           Padding(
             padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
             child: Text(
-              'No torrents are downloading. A torrent you play shows here '
-              'with its progress until you stop it or close the player.',
+              'No torrents yet. A torrent you play shows here with its '
+              'progress. Stop keeps the file on disk inside the Disk cache '
+              'budget so the next play resumes at once; Delete removes it.',
               style: noteStyle,
             ),
           )
@@ -124,29 +147,34 @@ class _SettingsTorrentSessionSectionState
               leading: Icon(
                 entry.active
                     ? Icons.play_circle_rounded
-                    : Icons.downloading_rounded,
+                    : entry.isLive
+                        ? Icons.downloading_rounded
+                        : Icons.pause_circle_rounded,
                 color: entry.active
                     ? ForjaShellColors.brandGreen
                     : ForjaShellColors.iconMuted,
               ),
-              trailing: const Icon(
-                Icons.stop_circle_rounded,
+              trailing: Icon(
+                entry.isLive
+                    ? Icons.stop_circle_rounded
+                    : Icons.delete_outline_rounded,
                 color: ForjaShellColors.textSecondary,
               ),
-              busy: _stoppingHash == entry.infoHash,
-              onTap: () => _stop(entry),
+              destructive: !entry.isLive,
+              busy: _busyHash == entry.infoHash,
+              onTap: () => entry.isLive ? _stop(entry) : _delete(entry),
             ),
           SettingsActionRow(
-            title: 'Stop all torrents',
+            title: 'Delete all torrents',
             subtitle: 'Stops every torrent above and deletes its files.',
             destructive: true,
             leading: const Icon(
-              Icons.stop_rounded,
+              Icons.delete_sweep_rounded,
               color: ForjaShellColors.iconMuted,
             ),
             trailing: const SizedBox.shrink(),
-            busy: _stoppingAll,
-            onTap: _stopAll,
+            busy: _deletingAll,
+            onTap: _deleteAll,
           ),
         ],
       ],

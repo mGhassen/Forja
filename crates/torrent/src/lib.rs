@@ -273,6 +273,7 @@ impl TorrentEngine {
             inner.disk_cache_capacity_bytes = clamped;
         }
         let _ = self.reclaim_disk_cache(clamped);
+        self.runtime.block_on(self.forget_evicted_async());
     }
 
     pub fn disk_cache_capacity_bytes(&self) -> u64 {
@@ -592,9 +593,12 @@ impl TorrentEngine {
             return Err(utils::engine_cancel::cancelled_message());
         }
 
-        // New stream is ready — drop the previous swarm (player will replace).
+        // New stream is ready — stop the previous swarm (player will replace);
+        // its file stays on disk inside the Disk cache budget.
         if let Some(prev) = previous {
-            Self::delete_torrent_files(&api, prev.id).await;
+            if let Some(session) = self.session_handle() {
+                Self::pause_torrent(&session, prev.id).await;
+            }
         }
 
         let file_name = prepared
@@ -608,7 +612,7 @@ impl TorrentEngine {
             prepared.torrent_id
         );
 
-        self.reclaim_disk_cache(u64::MAX);
+        self.reclaim_and_forget_evicted().await;
 
         if let Ok(mut inner) = self.inner.lock() {
             if let Some(active) = inner.active.as_mut() {
@@ -852,6 +856,13 @@ impl TorrentEngine {
         })
         .await?;
 
+        // A swarm stopped earlier sits paused with its file on disk — resume it.
+        if handle.is_paused() {
+            if let Some(session) = self.session_handle() {
+                session.unpause(&handle).await.map_err(|e| e.to_string())?;
+            }
+        }
+
         let torrent_id = handle.id();
         let details = api
             .api_torrent_details(TorrentIdOrHash::Id(torrent_id))
@@ -936,22 +947,107 @@ impl TorrentEngine {
         });
     }
 
-    /// Delete the active swarm and its files. Safe to call from this engine's runtime.
+    /// Stop the active swarm: pause it, keep its file on disk inside the Disk
+    /// cache budget, drop the active slot. Safe to call from this runtime.
     async fn stop_async(&self) {
-        let delete = {
+        let pause = {
             let Ok(mut inner) = self.inner.lock() else {
                 return;
             };
             Self::abort_prefetch_locked(&mut inner);
-            match (inner.api.clone(), inner.active.take()) {
-                (Some(api), Some(active)) => Some((api, active.id)),
+            match (inner.session.clone(), inner.active.take()) {
+                (Some(session), Some(active)) => Some((session, active.id)),
                 _ => None,
             }
         };
-        if let Some((api, id)) = delete {
-            Self::delete_torrent_files(&api, id).await;
+        if let Some((session, id)) = pause {
+            Self::pause_torrent(&session, id).await;
         }
-        self.reclaim_disk_cache(u64::MAX);
+        self.clear_head_wait_progress();
+        self.reclaim_and_forget_evicted().await;
+    }
+
+    async fn pause_torrent(session: &Arc<Session>, id: usize) {
+        if let Some(handle) = session.get(TorrentIdOrHash::Id(id)) {
+            if !handle.is_paused() {
+                let _ = session.pause(&handle).await;
+            }
+        }
+    }
+
+    fn session_handle(&self) -> Option<Arc<Session>> {
+        self.inner.lock().ok().and_then(|i| i.session.clone())
+    }
+
+    /// Evict idle files down to the budget, then forget stopped swarms whose
+    /// file is gone so the Settings list matches the disk.
+    async fn reclaim_and_forget_evicted(&self) {
+        let _ = self.reclaim_disk_cache(u64::MAX);
+        self.forget_evicted_async().await;
+    }
+
+    async fn forget_evicted_async(&self) {
+        let (api, active_id) = {
+            let Ok(inner) = self.inner.lock() else {
+                return;
+            };
+            let Some(api) = inner.api.clone() else {
+                return;
+            };
+            (api, inner.active.as_ref().map(|a| a.id))
+        };
+        let mut gone = Vec::new();
+        for torrent in api.api_torrent_list().torrents {
+            let Some(id) = torrent.id else {
+                continue;
+            };
+            if Some(id) == active_id {
+                continue;
+            }
+            let Ok(details) = api.api_torrent_details(TorrentIdOrHash::Id(id)) else {
+                continue;
+            };
+            let Some(files) = details.files else {
+                continue;
+            };
+            let root = if details.output_folder.is_empty() {
+                Self::download_dir()
+            } else {
+                PathBuf::from(&details.output_folder)
+            };
+            let mut any_included = false;
+            let mut any_present = false;
+            for file in files {
+                if !file.included {
+                    continue;
+                }
+                any_included = true;
+                if root.join(&file.name).exists() {
+                    any_present = true;
+                    break;
+                }
+            }
+            if any_included && !any_present {
+                gone.push(id);
+            }
+        }
+        for id in gone {
+            let _ = api
+                .api_torrent_action_forget(TorrentIdOrHash::Id(id))
+                .await;
+        }
+    }
+
+    /// Find a session swarm by numeric id or hex info hash.
+    fn find_session_id(api: &Api, needle: &str) -> Option<usize> {
+        let by_id = needle.parse::<usize>().ok();
+        api.api_torrent_list()
+            .torrents
+            .into_iter()
+            .find(|t| {
+                t.id.is_some() && (t.id == by_id || t.info_hash.eq_ignore_ascii_case(needle))
+            })
+            .and_then(|t| t.id)
     }
 
     /// Pause the active swarm but keep it tracked (idle TV — may resume).
@@ -1217,6 +1313,8 @@ impl TorrentEngine {
                         .unwrap_or((0, 0, 0, 0));
                     let state = if stats.error.is_some() {
                         "error".to_string()
+                    } else if handle.is_paused() {
+                        "paused".to_string()
                     } else if stats.finished {
                         "finished".to_string()
                     } else {
@@ -1247,7 +1345,51 @@ impl TorrentEngine {
             .unwrap_or_else(|_| r#"{"torrents":[]}"#.into())
     }
 
-    /// Stop one swarm (by session id or hex info hash) and delete its files.
+    /// Stop one swarm (by session id or hex info hash): pause it and keep its
+    /// file on disk. Clears the active slot when it was the player's swarm.
+    pub fn stop_torrent(&self, id_or_hash: &str) -> bool {
+        self.runtime
+            .block_on(async { self.stop_torrent_async(id_or_hash).await })
+    }
+
+    pub fn stop_torrent_json(&self, id_or_hash: &str) -> String {
+        let stopped = self.stop_torrent(id_or_hash);
+        format!(r#"{{"stopped":{stopped}}}"#)
+    }
+
+    async fn stop_torrent_async(&self, id_or_hash: &str) -> bool {
+        let needle = id_or_hash.trim();
+        if needle.is_empty() {
+            return false;
+        }
+        let (session, victim, was_active) = {
+            let Ok(mut inner) = self.inner.lock() else {
+                return false;
+            };
+            let (Some(api), Some(session)) = (inner.api.clone(), inner.session.clone()) else {
+                return false;
+            };
+            let victim = Self::find_session_id(&api, needle);
+            let was_active = victim.is_some()
+                && inner.active.as_ref().map(|a| Some(a.id) == victim).unwrap_or(false);
+            if was_active {
+                Self::abort_prefetch_locked(&mut inner);
+                inner.active = None;
+            }
+            (session, victim, was_active)
+        };
+        let Some(id) = victim else {
+            return false;
+        };
+        Self::pause_torrent(&session, id).await;
+        if was_active {
+            self.clear_head_wait_progress();
+        }
+        self.reclaim_and_forget_evicted().await;
+        true
+    }
+
+    /// Remove one swarm (by session id or hex info hash) and delete its files.
     ///
     /// Clears the active slot when the player's swarm is removed. Returns
     /// `true` when a matching swarm existed.
@@ -1273,16 +1415,7 @@ impl TorrentEngine {
             let Some(api) = inner.api.clone() else {
                 return false;
             };
-            let by_id = needle.parse::<usize>().ok();
-            let victim = api
-                .api_torrent_list()
-                .torrents
-                .into_iter()
-                .find(|t| {
-                    t.id.is_some()
-                        && (t.id == by_id || t.info_hash.eq_ignore_ascii_case(needle))
-                })
-                .and_then(|t| t.id);
+            let victim = Self::find_session_id(&api, needle);
             let was_active = victim.is_some()
                 && inner.active.as_ref().map(|a| Some(a.id) == victim).unwrap_or(false);
             if was_active {
@@ -1298,7 +1431,7 @@ impl TorrentEngine {
         if was_active {
             self.clear_head_wait_progress();
         }
-        self.reclaim_disk_cache(u64::MAX);
+        self.reclaim_and_forget_evicted().await;
         true
     }
 

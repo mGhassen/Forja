@@ -484,6 +484,11 @@ pub extern "C" fn ffi_torrent_list_json() -> *mut c_char {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_torrent_stop_json(id_or_hash: *const c_char) -> *mut c_char {
+    to_c_string(crate::torrent_stop_json(from_c_str(id_or_hash)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_torrent_remove_json(id_or_hash: *const c_char) -> *mut c_char {
     to_c_string(crate::torrent_remove_json(from_c_str(id_or_hash)))
 }

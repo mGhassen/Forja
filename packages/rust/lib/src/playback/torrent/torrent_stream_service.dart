@@ -207,6 +207,12 @@ class TorrentSessionEntry {
   double get progressFraction =>
       totalBytes <= 0 ? 0 : (progressBytes / totalBytes).clamp(0.0, 1.0);
 
+  /// Stopped by the host — file kept on disk, not downloading.
+  bool get isStopped => state == 'paused';
+
+  /// Still pulling pieces (or seeding) — Stop pauses it.
+  bool get isLive => !isStopped && state != 'error';
+
   String get displayName => name.isNotEmpty ? name : infoHash;
 
   String get speedLabel => TorrentStats._formatMbps(downloadRate / 1024 / 1024);
@@ -220,10 +226,10 @@ class TorrentSessionEntry {
     } else {
       parts.add(loaded);
     }
-    if (finished) {
+    if (isStopped) {
+      parts.add(finished ? 'complete · stopped' : 'stopped');
+    } else if (finished) {
       parts.add('complete');
-    } else if (state == 'paused') {
-      parts.add('paused');
     } else if (state == 'error') {
       parts.add('error');
     } else if (state == 'initializing') {
@@ -536,7 +542,8 @@ class TorrentStreamService {
   bool get replacementPlayerAlive => _playerSurfaces > 1;
 
   /// Stop the swarm the host opened for [magnetOrUrl] — a magnet, a hex or
-  /// base32 info hash, or the localhost stream URL — and delete its files.
+  /// base32 info hash, or the localhost stream URL. Its file stays on disk
+  /// inside the Disk cache budget and resumes on the next play.
   ///
   /// Only touches that swarm: a swarm another player is resolving right now
   /// is left alone, and an in-flight resolve for the same magnet is aborted.
@@ -546,13 +553,13 @@ class TorrentStreamService {
     final streamId = _streamUrlTorrentId(magnetOrUrl);
     if (_matchesPending(magnetOrUrl, hash)) cancelResolve();
     if (_matchesActive(magnetOrUrl, hash, streamId)) {
-      _removeByHandle(_rustActiveHash ?? hash, _rustActiveTorrentId ?? streamId);
+      _stopByHandle(_rustActiveHash ?? hash, _rustActiveTorrentId ?? streamId);
       _clearActive();
       return;
     }
     // Not tracked (engine restart, stale bookkeeping) — still make sure no
     // session swarm with this hash keeps downloading.
-    if (hash != null || streamId != null) _removeByHandle(hash, streamId);
+    if (hash != null || streamId != null) _stopByHandle(hash, streamId);
   }
 
   TorrentStats? getTorrentStats(String magnetOrHash) {
@@ -590,7 +597,20 @@ class TorrentStreamService {
         streamId == _rustActiveTorrentId;
   }
 
-  /// Delete one session swarm by hex hash (preferred) or session id.
+  /// Pause one session swarm by hex hash (preferred) or session id.
+  void _stopByHandle(String? hash, int? id) {
+    if (!RustLib.isInitialized) return;
+    final handle = (hash != null && hash.isNotEmpty) ? hash : id?.toString();
+    if (handle == null || handle.isEmpty) return;
+    try {
+      final json = RustLib.instance.torrentStopJson(handle);
+      _log('Stopped torrent $handle (Rust): $json');
+    } catch (e) {
+      _log('Rust stopTorrent error: $e');
+    }
+  }
+
+  /// Delete one session swarm (and its files) by hex hash or session id.
   void _removeByHandle(String? hash, int? id) {
     if (!RustLib.isInitialized) return;
     final handle = (hash != null && hash.isNotEmpty) ? hash : id?.toString();
@@ -618,7 +638,27 @@ class TorrentStreamService {
     }
   }
 
-  /// Stop one listed swarm and delete its files.
+  /// Pause one listed swarm; its file stays on disk.
+  Future<bool> stopSessionTorrent(TorrentSessionEntry entry) async {
+    if (!RustLib.isInitialized) return false;
+    try {
+      final json = RustLib.instance.torrentStopJson(entry.infoHash);
+      final parsed = jsonDecode(json) as Map<String, dynamic>;
+      final stopped = parsed['stopped'] == true;
+      if (stopped &&
+          (_rustActiveHash == entry.infoHash ||
+              _rustActiveTorrentId == entry.id)) {
+        _clearActive();
+      }
+      _log('Stopped session torrent ${entry.infoHash}: $stopped');
+      return stopped;
+    } catch (e) {
+      _log('Rust stopSessionTorrent error: $e');
+      return false;
+    }
+  }
+
+  /// Remove one listed swarm and delete its files.
   Future<bool> removeSessionTorrent(TorrentSessionEntry entry) async {
     if (!RustLib.isInitialized) return false;
     try {
@@ -638,7 +678,7 @@ class TorrentStreamService {
     }
   }
 
-  /// Stop every swarm in the session and delete their files.
+  /// Remove every swarm in the session and delete their files.
   Future<int> removeAllSessionTorrents() async {
     var removed = 0;
     for (final entry in await listSessionTorrents()) {
