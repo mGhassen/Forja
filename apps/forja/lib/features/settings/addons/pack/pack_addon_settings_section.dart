@@ -447,10 +447,12 @@ class _ActionListFieldState extends State<_ActionListField> {
     unawaited(_load());
     final every = widget.field.refreshSeconds;
     if (every > 0) {
-      _poll = Timer.periodic(
-        Duration(seconds: every),
-        (_) => unawaited(_load()),
-      );
+      // TabBarView / offstage keep this State alive — only hit the pack when
+      // the list is actually painted on screen.
+      _poll = Timer.periodic(Duration(seconds: every), (_) {
+        if (!mounted || !_isPaintedOnScreen()) return;
+        unawaited(_load());
+      });
     }
   }
 
@@ -458,6 +460,20 @@ class _ActionListFieldState extends State<_ActionListField> {
   void dispose() {
     _poll?.cancel();
     super.dispose();
+  }
+
+  /// False when this field is off-screen (other Downloads tab, scrolled away,
+  /// or Settings body torn down but a neighbor PageView page still mounted).
+  bool _isPaintedOnScreen() {
+    final ro = context.findRenderObject();
+    if (ro is! RenderBox || !ro.attached || !ro.hasSize || ro.size.isEmpty) {
+      return false;
+    }
+    final rect = MatrixUtils.transformRect(
+      ro.getTransformTo(null),
+      Offset.zero & ro.size,
+    );
+    return rect.overlaps(Offset.zero & MediaQuery.sizeOf(context));
   }
 
   Future<void> _load() async {

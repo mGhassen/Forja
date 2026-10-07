@@ -277,51 +277,63 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
               ],
             ),
             Expanded(
-              child: TabBarView(
-                controller: _tabs,
-                children: [
-                  _TaskList(
-                    tasks: active,
-                    emptyLabel: 'No active downloads',
-                    emptyHint: 'Start one from details, Sources, or the player.',
-                    trailing: null,
-                    itemBuilder: (task) => _ActiveTile(
-                      task: task,
-                      onChanged: _loadSpace,
-                    ),
-                  ),
-                  _TaskList(
-                    tasks: completed,
-                    emptyLabel: 'No offline downloads yet',
-                    emptyHint:
-                        'Finished titles show up here — play anytime without a network.',
-                    trailing: completed.isEmpty
-                        ? null
-                        : Button(
-                            variant: ButtonVariant.ghost,
-                            onPressed: () =>
-                                unawaited(_confirmDeleteAllCompleted()),
-                            child: Text(
-                              'Delete all',
-                              style: TextStyle(
-                                color: ForjaShellColors.textSecondary,
-                                fontSize:
-                                    SettingsTokens.typeSizeOf(context, 12),
+              // Rebuild when the tab index changes so pack action_list panels
+              // (torrent progress poll) are disposed off the selected tab.
+              child: AnimatedBuilder(
+                animation: _tabs,
+                builder: (context, _) {
+                  return TabBarView(
+                    controller: _tabs,
+                    children: [
+                      _TaskList(
+                        tasks: active,
+                        emptyLabel: 'No active downloads',
+                        emptyHint:
+                            'Start one from details, Sources, or the player.',
+                        trailing: null,
+                        itemBuilder: (task) => _ActiveTile(
+                          task: task,
+                          onChanged: _loadSpace,
+                        ),
+                      ),
+                      _TaskList(
+                        tasks: completed,
+                        emptyLabel: 'No offline downloads yet',
+                        emptyHint:
+                            'Finished titles show up here — play anytime without a network.',
+                        trailing: completed.isEmpty
+                            ? null
+                            : Button(
+                                variant: ButtonVariant.ghost,
+                                onPressed: () =>
+                                    unawaited(_confirmDeleteAllCompleted()),
+                                child: Text(
+                                  'Delete all',
+                                  style: TextStyle(
+                                    color: ForjaShellColors.textSecondary,
+                                    fontSize:
+                                        SettingsTokens.typeSizeOf(context, 12),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                    itemBuilder: (task) => _CompletedTile(
-                      task: task,
-                      onPlay: () => unawaited(_playOffline(task)),
-                      onDeleted: _loadSpace,
-                    ),
-                  ),
-                  for (final t in _packTabs)
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: PackAddonSettingsSection(plugins: [t.plugin]),
-                    ),
-                ],
+                        itemBuilder: (task) => _CompletedTile(
+                          task: task,
+                          onPlay: () => unawaited(_playOffline(task)),
+                          onDeleted: _loadSpace,
+                        ),
+                      ),
+                      for (var i = 0; i < _packTabs.length; i++)
+                        _tabs.index == 2 + i
+                            ? SingleChildScrollView(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: PackAddonSettingsSection(
+                                  plugins: [_packTabs[i].plugin],
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                    ],
+                  );
+                },
               ),
             ),
           ],
