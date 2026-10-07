@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/widgets/details/episode_air_date.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 export 'package:forja/shared/playback/probe/playback_stream_guards.dart'
     show
@@ -3261,7 +3262,51 @@ int? hubEpisodeIndex(List<PlayerKitEpisode> episodes, num current) {
   }
   final idx = hubEpisodeIndex(episodes, current);
   if (idx == null) return (hasPrev: false, hasNext: false);
-  return (hasPrev: idx > 0, hasNext: idx < episodes.length - 1);
+  return (hasPrev: idx > 0, hasNext: nextAiredHubEpisode(episodes, idx) != null);
+}
+
+/// The hub list entry after [idx], or null when it is missing or not aired yet.
+PlayerKitEpisode? nextAiredHubEpisode(List<PlayerKitEpisode> episodes, int idx) {
+  if (idx < 0 || idx >= episodes.length - 1) return null;
+  final next = episodes[idx + 1];
+  return next.notShippedYet ? null : next;
+}
+
+/// Next aired TMDB episode after S[season]E[episode], rolling into the next
+/// season. Null when there is none, or it has no air date / airs later.
+Future<({int season, int episode})?> nextAiredTmdbEpisode({
+  required int tvId,
+  required int season,
+  required int episode,
+}) async {
+  final tmdb = TmdbService();
+  Map<String, dynamic>? findEpisode(List<dynamic> rows, int number) {
+    for (final row in rows) {
+      if (row is Map<String, dynamic> && row['episode_number'] == number) {
+        return row;
+      }
+    }
+    return null;
+  }
+
+  bool aired(Map<String, dynamic>? row) {
+    if (row == null) return false;
+    final raw = (row['air_date'] ?? '').toString().trim();
+    return raw.isNotEmpty && !episodeAirDateInfo(row).notShippedYet;
+  }
+
+  final current = await tmdb.getTvSeasonDetails(tvId, season);
+  final rows = current['episodes'] as List<dynamic>? ?? const [];
+  final sameSeason = findEpisode(rows, episode + 1);
+  if (sameSeason != null) {
+    return aired(sameSeason) ? (season: season, episode: episode + 1) : null;
+  }
+
+  final totalSeasons = await tmdb.getTvSeasonCount(tvId);
+  if (season >= totalSeasons) return null;
+  final nextSeason = await tmdb.getTvSeasonDetails(tvId, season + 1);
+  final nextRows = nextSeason['episodes'] as List<dynamic>? ?? const [];
+  return aired(findEpisode(nextRows, 1)) ? (season: season + 1, episode: 1) : null;
 }
 
 /// Whether the floating "Next Episode" chip should show.

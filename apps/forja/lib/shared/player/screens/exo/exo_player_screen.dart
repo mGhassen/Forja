@@ -1881,11 +1881,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (widget.movie?.mediaType == 'tv' &&
         widget.selectedSeason != null &&
         widget.selectedEpisode != null) {
+      final next = await _computeNextTmdbEpisode();
       if (!mounted) return;
       setState(() {
         _hasPrevEpisodeAdjacent = widget.selectedEpisode! > 1 ||
             (widget.selectedSeason ?? 1) > 1;
-        _hasNextEpisodeAdjacent = true;
+        _hasNextEpisodeAdjacent = next != null;
       });
       return;
     }
@@ -2019,8 +2020,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
       if (current == null) return;
       final idx = hubEpisodeIndex(widget.episodes!, current);
-      if (idx == null || idx >= widget.episodes!.length - 1) return;
-      final next = widget.episodes![idx + 1];
+      if (idx == null) return;
+      final next = nextAiredHubEpisode(widget.episodes!, idx);
+      if (next == null) return;
       setState(() => _loadingNextEp = true);
       try {
         try {
@@ -2039,10 +2041,22 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (widget.movie?.mediaType == 'tv' &&
         widget.selectedSeason != null &&
         widget.selectedEpisode != null) {
-      await _switchToEpisode(
-        widget.selectedSeason!,
-        widget.selectedEpisode! + 1,
+      final next = await _computeNextTmdbEpisode();
+      if (next == null || !mounted) return;
+      await _switchToEpisode(next.season, next.episode);
+    }
+  }
+
+  Future<({int season, int episode})?> _computeNextTmdbEpisode() async {
+    try {
+      return await nextAiredTmdbEpisode(
+        tvId: widget.movie!.id,
+        season: widget.selectedSeason!,
+        episode: widget.selectedEpisode!,
       );
+    } catch (e) {
+      debugPrint('[ExoPlayer] next-episode lookup failed: $e');
+      return null;
     }
   }
 

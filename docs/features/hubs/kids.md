@@ -12,11 +12,12 @@ Enable the ForjaHQ Kids pack under **Settings → Forja Packs → Hubs**, turn *
 
 ## What you can do
 
-- Browse latest cartoon **series** (seasons are grouped into one card) and **movies**
+- Browse latest cartoon **series** (seasons are grouped into one card) and **movies** — scroll any row to keep loading the whole Dimakids catalog
 - See shows with newly added episodes
+- Browse every series A–Z in **كل المسلسلات (أ - ي)**, one letter at a time
 - Top menu from pack `filters` — **Search**, **Films**, **Series**, **Categories** (Arabic letter ا–ي)
 - Search Dimakids titles (series + movies)
-- Open details, pick a season/episode (or play a movie), and stream a direct MP4
+- Open details — every season of a show is listed, also from Continue Watching — pick an episode (or play a movie), and stream a direct MP4
 
 ## Tips
 

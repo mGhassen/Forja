@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix · **0 / 4** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I419-T04 | Pager detection matches `&amp;page=N` (film sections reported no next page) | ✅ |
 | 5 | I419-T05 | Films / Series menus filter on `type` so layout `showWhenType` hides the other kind's rails; a chosen Category empties the other section rails | ✅ |
 | 6 | I419-T06 | Details opened from an episode or film page: parse the watch page's `.pwr-season-panel` episode list; films get the `MOVIE` badge and a clean title | ✅ |
+| 7 | I419-T07 | Host: `PackChromeScope` carries `chromeFilterEpoch` and notifies on change — rails on hubs without a page feed never refetched when Films / Series / Categories changed | ✅ |
 
 ---
 
@@ -63,6 +64,10 @@ Details from a `watch:` id returned no episodes on `main` before this change, be
 | Search | `/search.php?keywords=Q&page=N` | `ul.prs-grid article.prs-card` | — |
 
 `category.php` and `cat67.php` redirect to `cat03.php`. Older and smaller sections (Asian, TV, Ramadan 2022, 2021, anime) have a one-page series index that misses shows; those continue into the section's episode grid. The site's anime films section is empty (0 films), so its rail hides.
+
+## Top menu did nothing (host)
+
+On desktop, Films / Series / Categories highlighted but no row changed. A filter change only `setState`s the layout painter. Rails refetch in `didChangeDependencies`, which runs only when an inherited scope they read notifies. `PackChromeScope` notified on page-feed changes, refresh, and hold — not on the chrome filter epoch — and rail params are just `{rail}`, so `didUpdateWidget` saw no change either. Aflem has no page feed, so no rail ever refetched. The scope now carries the filter epoch; `pack_chrome_scope_filter_epoch_test.dart` fails without the comparison and passes with it.
 
 ## Known limits
 

@@ -1405,6 +1405,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       refreshForceNetwork: _refreshForceNetwork,
       refreshKeepPainted: _refreshKeepPainted,
       catalogHoldEpoch: _catalogHoldEpoch,
+      chromeFilterEpoch: catalogChromeFilterEpoch(_pageKey),
       viewStyle: _viewStyle,
       dynamicBarItems: Map<String, List<Map<String, dynamic>>>.unmodifiable(
         Map<String, List<Map<String, dynamic>>>.from(_dynamicBarItems),

@@ -109,15 +109,8 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   //  NEXT EPISODE
   // ─────────────────────────────────────────────────────────────────────────
 
-  bool get _isNextEpisodeAvailable =>
-      (widget.onNextEpisode != null && widget.hasNextEpisode) ||
-      (widget.episodes != null && widget.episodes!.isNotEmpty) ||
-      (widget.movie != null &&
-          _isSeriesMediaType(widget.movie!.mediaType) &&
-          widget.selectedSeason != null &&
-          widget.selectedEpisode != null) ||
-      (widget.enginePlaySession?.isHubFlatList == true &&
-          widget.selectedEpisode != null);
+  /// Resolved once per episode by [_refreshAdjacentEpisodeFlags] (air-date aware).
+  bool get _isNextEpisodeAvailable => _s._hasNextEpisodeAdjacent;
 
   bool _isSeriesMediaType(String? mediaType) {
     final m = (mediaType ?? '').toLowerCase();
@@ -579,8 +572,9 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (hub != null && hub.isNotEmpty && hubCurrent != null) {
       final idx = hubEpisodeIndex(hub, hubCurrent);
-      if (idx == null || idx >= hub.length - 1) return null;
-      final next = hub[idx + 1];
+      if (idx == null) return null;
+      final next = nextAiredHubEpisode(hub, idx);
+      if (next == null) return null;
       return (season: 1, episode: next.number.round());
     }
 
@@ -608,37 +602,20 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       return null;
     }
     try {
-      final tmdb = TmdbService();
-      final tvId = widget.movie!.id;
-      var nextSeason = widget.selectedSeason!;
-      var nextEpisode = widget.selectedEpisode! + 1;
-
-      final seasonData = await tmdb.getTvSeasonDetails(tvId, nextSeason);
-      final episodes = seasonData['episodes'] as List<dynamic>? ?? [];
-      final maxEp = episodes.isNotEmpty
-          ? episodes
-                .map((e) => e['episode_number'] as int)
-                .reduce((a, b) => a > b ? a : b)
-          : 0;
-
-      if (nextEpisode > maxEp) {
-        final totalSeasons = await tmdb.getTvSeasonCount(tvId);
-        if (nextSeason < totalSeasons) {
-          nextSeason++;
-          nextEpisode = 1;
-        } else {
-          if (!silent && mounted) {
-            _s._statusController.upsert(
-              'episode',
-              'No more episodes',
-              kind: StatusRouletteKind.info,
-              dismissAfter: const Duration(seconds: 2),
-            );
-          }
-          return null;
-        }
+      final next = await nextAiredTmdbEpisode(
+        tvId: widget.movie!.id,
+        season: widget.selectedSeason!,
+        episode: widget.selectedEpisode!,
+      );
+      if (next == null && !silent && mounted) {
+        _s._statusController.upsert(
+          'episode',
+          'No more episodes',
+          kind: StatusRouletteKind.info,
+          dismissAfter: const Duration(seconds: 2),
+        );
       }
-      return (season: nextSeason, episode: nextEpisode);
+      return next;
     } catch (e) {
       debugPrint('[Episodes] next-episode lookup failed: $e');
       return null;

@@ -12,9 +12,10 @@ Enable the ForjaHQ Cartoon pack under **Settings → Forja Packs → Hubs**, tur
 
 ## What you can do
 
-- Browse latest and popular cartoon **series** (seasons are grouped into one card)
+- Browse latest and popular cartoon **series** (seasons are grouped into one card) — scroll any row to keep loading the whole DimaToon catalog
 - See shows with newly added episodes
-- Top menu from pack `filters` — **Search** + **Categories** (Arabic letter ا–ي); no Films/Series menus (series-only catalog)
+- Browse every series A–Z in **كل المسلسلات (أ - ي)**
+- Top menu from pack `filters` — **Search** + **Categories** (Arabic letter ا–ي) narrows every row to that letter; no Films/Series menus (series-only catalog)
 - Search DimaToon titles
 - Open details, pick a season/episode, and play a direct stream
 

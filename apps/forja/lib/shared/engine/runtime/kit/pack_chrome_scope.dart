@@ -15,6 +15,7 @@ class PackChromeScope extends InheritedWidget {
     this.refreshForceNetwork = true,
     this.refreshKeepPainted = false,
     this.catalogHoldEpoch = 0,
+    this.chromeFilterEpoch = '',
     required this.viewStyle,
     required this.dynamicBarItems,
     required this.selectedListItem,
@@ -48,6 +49,11 @@ class PackChromeScope extends InheritedWidget {
   /// Bumped by [onClearCatalog] — drop painted grid / kinds and hold fetch
   /// until the next [refreshEpoch] bump (portal select while selectPortal runs).
   final int catalogHoldEpoch;
+
+  /// [catalogChromeFilterEpoch] for this tab (top-bar menu, Category,
+  /// vertical filters). Rails rebind in didChangeDependencies — a change must
+  /// notify, or hubs without a page feed never refetch on Films / Categories.
+  final String chromeFilterEpoch;
   final String viewStyle;
   final Map<String, List<Map<String, dynamic>>> dynamicBarItems;
 
@@ -135,6 +141,7 @@ class PackChromeScope extends InheritedWidget {
         refreshForceNetwork != oldWidget.refreshForceNetwork ||
         refreshKeepPainted != oldWidget.refreshKeepPainted ||
         catalogHoldEpoch != oldWidget.catalogHoldEpoch ||
+        chromeFilterEpoch != oldWidget.chromeFilterEpoch ||
         viewStyle != oldWidget.viewStyle ||
         !identical(selectedListItem, oldWidget.selectedListItem) ||
         !identical(searchHitKindIds, oldWidget.searchHitKindIds) ||
