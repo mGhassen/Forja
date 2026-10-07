@@ -541,6 +541,9 @@ class EngineService {
       'prefsLoad',
       'prefsSave',
       'details',
+      // Settings `action_list` fields (pack rows via ctx.host.engine.request).
+      'settingsList',
+      'settingsAction',
       // Stremio catalog hub: layout / rail / filters / search call
       // ctx.host.engine.request — EngineJS has no bridge; force flutter_js.
       if (plugin.needsStremioCatalogHost)

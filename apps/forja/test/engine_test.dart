@@ -3080,6 +3080,31 @@ void main() {
       expect(ctx['category'], 'dub');
     });
 
+    test('mapped rows keep the (SUB)/(DUB) category from the raw name', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'megaplay',
+        'name': 'Megaplay',
+        'entry': 'megaplay.js',
+        'kind': 'http',
+      });
+      Map<String, dynamic> map(String name) => mapEngineStream(
+        raw: {'url': 'https://cdn.example/$name.m3u8', 'name': name},
+        plugin: plugin,
+      )!;
+      final sub = map('Megaplay [Vidwish] (SUB)');
+      final dub = map('Megaplay [Vidwish] (DUB)');
+      expect(sub['name'], isNot(contains('(SUB)')));
+      expect(engineStreamAudioCategory(sub), 'sub');
+      expect(
+        filterStreamsByAudioCategory([sub, dub], 'sub').map((r) => r['url']),
+        [sub['url']],
+      );
+      expect(
+        filterStreamsByAudioCategory([sub, dub], 'dub').map((r) => r['url']),
+        [dub['url']],
+      );
+    });
+
     test('filterStreamsByAudioCategory drops opposite tagged rows', () {
       final rows = [
         {'name': 'A (SUB)', 'language': 'Sub', 'url': 'https://a'},

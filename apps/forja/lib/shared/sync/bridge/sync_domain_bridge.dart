@@ -1123,7 +1123,10 @@ class SyncDomainBridge {
       if (spec != null) {
         for (final field in spec.fields) {
           if (field.type == PackAddonSettingsFieldType.password) continue;
+          if (!field.isStored) continue;
           switch (field.type) {
+            case PackAddonSettingsFieldType.actionList:
+              break;
             case PackAddonSettingsFieldType.toggle:
               fields[field.id] = await PackSettingsStore.getBool(
                 spec.pluginId,

@@ -12,6 +12,66 @@ import 'package:rust/rust.dart';
 abstract final class HostEngineRequest {
   HostEngineRequest._();
 
+  /// Local torrent engine session — `list` / `stop` / `remove` / `remove_all`.
+  ///
+  /// `stop` pauses a swarm and keeps its file (resumes on the next play);
+  /// `remove` deletes it. Rows are raw engine facts — packs own the copy.
+  static Future<Map<String, dynamic>> _torrent(
+    Map<String, dynamic> body,
+  ) async {
+    final action = (body['action'] ?? '').toString().trim().toLowerCase();
+    final engine = TorrentStreamService();
+    Map<String, dynamic> row(TorrentSessionEntry e) => {
+          'id': e.id,
+          'info_hash': e.infoHash,
+          'name': e.name,
+          'progress_bytes': e.progressBytes,
+          'total_bytes': e.totalBytes,
+          'download_rate': e.downloadRate,
+          'upload_rate': e.uploadRate,
+          'num_peers': e.numPeers,
+          'num_seen': e.numSeen,
+          'state': e.state,
+          'finished': e.finished,
+          'active': e.active,
+          'stopped': e.isStopped,
+          'live': e.isLive,
+        };
+    Future<TorrentSessionEntry?> find() async {
+      final want = (body['id'] ?? body['info_hash'] ?? '').toString().trim();
+      if (want.isEmpty) return null;
+      for (final e in await engine.listSessionTorrents()) {
+        if (e.infoHash == want.toLowerCase() || e.id.toString() == want) {
+          return e;
+        }
+      }
+      return null;
+    }
+
+    switch (action) {
+      case 'list':
+        final rows = await engine.listSessionTorrents();
+        return {'ok': true, 'torrents': [for (final e in rows) row(e)]};
+      case 'stop':
+        final entry = await find();
+        if (entry == null) return {'ok': false, 'error': 'not_found'};
+        return {'ok': await engine.stopSessionTorrent(entry)};
+      case 'remove':
+        final entry = await find();
+        if (entry == null) return {'ok': false, 'error': 'not_found'};
+        return {'ok': await engine.removeSessionTorrent(entry)};
+      case 'remove_all':
+        final removed = await engine.removeAllSessionTorrents();
+        return {'ok': true, 'removed': removed};
+      default:
+        return {
+          'ok': false,
+          'error': 'unknown_action',
+          'message': 'Unknown torrent action: $action',
+        };
+    }
+  }
+
   static Future<Map<String, dynamic>> run({
     required String kind,
     Map<String, dynamic> body = const {},
@@ -27,6 +87,8 @@ abstract final class HostEngineRequest {
           return await _parseM3u(body);
         case 'stremio':
           return await _stremio(body);
+        case 'torrent':
+          return await _torrent(body);
         default:
           return {
             'ok': false,

@@ -24,6 +24,7 @@
 | 3 | R89-C03 | `PackAddonSettingsSection` appended in Addon detail bodies | ✅ |
 | 4 | R89-C04 | Live Sports hub declares `mergeMatchingEvents`; host toggle removed | ✅ |
 | 5 | R89-C05 | `multi_select` / chips field type + Live Sports Setup fields on hub; host Setup UI removed | ✅ |
+| 6 | R89-C06 | `action_list` field type (pack action rows + item action; host paints) and `settings.addons` multi-bucket; torrent pack Torrents list ([418](../../issues/fixed/418-[fixed]-torrent-downloads-list-pack-owned.md)) | ✅ |
 
 ---
 
@@ -74,7 +75,7 @@ Plugins declare typed settings that appear **inside** an existing Addons detail.
 }
 ```
 
-Field types: `toggle` · `select` · `text` · `multi_select`. Prefs: `pack_setting_v1_<pluginId>_<fieldId>`.
+Field types: `toggle` · `select` · `text` · `password` · `multi_select` · `hub_select` · `action_list` (`action`, `itemAction`, `refreshSeconds`, `emptyText`; no stored value). `settings.addons` lists extra buckets (for example `downloads`). Prefs: `pack_setting_v1_<pluginId>_<fieldId>`.
 
 ### Shipped
 

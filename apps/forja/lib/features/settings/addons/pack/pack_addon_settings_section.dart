@@ -5,6 +5,8 @@ import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/engine/engine.dart';
 
 import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
+import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/engine/packs/settings/pack_hub_select_options.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 import 'package:forja/shared/engine/store/list_open_prefs.dart';
@@ -121,6 +123,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
               field.id,
               defaultValue: field.defaultStringList,
             ),
+          PackAddonSettingsFieldType.actionList => null,
         };
       }
     }
@@ -349,7 +352,251 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
           selected: selected,
           onChanged: (next) => unawaited(_setStringList(spec, field, next)),
         );
+      case PackAddonSettingsFieldType.actionList:
+        return _ActionListField(
+          key: ValueKey(key),
+          pluginId: spec.pluginId,
+          field: field,
+        );
     }
+  }
+}
+
+/// One pack-returned row of an `action_list` field.
+class _ActionListRow {
+  const _ActionListRow({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accent,
+    required this.actionId,
+    required this.actionIcon,
+    required this.destructive,
+  });
+
+  final String id;
+  final String title;
+  final String subtitle;
+  final String icon;
+  final bool accent;
+  final String actionId;
+  final String actionIcon;
+  final bool destructive;
+
+  static _ActionListRow? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final m = Map<String, dynamic>.from(raw);
+    final id = (m['id'] ?? '').toString().trim();
+    final title = (m['title'] ?? '').toString().trim();
+    if (id.isEmpty || title.isEmpty) return null;
+    final action = m['action'];
+    var actionId = '';
+    var actionIcon = '';
+    var destructive = m['destructive'] == true;
+    if (action is Map) {
+      actionId = (action['id'] ?? '').toString().trim();
+      actionIcon = (action['icon'] ?? '').toString().trim();
+      destructive = destructive || action['destructive'] == true;
+    } else if (action is String) {
+      actionId = action.trim();
+    }
+    return _ActionListRow(
+      id: id,
+      title: title,
+      subtitle: (m['subtitle'] ?? '').toString(),
+      icon: (m['icon'] ?? '').toString().trim(),
+      accent: (m['tone'] ?? '').toString().trim() == 'accent',
+      actionId: actionId,
+      actionIcon: actionIcon,
+      destructive: destructive,
+    );
+  }
+}
+
+/// Paints rows a pack returns from its list action; taps run its item action.
+///
+/// The host knows nothing about what the rows are — titles, copy, icons and
+/// the action vocabulary come from the pack envelope.
+class _ActionListField extends StatefulWidget {
+  const _ActionListField({
+    super.key,
+    required this.pluginId,
+    required this.field,
+  });
+
+  final String pluginId;
+  final PackAddonSettingsField field;
+
+  @override
+  State<_ActionListField> createState() => _ActionListFieldState();
+}
+
+class _ActionListFieldState extends State<_ActionListField> {
+  List<_ActionListRow> _rows = const [];
+  _ActionListRow? _footer;
+  String _empty = '';
+  bool _loading = true;
+  String? _busyRowId;
+  Timer? _poll;
+  int _loadGen = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+    final every = widget.field.refreshSeconds;
+    if (every > 0) {
+      _poll = Timer.periodic(
+        Duration(seconds: every),
+        (_) => unawaited(_load()),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final gen = ++_loadGen;
+    final env = await MetaRuntime.instance.run(
+      pluginId: widget.pluginId,
+      action: widget.field.action,
+      forceRefresh: true,
+    );
+    if (!mounted || gen != _loadGen) return;
+    final data = env.data ?? const <String, dynamic>{};
+    final rawRows = data['rows'];
+    final rows = <_ActionListRow>[
+      if (rawRows is List)
+        for (final e in rawRows) ?_ActionListRow.fromJson(e),
+    ];
+    setState(() {
+      _rows = rows;
+      _footer = _ActionListRow.fromJson(data['footer']);
+      _empty = (data['empty'] ?? '').toString();
+      _loading = false;
+    });
+  }
+
+  Future<void> _tap(_ActionListRow row) async {
+    final itemAction = widget.field.itemAction;
+    if (itemAction.isEmpty || row.actionId.isEmpty || _busyRowId != null) {
+      return;
+    }
+    setState(() => _busyRowId = row.id);
+    try {
+      final env = await MetaRuntime.instance.run(
+        pluginId: widget.pluginId,
+        action: itemAction,
+        params: {'row': row.id, 'action': row.actionId},
+        forceRefresh: true,
+      );
+      if (!mounted) return;
+      final message = (env.data?['message'] ?? '').toString().trim();
+      if (env.ok) {
+        if (message.isNotEmpty) ForjaToast.success(message);
+      } else {
+        final err = env.error?.message.trim() ?? '';
+        ForjaToast.error(
+          message.isNotEmpty
+              ? message
+              : err.isNotEmpty
+                  ? err
+                  : 'Could not ${row.actionId} ${row.title}',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyRowId = null);
+      await _load();
+    }
+  }
+
+  static IconData _iconFor(String name, IconData fallback) {
+    return switch (name) {
+      'play' => Icons.play_circle_rounded,
+      'download' => Icons.downloading_rounded,
+      'pause' => Icons.pause_circle_rounded,
+      'stop' => Icons.stop_circle_rounded,
+      'delete' => Icons.delete_outline_rounded,
+      'delete_all' => Icons.delete_sweep_rounded,
+      'check' => Icons.check_circle_rounded,
+      'error' => Icons.error_outline_rounded,
+      'folder' => Icons.folder_outlined,
+      'link' => Icons.link_rounded,
+      _ => fallback,
+    };
+  }
+
+  Widget _row(_ActionListRow row) {
+    return SettingsActionRow(
+      title: row.title,
+      subtitle: row.subtitle.isEmpty ? null : row.subtitle,
+      leading: row.icon.isEmpty
+          ? null
+          : Icon(
+              _iconFor(row.icon, Icons.circle_outlined),
+              color: row.accent
+                  ? ForjaShellColors.brandGreen
+                  : ForjaShellColors.iconMuted,
+            ),
+      trailing: row.actionId.isEmpty
+          ? const SizedBox.shrink()
+          : Icon(
+              _iconFor(row.actionIcon, Icons.chevron_right_rounded),
+              color: ForjaShellColors.textSecondary,
+            ),
+      destructive: row.destructive,
+      busy: _busyRowId == row.id,
+      onTap: row.actionId.isEmpty ? null : () => unawaited(_tap(row)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    if (_rows.isEmpty) {
+      final copy = _empty.isNotEmpty
+          ? _empty
+          : widget.field.emptyText.isNotEmpty
+              ? widget.field.emptyText
+              : widget.field.subtitle;
+      if (copy.isEmpty) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
+        child: Text(
+          copy,
+          style: TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+            height: 1.35,
+          ),
+        ),
+      );
+    }
+    final footer = _footer;
+    final footerRow = footer == null ? null : _row(footer);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final row in _rows) _row(row),
+        ?footerRow,
+      ],
+    );
   }
 }
 

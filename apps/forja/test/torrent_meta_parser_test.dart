@@ -2,6 +2,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 
 void main() {
+  group('TorrentMetaParser languages', () {
+    test('French subtitle tags are not French audio', () {
+      expect(
+        TorrentMetaParser.parse('Frieren S01E03 VOSTFR 1080p').languageCodes,
+        isNot(contains('fr')),
+      );
+      expect(
+        TorrentMetaParser.parse('Movie.2024.SUBFRENCH.1080p').languageCodes,
+        isNot(contains('fr')),
+      );
+      expect(
+        TorrentMetaParser.parse('Movie.2024.FRENCH.1080p').languageCodes,
+        contains('fr'),
+      );
+      expect(
+        TorrentMetaParser.parse('Movie.2024.TRUEFRENCH.1080p').languageCodes,
+        contains('fr'),
+      );
+    });
+  });
+
   group('TorrentMetaParser.resolveSizeLabel', () {
     test('drops bogus tiny sizes and quality tokens in the size slot', () {
       expect(

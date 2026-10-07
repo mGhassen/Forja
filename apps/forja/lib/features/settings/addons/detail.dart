@@ -7,7 +7,6 @@ import 'package:forja/features/settings/addons/host/debrid_section.dart';
 import 'package:forja/features/settings/addons/host/lan_section.dart';
 import 'package:forja/features/settings/addons/host/providers_section.dart';
 import 'package:forja/features/settings/addons/host/search_torrents_section.dart';
-import 'package:forja/features/settings/addons/host/torrent_session_section.dart';
 import 'package:forja/features/settings/addons/host/simkl_panel.dart';
 import 'package:forja/features/settings/addons/host/mdblist_panel.dart';
 import 'package:forja/features/settings/addons/host/playback_section.dart';
@@ -43,10 +42,8 @@ Widget _hostAddonDetailBody(String addonId, SettingsVisibility visibility) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (visibility.showTorrentEngine) ...const [
-            SettingsTorrentSessionSection(),
-            SettingsSearchTorrentsSection(),
-          ],
+          if (visibility.showTorrentEngine)
+            const SettingsSearchTorrentsSection(),
           SettingsForjaAddonsSection(
             visibility: visibility,
             indexersOnly: true,

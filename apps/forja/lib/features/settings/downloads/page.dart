@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/addons/pack/pack_addon_settings_section.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_path_helper.dart';
@@ -12,6 +13,8 @@ import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/downloads/hls_subtitle_sidecar.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
+import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
@@ -32,24 +35,65 @@ class SettingsDownloadsPageBody extends StatefulWidget {
 
 class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+  late TabController _tabs;
   StorageSpaceInfo? _space;
   String? _downloadsDir;
   bool _hasCustomDir = false;
+  /// Pack-contributed tabs: active plugins whose `settings.addons` include
+  /// `downloads`. One tab per plugin, labelled by its settings group.
+  List<_PackTab> _packTabs = const [];
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     unawaited(_loadSpace());
+    EngineService.changeNotifier.addListener(_onEngineChanged);
+    unawaited(_loadPackTabs());
     // Ensure queue is visible even if bootstrap init raced an early enqueue.
     unawaited(DownloadService.instance.ensureQueueVisible());
   }
 
   @override
   void dispose() {
+    EngineService.changeNotifier.removeListener(_onEngineChanged);
     _tabs.dispose();
     super.dispose();
+  }
+
+  void _onEngineChanged() {
+    if (mounted) unawaited(_loadPackTabs());
+  }
+
+  Future<void> _loadPackTabs() async {
+    final packs = await EngineService.instance.listPacks();
+    final plugins = activePluginsFromPacks(packs).toList();
+    final specs = PackAddonSettingsSpec.listForAddon(
+      plugins,
+      addonId: _downloadsAddonBucket,
+    );
+    final next = <_PackTab>[
+      for (final spec in specs)
+        for (final p in plugins)
+          if (p.id == spec.pluginId) _PackTab(label: spec.group, plugin: p),
+    ];
+    if (!mounted) return;
+    final sameTabs = next.length == _packTabs.length &&
+        [for (final t in next) '${t.plugin.id}|${t.label}'].join(',') ==
+            [for (final t in _packTabs) '${t.plugin.id}|${t.label}']
+                .join(',');
+    if (sameTabs) return;
+    final previous = _tabs;
+    final length = 2 + next.length;
+    setState(() {
+      _packTabs = next;
+      _tabs = TabController(
+        length: length,
+        vsync: this,
+        initialIndex: previous.index < length ? previous.index : 0,
+      );
+    });
+    previous.dispose();
   }
 
   Future<void> _loadSpace() async {
@@ -229,6 +273,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
               tabs: [
                 Tab(text: 'Active (${active.length})'),
                 Tab(text: 'Completed (${completed.length})'),
+                for (final t in _packTabs) Tab(text: t.label),
               ],
             ),
             Expanded(
@@ -271,6 +316,11 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
                       onDeleted: _loadSpace,
                     ),
                   ),
+                  for (final t in _packTabs)
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: PackAddonSettingsSection(plugins: [t.plugin]),
+                    ),
                 ],
               ),
             ),
@@ -279,6 +329,16 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
       },
     );
   }
+}
+
+/// Settings bucket packs name in `settings.addons` to add a Downloads tab.
+const _downloadsAddonBucket = 'downloads';
+
+class _PackTab {
+  const _PackTab({required this.label, required this.plugin});
+
+  final String label;
+  final EnginePlugin plugin;
 }
 
 class _StorageHeader extends StatelessWidget {

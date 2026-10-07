@@ -118,12 +118,18 @@ class EnginePlugin {
   /// EngineJS has no host bridges — flutter_js for layout / rail / search.
   bool get needsStremioCatalogHost => isKitPlugin && types.contains('stremio');
 
+  /// Settings `action_list` plugin: its list / item actions call
+  /// `ctx.host.engine.request` — EngineJS has no host bridges.
+  bool get needsSettingsActionHost =>
+      isKitPlugin && hasCapability('settingsList');
+
   /// Any kit hub that must skip EngineJS-first for host-bridge actions.
   bool get needsHostBridge =>
       needsLiveFeedHost ||
       needsListsHost ||
       needsPortalPackHost ||
-      needsStremioCatalogHost;
+      needsStremioCatalogHost ||
+      needsSettingsActionHost;
 
   /// Pack install must cache JS for this plugin.
   bool get needsScript =>
@@ -1104,6 +1110,12 @@ void applyAudioCategoryToExtractCtx(
 
 /// `sub`, `dub`, or null when the row has no audio hint.
 String? engineStreamAudioCategory(Map<String, dynamic> stream) {
+  // Mapped rows carry the category read from the raw row; their `name` no
+  // longer has the provider's (SUB)/(DUB) suffix.
+  final stamped = normalizeEngineAudioCategory(
+    stream['audioCategory']?.toString(),
+  );
+  if (stamped != null) return stamped;
   final lang = (stream['language'] ?? '').toString().trim().toLowerCase();
   if (lang == 'sub' || lang == 'dub') return lang;
   final blob = '${stream['name'] ?? ''} ${stream['title'] ?? ''}';
@@ -1232,10 +1244,12 @@ Map<String, dynamic>? mapEngineStream({
   final typeHint = (raw['type'] ?? '').toString().trim();
   final pngStrip = (raw['pngStrip'] ?? '').toString().trim();
   final probe = (raw['probe'] ?? '').toString().trim();
+  final audioCategory = engineStreamAudioCategory(raw);
   return {
     'url': url,
     'title': cardTitle,
     'name': addonName,
+    'audioCategory': ?audioCategory,
     if (typeHint.isNotEmpty) 'type': typeHint,
     if (desc.isNotEmpty) 'description': desc,
     'quality': ?quality,

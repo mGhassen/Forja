@@ -521,4 +521,90 @@ void main() {
       );
     });
   });
+
+  group('action_list fields', () {
+    EnginePlugin plugin(Map<String, dynamic> field, {Object? addons}) {
+      return EnginePlugin.fromJson({
+        'id': 'rows-plugin',
+        'name': 'Rows',
+        'entry': 'r.js',
+        'kind': 'catalog',
+        'capabilities': ['settings', 'settingsList'],
+        'settings': {
+          'addon': 'alpha',
+          if (addons != null) 'addons': addons,
+          'group': 'Rows',
+          'fields': [field],
+        },
+      });
+    }
+
+    test('parses action, item action, refresh and empty copy', () {
+      final spec = PackAddonSettingsSpec.fromPlugin(
+        plugin({
+          'id': 'rows',
+          'type': 'action_list',
+          'label': 'Rows',
+          'action': 'settingsList',
+          'itemAction': 'settingsAction',
+          'refreshSeconds': 2,
+          'emptyText': 'Nothing here',
+        }),
+      );
+      expect(spec, isNotNull);
+      final field = spec!.fields.single;
+      expect(field.type, PackAddonSettingsFieldType.actionList);
+      expect(field.action, 'settingsList');
+      expect(field.itemAction, 'settingsAction');
+      expect(field.refreshSeconds, 2);
+      expect(field.emptyText, 'Nothing here');
+      expect(field.isStored, isFalse);
+    });
+
+    test('drops an action_list field without an action', () {
+      final spec = PackAddonSettingsSpec.fromPlugin(
+        plugin({'id': 'rows', 'type': 'action_list', 'label': 'Rows'}),
+      );
+      expect(spec?.fields ?? const [], isEmpty);
+    });
+
+    test('action_list never enters the config overlay', () async {
+      final spec = PackAddonSettingsSpec.fromPlugin(
+        plugin({
+          'id': 'rows',
+          'type': 'action_list',
+          'label': 'Rows',
+          'action': 'settingsList',
+        }),
+      );
+      expect(await spec!.loadConfigOverlay(), isEmpty);
+    });
+
+    test('settings.addons contributes to every listed bucket', () {
+      final p = plugin(
+        {
+          'id': 'rows',
+          'type': 'action_list',
+          'label': 'Rows',
+          'action': 'settingsList',
+        },
+        addons: ['alpha', 'beta'],
+      );
+      expect(p.hasCapability('settingsList'), isTrue);
+      final spec = PackAddonSettingsSpec.fromPlugin(p)!;
+      expect(spec.addonId, 'alpha');
+      expect(spec.addonIds, ['alpha', 'beta']);
+      for (final bucket in ['alpha', 'beta']) {
+        expect(
+          PackAddonSettingsSpec.listForAddon([p], addonId: bucket)
+              .map((s) => s.pluginId),
+          ['rows-plugin'],
+        );
+      }
+      expect(
+        PackAddonSettingsSpec.listForAddon([p], addonId: 'gamma'),
+        isEmpty,
+      );
+    });
+  });
 }

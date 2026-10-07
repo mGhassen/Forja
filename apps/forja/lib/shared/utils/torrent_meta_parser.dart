@@ -385,15 +385,7 @@ class TorrentMetaParser {
 
     const patterns = <String, List<String>>{
       'en': ['ENGLISH', ' ENG ', '.ENG.', '[EN]', '-EN-', '.EN.'],
-      'fr': [
-        'FRENCH',
-        'VOSTFR',
-        'SUBFRENCH',
-        'TRUEFRENCH',
-        ' VF ',
-        '.FR.',
-        '[FR]',
-      ],
+      'fr': ['FRENCH', 'TRUEFRENCH', ' VF ', '.FR.', '[FR]'],
       'de': ['GERMAN', ' GER ', '.GER.', '[DE]', 'GERMAN DL'],
       'es': ['SPANISH', ' CASTELLAN', ' LATINO', '.ES.', '[ES]'],
       'it': ['ITALIAN', ' ITA ', '.ITA.', '[IT]'],
@@ -415,9 +407,11 @@ class TorrentMetaParser {
       'vi': ['VIETNAMESE', ' VIE ', '.VIE.', '[VI]'],
     };
 
+    // VOSTFR / SUBFRENCH are French subtitles, not French audio.
+    final audioText = n.replaceAll('SUBFRENCH', ' ').replaceAll('VOSTFR', ' ');
     for (final entry in patterns.entries) {
       for (final token in entry.value) {
-        if (n.contains(token)) {
+        if (audioText.contains(token)) {
           add(entry.key);
           break;
         }

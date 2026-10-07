@@ -17,6 +17,10 @@ enum PackAddonSettingsFieldType {
   password,
   /// Options = installed details hubs (filtered by [PackAddonSettingsField.hubTypes]).
   hubSelect,
+  /// Rows the pack returns from [PackAddonSettingsField.action]; taps run
+  /// [PackAddonSettingsField.itemAction]. No stored value — the pack owns the
+  /// data and the copy; the host only paints rows.
+  actionList,
 }
 
 class PackAddonSettingsField {
@@ -32,6 +36,10 @@ class PackAddonSettingsField {
     this.hubTypes = const [],
     this.listOpenDefault = false,
     this.reloadHub = true,
+    this.action = '',
+    this.itemAction = '',
+    this.refreshSeconds = 0,
+    this.emptyText = '',
   });
 
   final String id;
@@ -55,6 +63,22 @@ class PackAddonSettingsField {
   /// soft-reload the hub feed (e.g. Live Sports `matchOpen`).
   final bool reloadHub;
 
+  /// [PackAddonSettingsFieldType.actionList]: pack action returning
+  /// `data.rows` (`{ id, title, subtitle, icon, tone, action }`) and an
+  /// optional `data.footer` row.
+  final String action;
+
+  /// [PackAddonSettingsFieldType.actionList]: pack action run on tap with
+  /// `{ row, action }`; `data.message` is shown as a toast.
+  final String itemAction;
+
+  /// [PackAddonSettingsFieldType.actionList]: re-run [action] this often
+  /// while visible. `0` loads once.
+  final int refreshSeconds;
+
+  /// [PackAddonSettingsFieldType.actionList]: copy when there are no rows.
+  final String emptyText;
+
   static PackAddonSettingsField? fromJson(Map<String, dynamic> j) {
     final id = (j['id'] ?? '').toString().trim();
     final label = (j['label'] ?? '').toString().trim();
@@ -68,9 +92,23 @@ class PackAddonSettingsField {
       'multi_select' || 'chips' || 'multiselect' =>
         PackAddonSettingsFieldType.multiSelect,
       'hub_select' || 'hubselect' || 'hub' => PackAddonSettingsFieldType.hubSelect,
+      'action_list' || 'actionlist' => PackAddonSettingsFieldType.actionList,
       _ => null,
     };
     if (type == null) return null;
+
+    final action = (j['action'] ?? '').toString().trim();
+    final itemAction = (j['itemAction'] ?? j['item_action'] ?? '')
+        .toString()
+        .trim();
+    if (type == PackAddonSettingsFieldType.actionList && action.isEmpty) {
+      return null;
+    }
+    final refreshRaw = j['refreshSeconds'] ?? j['refresh_seconds'];
+    final refreshSeconds = refreshRaw is int
+        ? refreshRaw
+        : int.tryParse(refreshRaw?.toString() ?? '') ?? 0;
+    final emptyText = (j['emptyText'] ?? j['empty_text'] ?? '').toString();
 
     final options = <PackAddonSettingsOption>[];
     final optsRaw = j['options'];
@@ -136,8 +174,15 @@ class PackAddonSettingsField {
       hubTypes: hubTypes,
       listOpenDefault: listOpenDefault,
       reloadHub: reloadHub,
+      action: action,
+      itemAction: itemAction,
+      refreshSeconds: refreshSeconds < 0 ? 0 : refreshSeconds,
+      emptyText: emptyText,
     );
   }
+
+  /// True for fields whose value the host stores (not [actionList]).
+  bool get isStored => type != PackAddonSettingsFieldType.actionList;
 }
 
 class PackAddonSettingsSpec {
@@ -149,6 +194,7 @@ class PackAddonSettingsSpec {
     required this.order,
     required this.fields,
     this.extractPluginIds = const [],
+    this.addonIds = const [],
   });
 
   final String pluginId;
@@ -156,6 +202,10 @@ class PackAddonSettingsSpec {
 
   /// Optional host Addon id (RFC-089). Empty when settings render under Forja Packs.
   final String addonId;
+
+  /// Every bucket this spec contributes to: `settings.addons` list, else
+  /// `[addonId]`. [listForAddon] matches any of them.
+  final List<String> addonIds;
   final String group;
   final int order;
   final List<PackAddonSettingsField> fields;
@@ -173,6 +223,17 @@ class PackAddonSettingsSpec {
     final raw = plugin.settings;
     if (raw == null || raw.isEmpty) return null;
     final addonId = (raw['addon'] ?? '').toString().trim();
+    final addonIds = <String>[];
+    final addonsRaw = raw['addons'];
+    if (addonsRaw is List) {
+      for (final e in addonsRaw) {
+        final id = e.toString().trim();
+        if (id.isNotEmpty && !addonIds.contains(id)) addonIds.add(id);
+      }
+    }
+    if (addonId.isNotEmpty && !addonIds.contains(addonId)) {
+      addonIds.insert(0, addonId);
+    }
     final fieldsRaw = raw['fields'];
     final fields = <PackAddonSettingsField>[];
     if (fieldsRaw is List) {
@@ -202,7 +263,10 @@ class PackAddonSettingsSpec {
     return PackAddonSettingsSpec(
       pluginId: plugin.id,
       pluginName: plugin.name,
-      addonId: addonId,
+      addonId: addonId.isNotEmpty
+          ? addonId
+          : (addonIds.isNotEmpty ? addonIds.first : ''),
+      addonIds: addonIds,
       group: groupRaw.isNotEmpty ? groupRaw : plugin.name,
       order: order,
       fields: fields,
@@ -216,6 +280,7 @@ class PackAddonSettingsSpec {
       pluginId: pluginId,
       fields: [
         for (final f in fields)
+          if (f.isStored)
           (
             id: f.id,
             type: switch (f.type) {
@@ -225,6 +290,7 @@ class PackAddonSettingsSpec {
               PackAddonSettingsFieldType.text => 'text',
               PackAddonSettingsFieldType.password => 'password',
               PackAddonSettingsFieldType.multiSelect => 'multi_select',
+              PackAddonSettingsFieldType.actionList => 'action_list',
             },
             defaultString: f.defaultString,
             defaultBool: f.defaultBool,
@@ -279,9 +345,8 @@ class PackAddonSettingsSpec {
       if (!p.enabled) continue;
       final spec = fromPlugin(p);
       if (spec == null) continue;
-      final bucket =
-          spec.addonId.isNotEmpty ? spec.addonId : p.id;
-      if (bucket != want) continue;
+      final buckets = spec.addonIds.isNotEmpty ? spec.addonIds : [p.id];
+      if (!buckets.contains(want)) continue;
       out.add(spec);
     }
     return _sorted(out);
