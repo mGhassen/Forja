@@ -358,6 +358,9 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                   headers: widget.headers,
                   statusController: _s._statusController,
                   position: _s._positionNotifier.value,
+                  duration: _s._durationNotifier.value,
+                  startTime: _s._castStartTime,
+                  subtitle: _s._castSubtitle,
                   handoff: CastHandoff(
                     onStarted: () => unawaited(_s._player.pause()),
                     onEnded: (resumeAt) => unawaited(_s._resumeAfterCast(resumeAt)),

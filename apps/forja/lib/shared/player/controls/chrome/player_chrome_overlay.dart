@@ -1292,10 +1292,11 @@ void _showCastFeedback(
   PlayerStatusController? statusController,
   required String message,
   StatusRouletteKind kind = StatusRouletteKind.info,
+  String key = 'cast',
 }) {
   if (statusController != null) {
     statusController.upsert(
-      'cast',
+      key,
       message,
       kind: kind,
       dismissAfter: const Duration(seconds: 3),
@@ -1370,6 +1371,9 @@ Future<void> showPlayerCastPicker(
   Map<String, String>? headers,
   PlayerStatusController? statusController,
   Duration position = Duration.zero,
+  Duration duration = Duration.zero,
+  Future<Duration> Function()? startTime,
+  Future<CastSubtitle?> Function()? subtitle,
   CastHandoff? handoff,
 }) async {
   final casting = CastingService.instance;
@@ -1412,6 +1416,9 @@ Future<void> showPlayerCastPicker(
       headers: headers,
       title: title,
       position: position,
+      duration: duration,
+      startTime: await startTime?.call() ?? Duration.zero,
+      subtitle: await subtitle?.call(),
       handoff: handoff == null
           ? null
           : CastHandoff(
@@ -1439,6 +1446,16 @@ Future<void> showPlayerCastPicker(
                   statusController: statusController,
                   message: message,
                   kind: StatusRouletteKind.failed,
+                );
+              },
+              onSubtitlesUnavailable: () {
+                handoff.onSubtitlesUnavailable?.call();
+                _showCastFeedback(
+                  context,
+                  statusController: statusController,
+                  message: "Subtitles can't play on AirPlay for this stream",
+                  kind: StatusRouletteKind.failed,
+                  key: 'cast-subtitle',
                 );
               },
             ),

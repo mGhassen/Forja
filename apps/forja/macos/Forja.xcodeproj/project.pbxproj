@@ -34,6 +34,7 @@
 		A7F0DE5E0A11B00100D35C02 /* DesktopPipChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F0DE5D0A11B00100D35C02 /* DesktopPipChannel.swift */; };
 		A7F0DE600A11B00100D35C03 /* ForjaAvPlayerChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F0DE5F0A11B00100D35C03 /* ForjaAvPlayerChannel.swift */; };
 		F0A1A1A12F00000100AA0004 /* ForjaAirPlayChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A1A1A12F00000100AA0003 /* ForjaAirPlayChannel.swift */; };
+		F0A1A1A12F00000100AA0008 /* ForjaAirPlaySubtitleRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A1A1A12F00000100AA0007 /* ForjaAirPlaySubtitleRelay.swift */; };
 		A7F0DE620A11B00100D35C04 /* ForjaVlcChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F0DE610A11B00100D35C04 /* ForjaVlcChannel.swift */; };
 /* End PBXBuildFile section */
 
@@ -95,6 +96,7 @@
 		A7F0DE5D0A11B00100D35C02 /* DesktopPipChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopPipChannel.swift; sourceTree = "<group>"; };
 		A7F0DE5F0A11B00100D35C03 /* ForjaAvPlayerChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForjaAvPlayerChannel.swift; sourceTree = "<group>"; };
 		F0A1A1A12F00000100AA0003 /* ForjaAirPlayChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForjaAirPlayChannel.swift; sourceTree = "<group>"; };
+		F0A1A1A12F00000100AA0007 /* ForjaAirPlaySubtitleRelay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ForjaAirPlaySubtitleRelay.swift; path = ../ios/Runner/ForjaAirPlaySubtitleRelay.swift; sourceTree = SOURCE_ROOT; };
 		A7F0DE610A11B00100D35C04 /* ForjaVlcChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForjaVlcChannel.swift; sourceTree = "<group>"; };
 		BEA4039EF9386E4401A62675 /* Pods_Forja.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Forja.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD715728D4F1855A9512E444 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -195,6 +197,7 @@
 				A7F0DE5D0A11B00100D35C02 /* DesktopPipChannel.swift */,
 				A7F0DE5F0A11B00100D35C03 /* ForjaAvPlayerChannel.swift */,
 				F0A1A1A12F00000100AA0003 /* ForjaAirPlayChannel.swift */,
+				F0A1A1A12F00000100AA0007 /* ForjaAirPlaySubtitleRelay.swift */,
 				A7F0DE610A11B00100D35C04 /* ForjaVlcChannel.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
@@ -500,6 +503,7 @@
 				A7F0DE5E0A11B00100D35C02 /* DesktopPipChannel.swift in Sources */,
 				A7F0DE600A11B00100D35C03 /* ForjaAvPlayerChannel.swift in Sources */,
 				F0A1A1A12F00000100AA0004 /* ForjaAirPlayChannel.swift in Sources */,
+				F0A1A1A12F00000100AA0008 /* ForjaAirPlaySubtitleRelay.swift in Sources */,
 				A7F0DE620A11B00100D35C04 /* ForjaVlcChannel.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,

@@ -506,6 +506,13 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     );
   }
 
+  /// The subtitle on screen now, for a cast receiver.
+  Future<CastSubtitle?> _castSubtitle() =>
+      castSubtitleForPlayer(_player, delaySeconds: _subtitleDelay);
+
+  /// The stream's first timestamp — where a cast subtitle's zero sits.
+  Future<Duration> _castStartTime() => mpvStreamStartTime(_player);
+
   /// AirPlay handed playback back — continue here from where the TV stopped.
   Future<void> _resumeAfterCast(Duration position) async {
     if (_disposed) return;

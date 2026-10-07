@@ -116,7 +116,12 @@ List<_HlsSubtitleUri> _subtitleSegmentUris(String playlist, Uri playlistUri) {
 ///
 /// Segments that reset their cue clock are shifted by the playlist duration
 /// already written. `X-TIMESTAMP-MAP` cues are shifted onto that same clock.
-String mergeWebVttParts(List<HlsSubtitleSegmentPart> parts) {
+/// [delaySeconds] moves every cue later (negative: earlier); cues that end
+/// before zero are dropped.
+String mergeWebVttParts(
+  List<HlsSubtitleSegmentPart> parts, {
+  double delaySeconds = 0,
+}) {
   final cues = <({double start, double end, String text})>[];
   var cursor = 0.0;
   double? base;
@@ -147,10 +152,12 @@ String mergeWebVttParts(List<HlsSubtitleSegmentPart> parts) {
   }
   final buf = StringBuffer('WEBVTT\n\n');
   for (final cue in cues) {
+    final end = cue.end + delaySeconds;
+    if (end <= 0) continue;
     buf
-      ..write(_formatClock(cue.start))
+      ..write(_formatClock(cue.start + delaySeconds))
       ..write(' --> ')
-      ..write(_formatClock(cue.end))
+      ..write(_formatClock(end))
       ..write('\n')
       ..write(cue.text)
       ..write('\n\n');

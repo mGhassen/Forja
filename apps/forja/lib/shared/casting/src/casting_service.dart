@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'cast_subtitle.dart';
+
 enum CastTarget { airplay, chromecast }
 
 /// What the local player does while a cast owns playback.
@@ -11,6 +13,7 @@ class CastHandoff {
     required this.onStarted,
     required this.onEnded,
     this.onFailed,
+    this.onSubtitlesUnavailable,
   });
 
   /// The receiver took over — pause local playback.
@@ -21,6 +24,9 @@ class CastHandoff {
 
   /// The receiver could not play the stream. [message] is user-facing.
   final void Function(String message)? onFailed;
+
+  /// The stream plays on the receiver, but without Forja's subtitle.
+  final VoidCallback? onSubtitlesUnavailable;
 }
 
 class CastingService {
@@ -48,12 +54,19 @@ class CastingService {
   /// Starts a cast. For AirPlay this opens the system device picker; the
   /// hand-off fires once a device is chosen. Returns false when [target]
   /// cannot start.
+  ///
+  /// [subtitle] is what Forja shows now. [duration] and [startTime] (the
+  /// stream's first timestamp) place an external subtitle on the receiver's
+  /// clock.
   Future<bool> castUrl({
     required String url,
     required CastTarget target,
     Map<String, String>? headers,
     String? title,
     Duration position = Duration.zero,
+    Duration duration = Duration.zero,
+    Duration startTime = Duration.zero,
+    CastSubtitle? subtitle,
     CastHandoff? handoff,
   }) async {
     if (target == CastTarget.airplay && isAirPlayAvailable) {
@@ -61,6 +74,9 @@ class CastingService {
         url: url,
         headers: headers,
         position: position,
+        duration: duration,
+        startTime: startTime,
+        subtitle: subtitle,
         handoff: handoff,
       );
     }
@@ -72,6 +88,9 @@ class CastingService {
     required String url,
     Map<String, String>? headers,
     required Duration position,
+    required Duration duration,
+    required Duration startTime,
+    CastSubtitle? subtitle,
     CastHandoff? handoff,
   }) async {
     _airPlaySub ??=
@@ -84,12 +103,19 @@ class CastingService {
         return await _airPlay.invokeMethod<bool>('showPicker') ?? false;
       }
       _handoff = handoff;
-      return await _airPlay.invokeMethod<bool>('start', {
+      final opened = await _airPlay.invokeMethod<bool>('start', {
             'url': url,
             'headers': headers ?? const <String, String>{},
             'positionMs': position.inMilliseconds,
+            'durationMs': duration.inMilliseconds,
+            'startTimeMs': startTime.inMilliseconds,
+            'subtitle': subtitle?.toChannel(),
           }) ??
           false;
+      if (opened && subtitle?.kind == CastSubtitleKind.unsupported) {
+        handoff?.onSubtitlesUnavailable?.call();
+      }
+      return opened;
     } on PlatformException catch (e) {
       debugPrint('[Casting] AirPlay start failed: ${e.message}');
       _handoff = null;
@@ -120,6 +146,8 @@ class CastingService {
         debugPrint('[Casting] AirPlay error: ${raw['message']}');
         handoff?.onFailed?.call("AirPlay can't play this stream");
         if (wasActive) handoff?.onEnded(Duration(milliseconds: ms));
+      case 'subtitles':
+        if (raw['status'] == 'unavailable') handoff?.onSubtitlesUnavailable?.call();
       case 'cancelled':
         _handoff = null;
     }
