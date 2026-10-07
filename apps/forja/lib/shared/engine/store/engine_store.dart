@@ -1,3 +1,4 @@
+import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:rust/rust.dart';
 
 /// Generic opaque-key store (RFC-109 Wave 2/3).
@@ -14,13 +15,25 @@ class EngineStore {
   Future<List<Map<String, dynamic>>> list({String? status}) async {
     await _bookmarks.ensureLoaded();
     final want = status?.trim() ?? '';
-    return [
+    final rows = [
       for (final e in _bookmarks.items)
         if (want.isEmpty ||
             (e['listStatus']?.toString() ?? BookmarkStore.defaultStatus) ==
                 want)
           Map<String, dynamic>.from(e),
     ];
+    // Pins saved before rows carried `hubLabel` — fill from their hub.
+    final labels = <String, String?>{};
+    for (final row in rows) {
+      if ((row['hubLabel']?.toString() ?? '').isNotEmpty) continue;
+      final pluginId = row['pluginId']?.toString().trim() ?? '';
+      if (pluginId.isEmpty) continue;
+      final label = labels.containsKey(pluginId)
+          ? labels[pluginId]
+          : labels[pluginId] = await ListOpenBinding.hubLabelOf(pluginId);
+      if (label != null) row['hubLabel'] = label;
+    }
+    return rows;
   }
 
   /// Upsert by opaque [key] (`uniqueId`). Pass row fields in [data]
@@ -45,6 +58,7 @@ class EngineStore {
     final tmdbMediaType = data['tmdbMediaType']?.toString();
     final voteAverage = (data['voteAverage'] as num?)?.toDouble() ?? 0;
     final releaseDate = data['releaseDate']?.toString() ?? '';
+    final hubLabel = data['hubLabel']?.toString();
 
     if (pluginId.isNotEmpty && open != null) {
       await _bookmarks.upsertCatalog(
@@ -59,6 +73,7 @@ class EngineStore {
         tmdbMediaType: tmdbMediaType,
         voteAverage: voteAverage,
         releaseDate: releaseDate,
+        hubLabel: hubLabel,
       );
       return;
     }

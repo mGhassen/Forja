@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
+import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -148,6 +149,7 @@ class ListFollow {
       tmdbMediaType: t.tmdbMediaType,
       voteAverage: t.voteAverage,
       releaseDate: t.releaseDate,
+      hubLabel: await ListOpenBinding.hubLabelOf(t.pluginId),
     );
 
     final sync = resolveSimklTarget(t);

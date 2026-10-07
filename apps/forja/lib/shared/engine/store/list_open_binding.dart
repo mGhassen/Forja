@@ -67,19 +67,24 @@ bool _typesIntersect(List<String> types, Set<String> tokens) {
   return false;
 }
 
-String _candidateLabel(EnginePlugin pl) {
-  final nav = pl.nav;
-  if (nav != null) {
-    final label = nav['label']?.toString().trim() ?? '';
-    if (label.isNotEmpty) return label;
-  }
-  final name = pl.name.trim();
-  return name.isNotEmpty ? name : pl.id;
-}
-
 /// Host My List → hub open binding (RFC-108).
 abstract final class ListOpenBinding {
   ListOpenBinding._();
+
+  /// Nav label of hub [pluginId] (e.g. `Kids`) — stamped on bookmarks so
+  /// My List shows the hub a title was pinned in.
+  static Future<String?> hubLabelOf(String pluginId) async {
+    final want = pluginId.trim();
+    if (want.isEmpty) return null;
+    try {
+      final plugins = PluginNavRegistry.peekKitPlugins() ??
+          await PluginNavRegistry.listKitPlugins();
+      for (final pl in plugins) {
+        if (pl.id == want) return PackHubSelectOptions.labelFor(pl);
+      }
+    } catch (_) {}
+    return null;
+  }
 
   static Future<List<ListOpenCandidate>> candidatesFor({
     required Map<String, dynamic> item,
@@ -96,7 +101,7 @@ abstract final class ListOpenBinding {
       out.add(
         ListOpenCandidate(
           pluginId: pl.id,
-          label: _candidateLabel(pl),
+          label: PackHubSelectOptions.labelFor(pl),
           types: List<String>.from(pl.types),
           compatible: compatible,
           hasSearch: pl.hasCapability('search'),
@@ -270,6 +275,7 @@ abstract final class ListOpenBinding {
       tmdbMediaType: tmdbMt,
       voteAverage: meta.rating ?? 0,
       releaseDate: meta.releaseInfo,
+      hubLabel: await hubLabelOf(pluginId),
     );
     item['pluginId'] = pluginId;
     item['uniqueId'] = newUid;

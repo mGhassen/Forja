@@ -238,6 +238,7 @@ class BookmarkStore {
     String? tmdbMediaType,
     double voteAverage = 0,
     String releaseDate = '',
+    String? hubLabel,
   }) async {
     await _ensureLoaded();
     final aliasMt = normalizeTmdbMediaType(tmdbMediaType ?? mediaType);
@@ -262,9 +263,15 @@ class BookmarkStore {
       'listStatus': listStatus,
       'tmdbId': ?tmdbId,
       'tmdbMediaType': ?tmdbMediaType,
+      'hubLabel': ?hubLabel,
       'addedAt':
           existing?['addedAt'] ?? DateTime.now().millisecondsSinceEpoch,
     };
+    // Hub label belongs to the hub that wrote this row — never inherit a
+    // sibling's label when the pin moves hubs.
+    if (hubLabel == null && existing?['pluginId'] != pluginId) {
+      row.remove('hubLabel');
+    }
     // Drop legacy first-class pack id fields — opaque open only.
     row.remove('anilistId');
     row.remove('kisskhId');
