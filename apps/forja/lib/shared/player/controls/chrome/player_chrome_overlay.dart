@@ -1369,6 +1369,8 @@ Future<void> showPlayerCastPicker(
   required String title,
   Map<String, String>? headers,
   PlayerStatusController? statusController,
+  Duration position = Duration.zero,
+  CastHandoff? handoff,
 }) async {
   final casting = CastingService.instance;
   final canCast = casting.isAirPlayAvailable || casting.isChromecastAvailable;
@@ -1403,6 +1405,54 @@ Future<void> showPlayerCastPicker(
   }
 
   final label = _castTargetLabel(target);
+  if (target == CastTarget.airplay) {
+    final opened = await casting.castUrl(
+      url: streamUrl,
+      target: target,
+      headers: headers,
+      title: title,
+      position: position,
+      handoff: handoff == null
+          ? null
+          : CastHandoff(
+              onStarted: () {
+                handoff.onStarted();
+                _showCastFeedback(
+                  context,
+                  statusController: statusController,
+                  message: 'Playing on AirPlay',
+                  kind: StatusRouletteKind.success,
+                );
+              },
+              onEnded: (resumeAt) {
+                handoff.onEnded(resumeAt);
+                _showCastFeedback(
+                  context,
+                  statusController: statusController,
+                  message: 'AirPlay ended',
+                );
+              },
+              onFailed: (message) {
+                handoff.onFailed?.call(message);
+                _showCastFeedback(
+                  context,
+                  statusController: statusController,
+                  message: message,
+                  kind: StatusRouletteKind.failed,
+                );
+              },
+            ),
+    );
+    if (!context.mounted || opened) return;
+    _showCastFeedback(
+      context,
+      statusController: statusController,
+      message: "Couldn't open AirPlay",
+      kind: StatusRouletteKind.failed,
+    );
+    return;
+  }
+
   _showCastFeedback(
     context,
     statusController: statusController,

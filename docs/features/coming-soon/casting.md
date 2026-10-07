@@ -1,20 +1,25 @@
 # Casting
 
-> **Coming soon** — This feature is planned but not available yet in the current release.
+> **Partly available** — AirPlay works on macOS and iOS. Chromecast is coming soon.
 
 > Send playback from Forja to your TV or speakers via AirPlay or Chromecast.
 
 ## What it is
 
-Casting will let you mirror or stream what you're watching in Forja to external displays and speakers — similar to casting from other media apps. AirPlay (Apple devices) and Chromecast (Google Cast) are the planned targets.
+Casting sends what you're watching in Forja to a TV. AirPlay (Apple TV and AirPlay TVs) works on macOS and iOS. Chromecast (Google Cast) is planned.
 
 ## How to open it
 
-Not available yet. UI stubs exist in the codebase but are not connected to playback.
+In the player, tap **Cast** in the top-right. On macOS and iOS this opens the AirPlay device list.
 
-## What you will be able to do
+## What you can do
 
-- Cast the current video to a Chromecast or AirPlay receiver
+- Send the current video to an AirPlay receiver; Forja pauses while the TV plays
+- Pick your own device again to come back — Forja resumes where the TV stopped
+
+## Coming soon
+
+- Cast to a Chromecast receiver
 - Control playback from your phone while the TV plays
 
 ## Related

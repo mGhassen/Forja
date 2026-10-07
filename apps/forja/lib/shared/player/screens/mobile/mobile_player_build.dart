@@ -470,6 +470,11 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                         title: widget.title,
                         headers: widget.headers,
                         statusController: _s._statusController,
+                        position: _s._positionNotifier.value,
+                        handoff: CastHandoff(
+                          onStarted: () => unawaited(_s._player.pause()),
+                          onEnded: (resumeAt) => unawaited(_s._resumeAfterCast(resumeAt)),
+                        ),
                       );
                       _s._startHideTimer();
                     },

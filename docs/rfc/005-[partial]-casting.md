@@ -1,14 +1,14 @@
 # RFC-005: Casting (AirPlay + Chromecast)
 
-**Status:** stub  
+**Status:** partial  
 **Area:** `apps/forja/lib/shared/casting/src/casting_service.dart`
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **0 / 1** components · **0 / 4** acceptance |
-| **Current slice** | Platform channels + player Cast button — not started |
+| **Progress** | **1 / 2** components · **0 / 4** acceptance |
+| **Current slice** | AirPlay done (macOS + iOS); Chromecast not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -18,7 +18,8 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R05-C01 | CastingService (`casting_service.dart`) | ⬜ |
+| 1 | R05-C01 | CastingService (`casting_service.dart`) | 🔄 |
+| 2 | R05-C02 | AirPlay hand-off: `ForjaAirPlayChannel.swift` (iOS + macOS) — AVPlayer + AVRoutePickerView, local player pauses on external playback and resumes at the receiver's position | ✅ |
 
 ---
 

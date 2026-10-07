@@ -41,6 +41,7 @@ class MainFlutterWindow: NSWindow {
     registerDesktopPipChannel(flutterViewController, window: self)
     registerForjaAvPlayer(flutterViewController)
     registerForjaVlc(flutterViewController)
+    registerForjaAirPlay(flutterViewController)
     if let appDelegate = NSApp.delegate as? AppDelegate {
       appDelegate.configureShellChannel(with: flutterViewController)
     }

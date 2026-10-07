@@ -463,6 +463,14 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     );
   }
 
+  /// AirPlay handed playback back — continue here from where the TV stopped.
+  Future<void> _resumeAfterCast(Duration position) async {
+    if (_disposed) return;
+    if (position > Duration.zero) await _seekTo(position);
+    if (_disposed) return;
+    await _player.play();
+  }
+
   Future<void> _seekTo(Duration position) async {
     final url =
         _hlsMasterUrl ??
@@ -617,6 +625,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     // `_initPlayback` / mark-failed paths bail out instead of writing
     // to a disposed ValueNotifier.
     _disposed = true;
+    unawaited(CastingService.instance.stopCasting());
     InAppMiniPlayerController.instance.detach(this);
     _miniRootFocus.dispose();
     _miniPlayPauseFocus.dispose();
