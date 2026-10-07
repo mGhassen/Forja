@@ -1595,6 +1595,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Future<void> _maybeApplyPreferredSubtitle() async {
     if (_disposed || _preferredSubtitleApplied) return;
+    // Auto subtitles off: keep the stream default or your own pick.
+    if (_subtitlePinned) return;
     // Wait for STATE_READY before selectTrack / setSubtitles (issue 132).
     if (!_exoReady) return;
     if (_providerExternalSubUrls.isEmpty &&

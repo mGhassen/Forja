@@ -670,6 +670,36 @@ bool isPlausibleSubtitleBytes(List<int> bytes) {
   return false;
 }
 
+/// Hosts that inject an upsell cue into the subtitle file itself.
+const _subtitlePromoMarkers = ['store.wyzie.io'];
+
+/// Drops injected upsell cues (Wyzie's free-plan line at 0:00) from an
+/// SRT/VTT/ASS body. Returns [bytes] unchanged when no promo is present.
+List<int> stripSubtitlePromoCues(List<int> bytes) {
+  final text = utf8.decode(bytes, allowMalformed: true);
+  final lower = text.toLowerCase();
+  if (!_subtitlePromoMarkers.any(lower.contains)) return bytes;
+  bool isPromo(String s) {
+    final l = s.toLowerCase();
+    return _subtitlePromoMarkers.any(l.contains);
+  }
+
+  final normalized = text.replaceAll('\r\n', '\n');
+  final String out;
+  if (lower.contains('[script info]') || lower.contains('[v4+ styles]')) {
+    out = normalized
+        .split('\n')
+        .where((line) => !(line.startsWith('Dialogue:') && isPromo(line)))
+        .join('\n');
+  } else {
+    out = normalized
+        .split(RegExp(r'\n[ \t]*\n'))
+        .where((block) => !(block.contains('-->') && isPromo(block)))
+        .join('\n\n');
+  }
+  return utf8.encode(out);
+}
+
 String? externalSubtitleCacheFilePath(String fileUri) {
   final trimmed = fileUri.trim();
   if (trimmed.isEmpty) return null;

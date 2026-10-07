@@ -154,11 +154,12 @@ mixin _DesktopPlayerTracks
         RegExp(r'[^A-Za-z0-9_-]'),
         '_',
       );
-      final ext = externalSubtitleFileExtension(res.bodyBytes);
+      final body = stripSubtitlePromoCues(res.bodyBytes);
+      final ext = externalSubtitleFileExtension(body);
       final file = File(
         '${dir.path}/forja_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.$ext',
       );
-      await file.writeAsBytes(res.bodyBytes);
+      await file.writeAsBytes(body);
       final uri = Uri.file(file.path).toString();
       final prior = _s._externalSubFileCache[url];
       if (prior != null && prior != uri) {
@@ -328,6 +329,18 @@ mixin _DesktopPlayerTracks
     required int gen,
   }) async {
     if (_subtitleAutoCancelled(gen)) return;
+    // Auto subtitles off: never attach scraped or provider files on our own.
+    // Only restore a file you picked after mpv drops it on media open.
+    if (_s._subtitlePinned) {
+      final picked = _s._selectedExternalSubUrl;
+      if (!forcePlayerApply || picked == null) return;
+      for (final sub in _s._externalSubtitles) {
+        if (sub['url']?.toString() != picked) continue;
+        await _loadOnlineSubtitle(sub, showFailureToast: false);
+        return;
+      }
+      return;
+    }
     // A matching mux track replaces an auto-picked Wyzie file. The online
     // result often lands first; leaving it selected skips the stream track.
     if (!_s._userPickedExternalSubtitle) {

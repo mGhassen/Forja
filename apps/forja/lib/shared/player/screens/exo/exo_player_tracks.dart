@@ -155,7 +155,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       final file = File(
         '${dir.path}/forja_exo_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.$ext',
       );
-      await file.writeAsBytes(res.bodyBytes);
+      await file.writeAsBytes(stripSubtitlePromoCues(res.bodyBytes));
       final uri = Uri.file(file.path).toString();
       _s._externalSubFileCache[url] = uri;
       return pack(uri);
@@ -232,6 +232,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
 
   Future<void> _maybeAutoPickExternalSubtitle() async {
     if (_s._disposed || !mounted || _s._preferredSubtitleApplied) return;
+    if (_s._subtitlePinned) return;
     // Soft-reload (setSubtitles) before READY races MergingMediaPeriod (issue 132).
     if (!_s._exoReady) return;
     final preferred = await SettingsService().getPreferredSubtitleLanguage();

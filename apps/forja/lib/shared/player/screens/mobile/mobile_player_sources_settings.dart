@@ -5,6 +5,11 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
 
   Future<void> _applyAutoSubtitle() async {
     if (_s._disposed || !mounted) return;
+    // Auto subtitles off: keep the stream default or your own pick.
+    if (_s._subtitlePinned) {
+      _s._embeddedSubtitleAutoApplied = true;
+      return;
+    }
     if (_s._providerExternalSubUrls.isEmpty &&
         (widget.externalSubtitles ?? const []).isNotEmpty) {
       _s._providerExternalSubUrls = providerExternalSubtitleUrls(
@@ -43,10 +48,6 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
       return;
     }
 
-    if (_s._subtitlePinned) {
-      _s._embeddedSubtitleAutoApplied = true;
-      return;
-    }
     final track = embedded.first;
     await _s._player.setSubtitleTrack(track);
     if (_s._disposed || !mounted) return;

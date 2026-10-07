@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:media_kit/media_kit.dart';
@@ -147,6 +149,34 @@ void main() {
       );
       expect(picks.first['url'], 'https://a/stale');
       expect(picks.length, 2);
+    });
+  });
+
+  group('stripSubtitlePromoCues', () {
+    const promo = "You're on the free plan. Unlock every source, AI "
+        'translation & ad-free subs → store.wyzie.io';
+
+    test('drops the Wyzie free-plan cue from SRT', () {
+      final srt = '1\r\n00:00:00,000 --> 00:00:06,000\r\n$promo\r\n\r\n'
+          '2\r\n00:00:25,876 --> 00:00:29,156\r\n[BABIES crying]\r\n';
+      final out = utf8.decode(stripSubtitlePromoCues(utf8.encode(srt)));
+      expect(out, isNot(contains('wyzie')));
+      expect(out, contains('[BABIES crying]'));
+      expect(isPlausibleSubtitleBytes(utf8.encode(out)), isTrue);
+    });
+
+    test('drops the cue from WEBVTT and keeps the header', () {
+      final vtt = 'WEBVTT\n\n00:00:00.000 --> 00:00:06.000\n$promo\n\n'
+          '00:00:25.876 --> 00:00:29.156\nHello\n';
+      final out = utf8.decode(stripSubtitlePromoCues(utf8.encode(vtt)));
+      expect(out, startsWith('WEBVTT'));
+      expect(out, isNot(contains('wyzie')));
+      expect(out, contains('Hello'));
+    });
+
+    test('leaves clean files untouched', () {
+      final bytes = utf8.encode('1\n00:00:01,000 --> 00:00:04,000\nHi\n');
+      expect(identical(stripSubtitlePromoCues(bytes), bytes), isTrue);
     });
   });
 }

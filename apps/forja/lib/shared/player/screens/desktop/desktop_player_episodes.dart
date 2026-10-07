@@ -1270,6 +1270,11 @@ mixin _DesktopPlayerEpisodes
 
   Future<void> _applyAutoSubtitle() async {
     if (_s._disposed || !mounted) return;
+    // Auto subtitles off: keep the stream default or your own pick.
+    if (_s._subtitlePinned) {
+      _s._embeddedSubtitleAutoApplied = true;
+      return;
+    }
     // Provider sideloads (KissKh Sub API) win over HLS mux — applied in
     // _maybeAutoPickExternalSubtitle.
     if (_s._providerExternalSubUrls.isEmpty &&
@@ -1312,11 +1317,6 @@ mixin _DesktopPlayerEpisodes
       return;
     }
 
-    // No preferred language - only pick first embedded when Auto subtitles is on.
-    if (_s._subtitlePinned) {
-      _s._embeddedSubtitleAutoApplied = true;
-      return;
-    }
     final track = embedded.first;
     await _s._player.setSubtitleTrack(track);
     if (_s._disposed || !mounted) return;
