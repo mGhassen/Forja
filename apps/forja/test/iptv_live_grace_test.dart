@@ -73,6 +73,26 @@ void main() {
       );
     });
 
+    test('hardware decode fail reopens even when the clock moved', () {
+      expect(
+        iptvLiveGraceAction(
+          playing: true,
+          position: const Duration(seconds: 23),
+          startPosition: const Duration(seconds: 11),
+          playheadRecentlyMoved: true,
+          hwDecodeFail: true,
+        ),
+        IptvLiveGraceAction.goLive,
+      );
+    });
+
+    test('hardware decode reasons are recognised', () {
+      expect(iptvLiveGraceReasonIsHwDecodeFail('hw decode fail (live VT)'), isTrue);
+      expect(iptvLiveGraceReasonIsHwDecodeFail('hardware decode failed'), isTrue);
+      expect(iptvLiveGraceReasonIsHwDecodeFail('socket reset'), isFalse);
+      expect(iptvLiveGraceReasonIsHwDecodeFail('completed'), isFalse);
+    });
+
     test('backward jump skips the archive instead of another reopen', () {
       expect(
         iptvLiveGraceAction(

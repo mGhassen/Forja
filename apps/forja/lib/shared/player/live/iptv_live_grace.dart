@@ -39,16 +39,29 @@ enum IptvLiveGraceAction {
   goLive,
 }
 
+/// Grace reasons raised by a hardware-decoder failure (VideoToolbox /
+/// D3D11 / MediaCodec), not a socket or EOF.
+bool iptvLiveGraceReasonIsHwDecodeFail(String reason) {
+  final lower = reason.toLowerCase();
+  return lower.contains('hw decode fail') ||
+      lower.contains('hardware decode fail');
+}
+
 /// `keep-open=always` pauses at EOF, so position often does not move even
 /// while lavf is stitching. [playing] and [playheadRecentlyMoved] are read
 /// after an explicit resume.
+///
+/// [hwDecodeFail]: the audio clock keeps moving while the decoder drops
+/// every frame, so a forward position proves nothing. Always stop+open.
 IptvLiveGraceAction iptvLiveGraceAction({
   required bool playing,
   required Duration position,
   required Duration startPosition,
   required bool playheadRecentlyMoved,
+  bool hwDecodeFail = false,
 }) {
   if (!playing) return IptvLiveGraceAction.goLive;
+  if (hwDecodeFail) return IptvLiveGraceAction.goLive;
   if (position > startPosition) return IptvLiveGraceAction.hold;
   if (playheadRecentlyMoved &&
       position + const Duration(seconds: 2) < startPosition) {

@@ -41,9 +41,11 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
 
   bool get _useSoftwareDecode {
     // Android live: never hwdec=no (TextureSW / leanback OOM).
-    // Desktop live: one-shot after the hardware decoder dies.
+    // Windows live: D3D11 hw decode sticks the surface (issue 092).
+    // Mac / Linux live: one-shot after the hardware decoder dies.
     if (_livePlaybackProfile && _s._mediaKitBackend && !_s.widget.vodPlayback) {
-      return _desktopLiveHwDecodeFallback && _s._softwareDecodeForced;
+      return _s._windowsSoftwareDecode ||
+          (_desktopLiveHwDecodeFallback && _s._softwareDecodeForced);
     }
     return _s._softwareDecodeForced ||
         _s._androidMediaKitSafeMode ||

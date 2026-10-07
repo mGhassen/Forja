@@ -55,6 +55,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
         position: pos,
         startPosition: _s._liveGraceStartPos,
         playheadRecentlyMoved: _playheadRecentlyMoved,
+        hwDecodeFail: iptvLiveGraceReasonIsHwDecodeFail(reason),
       );
       if (action == IptvLiveGraceAction.hold) {
         debugPrint(

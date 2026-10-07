@@ -86,6 +86,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
         position: pos,
         startPosition: _s._liveGraceStartPos,
         playheadRecentlyMoved: _playheadRecentlyMoved,
+        hwDecodeFail: iptvLiveGraceReasonIsHwDecodeFail(reason),
       );
       if (action == IptvLiveGraceAction.hold) {
         debugPrint(
