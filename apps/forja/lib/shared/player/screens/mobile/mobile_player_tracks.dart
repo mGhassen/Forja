@@ -531,7 +531,8 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       }),
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
       loadOnlineSubtitle: (s) => _loadOnlineSubtitle(s, userInitiated: true),
-      streamUrl: _s._currentUrl ?? widget.mediaPath,
+      streamUrl: _s._hlsMasterUrl ?? _s._currentUrl ?? widget.mediaPath,
+      streamHeaders: _s._hlsMasterHeaders ?? widget.headers,
       onSubtitleSettings: _showSubtitleSettings,
       onSubtitleSelected:
           ({required bool off, String? language, String? title}) {
@@ -697,6 +698,8 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     _s._hlsMasterUrl = url;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
+    // Warm the subtitle menu's in-stream list before the user opens it.
+    unawaited(loadHlsInStreamSubtitles(url, headers: resolved));
     fetchHlsQualities(url, headers: resolved).then((qs) {
       if (_s._disposed) return;
       // Only apply if a newer URL didn't take over while we were fetching.

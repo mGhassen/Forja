@@ -46,9 +46,11 @@ class PlayerSubtitleMenu {
     VoidCallback? onTitleSearch,
     /// Shown under the list when set (e.g. cleaned query in use).
     String? titleSearchHint,
-    /// Current play URL. Local HLS proxy playlists carry in-stream renditions
-    /// the demuxer does not list until one is loaded.
+    /// HLS master (or play URL) to read in-stream renditions from. The demuxer
+    /// does not list them until one is loaded.
     String? streamUrl,
+    /// Headers for reading [streamUrl]. Defaults to the current media headers.
+    Map<String, String>? streamHeaders,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
@@ -67,6 +69,7 @@ class PlayerSubtitleMenu {
       onTitleSearch: onTitleSearch,
       titleSearchHint: titleSearchHint,
       streamUrl: streamUrl,
+      streamHeaders: streamHeaders,
       margin: margin,
       anchorContext: anchorContext,
     );
@@ -125,6 +128,7 @@ class PlayerSubtitleMenu {
     VoidCallback? onTitleSearch,
     String? titleSearchHint,
     String? streamUrl,
+    Map<String, String>? streamHeaders,
     required EdgeInsets margin,
     BuildContext? anchorContext,
   }) async {
@@ -172,6 +176,7 @@ class PlayerSubtitleMenu {
       child: _MkSubtitleFolders(
         player: player,
         streamUrl: streamUrl,
+        streamHeaders: streamHeaders,
         externalSubtitles: externalSubtitles,
         selectedExternalSubUrl: selectedExternalSubUrl,
         isFetchingSubs: isFetchingSubs,
@@ -185,6 +190,7 @@ class PlayerSubtitleMenu {
               langKey: key,
               online: online,
               streamUrl: streamUrl,
+              streamHeaders: streamHeaders,
               selectedExternalSubUrl: selectedExternalSubUrl,
               externalSubtitles: externalSubtitles,
               player: player,
@@ -207,6 +213,7 @@ class PlayerSubtitleMenu {
                 onTitleSearch: onTitleSearch,
                 titleSearchHint: titleSearchHint,
                 streamUrl: streamUrl,
+                streamHeaders: streamHeaders,
                 margin: margin,
                 anchorContext: anchorContext,
               ),
@@ -224,6 +231,7 @@ class PlayerSubtitleMenu {
     required String langKey,
     required List<Map<String, dynamic>> online,
     required String? streamUrl,
+    Map<String, String>? streamHeaders,
     required String? selectedExternalSubUrl,
     required List<Map<String, dynamic>> externalSubtitles,
     required Player player,
@@ -251,6 +259,7 @@ class PlayerSubtitleMenu {
         langKey: langKey,
         online: online,
         streamUrl: streamUrl,
+        streamHeaders: streamHeaders,
         selectedExternalSubUrl: selectedExternalSubUrl,
         externalSubtitles: externalSubtitles,
         player: player,
@@ -267,6 +276,7 @@ class _MkSubtitleFolders extends StatefulWidget {
   const _MkSubtitleFolders({
     required this.player,
     required this.streamUrl,
+    required this.streamHeaders,
     required this.externalSubtitles,
     required this.selectedExternalSubUrl,
     required this.isFetchingSubs,
@@ -277,6 +287,7 @@ class _MkSubtitleFolders extends StatefulWidget {
 
   final Player player;
   final String? streamUrl;
+  final Map<String, String>? streamHeaders;
   final List<Map<String, dynamic>> externalSubtitles;
   final String? selectedExternalSubUrl;
   final bool isFetchingSubs;
@@ -314,7 +325,8 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
   Future<void> _loadHls() async {
     final subs = await loadHlsInStreamSubtitles(
       widget.streamUrl,
-      headers: currentPlaybackHttpHeaders(widget.player),
+      headers:
+          widget.streamHeaders ?? currentPlaybackHttpHeaders(widget.player),
     );
     if (!mounted || subs.isEmpty) return;
     setState(() => _hls = subs);
@@ -441,6 +453,7 @@ class _MkSubtitleLanguage extends StatefulWidget {
     required this.langKey,
     required this.online,
     required this.streamUrl,
+    required this.streamHeaders,
     required this.selectedExternalSubUrl,
     required this.externalSubtitles,
     required this.player,
@@ -453,6 +466,7 @@ class _MkSubtitleLanguage extends StatefulWidget {
   final String langKey;
   final List<Map<String, dynamic>> online;
   final String? streamUrl;
+  final Map<String, String>? streamHeaders;
   final String? selectedExternalSubUrl;
   final List<Map<String, dynamic>> externalSubtitles;
   final Player player;
@@ -490,7 +504,8 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
   Future<void> _loadHls() async {
     final subs = await loadHlsInStreamSubtitles(
       widget.streamUrl,
-      headers: currentPlaybackHttpHeaders(widget.player),
+      headers:
+          widget.streamHeaders ?? currentPlaybackHttpHeaders(widget.player),
     );
     if (!mounted) return;
     final key = widget.langKey;
