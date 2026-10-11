@@ -59,8 +59,8 @@ String catalogUrlForHlsQualities({
   required String playUrl,
 }) {
   final catalog = (catalogUrl ?? '').trim();
-  if (catalog.toLowerCase().contains('.m3u8')) return catalog;
-  if (sourceUrl.toLowerCase().contains('.m3u8')) return sourceUrl;
+  if (urlLooksLikeHls(catalog)) return catalog;
+  if (urlLooksLikeHls(sourceUrl)) return sourceUrl;
   return playUrl;
 }
 
@@ -1379,9 +1379,10 @@ bool isMediaOpenReady(PlayerState state) {
 /// playlists (`/playlist/{id}?type=video`). VixSrc uses both.
 const kLavfHlsAllowedExtensionsAll = 'allowed_extensions=ALL';
 
-/// True when [url] is HLS (`.m3u8`, `/hls-proxy`, or extensionless `/playlist/`).
+/// True when [url] is HLS (`.m3u8`, disguised `.txt`, `/hls-proxy`, `/playlist/`).
 ///
-/// VixSrc masters are `vixsrc.to/playlist/{id}?token=` — no `.m3u8`. Exo already
+/// VixSrc masters are `vixsrc.to/playlist/{id}?token=` — no `.m3u8`. MultiEmbed /
+/// VidSrc-family CDNs often ship the master as `.txt` or `/stream/…`. Exo already
 /// forces `APPLICATION_M3U8` for those; MediaKit/OpenPipeline must match.
 bool urlLooksLikeHls(String url) {
   final trimmed = url.trim();
@@ -1394,6 +1395,12 @@ bool urlLooksLikeHls(String url) {
     return true;
   }
   final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? lower;
+  // CDN playlist disguised as .txt (multiembed / vidsrc family).
+  if (path.endsWith('.txt')) return true;
+  // HLS path segment — not local torrent `/torrents/.../stream/`.
+  if (path.contains('/stream/') && !path.contains('/torrents/')) {
+    return true;
+  }
   // Extensionless catalog playlist (e.g. vixsrc.to/playlist/772715).
   if (path.contains('/playlist/') || path.endsWith('/playlist')) {
     return !lower.contains('webmanifest');
@@ -1403,11 +1410,19 @@ bool urlLooksLikeHls(String url) {
 
 /// Extensionless catalog HLS (VixSrc `/playlist/{id}`) — lavf will not treat
 /// nested child URIs as playlists unless we rewrite via `/hls-proxy`.
+///
+/// Disguised `.txt` / `/stream/` masters play direct; do not force-proxy them.
 bool shouldProxyExtensionlessHls(String url) {
   final trimmed = url.trim();
   if (trimmed.isEmpty || isLocalLoopbackPlayUrl(trimmed)) return false;
-  if (!urlLooksLikeHls(trimmed)) return false;
-  return !trimmed.toLowerCase().contains('.m3u8');
+  if (trimmed.toLowerCase().contains('.m3u8')) return false;
+  final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? '';
+  if (path.endsWith('.txt')) return false;
+  if (path.contains('/stream/')) return false;
+  if (!(path.contains('/playlist/') || path.endsWith('/playlist'))) {
+    return false;
+  }
+  return urlLooksLikeHls(trimmed);
 }
 
 bool sourceExpectsDuration(String url, {String? type}) {

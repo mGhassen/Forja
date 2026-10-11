@@ -470,6 +470,19 @@ void main() {
         isFalse,
       );
     });
+
+    test('disguised .txt /stream/ HLS is detected but not force-proxied', () {
+      const txt = 'https://cdn.example/hls/abc.txt?token=1';
+      const stream = 'https://cdn.example/stream/abc/index';
+      expect(urlLooksLikeHls(txt), isTrue);
+      expect(urlLooksLikeHls(stream), isTrue);
+      expect(shouldProxyExtensionlessHls(txt), isFalse);
+      expect(shouldProxyExtensionlessHls(stream), isFalse);
+      expect(
+        urlLooksLikeHls('http://127.0.0.1:9/torrents/x/stream/0'),
+        isFalse,
+      );
+    });
   });
 
   group('sourceRequiresSeekableDurationBeforeConfirm', () {

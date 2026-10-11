@@ -40,7 +40,7 @@ video.m3u8
     expect(subs[1].uri, 'https://cdn.example/th.vtt');
   });
 
-  test('hlsInStreamFetchTarget unwraps the proxy and skips non-playlists', () {
+  test('hlsInStreamFetchTarget probes any non-progressive http URL', () {
     expect(
       hlsInStreamFetchTarget(
         'http://127.0.0.1:9/hls-proxy?url=${Uri.encodeComponent('https://cdn.example/master.m3u8')}',
@@ -51,7 +51,25 @@ video.m3u8
       hlsInStreamFetchTarget('https://cdn.example/video.m3u8?token=1'),
       'https://cdn.example/video.m3u8?token=1',
     );
+    expect(
+      hlsInStreamFetchTarget('https://cdn.example/playlist/abc.txt?token=1'),
+      'https://cdn.example/playlist/abc.txt?token=1',
+    );
+    expect(
+      hlsInStreamFetchTarget('https://cdn.example/stream/abc/master'),
+      'https://cdn.example/stream/abc/master',
+    );
+    expect(
+      hlsInStreamFetchTarget('https://cdn.example/opaque/tokenized/path'),
+      'https://cdn.example/opaque/tokenized/path',
+    );
     expect(hlsInStreamFetchTarget('https://cdn.example/video.mp4'), isNull);
+    expect(
+      hlsInStreamFetchTarget('http://127.0.0.1:9/torrents/x/stream/0'),
+      isNull,
+    );
+    expect(mayBeHlsPlaylistUrl('https://cdn.example/opaque/x'), isTrue);
+    expect(mayBeHlsPlaylistUrl('https://cdn.example/video.mkv'), isFalse);
   });
 
   test('isLocalHlsPlayUrl only matches the local proxy', () {

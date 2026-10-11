@@ -723,15 +723,6 @@ mixin _DesktopPlayerTracks
   /// when 2+ variants are present, otherwise clears it (hiding the gear).
   void _detectHlsQualities(String url, Map<String, String>? headers) {
     _s._currentQualityUrl = url;
-    if (!urlLooksLikeHls(url)) {
-      _s._hlsMasterUrl = null;
-      _s._hlsMasterHeaders = null;
-      _s._hlsQualitiesNotifier.value = null;
-      return;
-    }
-    final existing = _s._hlsQualitiesNotifier.value;
-    if (existing != null && existing.any((q) => q.url == url)) return;
-
     final resolved = resolvePlaybackHttpHeaders(
       headers,
       streamUrl: url,
@@ -741,11 +732,22 @@ mixin _DesktopPlayerTracks
       streamHeaders: resolved,
       playbackHeaders: currentPlaybackHttpHeaders(_s._player),
     );
+    // Probe any non-progressive play URL for TYPE=SUBTITLES / #FORJA-SUB.
+    if (mayBeHlsPlaylistUrl(url)) {
+      unawaited(loadHlsInStreamSubtitles(url, headers: subtitleHeaders));
+    }
+    if (!urlLooksLikeHls(url)) {
+      _s._hlsMasterUrl = null;
+      _s._hlsMasterHeaders = null;
+      _s._hlsQualitiesNotifier.value = null;
+      return;
+    }
+    final existing = _s._hlsQualitiesNotifier.value;
+    if (existing != null && existing.any((q) => q.url == url)) return;
+
     _s._hlsMasterUrl = url;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
-    // Warm the subtitle menu's in-stream list before the user opens it.
-    unawaited(loadHlsInStreamSubtitles(url, headers: subtitleHeaders));
     fetchHlsQualities(url, headers: resolved).then((qs) {
       if (_s._disposed) return;
       if (_s._hlsMasterUrl != url) return;

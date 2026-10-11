@@ -131,13 +131,55 @@ bool _localPlaylist(Uri uri) {
   return path.contains('/hls-proxy') || path.contains('/ext/');
 }
 
-bool _isHlsPlaylistUri(Uri uri) {
+/// Progressive containers we never GET for a playlist probe (too large).
+const _kProgressiveMediaSuffixes = <String>[
+  '.mp4',
+  '.mkv',
+  '.webm',
+  '.avi',
+  '.mov',
+  '.m4v',
+  '.m4a',
+  '.mp3',
+  '.aac',
+  '.flac',
+  '.ogg',
+  '.opus',
+  '.ts',
+  '.m4s',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.webp',
+];
+
+bool _hasProgressiveMediaSuffix(String path) {
+  for (final ext in _kProgressiveMediaSuffixes) {
+    if (path.endsWith(ext)) return true;
+  }
+  return false;
+}
+
+bool _isTorrentStreamPath(String path) =>
+    path.contains('/torrents/') && path.contains('/stream/');
+
+/// True when [url] is worth a bounded playlist probe for in-stream subs.
+///
+/// Any http(s) play URL that is not a clear progressive file / torrent piece.
+/// The fetch itself decides via `#EXTM3U` — no more URL-shape allowlist gaps.
+bool mayBeHlsPlaylistUrl(String url) {
+  final raw = url.trim();
+  if (raw.isEmpty) return false;
+  final uri = Uri.tryParse(raw);
+  if (uri == null) return false;
   if (_localPlaylist(uri)) return true;
+  final scheme = uri.scheme.toLowerCase();
+  if (scheme != 'http' && scheme != 'https') return false;
   final path = uri.path.toLowerCase();
-  if (path.endsWith('.m3u8') || path.endsWith('.m3u')) return true;
-  if (path.contains('/playlist/')) return true;
-  final query = uri.query.toLowerCase();
-  return query.contains('.m3u8') || query.contains('.m3u');
+  if (_isTorrentStreamPath(path)) return false;
+  if (_hasProgressiveMediaSuffix(path)) return false;
+  return true;
 }
 
 /// Playlist we can read for subtitle renditions. Unwraps `/hls-proxy?url=`.
@@ -149,8 +191,10 @@ String? hlsInStreamFetchTarget(String playUrl) {
   if (uri.path.contains('/hls-proxy')) {
     final inner = uri.queryParameters['url']?.trim() ?? '';
     if (inner.isNotEmpty) return inner;
+    // Proxy URL itself still carries `#FORJA-SUB` when the query is opaque.
+    return raw;
   }
-  if (_isHlsPlaylistUri(uri)) return raw;
+  if (mayBeHlsPlaylistUrl(raw)) return raw;
   return null;
 }
 
@@ -207,7 +251,8 @@ String _cacheKey(String url, Map<String, String>? headers) {
 
 /// Matching subtitle already listed on the HLS master, or null.
 ///
-/// Non-HLS play URLs return null without a fetch so scraped auto-pick can run.
+/// Progressive / non-probeable play URLs return null without a fetch so
+/// scraped auto-pick can run.
 Future<HlsInStreamSubtitle?> preferredHlsInStreamSubtitle({
   required String? playUrl,
   Map<String, String>? headers,
@@ -217,9 +262,7 @@ Future<HlsInStreamSubtitle?> preferredHlsInStreamSubtitle({
   if (raw.isEmpty || preferredLang.isEmpty || preferredLang == 'None') {
     return null;
   }
-  if (hlsInStreamFetchTarget(raw) == null && !isLocalHlsPlayUrl(raw)) {
-    return null;
-  }
+  if (hlsInStreamFetchTarget(raw) == null) return null;
   final subs = await loadHlsInStreamSubtitles(raw, headers: headers);
   return pickPlaylistSubtitleRendition(
     preferredLang: preferredLang,
@@ -248,7 +291,6 @@ Future<List<HlsInStreamSubtitle>> loadHlsInStreamSubtitles(
   if (pending != null) return pending;
 
   final future = _loadHlsInStreamSubtitles(raw, headers).then((list) {
-    if (list.isNotEmpty) _hlsInStreamCache[key] = list;
     _hlsInStreamInflight.remove(key);
     return list;
   });
@@ -264,7 +306,7 @@ class HlsPlaylistText {
   final String body;
 }
 
-final Map<String, HlsPlaylistText> _hlsPlaylistTextCache = {};
+final Map<String, HlsPlaylistText?> _hlsPlaylistTextCache = {};
 final Map<String, Future<HlsPlaylistText?>> _hlsPlaylistTextInflight = {};
 
 /// Playlists to read for [playUrl]: the local proxy copy when the play URL is
@@ -284,6 +326,9 @@ List<Uri> hlsPlaylistReadTargets(String playUrl) {
 
   if (_localPlaylist(play)) {
     addTarget(play.toString());
+    // Upstream master still has TYPE=SUBTITLES when the proxy strip is stale.
+    final inner = play.queryParameters['url']?.trim();
+    if (inner != null && inner.isNotEmpty) addTarget(inner);
   } else {
     addTarget(hlsInStreamFetchTarget(playUrl));
   }
@@ -305,6 +350,9 @@ Map<String, String> hlsPlaylistRequestHeaders(
 
 /// Read the HLS master behind [playUrl] once; later calls reuse the text.
 /// Null when the URL is not a playlist we can read or the fetch failed.
+///
+/// Failed probes are cached for the process so MP4 / dead URLs are not
+/// re-fetched every time the subtitle menu opens.
 Future<HlsPlaylistText?> loadHlsPlaylistText(
   String? playUrl, {
   Map<String, String>? headers,
@@ -312,13 +360,14 @@ Future<HlsPlaylistText?> loadHlsPlaylistText(
   final raw = playUrl?.trim() ?? '';
   if (raw.isEmpty) return null;
   final key = _cacheKey(raw, headers);
-  final cached = _hlsPlaylistTextCache[key];
-  if (cached != null) return cached;
+  if (_hlsPlaylistTextCache.containsKey(key)) {
+    return _hlsPlaylistTextCache[key];
+  }
   final pending = _hlsPlaylistTextInflight[key];
   if (pending != null) return pending;
 
   final future = _fetchHlsPlaylistText(raw, headers).then((text) {
-    if (text != null) _hlsPlaylistTextCache[key] = text;
+    _hlsPlaylistTextCache[key] = text;
     _hlsPlaylistTextInflight.remove(key);
     return text;
   });
@@ -326,19 +375,26 @@ Future<HlsPlaylistText?> loadHlsPlaylistText(
   return future;
 }
 
+/// First 256 KiB is enough for any master; avoids downloading progressive files
+/// when a CDN ignores URL heuristics.
+const _kPlaylistProbeBytes = 256 * 1024;
+
 Future<HlsPlaylistText?> _fetchHlsPlaylistText(
   String playUrl,
   Map<String, String>? headers,
 ) async {
   final targets = hlsPlaylistReadTargets(playUrl);
   if (targets.isEmpty) return null;
-  final reqHeaders = hlsPlaylistRequestHeaders(playUrl, headers);
+  final reqHeaders = {
+    ...hlsPlaylistRequestHeaders(playUrl, headers),
+    'Range': 'bytes=0-${_kPlaylistProbeBytes - 1}',
+  };
   for (final uri in targets) {
     try {
       final res = await http
           .get(uri, headers: reqHeaders)
           .timeout(const Duration(seconds: 4));
-      if (res.statusCode != 200) continue;
+      if (res.statusCode != 200 && res.statusCode != 206) continue;
       final body = res.body;
       if (!body.contains('#EXTM3U') && !body.contains('#FORJA-SUB:')) continue;
       return HlsPlaylistText(uri: uri, body: body);
@@ -362,6 +418,10 @@ Future<List<HlsInStreamSubtitle>> _loadHlsInStreamSubtitles(
     if (!seen.add(sub.uri)) continue;
     out.add(sub);
   }
+
+  // Cache after a real playlist read (including 0 renditions). Probe misses
+  // stay uncached here so a later open can retry with better headers.
+  _hlsInStreamCache[_cacheKey(playUrl, headers)] = out;
 
   debugPrint(
     '[Subtitles] in-stream renditions=${out.length} '

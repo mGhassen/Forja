@@ -684,6 +684,19 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
   /// when 2+ variants are present, otherwise clears it (hiding the gear).
   void _detectHlsQualities(String url, Map<String, String>? headers) {
     _s._currentQualityUrl = url;
+    final resolved = resolvePlaybackHttpHeaders(
+      headers,
+      streamUrl: url,
+      providerId: _s._currentProvider,
+    );
+    final subtitleHeaders = hlsInStreamRequestHeaders(
+      streamHeaders: resolved,
+      playbackHeaders: currentPlaybackHttpHeaders(_s._player),
+    );
+    // Probe any non-progressive play URL for TYPE=SUBTITLES / #FORJA-SUB.
+    if (mayBeHlsPlaylistUrl(url)) {
+      unawaited(loadHlsInStreamSubtitles(url, headers: subtitleHeaders));
+    }
     if (!urlLooksLikeHls(url)) {
       _s._hlsMasterUrl = null;
       _s._hlsMasterHeaders = null;
@@ -696,20 +709,9 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
 
     // New stream - clear any prior quality state immediately so the gear
     // doesn't expose stale variants while the new master loads.
-    final resolved = resolvePlaybackHttpHeaders(
-      headers,
-      streamUrl: url,
-      providerId: _s._currentProvider,
-    );
-    final subtitleHeaders = hlsInStreamRequestHeaders(
-      streamHeaders: resolved,
-      playbackHeaders: currentPlaybackHttpHeaders(_s._player),
-    );
     _s._hlsMasterUrl = url;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
-    // Warm the subtitle menu's in-stream list before the user opens it.
-    unawaited(loadHlsInStreamSubtitles(url, headers: subtitleHeaders));
     fetchHlsQualities(url, headers: resolved).then((qs) {
       if (_s._disposed) return;
       // Only apply if a newer URL didn't take over while we were fetching.
