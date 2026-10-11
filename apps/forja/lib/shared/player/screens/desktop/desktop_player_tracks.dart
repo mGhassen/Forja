@@ -502,7 +502,10 @@ mixin _DesktopPlayerTracks
     final playUrl = _s._hlsMasterUrl ?? _s._currentUrl ?? widget.mediaPath;
     final pick = await preferredHlsInStreamSubtitle(
       playUrl: playUrl,
-      headers: _s._hlsMasterHeaders ?? widget.headers,
+      headers: hlsInStreamRequestHeaders(
+        streamHeaders: _s._hlsMasterHeaders ?? widget.headers,
+        playbackHeaders: currentPlaybackHttpHeaders(_s._player),
+      ),
       preferredLang: preferred,
     );
     if (_subtitleAutoCancelled(gen) || pick == null) return false;
@@ -552,7 +555,10 @@ mixin _DesktopPlayerTracks
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
       loadOnlineSubtitle: (s) => _loadOnlineSubtitle(s, userInitiated: true),
       streamUrl: _s._hlsMasterUrl ?? _s._currentUrl ?? widget.mediaPath,
-      streamHeaders: _s._hlsMasterHeaders ?? widget.headers,
+      streamHeaders: hlsInStreamRequestHeaders(
+        streamHeaders: _s._hlsMasterHeaders ?? widget.headers,
+        playbackHeaders: currentPlaybackHttpHeaders(_s._player),
+      ),
       onSubtitleSettings: _showSubtitleSettings,
       onSubtitleSelected:
           ({required bool off, String? language, String? title}) {
@@ -717,7 +723,7 @@ mixin _DesktopPlayerTracks
   /// when 2+ variants are present, otherwise clears it (hiding the gear).
   void _detectHlsQualities(String url, Map<String, String>? headers) {
     _s._currentQualityUrl = url;
-    if (!url.contains('.m3u8')) {
+    if (!urlLooksLikeHls(url)) {
       _s._hlsMasterUrl = null;
       _s._hlsMasterHeaders = null;
       _s._hlsQualitiesNotifier.value = null;
@@ -731,11 +737,15 @@ mixin _DesktopPlayerTracks
       streamUrl: url,
       providerId: _s._currentProvider,
     );
+    final subtitleHeaders = hlsInStreamRequestHeaders(
+      streamHeaders: resolved,
+      playbackHeaders: currentPlaybackHttpHeaders(_s._player),
+    );
     _s._hlsMasterUrl = url;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
     // Warm the subtitle menu's in-stream list before the user opens it.
-    unawaited(loadHlsInStreamSubtitles(url, headers: resolved));
+    unawaited(loadHlsInStreamSubtitles(url, headers: subtitleHeaders));
     fetchHlsQualities(url, headers: resolved).then((qs) {
       if (_s._disposed) return;
       if (_s._hlsMasterUrl != url) return;

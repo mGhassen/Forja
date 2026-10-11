@@ -61,4 +61,34 @@ video.m3u8
     );
     expect(isLocalHlsPlayUrl('https://cdn.example/master.m3u8'), isFalse);
   });
+
+  test('hlsInStreamRequestHeaders lets playback headers win conflicts', () {
+    expect(
+      hlsInStreamRequestHeaders(
+        streamHeaders: const {'Referer': 'https://catalog.example/'},
+        playbackHeaders: const {
+          'Referer': 'https://cdn.example/',
+          'Cookie': 'a=1',
+        },
+      ),
+      {
+        'Referer': 'https://cdn.example/',
+        'Cookie': 'a=1',
+      },
+    );
+    expect(
+      hlsInStreamRequestHeaders(
+        streamHeaders: const {},
+        playbackHeaders: const {'Referer': 'https://cdn.example/'},
+      ),
+      {'Referer': 'https://cdn.example/'},
+    );
+    expect(
+      hlsInStreamRequestHeaders(
+        streamHeaders: const {'Referer': 'https://catalog.example/'},
+        playbackHeaders: null,
+      ),
+      {'Referer': 'https://catalog.example/'},
+    );
+  });
 }

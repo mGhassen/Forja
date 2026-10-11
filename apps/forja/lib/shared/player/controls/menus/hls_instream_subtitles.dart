@@ -179,6 +179,26 @@ Map<String, String> _requestHeaders(Map<String, String>? headers) {
   return out;
 }
 
+Map<String, String>? _nonEmptyHeaders(Map<String, String>? headers) {
+  if (headers == null || headers.isEmpty) return null;
+  return headers;
+}
+
+/// Headers for reading an HLS master for subtitle renditions.
+///
+/// Playback (mpv) headers win over catalog [streamHeaders] so Referer/Cookie
+/// from the open path are not replaced by weaker widget headers.
+Map<String, String>? hlsInStreamRequestHeaders({
+  Map<String, String>? streamHeaders,
+  Map<String, String>? playbackHeaders,
+}) {
+  final stream = _nonEmptyHeaders(streamHeaders);
+  final play = _nonEmptyHeaders(playbackHeaders);
+  if (play == null) return stream;
+  if (stream == null) return play;
+  return {...stream, ...play};
+}
+
 String _cacheKey(String url, Map<String, String>? headers) {
   if (headers == null || headers.isEmpty) return url;
   final keys = headers.keys.toList()..sort();
@@ -343,11 +363,10 @@ Future<List<HlsInStreamSubtitle>> _loadHlsInStreamSubtitles(
     out.add(sub);
   }
 
-  if (out.isNotEmpty) {
-    debugPrint(
-      '[Subtitles] in-stream renditions=${out.length} '
-      '${out.map((s) => s.language).join(",")}',
-    );
-  }
+  debugPrint(
+    '[Subtitles] in-stream renditions=${out.length} '
+    'from ${text.uri}'
+    '${out.isEmpty ? '' : ' ${out.map((s) => s.language).join(",")}'}',
+  );
   return out;
 }

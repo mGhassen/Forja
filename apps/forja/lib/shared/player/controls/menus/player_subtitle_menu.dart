@@ -325,8 +325,10 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
   Future<void> _loadHls() async {
     final subs = await loadHlsInStreamSubtitles(
       widget.streamUrl,
-      headers:
-          widget.streamHeaders ?? currentPlaybackHttpHeaders(widget.player),
+      headers: hlsInStreamRequestHeaders(
+        streamHeaders: widget.streamHeaders,
+        playbackHeaders: currentPlaybackHttpHeaders(widget.player),
+      ),
     );
     if (!mounted || subs.isEmpty) return;
     setState(() => _hls = subs);
@@ -504,8 +506,10 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
   Future<void> _loadHls() async {
     final subs = await loadHlsInStreamSubtitles(
       widget.streamUrl,
-      headers:
-          widget.streamHeaders ?? currentPlaybackHttpHeaders(widget.player),
+      headers: hlsInStreamRequestHeaders(
+        streamHeaders: widget.streamHeaders,
+        playbackHeaders: currentPlaybackHttpHeaders(widget.player),
+      ),
     );
     if (!mounted) return;
     final key = widget.langKey;

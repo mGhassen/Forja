@@ -130,35 +130,38 @@ class CatalogSearchPage extends StatelessWidget {
       child: content,
     );
 
-    final url = backdropUrl;
-    if (url == null || url.isEmpty) {
-      return ColoredBox(color: bg, child: densified);
-    }
-
+    // Fixed child slots — toggling backdrop layers by count remounts
+    // densified (and the search field) when results clear on retype.
+    final url = backdropUrl ?? '';
     return Stack(
       fit: StackFit.expand,
       children: [
+        ColoredBox(color: bg),
         Positioned.fill(
-          child: SettledNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            alignment: Alignment.centerRight,
-            errorWidget: const SizedBox.shrink(),
-          ),
+          child: url.isEmpty
+              ? const SizedBox.shrink()
+              : SettledNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  errorWidget: const SizedBox.shrink(),
+                ),
         ),
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  theme.bgDark,
-                  theme.bgDark.withValues(alpha: 0.92),
-                  theme.bgDark.withValues(alpha: 0.55),
-                ],
-                stops: const [0.0, 0.42, 1.0],
-              ),
+              gradient: url.isEmpty
+                  ? null
+                  : LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        theme.bgDark,
+                        theme.bgDark.withValues(alpha: 0.92),
+                        theme.bgDark.withValues(alpha: 0.55),
+                      ],
+                      stops: const [0.0, 0.42, 1.0],
+                    ),
             ),
           ),
         ),
