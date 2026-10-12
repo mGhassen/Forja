@@ -527,17 +527,19 @@ async fn native_fetch(
             .to_string());
         }
     };
-    let mut req = match method.to_uppercase().as_str() {
+    let method_up = method.to_uppercase();
+    let mut req = match method_up.as_str() {
         "POST" => client.post(&url),
         "PUT" => client.put(&url),
         "PATCH" => client.patch(&url),
         "DELETE" => client.delete(&url),
+        "HEAD" => client.head(&url),
         _ => client.get(&url),
     };
     for (k, v) in &headers {
         req = req.header(k, v);
     }
-    if !body.is_empty() && method.to_uppercase() != "GET" {
+    if !body.is_empty() && method_up != "GET" && method_up != "HEAD" {
         req = req.body(body);
     }
     let token = utils::engine_cancel::cancellation_token();
@@ -562,9 +564,14 @@ async fn native_fetch(
             hdrs.insert(k.to_string(), Value::String(s.to_string()));
         }
     }
-    let bytes = tokio::select! {
-        t = resp.bytes() => t.unwrap_or_default().to_vec(),
-        _ = token.cancelled() => return Ok(fetch_cancelled_json(&url)),
+    // HEAD must not buffer a redirected video body (HubCloud 10Gbps → googleusercontent).
+    let bytes = if method_up == "HEAD" {
+        vec![]
+    } else {
+        tokio::select! {
+            t = resp.bytes() => t.unwrap_or_default().to_vec(),
+            _ = token.cancelled() => return Ok(fetch_cancelled_json(&url)),
+        }
     };
     Ok(pack_http_envelope(status, final_url, hdrs, bytes))
 }

@@ -649,10 +649,14 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
         streams.addAll(raw);
       }
       publishCache();
-      await onPluginDone(
-        pluginId,
-        omitPlatformBlockedDrmStreams(raw),
-      );
+      final playable = omitPlatformBlockedDrmStreams(raw);
+      // This plugin already finished. Cancel sibling EngineJS jobs so their
+      // dead-host timeouts do not starve the HTTP probe for these rows.
+      // Does not bump extract generation — winner result stays valid.
+      if (playable.isNotEmpty && !race.isCompleted && !playAborted()) {
+        Engine.cancelEngineJsExtracts();
+      }
+      await onPluginDone(pluginId, playable);
     }
 
     String? soloId;

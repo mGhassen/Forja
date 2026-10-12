@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** tasks · **1 / 2** acceptance |
+| **Progress** | **9 / 9** tasks · **1 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,8 @@
 | 5 | I386-T05 | Sources paints emitted rows before plugin `Done` (50ms coalesce) | ✅ |
 | 6 | I386-T06 | Document remaining HTTP plugins as final-array-only | ✅ |
 | 7 | I386-T07 | Start every selected provider together; Rust jobs stay parallel; Dart only joins a duplicate plugin | ✅ |
+| 8 | I386-T08 | Sources: paint plugin `Done` rows with immediate `setState` (no coalesce delay behind saturated isolate) | ✅ |
+| 9 | I386-T09 | Green Play: after a plugin returns playable rows, cancel sibling EngineJS extracts before probe | ✅ |
 
 ---
 
@@ -35,6 +37,7 @@
 |--:|----|-------------|--------|
 | 1 | I386-A01 | `cargo test -p engine emit_rows_before_done` passes | ✅ |
 | 2 | I386-A02 | Manual macOS: opening Sources → Forja does not freeze the window | ⬜ |
+| 3 | I386-A03 | Manual: early Forja winners appear in Sources / Play probe starts before dead providers time out | ⬜ |
 
 ---
 

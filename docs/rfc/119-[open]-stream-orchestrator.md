@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **8 / 9** acceptance |
-| **Current slice** | Shipped in code — manual freeze check still open |
+| **Progress** | **10 / 10** components · **8 / 11** acceptance |
+| **Current slice** | Shipped in code — manual freeze / early-winner checks still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,6 +27,8 @@
 | 6 | R119-C06 | Other HTTP plugins stay final-array-only (documented; not a silent playlist fetch) | ✅ |
 | 7 | R119-C07 | Sources appends emitted rows, coalesced ~50ms, cap 30 rows per plugin | ✅ |
 | 8 | R119-C08 | No small worker gate — every selected provider is submitted; each job still `AsyncRuntime::new()` | ✅ |
+| 9 | R119-C09 | Sources paints final-array `Done` with immediate `setState` | ✅ |
+| 10 | R119-C10 | Green Play cancels sibling EngineJS extracts once a plugin returns playable rows (before probe) | ✅ |
 
 ---
 
@@ -43,6 +45,8 @@
 | 7 | R119-A07 | Manual macOS: Forja All does not freeze the shell while chips fill | ⬜ |
 | 8 | R119-A08 | Runtime reuse across extracts is not implemented | ✅ |
 | 9 | R119-A09 | Selected providers start together on desktop and TV | ✅ |
+| 10 | R119-A10 | Manual: early winner rows paint in Sources before dead providers time out | ⬜ |
+| 11 | R119-A11 | Manual: green Play probes the first plugin with rows without waiting on sibling timeouts | ⬜ |
 
 ---
 

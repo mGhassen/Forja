@@ -3244,14 +3244,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
     _enginePendingRows.add(row);
-    _engineRowFlush ??= Timer(const Duration(milliseconds: 50), () {
+    // Paint as soon as the isolate can — do not wait on a Timer while dozens
+    // of sibling extracts keep the UI isolate busy until their timeouts.
+    if (_engineRowFlush?.isActive ?? false) return;
+    _engineRowFlush = Timer(Duration.zero, () {
       _engineRowFlush = null;
-      if (!mounted) {
+      if (!mounted || gen != _engineFetchGen) {
         _enginePendingRows.clear();
         return;
       }
       final batch = List<Map<String, dynamic>>.of(_enginePendingRows);
       _enginePendingRows.clear();
+      if (batch.isEmpty) return;
       setState(() {
         for (final row in batch) {
           final rowUrl = row['url']?.toString() ?? '';
@@ -3312,15 +3316,19 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       setState(() => _engineInFlightPluginIds.remove(pluginId));
       return;
     }
-    _scheduleCoalescedPaint(() {
+    // Immediate paint — coalesced timer can sit behind a saturated isolate
+    // until dead siblings time out, so early winners never appear first.
+    setState(() {
       _engineFetchedPluginIds.add(pluginId);
       _engineInFlightPluginIds.remove(pluginId);
-      _engineStreams.removeWhere(
-        (s) => engineStreamBelongsToPlugin(s, pluginId),
-      );
-      if (batch != null && batch.streams.isNotEmpty) {
-        _engineStreams.addAll(batch.streams);
+      final next = batch?.streams ?? const <Map<String, dynamic>>[];
+      if (next.isNotEmpty) {
+        _engineStreams.removeWhere(
+          (s) => engineStreamBelongsToPlugin(s, pluginId),
+        );
+        _engineStreams.addAll(next);
       }
+      // Empty Done keeps any rows already painted via ctx.emit.
     });
     CatalogSourcesSessionCache.writeEngine(
       _catalogCacheKey,
