@@ -377,6 +377,10 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   String? _currentUrl;
   String? _activeMagnet;
 
+  /// Local completed download — skip online subtitle scrape / Simkl / TMDB next-ep.
+  bool get _playingOfflineDownload =>
+      isOfflineDownloadPlayUrl(_currentUrl ?? widget.mediaPath);
+
   StreamSubscription<TorrentStats>? _torrentStatsSub;
   TorrentStats? _torrentStats;
   final TorrentSeekPrefetchScheduler _torrentSeekPrefetch =

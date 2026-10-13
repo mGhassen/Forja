@@ -287,8 +287,8 @@ mixin _MobilePlayerLifecycle
                   .catchError((_) {});
             });
       }
-      // Trakt scrobble start
-      if (widget.movie != null) {
+      // Simkl scrobble start (skip when playing a local download offline).
+      if (widget.movie != null && !_s._playingOfflineDownload) {
         SimklService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -584,7 +584,7 @@ mixin _MobilePlayerLifecycle
   }
 
   Future<void> _fetchIntroDbTimestamps() async {
-    if (widget.movie == null) return;
+    if (widget.movie == null || _s._playingOfflineDownload) return;
     final data = await IntroDbService().getTimestamps(
       tmdbId: widget.movie!.id,
       season: widget.selectedSeason,
@@ -678,7 +678,9 @@ mixin _MobilePlayerLifecycle
       _s._armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
       unawaited(_s._recoverPlaybackAfterForeground());
-      if (widget.movie != null && _s._isPlayingNotifier.value) {
+      if (widget.movie != null &&
+          _s._isPlayingNotifier.value &&
+          !_s._playingOfflineDownload) {
         SimklService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -866,7 +868,7 @@ mixin _MobilePlayerLifecycle
         );
       }
 
-      if (!isBgPause) {
+      if (!isBgPause && !_s._playingOfflineDownload) {
         SimklService().scrobbleStop(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,

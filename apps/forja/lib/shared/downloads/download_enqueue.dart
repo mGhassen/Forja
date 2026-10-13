@@ -16,7 +16,7 @@ import 'package:rust/rust.dart';
 
 /// Row label for a saved file. Prefer the Sources name (`Castle · Shared`).
 /// A provider chip (`engine:castle`) is the fallback when the player has no
-/// row label — Sources then binds every row of that provider to this file.
+/// row label. Sources binds chrome by task id / play URL, not this label.
 String downloadSourceLabel({String? catalogName, String? providerId}) {
   final label = catalogName?.trim() ?? '';
   if (label.isNotEmpty && !downloadLabelIsPluginChip(label)) return label;

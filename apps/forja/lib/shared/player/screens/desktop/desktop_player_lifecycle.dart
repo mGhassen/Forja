@@ -223,7 +223,9 @@ mixin _DesktopPlayerLifecycle
       _s._onProbeScoringChanged();
       _s._startHideTimer();
       _s._fetchSubtitles();
-      if (widget.movie != null && widget.episodes == null) {
+      if (widget.movie != null &&
+          widget.episodes == null &&
+          !_s._playingOfflineDownload) {
         SimklService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -522,7 +524,7 @@ mixin _DesktopPlayerLifecycle
   }
 
   Future<void> _fetchIntroDbTimestamps() async {
-    if (widget.movie == null) return;
+    if (widget.movie == null || _s._playingOfflineDownload) return;
     final data = await IntroDbService().getTimestamps(
       tmdbId: widget.movie!.id,
       season: widget.selectedSeason,
@@ -561,7 +563,9 @@ mixin _DesktopPlayerLifecycle
       _s._historySaved = false;
       _resumeAfterAppBackground();
       unawaited(_s._recoverPlaybackAfterForeground());
-      if (widget.movie != null && _s._isPlayingNotifier.value) {
+      if (widget.movie != null &&
+          _s._isPlayingNotifier.value &&
+          !_s._playingOfflineDownload) {
         SimklService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -742,13 +746,15 @@ mixin _DesktopPlayerLifecycle
       // Heartbeat / pause / lifecycle keep writing; only exit latches.
       if (!isBgPause) {
         _s._historySaved = true;
-        SimklService().scrobbleStop(
-          tmdbId: widget.movie!.id,
-          mediaType: widget.movie!.mediaType,
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-          progress: SimklService.progressPercent(pos, dur),
-        );
+        if (!_s._playingOfflineDownload) {
+          SimklService().scrobbleStop(
+            tmdbId: widget.movie!.id,
+            mediaType: widget.movie!.mediaType,
+            season: widget.selectedSeason,
+            episode: widget.selectedEpisode,
+            progress: SimklService.progressPercent(pos, dur),
+          );
+        }
       }
     }
   }

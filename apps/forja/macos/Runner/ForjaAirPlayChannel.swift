@@ -14,6 +14,7 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private var pickTimeout: DispatchWorkItem?
   private var external = false
   private var relay: ForjaAirPlaySubtitleRelay?
+  private var fileRelay: ForjaAirPlayLocalFileRelay?
   /// Bumped on teardown so late callbacks from an old cast are dropped.
   private var generation = 0
 
@@ -38,7 +39,7 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     let args = call.arguments as? [String: Any] ?? [:]
     switch call.method {
     case "start":
-      guard let urlString = args["url"] as? String, let url = URL(string: urlString) else {
+      guard let urlString = args["url"] as? String, let url = Self.parseURL(urlString) else {
         result(FlutterError(code: "bad_args", message: "Missing url", details: nil))
         return
       }
@@ -99,35 +100,86 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
     let openedAt = Date()
     let session = generation
-    let kind = subtitle?["kind"] as? String
-    let open: (URL, SubtitleChoice) -> Void = { [weak self] itemURL, choice in
+    let open: (URL, [String: String], SubtitleChoice) -> Void = { [weak self] itemURL, itemHeaders, choice in
       guard let self, self.generation == session else { return }
       let elapsedMs = Int64(Date().timeIntervalSince(openedAt) * 1000)
       self.openItem(
         itemURL,
-        headers: headers,
+        headers: itemHeaders,
         positionMs: positionMs > 0 ? positionMs + elapsedMs : 0,
         subtitle: choice
       )
     }
 
+    let openStream: (URL, [String: String]) -> Void = { [weak self] playURL, playHeaders in
+      guard let self, self.generation == session else { return }
+      self.openStream(
+        url: playURL,
+        headers: playHeaders,
+        durationMs: durationMs,
+        startTimeMs: startTimeMs,
+        subtitle: subtitle,
+        open: open
+      )
+    }
+
+    // Offline saves are file:// — Apple TV cannot read them. Serve over LAN.
+    guard url.isFileURL else {
+      openStream(url, headers)
+      return
+    }
+    ForjaAirPlayLocalFileRelay.start(fileURL: url) { [weak self] result in
+      guard let self, self.generation == session else {
+        if case .success(let (relay, _)) = result { relay.stop() }
+        return
+      }
+      switch result {
+      case .success(let (relay, lanURL)):
+        self.fileRelay = relay
+        openStream(lanURL, [:])
+      case .failure(let error):
+        let message: String
+        switch error {
+        case .missingFile:
+          message = "Offline file missing"
+        case .noNetwork:
+          message = "AirPlay needs Wi-Fi to cast offline files"
+        }
+        self.emit(["event": "error", "message": message, "positionMs": 0])
+        self.teardown()
+      }
+    }
+  }
+
+  /// Opens [url] with the caller's subtitle choice (HLS subtitle relay when needed).
+  private func openStream(
+    url: URL,
+    headers: [String: String],
+    durationMs: Int64,
+    startTimeMs: Int64,
+    subtitle: [String: Any]?,
+    open: @escaping (URL, [String: String], SubtitleChoice) -> Void
+  ) {
+    let kind = subtitle?["kind"] as? String
     guard kind == "external", let vtt = subtitle?["vtt"] as? String else {
       switch kind {
-      case "off": open(url, .off)
+      case "off": open(url, headers, .off)
       case "embedded":
         open(
           url,
+          headers,
           .match(
             name: subtitle?["name"] as? String,
             language: subtitle?["language"] as? String,
             index: (subtitle?["index"] as? NSNumber)?.intValue
           ))
-      default: open(url, .keep)
+      default: open(url, headers, .keep)
       }
       return
     }
     let name = (subtitle?["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Subtitles"
     let language = subtitle?["language"] as? String
+    let session = generation
     ForjaAirPlaySubtitleRelay.start(
       source: url,
       headers: headers,
@@ -142,12 +194,20 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       switch result {
       case .success(let (relay, master)):
         self.relay = relay
-        open(master, .match(name: name, language: language, index: nil))
+        open(master, [:], .match(name: name, language: language, index: nil))
       case .failure:
         self.emit(["event": "subtitles", "status": "unavailable"])
-        open(url, .keep)
+        open(url, headers, .keep)
       }
     }
+  }
+
+  private static func parseURL(_ raw: String) -> URL? {
+    if let url = URL(string: raw), url.scheme != nil { return url }
+    if raw.hasPrefix("/") || raw.hasPrefix("file:") {
+      return URL(fileURLWithPath: raw.hasPrefix("file:") ? URL(string: raw)?.path ?? raw : raw)
+    }
+    return nil
   }
 
   private enum SubtitleChoice {
@@ -335,6 +395,8 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     external = false
     relay?.stop()
     relay = nil
+    fileRelay?.stop()
+    fileRelay = nil
     generation += 1
   }
 

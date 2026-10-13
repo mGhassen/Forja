@@ -15,6 +15,7 @@ In the player, tap **Cast** in the top-right. On macOS and iOS this opens the Ai
 ## What you can do
 
 - Send the current video to an AirPlay receiver; Forja pauses while the TV plays
+- Cast a finished offline download over Wi-Fi the same way (phone and TV on the same network)
 - Keep the subtitle you picked in Forja on the TV (stream tracks always; online and addon subtitles on HLS streams)
 - Pick your own device again to come back — Forja resumes where the TV stopped
 

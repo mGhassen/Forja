@@ -340,8 +340,8 @@ class DownloadService {
 
   /// Match a Sources-panel stream row to a download task.
   ///
-  /// URL first, then the row label, then a provider chip (`engine:castle`)
-  /// saved from the player when the row has no human label stored.
+  /// Task id or exact play URL only. Provider labels alone must not bind —
+  /// multi-quality rows often share one name and would all paint as downloading.
   DownloadTask? findTaskForStream({
     required String mediaId,
     int? season,
@@ -352,8 +352,6 @@ class DownloadService {
     Iterable<String> names = const [],
     Iterable<String> pluginKeys = const [],
   }) {
-    DownloadTask? byName;
-    DownloadTask? byPlugin;
     for (final t in tasksNotifier.value) {
       if (!(t.isActive || t.isCompleted)) continue;
       final hit = downloadTaskMatchRank(
@@ -371,10 +369,8 @@ class DownloadService {
           hit == DownloadTaskMatchRank.url) {
         return t;
       }
-      if (hit == DownloadTaskMatchRank.name) byName ??= t;
-      if (hit == DownloadTaskMatchRank.plugin) byPlugin ??= t;
     }
-    return byName ?? byPlugin;
+    return null;
   }
 
   /// Starts an HTTP or HLS download. [url] and [headers] are required.

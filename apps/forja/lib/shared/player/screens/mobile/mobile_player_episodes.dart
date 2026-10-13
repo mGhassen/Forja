@@ -601,6 +601,8 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         widget.selectedEpisode == null) {
       return null;
     }
+    // Offline download: no TMDB season lookup.
+    if (_s._playingOfflineDownload) return null;
     try {
       final next = await nextAiredTmdbEpisode(
         tvId: widget.movie!.id,
@@ -643,6 +645,12 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         widget.selectedSeason == null ||
         widget.selectedEpisode == null) {
       return null;
+    }
+    // Offline: same-season prev only — cross-season needs TMDB.
+    if (_s._playingOfflineDownload) {
+      final ep = widget.selectedEpisode!;
+      if (ep <= 1) return null;
+      return (season: widget.selectedSeason!, episode: ep - 1);
     }
     try {
       final tmdb = TmdbService();

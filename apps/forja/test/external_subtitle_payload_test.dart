@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
+import 'package:forja/shared/player/screens/utils.dart';
 import 'package:media_kit/media_kit.dart';
 
 void main() {
@@ -177,6 +178,37 @@ void main() {
     test('leaves clean files untouched', () {
       final bytes = utf8.encode('1\n00:00:01,000 --> 00:00:04,000\nHi\n');
       expect(identical(stripSubtitlePromoCues(bytes), bytes), isTrue);
+    });
+  });
+
+  group('formatPlayerSubtitleOverlayText', () {
+    test('dedupes identical primary and secondary slots', () {
+      expect(
+        formatPlayerSubtitleOverlayText(const [
+          'What are you talking about?',
+          'What are you talking about?',
+        ]),
+        'What are you talking about?',
+      );
+    });
+
+    test('keeps real two-line cues', () {
+      expect(
+        formatPlayerSubtitleOverlayText(const ['Hello\nWorld', '']),
+        'Hello\nWorld',
+      );
+    });
+  });
+
+  group('subtitleTrackNeedsNativeRender', () {
+    test('ASS codec and Off', () {
+      expect(
+        subtitleTrackNeedsNativeRender(
+          const SubtitleTrack('1', 'English', 'en', codec: 'ass'),
+        ),
+        isTrue,
+      );
+      expect(subtitleTrackNeedsNativeRender(SubtitleTrack.no()), isFalse);
     });
   });
 }

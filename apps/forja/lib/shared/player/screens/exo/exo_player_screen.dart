@@ -252,6 +252,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   String? _currentProvider;
   String? _currentUrl;
   String? _currentPlayingCatalogUrl;
+
+  /// Local completed download — skip online subtitle scrape / Simkl / TMDB next-ep.
+  bool get _playingOfflineDownload =>
+      isOfflineDownloadPlayUrl(_currentUrl ?? widget.mediaPath);
   String? _catalogStreamRowKey;
   String? _activeMagnet;
   String? _catalogSourceKind;
@@ -806,7 +810,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _scrobbleStart() {
     final movie = widget.movie;
-    if (movie == null) return;
+    if (movie == null || _playingOfflineDownload) return;
     SimklService().scrobbleStart(
       tmdbId: movie.id,
       mediaType: movie.mediaType,
@@ -822,7 +826,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _scrobblePause() {
     final movie = widget.movie;
-    if (movie == null) return;
+    if (movie == null || _playingOfflineDownload) return;
     SimklService().scrobblePause(
       tmdbId: movie.id,
       mediaType: movie.mediaType,
@@ -837,7 +841,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _scrobbleStop() {
     final movie = widget.movie;
-    if (movie == null) return;
+    if (movie == null || _playingOfflineDownload) return;
     SimklService().scrobbleStop(
       tmdbId: movie.id,
       mediaType: movie.mediaType,
@@ -2048,6 +2052,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   Future<({int season, int episode})?> _computeNextTmdbEpisode() async {
+    if (_playingOfflineDownload) return null;
     try {
       return await nextAiredTmdbEpisode(
         tvId: widget.movie!.id,

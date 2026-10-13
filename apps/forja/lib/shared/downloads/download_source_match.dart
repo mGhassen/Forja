@@ -35,9 +35,12 @@ SourceDownloadChrome chromeForDownloadTask(DownloadTask? task) {
   return SourceDownloadChrome.none;
 }
 
-/// True when this row is the one that was saved — task id or source label.
+/// True when this row is the one that was saved — task id, or this play URL
+/// with a matching source label.
 ///
-/// A shared play URL is not ownership. Those rows use [SourceDownloadChrome.sameFile].
+/// Name / plugin alone is not ownership (multi-quality providers share one
+/// label). A shared play URL without a label match uses
+/// [SourceDownloadChrome.sameFile].
 bool streamRowOwnsDownloadTask({
   required DownloadTask task,
   required String mediaId,
@@ -46,7 +49,23 @@ bool streamRowOwnsDownloadTask({
   required Map<String, dynamic> stream,
 }) {
   final names = streamDownloadNames(stream);
+  final plugins = streamDownloadPluginKeys(stream);
   final rank = downloadTaskMatchRank(
+    task: task,
+    mediaId: mediaId,
+    season: season,
+    episode: episode,
+    streamUrl: streamHttpUrlForDownload(stream),
+    taskId: stream['_downloadTaskId']?.toString(),
+    sourceName: names.isEmpty ? null : names.first,
+    names: names,
+    pluginKeys: plugins,
+  );
+  if (rank == DownloadTaskMatchRank.task) return true;
+  if (rank != DownloadTaskMatchRank.url) return false;
+  // Exact file — own only when the row label matches so another provider on
+  // the same CDN stays [SourceDownloadChrome.sameFile].
+  final labelRank = downloadTaskMatchRank(
     task: task,
     mediaId: mediaId,
     season: season,
@@ -54,9 +73,11 @@ bool streamRowOwnsDownloadTask({
     taskId: stream['_downloadTaskId']?.toString(),
     sourceName: names.isEmpty ? null : names.first,
     names: names,
+    pluginKeys: plugins,
   );
-  return rank == DownloadTaskMatchRank.task ||
-      rank == DownloadTaskMatchRank.name;
+  return labelRank == DownloadTaskMatchRank.name ||
+      labelRank == DownloadTaskMatchRank.plugin ||
+      labelRank == DownloadTaskMatchRank.task;
 }
 
 /// True when [stream] lists the same HTTP file as [task], and is not that row.
@@ -262,6 +283,9 @@ Map<String, dynamic>? offlinePinnedStream(DownloadTask task) {
 }
 
 /// True when [stream] is a provider row that already represents [task].
+///
+/// Only task id or the exact play URL — a shared provider label must not
+/// hide the pinned offline row for sibling qualities.
 bool providerStreamCoversDownloadTask(
   Map<String, dynamic> stream,
   DownloadTask task,
@@ -269,17 +293,19 @@ bool providerStreamCoversDownloadTask(
   if (stream[kOfflinePinnedStreamKey] == true) return false;
   if (task.mediaId.isEmpty) return false;
   final names = streamDownloadNames(stream);
-  return downloadTaskMatchRank(
-        task: task,
-        mediaId: task.mediaId,
-        season: task.season,
-        episode: task.episode,
-        streamUrl: streamHttpUrlForDownload(stream),
-        sourceName: names.isEmpty ? null : names.first,
-        names: names,
-        pluginKeys: streamDownloadPluginKeys(stream),
-      ) !=
-      DownloadTaskMatchRank.none;
+  final rank = downloadTaskMatchRank(
+    task: task,
+    mediaId: task.mediaId,
+    season: task.season,
+    episode: task.episode,
+    streamUrl: streamHttpUrlForDownload(stream),
+    taskId: stream['_downloadTaskId']?.toString(),
+    sourceName: names.isEmpty ? null : names.first,
+    names: names,
+    pluginKeys: streamDownloadPluginKeys(stream),
+  );
+  return rank == DownloadTaskMatchRank.task ||
+      rank == DownloadTaskMatchRank.url;
 }
 
 /// Label for a saved file on the Downloaded tab.

@@ -212,31 +212,18 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     );
   }
 
-  /// ASS/PGS → mpv; SRT/VTT → Flutter overlay (same split as home movies).
+  /// ASS/PGS → libass on-frame; SRT/VTT → Flutter overlay only.
   void _updateSubVisibility(SubtitleTrack track) {
     if (_s._exoBackend || _s._disposed || !mounted) return;
     final player = _s._player;
     if (player == null) return;
-    final codec = track.codec?.toLowerCase() ?? '';
-    final isNativeCodec =
-        codec.contains('ass') ||
-        codec.contains('ssa') ||
-        codec.contains('pgs') ||
-        codec.contains('dvd') ||
-        codec.contains('dvb') ||
-        codec.contains('vobsub');
-    final title = (track.title ?? track.id).toLowerCase();
-    final looksAss = title.endsWith('.ass') || title.endsWith('.ssa');
-    final shouldUseNative = track.id != 'no' && (isNativeCodec || looksAss);
+    final shouldUseNative = subtitleTrackNeedsNativeRender(track);
     if (shouldUseNative != _s._isNativeSubtitle) {
       setState(() => _s._isNativeSubtitle = shouldUseNative);
     }
-    if (player.platform is NativePlayer) {
-      (player.platform as NativePlayer).setProperty(
-        'sub-visibility',
-        shouldUseNative ? 'yes' : 'no',
-      );
-    }
+    unawaited(
+      applyPlayerSubtitleRenderMode(player, native: shouldUseNative),
+    );
   }
 
   Future<void> _showAudioMenu(BuildContext anchorContext) async {
@@ -1316,10 +1303,9 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                       stream: _s._player!.stream.subtitle,
                       initialData: _s._player!.state.subtitle,
                       builder: (context, snap) {
-                        final lines = snap.data ?? [];
-                        final text = lines
-                            .where((l) => l.trim().isNotEmpty)
-                            .join('\n');
+                        final text = formatPlayerSubtitleOverlayText(
+                          snap.data ?? const [],
+                        );
                         if (text.isEmpty) return const SizedBox.shrink();
                         return _buildIptvCuePositioned(text);
                       },
@@ -1328,9 +1314,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                     ValueListenableBuilder<List<String>>(
                       valueListenable: _s._exoCueTexts,
                       builder: (context, lines, _) {
-                        final text = lines
-                            .where((l) => l.trim().isNotEmpty)
-                            .join('\n');
+                        final text = formatPlayerSubtitleOverlayText(lines);
                         if (text.isEmpty) return const SizedBox.shrink();
                         return _buildIptvCuePositioned(text);
                       },

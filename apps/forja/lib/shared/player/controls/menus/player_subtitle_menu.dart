@@ -98,19 +98,16 @@ class PlayerSubtitleMenu {
       title: name,
       language: 'und',
     );
-    unawaited(setPlayerExternalSubtitle(player, subTrack));
-    updateSubVisibility(subTrack);
-    final isAssFile =
-        name.toLowerCase().endsWith('.ass') ||
-        name.toLowerCase().endsWith('.ssa');
+    unawaited(() async {
+      try {
+        await setPlayerExternalSubtitle(player, subTrack);
+        updateSubVisibility(subTrack);
+        onNativeSubtitleChanged(subtitleTrackNeedsNativeRender(subTrack));
+      } catch (e) {
+        debugPrint('[PlayerSubtitleMenu] local file sub failed: $e');
+      }
+    }());
     onExternalUrlChanged(null);
-    onNativeSubtitleChanged(isAssFile);
-    if (player.platform is NativePlayer) {
-      (player.platform as NativePlayer).setProperty(
-        'sub-visibility',
-        isAssFile ? 'yes' : 'no',
-      );
-    }
   }
 
   static Future<void> _openRoot(
@@ -145,8 +142,8 @@ class PlayerSubtitleMenu {
 
     if (!context.mounted) return;
 
-    final hideLoadFile =
-        ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
 
     await PlayerPopupPanel.show(
       context: context,
@@ -157,12 +154,13 @@ class PlayerSubtitleMenu {
       anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
-      autofocusClose: hideLoadFile,
+      autofocusClose: tvFocus,
       trailing: _SubtitleHeaderTrailing(
-        tv: hideLoadFile,
+        tv: tvFocus,
         subtitlesOff: subtitlesOff,
         onOff: turnOffSubtitles,
-        showFile: !hideLoadFile,
+        // Leanback remotes have no usable file browser; desktop and phone do.
+        showFile: !policy.leanbackOnly,
         onFile: () => _pickLocalFile(
           player: player,
           updateSubVisibility: updateSubVisibility,
@@ -665,12 +663,30 @@ class _SubtitleHeaderTrailing extends StatefulWidget {
 }
 
 class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
+  final FocusNode _fileFocus = FocusNode(debugLabel: 'subtitle-file');
+  final FocusNode _searchFocus = FocusNode(debugLabel: 'subtitle-search');
   final FocusNode _tuneFocus = FocusNode(debugLabel: 'subtitle-tune');
 
   @override
   void dispose() {
+    _fileFocus.dispose();
+    _searchFocus.dispose();
     _tuneFocus.dispose();
     super.dispose();
+  }
+
+  /// D-pad right from a header chip: next chip in [order], then Close X.
+  VoidCallback? _rightTo(List<FocusNode> order) {
+    if (!widget.tv) return null;
+    return () {
+      for (final node in order) {
+        if (node.canRequestFocus && node.context != null) {
+          node.requestFocus();
+          return;
+        }
+      }
+      PlayerPopupCloseFocus.request(context);
+    };
   }
 
   @override
@@ -683,15 +699,7 @@ class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
           selected: widget.subtitlesOff,
           autoFocus: !widget.tv && widget.subtitlesOff,
           onTap: widget.onOff,
-          onRightEdge: widget.tv
-              ? () {
-                  if (_tuneFocus.canRequestFocus) {
-                    _tuneFocus.requestFocus();
-                  } else {
-                    PlayerPopupCloseFocus.request(context);
-                  }
-                }
-              : null,
+          onRightEdge: _rightTo([_fileFocus, _searchFocus, _tuneFocus]),
         ),
         if (widget.showFile) ...[
           const SizedBox(width: 6),
@@ -699,7 +707,9 @@ class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
             label: 'File',
             icon: Icons.upload_file_rounded,
             selected: false,
+            focusNode: _fileFocus,
             onTap: widget.onFile,
+            onRightEdge: _rightTo([_searchFocus, _tuneFocus]),
           ),
         ],
         if (widget.onTitleSearch != null) ...[
@@ -708,6 +718,8 @@ class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
             label: 'Search',
             icon: Icons.search_rounded,
             selected: false,
+            focusNode: _searchFocus,
+            onRightEdge: _rightTo([_tuneFocus]),
             onTap: () {
               PlayerPopupPanel.dismiss();
               widget.onTitleSearch!();

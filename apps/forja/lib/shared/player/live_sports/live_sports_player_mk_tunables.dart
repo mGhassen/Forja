@@ -456,6 +456,7 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
 
       await p.setProperty('sub-auto', 'all');
       await p.setProperty('sub-visibility', 'no');
+      await p.setProperty('secondary-sid', 'no');
 
       // Sports: keep-open=yes (v1.5.36). IPTV Forja: always so brief EOF survives.
       await p.setProperty('keep-open', sportsMk ? 'yes' : 'always');

@@ -65,10 +65,9 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                     stream: _s._player.stream.subtitle,
                     initialData: _s._player.state.subtitle,
                     builder: (context, snap) {
-                      final lines = snap.data ?? [];
-                      final text = lines
-                          .where((l) => l.trim().isNotEmpty)
-                          .join('\n');
+                      final text = formatPlayerSubtitleOverlayText(
+                        snap.data ?? const [],
+                      );
                       if (text.isEmpty) return const SizedBox.shrink();
                       // Reference height = 720p. PiP windows are ~108px tall
                       // so scale clamps to a readable minimum.

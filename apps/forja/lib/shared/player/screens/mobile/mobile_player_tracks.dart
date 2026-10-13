@@ -205,6 +205,12 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       }
     }
 
+    // Offline download: keep saved / provider rows; do not hit Wyzie/Levrx/addons.
+    if (_s._playingOfflineDownload) {
+      await _maybeAutoPickExternalSubtitle();
+      return;
+    }
+
     final movie = widget.movie;
     final title = movie?.title.trim() ?? '';
     final tmdbId = (movie != null && movie.id > 0) ? movie.id : 0;

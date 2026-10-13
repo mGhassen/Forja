@@ -326,6 +326,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
 
       await p.setProperty('sub-auto', 'all');
       await p.setProperty('sub-visibility', 'no');
+      await p.setProperty('secondary-sid', 'no');
 
       // keep-open=always so brief EOF does not tear down the player.
       await p.setProperty('keep-open', 'always');

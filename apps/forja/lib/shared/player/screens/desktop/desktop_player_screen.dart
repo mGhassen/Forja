@@ -337,6 +337,10 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   String? _currentUrl;
   String? _activeMagnet;
 
+  /// Local completed download — skip online subtitle scrape / Simkl / TMDB next-ep.
+  bool get _playingOfflineDownload =>
+      isOfflineDownloadPlayUrl(_currentUrl ?? widget.mediaPath);
+
   /// Catalog Sources kind for the playing session: `torrents` | `stremio` | `nuvio`.
   String? _catalogSourceKind;
 

@@ -150,9 +150,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             stream: _s._player.stream.subtitle,
             initialData: _s._player.state.subtitle,
             builder: (context, snap) {
-              final lines = snap.data ?? [];
               final text =
-                  lines.where((l) => l.trim().isNotEmpty).join('\n');
+                  formatPlayerSubtitleOverlayText(snap.data ?? const []);
               if (text.isEmpty) return const SizedBox.shrink();
               const refHeight = 720.0;
               final winH = MediaQuery.of(context).size.height;

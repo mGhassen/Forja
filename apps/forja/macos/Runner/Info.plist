@@ -29,7 +29,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Forja sends subtitles to your AirPlay TV over your local network.</string>
+	<string>Forja sends offline videos and subtitles to your AirPlay TV over your local network.</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>

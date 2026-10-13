@@ -34,7 +34,7 @@
 			<true/>
 		</dict>
 		<key>NSLocalNetworkUsageDescription</key>
-		<string>Forja sends subtitles to your AirPlay TV over your local network.</string>
+		<string>Forja sends offline videos and subtitles to your AirPlay TV over your local network.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

@@ -162,7 +162,7 @@ void main() {
     expect(wrongEpisode, isEmpty);
   });
 
-  test('player chip binds the provider row even when the URL changed', () {
+  test('rotated CDN URL does not cover — pinned offline row stays', () {
     final saved = DownloadTask(
       id: 'dl-castle',
       title: 'Title',
@@ -181,17 +181,16 @@ void main() {
       '_enginePluginId': 'castle',
       '_addonBaseUrl': 'engine:castle',
     };
-    expect(providerStreamCoversDownloadTask(live, saved), isTrue);
-    expect(
-      offlineStreamsAheadOfProviderSearch(
-        tasks: [saved],
-        mediaId: 'tt1',
-        season: null,
-        episode: null,
-        visibleProviderStreams: [live],
-      ),
-      isEmpty,
+    expect(providerStreamCoversDownloadTask(live, saved), isFalse);
+    final ahead = offlineStreamsAheadOfProviderSearch(
+      tasks: [saved],
+      mediaId: 'tt1',
+      season: null,
+      episode: null,
+      visibleProviderStreams: [live],
     );
+    expect(ahead, hasLength(1));
+    expect(ahead.single['_downloadTaskId'], 'dl-castle');
   });
 
   test('a named download does not claim sibling rows', () {
@@ -223,7 +222,89 @@ void main() {
         '_addonName': 'Castle · Shared',
         '_enginePluginId': 'castle',
       }, saved),
+      isFalse,
+    );
+    expect(
+      providerStreamCoversDownloadTask({
+        'url': 'https://cdn.example/old.mkv',
+        'name': 'Castle · Shared',
+        '_addonName': 'Castle · Shared',
+        '_enginePluginId': 'castle',
+      }, saved),
       isTrue,
+    );
+  });
+
+  test('same provider name does not stripe sibling qualities', () {
+    final task = DownloadTask(
+      id: 'dl-dahmer',
+      title: 'MobLand',
+      mediaId: 'tt1',
+      type: 'tv',
+      season: 1,
+      episode: 1,
+      sourceName: 'DahmerMovies',
+      rawUrl: 'https://cdn.example/1080p.mkv',
+      targetFilePath: '/tmp/mobland_1080.mkv',
+      status: DownloadStatus.downloading,
+      createdAt: DateTime.utc(2026, 10, 13),
+    );
+    final saved = {
+      'url': 'https://cdn.example/1080p.mkv',
+      'name': 'DahmerMovies',
+      '_addonName': 'DahmerMovies',
+      'quality': '1080p',
+    };
+    final sibling4k = {
+      'url': 'https://cdn.example/4k.mkv',
+      'name': 'DahmerMovies',
+      '_addonName': 'DahmerMovies',
+      'quality': '4K',
+    };
+    final sibling1080 = {
+      'url': 'https://cdn.example/1080p-hevc.mkv',
+      'name': 'DahmerMovies',
+      '_addonName': 'DahmerMovies',
+      'quality': '1080p',
+    };
+    expect(
+      streamRowOwnsDownloadTask(
+        task: task,
+        mediaId: 'tt1',
+        season: 1,
+        episode: 1,
+        stream: saved,
+      ),
+      isTrue,
+    );
+    expect(
+      streamRowOwnsDownloadTask(
+        task: task,
+        mediaId: 'tt1',
+        season: 1,
+        episode: 1,
+        stream: sibling4k,
+      ),
+      isFalse,
+    );
+    expect(
+      streamRowOwnsDownloadTask(
+        task: task,
+        mediaId: 'tt1',
+        season: 1,
+        episode: 1,
+        stream: sibling1080,
+      ),
+      isFalse,
+    );
+    expect(streamSharesDownloadedFile(sibling4k, task), isFalse);
+    expect(
+      chromeForStreamDownload(
+        task: task,
+        ownsRow: false,
+        sameFile: false,
+      ),
+      SourceDownloadChrome.none,
     );
   });
 

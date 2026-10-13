@@ -2415,6 +2415,66 @@ Future<void> setPlayerExternalSubtitle(
   await player.setSubtitleTrack(next);
 }
 
+/// ASS/SSA / bitmap image subs must paint via libass on the video frame.
+/// SRT/VTT use the Flutter overlay — mpv [sub-visibility] must stay off.
+bool subtitleTrackNeedsNativeRender(SubtitleTrack track) {
+  if (track.id == 'no' || track.id == 'auto') return false;
+  final codec = track.codec?.toLowerCase() ?? '';
+  if (codec.contains('ass') ||
+      codec.contains('ssa') ||
+      codec.contains('pgs') ||
+      codec.contains('dvd') ||
+      codec.contains('dvb') ||
+      codec.contains('vobsub')) {
+    return true;
+  }
+  final hay = '${track.title ?? ''} ${track.id}'.toLowerCase();
+  return hay.contains('.ass') || hay.contains('.ssa');
+}
+
+/// Exclusive paint: native on-frame XOR Flutter overlay. Also clears
+/// `secondary-sid` so media_kit's `[primary, secondary]` subtitle list cannot
+/// mirror the same cue twice into the overlay.
+Future<void> applyPlayerSubtitleRenderMode(
+  Player player, {
+  required bool native,
+}) async {
+  final platform = player.platform;
+  if (platform is! NativePlayer || platform.disposed) return;
+  if (!await mediaKitPlayerHandleReady(platform)) return;
+  try {
+    await platform.setProperty(
+      'sub-visibility',
+      native ? 'yes' : 'no',
+      waitForInitialization: false,
+    );
+  } catch (_) {}
+  if (!native) {
+    try {
+      await platform.setProperty(
+        'secondary-sid',
+        'no',
+        waitForInitialization: false,
+      );
+    } catch (_) {}
+  }
+}
+
+/// media_kit exposes `[primary, secondary]`. Collapse empties and exact
+/// duplicate lines so one cue cannot paint twice in the Flutter overlay.
+String formatPlayerSubtitleOverlayText(List<String> lines) {
+  final out = <String>[];
+  for (final chunk in lines) {
+    for (final raw in chunk.split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty) continue;
+      if (out.isNotEmpty && out.last == line) continue;
+      out.add(line);
+    }
+  }
+  return out.join('\n');
+}
+
 /// Clear mpv `sub-file` before attaching another external URI mid-playback.
 /// Does not stop the demuxer (unlike [resetPlayerForOpen]).
 Future<void> preparePlayerExternalSubtitleSwitch(Player player) async {

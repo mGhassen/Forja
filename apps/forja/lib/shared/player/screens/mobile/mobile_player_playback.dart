@@ -1490,7 +1490,7 @@ mixin _MobilePlayerPlayback
         _s._clearDeadSurfaceCover();
         _s._startHideTimer();
         // Scrobble resume
-        if (widget.movie != null) {
+        if (widget.movie != null && !_s._playingOfflineDownload) {
           SimklService().scrobbleStart(
             tmdbId: widget.movie!.id,
             mediaType: widget.movie!.mediaType,
@@ -1506,7 +1506,7 @@ mixin _MobilePlayerPlayback
         // Do not force chrome on pause — Space / media keys keep chrome hidden;
         // paused hero still shows via _isPlayingNotifier.
         _s._saveWatchHistory(isBgPause: true);
-        if (widget.movie != null) {
+        if (widget.movie != null && !_s._playingOfflineDownload) {
           SimklService().scrobblePause(
             tmdbId: widget.movie!.id,
             mediaType: widget.movie!.mediaType,
@@ -1751,34 +1751,16 @@ mixin _MobilePlayerPlayback
     }
   }
 
-  /// Checks if [track] is an ASS/SSA or image-based subtitle (PGS/VobSub) and toggles mpv's
-  /// `sub-visibility` accordingly. Native tracks render directly onto the video frame,
-  /// so the custom Flutter overlay hides itself. For SRT/VTT, sub-visibility is turned off
-  /// so only the Flutter overlay draws text.
+  /// ASS/PGS → libass on-frame; SRT/VTT → Flutter overlay only.
   void _updateSubVisibility(SubtitleTrack track) {
     if (_s._disposed || !mounted) return;
-    final codec = track.codec?.toLowerCase() ?? '';
-    final isNativeCodec =
-        codec.contains('ass') ||
-        codec.contains('ssa') ||
-        codec.contains('pgs') ||
-        codec.contains('dvd') ||
-        codec.contains('dvb') ||
-        codec.contains('vobsub');
-    // Also check the track title/id for .ass/.ssa extension (file picker)
-    final title = (track.title ?? track.id).toLowerCase();
-    final looksAss = title.endsWith('.ass') || title.endsWith('.ssa');
-    final shouldUseNative = isNativeCodec || looksAss;
-
+    final shouldUseNative = subtitleTrackNeedsNativeRender(track);
     if (shouldUseNative != _s._isNativeSubtitle) {
       setState(() => _s._isNativeSubtitle = shouldUseNative);
     }
-    if (_s._player.platform is NativePlayer) {
-      (_s._player.platform as NativePlayer).setProperty(
-        'sub-visibility',
-        shouldUseNative ? 'yes' : 'no',
-      );
-    }
+    unawaited(
+      applyPlayerSubtitleRenderMode(_s._player, native: shouldUseNative),
+    );
   }
 
   bool _localTorrentPlaybackActive() {
@@ -1874,7 +1856,9 @@ mixin _MobilePlayerPlayback
     await safeSet('audio-fallback-to-null', 'yes');
 
     // Flutter renders subtitles - kill mpv's own OSD overlay.
+    // secondary-sid off so media_kit's [primary, secondary] list cannot twin.
     await safeSet('sub-visibility', 'no');
+    await safeSet('secondary-sid', 'no');
     await safeSet('sub-auto', 'all');
 
     // ── Video Sync ────────────────────────────────────────────────────────

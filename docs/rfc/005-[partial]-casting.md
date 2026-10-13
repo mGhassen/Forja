@@ -7,8 +7,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 3** components · **0 / 4** acceptance |
-| **Current slice** | AirPlay done (macOS + iOS); Chromecast not started |
+| **Progress** | **3 / 4** components · **0 / 4** acceptance |
+| **Current slice** | AirPlay online + offline (macOS + iOS); Chromecast not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -21,6 +21,7 @@
 | 1 | R05-C01 | CastingService (`casting_service.dart`) | 🔄 |
 | 2 | R05-C02 | AirPlay hand-off: `ForjaAirPlayChannel.swift` (iOS + macOS) — AVPlayer + AVRoutePickerView, local player pauses on external playback and resumes at the receiver's position | ✅ |
 | 3 | R05-C03 | AirPlay subtitles: in-stream track selected on the receiver; external SRT/VTT added as a WebVTT rendition by `ForjaAirPlaySubtitleRelay.swift` (tokenized LAN HLS wrapper, HLS sources only) | ✅ |
+| 4 | R05-C04 | AirPlay offline: `ForjaAirPlayLocalFileRelay.swift` serves `file://` downloads over LAN HTTP with Range so the TV can fetch them ([422](../issues/fixed/422-[fixed]-airplay-offline-file-cannot-open.md)) | ✅ |
 
 ---
 
