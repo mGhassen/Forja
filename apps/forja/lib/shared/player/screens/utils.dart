@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Directory, File, Link;
 
 import 'package:flutter/foundation.dart';
@@ -1379,22 +1380,58 @@ bool isMediaOpenReady(PlayerState state) {
 /// playlists (`/playlist/{id}?type=video`). VixSrc uses both.
 const kLavfHlsAllowedExtensionsAll = 'allowed_extensions=ALL';
 
+/// Decode a URL-safe / std base64 query payload to UTF-8, or null.
+@visibleForTesting
+String? tryDecodeBase64UrlUtf8(String raw) {
+  var s = raw.trim();
+  if (s.isEmpty) return null;
+  try {
+    s = Uri.decodeComponent(s);
+  } catch (_) {}
+  final pad = (4 - s.length % 4) % 4;
+  if (pad != 0) s = '$s${'=' * pad}';
+  try {
+    return utf8.decode(base64Url.decode(s));
+  } catch (_) {
+    try {
+      return utf8.decode(base64.decode(s));
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
 /// True when [url] is HLS (`.m3u8`, disguised `.txt`, `/hls-proxy`, `/playlist/`).
 ///
 /// VixSrc masters are `vixsrc.to/playlist/{id}?token=` — no `.m3u8`. MultiEmbed /
 /// VidSrc-family CDNs often ship the master as `.txt` or `/stream/…`. Exo already
 /// forces `APPLICATION_M3U8` for those; MediaKit/OpenPipeline must match.
+///
+/// Opaque reverse proxies (`/proxy?u=<base64…master.m3u8>`) hide `.m3u8` in the
+/// query — unwrap `u=` / plain `url=` so OpenPipeline and lavf treat them as HLS.
 bool urlLooksLikeHls(String url) {
   final trimmed = url.trim();
   if (trimmed.isEmpty) return false;
   final lower = trimmed.toLowerCase();
   if (lower.contains('.m3u8') || lower.contains('m3u8=')) return true;
   if (lower.contains('/hls-proxy')) return true;
-  final nested = Uri.tryParse(trimmed)?.queryParameters['url']?.toLowerCase();
-  if (nested != null && nested.isNotEmpty && urlLooksLikeHls(nested)) {
-    return true;
+  final uri = Uri.tryParse(trimmed);
+  if (uri != null) {
+    final nested = uri.queryParameters['url'];
+    if (nested != null && nested.isNotEmpty && urlLooksLikeHls(nested)) {
+      return true;
+    }
+    final wrapped = uri.queryParameters['u'];
+    if (wrapped != null && wrapped.isNotEmpty) {
+      final decoded = tryDecodeBase64UrlUtf8(wrapped);
+      if (decoded != null &&
+          (decoded.startsWith('http://') || decoded.startsWith('https://')) &&
+          urlLooksLikeHls(decoded)) {
+        return true;
+      }
+    }
   }
-  final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? lower;
+  final path = uri?.path.toLowerCase() ?? lower;
   // CDN playlist disguised as .txt (multiembed / vidsrc family).
   if (path.endsWith('.txt')) return true;
   // HLS path segment — not local torrent `/torrents/.../stream/`.
@@ -1408,9 +1445,10 @@ bool urlLooksLikeHls(String url) {
   return false;
 }
 
-/// Extensionless catalog HLS (VixSrc `/playlist/{id}`) — lavf will not treat
-/// nested child URIs as playlists unless we rewrite via `/hls-proxy`.
+/// Extensionless catalog HLS — lavf will not treat nested child URIs as
+/// playlists unless we rewrite via `/hls-proxy`.
 ///
+/// Covers VixSrc `/playlist/{id}` and opaque `/proxy?u=<b64 m3u8>` masters.
 /// Disguised `.txt` / `/stream/` masters play direct; do not force-proxy them.
 bool shouldProxyExtensionlessHls(String url) {
   final trimmed = url.trim();
@@ -1419,7 +1457,10 @@ bool shouldProxyExtensionlessHls(String url) {
   final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? '';
   if (path.endsWith('.txt')) return false;
   if (path.contains('/stream/')) return false;
-  if (!(path.contains('/playlist/') || path.endsWith('/playlist'))) {
+  final opaqueProxy = path == '/proxy' || path.endsWith('/proxy');
+  if (!(path.contains('/playlist/') ||
+      path.endsWith('/playlist') ||
+      opaqueProxy)) {
     return false;
   }
   return urlLooksLikeHls(trimmed);

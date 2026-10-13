@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:media_kit/media_kit.dart';
@@ -480,6 +482,24 @@ void main() {
       expect(shouldProxyExtensionlessHls(stream), isFalse);
       expect(
         urlLooksLikeHls('http://127.0.0.1:9/torrents/x/stream/0'),
+        isFalse,
+      );
+    });
+
+    test('opaque /proxy?u=<b64 m3u8> is HLS and force-proxied', () {
+      const inner = 'https://cdn.example/pl/token/master.m3u8';
+      final b64 = base64Url.encode(utf8.encode(inner)).replaceAll('=', '');
+      final proxy = 'https://providers.example/proxy?u=$b64&h=e30';
+      expect(urlLooksLikeHls(proxy), isTrue);
+      expect(shouldProxyExtensionlessHls(proxy), isTrue);
+      expect(
+        urlLooksLikeHls('https://providers.example/proxy?u=not-base64'),
+        isFalse,
+      );
+      expect(
+        shouldProxyExtensionlessHls(
+          'https://providers.example/proxy?u=${base64Url.encode(utf8.encode('https://cdn.example/file.mp4'))}',
+        ),
         isFalse,
       );
     });
