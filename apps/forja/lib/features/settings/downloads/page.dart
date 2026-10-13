@@ -34,7 +34,7 @@ class SettingsDownloadsPageBody extends StatefulWidget {
 }
 
 class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabs;
   StorageSpaceInfo? _space;
   String? _downloadsDir;

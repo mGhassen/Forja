@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/sources/stream_orchestrator.dart';
@@ -348,6 +349,10 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
         packs ?? await EngineService.instance.listSourcesPanelPacks();
     if (aborted()) return null;
 
+    final streamLanguageKeys =
+        await PluginStreamLanguages.selectedKeys(activeSession.pluginId);
+    if (aborted()) return null;
+
     final enabledIds = enabledEnginePluginIds(loadedPacks);
     final scope = EngineCategories.matchingPluginIds(
       packs: loadedPacks,
@@ -616,6 +621,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
             open: activeSession.effectiveOpen,
             episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
             audioCategory: audioCategory ?? activeSession.audioCategory,
+            streamLanguageKeys: streamLanguageKeys,
             allowHostFallback: false,
             onRow: (row) {
               if (playAborted() || race.isCompleted || gen != fetchGen) return;

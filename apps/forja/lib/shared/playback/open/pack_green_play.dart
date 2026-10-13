@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/engine/packs/settings/pack_green_play_config.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/play_context.dart';
@@ -47,20 +48,33 @@ Future<void> runPackGreenPlay({
       if (enabled.contains(id) && scope.contains(id)) id,
   ];
 
+  final langKeys = await PluginStreamLanguages.selectedKeys(ctx.pluginId);
+  if (!context.mounted) return;
+  // Language filter narrows hub-scoped plugins only — never pulls other hubs.
+  final langFiltered = PluginStreamLanguages.filterPluginIds(
+    packs: packs,
+    ids: available,
+    selected: langKeys,
+  );
+
   // Preferred first (settings order), then the rest of enabled plugins.
   final preferred = config
       .providerPrefs(PackGreenPlayTechs.engine)
       .preferred
-      .where(available.contains)
+      .where(langFiltered.contains)
       .toList();
   final ordered = [
     ...preferred,
-    for (final id in available)
+    for (final id in langFiltered)
       if (!preferred.contains(id)) id,
   ];
   if (ordered.isEmpty) {
     if (context.mounted) {
-      ForjaToast.info('No Forja providers are enabled for green Play');
+      ForjaToast.info(
+        langKeys.isEmpty
+            ? 'No Forja providers are enabled for green Play'
+            : 'No Forja providers match the selected languages',
+      );
     }
     return;
   }

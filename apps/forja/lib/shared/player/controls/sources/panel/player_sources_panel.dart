@@ -15,6 +15,7 @@ import 'package:forja/shared/playback/stremio_stream_id.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/sources/stream_orchestrator.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
@@ -398,6 +399,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<Map<String, dynamic>> _engineStreams = [];
   List<EnginePack> _enginePacks = [];
   Set<String> _engineSelectedPluginIds = {};
+  Set<String> _streamLanguageKeys = {};
   bool _engineAllMode = false;
   bool _engineSelectionHydrated = false;
   Set<String> _engineViewFilterPluginIds = {};
@@ -511,10 +513,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (preferred.isNotEmpty) {
       return plugin.enabled && plugin.isExtractable && plugin.id == preferred;
     }
-    return EngineCategories.pluginChipVisible(
+    // Category first (hub scope). Language only narrows within that scope.
+    if (!EngineCategories.pluginChipVisible(
       plugin: plugin,
       visibleCategories: _effectiveEngineCategories,
-    );
+    )) {
+      return false;
+    }
+    return PluginStreamLanguages.pluginMatches(plugin, _streamLanguageKeys);
   }
 
   List<String> get _engineCategoryFilterOptions =>
@@ -1396,12 +1402,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
     }
     if (!mounted) return;
+    final langKeys = await PluginStreamLanguages.selectedKeys(widget.pluginId);
+    if (!mounted) return;
 
     setState(() {
       _showTorrents = torrentOn;
       _showStremio = hasStremio;
       _showNuvio = hasNuvio;
       _showEngine = hasEngine;
+      _streamLanguageKeys = langKeys;
       _nuvioAddons = nuvioAddons;
       final nuvioEnabled = enabledNuvioScraperIds(nuvioAddons);
       if (!_nuvioSelectionHydrated) {
@@ -1609,10 +1618,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         enabledIds: enabledIds,
         scope: engineScope,
       );
+      final langKeys =
+          await PluginStreamLanguages.selectedKeys(widget.pluginId);
+      if (!mounted) return;
       setState(() {
         _enginePacks = packs;
         _enginePacksLoading = false;
         _engineSelectedPluginIds = scoped;
+        _streamLanguageKeys = langKeys;
         _engineSelectionHydrated = true;
         if (_engineAllMode ||
             engineFullAllSelected(
@@ -1790,12 +1803,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _requestScrollToCurrent();
       }
     }
-    final pending = nextEnginePluginId(
-      orderedIds: _orderedEnginePluginIds,
-      selectedIds: _engineSelectedPluginIds,
-      fetchedIds: _engineFetchedPluginIds,
-    );
-    if (pending != null) {
+    if (_pendingEnginePluginIds.isNotEmpty) {
       await _fetchNextEnginePlugin();
     }
   }
@@ -2263,10 +2271,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (pluginId == null) return false;
     if (_engineAllMode) {
       final filters = _engineViewFilterPluginIds;
-      if (filters.isEmpty) return true;
-      return filters.contains(pluginId);
+      if (filters.isEmpty) {
+        return _streamLanguageKeys.isEmpty ||
+            _engineIdMatchesLanguages(pluginId);
+      }
+      return filters.contains(pluginId) &&
+          (_streamLanguageKeys.isEmpty ||
+              _engineIdMatchesLanguages(pluginId));
     }
-    return _engineSelectedPluginIds.contains(pluginId);
+    return _engineSelectedPluginIds.contains(pluginId) &&
+        (_streamLanguageKeys.isEmpty || _engineIdMatchesLanguages(pluginId));
   }
 
   List<Map<String, dynamic>> get _filteredEngine {
@@ -3199,10 +3213,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<String> get _orderedEnginePluginIds =>
       orderedEnginePluginIds(_enginePacks);
 
+  bool _engineIdMatchesLanguages(String pluginId) {
+    if (_streamLanguageKeys.isEmpty) return true;
+    for (final pack in _enginePacks) {
+      for (final p in pack.plugins) {
+        if (p.id != pluginId) continue;
+        return PluginStreamLanguages.pluginMatches(p, _streamLanguageKeys);
+      }
+    }
+    return false;
+  }
+
   List<String> get _pendingEnginePluginIds => [
     for (final id in _orderedEnginePluginIds)
       if (_engineSelectedPluginIds.contains(id) &&
-          !_engineFetchedPluginIds.contains(id))
+          !_engineFetchedPluginIds.contains(id) &&
+          _engineIdMatchesLanguages(id))
         id,
   ];
 
@@ -3233,7 +3259,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   void _queueEngineRow(String pluginId, Map<String, dynamic> row, int gen) {
     if (!mounted || gen != _engineFetchGen) return;
-    if (!_engineSelectedPluginIds.contains(pluginId)) return;
+    if (!_engineRacePluginIds.contains(pluginId)) return;
     final url = row['url']?.toString() ?? '';
     if (url.isEmpty) return;
     final already = _engineStreams
@@ -3295,6 +3321,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           open: widget.open,
           episodeVideoId: widget.episodeVideoId,
           audioCategory: widget.animeAudioCategory,
+          streamLanguageKeys: _streamLanguageKeys,
           allowHostFallback: false,
           onRow: (row) => _queueEngineRow(pluginId, row, gen),
         ),
@@ -3316,7 +3343,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
       return;
     }
-    if (!_engineSelectedPluginIds.contains(pluginId)) {
+    if (!_engineRacePluginIds.contains(pluginId)) {
       setState(() => _engineInFlightPluginIds.remove(pluginId));
       return;
     }
@@ -3343,13 +3370,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _requestScrollToCurrent();
   }
 
+  Set<String> get _engineRacePluginIds {
+    if (_streamLanguageKeys.isEmpty) return _engineSelectedPluginIds;
+    return {
+      for (final id in _engineSelectedPluginIds)
+        if (_engineIdMatchesLanguages(id)) id,
+    };
+  }
+
   void _engineFillPool({required int gen, required String type}) {
     if (!mounted || gen != _engineFetchGen) return;
     final slots = _enginePoolLimit - _engineInFlightPluginIds.length;
     if (slots <= 0) return;
     final next = nextEnginePluginBatch(
       orderedIds: _orderedEnginePluginIds,
-      selectedIds: _engineSelectedPluginIds,
+      selectedIds: _engineRacePluginIds,
       fetchedIds: {..._engineFetchedPluginIds, ..._engineInFlightPluginIds},
       limit: slots,
     );
@@ -3429,8 +3464,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     _engineFetching = true;
     final gen = ++_engineFetchGen;
+    final raceIds = _engineRacePluginIds;
     _enginePoolLimit = engineSourcesBatchLimit(
-      selected: _engineSelectedPluginIds.length,
+      selected: raceIds.length,
     );
     setState(() {
       if (reset) {
@@ -3438,7 +3474,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _engineFetchedPluginIds = {};
         _engineInFlightPluginIds.clear();
       } else if (refresh) {
-        _engineFetchedPluginIds.removeAll(_engineSelectedPluginIds);
+        _engineFetchedPluginIds.removeAll(raceIds);
         _engineInFlightPluginIds.clear();
       }
       _error = null;

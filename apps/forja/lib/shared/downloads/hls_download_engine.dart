@@ -397,11 +397,12 @@ class HlsDownloadEngine {
     Uri uri,
     Map<String, String> headers,
   ) async {
+    final effective = headersForHlsSegmentFetch(uri, headers);
     final client = HttpClient();
     client.connectionTimeout = const Duration(seconds: 20);
     try {
       final req = await client.getUrl(uri);
-      headers.forEach((k, v) => req.headers.set(k, v));
+      effective.forEach((k, v) => req.headers.set(k, v));
       final res = await req.close();
       if (res.statusCode != 200 && res.statusCode != 206) {
         throw Exception(

@@ -9,6 +9,7 @@ import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/runtime/vm/hub_host_bridge_nest.dart';
 import 'package:forja/shared/engine/packs/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/vm/runtime.dart';
@@ -1598,6 +1599,7 @@ class EngineService {
     String? title,
     String? year,
     String? audioCategory,
+    Set<String>? streamLanguageKeys,
     bool allowHostFallback = false,
     void Function(Map<String, dynamic> row)? onRow,
   }) async {
@@ -1619,6 +1621,10 @@ class EngineService {
       extractCtx.putIfAbsent('tmdbId', () => tid);
     }
     applyAudioCategoryToExtractCtx(extractCtx, audioCategory);
+    PluginStreamLanguages.applyToExtractCtx(
+      extractCtx,
+      streamLanguageKeys ?? const {},
+    );
 
     // RFC-064: Forja EngineJS on tokio (true parallel). Null → flutter_js fork
     // only when Rust is unsupported — never after cancelPending gen bump

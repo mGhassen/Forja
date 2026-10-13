@@ -426,8 +426,10 @@ SubtitleTrack? pickEmbeddedSubtitleWithFallback({
   required String preferredLang,
   required List<SubtitleTrack> tracks,
 }) {
-  final real =
-      tracks.where((t) => !isSideloadedExternalSubtitleTrack(t)).toList();
+  final real = tracks
+      .where((t) => t.id != 'no' && t.id != 'auto')
+      .where((t) => !isSideloadedExternalSubtitleTrack(t))
+      .toList();
   for (final lang in subtitleLanguageCandidates(preferredLang)) {
     for (final t in real) {
       if (matchesPreferredLanguage(

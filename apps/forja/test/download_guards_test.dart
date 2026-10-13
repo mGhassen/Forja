@@ -137,6 +137,34 @@ void main() {
     });
   });
 
+  group('headersForHlsSegmentFetch', () {
+    test('strips Referer/Origin on CloudStream page-N.html leaves', () {
+      final uri = Uri.parse(
+        'https://cdn.example/iAPJcSmSd/content/ab/cd/page-52.html?token=x',
+      );
+      expect(isCloudStreamLeafSegmentUri(uri), isTrue);
+      final out = headersForHlsSegmentFetch(uri, {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://nextgencloudfabric.com/',
+        'Origin': 'https://nextgencloudfabric.com',
+      });
+      expect(out['User-Agent'], 'Mozilla/5.0');
+      expect(out.containsKey('Referer'), isFalse);
+      expect(out.containsKey('Origin'), isFalse);
+    });
+
+    test('keeps headers for normal media segment paths', () {
+      final uri = Uri.parse('https://cdn.example/hls/seg0001.ts');
+      expect(isCloudStreamLeafSegmentUri(uri), isFalse);
+      final headers = {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://embed.example/',
+        'Origin': 'https://embed.example',
+      };
+      expect(headersForHlsSegmentFetch(uri, headers), headers);
+    });
+  });
+
   group('content disposition / range helpers', () {
     test('parses filename and Content-Range', () {
       expect(

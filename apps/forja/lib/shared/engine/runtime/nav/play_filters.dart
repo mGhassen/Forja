@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
 
-/// Pack `filters` action — `play[]` grouped choice on hub details hero.
+/// Pack `filters` action — `play[]` choice on hub details hero.
 class PlayFilterSpec {
   const PlayFilterSpec({
     required this.id,
@@ -9,13 +9,28 @@ class PlayFilterSpec {
     required this.style,
     required this.options,
     this.defaultValue,
+    this.source,
+    this.settingsField,
   });
 
   final String id;
   final String field;
+
+  /// `grouped` (single) or `multiselect`.
   final String style;
   final String? defaultValue;
   final List<PlayFilterOption> options;
+
+  /// When `pluginLanguages`, host fills options from installed providers.
+  final String? source;
+
+  /// When set, selection persists in [PackSettingsStore] (not watch progress).
+  final String? settingsField;
+
+  bool get isMultiselect => style == 'multiselect';
+
+  bool get isPluginLanguagesSource =>
+      (source ?? '').trim().toLowerCase() == 'pluginlanguages';
 
   PlayFilterOption? optionByValue(String? value) {
     if (value == null) return null;
@@ -26,6 +41,7 @@ class PlayFilterSpec {
   }
 
   String? initialValue(Map<String, dynamic>? progressExtras) {
+    if (isMultiselect) return null;
     if (progressExtras != null) {
       final saved = progressExtras[field]?.toString();
       if (optionByValue(saved) != null) return saved;
@@ -45,12 +61,18 @@ class PlayFilterSpec {
       }
     }
     final def = (json['default'] ?? json['defaultValue'])?.toString();
+    final source = (json['source'] ?? '').toString().trim();
+    final settingsField = (json['settingsField'] ?? json['settings_field'] ?? '')
+        .toString()
+        .trim();
     return PlayFilterSpec(
       id: (json['id'] ?? json['field'] ?? '').toString(),
       field: (json['field'] ?? json['id'] ?? '').toString(),
       style: (json['style'] ?? 'grouped').toString(),
       defaultValue: def,
       options: opts,
+      source: source.isEmpty ? null : source,
+      settingsField: settingsField.isEmpty ? null : settingsField,
     );
   }
 }

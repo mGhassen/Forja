@@ -1,4 +1,5 @@
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/engine/packs/settings/pack_connected_auth_service.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 
@@ -33,6 +34,7 @@ class PackAddonSettingsField {
     this.defaultString = '',
     this.defaultStringList = const [],
     this.options = const [],
+    this.source = '',
     this.hubTypes = const [],
     this.listOpenDefault = false,
     this.reloadHub = true,
@@ -52,6 +54,12 @@ class PackAddonSettingsField {
   /// Default selected ids for [PackAddonSettingsFieldType.multiSelect].
   final List<String> defaultStringList;
   final List<PackAddonSettingsOption> options;
+
+  /// When `pluginLanguages`, host fills options from installed VOD plugins.
+  final String source;
+
+  bool get isPluginLanguagesSource =>
+      source.trim().toLowerCase() == 'pluginlanguages';
 
   /// Engine type tokens for [PackAddonSettingsFieldType.hubSelect].
   final List<String> hubTypes;
@@ -121,9 +129,13 @@ class PackAddonSettingsField {
         options.add(PackAddonSettingsOption(id: oid, label: olabel));
       }
     }
+    final source = (j['source'] ?? '').toString().trim();
+    final pluginLangSource =
+        source.toLowerCase() == PluginStreamLanguages.sourcePluginLanguages;
     if ((type == PackAddonSettingsFieldType.select ||
             type == PackAddonSettingsFieldType.multiSelect) &&
-        options.isEmpty) {
+        options.isEmpty &&
+        !pluginLangSource) {
       return null;
     }
 
@@ -171,6 +183,7 @@ class PackAddonSettingsField {
       defaultString: defaultString,
       defaultStringList: defaultStringList,
       options: options,
+      source: source,
       hubTypes: hubTypes,
       listOpenDefault: listOpenDefault,
       reloadHub: reloadHub,

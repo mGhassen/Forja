@@ -1,5 +1,36 @@
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 
+/// CloudStream-style leaf segments (`…/page-52.html`) — MPEG-TS under an
+/// HTML name. Those URLs return 403 when Referer/Origin are set (issue 054).
+final _cloudStreamLeafSegmentPath = RegExp(
+  r'/page-\d+\.html$',
+  caseSensitive: false,
+);
+
+bool isCloudStreamLeafSegmentUri(Uri uri) {
+  return _cloudStreamLeafSegmentPath.hasMatch(uri.path);
+}
+
+/// Headers for an HLS media GET. Drops Referer/Origin on CloudStream leaf
+/// segments so offline download matches browser no-referrer segment fetches.
+Map<String, String> headersForHlsSegmentFetch(
+  Uri uri,
+  Map<String, String> headers,
+) {
+  if (!isCloudStreamLeafSegmentUri(uri) || headers.isEmpty) {
+    return headers;
+  }
+  final out = <String, String>{};
+  for (final e in headers.entries) {
+    final k = e.key.trim();
+    if (k.isEmpty) continue;
+    final lower = k.toLowerCase();
+    if (lower == 'referer' || lower == 'origin') continue;
+    out[k] = e.value;
+  }
+  return out;
+}
+
 /// Whether [url] looks like a DASH MPD (not Phase-1 offline).
 bool isDashManifestUrl(String url) {
   final lower = url.trim().toLowerCase();

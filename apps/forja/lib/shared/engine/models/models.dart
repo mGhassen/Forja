@@ -4,6 +4,72 @@ import 'package:forja/shared/utils/torrent_meta_parser.dart';
 
 import 'ids.dart';
 
+/// Structured VOD language declared on a provider plugin (`kind` + `code`).
+class PluginLanguage {
+  const PluginLanguage({required this.kind, required this.code});
+
+  /// `sub` (VOST / VOSTFR / …) or `dub` (spoken dub language).
+  final String kind;
+
+  /// ISO-ish language id (`en`, `fr`, `it`, …).
+  final String code;
+
+  /// Stable selection key stored in Settings (`sub:fr`).
+  String get key => '$kind:$code';
+
+  /// User-facing label for chips / dropdown.
+  String get label {
+    if (kind == 'sub') {
+      if (code == 'en') return 'VOST';
+      return 'VOST${code.toUpperCase()}';
+    }
+    // Dub: VO = original audio; VF = French dub; else spoken language name.
+    return switch (code) {
+      'en' => 'VO',
+      'fr' => 'VF',
+      'it' => 'Italian',
+      'es' => 'Spanish',
+      'de' => 'German',
+      'pt' => 'Portuguese',
+      'ar' => 'Arabic',
+      'hi' => 'Hindi',
+      'tr' => 'Turkish',
+      'ja' => 'Japanese',
+      'ko' => 'Korean',
+      'zh' => 'Chinese',
+      'nl' => 'Dutch',
+      'pl' => 'Polish',
+      'ru' => 'Russian',
+      _ => code.toUpperCase(),
+    };
+  }
+
+  Map<String, dynamic> toJson() => {'kind': kind, 'code': code};
+
+  static PluginLanguage? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final m = Map<String, dynamic>.from(raw);
+    final kind = (m['kind'] ?? '').toString().trim().toLowerCase();
+    final code = (m['code'] ?? '').toString().trim().toLowerCase();
+    if (kind != 'sub' && kind != 'dub') return null;
+    if (!RegExp(r'^[a-z]{2,8}$').hasMatch(code)) return null;
+    return PluginLanguage(kind: kind, code: code);
+  }
+
+  static PluginLanguage? tryParseKey(String raw) {
+    final parts = raw.trim().toLowerCase().split(':');
+    if (parts.length != 2) return null;
+    return tryParse({'kind': parts[0], 'code': parts[1]});
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is PluginLanguage && other.kind == kind && other.code == code;
+
+  @override
+  int get hashCode => Object.hash(kind, code);
+}
+
 class EnginePlugin {
   EnginePlugin({
     required this.id,
@@ -29,6 +95,7 @@ class EnginePlugin {
     this.defaultCapabilities = const {},
     this.liveLegacyIds,
     this.platforms = const [],
+    this.languages = const [],
   });
 
   final String id;
@@ -90,6 +157,9 @@ class EnginePlugin {
   /// Manifest `platforms` — device ids this plugin may run on
   /// (`desktop` · `phone` · `tv`). Empty → every platform.
   final List<String> platforms;
+
+  /// Declared VOD languages (`sub`/`dub` + code). Empty → undeclared.
+  final List<PluginLanguage> languages;
 
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
@@ -243,6 +313,7 @@ class EnginePlugin {
       defaultCapabilities: _defaultCapabilitiesMap(j['defaultCapabilities']),
       liveLegacyIds: LiveSportLegacyIds.fromJson(j['legacyIds']),
       platforms: packPlatformIds(j['platforms']),
+      languages: _pluginLanguages(j['languages']),
     );
   }
 
@@ -272,6 +343,8 @@ class EnginePlugin {
     if (liveLegacyIds != null && !liveLegacyIds!.isEmpty)
       'legacyIds': liveLegacyIds!.toJson(),
     if (platforms.isNotEmpty) 'platforms': platforms,
+    if (languages.isNotEmpty)
+      'languages': [for (final l in languages) l.toJson()],
   };
 
   EnginePlugin copyWith({bool? enabled, String? prelude}) => EnginePlugin(
@@ -298,7 +371,20 @@ class EnginePlugin {
     defaultCapabilities: defaultCapabilities,
     liveLegacyIds: liveLegacyIds,
     platforms: platforms,
+    languages: languages,
   );
+}
+
+List<PluginLanguage> _pluginLanguages(dynamic raw) {
+  if (raw is! List) return const [];
+  final out = <PluginLanguage>[];
+  final seen = <String>{};
+  for (final e in raw) {
+    final lang = PluginLanguage.tryParse(e);
+    if (lang == null || !seen.add(lang.key)) continue;
+    out.add(lang);
+  }
+  return out;
 }
 
 /// Manifest `platforms` list → canonical ids (`desktop` · `phone` · `tv`).

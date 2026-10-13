@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/engine/engine.dart';
-
+import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -44,6 +44,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   final Map<String, dynamic> _values = {};
   final Map<String, TextEditingController> _textControllers = {};
   final Map<String, Timer> _hubDebounce = {};
+  List<PackAddonSettingsOption> _pluginLanguageOptions = const [];
   bool _loading = true;
 
   @override
@@ -127,9 +128,27 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
         };
       }
     }
+    final needsLangOptions = specs.any(
+      (s) => s.fields.any((f) => f.isPluginLanguagesSource),
+    );
+    var langOptions = const <PackAddonSettingsOption>[];
+    if (needsLangOptions) {
+      final packs = await EngineService.instance.listSourcesPanelPacks();
+      final enabled = enabledEnginePluginIds(packs);
+      final langs = PluginStreamLanguages.unionFromPacks(
+        packs: packs,
+        types: const ['movie', 'tv'],
+        enabledIds: enabled,
+      );
+      langOptions = [
+        for (final l in langs)
+          PackAddonSettingsOption(id: l.key, label: l.label),
+      ];
+    }
     if (!mounted) return;
     setState(() {
       _specs = specs;
+      _pluginLanguageOptions = langOptions;
       _values
         ..clear()
         ..addAll(values);
@@ -347,8 +366,13 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
           ...((_values[key] as List?)?.map((e) => e.toString()) ??
               field.defaultStringList),
         };
+        final options = field.isPluginLanguagesSource
+            ? _pluginLanguageOptions
+            : field.options;
+        if (options.isEmpty) return const SizedBox.shrink();
         return _MultiSelectChipsField(
           field: field,
+          options: options,
           selected: selected,
           onChanged: (next) => unawaited(_setStringList(spec, field, next)),
         );
@@ -619,17 +643,18 @@ class _ActionListFieldState extends State<_ActionListField> {
 class _MultiSelectChipsField extends StatelessWidget {
   const _MultiSelectChipsField({
     required this.field,
+    required this.options,
     required this.selected,
     required this.onChanged,
   });
 
   final PackAddonSettingsField field;
+  final List<PackAddonSettingsOption> options;
   final Set<String> selected;
   final ValueChanged<List<String>> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final options = field.options;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),

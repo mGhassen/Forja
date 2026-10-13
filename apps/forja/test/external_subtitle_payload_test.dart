@@ -74,6 +74,17 @@ void main() {
     });
   });
 
+  group('embeddedSubtitleTracks', () {
+    test('drops media_kit auto/no so the menu has no Unknown Audio auto/no', () {
+      final out = embeddedSubtitleTracks([
+        SubtitleTrack.auto(),
+        SubtitleTrack.no(),
+        const SubtitleTrack('2', 'English', 'en'),
+      ]);
+      expect(out.map((t) => t.id), ['2']);
+    });
+  });
+
   group('pickPlaylistSubtitleRendition', () {
     test('English playlist rendition wins over a later track', () {
       final pick = pickPlaylistSubtitleRendition<Map<String, String>>(

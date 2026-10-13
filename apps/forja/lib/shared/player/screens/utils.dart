@@ -2941,7 +2941,10 @@ SubtitleTrack? findSubtitleTrack(List<SubtitleTrack> tracks, String id) {
 
 /// Embedded (in-stream) subtitle tracks — excludes Off/auto and sideloaded URIs.
 List<SubtitleTrack> embeddedSubtitleTracks(Iterable<SubtitleTrack> tracks) {
-  return tracks.where((t) => !isSideloadedExternalSubtitleTrack(t)).toList();
+  return tracks
+      .where((t) => t.id != 'no' && t.id != 'auto')
+      .where((t) => !isSideloadedExternalSubtitleTrack(t))
+      .toList();
 }
 
 /// In-stream tracks for the subtitle menu — hides mpv copies of active external subs.

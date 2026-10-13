@@ -32,9 +32,12 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/play_filters.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/grouped_play_filter.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/multiselect_play_filter.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shared/player/sources/kit/kit_sources.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play_row.dart';
@@ -141,6 +144,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   int _selectedSeason = 1;
   int _selectedEpisode = 1;
   final Map<String, String> _playFilterSelections = {};
+  Set<String> _streamLanguageKeys = {};
+  List<PluginLanguage> _streamLanguageOptions = const [];
   bool _detailsHeroInitialFocusDone = false;
   Map<String, dynamic>? _watchProgress;
   Set<String> _watchedEpisodes = {};
@@ -164,6 +169,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     unawaited(_loadWatchProgress());
     unawaited(_loadWatchedEpisodes());
     unawaited(_loadEpisodeView());
+    unawaited(_loadStreamLanguages());
     _loading = !hubMetaTmdbEnriched(widget.item);
     _noteDownloadPage(widget.item);
     _load();
@@ -199,10 +205,12 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     if (!mounted) return;
     _seedPlayFilterDefaults();
     setState(() {});
+    unawaited(_loadStreamLanguages());
   }
 
   void _onPackSettingsChanged() {
     unawaited(_loadEpisodeView());
+    unawaited(_loadStreamLanguages());
   }
 
   Future<void> _loadEpisodeView() async {
@@ -215,6 +223,46 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         episodeViewIsChips(raw) ? kEpisodeViewChips : kEpisodeViewCards;
     if (!mounted || next == _episodeView) return;
     setState(() => _episodeView = next);
+  }
+
+  bool get _hasStreamLanguageFilter => _playFilters.any(
+        (f) => f.isMultiselect && f.isPluginLanguagesSource,
+      );
+
+  Future<void> _loadStreamLanguages() async {
+    if (!_hasStreamLanguageFilter) {
+      if (_streamLanguageOptions.isEmpty && _streamLanguageKeys.isEmpty) return;
+      if (!mounted) return;
+      setState(() {
+        _streamLanguageOptions = const [];
+        _streamLanguageKeys = {};
+      });
+      return;
+    }
+    final packs = await EngineService.instance.listSourcesPanelPacks();
+    final enabled = enabledEnginePluginIds(packs);
+    final type = _isMovie ? 'movie' : 'tv';
+    final options = PluginStreamLanguages.unionFromPacks(
+      packs: packs,
+      // Hub scope only (Home = movie|tv). Never pull arabic/anime hub plugins.
+      types: [type],
+      enabledIds: enabled,
+    );
+    final selected = await PluginStreamLanguages.selectedKeys(widget.pluginId);
+    final valid = {
+      for (final k in selected)
+        if (options.any((o) => o.key == k)) k,
+    };
+    if (!mounted) return;
+    setState(() {
+      _streamLanguageOptions = options;
+      _streamLanguageKeys = valid;
+    });
+  }
+
+  Future<void> _setStreamLanguages(Set<String> next) async {
+    setState(() => _streamLanguageKeys = next);
+    await PluginStreamLanguages.saveSelectedKeys(widget.pluginId, next);
   }
 
   Future<void> _ensurePackFilters() async {
@@ -612,6 +660,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _selectedEpisode = firstEp;
     });
     _noteDownloadPage(meta);
+    unawaited(_loadStreamLanguages());
   }
 
   Future<void> _load() async {
@@ -983,12 +1032,15 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         .where((f) => f.style == 'grouped' && f.options.length >= 2)
         .toList();
     final showPlayFilters = !blockPlay && playFilters.isNotEmpty;
+    final showLangFilter =
+        !blockPlay && _hasStreamLanguageFilter && _streamLanguageOptions.isNotEmpty;
     final playFilterIndex = showPlayFilters ? tvIndex : null;
     if (showPlayFilters) {
       for (final f in playFilters) {
         tvIndex += f.options.length;
       }
     }
+    final langFilterIndex = showLangFilter ? tvIndex++ : null;
     final heroActionCount = tvIndex;
 
     Widget? episodePicker;
@@ -1308,6 +1360,17 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
                     onUpEdge: heroPopUp,
                   ),
                 ],
+              ],
+              if (showLangFilter) ...[
+                const SizedBox(width: 10),
+                KitMultiselectPlayFilter(
+                  options: _streamLanguageOptions,
+                  selected: _streamLanguageKeys,
+                  onChanged: (next) => unawaited(_setStreamLanguages(next)),
+                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                  tvItemIndexStart: langFilterIndex,
+                  onUpEdge: heroPopUp,
+                ),
               ],
             ],
           ),
