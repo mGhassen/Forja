@@ -2154,9 +2154,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return true;
     }
     if (_hasActiveStreamNameFilters) {
-      final name = '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
-      if (!TorrentMetaParser.parse(name).matchesFiltersForName(
-        name,
+      // Meta facets from title/name/description only; search also hits
+      // `_addonName` (`Provider · Server` on the tile).
+      final titleBlob =
+          '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
+      final searchBlob = '$titleBlob ${s['_addonName'] ?? ''}';
+      if (!TorrentMetaParser.parse(titleBlob).matchesFiltersForName(
+        searchBlob,
         searchQuery: _searchQuery,
         qualityFilters: _qualityFilters,
         languageFilters: _languageFilters,
