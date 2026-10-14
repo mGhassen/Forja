@@ -120,14 +120,15 @@ Map<String, dynamic> packChromeFeedParams(
   } else {
     injectMenu('catalogMenu', 'catalogFilter', asAlso: 'section');
   }
-  // Always stamp section when the list declares a catalog menu — empty
-  // selection must match top-bar paint (`dynamicCatalogs` → all), not IPTV's
-  // `live` section id (that filtered Live Sports to a non-existent plugin).
-  if (catalogMenu.isNotEmpty &&
-      (params['catalogFilter'] == null ||
-          params['catalogFilter'].toString().trim().isEmpty)) {
-    final fallback = (scope?.selectedId(catalogMenu) ?? 'all').trim();
-    params['catalogFilter'] = fallback.isEmpty ? 'all' : fallback;
+  // Catalog chip wins over load-params defaults (e.g. TV list hardcodes
+  // catalogFilter:all — must not stick when Sports reuses paint state).
+  if (catalogMenu.isNotEmpty) {
+    final fromScope = (scope?.selectedId(catalogMenu) ?? '').trim();
+    if (fromScope.isNotEmpty) {
+      params['catalogFilter'] = fromScope;
+    } else if ((params['catalogFilter'] ?? '').toString().trim().isEmpty) {
+      params['catalogFilter'] = 'all';
+    }
   }
   if (catalogMenu.isNotEmpty &&
       sectionMenu.isEmpty &&

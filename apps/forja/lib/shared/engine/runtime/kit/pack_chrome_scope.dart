@@ -12,7 +12,7 @@ class PackChromeScope extends InheritedWidget {
     super.key,
     required this.eventQuery,
     required this.refreshEpoch,
-    this.refreshForceNetwork = true,
+    this.refreshForceNetwork = false,
     this.refreshKeepPainted = false,
     this.catalogHoldEpoch = 0,
     this.chromeFilterEpoch = '',

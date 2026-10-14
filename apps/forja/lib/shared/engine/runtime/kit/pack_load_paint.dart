@@ -276,6 +276,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   String _scopeEpoch = '';
   String _catalogSection = '';
   int _appliedRefreshEpoch = 0;
+  /// First [didChangeDependencies] adopts chrome refreshEpoch without force —
+  /// Sports↔TV showWhen remounts must not treat a prior Refresh as force.
+  bool _refreshEpochSeeded = false;
+  /// Catalog / sport / horizon / search last started on a progressive schedule.
+  /// A later chrome bump with the same key keeps the painted feed.
+  String _appliedProgressiveSchedule = '';
   int _appliedHoldEpoch = 0;
   /// When set, skip auto-_bind until [PackChromeScope.refreshEpoch] advances past it.
   int? _holdAtRefreshEpoch;
@@ -335,9 +341,21 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   }
 
   String _catalogSectionOf() {
-    final menu = (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
-    if (menu.isEmpty) return '';
-    return (LayoutScope.maybeOf(context)?.selectedId(menu) ?? '').trim();
+    final scope = LayoutScope.maybeOf(context);
+    final sectionMenu =
+        (widget.fallbackSpec['sectionMenu'] ?? '').toString().trim();
+    final catalogMenu =
+        (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    final shelf = sectionMenu.isEmpty
+        ? ''
+        : (scope?.selectedId(sectionMenu) ?? '').trim();
+    final catalog = catalogMenu.isEmpty
+        ? ''
+        : (scope?.selectedId(catalogMenu) ?? '').trim();
+    // Live Sports Sports/TV + Catalog chip; IPTV uses catalog shelf alone.
+    if (shelf.isNotEmpty && catalog.isNotEmpty) return '$shelf|$catalog';
+    if (shelf.isNotEmpty) return shelf;
+    return catalog;
   }
 
   /// Portal + Live/Movies/Series shelf key for [_sectionResolved].
@@ -380,6 +398,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final epoch = _selectionEpoch();
     final chrome = PackChromeScope.maybeOf(context);
     final refreshEpoch = chrome?.refreshEpoch ?? 0;
+    // showWhen Sports↔TV mounts a new State — adopt the current epoch so a
+    // sticky refreshForceNetwork from an earlier Refresh does not re-scrape.
+    if (!_refreshEpochSeeded) {
+      _refreshEpochSeeded = true;
+      _appliedRefreshEpoch = refreshEpoch;
+    }
     final holdEpoch = chrome?.catalogHoldEpoch ?? 0;
     final refreshBumped = refreshEpoch > _appliedRefreshEpoch;
     final visible = chrome?.shellTabVisible ?? true;
@@ -454,6 +478,20 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       );
     }
 
+    final scheduleForce =
+        refreshBumped && (chrome?.refreshForceNetwork ?? false);
+    // Schedule already on screen, filters unchanged, not a user Refresh.
+    // Portal vault hydrate and other chrome bumps must not start another
+    // catalog fan-out (that was the full re-scrape on every hub open).
+    if (!shelfSectionFlipped &&
+        _warmLiveScheduleReuse(scheduleForce: scheduleForce)) {
+      if (refreshBumped) _appliedRefreshEpoch = refreshEpoch;
+      _catalogSection = section;
+      _scopeEpoch = epoch;
+      _promotePageFeedRailIfReady(chrome);
+      return;
+    }
+
     // Portal switch / Refresh — drop old grid so CatalogLoadingTicker shows.
     // Soft list pin refresh keeps last paint until the new envelope lands.
     // Any refresh bump also releases a portal hold (including clear+bump same frame).
@@ -467,7 +505,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       if (!(chrome?.refreshKeepPainted ?? false)) {
         _envelope = null;
         _lastPaintedWidget = null;
-        if (chrome?.refreshForceNetwork ?? true) {
+        if (chrome?.refreshForceNetwork ?? false) {
           PackLoadedPaint._sectionResolved.removeWhere(
             (k, _) => k.startsWith('${widget.pluginId}|'),
           );
@@ -763,6 +801,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     required String key,
   }) {
     _lastRunKey = key;
+    _appliedProgressiveSchedule = _liveProgressiveScheduleKey();
     if (!force) {
       final resolved = PackLoadedPaint._resolved[key];
       if (resolved != null) {
@@ -846,6 +885,35 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     );
     PackLoadedPaint._memo[key] = completer.future;
     return null;
+  }
+
+  String _liveProgressiveScheduleKey() {
+    final spec = widget.fallbackSpec;
+    final scope = LayoutScope.maybeOf(context);
+    final chrome = PackChromeScope.maybeOf(context);
+    String sel(String menuKey) {
+      final id = (spec[menuKey] ?? '').toString().trim();
+      if (id.isEmpty) return '';
+      return (scope?.selectedId(id) ?? '').trim();
+    }
+
+    return [
+      sel('sectionMenu'),
+      sel('catalogMenu'),
+      sel('kindMenu'),
+      sel('horizonMenu'),
+      (chrome?.eventQuery ?? '').trim(),
+    ].join('|');
+  }
+
+  bool _warmLiveScheduleReuse({required bool scheduleForce}) {
+    if (scheduleForce) return false;
+    if (widget.action.trim() != 'feed') return false;
+    if (widget.params['progressiveCatalogs'] != true) return false;
+    final env = _envelope;
+    if (env == null || !env.ok) return false;
+    if (_appliedProgressiveSchedule.isEmpty) return false;
+    return _appliedProgressiveSchedule == _liveProgressiveScheduleKey();
   }
 
   /// Memo hits return a resolved envelope via [_resolved] for sync paint.
@@ -1057,7 +1125,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // bump asked for network — portal switch soft-bumps so iptv.catalog hits.
     final refreshEpoch = chrome?.refreshEpoch ?? 0;
     final epochBumped = refreshEpoch > _appliedRefreshEpoch;
-    final forceNetwork = chrome?.refreshForceNetwork ?? true;
+    final forceNetwork = chrome?.refreshForceNetwork ?? false;
     final force = (epochBumped && forceNetwork) ||
         params['force'] == true ||
         widget.params['force'] == true;

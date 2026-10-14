@@ -61,6 +61,10 @@ void _storeFeedRows(String cacheKey, List<Map<String, dynamic>> rows) {
 Map<String, dynamic> _feedParamsForReduce(Map<String, dynamic> params) {
   final out = Map<String, dynamic>.from(params);
   out.remove('progressiveCatalogs');
+  // Reduce only filters rows already fetched. Leaving force on this call
+  // makes the pack clear live_sports.feed before it reads the row list.
+  out.remove('force');
+  out.remove('forceRefresh');
   return out;
 }
 
@@ -97,12 +101,25 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   required void Function({required bool busy, String? label}) setBusy,
   bool forceRefresh = false,
 }) async* {
-  final filter = (feedParams['catalogFilter'] ?? feedParams['section'] ?? 'all')
-      .toString()
-      .trim();
+  // catalogFilter = plugin catalog chip. section = Sports/TV shelf (not a
+  // plugin id) — never fall back to section or TV scrapes zero catalogs.
+  final catalogFilter = (feedParams['catalogFilter'] ?? '').toString().trim();
+  final shelf = (feedParams['section'] ?? '').toString().trim().toLowerCase();
+  // Shelf ids (sports/tv) are never plugin catalogs — empty chip → All.
+  final filter = catalogFilter.isNotEmpty
+      ? catalogFilter
+      : (shelf == 'sports' || shelf == 'tv' || shelf.isEmpty)
+          ? 'all'
+          : shelf;
 
+  // Refresh must only drop the selected catalog's slots. Wiping the whole
+  // namespace forced every other pack to re-scrape on the next All / switch.
   if (forceRefresh) {
-    EngineCache.instance.invalidate(_kLiveFeedCacheNs);
+    if (filter.isEmpty || filter == 'all') {
+      EngineCache.instance.invalidate(_kLiveFeedCacheNs);
+    } else {
+      EngineCache.instance.invalidate(_kLiveFeedCacheNs, _liveFeedCacheKey(filter));
+    }
   }
 
   if (isLiveStremioCatalogFilter(filter)) {

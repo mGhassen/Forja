@@ -75,7 +75,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   final Map<String, String> _layoutSelections = {};
   String _eventQuery = '';
   int _refreshEpoch = 0;
-  bool _refreshForceNetwork = true;
+  // False until Refresh or a pack reload asks for network. A true default
+  // wiped the live schedule cache on the first epoch bump after load.
+  bool _refreshForceNetwork = false;
   bool _refreshKeepPainted = false;
   int _catalogHoldEpoch = 0;
   String _viewStyle = '';
@@ -535,6 +537,39 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       return;
     }
     await _loadPage(force: force);
+  }
+
+  /// True when a showWhen-visible list load uses host progressive catalogs.
+  bool _visibleProgressiveLiveFeed() {
+    var found = false;
+    walkLayoutWidgets(_widgets, (spec) {
+      if (found) return;
+      final type = LayoutTypes.normalize((spec['type'] ?? '').toString(), spec);
+      if (type != LayoutTypes.list) return;
+      final when = spec['showWhen'];
+      if (when is Map) {
+        for (final e in when.entries) {
+          final menuId = e.key.toString().trim();
+          if (menuId.isEmpty) continue;
+          final selected = (_layoutSelections[menuId] ?? '').trim();
+          final want = e.value;
+          if (want is List) {
+            final ids = <String>{
+              for (final raw in want) raw.toString().trim(),
+            }..removeWhere((s) => s.isEmpty);
+            if (ids.isNotEmpty && !ids.contains(selected)) return;
+          } else {
+            final wantId = want.toString().trim();
+            if (wantId.isNotEmpty && selected != wantId) return;
+          }
+        }
+      }
+      final load = packLoadSpec(spec['load']);
+      if (load != null && load.params['progressiveCatalogs'] == true) {
+        found = true;
+      }
+    });
+    return found;
   }
 
   Map<String, dynamic> _pageRunParams() => <String, dynamic>{
@@ -1461,6 +1496,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         // Portal wipe still clears via [onClearCatalog].
         final keepSidePanel = _selectedListItem.value != null;
         PortalChannelGuideOpen.invalidateLiveCatalog();
+        final progressiveLive = _visibleProgressiveLiveFeed();
         setState(() {
           _refreshEpoch++;
           _refreshForceNetwork = forceNetwork;
@@ -1484,8 +1520,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             }
           }
         });
-        // Soft portal switch keeps page layout; rails rebind via refreshEpoch.
-        if (forceNetwork) {
+        // Progressive Live Sports: epoch bump force-rebinds the feed for the
+        // selected catalog. Full hub _loadPage remounts layout and re-fans
+        // every catalog — skip it here. IPTV / other hubs still reload the page.
+        if (forceNetwork && !progressiveLive) {
           unawaited(onShellTabRefresh(force: true));
         }
       },

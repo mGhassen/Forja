@@ -9,7 +9,7 @@
 | Field | Value |
 |-------|--------|
 | Progress | Complete |
-| Components | 5/5 |
+| Components | 7/7 |
 | Acceptance | 0/4 · QA ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -31,6 +31,8 @@ Live Sports mixed match schedule and 24/7 channels in one feed with sport circle
 | 3 | I434-T03 | Host `sectionMenu` + topBody child `showWhen` (hide kind bar / swap lists) | ✅ |
 | 4 | I434-T04 | Host `open: play` — resolve Providers only, play first stream | ✅ |
 | 5 | I434-T05 | Feature guide + changelog | ✅ |
+| 6 | I434-T06 | TV chrome Catalog chip + feed respects catalogFilter | ✅ |
+| 7 | I434-T07 | alwaysOn must not classify at/@ matchups as 24/7 (Sports lost non-football) | ✅ |
 
 ---
 

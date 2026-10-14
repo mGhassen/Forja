@@ -67,10 +67,15 @@ KitListTapOpen resolveKitListTapOpen({
   if (mode == 'play') {
     return KitListTapOpen.play;
   }
+  // Match schedule must never fall through to My List Open-in binding.
+  if (hasMatchOpenSurface) {
+    if (mode == 'details') return KitListTapOpen.details;
+    return canShowSidePanel ? KitListTapOpen.panel : KitListTapOpen.details;
+  }
   if (mode == 'panel') {
     return canShowSidePanel ? KitListTapOpen.panel : KitListTapOpen.details;
   }
-  if (mode == 'details' || hasMatchOpenSurface) {
+  if (mode == 'details') {
     return KitListTapOpen.details;
   }
   return KitListTapOpen.openTap;

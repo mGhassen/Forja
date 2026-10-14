@@ -215,11 +215,15 @@ class PackPaintTree extends StatelessWidget {
     if (type == LayoutTypes.list) {
       final listLoad = packLoadSpec(spec['load']) ??
           (action: 'feed', params: <String, dynamic>{});
+      // Include list id — Sports/TV (and IPTV shelves) must not share State
+      // or load-params like catalogFilter:all bleed across showWhen flips.
+      final listId =
+          (spec['id'] ?? spec['rail'] ?? listLoad.action).toString().trim();
       return _withMotion(
         context,
         spec,
         PackLoadedPaint(
-          key: ValueKey('paint-$pluginId-list-${listLoad.action}'),
+          key: ValueKey('paint-$pluginId-list-$listId-${listLoad.action}'),
           pluginId: pluginId,
           packSourceUrl: packSourceUrl,
           tabId: tabId,
@@ -1883,8 +1887,19 @@ class PackPaintTree extends StatelessWidget {
           }
           final packCardKind =
               (spec['cardKind'] ?? '').toString().trim().toLowerCase();
-          final liveChannels = _itemsLookLikeLiveChannels(filtered);
+          // Live Sports schedule (panel / Providers) — never My List posters,
+          // channel tiles, or Open-in hub binding.
+          final matchOpenSurface = _listIsMatchSchedule(spec);
+          final liveChannels = !matchOpenSurface &&
+              (packCardKind == 'channel' ||
+                  packCardKind == 'livechannel' ||
+                  packCardKind == 'channellist' ||
+                  _itemsLookLikeLiveChannels(filtered));
           final cardKind = () {
+            if (matchOpenSurface) {
+              if (style == 'cards' || style == 'grid') return 'event';
+              return 'dense';
+            }
             if (wantGuide) return 'guide';
             // IPTV Live list → Sources-style channel rows (not schedule dense).
             if (liveChannels &&
@@ -1940,7 +1955,6 @@ class PackPaintTree extends StatelessWidget {
             }
             if (style == 'list' || style == 'timeline') return 'dense';
             if (style == 'cards') {
-              // Live Sports match cards — not IPTV VOD (poster) or live channels.
               return _itemsLookLikeEvents(filtered) ? 'event' : 'poster';
             }
             if (style == 'guide' || style == 'epg') return 'guide';
@@ -1950,9 +1964,6 @@ class PackPaintTree extends StatelessWidget {
             return 'poster';
           }();
           final openMode = (spec['open'] ?? '').toString().trim().toLowerCase();
-          final matchOpenSurface =
-              (spec['openSetting'] ?? '').toString().trim().isNotEmpty ||
-                  spec['panelTabs'] is List;
           final panelSelectedId = selected == null
               ? null
               : (selected['id'] ??
@@ -2035,8 +2046,8 @@ class PackPaintTree extends StatelessWidget {
           }
 
           void onListItemTap(Map<String, dynamic> item) {
-            // Live Sports (openSetting / panelTabs): never fall through to
-            // open.surface:live — that only re-requests this hub tab (no-op).
+            // Live Sports schedule: panel / details / play only — never My List
+            // "Open in…" hub binding (live-sports-hub has no `details` cap).
             final tapOpen = resolveKitListTapOpen(
               openMode: openMode,
               hasMatchOpenSurface: matchOpenSurface,
@@ -2044,7 +2055,7 @@ class PackPaintTree extends StatelessWidget {
             );
             switch (tapOpen) {
               case KitListTapOpen.panel:
-                chrome!.onSelectListItem(item);
+                chrome?.onSelectListItem(item);
                 if (offlinePanel) return;
                 final hubTab = (tabId ?? '').trim();
                 if (hubTab.isNotEmpty &&
@@ -2073,6 +2084,14 @@ class PackPaintTree extends StatelessWidget {
                 );
                 return;
               case KitListTapOpen.openTap:
+                if (matchOpenSurface) {
+                  if (canShowSidePanel && chrome != null) {
+                    chrome.onSelectListItem(item);
+                  } else {
+                    openMatchDetails(item);
+                  }
+                  return;
+                }
                 break;
             }
             final streamId = _itemStreamId(item);
@@ -2081,7 +2100,6 @@ class PackPaintTree extends StatelessWidget {
               IptvCatalogLand.noteFocusedStreamId(streamId);
             }
             // Feed-only hubs (My List): hub binding + Open in… sheet.
-            // Details hubs keep openMetaItem via openKitListItem.
             unawaited(
               openKitListItem(
                 context,
@@ -2192,7 +2210,8 @@ class PackPaintTree extends StatelessWidget {
                       ? null
                       : spec['emptyDescription']?.toString(),
               emptyAction: _listEmptyAction(context, spec),
-              itemAccessory: _listPosterPinAccessory,
+              itemAccessory:
+                  matchOpenSurface ? null : _listPosterPinAccessory,
               itemHealthListenable: healthListenableFor,
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
@@ -2318,7 +2337,9 @@ class PackPaintTree extends StatelessWidget {
                                   ? null
                                   : spec['emptyDescription']?.toString(),
                           emptyAction: _listEmptyAction(context, spec),
-                          itemAccessory: _listPosterPinAccessory,
+                          itemAccessory: matchOpenSurface
+                              ? null
+                              : _listPosterPinAccessory,
                           itemHealthListenable: healthListenableFor,
                           onItemInteractiveActive: onInteractiveActive,
                           loadEpgProgrammes: loadShortEpgProgrammes,
@@ -2768,6 +2789,18 @@ class PackPaintTree extends StatelessWidget {
         ForjaToast.info('No playable stream');
       }
     }
+  }
+
+  /// Live Sports match schedule (Providers panel) — not IPTV / My List posters.
+  bool _listIsMatchSchedule(Map<String, dynamic> spec) {
+    if ((spec['openSetting'] ?? '').toString().trim().isNotEmpty) return true;
+    final tabs = spec['panelTabs'];
+    if (tabs is List && tabs.isNotEmpty) return true;
+    final open = (spec['open'] ?? '').toString().trim().toLowerCase();
+    if (open == 'panel' || open == 'details') return true;
+    // Schedule chrome: Catalog + Schedule horizon (IPTV has no horizonMenu).
+    return (spec['horizonMenu'] ?? '').toString().trim().isNotEmpty &&
+        (spec['catalogMenu'] ?? '').toString().trim().isNotEmpty;
   }
 
   bool _itemsLookLikeEvents(List<Map<String, dynamic>> items) {

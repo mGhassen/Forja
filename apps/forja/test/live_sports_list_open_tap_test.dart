@@ -91,14 +91,14 @@ void main() {
       );
     });
 
-    test('unknown mode with match surface → details (not live openTap)', () {
+    test('unknown mode with match surface → panel (not My List openTap)', () {
       expect(
         resolveKitListTapOpen(
           openMode: 'whatever',
           hasMatchOpenSurface: true,
           canShowSidePanel: true,
         ),
-        KitListTapOpen.details,
+        KitListTapOpen.panel,
       );
     });
 
