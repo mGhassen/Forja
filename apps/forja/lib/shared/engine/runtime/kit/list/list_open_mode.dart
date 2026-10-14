@@ -33,7 +33,7 @@ ValueListenable<int> get packSettingsRevisionListenable =>
 /// Live Sports declares `openSetting` / `panelTabs`. Those must never fall
 /// through to `open.surface:live` (hub tab re-request is a no-op). Panel needs
 /// chrome + room to dock (or Android TV); otherwise open the detail page.
-enum KitListTapOpen { panel, details, openTap }
+enum KitListTapOpen { panel, details, openTap, play }
 
 /// Whether a kit list may paint / open the docked streams side panel.
 ///
@@ -63,6 +63,9 @@ KitListTapOpen resolveKitListTapOpen({
   }
   if (mode == 'detail' || mode == 'detail page' || mode == 'detailpage') {
     mode = 'details';
+  }
+  if (mode == 'play') {
+    return KitListTapOpen.play;
   }
   if (mode == 'panel') {
     return canShowSidePanel ? KitListTapOpen.panel : KitListTapOpen.details;

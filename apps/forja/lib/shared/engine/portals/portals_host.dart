@@ -497,6 +497,8 @@ abstract final class PortalsHost {
     if (k.isEmpty) {
       await EngineVault.remove(PortalVaultKeys.active);
       await PortalStore.clearLastPortalKey();
+      // Wake Portals chips / inventories on every hub (Live Sports + IPTV).
+      PortalStore.notifyListChanged();
       return;
     }
     // Normalize legacy host keys → pack form when possible.
@@ -506,6 +508,8 @@ abstract final class PortalsHost {
     await EngineVault.set(PortalVaultKeys.active, out);
     // Keep store last-key in sync for sync/migrate paths (prefer pack form).
     await PortalStore.saveLastPortalKey(out);
+    // Active is global — Live Sports chip must not stay on the prior portal.
+    PortalStore.notifyListChanged();
   }
 
   static Future<MetaEnvelope> remove({

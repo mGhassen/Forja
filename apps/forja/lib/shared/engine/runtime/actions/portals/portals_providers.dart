@@ -9,10 +9,16 @@ import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 final portalsPanelOpenProvider =
     StateProvider.family<bool, String>((ref, tabId) => false);
 
-/// Vault-backed chip label — safe to watch on hub open (no pack / flutter_js).
-final portalsChipSummaryProvider = FutureProvider.autoDispose
-    .family<PortalsChipSummary, String>((ref, tabId) async {
+/// Vault-backed chip label — shared across hubs (IPTV + Live Sports).
+///
+/// Active portal is global; a per-tab family left Live Sports stale after an
+/// IPTV select (issue 433).
+final portalsChipSummaryProvider =
+    FutureProvider.autoDispose<PortalsChipSummary>((ref) async {
   ref.keepAlive();
+  void onStoreRev() => ref.invalidateSelf();
+  PortalStore.listRevision.addListener(onStoreRev);
+  ref.onDispose(() => PortalStore.listRevision.removeListener(onStoreRev));
   return PortalsHost.chipSummary();
 });
 
@@ -31,7 +37,7 @@ class PortalsInventoryNotifier
     // Soft-pull / admin assign / Deal write PortalStore → notify; refresh vault paint.
     void onStoreRev() {
       unawaited(softReload());
-      ref.invalidate(portalsChipSummaryProvider(tabId));
+      ref.invalidate(portalsChipSummaryProvider);
     }
 
     PortalStore.listRevision.addListener(onStoreRev);
@@ -276,11 +282,14 @@ class PortalsInventoryNotifier
   }
 }
 
-/// Soft refresh after mutations — chip vault reload + inventory soft merge.
+/// Soft refresh after mutations — shared chip + this tab's inventory.
 /// Does **not** blank the open panel.
+///
+/// Chip is global (vault active). Other hubs' inventories catch up via
+/// [PortalStore.listRevision] when [PortalsHost.setActiveKey] notifies.
 void invalidatePortalsChrome(WidgetRef ref, String tabId) {
   final key = tabId.trim();
-  ref.invalidate(portalsChipSummaryProvider(key));
+  ref.invalidate(portalsChipSummaryProvider);
   unawaited(ref.read(portalsInventoryProvider(key).notifier).softReload());
 }
 

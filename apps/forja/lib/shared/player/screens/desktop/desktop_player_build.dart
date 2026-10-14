@@ -39,7 +39,12 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
   Widget _buildPlayerBody(BuildContext context) {
     // Mouse back / trackpad swipe / system pop must match the chrome Back
     // button ([_exitPlayer]) - never a bare Navigator.pop (issue 059).
-    if (!_s._playerReady) {
+    final mini = InAppMiniPlayerController.instance.isActive;
+    // Include enter-pending / released: float owns Player — never full-screen spinner.
+    final pipMode = _s._isPipMode ||
+        _s._releasedForPip ||
+        PipService.instance.isDesktopActive;
+    if (!_s._playerReady && !pipMode) {
       return const Scaffold(
         backgroundColor: Colors.black,
         body: Center(
@@ -47,10 +52,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         ),
       );
     }
-    final mini = InAppMiniPlayerController.instance.isActive;
-    // Include enter-pending: window shrinks before the stream sets _isPipMode.
-    final pipMode =
-        _s._isPipMode || PipService.instance.isDesktopActive;
     final showSkip = _s._activeSkipLabel != null && !_s._skipDismissed;
 
     // Same MediaKit [Video] always — only the [Positioned] box resizes.

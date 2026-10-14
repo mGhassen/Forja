@@ -1,5 +1,9 @@
 import Cocoa
 import FlutterMacOS
+import media_kit_libs_macos_video
+import media_kit_video
+import volume_controller
+import wakelock_plus
 
 /// Desktop PiP: secondary always-on-top float window with its own FlutterEngine.
 /// Main Forja window stays full-size; Dart shows a placeholder there.
@@ -101,10 +105,8 @@ final class DesktopPipController: NSObject {
 
     let project = FlutterDartProject()
     let engine = FlutterEngine(name: "forja.pip_float", project: project)
-    let ran = engine.run(
-      withEntrypoint: "pipFloatMain",
-      libraryURI: "package:forja/pip_float/pip_float_main.dart"
-    )
+    // macOS has no libraryURI — entrypoint must live in the same library as main().
+    let ran = engine.run(withEntrypoint: "pipFloatMain")
     guard ran else {
       NSLog("[DesktopPip] float engine failed to run pipFloatMain")
       return false
@@ -191,10 +193,17 @@ final class DesktopPipController: NSObject {
     floatWindow?.contentViewController = nil
     floatWindow = nil
     floatViewController = nil
-    floatEngine?.shutDownEngine()
+    // Do not shutDownEngine synchronously — teardown is async and racing
+    // shutDown produces "Invalid engine handle" lifecycle spam.
+    let engine = floatEngine
     floatEngine = nil
     pendingOpen = nil
     floatReady = false
+    if let engine {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        engine.shutDownEngine()
+      }
+    }
   }
 
   private func handleFloatCall(

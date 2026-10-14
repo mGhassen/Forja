@@ -2000,6 +2000,23 @@ class PackPaintTree extends StatelessWidget {
               case KitListTapOpen.details:
                 openMatchDetails(item);
                 return;
+              case KitListTapOpen.play:
+                // Providers only — no Live TV merge / panel / details.
+                unawaited(
+                  _playListItemDirect(
+                    context,
+                    item: item,
+                    layoutWidgets: [
+                      if (spec['panelTabs'] is List)
+                        {
+                          'type': 'kit.list',
+                          'panelTabs': spec['panelTabs'],
+                          'panelTab': spec['panelTab'],
+                        },
+                    ],
+                  ),
+                );
+                return;
               case KitListTapOpen.openTap:
                 break;
             }
@@ -2523,7 +2540,7 @@ class PackPaintTree extends StatelessWidget {
       if (!open) {
         preparePortalsPanel(container, key);
       } else {
-        container.invalidate(portalsChipSummaryProvider(key));
+        container.invalidate(portalsChipSummaryProvider);
       }
     } catch (_) {
       ForjaToast.show('Portals unavailable');

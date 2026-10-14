@@ -1340,7 +1340,19 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
   void _setHovered(bool h) {
     if (_hoveredN.value == h) return;
     _hoveredN.value = h;
-    _armCatalogs(h || _focused);
+    _syncCatalogArm();
+  }
+
+  /// Same dwell signal as active chrome — desktop mouse focus retention must
+  /// not keep merged catalogs after the pointer leaves.
+  void _syncCatalogArm() {
+    _armCatalogs(
+      ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hoveredN.value,
+        focused: _focused,
+      ),
+    );
   }
 
   void _armCatalogs(bool armed) {
@@ -1354,6 +1366,13 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
     if (_showCatalogs || _catalogTimer != null) return;
     _catalogTimer = Timer(EventCardTokens.catalogHoverDelay, () {
       if (!mounted) return;
+      if (!ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hoveredN.value,
+        focused: _focused,
+      )) {
+        return;
+      }
       setState(() => _showCatalogs = true);
     });
   }
@@ -1427,7 +1446,7 @@ class _InteractiveEventCardState extends State<InteractiveEventCard> {
       onUpEdge: widget.onUpEdge,
       onFocusChange: (f) {
         setState(() => _focused = f);
-        _armCatalogs(_hoveredN.value || f);
+        _syncCatalogArm();
       },
       onHoverChange: _setHovered,
       child: ListenableBuilder(

@@ -110,7 +110,8 @@ class PortalStore {
     await prefs.setBool(flag, true);
   }
 
-  /// Bumped when portals change outside the IPTV tab (CSV import, etc.).
+  /// Bumped when portals inventory or active key change (select, CSV, sync…).
+  /// Hubs sharing Portals chrome (IPTV + Live Sports) listen for chip/panel.
   static final ValueNotifier<int> listRevision = ValueNotifier(0);
 
   static void notifyListChanged() {

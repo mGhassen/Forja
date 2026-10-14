@@ -1204,15 +1204,17 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
 
   Widget _buildPlayer(BuildContext context) {
     final keepOverlays = _s._guideVisible || _s._searchVisible;
-    if (!_s._playerReady && !keepOverlays) {
+    final pipEarly = _s._isPipMode ||
+        _s._releasedForPip ||
+        PipService.instance.isDesktopActive;
+    if (!_s._playerReady && !keepOverlays && !pipEarly) {
       return _playerLoadingScaffold();
     }
 
     final size = MediaQuery.sizeOf(context);
     final compact = size.shortestSide < 600;
     final mini = InAppMiniPlayerController.instance.isActive;
-    // Include enter-pending: window shrinks before the stream sets _isPipMode.
-    final pipMode = _s._isPipMode || PipService.instance.isDesktopActive;
+    final pipMode = pipEarly;
     final hideFullChrome = pipMode || mini;
     final epgFuture = (!_s._guideVisible && !_s._searchVisible)
         ? _floatingEpgFuture()

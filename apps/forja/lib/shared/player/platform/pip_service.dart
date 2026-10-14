@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:floating/floating.dart' as fp;
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
+import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/player/platform/pip_handoff.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
@@ -256,6 +257,10 @@ class PipService {
       final pipHeight = pipWidth / aspect;
 
       await session.releasePlayerForPip();
+      // Let mpv exclusive dispose finish before the float engine opens a Player.
+      await MpvExclusiveSession.instance.prepareForVideoPlayer(
+        timeout: const Duration(seconds: 8),
+      );
       ShellBus.leavePlayerSurface();
       ShellBus.clearMaskShellUnderPlayer();
 
@@ -272,6 +277,8 @@ class PipService {
         return false;
       }
 
+      // Give the float isolate a beat to attach the MethodChannel handler.
+      await Future<void>.delayed(const Duration(milliseconds: 80));
       await _desktopPipChannel.invokeMethod('openFloat', snap.toMap());
       _desktopActive = true;
       return true;

@@ -1203,15 +1203,18 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
 
   Widget _buildPlayer(BuildContext context) {
     final keepOverlays = _s._guideVisible || _s._searchVisible;
-    if (!_s._playerReady && !keepOverlays) {
+    final pipEarly = _s._isPipMode ||
+        _s._releasedForPip ||
+        PipService.instance.isDesktopActive;
+    if (!_s._playerReady && !keepOverlays && !pipEarly) {
       return _playerLoadingScaffold();
     }
 
     final size = MediaQuery.sizeOf(context);
     final compact = size.shortestSide < 600;
     final mini = InAppMiniPlayerController.instance.isActive;
-    // Include enter-pending: window shrinks before the stream sets _isPipMode.
-    final pipMode = _s._isPipMode || PipService.instance.isDesktopActive;
+    // Include enter-pending / released: float owns Player — no loading scaffold.
+    final pipMode = pipEarly;
     final hideFullChrome = pipMode || mini;
     final epgFuture = (!_s._guideVisible && !_s._searchVisible)
         ? _floatingEpgFuture()
@@ -1796,9 +1799,12 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   }
 
   Widget _buildTopBarActions(bool compact) {
-    // PiP is phone/desktop chrome - hide on leanback TV (matches VOD player).
+    // PiP / Cast are phone/desktop chrome - hide on leanback TV (matches VOD).
     final showPip =
         PipService.instance.isSupported && liveShowPointerChrome(context);
+    final showCast = liveShowPointerChrome(context) &&
+        (CastingService.instance.isAirPlayAvailable ||
+            CastingService.instance.isChromecastAvailable);
     // Mini button always on desktop pointer chrome — setting only gates Escape.
     final showInAppMini = liveShowPointerChrome(context);
     final tv = liveUseTvFocus(context);
@@ -1852,6 +1858,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     var next = 1; // 1 = Back
     final playerOrder = ++next;
     final statsOrder = ++next;
+    final castOrder = showCast ? ++next : null;
     final miniOrder = showInAppMini ? ++next : null;
     final pipOrder = showPip ? ++next : null;
 
@@ -1968,6 +1975,34 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
               onDownEdge: downFromTop,
               onLeftEdge: tv ? () => claim(_s._playerMenuFocus) : null,
             ),
+            if (showCast)
+              _topBarFlatAction(
+                icon: Icons.cast_rounded,
+                tooltip: 'Cast',
+                tvFocusOrder: castOrder,
+                onPressed: () {
+                  final src = _s._activeCastSource;
+                  showPlayerCastPicker(
+                    context,
+                    streamUrl: src?.url,
+                    title: _s._title,
+                    headers: src == null || src.headers.isEmpty
+                        ? null
+                        : src.headers,
+                    position: _s._position,
+                    duration: _s._duration,
+                    startTime: _s._castStartTime,
+                    subtitle: _s._castSubtitle,
+                    handoff: CastHandoff(
+                      onStarted: () => unawaited(_s._pauseForCast()),
+                      onEnded: (resumeAt) =>
+                          unawaited(_s._resumeAfterCast(resumeAt)),
+                    ),
+                  );
+                  _scheduleHideControls();
+                },
+                onDownEdge: downFromTop,
+              ),
             if (showInAppMini)
               _topBarFlatAction(
                 icon: Icons.branding_watermark_outlined,

@@ -14,6 +14,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';
@@ -1032,6 +1033,51 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     }
   }
 
+  LivePlaySource? get _activeCastSource {
+    if (_sources.isEmpty) return null;
+    return _sources[_sourceIdx.clamp(0, _sources.length - 1)];
+  }
+
+  Future<CastSubtitle?> _castSubtitle() async {
+    final player = _player;
+    if (!_mediaKitBackend || player == null) return null;
+    return castSubtitleForPlayer(player, delaySeconds: _subtitleDelay);
+  }
+
+  Future<Duration> _castStartTime() async {
+    final player = _player;
+    if (!_mediaKitBackend || player == null) return Duration.zero;
+    return mpvStreamStartTime(player);
+  }
+
+  Future<void> _pauseForCast() async {
+    if (_disposed) return;
+    _userPlayWhenReady = false;
+    _pausedAt = DateTime.now();
+    await _enginePause();
+  }
+
+  /// AirPlay handed playback back — VOD resumes at the TV position; live
+  /// rejoins the edge after a pause (same as play-after-pause).
+  Future<void> _resumeAfterCast(Duration position) async {
+    if (_disposed) return;
+    _userPlayWhenReady = true;
+    final pausedAt = _pausedAt;
+    _pausedAt = null;
+    if (_isVod && position > Duration.zero) {
+      await _engineSeek(position);
+      if (_disposed) return;
+    }
+    await _enginePlay();
+    if (_disposed) return;
+    if (pausedAt != null &&
+        _chrome == LivePlayerChromeProfile.live &&
+        iptvExoUrlLooksLive(_activeCastSource?.url ?? '') &&
+        DateTime.now().difference(pausedAt) >= const Duration(seconds: 2)) {
+      _scheduleJumpToLive(force: true);
+    }
+  }
+
   /// D-pad / remote keys while chrome is up count as activity. Row focus
   /// handlers often return [KeyEventResult.handled], so [PlayerTvKeyScope]
   /// alone never sees them - without this, controls hide mid-navigation.
@@ -1313,6 +1359,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     }
     _exitInProgress = true;
     final nav = Navigator.of(context, rootNavigator: true);
+    unawaited(CastingService.instance.stopCasting());
     await _stopPlaybackForExit();
     if (!mounted || _disposed) return;
     // Android: unmount MediaCodec before pop (ANR). Desktop keeps the
@@ -1507,6 +1554,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     ShellBus.leavePlayerSurface();
     ShellBus.clearMaskShellUnderPlayer();
     _disposed = true;
+    unawaited(CastingService.instance.stopCasting());
     InAppMiniPlayerController.instance.detach(this);
     _miniRootFocus.dispose();
     _miniPlayPauseFocus.dispose();

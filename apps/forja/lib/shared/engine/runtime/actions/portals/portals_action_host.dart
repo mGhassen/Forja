@@ -285,7 +285,7 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
   Widget build(BuildContext context) {
     final key = widget.tabId;
     final open = ref.watch(portalsPanelOpenProvider(key));
-    final summary = ref.watch(portalsChipSummaryProvider(key));
+    final summary = ref.watch(portalsChipSummaryProvider);
     var label = summary.asData?.value.label ?? 'Portals';
     var hasPortal = summary.asData?.value.hasPortal ?? false;
     var portalKey = summary.asData?.value.portalKey ?? '';

@@ -108,19 +108,42 @@ Map<String, dynamic> packChromeFeedParams(
     } catch (_) {}
   }
 
-  injectMenu('catalogMenu', 'catalogFilter', asAlso: 'section');
+  // Shelf section (e.g. Live Sports Sports/TV) — opaque param only; does not
+  // steal catalogFilter (plugin catalog chip).
+  final sectionMenu = (listSpec['sectionMenu'] ?? '').toString().trim();
+  injectMenu('sectionMenu', 'section');
+
+  final catalogMenu = (listSpec['catalogMenu'] ?? '').toString().trim();
+  if (sectionMenu.isNotEmpty) {
+    // Keep shelf `section` — Catalog chip only stamps catalogFilter.
+    injectMenu('catalogMenu', 'catalogFilter');
+  } else {
+    injectMenu('catalogMenu', 'catalogFilter', asAlso: 'section');
+  }
   // Always stamp section when the list declares a catalog menu — empty
   // selection must match top-bar paint (`dynamicCatalogs` → all), not IPTV's
   // `live` section id (that filtered Live Sports to a non-existent plugin).
-  final catalogMenu = (listSpec['catalogMenu'] ?? '').toString().trim();
   if (catalogMenu.isNotEmpty &&
+      (params['catalogFilter'] == null ||
+          params['catalogFilter'].toString().trim().isEmpty)) {
+    final fallback = (scope?.selectedId(catalogMenu) ?? 'all').trim();
+    params['catalogFilter'] = fallback.isEmpty ? 'all' : fallback;
+  }
+  if (catalogMenu.isNotEmpty &&
+      sectionMenu.isEmpty &&
       (params['section'] == null ||
           params['section'].toString().trim().isEmpty)) {
     final fallback = (scope?.selectedId(catalogMenu) ?? 'all').trim();
     params['section'] = fallback.isEmpty ? 'all' : fallback;
     params['catalogFilter'] = params['section'];
   }
-  if (catalogMenu.isNotEmpty) {
+  if (sectionMenu.isNotEmpty &&
+      (params['section'] == null ||
+          params['section'].toString().trim().isEmpty)) {
+    final fallback = (scope?.selectedId(sectionMenu) ?? 'sports').trim();
+    params['section'] = fallback.isEmpty ? 'sports' : fallback;
+  }
+  if (catalogMenu.isNotEmpty || sectionMenu.isNotEmpty) {
     debugPrint(
       '[kit] $pluginId feed section=${params['section']} '
       'catalogFilter=${params['catalogFilter']}',
@@ -271,6 +294,7 @@ String packChromeGridFlipEpoch(
     status,
     kindPart,
     sel('catalogMenu'),
+    sel('sectionMenu'),
     kindBustsFeed ? sel('sortMenu') : '',
     sel('horizonMenu'),
     eventQ,

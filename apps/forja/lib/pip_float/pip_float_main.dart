@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -77,12 +78,31 @@ class _PipFloatSurfaceState extends State<PipFloatSurface> {
     await _teardown();
     if (snap.url.isEmpty) return;
 
-    await MpvExclusiveSession.instance.prepareForVideoPlayer();
-    final player = MpvExclusiveSession.instance.trackPlayer(Player());
-    final controller = VideoController(player);
+    await MpvExclusiveSession.instance.prepareForVideoPlayer(
+      timeout: const Duration(seconds: 8),
+    );
+    if (!mounted) return;
+
+    final player = MpvExclusiveSession.instance.trackPlayer(
+      Player(
+        configuration: const PlayerConfiguration(
+          logLevel: MPVLogLevel.warn,
+        ),
+      ),
+    );
+    // Secondary FlutterEngine + VideoToolbox often fails (-12909). Soft decode.
+    final soft = Platform.isMacOS || Platform.isWindows;
+    final controller = VideoController(
+      player,
+      configuration: VideoControllerConfiguration(
+        enableHardwareAcceleration: !soft,
+        hwdec: soft ? 'no' : 'auto-safe',
+      ),
+    );
     _player = player;
     _controller = controller;
     _isLive = snap.isLive;
+    if (mounted) setState(() {});
 
     _playingSub = player.stream.playing.listen((v) {
       if (!mounted) return;
@@ -92,21 +112,21 @@ class _PipFloatSurfaceState extends State<PipFloatSurface> {
     _durSub = player.stream.duration.listen((v) => _duration.value = v);
 
     try {
+      final seek = (!snap.isLive && snap.position > Duration.zero)
+          ? snap.position
+          : null;
       await openPlayerStream(
         player,
         url: snap.url,
         headers: snap.headers.isEmpty ? null : snap.headers,
         providerId: snap.providerId,
-        startAt: snap.isLive ? null : snap.position,
+        startAt: seek,
       );
-      if (snap.playing) {
-        await player.play();
-      } else {
-        await player.pause();
-      }
-      if (mounted) setState(() => _playing = snap.playing);
-    } catch (e) {
-      debugPrint('[PipFloat] open failed: $e');
+      // Always try play — handoff snapshot can race pause state.
+      await player.play();
+      if (mounted) setState(() => _playing = true);
+    } catch (e, st) {
+      debugPrint('[PipFloat] open failed: $e\n$st');
     }
   }
 
@@ -120,6 +140,7 @@ class _PipFloatSurfaceState extends State<PipFloatSurface> {
     final player = _player;
     _player = null;
     _controller = null;
+    if (mounted) setState(() {});
     if (player != null) {
       MpvExclusiveSession.instance.untrackPlayer(player);
       final dispose = teardownMediaKitPlayer(player);
@@ -217,8 +238,10 @@ class _PipFloatSurfaceState extends State<PipFloatSurface> {
             onRestore: () => unawaited(_expand()),
             onMinimize: () => unawaited(_minimize()),
             onClose: () => unawaited(_close()),
-            onSeekBack: _isLive ? null : () => unawaited(_seekBy(const Duration(seconds: -15))),
-            onSeekForward: _isLive ? null : () => unawaited(_seekBy(const Duration(seconds: 15))),
+            onSeekBack:
+                _isLive ? null : () => unawaited(_seekBy(const Duration(seconds: -15))),
+            onSeekForward:
+                _isLive ? null : () => unawaited(_seekBy(const Duration(seconds: 15))),
             positionListenable: _isLive ? null : _position,
             durationListenable: _isLive ? null : _duration,
             onSeekTo: _isLive ? null : (d) => unawaited(_seekTo(d)),

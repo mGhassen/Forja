@@ -10,7 +10,7 @@ Casting sends what you're watching in Forja to a TV. AirPlay (Apple TV and AirPl
 
 ## How to open it
 
-In the player, tap **Cast** in the top-right. On macOS and iOS this opens the AirPlay device list.
+In the movie player or **Live Sports** player, tap **Cast** in the top-right. On macOS and iOS this opens the AirPlay device list.
 
 ## What you can do
 
