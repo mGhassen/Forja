@@ -25,13 +25,17 @@ abstract final class LiveResolveStreams {
   ///
   /// Host does **not** soft-match the catalog schedule pool (RFC-105). Packs
   /// own fixture search; UI paints via [onPartial] as each pack returns.
+  ///
+  /// [handoffOnly]: TV 24/7 (and similar) — only packs that own the row's
+  /// opaque `sources[{source,id}]`. No fixture fan-out, no Stremio.
   static Future<List<LivePlaySource>> loadProviders(
     Map<String, dynamic> legacyRow, {
     bool force = false,
     void Function(List<LivePlaySource> partial)? onPartial,
+    bool handoffOnly = false,
   }) async {
     final match = MatchEvent.fromLegacyRow(legacyRow);
-    final cacheKey = _providersCacheKey(match);
+    final cacheKey = _providersCacheKey(match, handoffOnly: handoffOnly);
     if (force) {
       _providersCache.remove(cacheKey);
     } else {
@@ -86,10 +90,12 @@ abstract final class LiveResolveStreams {
       onPartial?.call(rows);
     }
 
-    final stremioFuture = _loadStremioProviders(match);
+    final stremioFuture =
+        handoffOnly ? Future.value(const <LivePlaySource>[]) : _loadStremioProviders(match);
     try {
       forja = await _loadForjaLiveProviders(
         match,
+        handoffOnly: handoffOnly,
         onPartial: (partial) {
           forja = partial;
           publish();
@@ -100,20 +106,22 @@ abstract final class LiveResolveStreams {
       debugPrint('[LiveResolveStreams] Forja Live providers error: $e\n$st');
     }
 
-    try {
-      stremio = await stremioFuture.timeout(
-        _stremioProvidersTimeout,
-        onTimeout: () {
-          debugPrint(
-            '[LiveResolveStreams] Stremio providers timed out after '
-            '${_stremioProvidersTimeout.inSeconds}s',
-          );
-          return const <LivePlaySource>[];
-        },
-      );
-      publish();
-    } catch (e, st) {
-      debugPrint('[LiveResolveStreams] Stremio providers error: $e\n$st');
+    if (!handoffOnly) {
+      try {
+        stremio = await stremioFuture.timeout(
+          _stremioProvidersTimeout,
+          onTimeout: () {
+            debugPrint(
+              '[LiveResolveStreams] Stremio providers timed out after '
+              '${_stremioProvidersTimeout.inSeconds}s',
+            );
+            return const <LivePlaySource>[];
+          },
+        );
+        publish();
+      } catch (e, st) {
+        debugPrint('[LiveResolveStreams] Stremio providers error: $e\n$st');
+      }
     }
 
     final out = merged();
@@ -171,15 +179,23 @@ abstract final class LiveResolveStreams {
     );
   }
 
-  static String _providersCacheKey(MatchEvent match) {
+  static String _providersCacheKey(
+    MatchEvent match, {
+    bool handoffOnly = false,
+  }) {
     final addonRev = SettingsService.addonChangeNotifier.value;
-    return 'providers:${matchEventViewerKey(match)}:a$addonRev';
+    final mode = handoffOnly ? 'handoff' : 'all';
+    return 'providers:$mode:${matchEventViewerKey(match)}:a$addonRev';
   }
 
   /// Fan-out every enabled resolve pack — pack searches its own upstream.
+  ///
+  /// [handoffOnly]: only packs that own a `sources[]` ref on the row (no
+  /// fixtureSearch across unrelated resolvers).
   static Future<List<LivePlaySource>> _loadForjaLiveProviders(
     MatchEvent match, {
     void Function(List<LivePlaySource> partial)? onPartial,
+    bool handoffOnly = false,
   }) async {
     final plugins =
         await EngineService.instance.listEnabledLiveResolvePlugins();
@@ -203,7 +219,15 @@ abstract final class LiveResolveStreams {
     await Future.wait(
       plugins.map((plugin) async {
         try {
-          final streams = await _discoverFromResolvePlugin(match, plugin);
+          if (handoffOnly) {
+            final owned = _ownedSourceRef(match, plugin);
+            if (owned == null) return;
+          }
+          final streams = await _discoverFromResolvePlugin(
+            match,
+            plugin,
+            handoffOnly: handoffOnly,
+          );
           final pluginMatch = match.copyWith(livePluginId: plugin.id);
           var added = false;
           for (final stream in streams) {
@@ -268,9 +292,11 @@ abstract final class LiveResolveStreams {
   /// One resolve pack: owned matchId when known, else fixture identity for pack search.
   static Future<List<MatchStream>> _discoverFromResolvePlugin(
     MatchEvent match,
-    EnginePlugin plugin,
-  ) async {
+    EnginePlugin plugin, {
+    bool handoffOnly = false,
+  }) async {
     final owned = _ownedSourceRef(match, plugin);
+    if (handoffOnly && owned == null) return const [];
     final pluginSource = LivePluginEngine.cachedResolveSourceToken(plugin.id);
 
     final mid = owned == null
@@ -288,7 +314,8 @@ abstract final class LiveResolveStreams {
       ),
       pluginId: plugin.id,
       pluginSource: pluginSource,
-      fixtureOnly: owned == null,
+      // TV handoff / owned slot — never fixture-search other catalogs' channels.
+      fixtureOnly: !handoffOnly && owned == null,
     );
   }
 

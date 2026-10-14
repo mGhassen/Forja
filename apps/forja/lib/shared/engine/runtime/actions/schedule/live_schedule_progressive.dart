@@ -169,6 +169,31 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
       );
       return;
     }
+    // All already scraped — Catalog chip must re-reduce, not re-fan catalogs.
+    if (filter.isNotEmpty && filter != 'all') {
+      final allWarm = _cachedFeedRows(_liveFeedCacheKey('all'));
+      if (allWarm != null) {
+        final scoped = [
+          for (final row in allWarm)
+            if (_catalogIdMatches(
+              (row['pluginId'] ?? row['livePluginId'] ?? '').toString(),
+              filter,
+            ))
+              row,
+        ];
+        if (scoped.isNotEmpty) {
+          _storeFeedRows(aggregateKey, scoped);
+          setBusy(busy: false, label: null);
+          yield await _hubReduceFeed(
+            hubPluginId: hubPluginId,
+            packSourceUrl: packSourceUrl,
+            rows: scoped,
+            params: feedParams,
+          );
+          return;
+        }
+      }
+    }
   }
 
   List<EnginePlugin> wanted;

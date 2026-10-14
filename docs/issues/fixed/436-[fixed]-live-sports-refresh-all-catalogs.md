@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 7 / 7** fix · **0 / 1** acceptance |
+| **Progress** | **Complete · 8 / 8** fix · **0 / 1** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I436-T05 | Pack scoped cache clear + wider 24/7 always-on detection | ✅ |
 | 6 | I436-T06 | Channel card paint only on TV shelf; Sports match lists ignore channel heuristic | ✅ |
 | 7 | I436-T07 | Sports↔TV showWhen remount seeds refreshEpoch — no force re-scrape of warm catalogs | ✅ |
+| 8 | I436-T08 | Catalog chip All→plugin reuses `raw:all` / does not treat chip as shelf flip | ✅ |
 
 ---
 

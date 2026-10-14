@@ -8,7 +8,7 @@ Live Sports is a **hub pack** you install (pack-product host — same class as A
 
 - **Shelf** — **Sports** / **TV** (same style as IPTV Live / Movies / Series)
 - **Sports** — Catalog / Schedule / Refresh, then **Search**, **List/Cards**, and **Portals**; sport mood circles; dense match rows or landscape cards; Providers / Live TV in a **side panel** or **detail page** (Setup → **Open matches in**)
-- **TV** — **Catalog** + Refresh + **Search**; no sport circles; IPTV-sized channel cards for 24/7 rows that have stream sources; tap plays the first Providers stream (no panel, no details, no Live TV merge)
+- **TV** — **Catalog** + Refresh + **Search**; no sport circles; IPTV-sized channel cards for 24/7 rows that have stream sources; tap resolves that channel’s catalog handoff and plays (no Sports provider fan-out, no panel, no details, no Live TV merge)
 
 Host registers live open + Catalog/Schedule top-bar hooks via `LiveSurfaceOpen` (`registerLiveScheduleChromeHooks`). Schedule rows come from pack MetaRuntime `feed` — the pack fans out live catalogs. Portal channel search goes through the IPTV pack `searchChannels` when installed. The hub pack declares Search / view / Portals in `kit.topBar` (`trailing: true`). Host paints those verbs via foundation/layout primitives + pack action builders — it does **not** inject trailing chrome.
 

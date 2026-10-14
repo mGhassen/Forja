@@ -47,6 +47,8 @@ import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/playback/open/history_playback_resume.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
+import 'package:forja/shared/engine/unlock/live_resolve_streams.dart';
+import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja/shared/player/sources/resolve/resolve_panel_host.dart';
 import 'package:forja/shared/player/sources/kit/kit_sources_panel.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
@@ -2074,21 +2076,8 @@ class PackPaintTree extends StatelessWidget {
                 openMatchDetails(item);
                 return;
               case KitListTapOpen.play:
-                // Providers only — no Live TV merge / panel / details.
-                unawaited(
-                  _playListItemDirect(
-                    context,
-                    item: item,
-                    layoutWidgets: [
-                      if (spec['panelTabs'] is List)
-                        {
-                          'type': 'kit.list',
-                          'panelTabs': spec['panelTabs'],
-                          'panelTab': spec['panelTab'],
-                        },
-                    ],
-                  ),
-                );
+                // Catalog handoff resolve only — no Sports fan-out / panel.
+                unawaited(_playListItemDirect(context, item: item));
                 return;
               case KitListTapOpen.openTap:
                 if (matchOpenSurface) {
@@ -2753,33 +2742,33 @@ class PackPaintTree extends StatelessWidget {
     return items;
   }
 
-  /// Resolve Providers for a schedule/channel row and open the first stream.
-  /// Does not load Live TV merge tabs or open the side panel / details page.
+  /// Resolve the channel's catalog handoff (`sources[]`) and open the first
+  /// stream. Not Sports Providers: no fixture fan-out, no Stremio, no Live TV
+  /// merge / panel / details.
   Future<void> _playListItemDirect(
     BuildContext context, {
     required Map<String, dynamic> item,
-    List<Map<String, dynamic>> layoutWidgets = const [],
   }) async {
     final title = (item['title'] ?? item['name'] ?? 'Stream').toString().trim();
     var played = false;
-    Future<void> playFirst(List<KitSourcesRow> rows) async {
+    Future<void> playFirst(List<LivePlaySource> rows) async {
       if (played || rows.isEmpty || !context.mounted) return;
       played = true;
-      await KitResolvePanelHost.playRow(
+      await LiveResolveStreams.play(
         context,
-        rows.first,
+        sources: rows,
+        picked: rows.first,
         title: title.isEmpty ? 'Stream' : title,
       );
     }
 
     try {
-      final rows = await KitResolvePanelHost.loadTab(
+      final rows = await LiveResolveStreams.loadProviders(
         item,
-        'providers',
+        handoffOnly: true,
         onPartial: (partial) {
           unawaited(playFirst(partial));
         },
-        layoutWidgets: layoutWidgets,
       );
       if (!played) {
         if (rows.isEmpty) {

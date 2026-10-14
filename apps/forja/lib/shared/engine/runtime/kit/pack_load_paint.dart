@@ -352,8 +352,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final catalog = catalogMenu.isEmpty
         ? ''
         : (scope?.selectedId(catalogMenu) ?? '').trim();
-    // Live Sports Sports/TV + Catalog chip; IPTV uses catalog shelf alone.
-    if (shelf.isNotEmpty && catalog.isNotEmpty) return '$shelf|$catalog';
+    // Sports/TV shelf only — Catalog *plugin* chip is a filter, not a shelf.
+    // Folding it into this key made All→BZH look like a cold shelf flip and
+    // re-scrape. IPTV Live/Movies/Series has no sectionMenu → catalog alone.
     if (shelf.isNotEmpty) return shelf;
     return catalog;
   }
