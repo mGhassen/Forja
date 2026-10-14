@@ -30,6 +30,7 @@ import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
 import 'package:forja/shared/engine/store/list_open_flow.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
+import 'package:forja/shared/engine/unlock/schedule_sport_filter.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
@@ -2594,14 +2595,15 @@ class PackPaintTree extends StatelessWidget {
         _itemStreamId(item),
       );
     }
-    final needle = filter.toLowerCase();
-    final kind = _itemKind(item).toLowerCase();
-    if (kind == needle || kind.contains(needle)) return true;
+    // Exact sport/category id (slug-normalized). Substring matched
+    // football → american-football / australian-football.
+    final kind = _itemKind(item);
+    if (kind.isNotEmpty && liveSportIdsMatch(kind, filter)) return true;
     // My List chips use type/kind movie|tv — [_itemKind] skips those so IPTV
     // `type: movie` does not steal category matching.
-    final type = (item['type'] ?? '').toString().trim().toLowerCase();
-    final rawKind = (item['kind'] ?? '').toString().trim().toLowerCase();
-    return type == needle || rawKind == needle;
+    final type = (item['type'] ?? '').toString().trim();
+    final rawKind = (item['kind'] ?? '').toString().trim();
+    return liveSportIdsMatch(type, filter) || liveSportIdsMatch(rawKind, filter);
   }
 
   bool _itemMatchesEventQuery(Map<String, dynamic> item, String query) {
