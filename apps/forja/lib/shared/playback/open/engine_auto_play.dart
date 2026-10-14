@@ -23,7 +23,6 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/playback/resolve_failure_view.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shell/routing/app_router.dart';
-import 'package:rust/rust.dart';
 
 /// VOD green Play always races Forja engine providers (provider JS).
 Future<bool> engineAutoPlayEnabled([SettingsService? settings]) async {
@@ -656,12 +655,9 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       }
       publishCache();
       final playable = omitPlatformBlockedDrmStreams(raw);
-      // This plugin already finished. Cancel sibling EngineJS jobs so their
-      // dead-host timeouts do not starve the HTTP probe for these rows.
-      // Does not bump extract generation — winner result stays valid.
-      if (playable.isNotEmpty && !race.isCompleted && !playAborted()) {
-        Engine.cancelEngineJsExtracts();
-      }
+      // Do not cancel sibling extracts here. Rows are not a win until probe
+      // succeeds — abortPool() after onPluginDone's probe win kills siblings.
+      // Cancelling earlier left only the first finisher; a dead URL → no stream.
       await onPluginDone(pluginId, playable);
     }
 

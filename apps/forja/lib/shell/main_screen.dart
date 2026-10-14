@@ -804,8 +804,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   Future<void> _handleFindShortcut() async {
+    // Mounted search surfaces (kit Search, Live Sports schedule filter) win first.
+    // Do not bail on shell overlays — hub details must open the same Search as
+    // browse (stacks on the overlay). Search already open is handled above.
     if (ShellBus.invokeFindShortcut()) return;
-    if (ShellBus.shellOverlayHasPage.value) return;
 
     final tabId = _currentTabId;
     if (tabId == null || !PluginNavRegistry.isKitTab(tabId)) return;

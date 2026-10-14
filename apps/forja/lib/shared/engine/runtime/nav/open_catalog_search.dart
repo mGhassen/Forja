@@ -5,7 +5,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
-/// Open hub Search — same entry for top-bar and Cmd+F (when not already overlay).
+/// Open hub Search — same entry for top-bar and Cmd+F (including from hub details).
 ///
 /// Screen is [KitSearchScreen]. Pack owns search via opaque `action: 'search'`
 /// and optional left-column helpers via `action: 'search_helpers'`.
