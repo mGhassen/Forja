@@ -1861,12 +1861,21 @@ class PackPaintTree extends StatelessWidget {
           }
           final packCardKind =
               (spec['cardKind'] ?? '').toString().trim().toLowerCase();
-          // IPTV / Live Sports TV shelf — pack cardKind wins; ignore Sports
-          // List/Cards viewStyle so the grid stays channel tiles.
+          final listOpen =
+              (spec['open'] ?? '').toString().trim().toLowerCase();
+          final listIdHint =
+              (spec['id'] ?? '').toString().trim().toLowerCase();
+          // Live Sports TV shelf — always IPTV channel tiles. Never Sports
+          // List/Cards viewStyle, event landscape, or film posters.
           final packChannelCards = packCardKind == 'channel' ||
               packCardKind == 'livechannel' ||
-              packCardKind == 'channellist';
-          var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
+              packCardKind == 'channellist' ||
+              listOpen == 'play' ||
+              listIdHint == 'tv_channels' ||
+              listIdHint == 'tvchannels';
+          var style = packChannelCards
+              ? 'grid'
+              : (spec['style'] ?? 'grid').toString().trim().toLowerCase();
           // Empty chrome.viewStyle must not block LayoutScope ('' is not null).
           final chromeView =
               (chrome?.viewStyle ?? '').toString().trim().toLowerCase();
@@ -1887,7 +1896,8 @@ class PackPaintTree extends StatelessWidget {
             }
           }
           // Live catalog EPG grid — desktop Live only (≥760); TV stays cards.
-          final wantGuide = !ShellPaintScope.usesTvDensityOf(context) &&
+          final wantGuide = !packChannelCards &&
+              !ShellPaintScope.usesTvDensityOf(context) &&
               (style == 'epg' || style == 'guide') &&
               _itemsLookLikeLiveChannels(filtered) &&
               constraints.maxWidth >= 760;
@@ -1901,6 +1911,9 @@ class PackPaintTree extends StatelessWidget {
           final liveChannels = packChannelCards ||
               (!matchOpenSurface && _itemsLookLikeLiveChannels(filtered));
           final cardKind = () {
+            if (packChannelCards) {
+              return packCardKind == 'channellist' ? 'channelList' : 'channel';
+            }
             if (packCardKind == 'channellist') return 'channelList';
             if (packCardKind == 'channel' || packCardKind == 'livechannel') {
               return 'channel';
@@ -2812,11 +2825,11 @@ class PackPaintTree extends StatelessWidget {
     for (final item in items.take(8)) {
       final paint = item['paint'];
       final type = paint is Map ? (paint['type'] ?? '').toString() : '';
+      // 24/7 TV channels use channelCard (+ live flag) — not match event tiles.
+      if (type == 'channelCard' || type == 'channel') continue;
       if (type == 'eventCard' || type == 'event') return true;
       final props = PackPaintArtifact.propsOf(item);
-      if (props['homeTeam'] != null ||
-          props['awayTeam'] != null ||
-          props['live'] == true) {
+      if (props['homeTeam'] != null || props['awayTeam'] != null) {
         return true;
       }
     }
