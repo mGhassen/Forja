@@ -23,6 +23,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/playback/resolve_failure_view.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shell/routing/app_router.dart';
+import 'package:rust/rust.dart';
 
 /// VOD green Play always races Forja engine providers (provider JS).
 Future<bool> engineAutoPlayEnabled([SettingsService? settings]) async {
