@@ -110,6 +110,7 @@ IconData? catalogChromeIconToken(String name) {
     'timeline' => Icons.view_timeline_rounded,
     'guide' || 'epg' || 'table' => Icons.table_chart_outlined,
     'live_tv' || 'tv' => Icons.live_tv_rounded,
+    'sports' || 'sport' => Icons.sports_rounded,
     'movie' || 'movies' || 'film' => Icons.movie_rounded,
     'video_library' || 'series' || 'library' => Icons.video_library_rounded,
     'portals' || 'inbox' => Icons.inbox_outlined,

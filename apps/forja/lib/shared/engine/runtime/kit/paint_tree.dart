@@ -600,6 +600,33 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
+  /// Pack `showWhen: { menuId: value|[…] }` against [LayoutScope] selections.
+  bool _layoutShowWhenMatches(
+    Map<String, dynamic> spec,
+    LayoutScope? scope,
+    Map<String, String> selections,
+  ) {
+    final when = spec['showWhen'];
+    if (when is! Map) return true;
+    for (final e in when.entries) {
+      final menuId = e.key.toString().trim();
+      if (menuId.isEmpty) continue;
+      final selected =
+          (scope?.selectedId(menuId) ?? selections[menuId] ?? '').trim();
+      final want = e.value;
+      if (want is List) {
+        final ids = <String>{
+          for (final raw in want) raw.toString().trim(),
+        }..removeWhere((s) => s.isEmpty);
+        if (ids.isNotEmpty && !ids.contains(selected)) return false;
+      } else {
+        final wantId = want.toString().trim();
+        if (wantId.isNotEmpty && selected != wantId) return false;
+      }
+    }
+    return true;
+  }
+
   Widget _mountTopBody(
     BuildContext context,
     Map<String, dynamic> node, {
@@ -609,8 +636,10 @@ class PackPaintTree extends StatelessWidget {
     final chrome = PackChromeScope.maybeOf(context);
     final merged = Map<String, dynamic>.from(props);
     Widget? feed;
+    var feedFocusId = 'schedule';
     Map<String, dynamic>? categoryChild;
     final rawKids = node['children'] ?? node['widgets'];
+    // Resolve chrome selections first so child `showWhen` can gate kind/list.
     if (rawKids is List) {
       for (final c in rawKids) {
         if (c is! Map) continue;
@@ -625,7 +654,21 @@ class PackPaintTree extends StatelessWidget {
           if (child['focusUp'] != null) {
             merged['focusUp'] ??= child['focusUp'];
           }
-        } else if (t == LayoutTypes.categoryBar) {
+        }
+      }
+    }
+    final previewActions = propsActionMaps(merged);
+    final actionSelections = _topBarSelections(scope, previewActions);
+    if (rawKids is List) {
+      for (final c in rawKids) {
+        if (c is! Map) continue;
+        final child = Map<String, dynamic>.from(c);
+        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
+        if (t == LayoutTypes.topBar) continue;
+        if (!_layoutShowWhenMatches(child, scope, actionSelections)) {
+          continue;
+        }
+        if (t == LayoutTypes.categoryBar) {
           categoryChild = child;
           final barId = (child['id'] ?? 'kind').toString();
           final dynamicItems = chrome?.barItems(barId);
@@ -662,7 +705,11 @@ class PackPaintTree extends StatelessWidget {
               (live != null && live.isNotEmpty) ? live : child['default'];
           merged['defaultKindId'] ??= child['default'];
         } else if (t == LayoutTypes.list || child['load'] != null) {
+          final listId = (child['id'] ?? 'items').toString().trim();
+          final sectionSel = (actionSelections['section'] ?? '').trim();
+          if (listId.isNotEmpty) feedFocusId = listId;
           feed = PackPaintTree(
+            key: ValueKey('topbody-feed-$listId-$sectionSel'),
             spec: child,
             pluginId: pluginId,
             packSourceUrl: packSourceUrl,
@@ -671,31 +718,39 @@ class PackPaintTree extends StatelessWidget {
         }
       }
     }
-    final actions = propsActionMaps(merged);
-    final actionSelections = _topBarSelections(scope, actions);
+    if (categoryChild == null) {
+      merged.remove('kindItems');
+      merged.remove('selectedKindId');
+      merged.remove('defaultKindId');
+      // No kind strip — chrome ↓ lands on the grid (TV shelf).
+      merged['focusDown'] = feedFocusId;
+    }
+    final actions = previewActions;
     final barId = (categoryChild?['id'] ?? 'kind').toString();
     final useCircles = categoryChild != null &&
         (categoryChild['kindIcons'] is Map ||
             (categoryChild['source'] ?? '').toString() == 'live_schedule');
-    final kindsBar = useCircles
-        ? _kindCircleBar(
-            context,
-            barId: barId,
-            items: _kindItemsWithIcons(
-              merged['kindItems'] is List
-                  ? merged['kindItems'] as List
-                  : const [],
-              kindIcons: kitCategoryBarKindIcons(categoryChild),
-            ),
-            selectedId: (merged['selectedKindId'] ??
-                    merged['defaultKindId'] ??
-                    'all')
-                .toString(),
-            onSelect: (id) => scope?.onSelect(barId, id, toggle: false),
-            focusDown: categoryChild['focusDown']?.toString(),
-            focusUp: categoryChild['focusUp']?.toString(),
-          )
-        : null;
+    final kindsBar = categoryChild == null
+        ? const SizedBox.shrink()
+        : useCircles
+            ? _kindCircleBar(
+                context,
+                barId: barId,
+                items: _kindItemsWithIcons(
+                  merged['kindItems'] is List
+                      ? merged['kindItems'] as List
+                      : const [],
+                  kindIcons: kitCategoryBarKindIcons(categoryChild),
+                ),
+                selectedId: (merged['selectedKindId'] ??
+                        merged['defaultKindId'] ??
+                        'all')
+                    .toString(),
+                onSelect: (id) => scope?.onSelect(barId, id, toggle: false),
+                focusDown: categoryChild['focusDown']?.toString(),
+                focusUp: categoryChild['focusUp']?.toString(),
+              )
+            : null;
     final chromeDown = _chromeFocusDown(scope, merged);
     return Consumer(
       builder: (context, ref, _) {
@@ -2668,6 +2723,51 @@ class PackPaintTree extends StatelessWidget {
       return copy;
     }
     return items;
+  }
+
+  /// Resolve Providers for a schedule/channel row and open the first stream.
+  /// Does not load Live TV merge tabs or open the side panel / details page.
+  Future<void> _playListItemDirect(
+    BuildContext context, {
+    required Map<String, dynamic> item,
+    List<Map<String, dynamic>> layoutWidgets = const [],
+  }) async {
+    final title = (item['title'] ?? item['name'] ?? 'Stream').toString().trim();
+    var played = false;
+    Future<void> playFirst(List<KitSourcesRow> rows) async {
+      if (played || rows.isEmpty || !context.mounted) return;
+      played = true;
+      await KitResolvePanelHost.playRow(
+        context,
+        rows.first,
+        title: title.isEmpty ? 'Stream' : title,
+      );
+    }
+
+    try {
+      final rows = await KitResolvePanelHost.loadTab(
+        item,
+        'providers',
+        onPartial: (partial) {
+          unawaited(playFirst(partial));
+        },
+        layoutWidgets: layoutWidgets,
+      );
+      if (!played) {
+        if (rows.isEmpty) {
+          if (context.mounted) {
+            ForjaToast.info('No playable stream');
+          }
+          return;
+        }
+        await playFirst(rows);
+      }
+    } catch (e, st) {
+      debugPrint('[kit] playListItemDirect failed: $e\n$st');
+      if (context.mounted) {
+        ForjaToast.info('No playable stream');
+      }
+    }
   }
 
   bool _itemsLookLikeEvents(List<Map<String, dynamic>> items) {

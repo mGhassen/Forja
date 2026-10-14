@@ -123,6 +123,17 @@ void main() {
         KitListTapOpen.openTap,
       );
     });
+
+    test('play mode opens direct resolve path', () {
+      expect(
+        resolveKitListTapOpen(
+          openMode: 'play',
+          hasMatchOpenSurface: false,
+          canShowSidePanel: true,
+        ),
+        KitListTapOpen.play,
+      );
+    });
   });
 
   group('resolveListOpenMode', () {

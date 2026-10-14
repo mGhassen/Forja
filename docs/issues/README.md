@@ -431,6 +431,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [431-[fixed]-…](fixed/431-[fixed]-desktop-trackpad-swipe-forward-history.md) | Desktop trackpad swipe-forward history | P2 | Medium | fixed | Complete · 5/5 · A 0/3 | [141](141-[open]-desktop-trackpad-swipe-steals-horizontal-scroll.md) |
 | [432-[fixed]-…](fixed/432-[fixed]-bzhsport-xstream-streamurls-missed.md) | BZH-Sport misses xstream / JW channel links | P1 | Medium | fixed | Complete · 3/3 · A 0/2 | — |
 | [433-[fixed]-…](fixed/433-[fixed]-live-sports-portals-chip-stale-after-iptv-select.md) | Live Sports Portals chip stale after IPTV select | P1 | Medium | fixed | Complete · 3/3 · A 0/2 | — |
+| [434-[fixed]-…](fixed/434-[fixed]-live-sports-sports-tv-shelf.md) | Live Sports Sports / TV shelf | P2 | Medium | fixed | Complete · 5/5 · A 0/4 | — |
 | [423-[fixed]-…](fixed/423-[fixed]-offline-download-play-network-side-effects.md) | Offline download play still hits network APIs | P2 | Medium | fixed | Complete · 3/3 · A 0/1 | — |
 | [423-[fixed]-…](fixed/423-[fixed]-sources-download-chrome-shared-provider-name.md) | Sources paints every quality downloading for one shared provider name | P1 | Medium | fixed | Complete · 2/2 · A 2/2 | [365](365-[open]-vod-offline-downloads.md) |
 | [375-[fixed]-…](fixed/375-[fixed]-hub-keep-alive-keeps-fetching-off-tab.md) | Hub keep-alive keeps fetching after leaving the tab | P1 | High | fixed | Complete · 4/4 · A 2/2 | [RFC-024](../rfc/fixed/024-[fixed]-tab-cache-eviction-stale.md) · [311](fixed/311-[fixed]-pack-reload-eager-hub-refetch.md) |
