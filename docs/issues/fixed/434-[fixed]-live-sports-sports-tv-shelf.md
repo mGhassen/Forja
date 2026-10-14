@@ -9,7 +9,7 @@
 | Field | Value |
 |-------|--------|
 | Progress | Complete |
-| Components | 7/7 |
+| Components | 8/8 |
 | Acceptance | 0/4 · QA ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -33,6 +33,7 @@ Live Sports mixed match schedule and 24/7 channels in one feed with sport circle
 | 5 | I434-T05 | Feature guide + changelog | ✅ |
 | 6 | I434-T06 | TV chrome Catalog chip + feed respects catalogFilter | ✅ |
 | 7 | I434-T07 | alwaysOn must not classify at/@ matchups as 24/7 (Sports lost non-football) | ✅ |
+| 8 | I434-T08 | Host: pack `cardKind: channel` / `open: play` win over Sports List/Cards viewStyle + match-schedule event paint | ✅ |
 
 ---
 
