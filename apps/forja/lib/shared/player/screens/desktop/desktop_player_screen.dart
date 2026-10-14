@@ -42,13 +42,14 @@ import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';
+import 'package:forja/shared/player/platform/pip_handoff.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
+import 'package:forja/shared/player/controls/chrome/pip_placeholder.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
-import 'package:forja/shared/player/controls/chrome/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/entry/player_metadata.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_with_preview.dart';
@@ -191,13 +192,15 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
         _DesktopPlayerEpisodes,
         _DesktopPlayerUi,
         _DesktopPlayerBuild
-    implements InAppMiniPlayerSession {
+    implements InAppMiniPlayerSession, PipHandoffSession {
   // ── Player ──────────────────────────────────────────────────────────────
   late Player _player;
   late VideoController _controller;
   bool _playerReady = false;
   bool _disposed = false;
   bool _playbackStopped = false;
+  /// Main Player torn down while desktop PiP float owns playback.
+  bool _releasedForPip = false;
 
   /// Guards re-entrant Escape / Back while [_exitPlayer] awaits stop.
   bool _exitInProgress = false;
@@ -261,7 +264,6 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   bool _isFullscreen = false;
   BoxFit _videoFit = BoxFit.contain;
   bool _isPipMode = false;
-  bool _pipHover = false;
   StreamSubscription<bool>? _pipSub;
 
   /// True when we paused because the window left the foreground (not user pause).
@@ -670,6 +672,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _embeddedSubtitleAutoTimer = null;
     _pipSub?.cancel();
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
+    PipService.instance.unbindHandoff(this);
     _torrentStatsSub?.cancel();
     _torrentSeekPrefetch.cancel();
     PlayerSubtitleSettingsDialog.dismissIfShowing();
@@ -677,10 +680,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     PlayerTorrentFilePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     playerMenuClearReturnFocus();
-    // If we tear down while in PiP, restore window chrome so the next
-    // screen doesn't inherit a tiny frameless 480x270 window.
+    // Float owns the Player — destroy it; do not restore into a disposing screen.
     if (PipService.instance.isDesktopActive) {
-      PipService.instance.leave();
+      unawaited(PipService.instance.abandonFloat());
     }
 
     // Cancel all subscriptions

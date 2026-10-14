@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
-
-/// Browser-style left-edge back chevron that fills with [progress] (0..1).
+/// Browser-style edge chevron that fills with [progress] (0..1).
+///
+/// [forward] paints on the right with a chevron-right; otherwise left / back.
 class DesktopSwipeBackIndicator extends StatelessWidget {
-  const DesktopSwipeBackIndicator({super.key, required this.progress});
+  const DesktopSwipeBackIndicator({
+    super.key,
+    required this.progress,
+    this.forward = false,
+  });
 
   final double progress;
+  final bool forward;
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +24,12 @@ class DesktopSwipeBackIndicator extends StatelessWidget {
 
     return IgnorePointer(
       child: Align(
-        alignment: Alignment.centerLeft,
+        alignment: forward ? Alignment.centerRight : Alignment.centerLeft,
         child: Padding(
-          padding: const EdgeInsets.only(left: 20),
+          padding: EdgeInsets.only(
+            left: forward ? 0 : 20,
+            right: forward ? 20 : 0,
+          ),
           child: Opacity(
             opacity: opacity,
             child: SizedBox(
@@ -30,7 +39,9 @@ class DesktopSwipeBackIndicator extends StatelessWidget {
                 painter: _SwipeBackRingPainter(progress: t),
                 child: Center(
                   child: Icon(
-                    Icons.chevron_left_rounded,
+                    forward
+                        ? Icons.chevron_right_rounded
+                        : Icons.chevron_left_rounded,
                     size: size * 0.62,
                     color: ForjaShellColors.textPrimary,
                   ),

@@ -32,7 +32,7 @@ bool FlutterWindow::OnCreate() {
   desktop_space_channel_ = DesktopSpaceChannel::Register(
       flutter_controller_->engine()->messenger(), GetHandle());
   desktop_pip_channel_ = DesktopPipChannel::Register(
-      flutter_controller_->engine()->messenger(), GetHandle());
+      flutter_controller_->engine()->messenger(), GetHandle(), project_);
   auto* vlc_registrar =
       flutter::PluginRegistrarManager::GetInstance()
           ->GetRegistrar<flutter::PluginRegistrarWindows>(

@@ -17,6 +17,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';
+import 'package:forja/shared/player/platform/pip_handoff.dart';
+import 'package:forja/shared/player/controls/chrome/pip_placeholder.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
@@ -67,7 +69,6 @@ import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
-import 'package:forja/shared/player/controls/chrome/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
@@ -398,7 +399,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         _LiveSportsPlayerRecovery,
         _LiveSportsPlayerEngine,
         _LiveSportsPlayerUi
-    implements InAppMiniPlayerSession {
+    implements InAppMiniPlayerSession, PipHandoffSession {
   static int _nextExoViewId = 1;
   static int _nextNativeViewId = 1;
 
@@ -615,8 +616,8 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
 
   // Picture-in-picture (same PipService as the movie player)
   bool _isPipMode = false;
-  bool _pipHover = false;
   StreamSubscription<bool>? _pipSub;
+  bool _releasedForPip = false;
 
   Completer<void>? _stopForNewPlayCompleter;
   /// Keep MediaKit/Exo surface across full ↔ in-app mini (no remount).
@@ -983,20 +984,21 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
           _pausedByLifecycle = false;
         }
       });
-      if (inPip && !_playing) {
-        _userPlayWhenReady = true;
-        unawaited(_enginePlay());
-      }
     }
 
     if (!kIsWeb && Platform.isAndroid) {
       _pipSub = PipService.instance.androidPipChanges.listen(onPipChanged);
     } else if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
       _pipSub = PipService.instance.desktopPipChanges.listen(onPipChanged);
+      PipService.instance.bindHandoff(this);
       PipService.instance.bindAutoEnterOnDesktopSwitch(
         token: this,
         shouldEnter: () =>
-            !_disposed && mounted && (_playing || _pausedByLifecycle),
+            !_disposed &&
+            mounted &&
+            !_releasedForPip &&
+            !PipService.instance.isDesktopActive &&
+            (_playing || _pausedByLifecycle),
       );
     }
     // Same as VOD: [waitForRouteTransition] uses ModalRoute.of — illegal in
@@ -1531,6 +1533,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     _bottomSourceFocus.dispose();
     _pipSub?.cancel();
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
+    PipService.instance.unbindHandoff(this);
     _watchdog?.cancel();
     _uhdDiag?.cancel();
     unawaited(PlatformChannel.clearDisplayFrameRate());
@@ -1554,7 +1557,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
       Future.microtask(() async {
         try {
           if (PipService.instance.isDesktopActive) {
-            await PipService.instance.leave();
+            await PipService.instance.abandonFloat();
           }
           await DesktopWindowGeometry.leavePlayerChrome();
         } catch (_) {}

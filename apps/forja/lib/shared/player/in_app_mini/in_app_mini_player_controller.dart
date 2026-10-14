@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:forja/shared/player/platform/pip_service.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
@@ -68,6 +69,8 @@ class InAppMiniPlayerController {
   Future<void> enter() async {
     final session = _session;
     if (session == null || active.value) return;
+    // OS/window PiP owns the Player — refuse overlap.
+    if (PipService.instance.isDesktopActive) return;
 
     _resumeOnExpand = session.isPlaying;
     // Keep decode running — user pauses from mini chrome if wanted.

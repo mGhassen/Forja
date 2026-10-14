@@ -8,6 +8,7 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shared/navigation/shell_nav_history.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
 /// Navigator layered over [ShellBody] - media details and other in-shell routes.
@@ -67,6 +68,7 @@ class ShellOverlayNavigator extends StatefulWidget {
 
 class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
   late final _ShellOverlayObserver _observer;
+  late final ShellHistoryNavigatorObserver _historyObserver;
   late final PosthogObserver _posthogObserver;
   bool _overlayHasPage = false;
 
@@ -74,6 +76,7 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
   void initState() {
     super.initState();
     _observer = _ShellOverlayObserver(_syncOverlayStack);
+    _historyObserver = ShellHistoryNavigatorObserver();
     _posthogObserver = PosthogObserver(
       nameExtractor: ProductAnalytics.routeScreenName,
     );
@@ -130,7 +133,7 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
         excluding: !_overlayHasPage,
         child: Navigator(
           key: shellOverlayNavigatorKey,
-          observers: [_observer, _posthogObserver],
+          observers: [_observer, _historyObserver, _posthogObserver],
           onGenerateInitialRoutes:
               (NavigatorState navigator, String initialRoute) {
             return [
@@ -165,6 +168,13 @@ void _noteFirstOverlayPush({String? shellTabId}) {
 ///
 /// [shellTabId] — hub tab that owns this overlay (`anime`, `asian_drama`, …).
 /// When omitted, [ShellBus.activeShellTabId] from [MainScreen] is used.
+void _attachShellHistoryTab(Route<dynamic> route, String? shellTabId) {
+  if (route is ShellHistoryPageRoute) {
+    route.shellTabId =
+        shellTabId ?? ShellBus.activeShellTabId ?? ShellTvFocus.currentNavTabId;
+  }
+}
+
 Future<T?> pushShellRoute<T>(
   BuildContext context,
   Route<T> route, {
@@ -172,6 +182,7 @@ Future<T?> pushShellRoute<T>(
 }) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay != null) {
+    _attachShellHistoryTab(route, shellTabId);
     _noteFirstOverlayPush(shellTabId: shellTabId);
     return overlay.push(route);
   }
@@ -186,6 +197,7 @@ Future<T?> pushReplacementShellRoute<T, TO>(
 }) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay != null) {
+    _attachShellHistoryTab(route, shellTabId);
     if (!overlay.canPop()) {
       _noteFirstOverlayPush(shellTabId: shellTabId);
     }
@@ -221,7 +233,10 @@ void popShellOverlayUntilRoot() {
   // Dismiss before pop: IgnorePointer arms as soon as canPop is false, so a
   // leftover Sources OverlayEntry would paint and ignore all close taps.
   dismissShellOverlaySourcePanels();
-  overlay.popUntil((route) => route.isFirst);
+  ShellNavHistory.clearForward();
+  ShellNavHistory.runWithoutRecording(() {
+    overlay.popUntil((route) => route.isFirst);
+  });
 }
 
 /// Hub details (Asian Drama / Anime) open catalog Sources via

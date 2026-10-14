@@ -1,29 +1,28 @@
 import Cocoa
 import FlutterMacOS
 
-/// Compact PiP chrome for the main Flutter window: floating level, rounded
-/// clip, shadow, Space/fullscreen join, and AX opt-out so Magnet / Rectangle
-/// do not steal the drag. Free positioning — no corner snap.
+/// Desktop PiP: secondary always-on-top float window with its own FlutterEngine.
+/// Main Forja window stays full-size; Dart shows a placeholder there.
 final class DesktopPipController: NSObject {
-  private weak var window: NSWindow?
-  private var pipEnabled = false
+  private weak var mainWindow: NSWindow?
+  private weak var mainMessenger: FlutterBinaryMessenger?
+
+  private var spaceLeavePrepared = false
+  private var spaceLeavePrepAllowed = false
   private var savedLevel: NSWindow.Level = .normal
   private var savedCollection: NSWindow.CollectionBehavior = []
-  private var savedStyleMask: NSWindow.StyleMask = []
-  private var savedOpaque = true
-  private var savedHasShadow = true
-  private var savedBackground: NSColor = .black
-  private var savedMovableByBackground = false
-  /// Saved level/collection already captured by [prepareForSpaceLeave].
-  private var spaceLeavePrepared = false
-  /// Dart gates this — only when Auto PiP is armed. Otherwise Space swipes
-  /// must not leave the window floating / on all Spaces forever.
-  private var spaceLeavePrepAllowed = false
 
-  init(window: NSWindow) {
-    self.window = window
+  private var floatWindow: NSPanel?
+  private var floatEngine: FlutterEngine?
+  private var floatViewController: FlutterViewController?
+  private var floatChannel: FlutterMethodChannel?
+  private var pendingOpen: [String: Any]?
+  private var floatReady = false
+
+  init(window: NSWindow, messenger: FlutterBinaryMessenger) {
+    self.mainWindow = window
+    self.mainMessenger = messenger
     super.init()
-    // Recover leaked Space-leave prep (floating + all Spaces with no PiP).
     if window.level == .floating {
       window.level = .normal
     }
@@ -37,10 +36,6 @@ final class DesktopPipController: NSObject {
 
   func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
-    case "setEnabled":
-      let enabled = (call.arguments as? [String: Any])?["enabled"] as? Bool ?? false
-      setPipEnabled(enabled)
-      result(nil)
     case "setSpaceLeavePrepAllowed":
       let allowed =
         (call.arguments as? [String: Any])?["allowed"] as? Bool ?? false
@@ -49,13 +44,20 @@ final class DesktopPipController: NSObject {
     case "cancelSpaceLeavePrep":
       cancelSpaceLeavePrep()
       result(nil)
-    case "enterPip":
+    case "createFloat":
       let args = call.arguments as? [String: Any] ?? [:]
       let width = (args["width"] as? Double) ?? 360
       let height = (args["height"] as? Double) ?? 203
-      result(enterPipAtomic(width: width, height: height))
-    case "dockBottomRight":
-      dockBottomRight()
+      result(createFloat(width: width, height: height))
+    case "openFloat":
+      let args = call.arguments as? [String: Any] ?? [:]
+      openFloat(args)
+      result(nil)
+    case "destroyFloat":
+      destroyFloat()
+      result(nil)
+    // Legacy no-ops — main window is never the PiP surface anymore.
+    case "setEnabled", "enterPip", "dockBottomRight":
       result(nil)
     case "visibleFrame":
       result(visibleFramePayload())
@@ -71,12 +73,9 @@ final class DesktopPipController: NSObject {
     }
   }
 
-  /// Undo floating / all-Spaces prep when Auto PiP did not actually enter.
   func cancelSpaceLeavePrep() {
-    guard let window, spaceLeavePrepared, !pipEnabled else {
-      if !pipEnabled {
-        spaceLeavePrepared = false
-      }
+    guard let window = mainWindow, spaceLeavePrepared, floatWindow == nil else {
+      spaceLeavePrepared = false
       return
     }
     window.level = savedLevel
@@ -84,39 +83,35 @@ final class DesktopPipController: NSObject {
     spaceLeavePrepared = false
   }
 
-  /// One-shot PiP enter. Returns saved frame so Dart can restore on leave.
-  private func enterPipAtomic(width: Double, height: Double) -> [String: Double] {
-    guard let window else {
-      return [:]
+  /// Soft arm while Auto PiP is on — does not shrink. Dart creates the float.
+  func prepareForSpaceLeave() {
+    guard let window = mainWindow, floatWindow == nil, spaceLeavePrepAllowed
+    else { return }
+    if !spaceLeavePrepared {
+      savedLevel = window.level
+      savedCollection = window.collectionBehavior
+      spaceLeavePrepared = true
     }
-    let frame = window.frame
-    let saved: [String: Double] = [
-      "x": frame.origin.x,
-      "y": frame.origin.y,
-      "width": frame.size.width,
-      "height": frame.size.height,
-    ]
+    // Do not float the main window — float host owns always-on-top.
+  }
 
-    if window.styleMask.contains(.fullScreen) {
-      window.toggleFullScreen(nil)
+  private func createFloat(width: Double, height: Double) -> Bool {
+    destroyFloat()
+    cancelSpaceLeavePrep()
+
+    let project = FlutterDartProject()
+    let engine = FlutterEngine(name: "forja.pip_float", project: project)
+    let ran = engine.run(
+      withEntrypoint: "pipFloatMain",
+      libraryURI: "package:forja/pip_float/pip_float_main.dart"
+    )
+    guard ran else {
+      NSLog("[DesktopPip] float engine failed to run pipFloatMain")
+      return false
     }
+    RegisterPipFloatPlugins(registry: engine)
 
-    if !pipEnabled {
-      if !spaceLeavePrepared {
-        savedLevel = window.level
-        savedCollection = window.collectionBehavior
-      }
-      savedStyleMask = window.styleMask
-      savedOpaque = window.isOpaque
-      savedHasShadow = window.hasShadow
-      savedBackground = window.backgroundColor ?? .black
-      savedMovableByBackground = window.isMovableByWindowBackground
-      pipEnabled = true
-      spaceLeavePrepared = false
-    }
-    (window as? MainFlutterWindow)?.forjaSetPipActive(true)
-    applyPipChrome()
-
+    let fvc = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
     let work = visibleFrame()
     let pad: CGFloat = 12
     let size = NSSize(width: width, height: height)
@@ -124,111 +119,123 @@ final class DesktopPipController: NSObject {
       x: work.maxX - size.width - pad,
       y: work.minY + pad
     )
-    window.setFrame(NSRect(origin: origin, size: size), display: true, animate: false)
-    window.orderFrontRegardless()
-    return saved
-  }
 
-  private func setPipEnabled(_ enabled: Bool) {
-    guard let window else { return }
-    if enabled {
-      if !pipEnabled {
-        if !spaceLeavePrepared {
-          savedLevel = window.level
-          savedCollection = window.collectionBehavior
-        }
-        savedStyleMask = window.styleMask
-        savedOpaque = window.isOpaque
-        savedHasShadow = window.hasShadow
-        savedBackground = window.backgroundColor ?? .black
-        savedMovableByBackground = window.isMovableByWindowBackground
-        pipEnabled = true
-        spaceLeavePrepared = false
-      }
-      (window as? MainFlutterWindow)?.forjaSetPipActive(true)
-      applyPipChrome()
-    } else if pipEnabled {
-      pipEnabled = false
-      spaceLeavePrepared = false
-      (window as? MainFlutterWindow)?.forjaSetPipActive(false)
-      restoreChrome()
-    } else {
-      // Leave without PiP — still clear a leaked Space-leave prep.
-      cancelSpaceLeavePrep()
-    }
-  }
-
-  /// Join all Spaces + floating so a Space swipe does not occlude/pause.
-  /// No-op unless Dart armed Auto PiP — otherwise the window sticks on top.
-  func prepareForSpaceLeave() {
-    guard let window, !pipEnabled, spaceLeavePrepAllowed else { return }
-    if !spaceLeavePrepared {
-      savedLevel = window.level
-      savedCollection = window.collectionBehavior
-      spaceLeavePrepared = true
-    }
-    var behavior = savedCollection
-    behavior.insert(.canJoinAllSpaces)
-    behavior.insert(.fullScreenAuxiliary)
-    window.collectionBehavior = behavior
-    window.level = .floating
-    window.orderFrontRegardless()
-  }
-
-  private func applyPipChrome() {
-    guard let window else { return }
-
-    window.styleMask = [.borderless, .resizable, .fullSizeContentView]
-    window.isOpaque = false
-    window.backgroundColor = .clear
-    window.hasShadow = true
-    window.level = .floating
-    window.collectionBehavior = [
+    let panel = NSPanel(
+      contentRect: NSRect(origin: origin, size: size),
+      styleMask: [.borderless, .resizable, .fullSizeContentView, .nonactivatingPanel],
+      backing: .buffered,
+      defer: false
+    )
+    panel.contentViewController = fvc
+    panel.isOpaque = false
+    panel.backgroundColor = .clear
+    panel.hasShadow = true
+    panel.level = .floating
+    panel.collectionBehavior = [
       .canJoinAllSpaces,
       .fullScreenAuxiliary,
       .transient,
       .ignoresCycle,
     ]
-    window.isMovableByWindowBackground = true
-    window.titleVisibility = .hidden
-    window.titlebarAppearsTransparent = true
-    window.standardWindowButton(.closeButton)?.isHidden = true
-    window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-    window.standardWindowButton(.zoomButton)?.isHidden = true
-
-    if let content = window.contentView {
+    panel.isMovableByWindowBackground = true
+    panel.titleVisibility = .hidden
+    panel.titlebarAppearsTransparent = true
+    panel.isFloatingPanel = true
+    panel.becomesKeyOnlyIfNeeded = true
+    panel.hidesOnDeactivate = false
+    if let content = panel.contentView {
       content.wantsLayer = true
       content.layer?.cornerRadius = 12
       content.layer?.masksToBounds = true
     }
+    panel.setAccessibilityElement(false)
+    panel.setAccessibilityRole(.none)
+    panel.setFrame(NSRect(origin: origin, size: size), display: true)
+    panel.orderFrontRegardless()
 
-    // Hide from Magnet / Rectangle / Hammerspoon window managers.
-    window.setAccessibilityElement(false)
-    window.setAccessibilityRole(.none)
+    let channel = FlutterMethodChannel(
+      name: "forja/pip_float",
+      binaryMessenger: engine.binaryMessenger
+    )
+    channel.setMethodCallHandler { [weak self] call, result in
+      self?.handleFloatCall(call, result: result)
+    }
+
+    floatEngine = engine
+    floatViewController = fvc
+    floatWindow = panel
+    floatChannel = channel
+    floatReady = false
+    (mainWindow as? MainFlutterWindow)?.forjaSetPipActive(false)
+    return true
   }
 
-  private func restoreChrome() {
-    guard let window else { return }
-    window.level = savedLevel
-    window.collectionBehavior = savedCollection
-    window.styleMask = savedStyleMask
-    window.isOpaque = savedOpaque
-    window.hasShadow = savedHasShadow
-    window.backgroundColor = savedBackground
-    window.isMovableByWindowBackground = savedMovableByBackground
-    window.standardWindowButton(.closeButton)?.isHidden = false
-    window.standardWindowButton(.miniaturizeButton)?.isHidden = false
-    window.standardWindowButton(.zoomButton)?.isHidden = false
-    if let content = window.contentView {
-      content.layer?.cornerRadius = 0
-      content.layer?.masksToBounds = false
+  private func openFloat(_ args: [String: Any]) {
+    pendingOpen = args
+    flushPendingOpen()
+  }
+
+  private func flushPendingOpen() {
+    guard floatReady, let pending = pendingOpen, let channel = floatChannel else {
+      return
     }
-    window.setAccessibilityElement(true)
-    window.setAccessibilityRole(.window)
+    pendingOpen = nil
+    channel.invokeMethod("open", arguments: pending)
+  }
+
+  private func destroyFloat() {
+    floatChannel?.invokeMethod("teardown", arguments: nil)
+    floatChannel?.setMethodCallHandler(nil)
+    floatChannel = nil
+    floatWindow?.orderOut(nil)
+    floatWindow?.contentViewController = nil
+    floatWindow = nil
+    floatViewController = nil
+    floatEngine?.shutDownEngine()
+    floatEngine = nil
+    pendingOpen = nil
+    floatReady = false
+  }
+
+  private func handleFloatCall(
+    _ call: FlutterMethodCall,
+    result: @escaping FlutterResult
+  ) {
+    switch call.method {
+    case "floatReady":
+      floatReady = true
+      flushPendingOpen()
+      result(nil)
+    case "expand":
+      notifyMain("floatExpand", arguments: call.arguments)
+      result(nil)
+    case "close":
+      notifyMain("floatClose", arguments: nil)
+      result(nil)
+    case "minimize":
+      floatWindow?.miniaturize(nil)
+      result(nil)
+    case "startDrag":
+      if let event = NSApp.currentEvent, let window = floatWindow {
+        window.performDrag(with: event)
+      }
+      result(nil)
+    default:
+      result(FlutterMethodNotImplemented)
+    }
+  }
+
+  private func notifyMain(_ method: String, arguments: Any?) {
+    guard let messenger = mainMessenger else { return }
+    let channel = FlutterMethodChannel(
+      name: "forja/desktop_pip",
+      binaryMessenger: messenger
+    )
+    channel.invokeMethod(method, arguments: arguments)
   }
 
   private func visibleFrame() -> NSRect {
-    guard let window else {
+    guard let window = mainWindow else {
       return NSScreen.main?.visibleFrame ?? .zero
     }
     return window.screen?.visibleFrame
@@ -245,24 +252,31 @@ final class DesktopPipController: NSObject {
       "height": f.size.height,
     ]
   }
+}
 
-  private func dockBottomRight() {
-    guard let window else { return }
-    let work = visibleFrame()
-    let pad: CGFloat = 12
-    let size = window.frame.size
-    let origin = NSPoint(
-      x: work.maxX - size.width - pad,
-      y: work.minY + pad
-    )
-    window.setFrame(NSRect(origin: origin, size: size), display: true, animate: false)
-  }
+/// Minimal plugin set for the PiP float engine (media_kit + volume).
+func RegisterPipFloatPlugins(registry: FlutterPluginRegistry) {
+  MediaKitLibsMacosVideoPlugin.register(
+    with: registry.registrar(forPlugin: "MediaKitLibsMacosVideoPlugin")
+  )
+  MediaKitVideoPlugin.register(
+    with: registry.registrar(forPlugin: "MediaKitVideoPlugin")
+  )
+  VolumeControllerPlugin.register(
+    with: registry.registrar(forPlugin: "VolumeControllerPlugin")
+  )
+  WakelockPlusMacosPlugin.register(
+    with: registry.registrar(forPlugin: "WakelockPlusMacosPlugin")
+  )
 }
 
 var desktopPipController: DesktopPipController?
 
 func registerDesktopPipChannel(_ controller: FlutterViewController, window: NSWindow) {
-  let pip = DesktopPipController(window: window)
+  let pip = DesktopPipController(
+    window: window,
+    messenger: controller.engine.binaryMessenger
+  )
   desktopPipController = pip
   let channel = FlutterMethodChannel(
     name: "forja/desktop_pip",

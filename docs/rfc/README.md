@@ -142,6 +142,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [118-[open]-…](118-[open]-pack-green-play.md) | Pack-owned green Play (multi-tech race) | — | open | **4 / 4** · **8 / 8** | [366](../issues/366-[open]-pack-green-play.md) |
 | [119-[open]-…](119-[open]-stream-orchestrator.md) | Stream orchestrator — discover, then enrich | — | open | **8 / 8** · **8 / 9** | [386](../issues/386-[open]-stream-orchestrator-discover.md) |
 | [120-[open]-…](120-[open]-pack-plugin-platform-gating.md) | Pack plugin platform gating (manifest `platforms`) | [117](117-[open]-vod-offline-downloads.md) | open | **11 / 11** · **2 / 7** | — |
+| [121-[open]-…](121-[open]-desktop-pip-float-window.md) | Desktop PiP — placeholder + separate float | — | open | **5 / 5** · **0 / 4** | [430](../issues/430-[open]-desktop-pip-placeholder-separate-float.md) |
 
 ## Related
 

@@ -984,6 +984,73 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
 
   Future<void> closeFromMini() => _s._exitIptvPlayer();
 
+  Future<PipHandoffSnapshot?> captureForPip() async {
+    if (_s._disposed || _s._releasedForPip || _s._sources.isEmpty) return null;
+    if (!_s._mediaKitBackend) {
+      debugPrint('[IPTV] desktop PiP requires MediaKit');
+      return null;
+    }
+    final src = _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)];
+    if (src.url.isEmpty) return null;
+    final headers = <String, String>{
+      ...src.headers,
+    };
+    return PipHandoffSnapshot(
+      url: src.url,
+      headers: headers,
+      providerId: null,
+      position: _s._position,
+      playing: _s._playing || _s._pausedByLifecycle,
+      aspectWidth: 16,
+      aspectHeight: 9,
+      isLive: !_s._isVod,
+    );
+  }
+
+  Future<void> releasePlayerForPip() async {
+    if (_s._disposed || _s._releasedForPip) return;
+    _s._releasedForPip = true;
+    _s._playerReady = false;
+    await _s._disposePlayer();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> restoreFromPip(PipHandoffSnapshot snapshot) async {
+    if (_s._disposed || !mounted) return;
+    _s._releasedForPip = false;
+    _s._pausedByLifecycle = false;
+    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    if (_s._disposed || !mounted) return;
+    _s._initPlayerInstances();
+    await _s._applyMpvTunables();
+    if (_s._disposed || !mounted) return;
+    if (mounted) setState(() => _s._playerReady = true);
+    try {
+      await openPlayerStream(
+        _s._player!,
+        url: snapshot.url,
+        headers: snapshot.headers.isEmpty ? null : snapshot.headers,
+        startAt: snapshot.isLive ? null : snapshot.position,
+      );
+      if (snapshot.playing) {
+        _s._userPlayWhenReady = true;
+        await _s._enginePlay();
+      } else {
+        _s._userPlayWhenReady = false;
+        await _s._enginePause();
+      }
+    } catch (e) {
+      debugPrint('[IPTV] restoreFromPip failed: $e');
+    }
+    _s._startWatchdog();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> closeFromPip() async {
+    _s._releasedForPip = false;
+    await _s._exitIptvPlayer();
+  }
+
   Future<void> stopForNewPlay() async {
     if (_s._disposed) return;
     final existing = _s._stopForNewPlayCompleter;
@@ -1185,7 +1252,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             // Mini: Scaffold/MouseRegion are opaque hit targets — ignore them so
             // shell/rails receive clicks; corner slot below stays interactive.
             IgnorePointer(
-              ignoring: mini,
+              ignoring: mini || pipMode,
               child: Scaffold(
           // Always transparent — full black comes from a stack [ColoredBox] so
           // mini can hit-test through to the shell (same MediaKit resize path).
@@ -1261,11 +1328,12 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (!mini)
+                  if (!mini && !pipMode)
                     const Positioned.fill(child: ColoredBox(color: Colors.black)),
                   // Full-player video only — mini mounts the same GlobalKey slot
                   // outside [IgnorePointer] so the corner stays hittable.
-                  if (!mini)
+                  // PiP float owns the Player — main shows [PipPlaceholder].
+                  if (!mini && !pipMode)
                   Positioned(
                     key: const ValueKey('iptv-player-video-slot'),
                     left: 0,
@@ -1287,7 +1355,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                       ),
                     ),
                   ),
-                  if (!mini && _s._coverDeadSurface)
+                  if (!mini && !pipMode && _s._coverDeadSurface)
                     const Positioned.fill(
                       child: IgnorePointer(
                         child: ColoredBox(color: Colors.black),
@@ -1347,7 +1415,6 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                         ),
                       ),
                     ),
-                  if (pipMode) _buildPipRevertOverlay(),
                   // Positioned.fill must be a direct Stack child — wrapping the
                   // overlay (which used to return Positioned) in RepaintBoundary
                   // caused ParentDataWidget spam on every frame.
@@ -1418,6 +1485,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       ),
             ),
             if (mini) _buildInAppMiniCorner(),
+            if (pipMode)
+              PipPlaceholder(
+                onExpand: () => unawaited(PipService.instance.leave()),
+              ),
           ],
         ),
       ),
@@ -1630,52 +1701,6 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   double _topBarLeftPadding(BuildContext context) =>
       ShellTokens.chromeScale(16, tv: ShellPaintScope.usesTvDensityOf(context));
 
-  /// System-style PiP chrome — expand / Minimize / Close · ±15 · scrubber.
-  Widget _buildPipRevertOverlay() {
-    final vod = _s._isVod;
-    return DesktopPipOverlay(
-      hovering: _s._pipHover,
-      onHoverChanged: (on) {
-        if (!mounted) return;
-        if (_s._pipHover == on) return;
-        // Defer — DesktopPipOverlay MouseRegion must not parent-setState mid update.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          if (_s._pipHover == on) return;
-          setState(() => _s._pipHover = on);
-        });
-      },
-      playing: _s._playing,
-      onTogglePlay: () {
-        if (_s._playing) {
-          _s._userPlayWhenReady = false;
-          unawaited(_s._enginePause());
-        } else {
-          _s._userPlayWhenReady = true;
-          unawaited(_s._enginePlay());
-        }
-        setState(() {});
-      },
-      onClose: () => unawaited(_s._exitIptvPlayer()),
-      onSeekBack: vod
-          ? () {
-              var target = _s._position - const Duration(seconds: 15);
-              if (target < Duration.zero) target = Duration.zero;
-              unawaited(_s._engineSeek(target));
-            }
-          : null,
-      onSeekForward: vod
-          ? () {
-              var target = _s._position + const Duration(seconds: 15);
-              if (target > _s._duration) target = _s._duration;
-              unawaited(_s._engineSeek(target));
-            }
-          : null,
-      position: vod ? _s._position : null,
-      duration: vod ? _s._duration : null,
-      onSeekTo: vod ? (pos) => unawaited(_s._engineSeek(pos)) : null,
-    );
-  }
 
   Future<void> _togglePip() async {
     await PipService.instance.toggle();

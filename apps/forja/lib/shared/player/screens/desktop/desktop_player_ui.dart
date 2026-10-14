@@ -167,6 +167,139 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     await _exitPlayer();
   }
 
+  Future<PipHandoffSnapshot?> captureForPip() async {
+    if (_s._disposed || !_s._playerReady || _s._releasedForPip) return null;
+    final url = _s._hlsMasterUrl ??
+        _s._currentQualityUrl ??
+        _s._currentUrl ??
+        widget.mediaPath;
+    if (url.isEmpty) return null;
+    final src = _s._currentSources != null &&
+            _s._currentFallbackSourceIndex < _s._currentSources!.length
+        ? _s._currentSources![_s._currentFallbackSourceIndex]
+        : null;
+    final pid = src?.providerId ?? _s._currentProvider ?? widget.activeProvider;
+    final headers = resolvePlaybackHttpHeaders(
+      _s._hlsMasterHeaders ?? src?.headers ?? widget.headers,
+      streamUrl: url,
+      providerId: pid,
+    );
+    return PipHandoffSnapshot(
+      url: url,
+      headers: headers,
+      providerId: pid,
+      position: _s._positionNotifier.value,
+      playing: _s._player.state.playing || _s._pausedByLifecycle,
+      aspectWidth: 16,
+      aspectHeight: 9,
+      isLive: false,
+    );
+  }
+
+  Future<void> releasePlayerForPip() async {
+    if (_s._disposed || !_s._playerReady || _s._releasedForPip) return;
+    _s._releasedForPip = true;
+    _s._playerReady = false;
+    await _s._positionSub?.cancel();
+    await _s._durationSub?.cancel();
+    await _s._bufferSub?.cancel();
+    await _s._playingSub?.cancel();
+    await _s._bufferingSub?.cancel();
+    await _s._volumeSub?.cancel();
+    await _s._errorSub?.cancel();
+    await _s._completedSub?.cancel();
+    await _s._tracksSub?.cancel();
+    await _s._logSub?.cancel();
+    _s._positionSub = null;
+    _s._durationSub = null;
+    _s._bufferSub = null;
+    _s._playingSub = null;
+    _s._bufferingSub = null;
+    _s._volumeSub = null;
+    _s._errorSub = null;
+    _s._completedSub = null;
+    _s._tracksSub = null;
+    _s._logSub = null;
+    MpvExclusiveSession.instance.untrackPlayer(_s._player);
+    final disposeFuture = _s._teardownMediaKitPlayer(_s._player);
+    MpvExclusiveSession.instance.trackVideoDispose(
+      disposeFuture,
+      markExoFitRemount: true,
+    );
+    await disposeFuture;
+    if (mounted) setState(() {});
+  }
+
+  Future<void> restoreFromPip(PipHandoffSnapshot snapshot) async {
+    if (_s._disposed || !mounted) return;
+    _s._releasedForPip = false;
+    _s._pausedByLifecycle = false;
+    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    if (_s._disposed || !mounted) return;
+    _s._player = MpvExclusiveSession.instance.trackPlayer(
+      Player(
+        configuration: const PlayerConfiguration(
+          logLevel: MPVLogLevel.warn,
+          libass: true,
+          libassAndroidFont: 'assets/fonts/Roboto-Regular.ttf',
+          libassAndroidFontName: 'Roboto',
+        ),
+      ),
+    );
+    _s._controller = VideoController(
+      _s._player,
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: true,
+      ),
+    );
+    _s._playerReady = true;
+    _s._playbackStopped = false;
+    if (mounted) setState(() {});
+    try {
+      await openPlayerStream(
+        _s._player,
+        url: snapshot.url,
+        headers: snapshot.headers.isEmpty ? null : snapshot.headers,
+        providerId: snapshot.providerId,
+        startAt: snapshot.position,
+      );
+      _wirePlayerSubscriptionsAfterPipRestore();
+      if (snapshot.playing) {
+        await _s._player.play();
+      } else {
+        await _s._player.pause();
+      }
+    } catch (e) {
+      debugPrint('[DesktopPlayer] restoreFromPip failed: $e');
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _wirePlayerSubscriptionsAfterPipRestore() {
+    // Re-use the same listeners _initPlayback attaches after open.
+    _s._positionSub = _s._player.stream.position.listen((p) {
+      _s._positionNotifier.value = p;
+    });
+    _s._durationSub = _s._player.stream.duration.listen((d) {
+      _s._durationNotifier.value = d;
+    });
+    _s._playingSub = _s._player.stream.playing.listen((v) {
+      _s._isPlayingNotifier.value = v;
+    });
+    _s._bufferingSub = _s._player.stream.buffering.listen((v) {
+      _s._isBufferingNotifier.value = v;
+    });
+    _s._volumeSub = _s._player.stream.volume.listen((v) {
+      _s._volumeNotifier.value = v;
+    });
+  }
+
+  Future<void> closeFromPip() async {
+    _s._releasedForPip = false;
+    _s._bypassEscapeArm = true;
+    await _exitPlayer();
+  }
+
   Future<void> stopForNewPlay() async {
     if (_s._disposed) return;
     final existing = _s._stopForNewPlayCompleter;

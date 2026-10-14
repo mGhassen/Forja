@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
+import 'package:forja/shared/player/platform/pip_service.dart';
 
-/// Player route that becomes non-opaque while in-app mini is active so the
-/// shell under the route receives hits and paints through.
+/// Player route that becomes non-opaque while in-app mini or desktop PiP float
+/// is active so the shell under the route receives hits and paints through.
 class InAppMiniAwarePageRoute<T> extends PageRoute<T> {
   InAppMiniAwarePageRoute({
     required this.builder,
@@ -14,7 +17,10 @@ class InAppMiniAwarePageRoute<T> extends PageRoute<T> {
   })  : _transitionDuration = transitionDuration,
         _reverseTransitionDuration = reverseTransitionDuration,
         _fullscreenDialog = fullscreenDialog {
-    InAppMiniPlayerController.instance.active.addListener(_onMiniChanged);
+    InAppMiniPlayerController.instance.active.addListener(_onShellThroughChanged);
+    _pipSub = PipService.instance.desktopPipChanges.listen((_) {
+      _onShellThroughChanged();
+    });
   }
 
   final WidgetBuilder builder;
@@ -22,12 +28,17 @@ class InAppMiniAwarePageRoute<T> extends PageRoute<T> {
   final Duration _transitionDuration;
   final Duration _reverseTransitionDuration;
   final bool _fullscreenDialog;
+  StreamSubscription<bool>? _pipSub;
 
-  void _onMiniChanged() {
+  bool get _shellThrough =>
+      InAppMiniPlayerController.instance.isActive ||
+      PipService.instance.isDesktopActive;
+
+  void _onShellThroughChanged() {
     if (!isActive) return;
     // TransitionRoute only writes OverlayEntry.opaque on animation
     // completed. Without this, routes under the player stay Theater-
-    // skipped after [opaque] flips → full-window black behind mini chrome.
+    // skipped after [opaque] flips → full-window black behind chrome.
     if (overlayEntries.isNotEmpty) {
       overlayEntries.first.opaque = opaque;
     }
@@ -44,7 +55,7 @@ class InAppMiniAwarePageRoute<T> extends PageRoute<T> {
   bool get fullscreenDialog => _fullscreenDialog;
 
   @override
-  bool get opaque => !InAppMiniPlayerController.instance.isActive;
+  bool get opaque => !_shellThrough;
 
   @override
   bool get barrierDismissible => false;
@@ -60,10 +71,10 @@ class InAppMiniAwarePageRoute<T> extends PageRoute<T> {
 
   /// [ModalRoute] always inserts a barrier. Even with [barrierColor] null it
   /// uses [HitTestBehavior.opaque] and eats every miss under the page — so the
-  /// shell never gets clicks while mini shows only a corner widget.
+  /// shell never gets clicks while mini/PiP shows only a corner / placeholder.
   @override
   Widget buildModalBarrier() {
-    if (InAppMiniPlayerController.instance.isActive) {
+    if (_shellThrough) {
       return const SizedBox.shrink();
     }
     return super.buildModalBarrier();
@@ -94,7 +105,9 @@ class InAppMiniAwarePageRoute<T> extends PageRoute<T> {
 
   @override
   void dispose() {
-    InAppMiniPlayerController.instance.active.removeListener(_onMiniChanged);
+    InAppMiniPlayerController.instance.active
+        .removeListener(_onShellThroughChanged);
+    unawaited(_pipSub?.cancel());
     super.dispose();
   }
 }

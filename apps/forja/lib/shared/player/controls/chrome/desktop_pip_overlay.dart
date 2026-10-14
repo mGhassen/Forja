@@ -25,6 +25,7 @@ class DesktopPipOverlay extends StatelessWidget {
     this.position,
     this.duration,
     this.onSeekTo,
+    this.onStartDrag,
   });
 
   final bool hovering;
@@ -41,6 +42,8 @@ class DesktopPipOverlay extends StatelessWidget {
   final Duration? position;
   final Duration? duration;
   final ValueChanged<Duration>? onSeekTo;
+  /// Override window drag (float engine uses native host drag).
+  final Future<void> Function()? onStartDrag;
 
   bool get _showSeek => onSeekBack != null && onSeekForward != null;
   bool get _showScrubber =>
@@ -89,7 +92,12 @@ class DesktopPipOverlay extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onPanStart: (_) {
-                unawaited(windowManager.startDragging());
+                final drag = onStartDrag;
+                if (drag != null) {
+                  unawaited(drag());
+                } else {
+                  unawaited(windowManager.startDragging());
+                }
               },
               child: const SizedBox.expand(),
             ),

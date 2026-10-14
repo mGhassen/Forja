@@ -1,20 +1,25 @@
+import 'dart:async' show unawaited;
 import 'dart:io' show Platform;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/navigation/desktop_swipe_back_indicator.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/navigation/navigation_back_handler.dart';
+import 'package:forja/shared/navigation/shell_nav_history.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 
-/// Mouse back, Escape, macOS trackpad swipe-back, and Android system / remote
-/// Back - same level-aware pops as the in-app back control.
+enum _DesktopNavGesture { none, back, forward }
+
+/// Mouse back/forward, Escape, macOS trackpad swipe back/forward, and Android
+/// system / remote Back - same level-aware pops as the in-app back control.
 ///
 /// On Android, Flutter finishes the [Activity] when every
 /// [WidgetsBindingObserver.didPopRoute] returns false (see
@@ -24,10 +29,10 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 /// This scope always consumes Android pop-route and keeps
 /// [SystemNavigator.setFrameworkHandlesBack] true so Back never exits.
 ///
-/// Desktop trackpad: progressive left-edge arrow (browser-style). Only arms
-/// when the pan starts near the **left window edge** and not over a scroll
-/// viewport — catalog rows, Sources/addon panels, and cards never commit Back.
-/// Back commits only when the indicator is fully filled.
+/// Desktop trackpad: progressive edge arrow (browser-style). Swipe-right →
+/// Back; swipe-left → Forward when [ShellNavHistory] has a restored overlay.
+/// Arms only when not over a scroll viewport — catalog rows, Sources/addon
+/// panels, and cards never commit. Commits only when the indicator is full.
 class BackNavigationScope extends StatefulWidget {
   const BackNavigationScope({super.key, required this.child});
 
@@ -46,6 +51,7 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
   bool _panning = false;
   bool _navSuppressed = false;
   double _navProgress = 0;
+  _DesktopNavGesture _navGesture = _DesktopNavGesture.none;
 
   @override
   void initState() {
@@ -95,31 +101,52 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     }
   }
 
-  void _setNavProgress(double value) {
+  /// Forward restores overlays only — never while a player route is up.
+  bool get _canNavigateForward =>
+      ShellNavHistory.canForward && !ShellBus.playerSurfaceActive.value;
+
+  void _setNavProgress(double value, {_DesktopNavGesture? gesture}) {
     final next = value.clamp(0.0, 1.0);
+    final nextGesture = next <= 0
+        ? _DesktopNavGesture.none
+        : (gesture ?? _navGesture);
     // Skip tiny mid-gesture noise; always apply clear / show transitions.
     if ((next - _navProgress).abs() < 0.008 &&
         next > 0 &&
-        _navProgress > 0) {
+        _navProgress > 0 &&
+        nextGesture == _navGesture) {
       return;
     }
     if (!mounted) {
       _navProgress = next;
+      _navGesture = nextGesture;
       return;
     }
-    setState(() => _navProgress = next);
+    setState(() {
+      _navProgress = next;
+      _navGesture = nextGesture;
+    });
   }
 
   void _resetPan({bool commit = false}) {
     final progress = _navProgress;
+    final gesture = _navGesture;
     _panning = false;
     _navSuppressed = false;
     _panDx = 0;
     _panDy = 0;
-    if (commit && progress >= 1.0 - 1e-6 && _canNavigateBack) {
+    if (commit && progress >= 1.0 - 1e-6) {
       _setNavProgress(0);
-      debugPrint('[NavBack] trackpad swipe-back committed');
-      _onBack();
+      if (gesture == _DesktopNavGesture.forward && _canNavigateForward) {
+        debugPrint('[NavBack] trackpad swipe-forward committed');
+        _onForward();
+        return;
+      }
+      if (gesture == _DesktopNavGesture.back && _canNavigateBack) {
+        debugPrint('[NavBack] trackpad swipe-back committed');
+        _onBack();
+        return;
+      }
       return;
     }
     _setNavProgress(0);
@@ -127,7 +154,7 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
 
   void _onGlobalPointer(PointerEvent event) {
     if (event is PointerPanZoomStartEvent) {
-      if (!_canNavigateBack) {
+      if (!_canNavigateBack && !_canNavigateForward) {
         _panning = false;
         _navSuppressed = true;
         return;
@@ -164,19 +191,37 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
       final moved = dx.abs() + dy.abs();
       if (moved < 12) return;
 
-      // Vertical-dominant pan → cancel back gesture.
+      // Vertical-dominant pan → cancel nav gesture.
       if (dy.abs() > dx.abs() * 1.35) {
         _setNavProgress(0);
         return;
       }
 
-      // Back only: finger moves right (positive dx).
-      if (dx <= 0) {
-        _setNavProgress(0);
+      // Right = Back; left = Forward (browser-style).
+      if (dx > 0) {
+        if (!_canNavigateBack) {
+          _setNavProgress(0);
+          return;
+        }
+        _setNavProgress(
+          dx / kDesktopSwipeBackCommitPx,
+          gesture: _DesktopNavGesture.back,
+        );
+        return;
+      }
+      if (dx < 0) {
+        if (!_canNavigateForward) {
+          _setNavProgress(0);
+          return;
+        }
+        _setNavProgress(
+          (-dx) / kDesktopSwipeBackCommitPx,
+          gesture: _DesktopNavGesture.forward,
+        );
         return;
       }
 
-      _setNavProgress(dx / kDesktopSwipeBackCommitPx);
+      _setNavProgress(0);
       return;
     }
     if (event is PointerPanZoomEndEvent) {
@@ -238,6 +283,29 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     // Root of the app - stay put. Never SystemNavigator.pop() from Back.
   }
 
+  void _onForward() {
+    if (!mounted) return;
+    if (!_canNavigateForward) return;
+    unawaited(_shellNavGoForward());
+  }
+
+  Future<void> _shellNavGoForward() async {
+    final entry = ShellNavHistory.popForward();
+    if (entry == null) return;
+    final ctx = shellOverlayNavigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    ShellNavHistory.reopening = true;
+    try {
+      await pushShellRoute<void>(
+        ctx,
+        AppRouter.slideShellRoute(entry.rebuild, settings: entry.settings),
+        shellTabId: entry.shellTabId,
+      );
+    } finally {
+      ShellNavHistory.reopening = false;
+    }
+  }
+
   void _onExit() {
     if (!mounted) return;
     if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
@@ -283,6 +351,7 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
           behavior: HitTestBehavior.translucent,
           onPointerDown: (event) {
             if ((event.buttons & kBackMouseButton) != 0) _onBack();
+            if ((event.buttons & kForwardMouseButton) != 0) _onForward();
           },
           child: widget.child,
         ),
@@ -314,7 +383,10 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
         children: [
           scope,
           if (_navProgress > 0)
-            DesktopSwipeBackIndicator(progress: _navProgress),
+            DesktopSwipeBackIndicator(
+              progress: _navProgress,
+              forward: _navGesture == _DesktopNavGesture.forward,
+            ),
         ],
       );
     }

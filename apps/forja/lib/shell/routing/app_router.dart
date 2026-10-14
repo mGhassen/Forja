@@ -18,6 +18,7 @@ import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shared/navigation/shell_nav_history.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Central navigation for cross-feature routes (details, player).
@@ -54,11 +55,15 @@ class AppRouter {
   }
 
   /// Shell overlay routes - blocks TV system-back from bypassing the coordinator.
+  ///
+  /// Returns a [ShellHistoryPageRoute] so desktop trackpad Forward can reopen
+  /// the same page after Back.
   static Route<T> slideShellRoute<T>(
     WidgetBuilder builder, {
     RouteSettings? settings,
   }) {
-    return PageRouteBuilder<T>(
+    return ShellHistoryPageRoute<T>(
+      rebuild: builder,
       settings: settings,
       opaque: true,
       pageBuilder: (context, animation, secondaryAnimation) {

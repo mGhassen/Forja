@@ -2,14 +2,12 @@
 //
 // Android: real OS PiP via the `floating` package.
 //
-// Desktop (Windows / macOS): media_kit/mpv has no AVKit/WinUI PiP surface, so
-// we shrink to a compact always-on-top window with Safari-like chrome:
-// rounded floating window, aspect lock, dock to bottom-right on enter,
-// and (macOS) AX opt-out so Magnet/Rectangle do not hijack the drag.
-// Free drag — no corner snap.
+// Desktop (Windows / macOS): secondary always-on-top float window hosts video
+// via exclusive media_kit Player handoff. Main Forja window stays full-size
+// with a placeholder ("Playing in picture-in-picture") and shell unlocked.
 //
 // Space / virtual-desktop switch: never pause — arm PiP pending synchronously
-// and (macOS) enter via one native call so playback stays fluid.
+// and enter the float so playback stays fluid.
 //
 // Linux/iOS: no-op (returns false).
 
@@ -19,8 +17,10 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:floating/floating.dart' as fp;
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
+import 'package:forja/shared/player/platform/pip_handoff.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
-import 'package:window_manager/window_manager.dart';
 
 class PipService {
   PipService._();
@@ -29,17 +29,11 @@ class PipService {
   static const _desktopSpaceChannel = EventChannel('forja/desktop_space');
   static const _desktopPipChannel = MethodChannel('forja/desktop_pip');
 
-  // ── Android state ──
   final fp.Floating _floating = fp.Floating();
 
-  // ── Desktop state ──
   bool _desktopActive = false;
-  /// Set as soon as auto/manual enter starts so lifecycle pause cannot win
-  /// the race against async window chrome changes.
   bool _desktopEnterPending = false;
-  Rect? _savedBounds;
-  bool _savedAlwaysOnTop = false;
-  bool _savedVisibleOnAllWorkspaces = false;
+  PipHandoffSnapshot? _lastSnapshot;
 
   final StreamController<bool> _desktopController =
       StreamController<bool>.broadcast();
@@ -50,6 +44,8 @@ class PipService {
   StreamSubscription<dynamic>? _desktopSpaceSub;
   VoidCallback? _autoPipSettingListener;
 
+  PipHandoffSession? _handoff;
+
   bool get isSupported {
     if (kIsWeb) return false;
     if (Platform.isAndroid) return true;
@@ -59,11 +55,19 @@ class PipService {
 
   bool get isDesktopActive => _desktopActive || _desktopEnterPending;
 
-  /// Player bound for Space-switch auto-PiP — lifecycle must not pause.
-  /// Also requires Settings → Auto picture-in-picture.
   bool get autoPipArmed =>
       _shouldAutoEnterPip != null &&
       SettingsService.autoPipOnDesktopSwitchNotifier.value;
+
+  void bindHandoff(PipHandoffSession session) {
+    _handoff = session;
+  }
+
+  void unbindHandoff(PipHandoffSession session) {
+    if (identical(_handoff, session)) {
+      _handoff = null;
+    }
+  }
 
   Future<bool> enter({
     int width = 16,
@@ -80,7 +84,7 @@ class PipService {
         return status == fp.PiPStatus.enabled;
       }
       if (Platform.isWindows || Platform.isMacOS) {
-        return _enterDesktop(width: width, height: height);
+        return _enterDesktopFloat(width: width, height: height);
       }
     } catch (e) {
       debugPrint('[PipService] enter failed: $e');
@@ -90,17 +94,24 @@ class PipService {
 
   Future<void> leave() async {
     if (Platform.isWindows || Platform.isMacOS) {
-      await _leaveDesktop();
+      await _leaveDesktopFloat(restoreMain: true);
+    }
+  }
+
+  /// Tear down the float without restoring the main Player (player disposing).
+  Future<void> abandonFloat() async {
+    if (Platform.isWindows || Platform.isMacOS) {
+      await _leaveDesktopFloat(restoreMain: false);
     }
   }
 
   Future<bool> toggle({int width = 16, int height = 9}) async {
     if (Platform.isWindows || Platform.isMacOS) {
-      if (_desktopActive) {
-        await _leaveDesktop();
+      if (_desktopActive || _desktopEnterPending) {
+        await _leaveDesktopFloat(restoreMain: true);
         return false;
       }
-      return _enterDesktop(width: width, height: height);
+      return _enterDesktopFloat(width: width, height: height);
     }
     return enter(width: width, height: height);
   }
@@ -109,8 +120,7 @@ class PipService {
     if (!Platform.isAndroid) {
       return const Stream<bool>.empty();
     }
-    return _floating.pipStatusStream
-        .map((s) => s == fp.PiPStatus.enabled);
+    return _floating.pipStatusStream.map((s) => s == fp.PiPStatus.enabled);
   }
 
   void bindAutoEnterOnDesktopSwitch({
@@ -133,8 +143,6 @@ class PipService {
     unawaited(_cancelSpaceLeavePrep());
   }
 
-  /// Lifecycle / Space switch: enter PiP instead of pausing. Arms pending
-  /// synchronously so a concurrent pause check sees [isDesktopActive].
   Future<void> enterInsteadOfPause({int width = 16, int height = 9}) async {
     if (_desktopActive || _desktopEnterPending) return;
     if (!SettingsService.autoPipOnDesktopSwitchNotifier.value) {
@@ -146,7 +154,7 @@ class PipService {
       unawaited(_cancelSpaceLeavePrep());
       return;
     }
-    await _enterDesktop(width: width, height: height);
+    await _enterDesktopFloat(width: width, height: height);
   }
 
   void _ensureDesktopSpaceWatch() {
@@ -202,7 +210,6 @@ class PipService {
         leftActiveSpace = !onActive;
       }
     }
-    // Back on this Space or Auto PiP not taking over — undo floating prep.
     if (!leftActiveSpace ||
         !SettingsService.autoPipOnDesktopSwitchNotifier.value) {
       await _cancelSpaceLeavePrep();
@@ -214,93 +221,70 @@ class PipService {
       return;
     }
 
-    await _enterDesktop(width: 16, height: 9);
+    await _enterDesktopFloat(width: 16, height: 9);
   }
 
-  Future<void> _setNativePipChrome(bool enabled) async {
-    if (!(Platform.isMacOS || Platform.isWindows)) return;
-    try {
-      await _desktopPipChannel.invokeMethod('setEnabled', {
-        'enabled': enabled,
-      });
-    } catch (e) {
-      debugPrint('[PipService] setEnabled failed: $e');
-    }
-  }
-
-  // ── Desktop implementation ─────────────────────────────────────────────
-
-  Future<bool> _enterDesktop({required int width, required int height}) async {
+  Future<bool> _enterDesktopFloat({
+    required int width,
+    required int height,
+  }) async {
     if (_desktopActive) return true;
     if (_desktopEnterPending) return true;
-    // Sync arm BEFORE any await — lifecycle pause must see this.
+    if (InAppMiniPlayerController.instance.isActive) {
+      debugPrint('[PipService] refuse PiP while in-app mini is active');
+      return false;
+    }
+    final session = _handoff;
+    if (session == null) {
+      debugPrint('[PipService] no PipHandoffSession bound');
+      return false;
+    }
+
     _desktopEnterPending = true;
     _desktopController.add(true);
 
-    const pipWidth = 360.0;
-    final aspect = width / height;
-    final pipHeight = pipWidth / aspect;
-
     try {
-      _savedAlwaysOnTop = await windowManager.isAlwaysOnTop();
-      if (Platform.isMacOS) {
-        _savedVisibleOnAllWorkspaces =
-            await windowManager.isVisibleOnAllWorkspaces();
-        // One native turn: all-spaces → chrome → size → dock.
-        final saved = await _desktopPipChannel.invokeMethod<dynamic>(
-          'enterPip',
-          {'width': pipWidth, 'height': pipHeight},
-        );
-        if (saved is Map) {
-          _savedBounds = Rect.fromLTWH(
-            (saved['x'] as num?)?.toDouble() ?? 0,
-            (saved['y'] as num?)?.toDouble() ?? 0,
-            (saved['width'] as num?)?.toDouble() ?? 1280,
-            (saved['height'] as num?)?.toDouble() ?? 720,
-          );
-        }
-        try {
-          // Aspect + floor only — no max. 640 was an arbitrary soft cap.
-          await windowManager.setMinimumSize(Size(240, 240 / aspect));
-          await _clearMaximumSize();
-          await windowManager.setAspectRatio(aspect);
-        } catch (_) {}
-        await windowManager.setAlwaysOnTop(true);
-        _desktopActive = true;
-        return true;
+      final snap = await session.captureForPip();
+      if (snap == null || snap.url.isEmpty) {
+        _desktopController.add(false);
+        return false;
+      }
+      _lastSnapshot = snap;
+
+      final pipWidth = 360.0;
+      final aspect = snap.aspectWidth / snap.aspectHeight;
+      final pipHeight = pipWidth / aspect;
+
+      await session.releasePlayerForPip();
+      ShellBus.leavePlayerSurface();
+      ShellBus.clearMaskShellUnderPlayer();
+
+      _desktopPipChannel.setMethodCallHandler(_onNativePipCall);
+
+      final ok = await _desktopPipChannel.invokeMethod<bool>('createFloat', {
+        'width': pipWidth,
+        'height': pipHeight,
+      });
+      if (ok != true) {
+        await session.restoreFromPip(snap);
+        ShellBus.enterPlayerSurface();
+        _desktopController.add(false);
+        return false;
       }
 
-      // Windows: stepwise (no atomic native enter yet).
-      final pos = await windowManager.getPosition();
-      final size = await windowManager.getSize();
-      _savedBounds = Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
-
-      if (await windowManager.isFullScreen()) {
-        await windowManager.setFullScreen(false);
-      }
-      if (await windowManager.isMaximized()) {
-        await windowManager.unmaximize();
-      }
-
-      await windowManager.setResizable(true);
-      await windowManager.setMinimumSize(Size(240, 240 / aspect));
-      await _clearMaximumSize();
-      await windowManager.setAspectRatio(aspect);
-      await windowManager.setSize(Size(pipWidth, pipHeight));
-      await _setNativePipChrome(true);
-      await windowManager.setAlwaysOnTop(true);
-      try {
-        await windowManager.setHasShadow(true);
-      } catch (_) {}
-      try {
-        await _desktopPipChannel.invokeMethod('dockBottomRight');
-      } catch (_) {}
-
+      await _desktopPipChannel.invokeMethod('openFloat', snap.toMap());
       _desktopActive = true;
       return true;
     } catch (e) {
-      debugPrint('[PipService] _enterDesktop failed: $e');
-      await _setNativePipChrome(false);
+      debugPrint('[PipService] _enterDesktopFloat failed: $e');
+      final snap = _lastSnapshot;
+      final session = _handoff;
+      if (snap != null && session != null) {
+        try {
+          await session.restoreFromPip(snap);
+          ShellBus.enterPlayerSurface();
+        } catch (_) {}
+      }
       _desktopController.add(false);
       return false;
     } finally {
@@ -308,57 +292,70 @@ class PipService {
     }
   }
 
-  Future<void> _leaveDesktop() async {
-    if (!_desktopActive && _savedBounds == null) {
+  Future<dynamic> _onNativePipCall(MethodCall call) async {
+    switch (call.method) {
+      case 'floatExpand':
+        final args = call.arguments;
+        PipHandoffSnapshot? snap = _lastSnapshot;
+        if (args is Map && snap != null) {
+          snap = PipHandoffSnapshot(
+            url: snap.url,
+            headers: snap.headers,
+            providerId: snap.providerId,
+            position: Duration(
+              milliseconds: (args['positionMs'] as num?)?.toInt() ??
+                  snap.position.inMilliseconds,
+            ),
+            playing: args['playing'] == true,
+            aspectWidth: snap.aspectWidth,
+            aspectHeight: snap.aspectHeight,
+            isLive: snap.isLive,
+          );
+          _lastSnapshot = snap;
+        }
+        await _leaveDesktopFloat(restoreMain: true);
+        return null;
+      case 'floatClose':
+        await _leaveDesktopFloat(restoreMain: false, closeSession: true);
+        return null;
+      default:
+        throw MissingPluginException(call.method);
+    }
+  }
+
+  Future<void> _leaveDesktopFloat({
+    required bool restoreMain,
+    bool closeSession = false,
+  }) async {
+    if (!_desktopActive && !_desktopEnterPending && _lastSnapshot == null) {
       await _cancelSpaceLeavePrep();
       return;
     }
     try {
-      await _setNativePipChrome(false);
-      try {
-        await windowManager.setAspectRatio(0);
-      } catch (_) {}
-      await _clearMaximumSize();
-      try {
-        await windowManager.setMinimumSize(const Size(640, 480));
-      } catch (_) {}
-      await windowManager.setAlwaysOnTop(_savedAlwaysOnTop);
-      if (Platform.isMacOS) {
-        await windowManager.setVisibleOnAllWorkspaces(
-          _savedVisibleOnAllWorkspaces,
-          visibleOnFullScreen: false,
-        );
-      }
-      final b = _savedBounds;
-      if (b != null) {
-        await windowManager.setSize(Size(b.width, b.height));
-        await windowManager.setPosition(Offset(b.left, b.top));
-      }
+      await _desktopPipChannel.invokeMethod('destroyFloat');
     } catch (e) {
-      debugPrint('[PipService] _leaveDesktop failed: $e');
-    } finally {
-      _desktopActive = false;
-      _savedBounds = null;
-      _savedVisibleOnAllWorkspaces = false;
-      _desktopController.add(false);
+      debugPrint('[PipService] destroyFloat failed: $e');
     }
-  }
-
-  Future<void> _clearMaximumSize() async {
     try {
-      await windowManager.setMaximumSize(Size.infinite);
-    } catch (_) {
-      try {
-        await windowManager.setMaximumSize(const Size(10000, 10000));
-      } catch (_) {}
+      _desktopPipChannel.setMethodCallHandler(null);
+    } catch (_) {}
+
+    final session = _handoff;
+    final snap = _lastSnapshot;
+    _lastSnapshot = null;
+    _desktopActive = false;
+    _desktopEnterPending = false;
+    _desktopController.add(false);
+    await _cancelSpaceLeavePrep();
+
+    if (session == null) return;
+    if (closeSession) {
+      await session.closeFromPip();
+      return;
+    }
+    if (restoreMain && snap != null) {
+      await session.restoreFromPip(snap);
+      ShellBus.enterPlayerSurface();
     }
   }
-}
-
-class Rect {
-  final double left;
-  final double top;
-  final double width;
-  final double height;
-  const Rect.fromLTWH(this.left, this.top, this.width, this.height);
 }

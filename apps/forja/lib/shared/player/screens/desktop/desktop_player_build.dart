@@ -55,81 +55,85 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
 
     // Same MediaKit [Video] always — only the [Positioned] box resizes.
     // Do not swap Scaffold ↔ bare stack (that remounts texture → black + audio).
-    // Status ListenableBuilder must pass Stack as [child] — rebuilding Video
-    // on every status tick stuttered playback.
+    // PiP float owns the Player — main shows [PipPlaceholder], no Video.
     final stack = Stack(
       fit: StackFit.expand,
       children: [
-        // Full: opaque black under video. Mini: omit so shell paints through.
-        if (!mini)
+        // Full: opaque black under video. Mini / PiP: omit so shell paints through.
+        if (!mini && !pipMode)
           const Positioned.fill(child: ColoredBox(color: Colors.black)),
-        ValueListenableBuilder<Size>(
-          valueListenable: InAppMiniPlayerController.instance.size,
-          builder: (context, miniSize, _) {
-            return Positioned(
-              key: const ValueKey('desktop-player-video-slot'),
-              left: mini ? null : 0,
-              top: mini ? null : 0,
-              right: mini ? 16 : 0,
-              bottom: mini ? 16 : 0,
-              width: mini ? miniSize.width : null,
-              height: mini ? miniSize.height : null,
-              child: Material(
-                elevation: mini ? 12 : 0,
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(mini ? 10 : 0),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    SizedBox.expand(
-                      child: Video(
-                        key: _s._videoViewKey,
-                        controller: _s._controller,
-                        controls: NoVideoControls,
-                        fit: _s._videoFit,
-                        fill: Colors.black,
-                        subtitleViewConfiguration:
-                            const SubtitleViewConfiguration(
-                          visible: false,
+        if (pipMode)
+          PipPlaceholder(
+            onExpand: () => unawaited(PipService.instance.leave()),
+          )
+        else
+          ValueListenableBuilder<Size>(
+            valueListenable: InAppMiniPlayerController.instance.size,
+            builder: (context, miniSize, _) {
+              return Positioned(
+                key: const ValueKey('desktop-player-video-slot'),
+                left: mini ? null : 0,
+                top: mini ? null : 0,
+                right: mini ? 16 : 0,
+                bottom: mini ? 16 : 0,
+                width: mini ? miniSize.width : null,
+                height: mini ? miniSize.height : null,
+                child: Material(
+                  elevation: mini ? 12 : 0,
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(mini ? 10 : 0),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      SizedBox.expand(
+                        child: Video(
+                          key: _s._videoViewKey,
+                          controller: _s._controller,
+                          controls: NoVideoControls,
+                          fit: _s._videoFit,
+                          fill: Colors.black,
+                          subtitleViewConfiguration:
+                              const SubtitleViewConfiguration(
+                            visible: false,
+                          ),
                         ),
                       ),
-                    ),
-                    if (mini)
-                      ValueListenableBuilder<bool>(
-                        valueListenable: _s._isPlayingNotifier,
-                        builder: (context, playing, _) {
-                          return InAppMiniPlayerChrome(
-                            playing: playing,
-                            rootFocus: _s._miniRootFocus,
-                            playPauseFocus: _s._miniPlayPauseFocus,
-                            expandFocus: _s._miniExpandFocus,
-                            closeFocus: _s._miniCloseFocus,
-                            onPlayPause: () {
-                              unawaited(
-                                InAppMiniPlayerController.instance
-                                    .togglePlayPause(),
-                              );
-                            },
-                            onExpand: () {
-                              unawaited(
-                                InAppMiniPlayerController.instance.expand(),
-                              );
-                            },
-                            onClose: () {
-                              unawaited(
-                                InAppMiniPlayerController.instance.close(),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                  ],
+                      if (mini)
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _s._isPlayingNotifier,
+                          builder: (context, playing, _) {
+                            return InAppMiniPlayerChrome(
+                              playing: playing,
+                              rootFocus: _s._miniRootFocus,
+                              playPauseFocus: _s._miniPlayPauseFocus,
+                              expandFocus: _s._miniExpandFocus,
+                              closeFocus: _s._miniCloseFocus,
+                              onPlayPause: () {
+                                unawaited(
+                                  InAppMiniPlayerController.instance
+                                      .togglePlayPause(),
+                                );
+                              },
+                              onExpand: () {
+                                unawaited(
+                                  InAppMiniPlayerController.instance.expand(),
+                                );
+                              },
+                              onClose: () {
+                                unawaited(
+                                  InAppMiniPlayerController.instance.close(),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
         if (!mini && !pipMode)
           Positioned.fill(
             child: GestureDetector(
@@ -145,7 +149,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         // Above video double-tap (fullscreen); below chrome so buttons still win.
         if (!mini && !pipMode)
           DesktopWindowChrome.overlayDragStrip(showCaption: false),
-        if (!mini && !_s._isNativeSubtitle)
+        if (!mini && !pipMode && !_s._isNativeSubtitle && _s._playerReady)
           StreamBuilder<List<String>>(
             stream: _s._player.stream.subtitle,
             initialData: _s._player.state.subtitle,
@@ -202,8 +206,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
           ),
         if (!mini && !pipMode && _s._escapeExitArmed)
           const PlayerEscapeExitHint(),
-        if (!mini && pipMode) _buildPipRevertOverlay(),
-        if (!mini && !_s._isLoadingNextEp)
+        if (!mini && !_s._isLoadingNextEp && !pipMode)
           PlayerStatusOverlay(
             controller: _s._statusController,
             bufferingListenable: _s._isBufferingNotifier,
@@ -223,12 +226,12 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
       ],
     );
 
-    // Mini: only the corner Positioned hit-tests. Full-window Material /
+    // Mini / PiP: only painted chrome hit-tests. Full-window Material /
     // MouseRegion default to opaque hits and blocked shell + rails under the
-    // transparent player route (picture painted; clicks did not).
+    // transparent player route.
     return Theme(
       data: ThemeData.dark(),
-      child: mini
+      child: (mini || pipMode)
           ? stack
           : Material(
               type: MaterialType.transparency,
@@ -241,48 +244,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                 child: stack,
               ),
             ),
-    );
-  }
-
-  /// System-style PiP chrome — expand / Minimize / Close · ±15 · scrubber.
-  Widget _buildPipRevertOverlay() {
-    return ValueListenableBuilder<bool>(
-      valueListenable: _s._isPlayingNotifier,
-      builder: (context, playing, _) {
-        return DesktopPipOverlay(
-          hovering: _s._pipHover,
-      onHoverChanged: (on) {
-        if (!mounted) return;
-        if (_s._pipHover == on) return;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          if (_s._pipHover == on) return;
-          setState(() => _s._pipHover = on);
-        });
-      },
-          playing: playing,
-          onTogglePlay: () {
-            _s._player.playOrPause();
-          },
-            onClose: _s._forceLeavePlayer,
-          onSeekBack: () {
-            final pos =
-                _s._positionNotifier.value - const Duration(seconds: 15);
-            unawaited(
-              _s._seekTo(pos < Duration.zero ? Duration.zero : pos),
-            );
-          },
-          onSeekForward: () {
-            final dur = _s._durationNotifier.value;
-            final pos =
-                _s._positionNotifier.value + const Duration(seconds: 15);
-            unawaited(_s._seekTo(pos > dur ? dur : pos));
-          },
-          positionListenable: _s._positionNotifier,
-          durationListenable: _s._durationNotifier,
-          onSeekTo: (pos) => unawaited(_s._seekTo(pos)),
-        );
-      },
     );
   }
 

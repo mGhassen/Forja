@@ -145,15 +145,16 @@ mixin _DesktopPlayerLifecycle
         _s._isPipMode = on;
         if (on) _s._pausedByLifecycle = false;
       });
-      // Space-switch auto-PiP can race lifecycle pause — keep video alive.
-      if (on && !_s._disposed && !_s._player.state.playing) {
-        unawaited(_s._player.play());
-      }
     });
+    PipService.instance.bindHandoff(_s);
     PipService.instance.bindAutoEnterOnDesktopSwitch(
       token: this,
       shouldEnter: () {
-        if (_s._disposed || !mounted || !_s._playerReady) return false;
+        if (_s._disposed || !mounted) return false;
+        if (_s._releasedForPip || PipService.instance.isDesktopActive) {
+          return false;
+        }
+        if (!_s._playerReady) return false;
         return _s._player.state.playing || _s._pausedByLifecycle;
       },
     );
@@ -548,11 +549,13 @@ mixin _DesktopPlayerLifecycle
       _pauseForAppBackground();
     } else if (state == AppLifecycleState.inactive) {
       if (!_s._disposed &&
+          !_s._releasedForPip &&
           !_s._isPipMode &&
           !PipService.instance.isDesktopActive &&
           !PipService.instance.autoPipArmed &&
           !InAppMiniPlayerController.instance.isActive &&
           !SettingsService.keepsPlayingInBackground &&
+          _s._playerReady &&
           _s._player.state.playing) {
         _s._pausedByLifecycle = true;
       }
@@ -582,6 +585,7 @@ mixin _DesktopPlayerLifecycle
 
   void _pauseForAppBackground() {
     if (_s._disposed ||
+        _s._releasedForPip ||
         _s._isPipMode ||
         PipService.instance.isDesktopActive ||
         InAppMiniPlayerController.instance.isActive) {
@@ -595,6 +599,7 @@ mixin _DesktopPlayerLifecycle
       return;
     }
     if (SettingsService.keepsPlayingInBackground) return;
+    if (!_s._playerReady) return;
     if (_s._player.state.playing) {
       _s._pausedByLifecycle = true;
       _s._postSeekStall?.clearPendingSeek();
@@ -605,7 +610,12 @@ mixin _DesktopPlayerLifecycle
   void _resumeAfterAppBackground() {
     if (_s._disposed || !_s._pausedByLifecycle) return;
     _s._pausedByLifecycle = false;
-    if (_s._isPipMode || PipService.instance.isDesktopActive) return;
+    if (_s._releasedForPip ||
+        _s._isPipMode ||
+        PipService.instance.isDesktopActive) {
+      return;
+    }
+    if (!_s._playerReady) return;
     unawaited(_s._player.play());
   }
 
