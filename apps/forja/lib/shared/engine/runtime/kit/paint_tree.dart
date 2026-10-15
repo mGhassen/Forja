@@ -1861,21 +1861,12 @@ class PackPaintTree extends StatelessWidget {
           }
           final packCardKind =
               (spec['cardKind'] ?? '').toString().trim().toLowerCase();
-          final listOpen =
-              (spec['open'] ?? '').toString().trim().toLowerCase();
-          final listIdHint =
-              (spec['id'] ?? '').toString().trim().toLowerCase();
-          // Live Sports TV shelf — always IPTV channel tiles. Never Sports
-          // List/Cards viewStyle, event landscape, or film posters.
+          // Pack `cardKind` is the product contract — host only honors it.
+          // Do not invent hub ids / open modes here (RFC-109).
           final packChannelCards = packCardKind == 'channel' ||
               packCardKind == 'livechannel' ||
-              packCardKind == 'channellist' ||
-              listOpen == 'play' ||
-              listIdHint == 'tv_channels' ||
-              listIdHint == 'tvchannels';
-          var style = packChannelCards
-              ? 'grid'
-              : (spec['style'] ?? 'grid').toString().trim().toLowerCase();
+              packCardKind == 'channellist';
+          var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
           // Empty chrome.viewStyle must not block LayoutScope ('' is not null).
           final chromeView =
               (chrome?.viewStyle ?? '').toString().trim().toLowerCase();
@@ -1886,6 +1877,8 @@ class PackPaintTree extends StatelessWidget {
                   .toLowerCase();
           final viewOverride =
               chromeView.isNotEmpty ? chromeView : scopeView;
+          // Pack channel lists keep their style — chrome View (Sports List/Cards)
+          // must not remap them to event/film paint.
           if (!packChannelCards && viewOverride.isNotEmpty) {
             if (viewOverride == 'cards' ||
                 viewOverride == 'list' ||
@@ -1904,16 +1897,12 @@ class PackPaintTree extends StatelessWidget {
           if ((style == 'epg' || style == 'guide') && !wantGuide) {
             style = 'grid';
           }
-          // Live Sports schedule (panel / Providers) — never My List posters,
-          // channel tiles, or Open-in hub binding.
+          // Match schedule (panel / Providers) — never when pack asked for channels.
           final matchOpenSurface =
               !packChannelCards && _listIsMatchSchedule(spec);
           final liveChannels = packChannelCards ||
               (!matchOpenSurface && _itemsLookLikeLiveChannels(filtered));
           final cardKind = () {
-            if (packChannelCards) {
-              return packCardKind == 'channellist' ? 'channelList' : 'channel';
-            }
             if (packCardKind == 'channellist') return 'channelList';
             if (packCardKind == 'channel' || packCardKind == 'livechannel') {
               return 'channel';
@@ -2800,7 +2789,7 @@ class PackPaintTree extends StatelessWidget {
     }
   }
 
-  /// Live Sports match schedule (Providers panel) — not IPTV / My List posters.
+  /// Side-panel / details match list — not when pack declared channel cards.
   bool _listIsMatchSchedule(Map<String, dynamic> spec) {
     final packCardKind =
         (spec['cardKind'] ?? '').toString().trim().toLowerCase();
@@ -2809,12 +2798,10 @@ class PackPaintTree extends StatelessWidget {
         packCardKind == 'channellist') {
       return false;
     }
-    final open = (spec['open'] ?? '').toString().trim().toLowerCase();
-    // TV shelf direct-play — never match panel / Open-in.
-    if (open == 'play') return false;
     if ((spec['openSetting'] ?? '').toString().trim().isNotEmpty) return true;
     final tabs = spec['panelTabs'];
     if (tabs is List && tabs.isNotEmpty) return true;
+    final open = (spec['open'] ?? '').toString().trim().toLowerCase();
     if (open == 'panel' || open == 'details') return true;
     // Schedule chrome: Catalog + Schedule horizon (IPTV has no horizonMenu).
     return (spec['horizonMenu'] ?? '').toString().trim().isNotEmpty &&

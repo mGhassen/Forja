@@ -35,7 +35,7 @@ Live Sports mixed match schedule and 24/7 channels in one feed with sport circle
 | 7 | I434-T07 | alwaysOn must not classify at/@ matchups as 24/7 (Sports lost non-football) | ✅ |
 | 8 | I434-T08 | Host: pack `cardKind: channel` / `open: play` win over Sports List/Cards viewStyle + match-schedule event paint | ✅ |
 | 9 | I434-T09 | TV tap: `handoffOnly` resolve — owned `sources[]` packs only (no fixture fan-out / Stremio) | ✅ |
-| 10 | I434-T10 | Host forces channel tiles for `open: play` / `tv_channels`; pack emits channelCard (not poster) | ✅ |
+| 10 | I434-T10 | Pack owns TV paint (`cardKind: channel` + channelCard rows); host only honors cardKind (no hub-id hardcode) | ✅ |
 
 ---
 

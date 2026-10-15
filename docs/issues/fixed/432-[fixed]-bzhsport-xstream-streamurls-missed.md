@@ -48,4 +48,4 @@ BZH event pages list several embeds. Named channels on `zonalive /player/4/*` ne
 
 Before hopping iframes, parse and live-probe `streamUrls`. When hopping, skip empty `holdfold.net/embed/` stubs and known ad frames. Holdfold `_econfig` path unchanged.
 
-**Non-goals:** dlive.sx (geo legal wall), jack/mpanrc Nuxt pages (no native stream in HTML).
+**Non-goals:** dlive.sx (geo legal wall), jack/mpanrc Nuxt pages as BZH unlock (same TCPWE family → standalone FCTV33 in [433](../433-[open]-fctv33-standalone-catalog-resolve.md)).
