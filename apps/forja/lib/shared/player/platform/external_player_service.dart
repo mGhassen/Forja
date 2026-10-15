@@ -417,6 +417,7 @@ class ExternalPlayerService {
   static List<String> _mpvStreamArgs({required String prefix}) => [
         '${prefix}network-timeout=30',
         '${prefix}tls-verify=no',
+        '${prefix}load-unsafe-playlists=yes',
         '${prefix}hls-bitrate=$kHlsBitrateAutoSoftCeiling',
         '${prefix}cache=yes',
         '${prefix}demuxer-readahead-secs=20',

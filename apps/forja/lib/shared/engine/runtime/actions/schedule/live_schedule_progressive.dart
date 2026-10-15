@@ -160,14 +160,39 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   if (!forceRefresh) {
     final warm = _cachedFeedRows(aggregateKey);
     if (warm != null) {
-      setBusy(busy: false, label: null);
-      yield await _hubReduceFeed(
-        hubPluginId: hubPluginId,
-        packSourceUrl: packSourceUrl,
-        rows: warm,
-        params: feedParams,
-      );
-      return;
+      // Chip slots must contain that catalog's rows. A poisoned raw:<chip>
+      // (full All list) is non-empty but filters to zero — fall through scrape.
+      if (filter.isNotEmpty && filter != 'all') {
+        final scopedWarm = [
+          for (final row in warm)
+            if (_catalogIdMatches(
+              (row['pluginId'] ?? row['livePluginId'] ?? '').toString(),
+              filter,
+            ))
+              row,
+        ];
+        if (scopedWarm.isEmpty) {
+          EngineCache.instance.invalidate(_kLiveFeedCacheNs, aggregateKey);
+        } else {
+          setBusy(busy: false, label: null);
+          yield await _hubReduceFeed(
+            hubPluginId: hubPluginId,
+            packSourceUrl: packSourceUrl,
+            rows: scopedWarm,
+            params: feedParams,
+          );
+          return;
+        }
+      } else {
+        setBusy(busy: false, label: null);
+        yield await _hubReduceFeed(
+          hubPluginId: hubPluginId,
+          packSourceUrl: packSourceUrl,
+          rows: warm,
+          params: feedParams,
+        );
+        return;
+      }
     }
     // All already scraped — Catalog chip must re-reduce, not re-fan catalogs.
     if (filter.isNotEmpty && filter != 'all') {
@@ -206,11 +231,24 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
         for (final p in all)
           if (_catalogIdMatches(p.id, filter)) p,
       ];
+      // Chip visible but list filter missed (stale chrome / id skew) — scrape by id.
+      if (wanted.isEmpty) {
+        final byId = await EngineService.instance.pluginById(filter);
+        if (byId != null &&
+            (byId.supportsLiveFeed || byId.supportsLiveBroadcast)) {
+          wanted = [byId];
+        }
+      }
     }
   } catch (e, st) {
     debugPrint('[live-schedule] list catalogs: $e\n$st');
     wanted = const [];
   }
+
+  debugPrint(
+    '[live-schedule] filter=$filter force=$forceRefresh '
+    'wanted=${wanted.map((p) => p.id).join(',')}',
+  );
 
   if (wanted.isEmpty) {
     setBusy(busy: false, label: null);

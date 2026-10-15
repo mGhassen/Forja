@@ -254,6 +254,8 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
 
       // Network: 30s so lavf reconnect can finish.
       await p.setProperty('network-timeout', '30');
+      // Proxy HLS — playlist host ≠ segment host (mpv default blocks).
+      await p.setProperty('load-unsafe-playlists', 'yes');
 
       // Cache: RFC-113 Forja live profile (desktop + ATV same demuxer bytes).
       await p.setProperty('cache', 'yes');

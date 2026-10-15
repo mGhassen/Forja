@@ -1871,6 +1871,8 @@ mixin _MobilePlayerPlayback
     // ── Network / Cache ───────────────────────────────────────────────────
     await safeSet('network-timeout', '30');
     await safeSet('tls-verify', 'no');
+    // Proxy HLS (e.g. RiveStream) — playlist host ≠ segment host.
+    await safeSet('load-unsafe-playlists', 'yes');
 
     // RAM packet cache. media_kit defaults cache-on-disk=yes; on ATV that
     // prunes metadata and never builds an HLS ahead window (issue 187).

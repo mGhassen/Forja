@@ -1866,6 +1866,9 @@ mixin _DesktopPlayerPlayback
     // ── Network / Streaming ───────────────────────────────────────────────
     await safeSet('network-timeout', '30');
     await safeSet('tls-verify', 'no'); // for self-signed / CDN certs
+    // Proxy HLS (e.g. RiveStream valhallastream) serves playlist + segments
+    // on different hosts — mpv blocks that unless this is on.
+    await safeSet('load-unsafe-playlists', 'yes');
 
     // Don't freeze on brief cache drain - keep decoding through HLS hiccups.
     await safeSet('cache-pause', 'no');

@@ -11,7 +11,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** research · **8 / 8** implement · **0 / 2** acceptance (device) |
+| **Progress** | **7 / 7** research · **9 / 9** implement · **0 / 2** acceptance (device) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -43,6 +43,7 @@
 | 6 | I433-T13 | Pack `readVarint` 53-bit safe so `dateMs` is not 2003-era after stamp | ✅ |
 | 7 | I433-T14 | CryptoJS `AES.encrypt(WordArray key)` must return `.ciphertext` (resolve token) | ✅ |
 | 8 | I433-T15 | Catalog: one `bs` sig + 429 retry (per-sport bs double-scrape → raw=0) | ✅ |
+| 9 | I433-T16 | Hub/host: Catalog chip after All must not poison `raw:<chip>` / skip scrape when scoped empty | ✅ |
 
 ---
 
@@ -67,12 +68,14 @@ User asked for **FCTV33 as a full catalog+resolve** instead of unlocking jack Le
 4. ~~Catalog `raw=0` (protobuf UTF-8)~~ — **cleared**. Envelope bodyB64 + pack varint. Device: `raw=191`.
 5. ~~Resolve `raw=0`~~ — **cleared in code**. CryptoJS WordArray AES missing `.ciphertext`. Needs device A02 after rust rebuild.
 6. ~~Catalog flaky `191 → 131 → 0`~~ — **cleared in code** (verified scripted). `/api/common/bs` returns **429** under per-sport bs × concurrent chip scrape. Fix: one code-100 sig for all sports + retry on 429. Pack `2.0.34`.
+7. ~~Chip empty after HubReload/All~~ — **cleared in code**. Pack stashed All rows under `raw:fctv33` then reduce → 0; host trusted non-empty warm. Hub `1.0.66` + host progressive scoped warm / scrape-by-id fallback. Device A01 still open.
 
 ## Shipped
 
 - `forja-packs/livesports/fctv33.js` + manifest plugin `fctv33` (pack `2.0.34`)
 - Engine envelope binary body keep (invalid UTF-8 / protobuf CT)
 - Engine/Dart CryptoJS AES WordArray → CipherParams `.ciphertext`
+- Hub feed chip-after-All scoped only (`hubs/live_sports` `1.0.66`) + host progressive warm guard
 - Local install: `/Users/mghassen/Workspace/forja-packs/livesports/manifest.json`
 
 ## Protocol notes (for implementer)

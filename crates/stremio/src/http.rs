@@ -109,6 +109,44 @@ pub fn fetch_post_with_headers_unchecked(
     })
 }
 
+fn looks_binary_content_type(ct: &str) -> bool {
+    let c = ct.to_ascii_lowercase();
+    c.contains("octet-stream")
+        || c.contains("video/")
+        || c.contains("audio/")
+        || c.contains("matroska")
+}
+
+/// Cap body read so Range probes / binary CDNs never pull a full .mkv into UTF-8.
+async fn read_body_string(
+    resp: reqwest::Response,
+    cap: Option<usize>,
+) -> Result<String, String> {
+    let Some(max) = cap else {
+        let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+        return Ok(String::from_utf8_lossy(&bytes).into_owned());
+    };
+    let mut buf = Vec::with_capacity(max.min(64 * 1024));
+    let mut resp = resp;
+    loop {
+        match resp.chunk().await.map_err(|e| e.to_string())? {
+            Some(chunk) => {
+                let room = max.saturating_sub(buf.len());
+                if room == 0 {
+                    break;
+                }
+                buf.extend_from_slice(&chunk[..chunk.len().min(room)]);
+                if buf.len() >= max {
+                    break;
+                }
+            }
+            None => break,
+        }
+    }
+    // Dropping `resp` aborts the remaining download.
+    Ok(String::from_utf8_lossy(&buf).into_owned())
+}
+
 async fn fetch_with_headers_async(
     url: &str,
     timeout_secs: u64,
@@ -127,18 +165,40 @@ async fn fetch_with_headers_async(
         client.get(url)
     };
     req = req.timeout(timeout);
+    let has_range = headers
+        .keys()
+        .any(|k| k.eq_ignore_ascii_case("range"));
     for (k, v) in headers {
         req = req.header(k.as_str(), v.as_str());
     }
     let resp = req.send().await.map_err(|e| e.to_string())?;
     let status = resp.status().as_u16();
-    let body = resp.text().await.map_err(|e| e.to_string())?;
+    let ct = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    // Range probes and binary media: never `.text()` the whole object.
+    let cap = if has_range || looks_binary_content_type(ct) {
+        Some(64 * 1024)
+    } else {
+        None
+    };
+    let body = read_body_string(resp, cap).await?;
     Ok(HttpResponse { status, body })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn binary_content_types_are_capped() {
+        assert!(looks_binary_content_type("application/octet-stream"));
+        assert!(looks_binary_content_type("video/mp4"));
+        assert!(!looks_binary_content_type("application/json"));
+        assert!(!looks_binary_content_type("application/vnd.apple.mpegurl"));
+    }
 
     #[test]
     fn rejects_empty_url() {

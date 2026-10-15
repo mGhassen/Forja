@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:rust/rust.dart';
 
 void main() {
 
@@ -117,5 +118,20 @@ void main() {
       isFalse,
     );
     await dir.delete(recursive: true);
+  });
+
+  test('validateStreamSourceForCheck honors pack probe skip without HTTP', () async {
+    expect(
+      await validateStreamSourceForCheck(
+        providerId: 'engine:test-provider',
+        source: StreamSource(
+          url: 'https://cdn.example.workers.dev/d/abc',
+          title: 'file',
+          type: 'video',
+          probe: 'skip',
+        ),
+      ),
+      isTrue,
+    );
   });
 }

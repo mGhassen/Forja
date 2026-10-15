@@ -880,6 +880,8 @@ mixin _DesktopPlayerEpisodes
           title: title,
           type: 'video',
           headers: resolved.headers,
+          // Packs (e.g. DahmerMovies) declare probe:skip for binary CDN files.
+          probe: stream['probe']?.toString(),
         ),
         headers: resolved.headers,
       )) {

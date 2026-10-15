@@ -347,6 +347,8 @@ mixin _LiveSportsPlayerMkTunables on _LiveSportsPlayerEngineCore {
 
       // Sports: 15s (v1.5.36). IPTV Forja live: 30s for lavf reconnect.
       await p.setProperty('network-timeout', sportsMk ? '15' : '30');
+      // Proxy HLS — playlist host ≠ segment host (mpv default blocks).
+      await p.setProperty('load-unsafe-playlists', 'yes');
 
       // Cache: sports = pre–RFC-113 cushion; IPTV = RFC-113 live/forja.
       await p.setProperty('cache', 'yes');
