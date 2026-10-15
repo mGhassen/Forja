@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';

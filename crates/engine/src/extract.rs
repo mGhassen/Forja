@@ -399,7 +399,7 @@ const CHEERIO_BUNDLE: &str =
     include_str!("../../../apps/forja/assets/nuvio/cheerio.bundle.js");
 
 fn cheerio_load_js() -> String {
-    format!(
+    let out: String = format!(
         r#"(function(){{
   var module = {{ exports: {{}} }};
   var exports = module.exports;
@@ -414,7 +414,8 @@ fn cheerio_load_js() -> String {
   }}
 }})();"#,
         bundle = CHEERIO_BUNDLE
-    )
+    );
+    out
 }
 
 fn url_host(url: &str) -> Option<String> {
@@ -543,18 +544,19 @@ async fn native_fetch(
         req = req.body(body);
     }
     let token = utils::engine_cancel::cancellation_token();
-    let resp = tokio::select! {
-        r = req.send() => match r {
-            Ok(r) => r,
-            Err(e) => {
-                return Ok(serde_json::json!({
-                    "ok": false, "status": 0, "statusText": e.to_string(),
-                    "url": url, "body": "", "headers": {}
-                })
-                .to_string());
-            }
-        },
-        _ = token.cancelled() => return Ok(fetch_cancelled_json(&url)),
+    let resp = match tokio::select! {
+        r = req.send() => r.map_err(|e| e.to_string()),
+        _ = token.cancelled() => Err(String::new()),
+    } {
+        Ok(r) => r,
+        Err(msg) if msg.is_empty() => return Ok(fetch_cancelled_json(&url)),
+        Err(msg) => {
+            return Ok(serde_json::json!({
+                "ok": false, "status": 0, "statusText": msg,
+                "url": url, "body": "", "headers": {}
+            })
+            .to_string());
+        }
     };
     let status = resp.status().as_u16();
     let final_url = resp.url().to_string();
@@ -565,12 +567,16 @@ async fn native_fetch(
         }
     }
     // HEAD must not buffer a redirected video body (HubCloud 10Gbps → googleusercontent).
-    let bytes = if method_up == "HEAD" {
-        vec![]
+    let bytes: Vec<u8> = if method_up == "HEAD" {
+        Vec::new()
     } else {
-        tokio::select! {
-            t = resp.bytes() => t.unwrap_or_default().to_vec(),
-            _ = token.cancelled() => return Ok(fetch_cancelled_json(&url)),
+        // Both arms same Result type — `return` inside select! confuses rust-analyzer (E0308).
+        match tokio::select! {
+            t = resp.bytes() => Ok(t.unwrap_or_default().to_vec()),
+            _ = token.cancelled() => Err(()),
+        } {
+            Ok(b) => b,
+            Err(()) => return Ok(fetch_cancelled_json(&url)),
         }
     };
     Ok(pack_http_envelope(status, final_url, hdrs, bytes))

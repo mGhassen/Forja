@@ -28,8 +28,7 @@ abstract final class PluginStreamLanguages {
     final id = hubPluginId.trim();
     if (id.isEmpty) return;
     final parsed = <PluginLanguage>[
-      for (final e in keys)
-        if (PluginLanguage.tryParseKey(e) case final lang?) lang,
+      for (final e in keys) ?PluginLanguage.tryParseKey(e),
     ];
     // SUB and DUB are exclusive — if both slip in, keep the last kind touched.
     String? lastKind;

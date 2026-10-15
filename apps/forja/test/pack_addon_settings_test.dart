@@ -532,7 +532,7 @@ void main() {
         'capabilities': ['settings', 'settingsList'],
         'settings': {
           'addon': 'alpha',
-          if (addons != null) 'addons': addons,
+          'addons': ?addons,
           'group': 'Rows',
           'fields': [field],
         },
