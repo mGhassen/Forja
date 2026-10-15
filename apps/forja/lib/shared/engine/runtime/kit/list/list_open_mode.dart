@@ -4,7 +4,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 const kKitListOpenModeDefault = 'panel';
 
-/// Read kit.list `openSetting` (e.g. Live Sports `matchOpen`) from pack prefs.
+/// Read kit.list `openSetting` id from pack prefs.
 Future<String> resolveListOpenMode({
   required String pluginId,
   required String? openSettingId,
@@ -28,11 +28,10 @@ Future<String> resolveListOpenMode({
 ValueListenable<int> get packSettingsRevisionListenable =>
     PackSettingsStore.revision;
 
-/// How a schedule/list tap should open after resolving [openMode].
+/// How a kit.list tap should open after resolving [openMode].
 ///
-/// Live Sports declares `openSetting` / `panelTabs`. Those must never fall
-/// through to `open.surface:live` (hub tab re-request is a no-op). Panel needs
-/// chrome + room to dock (or Android TV); otherwise open the detail page.
+/// Lists with `openSetting` / `panelTabs` ([hasMatchOpenSurface]) stay on
+/// panel/details — never fall through to hub Open-in binding.
 enum KitListTapOpen { panel, details, openTap, play }
 
 /// Whether a kit list may paint / open the docked streams side panel.
@@ -67,7 +66,7 @@ KitListTapOpen resolveKitListTapOpen({
   if (mode == 'play') {
     return KitListTapOpen.play;
   }
-  // Match schedule must never fall through to My List Open-in binding.
+  // Managed-open lists never fall through to hub Open-in binding.
   if (hasMatchOpenSurface) {
     if (mode == 'details') return KitListTapOpen.details;
     return canShowSidePanel ? KitListTapOpen.panel : KitListTapOpen.details;

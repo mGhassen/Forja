@@ -26,6 +26,7 @@ import 'package:forja_foundation/widgets/chrome/filter_sheet_option.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 import 'package:forja/shared/engine/runtime/kit/lazy_viewport_gate.dart';
+import 'package:forja/shared/engine/runtime/kit/list/kit_list_card_kind.dart';
 import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
 import 'package:forja/shared/engine/store/list_open_flow.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
@@ -1467,7 +1468,7 @@ class PackPaintTree extends StatelessWidget {
     return null;
   }
 
-  /// Live IPTV channel favorite star when open carries portalKey + streamId.
+  /// Channel favorite star when open carries portalKey + streamId.
   Widget? _liveFavoriteAccessory(
     BuildContext context,
     Map<String, dynamic> item, {
@@ -1502,7 +1503,7 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  /// Poster grid pin (My List / Home parity) — falls back after live fav star.
+  /// Poster pin — falls back after channel favorite star.
   Widget? _listPosterPinAccessory(
     BuildContext context,
     Map<String, dynamic> item, {
@@ -1861,15 +1862,15 @@ class PackPaintTree extends StatelessWidget {
           }
           final packCardKind =
               (spec['cardKind'] ?? '').toString().trim().toLowerCase();
-          // Pack `cardKind` is the product contract — host only honors it.
-          final packChannelCards = packCardKind == 'channel' ||
-              packCardKind == 'livechannel' ||
-              packCardKind == 'channellist';
+          final packLocksCardKind =
+              kKitListCardKindAliases.containsKey(packCardKind);
+          final packChannelCards = kitListCardKindIsChannel(
+            kKitListCardKindAliases[packCardKind] ?? '',
+          );
           var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
-          // Chrome View only remaps lists that opt in (`viewMenu`). Otherwise
-          // Sports List/Cards sticks onto every sibling list (e.g. TV channels).
+          // Chrome View only remaps lists that opt in (`viewMenu`).
           final viewMenu = (spec['viewMenu'] ?? '').toString().trim();
-          if (viewMenu.isNotEmpty && !packChannelCards) {
+          if (viewMenu.isNotEmpty && !packLocksCardKind) {
             final chromeView =
                 (chrome?.viewStyle ?? '').toString().trim().toLowerCase();
             final scopeView =
@@ -1887,92 +1888,19 @@ class PackPaintTree extends StatelessWidget {
               style = viewOverride;
             }
           }
-          // Live catalog EPG grid — desktop Live only (≥760); TV stays cards.
-          final wantGuide = !packChannelCards &&
-              !ShellPaintScope.usesTvDensityOf(context) &&
-              (style == 'epg' || style == 'guide') &&
-              _itemsLookLikeLiveChannels(filtered) &&
-              constraints.maxWidth >= 760;
-          if ((style == 'epg' || style == 'guide') && !wantGuide) {
+          // Guide/EPG: desktop wide only; leanback keeps card grid.
+          if ((style == 'epg' || style == 'guide') &&
+              (ShellPaintScope.usesTvDensityOf(context) ||
+                  constraints.maxWidth < 760)) {
             style = 'grid';
           }
-          // Match schedule (panel / Providers) — never when pack asked for channels.
-          final matchOpenSurface =
-              !packChannelCards && _listIsMatchSchedule(spec);
-          final liveChannels = packChannelCards ||
-              (!matchOpenSurface && _itemsLookLikeLiveChannels(filtered));
-          final cardKind = () {
-            if (packCardKind == 'channellist') return 'channelList';
-            if (packCardKind == 'channel' || packCardKind == 'livechannel') {
-              return 'channel';
-            }
-            if (matchOpenSurface) {
-              if (style == 'cards' || style == 'grid') return 'event';
-              return 'dense';
-            }
-            if (wantGuide) return 'guide';
-            // IPTV Live list → Sources-style channel rows (not schedule dense).
-            if (liveChannels &&
-                (style == 'list' ||
-                    packCardKind == 'list' ||
-                    packCardKind == 'channellist')) {
-              return 'channelList';
-            }
-            // IPTV View "Cards" is style=cards — must not map live rows to
-            // Live Sports event cards (landscape poster + title overlay).
-            if (liveChannels &&
-                (style == 'cards' ||
-                    style == 'grid' ||
-                    packCardKind == 'cards' ||
-                    packCardKind == 'channel' ||
-                    packCardKind == 'livechannel' ||
-                    packCardKind.isEmpty)) {
-              if (packCardKind == 'timeline' ||
-                  packCardKind == 'dense' ||
-                  style == 'timeline') {
-                return 'dense';
-              }
-              if (packCardKind == 'guide' ||
-                  packCardKind == 'epg' ||
-                  style == 'guide' ||
-                  style == 'epg') {
-                return 'guide';
-              }
-              return 'channel';
-            }
-            if (packCardKind == 'poster' ||
-                packCardKind == 'event' ||
-                packCardKind == 'eventcard' ||
-                packCardKind == 'dense' ||
-                packCardKind == 'list' ||
-                packCardKind == 'timeline' ||
-                packCardKind == 'channel' ||
-                packCardKind == 'livechannel' ||
-                packCardKind == 'guide' ||
-                packCardKind == 'epg' ||
-                packCardKind == 'cards') {
-              if (packCardKind == 'eventcard' || packCardKind == 'cards') {
-                return 'event';
-              }
-              if (packCardKind == 'list' || packCardKind == 'timeline') {
-                return 'dense';
-              }
-              if (packCardKind == 'livechannel') return 'channel';
-              if (packCardKind == 'guide' || packCardKind == 'epg') {
-                return 'guide';
-              }
-              return packCardKind;
-            }
-            if (style == 'list' || style == 'timeline') return 'dense';
-            if (style == 'cards') {
-              return _itemsLookLikeEvents(filtered) ? 'event' : 'poster';
-            }
-            if (style == 'guide' || style == 'epg') return 'guide';
-            if (style == 'grid') {
-              return _itemsLookLikeEvents(filtered) ? 'event' : 'poster';
-            }
-            return 'poster';
-          }();
+          final managedOpen = !packChannelCards && kitListManagedOpen(spec);
+          final cardKind = resolveKitListCardKind(
+            packCardKind: packCardKind,
+            style: style,
+            items: filtered,
+          );
+          final liveChannels = kitListCardKindIsChannel(cardKind);
           final openMode = (spec['open'] ?? '').toString().trim().toLowerCase();
           final panelSelectedId = selected == null
               ? null
@@ -2000,7 +1928,7 @@ class PackPaintTree extends StatelessWidget {
           final showPanel = selected != null &&
               resolveKitListTapOpen(
                     openMode: openMode,
-                    hasMatchOpenSurface: matchOpenSurface,
+                    hasMatchOpenSurface: managedOpen,
                     canShowSidePanel: canShowSidePanel,
                   ) ==
                   KitListTapOpen.panel;
@@ -2056,11 +1984,9 @@ class PackPaintTree extends StatelessWidget {
           }
 
           void onListItemTap(Map<String, dynamic> item) {
-            // Live Sports schedule: panel / details / play only — never My List
-            // "Open in…" hub binding (live-sports-hub has no `details` cap).
             final tapOpen = resolveKitListTapOpen(
               openMode: openMode,
-              hasMatchOpenSurface: matchOpenSurface,
+              hasMatchOpenSurface: managedOpen,
               canShowSidePanel: canShowSidePanel,
             );
             switch (tapOpen) {
@@ -2077,11 +2003,10 @@ class PackPaintTree extends StatelessWidget {
                 openMatchDetails(item);
                 return;
               case KitListTapOpen.play:
-                // Catalog handoff resolve only — no Sports fan-out / panel.
                 unawaited(_playListItemDirect(context, item: item));
                 return;
               case KitListTapOpen.openTap:
-                if (matchOpenSurface) {
+                if (managedOpen) {
                   if (canShowSidePanel && chrome != null) {
                     chrome.onSelectListItem(item);
                   } else {
@@ -2116,9 +2041,7 @@ class PackPaintTree extends StatelessWidget {
               openOfflineLibrary(item);
               return;
             }
-            // Side-panel / match-open hosts keep primary open; Open-with is
-            // feed poster grids only (RFC-108).
-            if (matchOpenSurface) return;
+            if (managedOpen) return;
             unawaited(
               openKitListItem(
                 context,
@@ -2207,14 +2130,17 @@ class PackPaintTree extends StatelessWidget {
                       ? null
                       : spec['emptyDescription']?.toString(),
               emptyAction: _listEmptyAction(context, spec),
-              itemAccessory:
-                  matchOpenSurface ? null : _listPosterPinAccessory,
+              itemAccessory: managedOpen
+                  ? null
+                  : (liveChannels
+                      ? _liveFavoriteAccessory
+                      : _listPosterPinAccessory),
               itemHealthListenable: healthListenableFor,
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
               onItemTap: onListItemTap,
               onItemLongPress:
-                  matchOpenSurface ? null : onListItemOpenWith,
+                  managedOpen ? null : onListItemOpenWith,
               landEpoch: IptvCatalogLand.landEpoch,
               preferCategoryFocusOnLand:
                   IptvCatalogLand.preferCategoryFocusOnLand,
@@ -2244,18 +2170,12 @@ class PackPaintTree extends StatelessWidget {
             final count = filtered.isEmpty
                 ? (_listEmptyAction(context, spec) != null ? 1 : 0)
                 : filtered.length;
-            // Dense / channel list rows are vertical — ↑/↓ walk items; ←/→
-            // leave via pack focusLeft / focusRight (not a horizontal D-line).
-            final verticalList = cardKind == 'dense' ||
-                cardKind == 'list' ||
-                cardKind == 'timeline' ||
-                cardKind == 'channelList';
             return TvKitRow(
               tabId: tab,
               rowId: rowId,
               sortOrder: 2,
               itemCount: count,
-              orientation: verticalList
+              orientation: kitListCardKindIsVertical(cardKind)
                   ? ShellTvRowOrientation.vertical
                   : ShellTvRowOrientation.horizontal,
               onFocusUp: upShelf,
@@ -2334,8 +2254,7 @@ class PackPaintTree extends StatelessWidget {
                                   ? null
                                   : spec['emptyDescription']?.toString(),
                           emptyAction: _listEmptyAction(context, spec),
-                          // IPTV star only — no My List pin on channel tiles.
-                          itemAccessory: matchOpenSurface
+                          itemAccessory: managedOpen
                               ? null
                               : _liveFavoriteAccessory,
                           itemHealthListenable: healthListenableFor,
@@ -2343,7 +2262,7 @@ class PackPaintTree extends StatelessWidget {
                           loadEpgProgrammes: loadShortEpgProgrammes,
                           onItemTap: onListItemTap,
                           onItemLongPress:
-                              matchOpenSurface ? null : onListItemOpenWith,
+                              managedOpen ? null : onListItemOpenWith,
                           landEpoch: IptvCatalogLand.landEpoch,
                           preferCategoryFocusOnLand:
                               IptvCatalogLand.preferCategoryFocusOnLand,
@@ -2375,16 +2294,12 @@ class PackPaintTree extends StatelessWidget {
                         final count = filtered.isEmpty
                             ? (_listEmptyAction(context, spec) != null ? 1 : 0)
                             : filtered.length;
-                        final verticalList = cardKind == 'dense' ||
-                            cardKind == 'list' ||
-                            cardKind == 'timeline' ||
-                            cardKind == 'channelList';
                         return TvKitRow(
                           tabId: tab,
                           rowId: rowId,
                           sortOrder: 2,
                           itemCount: count,
-                          orientation: verticalList
+                          orientation: kitListCardKindIsVertical(cardKind)
                               ? ShellTvRowOrientation.vertical
                               : ShellTvRowOrientation.horizontal,
                           child: grid,
@@ -2787,57 +2702,6 @@ class PackPaintTree extends StatelessWidget {
         ForjaToast.info('No playable stream');
       }
     }
-  }
-
-  /// Side-panel / details match list — not when pack declared channel cards.
-  bool _listIsMatchSchedule(Map<String, dynamic> spec) {
-    final packCardKind =
-        (spec['cardKind'] ?? '').toString().trim().toLowerCase();
-    if (packCardKind == 'channel' ||
-        packCardKind == 'livechannel' ||
-        packCardKind == 'channellist') {
-      return false;
-    }
-    if ((spec['openSetting'] ?? '').toString().trim().isNotEmpty) return true;
-    final tabs = spec['panelTabs'];
-    if (tabs is List && tabs.isNotEmpty) return true;
-    final open = (spec['open'] ?? '').toString().trim().toLowerCase();
-    if (open == 'panel' || open == 'details') return true;
-    // Schedule chrome: Catalog + Schedule horizon (IPTV has no horizonMenu).
-    return (spec['horizonMenu'] ?? '').toString().trim().isNotEmpty &&
-        (spec['catalogMenu'] ?? '').toString().trim().isNotEmpty;
-  }
-
-  bool _itemsLookLikeEvents(List<Map<String, dynamic>> items) {
-    for (final item in items.take(8)) {
-      final paint = item['paint'];
-      final type = paint is Map ? (paint['type'] ?? '').toString() : '';
-      // 24/7 TV channels use channelCard (+ live flag) — not match event tiles.
-      if (type == 'channelCard' || type == 'channel') continue;
-      if (type == 'eventCard' || type == 'event') return true;
-      final props = PackPaintArtifact.propsOf(item);
-      if (props['homeTeam'] != null || props['awayTeam'] != null) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool _itemsLookLikeLiveChannels(List<Map<String, dynamic>> items) {
-    for (final item in items.take(8)) {
-      final open = item['open'];
-      if (open is Map) {
-        final surface = (open['surface'] ?? '').toString().trim();
-        final kind = (open['kind'] ?? '').toString().trim();
-        if (surface == 'stream' && kind == 'live') return true;
-      }
-      final paint = item['paint'];
-      final type = paint is Map ? (paint['type'] ?? '').toString() : '';
-      if (type == 'channelCard' || type == 'channel') return true;
-      final props = PackPaintArtifact.propsOf(item);
-      if ((props['cardKind'] ?? '').toString() == 'channel') return true;
-    }
-    return false;
   }
 
   Widget _chromeMenu(BuildContext context, Map<String, dynamic> spec) {
