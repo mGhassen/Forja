@@ -609,7 +609,7 @@ pub(crate) fn pack_http_envelope(
     } else {
         obj.insert(
             "body".into(),
-            Value::String(String::from_utf8(&bytes).unwrap_or_default()),
+            Value::String(String::from_utf8(bytes).unwrap_or_default()),
         );
     }
     Value::Object(obj).to_string()
