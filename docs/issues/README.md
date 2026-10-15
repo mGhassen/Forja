@@ -165,7 +165,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [141-[open]-…](141-[open]-desktop-trackpad-swipe-steals-horizontal-scroll.md) | Desktop trackpad swipe steals horizontal scroll | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [142-[open]-…](142-[open]-iptv-admin-scrape-watermark-deep-refs.md) | IPTV admin scrape watermark + deep refs + no upsert cap | P1 | High | open | 18/18 · A 0/4 | [1.0.5](../backlog/1.0.5-[draft].md) |
 | [143-[open]-…](143-[open]-android-tv-stremio-live-reconnect.md) | ATV Live Matches Stremio forever Reconnecting | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [144-[open]-…](144-[open]-iptv-catalog-stream-health-never-reprobes.md) | IPTV catalog/guide stream health never re-probes | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [144-[fixed]-…](fixed/144-[fixed]-iptv-catalog-stream-health-never-reprobes.md) | IPTV catalog/guide stream health never re-probes | P2 | Medium | fixed | Complete · 6/6 · A 0/4 | — |
 | [145-[canceled]-…](canceled/145-[canceled]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | canceled | Canceled — embed path gone | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [147-[fixed]-…](fixed/147-[fixed]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | fixed | Complete · 8/8 · A 0/5 | — |
@@ -258,7 +258,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [249-[open]-…](249-[open]-exoplayer-auto-failover.md) | ExoPlayer Auto failover on stream failure | P1 | High | open | 4/4 · A 0/2 | [032](032-[draft]-exoplayer-parity-gaps.md) · [037](037-[open]-webstreaming-all-providers-open-validate.md) |
 | [250-[fixed]-…](fixed/250-[fixed]-home-tmdb-api-key-missing-in-release.md) | Home TMDB API key missing in release (AUTH_REQUIRED toast) | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [251-[fixed]-…](fixed/251-[fixed]-live-sports-streamed-empty-nested-skip.md) | Live Sports empty while Streamed logs streams=N | P0 | High | fixed | Complete · 3/3 · A 0/1 | [237](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) |
-| [252-[fixed]-…](fixed/252-[fixed]-iptv-status-checks-false-red.md) | IPTV portal + channel status all red (false negatives) | P1 | High | fixed | Complete · 5/5 · A 0/2 | [144](144-[open]-iptv-catalog-stream-health-never-reprobes.md) |
+| [252-[fixed]-…](fixed/252-[fixed]-iptv-status-checks-false-red.md) | IPTV portal + channel status all red (false negatives) | P1 | High | fixed | Complete · 5/5 · A 0/2 | [144](fixed/144-[fixed]-iptv-catalog-stream-health-never-reprobes.md) |
 | [253-[open]-…](253-[open]-starred-home-opens-on-settings.md) | Starred Home opens on Settings (cold start) | P0 | High | open | 5/5 · A 1/3 | — |
 | [254-[fixed]-…](fixed/254-[fixed]-live-catalog-schedule-only-no-streams.md) | Live catalog schedule-only (no stream find/resolve) | P0 | High | fixed | Complete · 7/7 · A 2/2 | — |
 | [255-[open]-…](255-[open]-provider-runtime-config-builtins-debt.md) | ProviderRuntimeConfig Dart builtins debt | P2 | Medium | open | 5/5 · A 1/2 | [RFC-100](../rfc/fixed/100-[fixed]-admin-plugin-catalog-bundles.md) |

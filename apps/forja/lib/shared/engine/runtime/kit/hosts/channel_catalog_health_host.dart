@@ -141,7 +141,7 @@ class _ChannelCatalogHealthHostState extends State<ChannelCatalogHealthHost> {
     }
     // No catalog probes under the opaque player (I120) — seats + decode.
     if (ShellBus.playerSurfaceActive.value) return;
-    // Already painted — skip create_link + CDN wait on re-hover.
+    // Alive + fresh — skip create_link + CDN wait on re-hover (red never fresh).
     if (_probe.isFresh(key)) return;
 
     final raw = _rawProbeUrl(item);

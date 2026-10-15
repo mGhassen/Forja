@@ -48,6 +48,6 @@ Portal dots and live channel borders both fail closed. Two independent bugs made
 
 ### Related
 
-- [144](../144-[open]-iptv-catalog-stream-health-never-reprobes.md) — re-probe TTL (separate)
+- [144](144-[fixed]-iptv-catalog-stream-health-never-reprobes.md) — re-probe TTL (separate)
 - [RFC-075](../../rfc/fixed/075-[fixed]-iptv-portal-probe-detail.md) — structured portal probe
 - [iptv-xtream](../../features/live/iptv-xtream.md)

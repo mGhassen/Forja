@@ -9,7 +9,7 @@
 | Field | Value |
 |-------|--------|
 | Progress | Complete |
-| Components | 10/10 |
+| Components | 11/11 |
 | Acceptance | 0/4 · QA ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -36,6 +36,7 @@ Live Sports mixed match schedule and 24/7 channels in one feed with sport circle
 | 8 | I434-T08 | Host: pack `cardKind: channel` / `open: play` win over Sports List/Cards viewStyle + match-schedule event paint | ✅ |
 | 9 | I434-T09 | TV tap: `handoffOnly` resolve — owned `sources[]` packs only (no fixture fan-out / Stremio) | ✅ |
 | 10 | I434-T10 | Pack owns TV paint (`cardKind: channel` + channelCard rows); host only honors cardKind (no hub-id hardcode) | ✅ |
+| 11 | I434-T11 | Pack Sports list opts into View via `viewMenu`; host never applies chrome viewStyle without it; short layout TTL | ✅ |
 
 ---
 

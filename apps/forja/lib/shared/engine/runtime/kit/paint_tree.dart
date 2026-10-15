@@ -1862,24 +1862,23 @@ class PackPaintTree extends StatelessWidget {
           final packCardKind =
               (spec['cardKind'] ?? '').toString().trim().toLowerCase();
           // Pack `cardKind` is the product contract — host only honors it.
-          // Do not invent hub ids / open modes here (RFC-109).
           final packChannelCards = packCardKind == 'channel' ||
               packCardKind == 'livechannel' ||
               packCardKind == 'channellist';
           var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
-          // Empty chrome.viewStyle must not block LayoutScope ('' is not null).
-          final chromeView =
-              (chrome?.viewStyle ?? '').toString().trim().toLowerCase();
-          final scopeView =
-              (LayoutScope.maybeOf(context)?.selectedId('view') ?? '')
-                  .toString()
-                  .trim()
-                  .toLowerCase();
-          final viewOverride =
-              chromeView.isNotEmpty ? chromeView : scopeView;
-          // Pack channel lists keep their style — chrome View (Sports List/Cards)
-          // must not remap them to event/film paint.
-          if (!packChannelCards && viewOverride.isNotEmpty) {
+          // Chrome View only remaps lists that opt in (`viewMenu`). Otherwise
+          // Sports List/Cards sticks onto every sibling list (e.g. TV channels).
+          final viewMenu = (spec['viewMenu'] ?? '').toString().trim();
+          if (viewMenu.isNotEmpty && !packChannelCards) {
+            final chromeView =
+                (chrome?.viewStyle ?? '').toString().trim().toLowerCase();
+            final scopeView =
+                (LayoutScope.maybeOf(context)?.selectedId(viewMenu) ?? '')
+                    .toString()
+                    .trim()
+                    .toLowerCase();
+            final viewOverride =
+                chromeView.isNotEmpty ? chromeView : scopeView;
             if (viewOverride == 'cards' ||
                 viewOverride == 'list' ||
                 viewOverride == 'timeline' ||
@@ -2335,9 +2334,10 @@ class PackPaintTree extends StatelessWidget {
                                   ? null
                                   : spec['emptyDescription']?.toString(),
                           emptyAction: _listEmptyAction(context, spec),
+                          // IPTV star only — no My List pin on channel tiles.
                           itemAccessory: matchOpenSurface
                               ? null
-                              : _listPosterPinAccessory,
+                              : _liveFavoriteAccessory,
                           itemHealthListenable: healthListenableFor,
                           onItemInteractiveActive: onInteractiveActive,
                           loadEpgProgrammes: loadShortEpgProgrammes,

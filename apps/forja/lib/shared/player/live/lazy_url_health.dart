@@ -5,7 +5,8 @@ import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
 
 /// Debounced live URL probe — mirrors IPTV catalog lazy checks (350ms dwell).
-/// Fresh results skip re-probe for [ttl] (stale-while-revalidate paint stays).
+/// Alive results skip re-probe for [ttl] (stale-while-revalidate paint stays).
+/// Misses (red) never count as fresh — re-hover / re-focus always re-probes.
 /// Only alive URLs land in [_sessionHealth]; misses stay instance-local.
 class LazyUrlHealthProbe extends ChangeNotifier
     implements KitUrlHealthProbe {
@@ -35,10 +36,11 @@ class LazyUrlHealthProbe extends ChangeNotifier
   @override
   bool? healthFor(String key) => _health[key] ?? _sessionHealth[key];
 
-  /// True when [healthFor] is set and last check is inside [ttl].
+  /// True when last check was **alive** and still inside [ttl].
+  /// Dead/red never skips — otherwise a channel stuck red cannot flip green.
   bool isFresh(String key) {
     final k = key.trim();
-    if (k.isEmpty || healthFor(k) == null) return false;
+    if (k.isEmpty || healthFor(k) != true) return false;
     final at = _checkedAt[k] ?? _sessionCheckedAt[k];
     if (at == null) return false;
     return DateTime.now().difference(at) < ttl;

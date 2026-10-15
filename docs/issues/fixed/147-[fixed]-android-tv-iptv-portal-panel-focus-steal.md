@@ -59,4 +59,4 @@ On Android TV, scrolling the Portals panel with the D-pad threw focus back to th
 
 - `packages/forja_foundation/lib/widgets/chrome/portal_list_*.dart`
 - `apps/forja/lib/shared/engine/runtime/actions/portals/portals_panel_tv.dart`
-- [144](../144-[open]-iptv-catalog-stream-health-never-reprobes.md) — health TTL that drives the notify storm
+- [144](144-[fixed]-iptv-catalog-stream-health-never-reprobes.md) — health TTL that drives the notify storm
