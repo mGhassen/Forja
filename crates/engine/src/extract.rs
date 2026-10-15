@@ -588,7 +588,12 @@ pub(crate) fn pack_http_envelope(
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_lowercase();
-    let binary = ct.contains("application/octet-stream");
+    // Mislabelled protobuf (e.g. application/json + binary) must not go through
+    // from_utf8_lossy — that replaces high bytes and empties fctv33 catalog parse.
+    let binary = ct.contains("application/octet-stream")
+        || ct.contains("protobuf")
+        || ct.contains("application/grpc")
+        || std::str::from_utf8(&bytes).is_err();
     let mut obj = serde_json::Map::new();
     obj.insert("ok".into(), Value::Bool((200..300).contains(&status)));
     obj.insert("status".into(), Value::from(status));
@@ -604,7 +609,7 @@ pub(crate) fn pack_http_envelope(
     } else {
         obj.insert(
             "body".into(),
-            Value::String(String::from_utf8_lossy(&bytes).into_owned()),
+            Value::String(String::from_utf8(&bytes).unwrap_or_default()),
         );
     }
     Value::Object(obj).to_string()
@@ -1373,5 +1378,34 @@ function extract(ctx) {
             v["bodyB64"].as_str(),
             Some(base64::engine::general_purpose::STANDARD.encode([0xff, 0x00, 0x7b]).as_str())
         );
+    }
+
+    #[test]
+    fn pack_http_envelope_keeps_mislabelled_protobuf_bytes() {
+        // FCTV33 / TCPWE: Content-Type application/json, body is protobuf.
+        let mut hdrs = serde_json::Map::new();
+        hdrs.insert("content-type".into(), serde_json::json!("application/json"));
+        let bytes = vec![0x1a, 0x07, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0xff, 0x00];
+        let raw = pack_http_envelope(200, "https://x".into(), hdrs, bytes.clone());
+        let v: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["body"], "");
+        assert_eq!(
+            v["bodyB64"].as_str(),
+            Some(base64::engine::general_purpose::STANDARD.encode(bytes).as_str())
+        );
+    }
+
+    #[test]
+    fn pack_http_envelope_keeps_protobuf_content_type() {
+        let mut hdrs = serde_json::Map::new();
+        hdrs.insert(
+            "content-type".into(),
+            serde_json::json!("application/x-protobuf;charset=UTF-8"),
+        );
+        let bytes = vec![0x08, 0x64, 0x12, 0x20];
+        let raw = pack_http_envelope(200, "https://x".into(), hdrs, bytes.clone());
+        let v: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["body"], "");
+        assert!(v.get("bodyB64").and_then(|b| b.as_str()).is_some());
     }
 }

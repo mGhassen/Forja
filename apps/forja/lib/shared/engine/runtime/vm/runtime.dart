@@ -35,6 +35,15 @@ void _forjaJsConsole(Map<String, dynamic> m) {
 
 void _forjaRuntimeLog(String msg) => debugPrint('[ForjaRuntime] $msg');
 
+bool _isValidUtf8(List<int> bytes) {
+  try {
+    utf8.decode(bytes, allowMalformed: false);
+    return true;
+  } on FormatException {
+    return false;
+  }
+}
+
 class EngineMutex {
   Future<void> _tail = Future<void>.value();
 
@@ -1906,7 +1915,12 @@ class EngineRuntime {
       final respIsland = streamed.headers['island'];
       // goat (embed.st) / island (embedindia) mark encrypted unlock bodies —
       // must stay raw bytes (bodyB64), never UTF-8-mangled text.
+      // Mislabelled protobuf (application/json + binary) must too — UTF-8
+      // mangling empties TCPWE / FCTV33 catalog parses.
       final binaryResp = respCt.contains('application/octet-stream') ||
+          respCt.contains('protobuf') ||
+          respCt.contains('application/grpc') ||
+          !_isValidUtf8(bytes) ||
           (respGoat != null && respGoat.isNotEmpty) ||
           (respIsland != null && respIsland.isNotEmpty);
       const largeBodyThreshold = 48 * 1024;
