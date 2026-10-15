@@ -330,9 +330,11 @@
             },
           };
         }
+        // WordArray key — real CryptoJS returns CipherParams with .ciphertext
+        // (FCTV33 / packs read enc.ciphertext.toString(Base64)).
         keyHex = _waToHex(key);
         ivHex = options.iv ? _waToHex(options.iv) : '';
-        return _waFromHex(
+        var waEnc = _waFromHex(
           _nativeAes(
             true,
             _aesModeName(options.mode, options.padding),
@@ -341,6 +343,12 @@
             dataHex,
           ),
         );
+        return {
+          ciphertext: waEnc,
+          toString: function (fmt) {
+            return (fmt || CryptoJS.format.OpenSSL).stringify(this);
+          },
+        };
       },
       decrypt: function (cipher, key, options) {
         options = options || {};

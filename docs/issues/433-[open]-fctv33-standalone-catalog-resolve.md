@@ -11,7 +11,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** research · **6 / 6** implement · **0 / 2** acceptance (device) |
+| **Progress** | **7 / 7** research · **7 / 7** implement · **0 / 2** acceptance (device) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -41,6 +41,7 @@
 | 4 | I433-T11 | Pack version + changelog | ✅ |
 | 5 | I433-T12 | Engine `pack_http_envelope`: keep raw bytes for invalid UTF-8 / protobuf (mislabelled `application/json`) | ✅ |
 | 6 | I433-T13 | Pack `readVarint` 53-bit safe so `dateMs` is not 2003-era after stamp | ✅ |
+| 7 | I433-T14 | CryptoJS `AES.encrypt(WordArray key)` must return `.ciphertext` (resolve token) | ✅ |
 
 ---
 
@@ -62,12 +63,14 @@ User asked for **FCTV33 as a full catalog+resolve** instead of unlocking jack Le
 1. ~~CF on `/api/match/live`~~ — **cleared**. Site has no CF interstitial. Scripted fetch works with `language=0&stream=true` (+ optional `/api-cf/common/timesync` + `/api-cf/user/info`). Wrong language / missing `stream=true` was what looked like CF.
 2. ~~Stream unlock~~ — **cleared** end-to-end (scripted `stream/detail` → ROT47 → AES `token-` → `#EXTM3U` with player-domain Referer).
 3. **No embed fallback** — native m3u8 only ([no-embed law](../../.cursor/rules/no-embed-playback.mdc)).
-4. ~~Catalog `raw=0` in app~~ — **cleared in code**. Upstream returns ~90 matches; enginejs `pack_http_envelope` UTF-8-lossy’d protobuf labelled `application/json`. Fixed + pack varint dates. **Needs device re-accept after rust rebuild.**
+4. ~~Catalog `raw=0` in app~~ — **cleared**. Upstream protobuf + envelope bodyB64 + pack varint dates. Device: `raw=191`.
+5. ~~Resolve `raw=0`~~ — **cleared in code**. `stream/detail` + ROT47 work; `enCbcToken` crashed because engine CryptoJS WordArray-key `AES.encrypt` returned a bare WordArray (no `.ciphertext`). Fixed polyfill + pack defensive read. **Needs rust rebuild + device A02.**
 
 ## Shipped
 
-- `forja-packs/livesports/fctv33.js` + manifest plugin `fctv33` (pack `2.0.32`)
+- `forja-packs/livesports/fctv33.js` + manifest plugin `fctv33` (pack `2.0.33`)
 - Engine envelope binary body keep (invalid UTF-8 / protobuf CT)
+- Engine/Dart CryptoJS AES WordArray → CipherParams `.ciphertext`
 - Local install: `/Users/mghassen/Workspace/forja-packs/livesports/manifest.json`
 
 ## Protocol notes (for implementer)
