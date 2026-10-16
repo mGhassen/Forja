@@ -49,4 +49,5 @@ User seek (±10s / scrub) only called `player.seek` / Exo `seekTo`. UI mirrored 
 
 - [153](153-[open]-kisskh-hls-4k-indefinite-buffer.md) — scrub BUFFERING (PNG HLS; remount path abandoned there)
 - [175](175-[open]-mid-watch-auto-failover.md) — fatal mid-watch Auto hop (different trigger)
+- [440](440-[open]-mediakit-vod-keyframe-seek.md) — healthy scrub speed (`hr-seek=no`), not stall remount
 - [Player](../features/playback/player.md)

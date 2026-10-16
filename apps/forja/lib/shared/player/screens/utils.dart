@@ -727,12 +727,19 @@ Future<void> ensureOpenedNearPosition(
   }
   if (streamUrl != null && isLocalTorrentStreamUrl(streamUrl)) {
     await ensureLocalTorrentSeekable(player);
-  } else if (player.platform is NativePlayer) {
-    try {
-      await (player.platform as NativePlayer).setProperty('hr-seek', 'no');
-    } catch (_) {}
+  } else {
+    await applyNetworkVodKeyframeSeek(player);
   }
   await player.seek(target);
+}
+
+/// mpv `hr-seek=no` so network VOD scrub snaps to a keyframe instead of
+/// frame-accurate decode (slow BUFFERING on HLS). Torrents keep `hr-seek=yes`.
+Future<void> applyNetworkVodKeyframeSeek(Player player) async {
+  if (player.platform is! NativePlayer) return;
+  try {
+    await (player.platform as NativePlayer).setProperty('hr-seek', 'no');
+  } catch (_) {}
 }
 
 /// Avoid opening mpv while a route fade is still covering the player surface.
@@ -1924,13 +1931,18 @@ Future<void> seekPlayerPreservingProgress(
     );
   }
 
-  if (ensureTorrentSeekable ||
+  final torrentSeek = ensureTorrentSeekable ||
       isTorrentSeekPlayback(
         streamUrl: streamUrl,
         mediaPath: mediaPath,
         magnetLink: magnetLink,
-      )) {
+      );
+  if (torrentSeek) {
     await ensureLocalTorrentSeekable(player);
+  } else {
+    // Network HLS/HTTP: keyframe seek — accurate hr-seek re-decodes from the
+    // previous IDR and feels like multi-second BUFFERING vs browser HLS.
+    await applyNetworkVodKeyframeSeek(player);
   }
   await player.seek(target);
   final nearEnd =

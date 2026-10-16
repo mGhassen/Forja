@@ -1911,6 +1911,8 @@ mixin _DesktopPlayerPlayback
       final maxH = await SettingsService().getMaxPlaybackHeight();
       await safeSet('hls-bitrate', hlsBitrateForMaxPlaybackHeight(maxH));
       await safeSet('demuxer-lavf-o', kLavfHlsAllowedExtensionsAll);
+      // Keyframe scrub — accurate seek makes every HLS jump multi-second.
+      await safeSet('hr-seek', 'no');
 
       // Brief socket blips — remount path covers longer offline (issue 205).
       await safeSet(

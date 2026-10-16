@@ -99,6 +99,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     await safeSet('demuxer-max-back-bytes', atv ? '25000000' : '30MiB');
     await safeSet('cache-pause', 'no');
     await safeSet('cache-pause-initial', 'no');
+    await safeSet('hr-seek', 'no');
     await safeSet('network-timeout', '30');
     await safeSet('ytdl', 'no');
     await safeSet('keep-open', 'yes');
