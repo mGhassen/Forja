@@ -886,6 +886,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       unawaited(_saveProgress());
+      // Idle-hide requires playing; lifecycle pause + frozen timers leave
+      // chrome stuck — drop it when leaving foreground (issue 442).
+      _hideChromeForBackground();
       _pauseForAppBackground();
     } else if (state == AppLifecycleState.inactive) {
       if (!_disposed &&
@@ -895,8 +898,24 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       }
       unawaited(_saveProgress());
     } else if (state == AppLifecycleState.resumed) {
+      // Returning = activity — show chrome after background hide (issue 442).
+      if (!_showControls) {
+        setState(() => _showControls = true);
+      }
+      _startHideTimer();
       _armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
+    }
+  }
+
+  void _hideChromeForBackground() {
+    if (_disposed) return;
+    _hideTimer?.cancel();
+    if (!_showControls) return;
+    if (mounted) {
+      setState(() => _showControls = false);
+    } else {
+      _showControls = false;
     }
   }
 

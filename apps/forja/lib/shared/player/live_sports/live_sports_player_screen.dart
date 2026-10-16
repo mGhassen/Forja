@@ -1423,6 +1423,8 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
+      // Idle-hide stalls when paused / timers freeze — drop chrome (issue 442).
+      _hideChromeForBackground();
       _pauseForAppBackground();
     } else if (state == AppLifecycleState.inactive) {
       if (!_disposed &&
@@ -1435,8 +1437,33 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         _pausedByLifecycle = true;
       }
     } else if (state == AppLifecycleState.resumed) {
+      // Returning = activity — show chrome after background hide (issue 442).
+      if (!_isPipMode &&
+          !PipService.instance.isDesktopActive &&
+          !InAppMiniPlayerController.instance.isActive) {
+        if (!_controlsVisible) {
+          setState(() => _controlsVisible = true);
+        }
+        _scheduleHideControls();
+      }
       _armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
+    }
+  }
+
+  void _hideChromeForBackground() {
+    if (_disposed ||
+        _isPipMode ||
+        PipService.instance.isDesktopActive ||
+        InAppMiniPlayerController.instance.isActive) {
+      return;
+    }
+    _hideControlsTimer?.cancel();
+    if (!_controlsVisible) return;
+    if (mounted) {
+      setState(() => _controlsVisible = false);
+    } else {
+      _controlsVisible = false;
     }
   }
 

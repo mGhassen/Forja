@@ -242,8 +242,16 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         (f) => f.isMultiselect && f.isPluginLanguagesSource,
       );
 
+  PlayFilterSpec? get _streamLanguageFilterSpec {
+    for (final f in _playFilters) {
+      if (f.isMultiselect && f.isPluginLanguagesSource) return f;
+    }
+    return null;
+  }
+
   Future<void> _loadStreamLanguages() async {
-    if (!_hasStreamLanguageFilter) {
+    final spec = _streamLanguageFilterSpec;
+    if (spec == null) {
       if (_streamLanguageOptions.isEmpty && _streamLanguageKeys.isEmpty) return;
       if (!mounted) return;
       setState(() {
@@ -254,11 +262,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     }
     final packs = await EngineService.instance.listSourcesPanelPacks();
     final enabled = enabledEnginePluginIds(packs);
-    final type = _isMovie ? 'movie' : 'tv';
+    // Pack-declared types (e.g. anime). Else Home movie|tv from the title.
+    final types = spec.types.isNotEmpty
+        ? spec.types
+        : [_isMovie ? 'movie' : 'tv'];
     final options = PluginStreamLanguages.unionFromPacks(
       packs: packs,
-      // Hub scope only (Home = movie|tv). Never pull arabic/anime hub plugins.
-      types: [type],
+      types: types,
+      kinds: spec.kinds,
       enabledIds: enabled,
     );
     final selected = await PluginStreamLanguages.selectedKeys(widget.pluginId);
@@ -317,8 +328,15 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         spec.options.first.value;
   }
 
+  /// Grouped SUB/DUB play filter, else kind inferred from stream language keys.
+  String? get _effectiveAudioCategory =>
+      catalogPlayAudioCategory(_playFilterSelections) ??
+      PluginStreamLanguages.audioCategoryFromKeys(_streamLanguageKeys);
+
   Iterable<String?> _audioCategoriesForCacheClear() sync* {
     yield null;
+    yield 'sub';
+    yield 'dub';
     for (final spec in _playFilters) {
       if (spec.field != 'category') continue;
       for (final opt in spec.options) {
@@ -878,7 +896,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       videos: _videos,
       episodeVideoId: progressVideoId,
       extras: mergedExtras,
-      audioCategory: catalogPlayAudioCategory(_playFilterSelections),
+      audioCategory: _effectiveAudioCategory,
       startPosition: startPosition,
       preferredPluginId: preferredPluginId,
       savedStreamUrl: progress?['streamUrl'] as String?,
@@ -929,7 +947,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       episodeNumber: _selectedEpisode,
       videos: _videos,
       extras: _playFilterExtras,
-      audioCategory: catalogPlayAudioCategory(_playFilterSelections),
+      audioCategory: _effectiveAudioCategory,
     );
     unawaited(
       openSourcesFromContext(

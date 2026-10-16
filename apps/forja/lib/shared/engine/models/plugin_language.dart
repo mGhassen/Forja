@@ -52,9 +52,12 @@ abstract final class PluginStreamLanguages {
   }
 
   /// Union of declared languages on enabled extractable plugins matching [types].
+  ///
+  /// [kinds] (`sub` / `dub`) narrows the union; empty = both.
   static List<PluginLanguage> unionFromPacks({
     required Iterable<EnginePack> packs,
     required Iterable<String> types,
+    Iterable<String> kinds = const [],
     Set<String>? enabledIds,
   }) {
     final want = {
@@ -62,6 +65,10 @@ abstract final class PluginStreamLanguages {
         if (t.trim().isNotEmpty) t.trim().toLowerCase(),
     };
     if (want.isEmpty) return const [];
+    final wantKinds = {
+      for (final k in kinds)
+        if (k.trim().isNotEmpty) k.trim().toLowerCase(),
+    };
     final byKey = <String, PluginLanguage>{};
     for (final pack in packs) {
       for (final p in pack.plugins) {
@@ -69,6 +76,7 @@ abstract final class PluginStreamLanguages {
         if (enabledIds != null && !enabledIds.contains(p.id)) continue;
         if (!p.types.any((t) => want.contains(t.toLowerCase()))) continue;
         for (final lang in p.languages) {
+          if (wantKinds.isNotEmpty && !wantKinds.contains(lang.kind)) continue;
           byKey.putIfAbsent(lang.key, () => lang);
         }
       }
@@ -130,5 +138,18 @@ abstract final class PluginStreamLanguages {
     }
     if (rows.isEmpty) return;
     extractCtx['languages'] = rows;
+  }
+
+  /// When every selected key shares one kind (`sub` / `dub`), return that kind
+  /// for extract lane scrape + stream filter. Empty / mixed → null (both).
+  static String? audioCategoryFromKeys(Iterable<String> selected) {
+    String? kind;
+    for (final key in selected) {
+      final lang = PluginLanguage.tryParseKey(key);
+      if (lang == null) continue;
+      kind ??= lang.kind;
+      if (lang.kind != kind) return null;
+    }
+    return normalizeEngineAudioCategory(kind);
   }
 }

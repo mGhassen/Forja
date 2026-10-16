@@ -546,6 +546,14 @@ mixin _DesktopPlayerLifecycle
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       _saveWatchHistory(isBgPause: true);
+      // Idle-hide requires playing; lifecycle pause leaves chrome stuck
+      // (issue 442). Skip PiP / mini — those own their chrome.
+      if (!_s._releasedForPip &&
+          !_s._isPipMode &&
+          !PipService.instance.isDesktopActive &&
+          !InAppMiniPlayerController.instance.isActive) {
+        _s._hideChromeIntentional();
+      }
       _pauseForAppBackground();
     } else if (state == AppLifecycleState.inactive) {
       if (!_s._disposed &&
@@ -564,6 +572,15 @@ mixin _DesktopPlayerLifecycle
       _saveWatchHistory(isBgPause: true);
     } else if (state == AppLifecycleState.resumed) {
       _s._historySaved = false;
+      // Returning = activity (click / cursor). Clear suppress from background
+      // hide so hover is not blocked, then show chrome (issue 442).
+      if (!_s._releasedForPip &&
+          !_s._isPipMode &&
+          !PipService.instance.isDesktopActive &&
+          !InAppMiniPlayerController.instance.isActive) {
+        _s._suppressChromeRevealUntil = null;
+        _s._revealChrome();
+      }
       _resumeAfterAppBackground();
       unawaited(_s._recoverPlaybackAfterForeground());
       if (widget.movie != null &&

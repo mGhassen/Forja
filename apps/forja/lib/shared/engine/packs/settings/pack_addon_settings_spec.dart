@@ -36,6 +36,7 @@ class PackAddonSettingsField {
     this.options = const [],
     this.source = '',
     this.hubTypes = const [],
+    this.kinds = const [],
     this.listOpenDefault = false,
     this.reloadHub = true,
     this.action = '',
@@ -61,8 +62,12 @@ class PackAddonSettingsField {
   bool get isPluginLanguagesSource =>
       source.trim().toLowerCase() == 'pluginlanguages';
 
-  /// Engine type tokens for [PackAddonSettingsFieldType.hubSelect].
+  /// Engine type tokens for [PackAddonSettingsFieldType.hubSelect], and for
+  /// `pluginLanguages` unions when [isPluginLanguagesSource].
   final List<String> hubTypes;
+
+  /// Language kinds for `pluginLanguages` (`sub` / `dub`). Empty = both.
+  final List<String> kinds;
 
   /// When true, value also writes [ListOpenPrefs] for each [hubTypes] token.
   final bool listOpenDefault;
@@ -153,6 +158,15 @@ class PackAddonSettingsField {
       return null;
     }
 
+    final kinds = <String>[];
+    final kindsRaw = j['kinds'];
+    if (kindsRaw is List) {
+      for (final e in kindsRaw) {
+        final k = e.toString().trim().toLowerCase();
+        if (k.isNotEmpty) kinds.add(k);
+      }
+    }
+
     final listOpenDefault = j['listOpenDefault'] == true ||
         j['list_open_default'] == true;
     // Default true (feed-affecting). Packs opt out for paint-only fields.
@@ -185,6 +199,7 @@ class PackAddonSettingsField {
       options: options,
       source: source,
       hubTypes: hubTypes,
+      kinds: kinds,
       listOpenDefault: listOpenDefault,
       reloadHub: reloadHub,
       action: action,

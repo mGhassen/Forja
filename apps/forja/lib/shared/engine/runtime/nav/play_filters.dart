@@ -11,6 +11,8 @@ class PlayFilterSpec {
     this.defaultValue,
     this.source,
     this.settingsField,
+    this.types = const [],
+    this.kinds = const [],
   });
 
   final String id;
@@ -26,6 +28,12 @@ class PlayFilterSpec {
 
   /// When set, selection persists in [PackSettingsStore] (not watch progress).
   final String? settingsField;
+
+  /// Engine type tokens for `pluginLanguages` union (e.g. `anime`).
+  final List<String> types;
+
+  /// Language kinds to expose (`sub` / `dub`). Empty = both.
+  final List<String> kinds;
 
   bool get isMultiselect => style == 'multiselect';
 
@@ -65,6 +73,22 @@ class PlayFilterSpec {
     final settingsField = (json['settingsField'] ?? json['settings_field'] ?? '')
         .toString()
         .trim();
+    final types = <String>[];
+    final typesRaw = json['types'];
+    if (typesRaw is List) {
+      for (final e in typesRaw) {
+        final t = e.toString().trim();
+        if (t.isNotEmpty) types.add(t);
+      }
+    }
+    final kinds = <String>[];
+    final kindsRaw = json['kinds'];
+    if (kindsRaw is List) {
+      for (final e in kindsRaw) {
+        final k = e.toString().trim().toLowerCase();
+        if (k.isNotEmpty) kinds.add(k);
+      }
+    }
     return PlayFilterSpec(
       id: (json['id'] ?? json['field'] ?? '').toString(),
       field: (json['field'] ?? json['id'] ?? '').toString(),
@@ -73,6 +97,8 @@ class PlayFilterSpec {
       options: opts,
       source: source.isEmpty ? null : source,
       settingsField: settingsField.isEmpty ? null : settingsField,
+      types: types,
+      kinds: kinds,
     );
   }
 }

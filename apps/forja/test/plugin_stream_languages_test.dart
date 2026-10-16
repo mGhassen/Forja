@@ -30,6 +30,33 @@ void main() {
     });
   });
 
+  group('PluginStreamLanguages.audioCategoryFromKeys', () {
+    test('empty → null', () {
+      expect(PluginStreamLanguages.audioCategoryFromKeys({}), isNull);
+    });
+
+    test('all dub → dub', () {
+      expect(
+        PluginStreamLanguages.audioCategoryFromKeys({'dub:en', 'dub:fr'}),
+        'dub',
+      );
+    });
+
+    test('all sub → sub', () {
+      expect(
+        PluginStreamLanguages.audioCategoryFromKeys({'sub:fr'}),
+        'sub',
+      );
+    });
+
+    test('mixed kinds → null', () {
+      expect(
+        PluginStreamLanguages.audioCategoryFromKeys({'sub:fr', 'dub:en'}),
+        isNull,
+      );
+    });
+  });
+
   group('PluginStreamLanguages.pluginMatches', () {
     EnginePlugin plugin(List<PluginLanguage> langs) => EnginePlugin(
           id: 'test-provider-a',
@@ -116,6 +143,36 @@ void main() {
         'dub:en',
         'dub:fr',
       ]);
+    });
+
+    test('kinds filter keeps only matching language kinds', () {
+      final packs = [
+        EnginePack(
+          sourceUrl: 'https://example.test/manifest.json',
+          packId: 'test-pack',
+          name: 'Test',
+          version: '1',
+          plugins: [
+            EnginePlugin(
+              id: 'test-provider-anime',
+              name: 'Anime',
+              entry: 'a.js',
+              types: const ['anime'],
+              languages: const [
+                PluginLanguage(kind: 'sub', code: 'en'),
+                PluginLanguage(kind: 'dub', code: 'en'),
+                PluginLanguage(kind: 'dub', code: 'fr'),
+              ],
+            ),
+          ],
+        ),
+      ];
+      final union = PluginStreamLanguages.unionFromPacks(
+        packs: packs,
+        types: const ['anime'],
+        kinds: const ['dub'],
+      );
+      expect(union.map((e) => e.key).toList(), ['dub:en', 'dub:fr']);
     });
 
     test('en (VOST/VO) sorts before other codes in kind', () {

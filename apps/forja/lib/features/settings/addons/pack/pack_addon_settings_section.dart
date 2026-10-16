@@ -128,16 +128,34 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
         };
       }
     }
-    final needsLangOptions = specs.any(
-      (s) => s.fields.any((f) => f.isPluginLanguagesSource),
-    );
+    final langFields = [
+      for (final s in specs)
+        for (final f in s.fields)
+          if (f.isPluginLanguagesSource) f,
+    ];
     var langOptions = const <PackAddonSettingsOption>[];
-    if (needsLangOptions) {
+    if (langFields.isNotEmpty) {
       final packs = await EngineService.instance.listSourcesPanelPacks();
       final enabled = enabledEnginePluginIds(packs);
+      // Union across every pluginLanguages field on this settings page.
+      final typeSet = <String>{};
+      final kindSet = <String>{};
+      var anyKinds = false;
+      for (final f in langFields) {
+        if (f.hubTypes.isEmpty) {
+          typeSet.addAll(const ['movie', 'tv']);
+        } else {
+          typeSet.addAll(f.hubTypes);
+        }
+        if (f.kinds.isNotEmpty) {
+          anyKinds = true;
+          kindSet.addAll(f.kinds);
+        }
+      }
       final langs = PluginStreamLanguages.unionFromPacks(
         packs: packs,
-        types: const ['movie', 'tv'],
+        types: typeSet,
+        kinds: anyKinds ? kindSet : const [],
         enabledIds: enabled,
       );
       langOptions = [

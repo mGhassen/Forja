@@ -400,6 +400,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<EnginePack> _enginePacks = [];
   Set<String> _engineSelectedPluginIds = {};
   Set<String> _streamLanguageKeys = {};
+
+  /// Explicit hub SUB/DUB, else kind inferred from stream language selection.
+  String? get _effectiveAudioCategory =>
+      widget.animeAudioCategory ??
+      PluginStreamLanguages.audioCategoryFromKeys(_streamLanguageKeys);
+
   bool _engineAllMode = false;
   bool _engineSelectionHydrated = false;
   Set<String> _engineViewFilterPluginIds = {};
@@ -1571,7 +1577,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     pluginId: widget.pluginId,
     metaId: widget.meta?.id,
     malId: widget.malId,
-    audioCategory: widget.animeAudioCategory,
+    audioCategory: _effectiveAudioCategory,
     episodeVideoId: widget.episodeVideoId,
   );
 
@@ -2150,7 +2156,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       );
 
   bool _matchesStreamFilters(Map<String, dynamic> s) {
-    final audioCat = widget.animeAudioCategory;
+    final audioCat = _effectiveAudioCategory;
     if (audioCat != null &&
         audioCat.isNotEmpty &&
         !engineStreamMatchesAudioCategory(s, audioCat)) {
@@ -3320,7 +3326,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           movie: widget.movie,
           open: widget.open,
           episodeVideoId: widget.episodeVideoId,
-          audioCategory: widget.animeAudioCategory,
+          audioCategory: _effectiveAudioCategory,
           streamLanguageKeys: _streamLanguageKeys,
           allowHostFallback: false,
           onRow: (row) => _queueEngineRow(pluginId, row, gen),

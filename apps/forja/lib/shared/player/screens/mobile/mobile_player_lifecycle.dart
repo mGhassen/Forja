@@ -658,6 +658,9 @@ mixin _MobilePlayerLifecycle
         state == AppLifecycleState.detached) {
       // Local progress only — pause scrobble fires from playing=false.
       _saveWatchHistory(isBgPause: true);
+      // Idle-hide requires playing; lifecycle pause + frozen timers leave
+      // chrome stuck — drop it when leaving foreground (issue 442).
+      _hideChromeForBackground();
       // Stop audio when another app takes the screen (e.g. Netflix on ATV).
       // Skip PiP — that path is meant to keep playing (issue 134).
       _pauseForAppBackground();
@@ -675,6 +678,10 @@ mixin _MobilePlayerLifecycle
     } else if (state == AppLifecycleState.resumed) {
       // App resumed — Simkl scrobble continues on play.
       _s._historySaved = false; // allow re-save on next exit
+      // Returning = activity — show chrome after background hide (issue 442).
+      if (!_s._isPipMode && !_s._isLocked) {
+        _s._revealChrome();
+      }
       _s._armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
       unawaited(_s._recoverPlaybackAfterForeground());
@@ -692,6 +699,17 @@ mixin _MobilePlayerLifecycle
           ),
         );
       }
+    }
+  }
+
+  void _hideChromeForBackground() {
+    if (_s._disposed || _s._isPipMode) return;
+    _s._hideTimer?.cancel();
+    if (!_s._showControls) return;
+    if (mounted) {
+      setState(() => _s._showControls = false);
+    } else {
+      _s._showControls = false;
     }
   }
 

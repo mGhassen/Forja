@@ -36,6 +36,30 @@ void main() {
         'dub',
       );
     });
+
+    test('parses pluginLanguages play filter types and kinds', () {
+      PackFiltersRegistry.seedFromJson('test-hub-pack', {
+        'play': [
+          {
+            'id': 'languages',
+            'field': 'languages',
+            'style': 'multiselect',
+            'source': 'pluginLanguages',
+            'settingsField': 'streamLanguages',
+            'types': ['anime'],
+            'kinds': ['dub'],
+            'default': [],
+          },
+        ],
+      });
+
+      final specs = PackFiltersRegistry.playFiltersFor('test-hub-pack');
+      expect(specs, hasLength(1));
+      expect(specs.first.isMultiselect, isTrue);
+      expect(specs.first.isPluginLanguagesSource, isTrue);
+      expect(specs.first.types, ['anime']);
+      expect(specs.first.kinds, ['dub']);
+    });
   });
 
   group('pack category filters', () {

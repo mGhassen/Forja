@@ -23,20 +23,25 @@ Future<void> runPackGreenPlay({
   final config = await PackGreenPlayConfig.resolve(ctx.pluginId);
   if (!context.mounted) return;
 
+  final packs = await EngineService.instance.listSourcesPanelPacks();
+  if (!context.mounted) return;
+
+  final langKeys = await PluginStreamLanguages.selectedKeys(ctx.pluginId);
+  if (!context.mounted) return;
+  final audioCategory = ctx.audioCategory ??
+      PluginStreamLanguages.audioCategoryFromKeys(langKeys);
+
   final session = PlaySession(
     pluginId: ctx.pluginId,
     metaItem: ctx.metaItem,
     metaOpen: ctx.effectiveOpen,
     malId: ctx.malId,
     episodeVideoIdByNumber: ctx.episodeVideoIdByNumber,
-    audioCategory: ctx.audioCategory,
+    audioCategory: audioCategory,
     useHomeEpisodeWatched:
         ctx.metaItem != null && hubMetaUsesHomeWatchHistory(ctx.metaItem!),
   );
   final category = engineCategoryForSession(session, ctx.movie) ?? 'movie';
-
-  final packs = await EngineService.instance.listSourcesPanelPacks();
-  if (!context.mounted) return;
 
   final enabled = enabledEnginePluginIds(packs);
   final scope = EngineCategories.matchingPluginIds(
@@ -48,8 +53,6 @@ Future<void> runPackGreenPlay({
       if (enabled.contains(id) && scope.contains(id)) id,
   ];
 
-  final langKeys = await PluginStreamLanguages.selectedKeys(ctx.pluginId);
-  if (!context.mounted) return;
   // Language filter narrows hub-scoped plugins only — never pulls other hubs.
   final langFiltered = PluginStreamLanguages.filterPluginIds(
     packs: packs,
@@ -93,7 +96,7 @@ Future<void> runPackGreenPlay({
     season: ctx.season,
     episode: ctx.episode,
     malId: ctx.malId,
-    audioCategory: ctx.audioCategory,
+    audioCategory: audioCategory,
     startPosition: ctx.startPosition,
     preferredPluginId: pin,
     savedStreamUrl: ctx.savedStreamUrl,
