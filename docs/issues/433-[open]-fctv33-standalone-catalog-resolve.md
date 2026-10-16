@@ -11,7 +11,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** research · **12 / 12** implement · **0 / 2** acceptance (device) |
+| **Progress** | **8 / 8** research · **15 / 15** implement · **0 / 2** acceptance (device) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -48,6 +48,9 @@
 | 10 | I433-T17 | Catalog airing: status>0 or kickoff passed (not only 101); sportTypes 9–12 (curling/NHL/…) | ✅ |
 | 11 | I433-T19 | Native MediaKit play — pack `playbackHop: 'browserFetch'` → host `BrowserFetchHlsProxy` tool (no host CDN matching) | ✅ |
 | 12 | I433-T20 | Pack calls `ctx.live.browserFetchHls` (host tool bridge); drop `playbackHop` flag path | ✅ |
+| 13 | I433-T21 | Wire pack to **fctv33.com** identity (`digit=foth`, `webOrigin=www.fctv33.com`); refresh `g_player_domains.foth` for CDN hop (was MadPlay `seth` + stale `nadia01eo`) | ✅ |
+| 14 | I433-T22 | CDN hop Referer = allowlisted host (`nadia01eo…cfd`), **not** `g_player_domains.foth` (those → `403 deny by referer` → WebView `Load failed`) | ✅ |
+| 15 | I433-T23 | BrowserFetchHls: real player nav + manual redirects + soft segment warm; macOS ATS (playlist OK was wiped by segment warm fail-closed) | ✅ |
 
 ---
 
@@ -75,10 +78,13 @@ User asked for **FCTV33 as a full catalog+resolve** instead of unlocking jack Le
 7. ~~Chip empty after HubReload/All~~ — **cleared in code**. Pack stashed All rows under `raw:fctv33` then reduce → 0; host trusted non-empty warm. Hub `1.0.66` + host progressive scoped warm / scrape-by-id fallback. Device A01 still open.
 8. ~~Airing only Barranquilla~~ — **cleared in code** (API verified). Site Live uses status `101/103/600` + kickoff-passed `0`; pack only set `airing` for `101`. Also missing sportTypes 9–12 (curling). Pack `2.0.35`.
 9. ~~**Native segment fetch (Wtl108)**~~ — **cleared in code**. Pack calls `ctx.live.browserFetchHls(mil, headers)` → host `BrowserFetchHlsProxy` (Chromium fetch on player origin → loopback HLS). MediaKit plays local only (not sniff / not WebView playback). Pack `2.0.38`. Device A02 still open.
+10. ~~**Wrong brand identity**~~ — **cleared in code**. Pack kept MadPlay `digit=seth`. Live site is `www.fctv33.com` / `DIGIT_ENV=foth`. Pack `2.0.39`+.
+11. ~~**CDN Referer allowlist**~~ — **cleared in code**. fhlsport returns `403 deny by referer access rule` for `g_player_domains.foth` hosts; allowlisted `nadia01eo.tn76degree12ec3out.cfd` (and empty Referer) → `#EXTM3U` + `ACAO:*`. Wrong Referer → WebView `TypeError: Load failed`. Pack `2.0.40` keeps API `webOrigin=fctv33.com` + CDN `playerOrigin=nadia01eo…`.
+12. ~~**Segment warm fail-closed**~~ — **cleared in code**. Playlist hop OK then `.json` segment `Load failed` / streambk wiped the hop (`streams=0`). Host now: real player navigation, manual redirects, soft warm (continue on segment miss), macOS ATS arbitrary loads. Device A02 still open.
 
 ## Shipped
 
-- `forja-packs/livesports/fctv33.js` + manifest plugin `fctv33` (pack `2.0.38`, `ctx.live.browserFetchHls`)
+- `forja-packs/livesports/fctv33.js` + manifest plugin `fctv33` (pack `2.0.40`, `digit=foth`, `webOrigin=www.fctv33.com`, CDN `playerOrigin=nadia01eo…`, `ctx.live.browserFetchHls`)
 - Host bridge `ctx.live.browserFetchHls` → `BrowserFetchHlsProxy` (pack calls tool; no CDN host list / no `playbackHop` flag)
 - Engine envelope binary body keep (invalid UTF-8 / protobuf CT)
 - Engine/Dart CryptoJS AES WordArray → CipherParams `.ciphertext`
@@ -90,7 +96,7 @@ User asked for **FCTV33 as a full catalog+resolve** instead of unlocking jack Le
 | Piece | Detail |
 |-------|--------|
 | API base | `https://apis-data-defra10.tcpwe138stya.ru` (also `apis-data10…`) |
-| Brand digit | jack/MadPlay page used `seth`; FCTV33 brands use `foth` in `g_player_domains` / `common:web:sw2` |
+| Brand digit | **`foth`** (`www.fctv33.com` Nuxt `DIGIT_ENV`). MadPlay/jack used `seth` — do not ship that on this plugin |
 | Handshake | `GET /api-cf/common/timesync` + `/api-cf/user/info` (204) before live |
 | `bs` | `GET /api/common/bs?code=100&sportType=&stream=true` → protobuf map code→32-hex sig (`100`=live, `101`=schedule, `102`=detail). Multi-code: `code=102&code=103&…` |
 | `sfver` | `sfver` + `md5(JSON.stringify(orderedParams)).slice(0,6)` + sig; param key order: matchId, leagueId, seasonId, sportType, language, stream |
@@ -99,7 +105,7 @@ User asked for **FCTV33 as a full catalog+resolve** instead of unlocking jack Le
 | Stream unlock | **`/api/stream/detail` has no `sfver`** (path not in V map). Params: `streamId,matchId,sportType,language,continent,country,digit,siteType,usls=rbp` (omit any → 499). Response header `rb-session`; body `stream.url` ROT47 then `.slice(8)` → plain m3u8 path; backup domains same cipher |
 | Play URL | `origin + '/token-' + encodeURIComponent(AES-CBC(rb-session)) + 'a' + pathname` |
 | AES token | key `atob(YTc5…ODk=)` → Utf8 `a7981cc9eb2f4d19dcfea57b101ecd89`; iv `atob(ODAx…)` → `8017d3a8f1400d2f` (CryptoJS Utf8.parse) |
-| CDN Referer | Must be a `g_player_domains` host (e.g. `nadia*.…cfd`), not the jack site origin — else 403 |
+| CDN Referer | fhlsport allowlist — verified `https://nadia01eo.tn76degree12ec3out.cfd/` (not `g_player_domains.foth` iframe hosts) |
 | Segment CDN | Playlist relative `*.json?_ctump=…` under `/hedy/sx_<streamId>/`. Primary `fhlsport*` serves TS to Chromium; non-browser clients get 302 → `streambk*` → `rb-message: Not Acceptable (Wtl108)`. Web player on 4xx+`rb-session` reloads CSI (`isShouldFixRbSession`) — re-sign alone does not clear Wtl108 from scripted clients. |
 
 ## Non-goals

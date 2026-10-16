@@ -76,16 +76,19 @@ class BrowserFetchHlsProxy {
     _fetchHeaders = _safeFetchHeaders(headers);
 
     final ready = Completer<void>();
-    // Document origin must be a g_player_domains host — segments 487 otherwise.
-    // initialData + baseUrl avoids loading their player JS while keeping Origin.
+    // Real navigation to the CDN allowlist host — Origin/Referer + cookies.
+    // initialData+baseUrl alone still got streambk TypeError on .json segments.
     _hw = ForjaHeadlessInAppWebView(
-      initialData: InAppWebViewInitialData(
-        data:
-            '<!doctype html><html><head><meta charset="utf-8"></head>'
-            '<body></body></html>',
-        mimeType: 'text/html',
-        encoding: 'utf-8',
-        baseUrl: WebUri(_playerReferrer),
+      initialUrlRequest: URLRequest(
+        url: WebUri(_playerReferrer),
+        headers: {
+          'User-Agent': _fetchHeaders['User-Agent'] ??
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                  'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 '
+                  'Safari/605.1.15',
+          'Accept':
+              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
       ),
       initialSize: const Size(64, 64),
       initialSettings: InAppWebViewSettings(
@@ -95,6 +98,7 @@ class BrowserFetchHlsProxy {
         supportZoom: false,
         mediaPlaybackRequiresUserGesture: false,
         mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+        userAgent: _fetchHeaders['User-Agent'],
       ),
       onWebViewCreated: (c) => _controller = c,
       onLoadStop: (c, _) {
@@ -102,11 +106,8 @@ class BrowserFetchHlsProxy {
         if (!ready.isCompleted) ready.complete();
       },
       onReceivedError: (controller, request, error) {
-        if (!ready.isCompleted) {
-          ready.completeError(
-            StateError('browser fetch page failed: ${error.description}'),
-          );
-        }
+        // Player shell 403/404 is fine — we only need the document origin.
+        if (!ready.isCompleted) ready.complete();
       },
     );
 
@@ -120,6 +121,20 @@ class BrowserFetchHlsProxy {
     }
     if (gen != _gen) return null;
 
+    // Replace player shell with a blank same-origin doc (no their JS).
+    try {
+      await _controller?.loadData(
+        data:
+            '<!doctype html><html><head><meta charset="utf-8"></head>'
+            '<body></body></html>',
+        mimeType: 'text/html',
+        encoding: 'utf-8',
+        baseUrl: WebUri(_playerReferrer),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    } catch (_) {}
+    if (gen != _gen) return null;
+
     final probe = await _browserFetchText(_milUrl);
     if (probe == null || !probe.contains('#EXTM3U')) {
       debugPrint('[BrowserFetchHls] playlist probe failed for $_milUrl');
@@ -128,14 +143,15 @@ class BrowserFetchHlsProxy {
     }
     if (gen != _gen) return null;
 
-    // Warm one segment while still on player origin — fail closed if Wtl108.
+    // Warm one segment. Do NOT fail-closed — playlist hop is enough to list
+    // Providers; /s retries segments during play (streambk can flake once).
     final warmSeg = _firstSegmentUrl(probe, _milUrl);
     if (warmSeg != null) {
       final warm = await _browserFetchBytes(warmSeg);
       if (warm == null || warm.isEmpty) {
-        debugPrint('[BrowserFetchHls] segment probe 487/miss $warmSeg');
-        await stop();
-        return null;
+        debugPrint(
+          '[BrowserFetchHls] segment warm miss (continuing) $warmSeg',
+        );
       }
     }
     if (gen != _gen) return null;
@@ -200,14 +216,19 @@ class BrowserFetchHlsProxy {
       if (blocked.contains(key.toLowerCase())) return;
       out[key] = val;
     });
+    // Chrome UA — fhlsport serves primary TS to Chromium; WebKit often 302→streambk.
     out.putIfAbsent(
       'User-Agent',
       () =>
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-          'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 '
-          'Safari/605.1.15',
+          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 '
+          'Safari/537.36',
     );
     out.putIfAbsent('Accept', () => '*/*');
+    out.putIfAbsent('Accept-Language', () => 'en-US,en;q=0.9');
+    out.putIfAbsent('Sec-Fetch-Dest', () => 'empty');
+    out.putIfAbsent('Sec-Fetch-Mode', () => 'cors');
+    out.putIfAbsent('Sec-Fetch-Site', () => 'cross-site');
     return out;
   }
 
@@ -428,19 +449,42 @@ class BrowserFetchHlsProxy {
     try {
       final asyncResult = await c.callAsyncJavaScript(
         functionBody: '''
-          const url = $urlJson;
+          const startUrl = $urlJson;
           const headers = $hdrJson;
           const referrer = $refJson;
           const asText = $asTextLit;
           try {
-            // omit — CDN often ACAO:*; include + * is a browser hard-fail.
-            const resp = await fetch(url, {
-              headers: headers,
-              credentials: 'omit',
-              redirect: 'follow',
-              referrer: referrer,
-              referrerPolicy: 'unsafe-url',
-            });
+            // Manual redirects: auto-follow to streambk without ACAO → TypeError.
+            let url = startUrl;
+            let resp = null;
+            for (let hop = 0; hop < 8; hop++) {
+              resp = await fetch(url, {
+                headers: headers,
+                credentials: 'omit',
+                redirect: 'manual',
+                referrer: referrer,
+                referrerPolicy: 'unsafe-url',
+                mode: 'cors',
+                cache: 'no-store',
+              });
+              const st = resp.status;
+              if (st >= 300 && st < 400) {
+                const loc = resp.headers.get('Location') || resp.headers.get('location');
+                if (!loc) {
+                  return JSON.stringify({
+                    ok: false,
+                    error: 'redirect without Location',
+                    status: st,
+                  });
+                }
+                url = new URL(loc, url).href;
+                continue;
+              }
+              break;
+            }
+            if (!resp) {
+              return JSON.stringify({ ok: false, error: 'no response' });
+            }
             const status = resp.status;
             if (asText) {
               const text = await resp.text();
