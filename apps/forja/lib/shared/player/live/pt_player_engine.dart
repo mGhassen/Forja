@@ -732,7 +732,48 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         forceRefresh ||
         (iptvLiveEngineUrlVolatile(src.url) &&
             iptvLiveEngineCanForceRefresh(src));
-    if (iptvLiveEnginePlayUrlReady(src.url) && !refresh) return src;
+    if (iptvLiveEnginePlayUrlReady(src.url) && !refresh) {
+      // Panel may already hold a ready m3u8. Pack hops + host-proxy CDNs
+      // (wfty / S3 / …) still need the tool — MediaKit cannot open them raw.
+      final hop = src.playbackHop.trim().isNotEmpty
+          ? src.playbackHop.trim()
+          : (src.liveEngineResolveParams?['playbackHop'] ?? '')
+              .toString()
+              .trim();
+      if (liveEngineOpenDirect(
+        src.url,
+        pluginDirect: true,
+        playbackHop: hop,
+      )) {
+        return src;
+      }
+      final idx = _s._sourceIdx;
+      setState(() => _s._statusBanner = 'Preparing playback…');
+      try {
+        final play = await LivePluginEngine.proxyPlayUrl(
+          url: src.url,
+          headers: src.headers,
+          playbackHop: hop,
+        );
+        if (play == null || play.isEmpty) {
+          if (announceFailure) LivePluginEngine.engineResolveFailed();
+          return null;
+        }
+        final updated = src.copyWith(
+          url: play,
+          headers: const {},
+          playbackHop: '',
+        );
+        if (idx >= 0 && idx < _s._sources.length) {
+          _s._sources = List<LivePlaySource>.from(_s._sources)..[idx] = updated;
+        }
+        return updated;
+      } finally {
+        if (mounted && iptvIsLiveResolveStatusBanner(_s._statusBanner)) {
+          setState(() => _s._statusBanner = null);
+        }
+      }
+    }
     if (refresh && !iptvLiveEngineCanForceRefresh(src)) return src;
     final resolve = widget.liveEngineResolveSource;
     if (resolve == null) {

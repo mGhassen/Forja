@@ -24,24 +24,6 @@ class BrowserFetchHlsProxy {
   Future<void> _gate = Future<void>.value();
   var _gen = 0;
 
-  /// Hosts / paths that need Chromium fetch (verified Wtl108 on non-browser TLS).
-  static bool needsBrowserFetch(String url) {
-    final u = Uri.tryParse(url.trim());
-    if (u == null) return false;
-    final host = u.host.toLowerCase();
-    final path = u.path.toLowerCase();
-    if (host.contains('fhlsport')) return true;
-    if (host.contains('streambk')) return true;
-    if (path.contains('/hedy/')) return true;
-    if (path.contains('/token-') ||
-        u.pathSegments.any((s) => s.startsWith('token-'))) {
-      return host.contains('tm3troops') ||
-          host.contains('tcpwe') ||
-          host.contains('patrol');
-    }
-    return false;
-  }
-
   Future<String?> start({
     required String milUrl,
     required Map<String, String> headers,

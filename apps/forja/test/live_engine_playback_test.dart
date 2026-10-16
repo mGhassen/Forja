@@ -26,7 +26,7 @@ void main() {
   });
 
   group('liveEngineOpenDirect', () {
-    test('trusts pluginDirect except wfty / amazonaws / indianservers / browser-fetch CDNs', () {
+    test('trusts pluginDirect except wfty / amazonaws / indianservers / pack hops', () {
       expect(
         liveEngineOpenDirect(
           'https://lb1.strmd.st/secure/tok/delta/stream/foo/1/playlist.m3u8',
@@ -62,10 +62,12 @@ void main() {
         ),
         isFalse,
       );
+      // Pack-declared hop — host tool, not CDN host matching.
       expect(
         liveEngineOpenDirect(
-          'https://edge.fhlsport.example/token-x/hedy/sx_1/index.m3u8',
+          'https://cdn.example/index.m3u8',
           pluginDirect: true,
+          playbackHop: LivePlaybackHop.browserFetch,
         ),
         isFalse,
       );

@@ -34,6 +34,7 @@ class MatchStream {
     required this.source,
     required this.viewers,
     this.directPlayback = false,
+    this.playbackHop = '',
     this.resolvedHeaders,
   });
 
@@ -45,6 +46,9 @@ class MatchStream {
   final String source;
   final int viewers;
   final bool directPlayback;
+
+  /// Pack-declared host playback tool id (e.g. `browserFetch`). Empty = none.
+  final String playbackHop;
   final Map<String, String>? resolvedHeaders;
 
   factory MatchStream.fromJson(Map<String, dynamic> j) => MatchStream(
@@ -56,6 +60,7 @@ class MatchStream {
         source: (j['source'] ?? '').toString(),
         viewers: parseLiveViewerCount(j['viewers']),
         directPlayback: j['directPlayback'] == true,
+        playbackHop: (j['playbackHop'] ?? '').toString().trim(),
       );
 }
 

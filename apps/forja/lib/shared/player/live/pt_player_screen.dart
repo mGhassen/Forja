@@ -249,6 +249,9 @@ class LivePlaySource {
   /// Opaque resolve context for [PortalLiveEngineResolveSource].
   final Map<String, dynamic>? liveEngineResolveParams;
 
+  /// Pack-declared host playback hop (`browserFetch`, …). Empty = none.
+  final String playbackHop;
+
   const LivePlaySource({
     required this.url,
     required this.label,
@@ -263,6 +266,7 @@ class LivePlaySource {
     this.liveStreamHd = false,
     this.liveEngineEmbedUrl,
     this.liveEngineResolveParams,
+    this.playbackHop = '',
   });
 
   LivePlaySource copyWith({
@@ -279,6 +283,7 @@ class LivePlaySource {
     bool? liveStreamHd,
     String? liveEngineEmbedUrl,
     Map<String, dynamic>? liveEngineResolveParams,
+    String? playbackHop,
   }) {
     return LivePlaySource(
       url: url ?? this.url,
@@ -295,6 +300,7 @@ class LivePlaySource {
       liveEngineEmbedUrl: liveEngineEmbedUrl ?? this.liveEngineEmbedUrl,
       liveEngineResolveParams:
           liveEngineResolveParams ?? this.liveEngineResolveParams,
+      playbackHop: playbackHop ?? this.playbackHop,
     );
   }
 

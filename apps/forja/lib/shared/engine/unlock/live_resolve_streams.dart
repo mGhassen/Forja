@@ -436,6 +436,7 @@ abstract final class LiveResolveStreams {
       directPlayback: row.containsKey('directPlayback')
           ? row['directPlayback'] == true
           : iptvLiveEnginePlayUrlReady(url),
+      playbackHop: (row['playbackHop'] ?? '').toString().trim(),
       resolvedHeaders: resolvedHeaders,
     );
   }
@@ -450,13 +451,20 @@ abstract final class LiveResolveStreams {
     final playUrl = pending
         ? 'pending:${match.id}:${stream.id}:${stream.streamNo}'
         : embed;
+    final hop = stream.playbackHop.trim();
     final directPlayback = !pending &&
+        hop.isEmpty &&
         (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed));
     return LivePlaySource(
       url: playUrl,
       label: title,
       detail: _streamDetail(stream),
-      headers: directPlayback ? (stream.resolvedHeaders ?? const {}) : const {},
+      headers: (!pending &&
+              (stream.directPlayback ||
+                  hop.isNotEmpty ||
+                  iptvLiveEnginePlayUrlReady(embed)))
+          ? (stream.resolvedHeaders ?? const {})
+          : const {},
       liveSourceKind: PortalLiveSourceKind.liveEngine,
       liveProviderBadge: _serverLabelFor(match),
       liveViewerCount: stream.viewers,
@@ -465,6 +473,7 @@ abstract final class LiveResolveStreams {
           ? null
           : (iptvLiveEnginePlayUrlReady(embed) ? null : embed),
       liveEngineResolveParams: _liveEngineResolveParams(match, stream),
+      playbackHop: hop,
     );
   }
 
@@ -528,6 +537,10 @@ abstract final class LiveResolveStreams {
       'hd': stream.hd,
       'viewers': stream.viewers,
       'language': stream.language,
+      if (stream.playbackHop.trim().isNotEmpty)
+        'playbackHop': stream.playbackHop.trim(),
+      if (stream.resolvedHeaders != null && stream.resolvedHeaders!.isNotEmpty)
+        'headers': stream.resolvedHeaders,
     };
   }
 
@@ -703,6 +716,13 @@ abstract final class LiveResolveStreams {
     Map<String, dynamic> params, {
     required String embedUrl,
   }) {
+    Map<String, String>? headers;
+    final h = params['headers'];
+    if (h is Map && h.isNotEmpty) {
+      headers = {
+        for (final e in h.entries) e.key.toString(): e.value.toString(),
+      };
+    }
     return MatchStream(
       id: (params['matchId'] ?? '').toString(),
       streamNo: (params['streamNo'] as num?)?.toInt() ?? 1,
@@ -711,6 +731,8 @@ abstract final class LiveResolveStreams {
       embedUrl: embedUrl,
       source: (params['source'] ?? '').toString(),
       viewers: parseLiveViewerCount(params['viewers']),
+      playbackHop: (params['playbackHop'] ?? '').toString().trim(),
+      resolvedHeaders: headers,
     );
   }
 
@@ -761,14 +783,20 @@ abstract final class LiveResolveStreams {
                   ? _forjaLiveCdnReferer(embed)
                   : null,
             );
+      final hop = stream.playbackHop.trim();
       final direct = liveEngineOpenDirect(
         embed,
         pluginDirect: stream.directPlayback,
+        playbackHop: hop,
       );
       if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
           ? embed
-          : await LivePluginEngine.proxyPlayUrl(url: embed, headers: headers);
+          : await LivePluginEngine.proxyPlayUrl(
+              url: embed,
+              headers: headers,
+              playbackHop: hop,
+            );
       if (playUrl == null || playUrl.isEmpty) return null;
       return _liveEnginePlaySource(
         match: match,
@@ -805,11 +833,16 @@ abstract final class LiveResolveStreams {
                     ? _forjaLiveCdnReferer(embed)
                     : null,
               );
-      final direct = liveEngineOpenDirect(embed);
+      final hop = stream.playbackHop.trim();
+      final direct = liveEngineOpenDirect(embed, playbackHop: hop);
       if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
           ? embed
-          : await LivePluginEngine.proxyPlayUrl(url: embed, headers: headers);
+          : await LivePluginEngine.proxyPlayUrl(
+              url: embed,
+              headers: headers,
+              playbackHop: hop,
+            );
       if (playUrl == null || playUrl.isEmpty) return null;
       return _liveEnginePlaySource(
         match: match,
@@ -864,9 +897,13 @@ abstract final class LiveResolveStreams {
                   result.url,
                   catalogReferer: catalogReferer,
                 );
+    final hop = result.playbackHop.trim().isNotEmpty
+        ? result.playbackHop.trim()
+        : stream.playbackHop.trim();
     final direct = liveEngineOpenDirect(
       result.url,
       pluginDirect: result.directPlayback,
+      playbackHop: hop,
     );
     if (!direct) onProgress?.call('Preparing playback…');
     final playUrl = direct
@@ -874,11 +911,26 @@ abstract final class LiveResolveStreams {
         : await LivePluginEngine.proxyPlayUrl(
             url: result.url,
             headers: headers,
+            playbackHop: hop,
           );
     if (playUrl == null || playUrl.isEmpty) return null;
+    final streamed = hop.isEmpty
+        ? stream
+        : MatchStream(
+            id: stream.id,
+            streamNo: stream.streamNo,
+            language: stream.language,
+            hd: stream.hd,
+            embedUrl: stream.embedUrl,
+            source: stream.source,
+            viewers: stream.viewers,
+            directPlayback: stream.directPlayback,
+            playbackHop: hop,
+            resolvedHeaders: stream.resolvedHeaders,
+          );
     return _liveEnginePlaySource(
       match: match,
-      stream: stream,
+      stream: streamed,
       url: playUrl,
       headers: direct ? headers : const {},
       resolved: true,
@@ -929,6 +981,8 @@ abstract final class LiveResolveStreams {
           'url': resolved.url,
           'headers': resolved.headers,
           'directPlayback': resolved.directPlayback,
+          if (resolved.playbackHop.trim().isNotEmpty)
+            'playbackHop': resolved.playbackHop.trim(),
         },
       ];
     } catch (e) {
@@ -987,6 +1041,7 @@ abstract final class LiveResolveStreams {
           ? null
           : (embed.isEmpty || iptvLiveEnginePlayUrlReady(embed) ? null : embed),
       liveEngineResolveParams: _liveEngineResolveParams(match, stream),
+      playbackHop: stream.playbackHop.trim(),
     );
   }
 
