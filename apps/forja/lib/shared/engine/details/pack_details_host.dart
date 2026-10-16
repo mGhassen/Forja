@@ -223,6 +223,21 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     setState(() => _episodeView = next);
   }
 
+  Future<void> _setEpisodeView(String raw) async {
+    final next =
+        episodeViewIsChips(raw) ? kEpisodeViewChips : kEpisodeViewCards;
+    if (next == _episodeView) return;
+    setState(() => _episodeView = next);
+    // No hub remount — details chrome only; prefs + revision still sync Settings.
+    await PackSettingsStore.setString(
+      widget.pluginId,
+      'episodeView',
+      next,
+      reloadHub: false,
+    );
+    PackSettingsStore.onNonSecretUserWrite?.call();
+  }
+
   bool get _hasStreamLanguageFilter => _playFilters.any(
         (f) => f.isMultiselect && f.isPluginLanguagesSource,
       );
@@ -1075,6 +1090,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             tvRowOrderBase: 0,
             tvFocusUp: heroFocusUp,
             episodeView: _episodeView,
+            onEpisodeViewChanged: _setEpisodeView,
           );
       episodePicker = tvFocus
           ? ShellPaintTvTabScope(
@@ -1107,16 +1123,11 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             ? _focusDetailsEpisodesFromMeta
             : _revealedDetailsHeroPlayFocus);
 
-    // Episodes own range / seasons / episode rows. Then protocol cast / crew /
-    // trailers, then pack rails (Related / More Like This / …).
-    final selectedSeasonEps = hubVideosForSeason(videos, _selectedSeason);
-    final selectedEpNums = [
-      for (final v in selectedSeasonEps) v.episode ?? 1,
-    ];
+    // Episodes own view chrome / seasons / episode rows. Then protocol cast /
+    // crew / trailers, then pack rails (Related / More Like This / …).
     final metaRowBase = detailsEpisodeFocusRowCount(
       hasEpisodes: hasEpisodes,
       seasonCount: seasons.length,
-      showRange: showEpisodeRangeBar(selectedEpNums),
     );
     final isAnime = (show.open?.surface ?? '').trim() == 'anime';
     final castMaps = show.cast;

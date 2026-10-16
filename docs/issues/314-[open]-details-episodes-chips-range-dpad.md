@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix · **0 / 5** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 6** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 4 | I314-T04 | Number chips paint as a wrap grid with 2D D-pad (`ShellPaintScope.tvGrid`) | ✅ |
 | 5 | I314-T05 | Feature docs + changelog | ✅ |
 | 6 | I314-T06 | Anime / Asian Drama / IPTV pack `episodeView` (same Cards / Number chips) | ✅ |
+| 7 | I314-T07 | Details Episodes title row ViewButtonGroup (cards/chips) persists pack `episodeView` | ✅ |
 
 ---
 
@@ -38,6 +39,7 @@
 | 3 | I314-A03 | Forja Packs → expand Home → Episode list → Number chips switches details to a number grid | ⬜ |
 | 4 | I314-A04 | Chips mode: D-pad ←/→/↑/↓ moves across the grid (not only one horizontal line) | ⬜ |
 | 5 | I314-A05 | Anime / Asian Drama / IPTV series details honor that pack’s Episode list setting | ⬜ |
+| 6 | I314-A06 | Details Episodes view toggle switches cards/chips and matches Settings Episode list | ⬜ |
 
 ---
 

@@ -8,6 +8,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
+import 'package:forja_foundation/widgets/chrome/view_button_group.dart';
 import 'package:forja_foundation/widgets/details/details_body.dart';
 import 'package:forja_foundation/widgets/details/episode_air_date.dart';
 import 'package:forja_foundation/widgets/details/episode_range_bar.dart';
@@ -53,8 +54,11 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     this.tvRowOrderBase = 0,
     this.tvFocusUp,
 
-    /// `cards` (default) or `chips` — Home pack `episodeView`.
+    /// `cards` (default) or `chips` — pack setting `episodeView`.
     this.episodeView = kEpisodeViewCards,
+
+    /// Host persists to pack `episodeView` (same as Settings → Episode list).
+    this.onEpisodeViewChanged,
   });
 
   final int tmdbId;
@@ -79,6 +83,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final int tvRowOrderBase;
   final VoidCallback? tvFocusUp;
   final String episodeView;
+  final ValueChanged<String>? onEpisodeViewChanged;
 
   @override
   State<TvSeasonEpisodePicker> createState() => _TvSeasonEpisodePickerState();
@@ -96,7 +101,20 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
   static const _seasonRowId = 'seasons';
   static const _episodeRowId = 'episodes';
-  static const _rangeRowId = 'episode-range';
+  static const _chromeRowId = 'episode-chrome';
+
+  static const _viewItems = [
+    ViewButtonItem(
+      id: kEpisodeViewCards,
+      icon: Icons.view_agenda_rounded,
+      label: 'Cards',
+    ),
+    ViewButtonItem(
+      id: kEpisodeViewChips,
+      icon: Icons.grid_view_rounded,
+      label: 'Number chips',
+    ),
+  ];
 
   bool get _chipsView => episodeViewIsChips(widget.episodeView);
 
@@ -627,9 +645,9 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     final showRange = showEpisodeRangeBar(_episodeNumbers);
     final chips = _chipsView;
 
-    // Focus order: range (if any) → seasons (if multi) → episodes.
+    // Focus order: view chrome (+ range) → seasons (if multi) → episodes.
     var nextOrder = widget.tvRowOrderBase;
-    final rangeOrder = showRange ? nextOrder++ : null;
+    final chromeOrder = nextOrder++;
     final seasonOrder = hasMultiSeason ? nextOrder++ : null;
     final episodeOrder = nextOrder;
 
@@ -643,7 +661,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
               rowId: _seasonRowId,
               sortOrder: seasonOrder!,
               itemCount: widget.seasonCount,
-              onFocusUp: showRange ? null : widget.tvFocusUp,
+              onFocusUp: null,
               child: seasonRow,
             )
           : seasonRow;
@@ -658,7 +676,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           sortOrder: episodeOrder,
           tabId: tabId,
           useTv: useTv,
-          onFocusUp: (hasMultiSeason || showRange) ? null : widget.tvFocusUp,
+          onFocusUp: null,
         );
       } else {
         final episodeRow = _buildEpisodeRow();
@@ -669,9 +687,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                 rowId: _episodeRowId,
                 sortOrder: episodeOrder,
                 itemCount: _visibleEpisodes.length,
-                onFocusUp: (hasMultiSeason || showRange)
-                    ? null
-                    : widget.tvFocusUp,
+                onFocusUp: null,
                 child: episodeRow,
               )
             : episodeRow;
@@ -682,26 +698,52 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     // Secondary to the section title (desktop 14 → TV body ladder).
     final countFontSize = tvDensity ? ShellTokens.tvTypeSize(14) : 14.0;
 
-    Widget? rangeControl;
+    final viewSelected =
+        _chipsView ? kEpisodeViewChips : kEpisodeViewCards;
+    final viewGroup = ViewButtonGroup(
+      selectedId: viewSelected,
+      onSelect: (id) {
+        final next =
+            episodeViewIsChips(id) ? kEpisodeViewChips : kEpisodeViewCards;
+        if (next == widget.episodeView) return;
+        widget.onEpisodeViewChanged?.call(next);
+      },
+      baseTvItemIndex: 0,
+      tvZone: ShellPaintTvZone.row,
+      items: _viewItems,
+    );
+
+    final chromeGap = tvDensity
+        ? DetailsTokens.episodeChipGapTv
+        : DetailsTokens.episodeChipGap;
+    final chromeChildren = <Widget>[viewGroup];
     if (showRange) {
-      final selector = EpisodeRangeSelector(
-        ranges: _episodeRanges,
-        selectedIndex: _episodeChunk,
-        onSelected: _selectChunk,
-        useFocusableChips: ShellPaintScope.useTvFocusOf(context),
+      chromeChildren.add(SizedBox(width: chromeGap));
+      chromeChildren.add(
+        EpisodeRangeSelector(
+          ranges: _episodeRanges,
+          selectedIndex: _episodeChunk,
+          onSelected: _selectChunk,
+          useFocusableChips: ShellPaintScope.useTvFocusOf(context),
+          listIndex: _viewItems.length,
+        ),
       );
-      rangeControl = useTv
-          ? ShellPaintScope.tvRow(
-              context: context,
-              tabId: tabId,
-              rowId: _rangeRowId,
-              sortOrder: rangeOrder!,
-              itemCount: 1,
-              onFocusUp: widget.tvFocusUp,
-              child: selector,
-            )
-          : selector;
     }
+    final chromeRow = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: chromeChildren,
+    );
+    final chromeControl = useTv
+        ? ShellPaintScope.tvRow(
+            context: context,
+            tabId: tabId,
+            rowId: _chromeRowId,
+            sortOrder: chromeOrder,
+            itemCount: _viewItems.length + (showRange ? 1 : 0),
+            onFocusUp: widget.tvFocusUp,
+            child: chromeRow,
+          )
+        : chromeRow;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,7 +764,8 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                   ),
                 ),
               ],
-              if (rangeControl != null) ...[const Spacer(), rangeControl],
+              const Spacer(),
+              chromeControl,
             ],
           ),
         ),

@@ -2,12 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/widgets/details/episode_range_bar.dart';
 
 void main() {
-  test('detailsEpisodeFocusRowCount covers range + seasons + episodes', () {
+  test('detailsEpisodeFocusRowCount: chrome + seasons? + episodes', () {
     expect(
       detailsEpisodeFocusRowCount(
         hasEpisodes: false,
         seasonCount: 0,
-        showRange: false,
       ),
       0,
     );
@@ -15,18 +14,17 @@ void main() {
       detailsEpisodeFocusRowCount(
         hasEpisodes: true,
         seasonCount: 1,
-        showRange: false,
       ),
-      1,
+      2,
     );
     expect(
       detailsEpisodeFocusRowCount(
         hasEpisodes: true,
         seasonCount: 3,
-        showRange: false,
       ),
-      2,
+      3,
     );
+    // showRange is ignored — view chrome is always one row.
     expect(
       detailsEpisodeFocusRowCount(
         hasEpisodes: true,

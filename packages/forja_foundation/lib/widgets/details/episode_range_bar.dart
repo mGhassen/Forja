@@ -15,16 +15,19 @@ const String kEpisodeViewChips = 'chips';
 bool episodeViewIsChips(String? raw) =>
     (raw ?? '').trim().toLowerCase() == kEpisodeViewChips;
 
-/// TV focus rows owned by the episode picker (range → seasons → episodes).
+/// TV focus rows owned by the episode picker (view chrome → seasons → episodes).
+///
+/// View chrome (cards/chips toggle + optional range) is always one row when
+/// [hasEpisodes] — range no longer adds a separate focus row.
 int detailsEpisodeFocusRowCount({
   required bool hasEpisodes,
   required int seasonCount,
-  required bool showRange,
+  @Deprecated('Ignored — view chrome is always present when hasEpisodes')
+  bool showRange = false,
 }) {
   if (!hasEpisodes) return 0;
-  var n = 1; // episodes always
+  var n = 2; // view chrome + episodes
   if (seasonCount > 1) n++;
-  if (showRange) n++;
   return n;
 }
 
@@ -109,6 +112,7 @@ class EpisodeRangeSelector extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelected,
     this.useFocusableChips = false,
+    this.listIndex = 0,
   });
 
   final List<EpisodeRange> ranges;
@@ -116,6 +120,8 @@ class EpisodeRangeSelector extends StatelessWidget {
   final ValueChanged<int> onSelected;
   /// Host maps [ShellInputPolicy.useFocusableMoodChips].
   final bool useFocusableChips;
+  /// TV focus index within the parent chrome row (after view-toggle slots).
+  final int listIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +236,8 @@ class EpisodeRangeSelector extends StatelessWidget {
           context: context,
           onTap: toggle,
           borderRadius: radius,
-          listIndex: 0,
+          listIndex: listIndex,
+          tvItemIndex: listIndex,
           showFocusBorder: true,
           child: trigger,
         );

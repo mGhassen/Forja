@@ -30,6 +30,7 @@ class ViewButtonGroup extends StatelessWidget {
     this.dividerHeight,
     this.onDownEdge,
     this.baseTvItemIndex = 0,
+    this.tvZone = ShellPaintTvZone.topBar,
   });
 
   final List<ViewButtonItem> items;
@@ -42,6 +43,9 @@ class ViewButtonGroup extends StatelessWidget {
 
   /// Chrome-row index for the first button; later buttons use +i.
   final int baseTvItemIndex;
+
+  /// Catalog top-bar vs body row (details Episodes chrome).
+  final ShellPaintTvZone tvZone;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +85,7 @@ class ViewButtonGroup extends StatelessWidget {
               radius: r,
               iconSize: icon,
               listIndex: baseTvItemIndex + i,
+              tvZone: tvZone,
               onDownEdge: onDownEdge,
               onTap: () => onSelect(items[i].id),
             ),
@@ -101,6 +106,7 @@ class _ViewButtonSlot extends StatefulWidget {
     required this.radius,
     required this.iconSize,
     required this.listIndex,
+    required this.tvZone,
     required this.onTap,
     this.onDownEdge,
   });
@@ -113,6 +119,7 @@ class _ViewButtonSlot extends StatefulWidget {
   final Radius radius;
   final double iconSize;
   final int listIndex;
+  final ShellPaintTvZone tvZone;
   final VoidCallback onTap;
   final VoidCallback? onDownEdge;
 
@@ -210,7 +217,7 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
       showFocusFill: false,
       listIndex: widget.listIndex,
       tvItemIndex: widget.listIndex,
-      tvZone: ShellPaintTvZone.topBar,
+      tvZone: widget.tvZone,
       onDownEdge: widget.onDownEdge,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: _setHovered,
