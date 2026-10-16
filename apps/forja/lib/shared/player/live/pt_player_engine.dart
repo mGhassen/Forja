@@ -733,18 +733,9 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         (iptvLiveEngineUrlVolatile(src.url) &&
             iptvLiveEngineCanForceRefresh(src));
     if (iptvLiveEnginePlayUrlReady(src.url) && !refresh) {
-      // Panel may already hold a ready m3u8. Pack hops + host-proxy CDNs
-      // (wfty / S3 / …) still need the tool — MediaKit cannot open them raw.
-      final hop = src.playbackHop.trim().isNotEmpty
-          ? src.playbackHop.trim()
-          : (src.liveEngineResolveParams?['playbackHop'] ?? '')
-              .toString()
-              .trim();
-      if (liveEngineOpenDirect(
-        src.url,
-        pluginDirect: true,
-        playbackHop: hop,
-      )) {
+      // Panel may already hold a ready m3u8. Host-proxy CDNs (wfty / S3 / …)
+      // still need /hls-proxy — MediaKit cannot open them raw.
+      if (liveEngineOpenDirect(src.url, pluginDirect: true)) {
         return src;
       }
       final idx = _s._sourceIdx;
@@ -753,17 +744,12 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         final play = await LivePluginEngine.proxyPlayUrl(
           url: src.url,
           headers: src.headers,
-          playbackHop: hop,
         );
         if (play == null || play.isEmpty) {
           if (announceFailure) LivePluginEngine.engineResolveFailed();
           return null;
         }
-        final updated = src.copyWith(
-          url: play,
-          headers: const {},
-          playbackHop: '',
-        );
+        final updated = src.copyWith(url: play, headers: const {});
         if (idx >= 0 && idx < _s._sources.length) {
           _s._sources = List<LivePlaySource>.from(_s._sources)..[idx] = updated;
         }

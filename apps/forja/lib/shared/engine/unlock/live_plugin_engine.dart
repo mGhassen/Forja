@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/playback/proxy/browser_fetch_hls_proxy.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -560,41 +559,19 @@ class LivePluginEngine {
       h.forEach((k, v) => headers[k.toString()] = v.toString());
     }
     final pluginDirect = first['directPlayback'] == true;
-    final playbackHop = (first['playbackHop'] ?? '').toString().trim();
     return LiveEngineResolveResult.playable(
       url: url,
       headers: headers,
       label: (first['name'] ?? first['title'] ?? label).toString(),
-      directPlayback: liveEngineOpenDirect(
-        url,
-        pluginDirect: pluginDirect,
-        playbackHop: playbackHop,
-      ),
-      playbackHop: playbackHop,
+      directPlayback: liveEngineOpenDirect(url, pluginDirect: pluginDirect),
     );
   }
 
-  /// Pack-declared hop → host tool. Unknown hops fail closed (null).
+  /// Host `/hls-proxy` for CDNs that need TLS + Referer rewrite on children.
   static Future<String?> proxyPlayUrl({
     required String url,
     Map<String, String> headers = const {},
-    String playbackHop = '',
   }) async {
-    final hop = playbackHop.trim();
-    if (hop == LivePlaybackHop.browserFetch) {
-      // Headless WebView fetches playlist+segments; MediaKit plays loopback.
-      final play = await BrowserFetchHlsProxy.instance.start(
-        milUrl: url,
-        headers: headers,
-      );
-      if (play != null) return play;
-      debugPrint('[LivePluginEngine] browserFetch hop failed for $url');
-      return null;
-    }
-    if (hop.isNotEmpty) {
-      debugPrint('[LivePluginEngine] unknown playbackHop=$hop');
-      return null;
-    }
     final proxy = LocalServerService();
     await proxy.start();
     if (proxy.port <= 0) return url;
@@ -622,7 +599,6 @@ class LiveEngineResolveResult {
     this.label = '',
     this.embedUrl = '',
     this.directPlayback = false,
-    this.playbackHop = '',
   });
 
   factory LiveEngineResolveResult.playable({
@@ -630,14 +606,12 @@ class LiveEngineResolveResult {
     Map<String, String> headers = const {},
     String label = '',
     bool directPlayback = false,
-    String playbackHop = '',
   }) => LiveEngineResolveResult._(
     playable: true,
     url: url,
     headers: headers,
     label: label,
     directPlayback: directPlayback,
-    playbackHop: playbackHop,
   );
 
   factory LiveEngineResolveResult.webviewOnly({required String embedUrl}) =>
@@ -649,15 +623,6 @@ class LiveEngineResolveResult {
   final String label;
   final String embedUrl;
   final bool directPlayback;
-
-  /// Pack-declared host tool id ([LivePlaybackHop]).
-  final String playbackHop;
-}
-
-/// Host playback tools packs may request via resolve `playbackHop`.
-abstract final class LivePlaybackHop {
-  /// Headless Chromium fetch → loopback HLS (MediaKit plays local).
-  static const browserFetch = 'browserFetch';
 }
 
 bool liveEnginePreferDirectPlayback(String m3u8Url) {
@@ -668,13 +633,10 @@ bool liveEnginePreferDirectPlayback(String m3u8Url) {
 
 /// Trust pack `directPlayback`. Force `/hls-proxy` for CDNs that need host
 /// TLS + Referer rewrite on child playlists (MediaKit constraint).
-/// Pack hops ([LivePlaybackHop]) always need the host tool — never direct.
 bool liveEngineOpenDirect(
   String m3u8Url, {
   bool pluginDirect = false,
-  String playbackHop = '',
 }) {
-  if (playbackHop.trim() == LivePlaybackHop.browserFetch) return false;
   final host = Uri.tryParse(m3u8Url.trim())?.host.toLowerCase() ?? '';
   if (host.contains('wfty.st')) return false;
   if (host.contains('amazonaws.com')) return false;

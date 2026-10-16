@@ -9,14 +9,10 @@ import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 
 /// Local HLS that fetches playlist + segments inside a headless WebView.
 ///
-/// Some CDNs (TCPWE / fhlsport `hedy`) serve TS to real Chromium/WebKit but
-/// `302 → streambk → 487 Wtl108` for rustls / MediaKit / wreq JA3. MediaKit
-/// still plays natively off loopback — the WebView is fetch-only, not a player
-/// and not an unlock sniff.
-///
-/// Boot is `file://` + [allowUniversalAccessFromFileURLs] so `fetch()` can read
-/// cross-origin playlist/segment bodies (CDN often omits ACAO; `<video>` would
-/// still play without CORS, but we need the bytes in Dart).
+/// Some CDNs (TCPWE / fhlsport `hedy`) serve TS to real Chromium/WebKit on the
+/// **player origin** but `302 → streambk → 487 Wtl108` for rustls / MediaKit /
+/// wreq JA3 — and also for `file://` / wrong Origin. MediaKit plays loopback;
+/// the WebView is fetch-only (not a player, not sniff).
 class BrowserFetchHlsProxy {
   BrowserFetchHlsProxy._();
   static final BrowserFetchHlsProxy instance = BrowserFetchHlsProxy._();
@@ -25,11 +21,43 @@ class BrowserFetchHlsProxy {
   ForjaHeadlessInAppWebView? _hw;
   InAppWebViewController? _controller;
   String _milUrl = '';
+  String _playerOrigin = '';
   String _playerReferrer = '';
   Map<String, String> _fetchHeaders = const {};
   Future<void> _gate = Future<void>.value();
   var _gen = 0;
-  File? _bootFile;
+
+  /// Pack tool (`ctx.live.browserFetchHls`): Chromium-fetch HLS → loopback URL.
+  ///
+  /// Same player origin reuses one WebView + server so multi-channel resolve
+  /// does not reboot the hop per stream.
+  Future<String?> open({
+    required String milUrl,
+    required Map<String, String> headers,
+  }) async {
+    final mil = milUrl.trim();
+    if (mil.isEmpty || !mil.startsWith('http')) return null;
+    final playerOrigin = _originFromHeaders(headers);
+    if (playerOrigin.isEmpty) {
+      debugPrint('[BrowserFetchHls] missing player Origin/Referer');
+      return null;
+    }
+    if (_server != null &&
+        _controller != null &&
+        _playerOrigin == playerOrigin) {
+      _fetchHeaders = _safeFetchHeaders(headers);
+      final probe = await _browserFetchText(mil);
+      if (probe == null || !probe.contains('#EXTM3U')) {
+        debugPrint('[BrowserFetchHls] playlist probe failed for $mil');
+        return null;
+      }
+      final play =
+          'http://127.0.0.1:${_server!.port}/p?u=${Uri.encodeQueryComponent(mil)}';
+      debugPrint('[BrowserFetchHls] reuse $play ← $mil');
+      return play;
+    }
+    return start(milUrl: mil, headers: headers);
+  }
 
   Future<String?> start({
     required String milUrl,
@@ -43,15 +71,22 @@ class BrowserFetchHlsProxy {
     await stop();
     final gen = ++_gen;
     _milUrl = milUrl.trim();
+    _playerOrigin = playerOrigin;
     _playerReferrer = '$playerOrigin/';
     _fetchHeaders = _safeFetchHeaders(headers);
 
     final ready = Completer<void>();
-    final boot = await _ensureBootHtml();
-    if (gen != _gen) return null;
-
+    // Document origin must be a g_player_domains host — segments 487 otherwise.
+    // initialData + baseUrl avoids loading their player JS while keeping Origin.
     _hw = ForjaHeadlessInAppWebView(
-      initialUrlRequest: URLRequest(url: WebUri(Uri.file(boot.path).toString())),
+      initialData: InAppWebViewInitialData(
+        data:
+            '<!doctype html><html><head><meta charset="utf-8"></head>'
+            '<body></body></html>',
+        mimeType: 'text/html',
+        encoding: 'utf-8',
+        baseUrl: WebUri(_playerReferrer),
+      ),
       initialSize: const Size(64, 64),
       initialSettings: InAppWebViewSettings(
         javaScriptEnabled: true,
@@ -60,8 +95,6 @@ class BrowserFetchHlsProxy {
         supportZoom: false,
         mediaPlaybackRequiresUserGesture: false,
         mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-        allowUniversalAccessFromFileURLs: true,
-        allowFileAccessFromFileURLs: true,
       ),
       onWebViewCreated: (c) => _controller = c,
       onLoadStop: (c, _) {
@@ -95,6 +128,18 @@ class BrowserFetchHlsProxy {
     }
     if (gen != _gen) return null;
 
+    // Warm one segment while still on player origin — fail closed if Wtl108.
+    final warmSeg = _firstSegmentUrl(probe, _milUrl);
+    if (warmSeg != null) {
+      final warm = await _browserFetchBytes(warmSeg);
+      if (warm == null || warm.isEmpty) {
+        debugPrint('[BrowserFetchHls] segment probe 487/miss $warmSeg');
+        await stop();
+        return null;
+      }
+    }
+    if (gen != _gen) return null;
+
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     _server!.listen(
       (req) => _onRequest(req, gen),
@@ -102,7 +147,7 @@ class BrowserFetchHlsProxy {
     );
     final play = 'http://127.0.0.1:${_server!.port}/index.m3u8';
     debugPrint(
-      '[BrowserFetchHls] $play ← $_milUrl (referrer $_playerReferrer, '
+      '[BrowserFetchHls] $play ← $_milUrl (origin $_playerOrigin, '
       '${probe.length}b)',
     );
     return play;
@@ -116,6 +161,7 @@ class BrowserFetchHlsProxy {
     _hw = null;
     _controller = null;
     _milUrl = '';
+    _playerOrigin = '';
     _playerReferrer = '';
     _fetchHeaders = const {};
     try {
@@ -126,21 +172,18 @@ class BrowserFetchHlsProxy {
     } catch (_) {}
   }
 
-  Future<File> _ensureBootHtml() async {
-    final existing = _bootFile;
-    if (existing != null && await existing.exists()) return existing;
-    final dir = await Directory.systemTemp.createTemp('forja_browser_fetch_');
-    final f = File('${dir.path}/hop.html');
-    await f.writeAsString(
-      '<!doctype html><html><head><meta charset="utf-8"></head>'
-      '<body></body></html>',
-      flush: true,
-    );
-    _bootFile = f;
-    return f;
+  static String? _firstSegmentUrl(String playlist, String base) {
+    for (final line in playlist.split('\n')) {
+      final t = line.trim();
+      if (t.isEmpty || t.startsWith('#')) continue;
+      final abs = Uri.parse(base).resolve(t).toString();
+      if (!_looksLikePlaylist(abs)) return abs;
+    }
+    return null;
   }
 
   static Map<String, String> _safeFetchHeaders(Map<String, String> headers) {
+    // Origin/Referer come from document + fetch referrer — do not forge them.
     const blocked = {
       'origin',
       'referer',
@@ -252,7 +295,6 @@ class BrowserFetchHlsProxy {
     for (final line in body.split('\n')) {
       final t = line.trimRight();
       if (t.isEmpty || t.startsWith('#')) {
-        // Rewrite URI="..." inside tags (KEY / MAP / MEDIA).
         out.writeln(_rewriteTagUris(t, milUrl, port));
         continue;
       }
@@ -298,7 +340,7 @@ class BrowserFetchHlsProxy {
     }
     final bytes = await _browserFetchBytes(u);
     if (bytes == null || bytes.isEmpty) {
-      debugPrint('[BrowserFetchHls] segment miss');
+      debugPrint('[BrowserFetchHls] segment miss $u');
       req.response.statusCode = HttpStatus.badGateway;
       await req.response.close();
       return;
@@ -317,12 +359,12 @@ class BrowserFetchHlsProxy {
     final map = _decodeFetchJson(raw);
     if (map == null) return null;
     if (map['ok'] != true) {
-      debugPrint('[BrowserFetchHls] fetch !ok text: ${map['error']}');
+      debugPrint('[BrowserFetchHls] fetch !ok text: ${map['error']} url=$url');
       return null;
     }
     final status = map['status'];
     if (status is! num || status < 200 || status >= 300) {
-      debugPrint('[BrowserFetchHls] fetch status=$status text');
+      debugPrint('[BrowserFetchHls] fetch status=$status text url=$url');
       return null;
     }
     return (map['text'] ?? '').toString();
@@ -334,12 +376,12 @@ class BrowserFetchHlsProxy {
     final map = _decodeFetchJson(raw);
     if (map == null) return null;
     if (map['ok'] != true) {
-      debugPrint('[BrowserFetchHls] fetch !ok bin: ${map['error']}');
+      debugPrint('[BrowserFetchHls] fetch !ok bin: ${map['error']} url=$url');
       return null;
     }
     final status = map['status'];
     if (status is! num || status < 200 || status >= 300) {
-      debugPrint('[BrowserFetchHls] fetch status=$status bin');
+      debugPrint('[BrowserFetchHls] fetch status=$status bin url=$url');
       return null;
     }
     final b64 = (map['b64'] ?? '').toString();
@@ -391,6 +433,7 @@ class BrowserFetchHlsProxy {
           const referrer = $refJson;
           const asText = $asTextLit;
           try {
+            // omit — CDN often ACAO:*; include + * is a browser hard-fail.
             const resp = await fetch(url, {
               headers: headers,
               credentials: 'omit',

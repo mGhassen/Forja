@@ -1202,7 +1202,7 @@ class EngineService {
     // mirrors (embed pages ok) and unlocks later on tap.
     final wantsUnlock = _liveResolveWantsUnlock(params);
     if (viaRust != null) {
-      // EngineJS has no ctx.live.goatUnlock / sportsEmbedUnlock bridges.
+      // EngineJS has no ctx.live.goatUnlock / browserFetchHls bridges.
       // Unlock path: embed-only rows are not native-playable — fall back so
       // flutter_js can crack. Discover path: keep embed mirrors as-is.
       final processed = await _postProcessLivePluginRows(viaRust);

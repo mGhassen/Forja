@@ -11,7 +11,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** research · **11 / 11** implement · **0 / 2** acceptance (device) |
+| **Progress** | **8 / 8** research · **12 / 12** implement · **0 / 2** acceptance (device) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -47,6 +47,7 @@
 | 9 | I433-T16 | Hub/host: Catalog chip after All must not poison `raw:<chip>` / skip scrape when scoped empty | ✅ |
 | 10 | I433-T17 | Catalog airing: status>0 or kickoff passed (not only 101); sportTypes 9–12 (curling/NHL/…) | ✅ |
 | 11 | I433-T19 | Native MediaKit play — pack `playbackHop: 'browserFetch'` → host `BrowserFetchHlsProxy` tool (no host CDN matching) | ✅ |
+| 12 | I433-T20 | Pack calls `ctx.live.browserFetchHls` (host tool bridge); drop `playbackHop` flag path | ✅ |
 
 ---
 
@@ -73,12 +74,12 @@ User asked for **FCTV33 as a full catalog+resolve** instead of unlocking jack Le
 6. ~~Catalog flaky `191 → 131 → 0`~~ — **cleared in code** (verified scripted). `/api/common/bs` returns **429** under per-sport bs × concurrent chip scrape. Fix: one code-100 sig for all sports + retry on 429. Pack `2.0.34`.
 7. ~~Chip empty after HubReload/All~~ — **cleared in code**. Pack stashed All rows under `raw:fctv33` then reduce → 0; host trusted non-empty warm. Hub `1.0.66` + host progressive scoped warm / scrape-by-id fallback. Device A01 still open.
 8. ~~Airing only Barranquilla~~ — **cleared in code** (API verified). Site Live uses status `101/103/600` + kickoff-passed `0`; pack only set `airing` for `101`. Also missing sportTypes 9–12 (curling). Pack `2.0.35`.
-9. ~~**Native segment fetch (Wtl108)**~~ — **cleared in code**. Pack opts in with `playbackHop: 'browserFetch'`; host tool `BrowserFetchHlsProxy` fetches on player origin → loopback HLS. MediaKit plays local only (not sniff / not WebView playback). Pack `2.0.37`. Device A02 still open.
+9. ~~**Native segment fetch (Wtl108)**~~ — **cleared in code**. Pack calls `ctx.live.browserFetchHls(mil, headers)` → host `BrowserFetchHlsProxy` (Chromium fetch on player origin → loopback HLS). MediaKit plays local only (not sniff / not WebView playback). Pack `2.0.38`. Device A02 still open.
 
 ## Shipped
 
-- `forja-packs/livesports/fctv33.js` + manifest plugin `fctv33` (pack `2.0.37`, `playbackHop: browserFetch`)
-- Host tool `LivePlaybackHop.browserFetch` → `BrowserFetchHlsProxy` (pack-declared; no CDN host list)
+- `forja-packs/livesports/fctv33.js` + manifest plugin `fctv33` (pack `2.0.38`, `ctx.live.browserFetchHls`)
+- Host bridge `ctx.live.browserFetchHls` → `BrowserFetchHlsProxy` (pack calls tool; no CDN host list / no `playbackHop` flag)
 - Engine envelope binary body keep (invalid UTF-8 / protobuf CT)
 - Engine/Dart CryptoJS AES WordArray → CipherParams `.ciphertext`
 - Hub feed chip-after-All scoped only (`hubs/live_sports` `1.0.66`) + host progressive warm guard

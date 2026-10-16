@@ -15,6 +15,7 @@ import 'package:forja/shared/engine/portals/store/portal_live_tv_search.dart';
 import 'package:forja/shared/engine/unlock/goat_unlock.dart';
 import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
 import 'package:forja/shared/engine/unlock/pack_unlock_files.dart';
+import 'package:forja/shared/playback/proxy/browser_fetch_hls_proxy.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:forja/shared/downloads/download_page_store.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
@@ -758,6 +759,27 @@ class EngineRuntime {
       }
     });
 
+    // Pack tool: headless Chromium fetch → loopback HLS (MediaKit plays local).
+    br('LiveBrowserFetchHls', (args) async {
+      try {
+        final m = _bridgeMap(args);
+        final url = (m['url'] ?? '').toString().trim();
+        if (url.isEmpty) return '';
+        final headers = <String, String>{};
+        final hRaw = m['headers'];
+        if (hRaw is Map) {
+          hRaw.forEach((k, v) => headers[k.toString()] = v.toString());
+        }
+        return await BrowserFetchHlsProxy.instance.open(
+              milUrl: url,
+              headers: headers,
+            ) ??
+            '';
+      } catch (_) {
+        return '';
+      }
+    });
+
     br('FetchStart', (args) {
       try {
         if (!_acceptingFetches || _activeExtract <= 0) return null;
@@ -1326,6 +1348,13 @@ class EngineRuntime {
         spec = spec || {};
         if (!spec.packSourceUrl) spec.packSourceUrl = meta.packSourceUrl || '';
         return sendMessage('LiveRunUnlock', JSON.stringify(spec)) || '';
+      },
+      // Host tool — pack calls this; Chromium fetch → loopback HLS URL.
+      browserFetchHls: function(url, headers) {
+        return sendMessage('LiveBrowserFetchHls', JSON.stringify({
+          url: String(url == null ? '' : url),
+          headers: headers && typeof headers === 'object' ? headers : {},
+        })) || '';
       }
     },
     log: function(msg) {
