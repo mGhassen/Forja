@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/playback/proxy/browser_fetch_hls_proxy.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -571,6 +572,17 @@ class LivePluginEngine {
     required String url,
     Map<String, String> headers = const {},
   }) async {
+    // CDNs that 302→Wtl108 for non-Chromium TLS (fhlsport / hedy / streambk).
+    // Headless WebView fetches playlist+segments; MediaKit plays loopback.
+    if (BrowserFetchHlsProxy.needsBrowserFetch(url)) {
+      final play = await BrowserFetchHlsProxy.instance.start(
+        milUrl: url,
+        headers: headers,
+      );
+      if (play != null) return play;
+      debugPrint('[LivePluginEngine] browser fetch hop failed for $url');
+      return null;
+    }
     final proxy = LocalServerService();
     await proxy.start();
     if (proxy.port <= 0) return url;
@@ -633,6 +645,7 @@ bool liveEnginePreferDirectPlayback(String m3u8Url) {
 /// Trust pack `directPlayback`. Force `/hls-proxy` for CDNs that need host
 /// TLS + Referer rewrite on child playlists (MediaKit constraint).
 bool liveEngineOpenDirect(String m3u8Url, {bool pluginDirect = false}) {
+  if (BrowserFetchHlsProxy.needsBrowserFetch(m3u8Url)) return false;
   final host = Uri.tryParse(m3u8Url.trim())?.host.toLowerCase() ?? '';
   if (host.contains('wfty.st')) return false;
   if (host.contains('amazonaws.com')) return false;

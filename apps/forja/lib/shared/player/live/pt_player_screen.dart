@@ -31,6 +31,7 @@ import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/player/live/hls_play_url.dart';
+import 'package:forja/shared/playback/proxy/browser_fetch_hls_proxy.dart';
 import 'package:forja/shared/player/live_sports/live_sports_continuity_proxy.dart';
 import 'package:forja/shared/player/live_sports/live_sports_proxy_skip.dart';
 import 'package:forja/shared/player/live/iptv_live_grace.dart';
@@ -1835,6 +1836,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     _playerTvKeyFocus.dispose();
     _seekFocus.dispose();
     unawaited(_stalkerRelay?.stop());
+    unawaited(BrowserFetchHlsProxy.instance.stop());
     unawaited(_finalizeExit());
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

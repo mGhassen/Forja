@@ -26,7 +26,7 @@ void main() {
   });
 
   group('liveEngineOpenDirect', () {
-    test('trusts pluginDirect except wfty / amazonaws / indianservers', () {
+    test('trusts pluginDirect except wfty / amazonaws / indianservers / browser-fetch CDNs', () {
       expect(
         liveEngineOpenDirect(
           'https://lb1.strmd.st/secure/tok/delta/stream/foo/1/playlist.m3u8',
@@ -58,6 +58,13 @@ void main() {
       expect(
         liveEngineOpenDirect(
           'https://lb3.indianservers.st/secure/tok/fiba-africa/index.m3u8',
+          pluginDirect: true,
+        ),
+        isFalse,
+      );
+      expect(
+        liveEngineOpenDirect(
+          'https://edge.fhlsport.example/token-x/hedy/sx_1/index.m3u8',
           pluginDirect: true,
         ),
         isFalse,
