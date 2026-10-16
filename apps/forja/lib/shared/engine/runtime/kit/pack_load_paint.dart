@@ -401,9 +401,16 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final refreshEpoch = chrome?.refreshEpoch ?? 0;
     // showWhen Sports↔TV mounts a new State — adopt the current epoch so a
     // sticky refreshForceNetwork from an earlier Refresh does not re-scrape.
+    // HubReload clear-paint remounts this State *after* bumping refreshEpoch —
+    // adopting that epoch would skip force and (on a cold cache) fan All.
+    // Keep painted false + forceNetwork → first bind must force the selected
+    // catalog only (issue 439).
     if (!_refreshEpochSeeded) {
       _refreshEpochSeeded = true;
-      _appliedRefreshEpoch = refreshEpoch;
+      final hubReloadForce = (chrome?.refreshForceNetwork ?? false) &&
+          !(chrome?.refreshKeepPainted ?? false);
+      _appliedRefreshEpoch =
+          hubReloadForce ? refreshEpoch - 1 : refreshEpoch;
     }
     final holdEpoch = chrome?.catalogHoldEpoch ?? 0;
     final refreshBumped = refreshEpoch > _appliedRefreshEpoch;

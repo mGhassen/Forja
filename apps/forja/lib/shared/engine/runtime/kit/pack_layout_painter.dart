@@ -680,6 +680,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _pageFeedError = feedError;
       _rowPrefetch.reset();
       initLayoutTabSelections(_layoutSelections, widgets);
+      _seedRememberedChromeMenus(widgets);
       if (_downloadLibraryDirty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || !_downloadLibraryDirty) return;
@@ -1383,6 +1384,50 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             '')
         .toString();
     return '$type:$tmdb';
+  }
+
+  /// Catalog / schedule chips are written to Riverpod on pick, but layout
+  /// remount seeds pack defaults (`all` / airing|1h). Restore prefs so
+  /// HubReload force-scrapes the selected catalog only (issue 439).
+  void _seedRememberedChromeMenus(List<Map<String, dynamic>> widgets) {
+    final key = _chromeKey;
+    if (key.isEmpty) return;
+    ProviderContainer container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {
+      return;
+    }
+    walkLayoutWidgets(widgets, (spec) {
+      final type = LayoutTypes.normalize((spec['type'] ?? '').toString(), spec);
+      if (type != LayoutTypes.topBar) return;
+      final actions = spec['actions'];
+      if (actions is! List) return;
+      for (final raw in actions) {
+        if (raw is! Map) continue;
+        final action = Map<String, dynamic>.from(raw);
+        final id = (action['id'] ?? '').toString().trim();
+        if (id.isEmpty) continue;
+        if (action['dynamicCatalogs'] == true) {
+          final pref =
+              container.read(kitFeedCatalogFilterProvider(key)).trim();
+          final current = (_layoutSelections[id] ?? '').trim();
+          final def = (action['default'] ?? 'all').toString().trim();
+          // Keep a surviving chip; only fill pack default / empty from prefs.
+          if (pref.isNotEmpty &&
+              (current.isEmpty || current == def || current == 'all')) {
+            _layoutSelections[id] = pref;
+          }
+        } else if (action['dynamicSchedule'] == true) {
+          final pref = container.read(kitFeedHorizonPrefProvider(key)).trim();
+          final current = (_layoutSelections[id] ?? '').trim();
+          final def = (action['default'] ?? '').toString().trim();
+          if (pref.isNotEmpty && (current.isEmpty || current == def)) {
+            _layoutSelections[id] = pref;
+          }
+        }
+      }
+    });
   }
 
   void _onLayoutSelect(String widgetId, String value, {required bool toggle}) {

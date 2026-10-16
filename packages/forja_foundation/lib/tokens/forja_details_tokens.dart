@@ -154,28 +154,31 @@ abstract final class DetailsTokens {
   static const double episodeRangeMenuRadius = 20;
 
   /// Number-chip episode grid (details Episode list → Number chips).
-  static const double episodeChipMinWidth = 48;
+  static const double episodeChipMinWidth = 56;
   static const double episodeChipMinWidthTv = episodeChipMinWidth * _s;
-  static const double episodeChipHeight = 40;
+  static const double episodeChipHeight = 48;
   static const double episodeChipHeightTv = episodeChipHeight * _s;
-  static const double episodeChipGap = 8;
+  static const double episodeChipGap = 10;
   static const double episodeChipGapTv = episodeChipGap * _s;
-  static const double episodeChipRadius = 10;
+  static const double episodeChipRadius = 12;
   static const double episodeChipRadiusTv = episodeChipRadius * _s;
+  static const double episodeChipFontSize = 15;
+  static const double episodeChipFontSizeTv = episodeChipFontSize * _s;
   static const int episodeChipColumnsMin = 4;
   static const int episodeChipColumnsMax = 12;
 
-  /// Corner watched badge on number chips (solid green pip + dark check).
-  static const double episodeChipWatchedBadgeSize = 12;
+  /// Corner watched badge — hangs on the top-right so it clears the digit.
+  static const double episodeChipWatchedBadgeSize = 16;
   static const double episodeChipWatchedBadgeSizeTv =
       episodeChipWatchedBadgeSize * _s;
-  static const double episodeChipWatchedBadgeInset = 3;
+  /// Negative = hang outside the chip corner (into the gap).
+  static const double episodeChipWatchedBadgeInset = -3;
   static const double episodeChipWatchedBadgeInsetTv =
       episodeChipWatchedBadgeInset * _s;
-  static const double episodeChipWatchedBadgeHalo = 1.5;
+  static const double episodeChipWatchedBadgeHalo = 2;
   static const double episodeChipWatchedBadgeHaloTv =
       episodeChipWatchedBadgeHalo * _s;
-  static const double episodeChipWatchedCheckSize = 8;
+  static const double episodeChipWatchedCheckSize = 11;
   static const double episodeChipWatchedCheckSizeTv =
       episodeChipWatchedCheckSize * _s;
 

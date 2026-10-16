@@ -510,8 +510,8 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
         ? DetailsTokens.episodeChipRadiusTv
         : DetailsTokens.episodeChipRadius;
     final fontSize = tv
-        ? DetailsTokens.bodyFontSizeTv
-        : DetailsTokens.bodyFontSize;
+        ? DetailsTokens.episodeChipFontSizeTv
+        : DetailsTokens.episodeChipFontSize;
     final watchedBadgeSize = tv
         ? DetailsTokens.episodeChipWatchedBadgeSizeTv
         : DetailsTokens.episodeChipWatchedBadgeSize;
@@ -968,10 +968,14 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
                         width: widget.watchedBadgeHalo,
                       ),
                     ),
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: widget.watchedCheckSize,
-                      color: ForjaShellColors.bgDark,
+                    // Optical nudge — Material check sits a hair high in the circle.
+                    child: Transform.translate(
+                      offset: const Offset(0, 0.5),
+                      child: Icon(
+                        Icons.check_rounded,
+                        size: widget.watchedCheckSize,
+                        color: ForjaShellColors.bgDark,
+                      ),
                     ),
                   ),
                 ),
