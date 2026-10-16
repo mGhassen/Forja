@@ -236,13 +236,18 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
           ? stack
           : Material(
               type: MaterialType.transparency,
-              child: MouseRegion(
-                onHover: _s._onPointerHover,
-                // Pointer hides with the chrome; hover reveals both.
-                cursor: _s._showControls
-                    ? SystemMouseCursors.basic
-                    : SystemMouseCursors.none,
-                child: stack,
+              child: Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerHover: _s._onPointerHover,
+                onPointerDown: (_) => _s._onMouseMove(),
+                child: MouseRegion(
+                  onHover: _s._onPointerHover,
+                  // Pointer hides with the chrome; hover reveals both.
+                  cursor: _s._showControls
+                      ? SystemMouseCursors.basic
+                      : SystemMouseCursors.none,
+                  child: stack,
+                ),
               ),
             ),
     );

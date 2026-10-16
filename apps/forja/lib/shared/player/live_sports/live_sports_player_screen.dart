@@ -1437,14 +1437,15 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         _pausedByLifecycle = true;
       }
     } else if (state == AppLifecycleState.resumed) {
-      // Returning = activity — show chrome after background hide (issue 442).
+      // Show chrome on return; arm idle-hide only after pointer/key activity
+      // (desktop fullscreen withholds hover — issue 442).
       if (!_isPipMode &&
           !PipService.instance.isDesktopActive &&
           !InAppMiniPlayerController.instance.isActive) {
+        _hideControlsTimer?.cancel();
         if (!_controlsVisible) {
           setState(() => _controlsVisible = true);
         }
-        _scheduleHideControls();
       }
       _armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();

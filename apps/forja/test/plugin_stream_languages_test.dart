@@ -30,6 +30,41 @@ void main() {
     });
   });
 
+  group('PluginStreamLanguages.overlayLocalProviderLanguages', () {
+    test('stamps languages from local map onto matching ids', () {
+      final packs = [
+        EnginePack(
+          sourceUrl: 'https://example.test/manifest.json',
+          packId: 'test-pack',
+          name: 'Test',
+          version: '1',
+          plugins: [
+            EnginePlugin(
+              id: 'test-provider-a',
+              name: 'A',
+              entry: 'a.js',
+              types: const ['anime'],
+            ),
+            EnginePlugin(
+              id: 'test-provider-b',
+              name: 'B',
+              entry: 'b.js',
+              types: const ['anime'],
+              languages: const [
+                PluginLanguage(kind: 'sub', code: 'en'),
+              ],
+            ),
+          ],
+        ),
+      ];
+      // No FORJA_PACKS_ROOT in unit tests → overlay is a no-op identity.
+      final out = PluginStreamLanguages.overlayLocalProviderLanguages(packs);
+      expect(out, hasLength(1));
+      expect(out.first.plugins.first.languages, isEmpty);
+      expect(out.first.plugins[1].languages, hasLength(1));
+    });
+  });
+
   group('PluginStreamLanguages.audioCategoryFromKeys', () {
     test('empty → null', () {
       expect(PluginStreamLanguages.audioCategoryFromKeys({}), isNull);

@@ -15,13 +15,17 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     setState(() => _s._escapeExitArmed = true);
   }
 
-  void _revealChrome() {
+  void _revealChrome({bool armHideTimer = true}) {
     _s._escapeExitArmed = false;
     _s._escapeHandledAt = null;
     if (!_s._showControls) {
       setState(() => _s._showControls = true);
     }
-    _syncChromeHideTimer();
+    if (armHideTimer) {
+      _syncChromeHideTimer();
+    } else {
+      _s._hideTimer?.cancel();
+    }
   }
 
   /// Hide chrome and block hover re-show briefly (MouseRegion rebuild
@@ -345,6 +349,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
 
   void _startHideTimer() {
     _s._hideTimer?.cancel();
+    if (_s._holdChromeHideUntilPointer) return;
     if (_s._isInitPlaybackRunning ||
         !_s._playbackConfirmed ||
         _s._hasError ||
@@ -358,6 +363,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
           !_s._hasError &&
           _s._playbackConfirmed &&
           !_s._isInitPlaybackRunning &&
+          !_s._holdChromeHideUntilPointer &&
           !_s._statusBlocksControlsHide) {
         _hideChromeIntentional();
       }
@@ -372,12 +378,14 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     final last = _s._lastHoverPos;
     if (last != null && (last - pos).distanceSquared < 0.25) return;
     _s._lastHoverPos = pos;
+    _s._holdChromeHideUntilPointer = false;
     _revealChrome();
   }
 
   void _onMouseMove() {
     // Tap / key / chrome button — always show.
     _s._suppressChromeRevealUntil = null;
+    _s._holdChromeHideUntilPointer = false;
     _revealChrome();
   }
 

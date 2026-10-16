@@ -898,11 +898,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       }
       unawaited(_saveProgress());
     } else if (state == AppLifecycleState.resumed) {
-      // Returning = activity — show chrome after background hide (issue 442).
+      // Show chrome on return; next controls activity arms idle-hide (442).
+      _hideTimer?.cancel();
       if (!_showControls) {
         setState(() => _showControls = true);
       }
-      _startHideTimer();
       _armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
     }

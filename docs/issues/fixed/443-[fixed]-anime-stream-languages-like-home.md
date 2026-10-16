@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 2** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,8 @@
 | 2 | I443-T02 | Settings label → Stream languages; derive extract `category` from selected language keys | ✅ |
 | 3 | I443-T03 | Green Play + Sources use inferred audio category when hub has no grouped filter | ✅ |
 | 4 | I443-T04 | Changelog + anime feature doc | ✅ |
+| 5 | I443-T05 | Language options = full hub-type union (not enabled-only); bust filters cache on details | ✅ |
+| 6 | I443-T06 | Debug: overlay `languages` from `FORJA_PACKS_ROOT` providers manifest onto lean packs | ✅ |
 
 ---
 

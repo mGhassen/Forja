@@ -347,7 +347,11 @@ class EnginePlugin {
       'languages': [for (final l in languages) l.toJson()],
   };
 
-  EnginePlugin copyWith({bool? enabled, String? prelude}) => EnginePlugin(
+  EnginePlugin copyWith({
+    bool? enabled,
+    String? prelude,
+    List<PluginLanguage>? languages,
+  }) => EnginePlugin(
     id: id,
     name: name,
     entry: entry,
@@ -371,7 +375,7 @@ class EnginePlugin {
     defaultCapabilities: defaultCapabilities,
     liveLegacyIds: liveLegacyIds,
     platforms: platforms,
-    languages: languages,
+    languages: languages ?? this.languages,
   );
 }
 

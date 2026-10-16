@@ -136,7 +136,6 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     var langOptions = const <PackAddonSettingsOption>[];
     if (langFields.isNotEmpty) {
       final packs = await EngineService.instance.listSourcesPanelPacks();
-      final enabled = enabledEnginePluginIds(packs);
       // Union across every pluginLanguages field on this settings page.
       final typeSet = <String>{};
       final kindSet = <String>{};
@@ -156,7 +155,6 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
         packs: packs,
         types: typeSet,
         kinds: anyKinds ? kindSet : const [],
-        enabledIds: enabled,
       );
       langOptions = [
         for (final l in langs)

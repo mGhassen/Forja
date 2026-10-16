@@ -254,6 +254,11 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   DateTime? _suppressChromeRevealUntil;
   Offset? _lastHoverPos;
 
+  /// After returning to foreground, keep chrome up until real pointer/key
+  /// activity — resume + play would otherwise arm idle-hide while the OS
+  /// still withholds hover events (issue 442).
+  bool _holdChromeHideUntilPointer = false;
+
   bool _showTorrentStatsOverlay = false;
   StreamSubscription<TorrentStats>? _torrentStatsSub;
   TorrentStats? _torrentStats;

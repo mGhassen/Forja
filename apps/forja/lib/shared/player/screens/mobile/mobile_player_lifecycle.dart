@@ -678,9 +678,12 @@ mixin _MobilePlayerLifecycle
     } else if (state == AppLifecycleState.resumed) {
       // App resumed — Simkl scrobble continues on play.
       _s._historySaved = false; // allow re-save on next exit
-      // Returning = activity — show chrome after background hide (issue 442).
+      // Show chrome on return; next touch/D-pad arms idle-hide (issue 442).
       if (!_s._isPipMode && !_s._isLocked) {
-        _s._revealChrome();
+        _s._hideTimer?.cancel();
+        if (!_s._showControls) {
+          setState(() => _s._showControls = true);
+        }
       }
       _s._armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();

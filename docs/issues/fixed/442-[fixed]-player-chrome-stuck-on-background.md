@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 6 / 6** fix · **0 / 3** acceptance |
+| **Progress** | **Complete · 7 / 7** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I442-T04 | IPTV portal player: hide chrome on background | ✅ |
 | 5 | I442-T05 | Live Sports player: hide chrome on background | ✅ |
 | 6 | I442-T06 | On `resumed`, reveal chrome + clear desktop hover suppress (return = activity) | ✅ |
+| 7 | I442-T07 | Resume must not arm idle-hide until pointer/key activity (hold flag + Listener) | ✅ |
 
 ---
 

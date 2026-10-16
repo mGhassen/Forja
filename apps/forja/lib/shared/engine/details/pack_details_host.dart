@@ -261,8 +261,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       return;
     }
     final packs = await EngineService.instance.listSourcesPanelPacks();
-    final enabled = enabledEnginePluginIds(packs);
     // Pack-declared types (e.g. anime). Else Home movie|tv from the title.
+    // Options = full hub-type union (not enabled-only) — same idea as Home.
     final types = spec.types.isNotEmpty
         ? spec.types
         : [_isMovie ? 'movie' : 'tv'];
@@ -270,7 +270,6 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       packs: packs,
       types: types,
       kinds: spec.kinds,
-      enabledIds: enabled,
     );
     final selected = await PluginStreamLanguages.selectedKeys(widget.pluginId);
     final valid = {
@@ -290,7 +289,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   }
 
   Future<void> _ensurePackFilters() async {
-    await PackFiltersRegistry.ensureLoaded(widget.pluginId);
+    // Bust 24h filters cache so play[] edits (e.g. drop kinds/grouped) apply.
+    await PackFiltersRegistry.ensureLoaded(widget.pluginId, force: true);
     if (!mounted) return;
     _seedPlayFilterDefaults();
     setState(() {});

@@ -277,7 +277,7 @@ class EngineService {
     // Never block Play/Sources on network install / lean hydrate.
     unawaited(PluginRegistry.instance.ensureOfficialInstalled());
     final packs = await PluginRegistry.instance.listPacksRaw();
-    return [
+    final vod = [
       for (final p in packs)
         if (p.enabled && p.plugins.any((pl) => pl.enabled && pl.isVodCatalog))
           p.copyWithPlugins([
@@ -285,6 +285,8 @@ class EngineService {
               if (pl.isVodCatalog) pl,
           ]),
     ];
+    // Debug checkout: lean prefs often lag `languages` while JS hot-reloads.
+    return PluginStreamLanguages.overlayLocalProviderLanguages(vod);
   }
 
   Future<List<EnginePlugin>> listEnabledLivePlugins() async {

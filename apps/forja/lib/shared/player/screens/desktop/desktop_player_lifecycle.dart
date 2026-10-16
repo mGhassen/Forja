@@ -572,14 +572,17 @@ mixin _DesktopPlayerLifecycle
       _saveWatchHistory(isBgPause: true);
     } else if (state == AppLifecycleState.resumed) {
       _s._historySaved = false;
-      // Returning = activity (click / cursor). Clear suppress from background
-      // hide so hover is not blocked, then show chrome (issue 442).
+      // Show chrome on return, but do not arm idle-hide until real pointer/key
+      // activity — macOS fullscreen often withholds hover until then, so a
+      // timer armed here would hide chrome while the cursor is moving (442).
       if (!_s._releasedForPip &&
           !_s._isPipMode &&
           !PipService.instance.isDesktopActive &&
           !InAppMiniPlayerController.instance.isActive) {
         _s._suppressChromeRevealUntil = null;
-        _s._revealChrome();
+        _s._lastHoverPos = null;
+        _s._holdChromeHideUntilPointer = true;
+        _s._revealChrome(armHideTimer: false);
       }
       _resumeAfterAppBackground();
       unawaited(_s._recoverPlaybackAfterForeground());
