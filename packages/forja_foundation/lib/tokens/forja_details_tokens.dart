@@ -165,20 +165,21 @@ abstract final class DetailsTokens {
   static const double episodeChipFontSize = 15;
   static const double episodeChipFontSizeTv = episodeChipFontSize * _s;
   static const int episodeChipColumnsMin = 4;
-  static const int episodeChipColumnsMax = 12;
+  /// High ceiling — must match Wrap fit width (clamping to 12 broke D-pad at col 12).
+  static const int episodeChipColumnsMax = 48;
 
-  /// Corner watched badge — hangs on the top-right so it clears the digit.
-  static const double episodeChipWatchedBadgeSize = 16;
+  /// Corner watched badge — hangs outside the top-right corner of the chip.
+  static const double episodeChipWatchedBadgeSize = 18;
   static const double episodeChipWatchedBadgeSizeTv =
       episodeChipWatchedBadgeSize * _s;
-  /// Negative = hang outside the chip corner (into the gap).
-  static const double episodeChipWatchedBadgeInset = -3;
+  /// Negative = outside the chip (into the gap). Half the badge sits past the corner.
+  static const double episodeChipWatchedBadgeInset = -6;
   static const double episodeChipWatchedBadgeInsetTv =
       episodeChipWatchedBadgeInset * _s;
   static const double episodeChipWatchedBadgeHalo = 2;
   static const double episodeChipWatchedBadgeHaloTv =
       episodeChipWatchedBadgeHalo * _s;
-  static const double episodeChipWatchedCheckSize = 11;
+  static const double episodeChipWatchedCheckSize = 12;
   static const double episodeChipWatchedCheckSizeTv =
       episodeChipWatchedCheckSize * _s;
 

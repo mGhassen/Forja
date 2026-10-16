@@ -539,11 +539,15 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           DetailsTokens.episodeChipColumnsMax,
         );
 
+        // Room for the watched pip hanging past the top-right corner.
+        final badgeHang = watchedBadgeSize + watchedBadgeInset;
+        final hangPad = badgeHang > 0 ? badgeHang : 0.0;
         final grid = Padding(
-          padding: EdgeInsets.symmetric(horizontal: hPad),
+          padding: EdgeInsets.fromLTRB(hPad, hangPad, hPad, 0),
           child: Wrap(
             spacing: gap,
             runSpacing: gap,
+            clipBehavior: Clip.none,
             children: [
               for (var i = 0; i < eps.length; i++)
                 _buildEpisodeNumberChip(
@@ -924,53 +928,54 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
               ? cinematic.textPrimary
               : cinematic.textSecondary,
         );
-        return AnimatedContainer(
-          duration: ForjaMotionTheme.of(context).chipLift.duration,
+        // No Container.alignment — that wraps the child in Align, Stack shrinks
+        // to the digit, and Positioned pins the check onto the number.
+        return SizedBox(
           width: widget.width,
           height: widget.height,
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          decoration: BoxDecoration(
-            color: cinematic.menuSurface,
-            borderRadius: BorderRadius.circular(widget.radius),
-            border: Border.all(
-              color: liveBorder,
-              width: widget.selected || liveActive ? 2 : 1,
-            ),
-          ),
           child: Stack(
             clipBehavior: Clip.none,
-            alignment: Alignment.center,
+            fit: StackFit.expand,
             children: [
-              Text(
-                widget.label,
-                style: TextStyle(
-                  color: labelColor,
-                  fontSize: widget.fontSize,
-                  fontWeight: widget.selected || liveActive
-                      ? FontWeight.w700
-                      : FontWeight.w600,
+              AnimatedContainer(
+                duration: ForjaMotionTheme.of(context).chipLift.duration,
+                decoration: BoxDecoration(
+                  color: cinematic.menuSurface,
+                  borderRadius: BorderRadius.circular(widget.radius),
+                  border: Border.all(
+                    color: liveBorder,
+                    width: widget.selected || liveActive ? 2 : 1,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: labelColor,
+                    fontSize: widget.fontSize,
+                    fontWeight: widget.selected || liveActive
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                  ),
                 ),
               ),
               if (widget.watched)
                 Positioned(
                   right: widget.watchedBadgeInset,
                   top: widget.watchedBadgeInset,
-                  child: Container(
-                    width: widget.watchedBadgeSize,
-                    height: widget.watchedBadgeSize,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: ForjaShellColors.brandGreen,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: cinematic.menuSurface,
-                        width: widget.watchedBadgeHalo,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: widget.watchedBadgeSize,
+                      height: widget.watchedBadgeSize,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: ForjaShellColors.brandGreen,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: cinematic.menuSurface,
+                          width: widget.watchedBadgeHalo,
+                        ),
                       ),
-                    ),
-                    // Optical nudge — Material check sits a hair high in the circle.
-                    child: Transform.translate(
-                      offset: const Offset(0, 0.5),
                       child: Icon(
                         Icons.check_rounded,
                         size: widget.watchedCheckSize,
