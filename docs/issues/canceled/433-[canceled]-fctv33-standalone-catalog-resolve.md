@@ -2,18 +2,26 @@
 
 **Priority:** P1  
 **Severity:** Medium  
-**Status:** open  
+**Status:** canceled  
 **Area:** `forja-packs/livesports/` — new plugin (TCPWE / MadPlay family)  
 **Reported:** 2026-10-14  
-**Related:** [432](fixed/432-[fixed]-bzhsport-xstream-streamurls-missed.md) (BZH Lecteur 1 / jack embed)
+**Related:** [432](../fixed/432-[fixed]-bzhsport-xstream-streamurls-missed.md) (BZH Lecteur 1 / jack embed)
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** research · **15 / 15** implement · **0 / 2** acceptance (device) |
+| **Progress** | **Canceled** — pack archived; CDN segment TLS (`Wtl108` / `Wv`) + anti-devtools block native play |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
+
+---
+
+## Why canceled
+
+Catalog + playlist unlock worked; segments do not. fhlsport `302 → streambk` rejects scripted / WKWebView / debugger-attached Chromium (`Wtl108` / `Wv`). Site also kills the player when Inspect/CDP is attached. Plugin moved to `forja-packs/archived/fctv33.js`; removed from livesports pack `2.0.41`.
+
+Historical research/fix rows frozen below.
 
 ---
 
