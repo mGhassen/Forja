@@ -24,6 +24,7 @@ import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
+import 'package:forja/shared/player/live/native_player_open_gate.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
 import 'package:forja/shared/player/screens/utils.dart';
@@ -353,38 +354,40 @@ class LiveSportsPlayerScreen extends ConsumerStatefulWidget {
   static Future<T?> open<T>(
     BuildContext context,
     Widget player,
-  ) async {
-    await InAppMiniPlayerController.instance.stopForNewPlay();
-    if (!context.mounted) return null;
-    final hostContext = context;
-    ShellBus.maskShellUnderPlayer.value = true;
-    await WidgetsBinding.instance.endOfFrame;
-    if (!hostContext.mounted) {
-      ShellBus.clearMaskShellUnderPlayer();
-      return null;
-    }
-    return Navigator.of(hostContext, rootNavigator: true).push<T>(
-      InAppMiniAwarePageRoute<T>(
-        settings: const RouteSettings(name: 'live_sports_player'),
-        transitionDuration: const Duration(milliseconds: 350),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          );
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(curved),
-            child: child,
-          );
-        },
-        builder: (_) => ShellScope.rehost(hostContext, player),
-      ),
-    );
+  ) {
+    return NativePlayerOpenGate.run<T>(() async {
+      await InAppMiniPlayerController.instance.stopForNewPlay();
+      if (!context.mounted) return null;
+      final hostContext = context;
+      ShellBus.maskShellUnderPlayer.value = true;
+      await WidgetsBinding.instance.endOfFrame;
+      if (!hostContext.mounted) {
+        ShellBus.clearMaskShellUnderPlayer();
+        return null;
+      }
+      return Navigator.of(hostContext, rootNavigator: true).push<T>(
+        InAppMiniAwarePageRoute<T>(
+          settings: const RouteSettings(name: 'live_sports_player'),
+          transitionDuration: const Duration(milliseconds: 350),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            );
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            );
+          },
+          builder: (_) => ShellScope.rehost(hostContext, player),
+        ),
+      );
+    });
   }
 
   @override

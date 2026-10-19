@@ -798,6 +798,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   }
 
   void _scheduleHideControls() {
+    if (!mounted) return;
     _s._hideControlsTimer?.cancel();
     if (_s._guideVisible || _s._searchVisible) return;
     // TV: match movie/Exo idle (10s). 4s was hiding mid D-pad walk.

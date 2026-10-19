@@ -184,6 +184,7 @@ abstract final class PackPaintArtifact {
     Object? open,
     Object? meta,
     double? cardWidth,
+    String? knownStatus,
   }) {
     final w =
         cardWidth ??
@@ -198,10 +199,20 @@ abstract final class PackPaintArtifact {
     if (item == null) return null;
     final target = ListFollowTarget.fromMeta(pluginId: pluginId, meta: item);
     if (target == null) return null;
+    final fromProps = (props['listStatus'] ?? '').toString().trim();
+    final fromMeta = meta is Map
+        ? (meta['listStatus'] ?? '').toString().trim()
+        : '';
+    final status = (knownStatus ?? '').trim().isNotEmpty
+        ? knownStatus!.trim()
+        : (fromProps.isNotEmpty
+            ? fromProps
+            : (fromMeta.isNotEmpty ? fromMeta : null));
     return KitListStatusButton.follow(
       followTarget: target,
       excludeFromTvTraversal: true,
       iconSize: InteractivePosterCard.scaled(context, 18).clamp(12.0, 18.0),
+      knownStatus: status,
     );
   }
 

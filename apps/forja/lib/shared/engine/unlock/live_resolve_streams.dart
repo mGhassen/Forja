@@ -35,6 +35,10 @@ abstract final class LiveResolveStreams {
     bool handoffOnly = false,
   }) async {
     final match = MatchEvent.fromLegacyRow(legacyRow);
+    // 24/7 channel handoff — only packs that own sources[] (no fixture fan-out).
+    if (!handoffOnly && match.isAlwaysOn && match.sources.isNotEmpty) {
+      handoffOnly = true;
+    }
     final cacheKey = _providersCacheKey(match, handoffOnly: handoffOnly);
     if (force) {
       _providersCache.remove(cacheKey);

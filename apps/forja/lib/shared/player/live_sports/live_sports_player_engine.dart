@@ -98,6 +98,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     if (_s._disposed) return;
     if (mounted) setState(() => _s._playerReady = true);
     await _openCurrent();
+    if (!mounted || _s._disposed) return;
     _startWatchdog();
     _s._scheduleHideControls();
     _s._focusPlayerChrome();
@@ -123,6 +124,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || _s._disposed) return;
     await _openCurrent();
+    if (!mounted || _s._disposed) return;
     _startWatchdog();
     _s._scheduleHideControls();
     _s._focusPlayerChrome();
@@ -137,6 +139,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _s._disposed) return;
     await _openCurrent();
+    if (!mounted || _s._disposed) return;
     _armNativeStartupFailover();
     _startWatchdog();
     _s._scheduleHideControls();
@@ -154,6 +157,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _s._disposed) return;
     await _openCurrent();
+    if (!mounted || _s._disposed) return;
     _armNativeStartupFailover();
     _startWatchdog();
     _s._scheduleHideControls();

@@ -1515,12 +1515,17 @@ class PackPaintTree extends StatelessWidget {
       active: active,
     );
     if (live != null) return live;
+    final props = PackPaintArtifact.propsOf(item);
+    final known = (item['listStatus'] ?? props['listStatus'] ?? '')
+        .toString()
+        .trim();
     return PackPaintArtifact.listPinFor(
       context: context,
       pluginId: pluginId,
-      props: PackPaintArtifact.propsOf(item),
+      props: props,
       open: item['open'] ?? item['metaOpen'] ?? item['catalogOpen'],
       meta: item['meta'],
+      knownStatus: known.isEmpty ? null : known,
     );
   }
 

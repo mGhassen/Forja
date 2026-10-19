@@ -215,12 +215,12 @@ class _WiredStatusPin extends StatelessWidget {
     return ValueListenableBuilder<int>(
       valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
-        final status = BookmarkStore().resolvedStatus(
-              uniqueId: uniqueId,
-              tmdbId: tmdbId,
-              mediaType: mediaType,
-            ) ??
-            knownStatus;
+        final status = _pinDisplayStatus(
+          uniqueId: uniqueId,
+          tmdbId: tmdbId,
+          mediaType: mediaType,
+          knownStatus: knownStatus,
+        );
         final policy = ShellScope.inputPolicyOf(context);
         return ListStatusPin(
           currentStatus: status,
@@ -237,6 +237,29 @@ class _WiredStatusPin extends StatelessWidget {
       },
     );
   }
+}
+
+/// Pin icon for a card: exact bookmark uid first, then feed [knownStatus]
+/// (My List / Simkl tab), then loose TMDB resolve. Loose resolve alone was
+/// painting Plan-to-Watch yellow on Watching-tab Simkl rows when another
+/// hub's plantowatch alias shared the same tmdb id.
+String? _pinDisplayStatus({
+  required String uniqueId,
+  int? tmdbId,
+  String? mediaType,
+  String? knownStatus,
+}) {
+  final exact = BookmarkStore().itemOf(uniqueId);
+  if (exact != null) {
+    return exact['listStatus']?.toString() ?? BookmarkStore.defaultStatus;
+  }
+  final known = (knownStatus ?? '').trim();
+  if (known.isNotEmpty) return known;
+  return BookmarkStore().resolvedStatus(
+    uniqueId: uniqueId,
+    tmdbId: tmdbId,
+    mediaType: mediaType,
+  );
 }
 
 class _LegacyTogglePin extends StatelessWidget {

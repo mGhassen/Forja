@@ -2286,48 +2286,52 @@ class SettingsFilledButton extends StatelessWidget {
     // Button remounts the FocusNode and focus jumps (LAN Discover ↔ refresh).
     if (tv) {
       final enabled = onPressed != null && !busy;
-      final child = IgnorePointer(
-        child: Button(
-          label: label,
-          onPressed: enabled ? () {} : null,
-          icon: icon,
-          iconSize: iconSize,
-          loading: busy,
-          expand: expand,
-          height: height,
-          fontSize: fontSize,
-          padding: EdgeInsets.symmetric(horizontal: padH),
-          variant: _variant,
-        ),
-      );
+      Widget paint({required bool focused}) {
+        // FocusableControl owns the node + IgnorePointer — Button never sees
+        // WidgetState.focused. Swap to accent so Install / primary CTAs go
+        // brand green on focus instead of the gray flat-menu ring.
+        final variant = focused &&
+                (_variant == ButtonVariant.primary ||
+                    _variant == ButtonVariant.secondary)
+            ? ButtonVariant.accent
+            : _variant;
+        return IgnorePointer(
+          child: Button(
+            label: label,
+            onPressed: enabled ? () {} : null,
+            icon: icon,
+            iconSize: iconSize,
+            loading: busy,
+            expand: expand,
+            height: height,
+            fontSize: fontSize,
+            padding: EdgeInsets.symmetric(horizontal: padH),
+            variant: variant,
+          ),
+        );
+      }
+
       // Disabled = paint only. An owned FocusNode here stole → from toolbar
       // peers and left Install unreachable after pack rows (issue 447).
       if (!enabled) {
+        final child = paint(focused: false);
         if (expand) return child;
         return Align(
           alignment: AlignmentDirectional.centerStart,
           child: child,
         );
       }
-      final tap = shellFocusableTap(
-        context: context,
+      final tap = _SettingsFilledTvFocus(
         focusNode: focusNode,
         onTap: onPressed,
-        borderRadius: 8,
-        scaleOnFocus: 1.0,
-        showFocusRail: false,
-        showFocusFill: true,
-        showFocusBorder: true,
-        tvTabId: 'settings',
         tvRowId: tvRowId,
         tvItemIndex: tvItemIndex,
-        tvZone: tvZone ?? ShellTvZone.settings,
-        ensureVisibleMode: ShellPaintEnsureVisible.item,
+        tvZone: tvZone,
         onLeftEdge: onLeftEdge,
         onRightEdge: onRightEdge,
         onUpEdge: onUpEdge,
         onDownEdge: onDownEdge,
-        child: child,
+        paint: paint,
       );
       if (expand) return tap;
       // Hug the start edge. A physical right align stacked Discover under the
@@ -2349,6 +2353,70 @@ class SettingsFilledButton extends StatelessWidget {
     );
     if (expand) return button;
     return Align(alignment: AlignmentDirectional.centerStart, child: button);
+  }
+}
+
+/// TV: FocusableControl owns focus — [Button] never gets [WidgetState.focused].
+/// Rebuild paint on focus so primary CTAs go brand green (no gray flat ring).
+class _SettingsFilledTvFocus extends StatefulWidget {
+  const _SettingsFilledTvFocus({
+    required this.onTap,
+    required this.paint,
+    this.focusNode,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.tvZone,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
+  });
+
+  final VoidCallback? onTap;
+  final Widget Function({required bool focused}) paint;
+  final FocusNode? focusNode;
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final ShellTvZone? tvZone;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  State<_SettingsFilledTvFocus> createState() => _SettingsFilledTvFocusState();
+}
+
+class _SettingsFilledTvFocusState extends State<_SettingsFilledTvFocus> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      focusNode: widget.focusNode,
+      onTap: widget.onTap,
+      borderRadius: 8,
+      scaleOnFocus: 1.0,
+      showFocusRail: false,
+      // Button paints green engaged chrome — skip gray flat-menu wash.
+      showFocusFill: false,
+      showFocusBorder: false,
+      tvTabId: 'settings',
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
+      tvZone: widget.tvZone ?? ShellTvZone.settings,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onUpEdge: widget.onUpEdge,
+      onDownEdge: widget.onDownEdge,
+      onFocusChange: (f) {
+        if (_focused == f) return;
+        setState(() => _focused = f);
+      },
+      child: widget.paint(focused: _focused),
+    );
   }
 }
 

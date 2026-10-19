@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 3 / 3** fix · **0 / 1** acceptance (manual QA) |
+| **Progress** | **Complete · 4 / 4** fix · **0 / 1** acceptance (manual QA) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -22,6 +22,7 @@
 | 1 | I447-T01 | Register Install as toolbar TvKitRow index 2; shrink itemCount when disabled | ✅ |
 | 2 | I447-T02 | Disabled filled buttons paint-only on TV (no owned FocusNode) | ✅ |
 | 3 | I447-T03 | ↑ from pack list prefers Install when a selection exists | ✅ |
+| 4 | I447-T04 | TV filled primary CTA paints brand green on focus (no gray flat ring) | ✅ |
 
 ---
 
