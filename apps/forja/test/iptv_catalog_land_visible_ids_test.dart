@@ -25,4 +25,17 @@ void main() {
       isFalse,
     );
   });
+
+  test('Movies/Series paint ids are tracked like Live stream ids', () {
+    IptvCatalogLand.setVisibleStreamIds([
+      'iptv:vod:portal:1',
+      'iptv:series:portal:2',
+    ]);
+    expect(IptvCatalogLand.indexOfVisibleStream('iptv:vod:portal:1'), 0);
+    expect(IptvCatalogLand.indexOfVisibleStream('iptv:series:portal:2'), 1);
+    expect(
+      IptvCatalogLand.streamVisibleInFilter('iptv:series:portal:2'),
+      isTrue,
+    );
+  });
 }

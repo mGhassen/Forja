@@ -547,11 +547,9 @@ class CatalogCardsGrid extends StatelessWidget {
         return _OwnedScrollHost(
           onScrollIntoViewChanged: onScrollIntoViewChanged,
           scrollToIndex: (scroll, index) {
-            if (!scroll.hasClients || index < 0) return;
-            final max = scroll.position.maxScrollExtent;
-            final target = layout.itemTop(index).clamp(0.0, max);
-            if ((scroll.offset - target).abs() < 0.5) return;
-            scroll.jumpTo(target);
+            // Keep-visible — same as IPTV channels. Pinning to itemTop stuck
+            // the focused poster on the first line on every ↓.
+            layout.scrollItemKeepVisible(scroll, index);
           },
           builder: (context, scroll) {
             return CatalogPosterGrid(
@@ -703,12 +701,8 @@ class _EventCardsScrollState extends State<_EventCardsScroll> {
   final ScrollController _scroll = ScrollController();
 
   void _scrollToIndex(int index) {
-    if (!_scroll.hasClients || index < 0) return;
-    final target = widget.layout
-        .itemTop(index)
-        .clamp(0.0, _scroll.position.maxScrollExtent);
-    if ((_scroll.offset - target).abs() < 0.5) return;
-    _scroll.jumpTo(target);
+    // Keep-visible — same as channel / poster grids (not pin-to-top).
+    widget.layout.scrollItemKeepVisible(_scroll, index);
   }
 
   void _offer() => widget.onScrollIntoViewChanged?.call(_scrollToIndex);

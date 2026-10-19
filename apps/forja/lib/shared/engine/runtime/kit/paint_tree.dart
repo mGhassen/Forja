@@ -1944,7 +1944,10 @@ class PackPaintTree extends StatelessWidget {
           final kindFilterLive = kindMenu == 'cats';
           final currentKind = kindFilter;
 
-          if (liveChannels) {
+          // Category → needs paint-order ids for Live *and* Movies/Series.
+          // Without this, VOD grids leave the ordered list empty and → from
+          // cats returns false (focus stuck on the category).
+          if (liveChannels || kindFilterLive) {
             IptvCatalogLand.setVisibleStreamIds([
               for (final item in filtered) _itemStreamId(item),
             ]);

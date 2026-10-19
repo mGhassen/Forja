@@ -485,7 +485,6 @@ function PlatformPicker({
       <nav aria-label="Platforms" className="flex flex-col">
         {platforms.map((platform, i) => {
           const active = platform.id === selected.id
-          const file = primaryById[platform.id]
           return (
             <div
               key={platform.id}
@@ -543,28 +542,6 @@ function PlatformPicker({
                   </span>
                 </span>
               </button>
-              {file ? (
-                <a
-                  href={file.download_url}
-                  data-hover=""
-                  onClick={(e) => {
-                    e.preventDefault()
-                    startBackgroundDownload(file.download_url)
-                  }}
-                  className={cn(
-                    'shrink-0 rounded-full px-4 py-2.5 font-mono-ui text-[10px] font-bold uppercase tracking-[0.12em] transition-colors sm:px-5',
-                    active
-                      ? 'btn-magnet'
-                      : 'border border-[rgba(237,230,218,0.2)] text-[rgba(237,230,218,0.7)] hover:border-brand hover:text-brand',
-                  )}
-                >
-                  Download
-                </a>
-              ) : (
-                <span className="shrink-0 rounded-full border border-white/10 px-4 py-2.5 font-mono-ui text-[10px] font-bold uppercase tracking-[0.12em] text-white/25 sm:px-5">
-                  Soon
-                </span>
-              )}
             </div>
           )
         })}
