@@ -1096,15 +1096,28 @@ class _AddonRemoveActions extends StatefulWidget {
 
 class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
   bool _localConfirming = false;
+  bool _yesHasFocus = false;
+  DateTime? _confirmEnteredAt;
+  late final FocusNode _trashFocus =
+      FocusNode(debugLabel: 'addon-remove-trash');
   late final FocusNode _yesFocus =
       FocusNode(debugLabel: 'addon-remove-yes');
   late final FocusNode _noFocus =
       FocusNode(debugLabel: 'addon-remove-no');
 
+  static const _confirmArmDelay = Duration(milliseconds: 450);
+
   bool get _confirming => widget.confirming ?? _localConfirming;
+
+  bool get _confirmArmed {
+    final at = _confirmEnteredAt;
+    if (at == null) return false;
+    return DateTime.now().difference(at) >= _confirmArmDelay;
+  }
 
   @override
   void dispose() {
+    _trashFocus.dispose();
     _yesFocus.dispose();
     _noFocus.dispose();
     super.dispose();
@@ -1118,14 +1131,41 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
     }
   }
 
-  void _focusYes() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (_yesFocus.canRequestFocus) _yesFocus.requestFocus();
-    });
+  void _scheduleFocus(FocusNode node, {int attempts = 4}) {
+    void attempt(int n) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (node.canRequestFocus) {
+          node.requestFocus();
+          if (node.hasFocus) return;
+        }
+        if (n + 1 < attempts) attempt(n + 1);
+      });
+    }
+
+    attempt(0);
+  }
+
+  void _enterConfirm() {
+    _confirmEnteredAt = DateTime.now();
+    _yesHasFocus = false;
+    _setConfirming(true);
+    _scheduleFocus(_yesFocus);
+  }
+
+  void _cancelConfirm() {
+    if (!_confirmArmed) return;
+    _confirmEnteredAt = null;
+    _yesHasFocus = false;
+    _setConfirming(false);
+    _scheduleFocus(_trashFocus);
   }
 
   Future<void> _confirm() async {
+    if (!_confirmArmed) return;
+    _confirmEnteredAt = null;
+    SettingsExpandHeaderFocus.maybeFocusHeaderOf(context)?.call();
+    _yesHasFocus = false;
     _setConfirming(false);
     await widget.onRemove();
   }
@@ -1136,8 +1176,10 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
     required Color color,
     required VoidCallback onTap,
     FocusNode? focusNode,
+    bool autoFocus = false,
     VoidCallback? onLeftEdge,
     VoidCallback? onRightEdge,
+    ValueChanged<bool>? onFocusChange,
   }) {
     return SettingsIconButton(
       tooltip: tooltip,
@@ -1145,8 +1187,10 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
       color: color,
       onPressed: onTap,
       focusNode: focusNode,
+      autoFocus: autoFocus,
       onLeftEdge: onLeftEdge,
       onRightEdge: onRightEdge,
+      onFocusChange: onFocusChange,
     );
   }
 
@@ -1162,22 +1206,25 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
             color: const Color(0xFFEF4444),
             onTap: () => unawaited(_confirm()),
             focusNode: _yesFocus,
+            autoFocus: true,
+            onFocusChange: (f) {
+              if (!f || _yesHasFocus) return;
+              setState(() => _yesHasFocus = true);
+            },
             onRightEdge: () {
-              if (_noFocus.canRequestFocus) _noFocus.requestFocus();
+              if (_yesHasFocus) _scheduleFocus(_noFocus);
             },
           ),
-          _action(
-            tooltip: 'No',
-            icon: Icons.close_rounded,
-            color: ForjaShellColors.iconMuted,
-            onTap: () {
-              _setConfirming(false);
-              _focusYes();
-            },
-            focusNode: _noFocus,
-            onLeftEdge: () {
-              if (_yesFocus.canRequestFocus) _yesFocus.requestFocus();
-            },
+          ExcludeFocus(
+            excluding: !_yesHasFocus,
+            child: _action(
+              tooltip: 'No',
+              icon: Icons.close_rounded,
+              color: ForjaShellColors.iconMuted,
+              onTap: _cancelConfirm,
+              focusNode: _noFocus,
+              onLeftEdge: () => _scheduleFocus(_yesFocus),
+            ),
           ),
         ],
       );
@@ -1186,11 +1233,8 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
       tooltip: 'Remove addon',
       icon: Icons.delete_outline,
       color: const Color(0xFFF87171),
-      onTap: () {
-        _setConfirming(true);
-        _focusYes();
-      },
-      focusNode: _yesFocus,
+      onTap: _enterConfirm,
+      focusNode: _trashFocus,
     );
   }
 }

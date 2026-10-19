@@ -2159,10 +2159,12 @@ class SettingsIconButton extends StatelessWidget {
     this.busy = false,
     this.color = ForjaShellColors.textPrimary,
     this.focusNode,
+    this.autoFocus = false,
     this.onLeftEdge,
     this.onRightEdge,
     this.onUpEdge,
     this.onDownEdge,
+    this.onFocusChange,
   });
 
   final String tooltip;
@@ -2171,10 +2173,12 @@ class SettingsIconButton extends StatelessWidget {
   final bool busy;
   final Color color;
   final FocusNode? focusNode;
+  final bool autoFocus;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final ValueChanged<bool>? onFocusChange;
 
   @override
   Widget build(BuildContext context) {
@@ -2196,6 +2200,7 @@ class SettingsIconButton extends StatelessWidget {
       return shellFocusableTap(
         context: context,
         focusNode: focusNode,
+        autoFocus: autoFocus,
         onTap: enabled ? onPressed : null,
         borderRadius: 8,
         scaleOnFocus: 1.0,
@@ -2209,6 +2214,7 @@ class SettingsIconButton extends StatelessWidget {
         onRightEdge: onRightEdge,
         onUpEdge: onUpEdge,
         onDownEdge: onDownEdge,
+        onFocusChange: onFocusChange,
         child: SizedBox(width: hit, height: hit, child: Center(child: child)),
       );
     }
@@ -2233,6 +2239,9 @@ class SettingsFilledButton extends StatelessWidget {
     this.destructive = false,
     this.expand = false,
     this.focusNode,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.tvZone,
     this.onLeftEdge,
     this.onRightEdge,
     this.onUpEdge,
@@ -2250,6 +2259,9 @@ class SettingsFilledButton extends StatelessWidget {
   final bool destructive;
   final bool expand;
   final FocusNode? focusNode;
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final ShellTvZone? tvZone;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final VoidCallback? onUpEdge;
@@ -2288,17 +2300,28 @@ class SettingsFilledButton extends StatelessWidget {
           variant: _variant,
         ),
       );
+      // Disabled = paint only. An owned FocusNode here stole → from toolbar
+      // peers and left Install unreachable after pack rows (issue 447).
+      if (!enabled) {
+        if (expand) return child;
+        return Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: child,
+        );
+      }
       final tap = shellFocusableTap(
         context: context,
         focusNode: focusNode,
-        onTap: enabled ? onPressed : null,
+        onTap: onPressed,
         borderRadius: 8,
         scaleOnFocus: 1.0,
         showFocusRail: false,
         showFocusFill: true,
         showFocusBorder: true,
         tvTabId: 'settings',
-        tvZone: ShellTvZone.settings,
+        tvRowId: tvRowId,
+        tvItemIndex: tvItemIndex,
+        tvZone: tvZone ?? ShellTvZone.settings,
         ensureVisibleMode: ShellPaintEnsureVisible.item,
         onLeftEdge: onLeftEdge,
         onRightEdge: onRightEdge,

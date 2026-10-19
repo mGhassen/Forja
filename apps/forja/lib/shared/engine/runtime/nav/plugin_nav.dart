@@ -55,6 +55,9 @@ abstract final class PluginNavRegistry {
   /// Opaque pack page action per tab (`nav.page.action`).
   static Map<String, String> _tabPageActions = {};
   static Map<String, Map<String, dynamic>> _tabPageParams = {};
+  /// Installed hub tabs gated off by manifest `platforms` on this device.
+  /// Features KV may still list them (cross-device sync); rail paint skips them.
+  static Set<String> _platformGatedTabIds = {};
   static bool _seeded = false;
   static bool _testNavLocked = false;
   /// Set when [refresh] skips an empty-hub prefs wipe because packs are still
@@ -185,6 +188,7 @@ abstract final class PluginNavRegistry {
     _tabPageActions = {};
     _tabPageParams = {};
     _builders = {};
+    _platformGatedTabIds = {};
     _seeded = true;
   }
 
@@ -232,6 +236,7 @@ abstract final class PluginNavRegistry {
           },
     );
     _tabPackUrls = Map<String, String>.from(tabPackUrls ?? const {});
+    _platformGatedTabIds = {};
     _builders = {
       for (final tabId in _destinations.keys)
         tabId: () => PackLayoutPainterLoader(tabId: tabId),
@@ -401,6 +406,34 @@ abstract final class PluginNavRegistry {
     return _destinations.containsKey(tabId);
   }
 
+  /// Hub tab installed but gated by manifest `platforms` on this device.
+  ///
+  /// Paint-only: Features `visibleIds` stay so the same profile keeps the tab
+  /// on desktop/phone (RFC-120). Never use this to rewrite synced navbar KV.
+  static bool isPlatformGatedHub(String tabId) {
+    _ensureSeeded();
+    return _platformGatedTabIds.contains(tabId);
+  }
+
+  /// Refresh [_platformGatedTabIds] from the installed pack index.
+  static Future<Set<String>> resolvePlatformGatedHubTabIds() async {
+    if (_testNavLocked) {
+      return Set<String>.unmodifiable(_platformGatedTabIds);
+    }
+    final hubs = await listNavHubs(requireEnabled: false);
+    _platformGatedTabIds = {
+      for (final (pack, pl, nav) in hubs)
+        if (!pack.isPluginAvailable(pl))
+          hostNavId(sourceUrl: pack.sourceUrl, authorTabId: nav.tabId),
+    };
+    return Set<String>.unmodifiable(_platformGatedTabIds);
+  }
+
+  @visibleForTesting
+  static void setPlatformGatedHubTabIdsForTest(Set<String> ids) {
+    _platformGatedTabIds = Set<String>.from(ids);
+  }
+
   /// Tab ids for Settings → Features (pack hubs + Addons-unlocked host tabs).
   ///
   /// Pass [availableAddonFeatureIds] from [SettingsService.listAvailableAddonFeatureNavIds].
@@ -542,6 +575,13 @@ abstract final class PluginNavRegistry {
       for (final (pack, _, nav) in installed)
         hostNavId(sourceUrl: pack.sourceUrl, authorTabId: nav.tabId),
     };
+    // Device-gated hubs stay installed/known (and in Features KV) but never
+    // contribute rail destinations — MainScreen paints from this set.
+    _platformGatedTabIds = {
+      for (final (pack, pl, nav) in installed)
+        if (!pack.isPluginAvailable(pl))
+          hostNavId(sourceUrl: pack.sourceUrl, authorTabId: nav.tabId),
+    };
     final packKnownHubTabIds = <String>{
       ...installedHubTabIds,
       ...previousDestKeys,
@@ -561,6 +601,7 @@ abstract final class PluginNavRegistry {
       _tabPackUrls = {};
       _tabPageActions = {};
       _tabPageParams = {};
+      _platformGatedTabIds = {};
       _seeded = true;
       await _clearNavSnapshot();
       // No packs left — drop hub tabs from the rail (orphan wipe only).

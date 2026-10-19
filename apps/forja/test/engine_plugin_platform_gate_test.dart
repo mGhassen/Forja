@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:rust/rust.dart';
 
@@ -111,5 +112,16 @@ void main() {
     expect(PlatformInfo.packPlatformIdFor(PlatformProfile.desktop), 'desktop');
     expect(PlatformInfo.packPlatformIdFor(PlatformProfile.phone), 'phone');
     expect(PlatformInfo.packPlatformIdFor(PlatformProfile.androidTv), 'tv');
+  });
+
+  test('platform-gated hub ids are paint-only (KV may still list them)', () {
+    PluginNavRegistry.seedTestHubNav();
+    PluginNavRegistry.setPlatformGatedHubTabIdsForTest({'test_hub_gated'});
+    expect(PluginNavRegistry.isPlatformGatedHub('test_hub_gated'), isTrue);
+    expect(PluginNavRegistry.isPlatformGatedHub('test_hub_a'), isFalse);
+    expect(PluginNavRegistry.isContributed('test_hub_gated'), isFalse);
+    // Contributed hubs stay paint-eligible; gated set does not erase them.
+    expect(PluginNavRegistry.isContributed('test_hub_a'), isTrue);
+    PluginNavRegistry.setPlatformGatedHubTabIdsForTest(const {});
   });
 }

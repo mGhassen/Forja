@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **11 / 11** components · **2 / 7** acceptance |
-| **Current slice** | Host gate, manifest contract, admin / web / app catalog in code — migration not applied, device QA open |
+| **Current slice** | Host gate + rail paint filter in code — migration not applied, device QA open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,7 +22,7 @@
 | 1 | R120-C01 | Manifest `platforms` (pack root + plugin) parsed into `EnginePlugin` / `EnginePack`, kept across the stored round trip | ✅ |
 | 2 | R120-C02 | One host gate: `PlatformInfo.supportsPlugin` maps profile → `desktop` / `phone` / `tv` and checks the allow-list | ✅ |
 | 3 | R120-C03 | `EnginePack.isPluginActive` includes the device gate, so VM load, Sources walk, search, kit open, hop / debrid / torrent paths all skip gated plugins | ✅ |
-| 4 | R120-C04 | Nav registry: rail destinations and the cached nav snapshot apply the gate; the installed-hub set (`requireEnabled: false`) does not, so Features `visibleIds` are never stripped on the gated device | ✅ |
+| 4 | R120-C04 | Nav registry: rail destinations and the cached nav snapshot apply the gate; the installed-hub set (`requireEnabled: false`) does not strip Features `visibleIds` on the gated device; MainScreen paint skips platform-gated hub ids so the rail never shows a ghost tab | ✅ |
 | 5 | R120-C05 | Settings → Forja Packs: gated plugin rows show **Not available on this device** with the switch locked; pack title shows **not on this device** when every plugin is gated | ✅ |
 | 6 | R120-C06 | SDK: `manifest.schema.json` declares both fields; `DEVELOPING.md` has a Platform gating section | ✅ |
 | 7 | R120-C07 | Downloads hub manifest declares `platforms: [desktop, phone]` (legacy `nav.hostRequires` kept for older hosts) | ✅ |
@@ -65,7 +65,7 @@ Some plugins only make sense on some devices. Downloads needs local storage and 
 - `platforms`: array of `desktop` · `phone` · `tv`. Pack root sets the default; a plugin list overrides it. Empty means every platform.
 - `nav.hostRequires` is not read by this host. Older builds still read it to hide the tab, so the Downloads manifest keeps it for now.
 - Gated plugin: installed, listed, not active. `isPluginActive` is false. `isPluginAvailable` is the gate on its own. Stored `enabled` is untouched.
-- The installed-hub set used to decide “pack uninstalled → strip tab” ignores the gate. Only rail destinations and the nav cache apply it.
+- The installed-hub set used to decide “pack uninstalled → strip tab” ignores the gate. Rail destinations, the nav cache, and MainScreen rail paint apply it. Features `visibleIds` stay so desktop/phone keep the tab after sync.
 - Catalog: `plugin_packs.platforms` is the pack-level device set derived at admin validation (union of each plugin's effective list; any ungated plugin → empty = all). The app still gates per plugin from the installed manifest; the catalog column is display only.
 
 ### Non-goals

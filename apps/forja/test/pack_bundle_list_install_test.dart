@@ -124,6 +124,63 @@ void main() {
       );
     });
 
+    test('install retries flaky script GETs then succeeds', () async {
+      const url = 'https://cdn.example/flaky/manifest.json';
+      var flakyHits = 0;
+      registry.debugHttpClient = MockClient((req) async {
+        final u = req.url.toString();
+        if (u == url) {
+          return http.Response(
+            jsonEncode({
+              'schema': 1,
+              'id': 'flaky',
+              'name': 'Flaky',
+              'version': '1.0.0',
+              'bundle': ['ok.js', 'flaky.js'],
+              'plugins': [
+                {
+                  'id': 'ok',
+                  'name': 'Ok',
+                  'entry': 'ok.js',
+                  'kind': 'http',
+                },
+                {
+                  'id': 'flaky',
+                  'name': 'Flaky',
+                  'entry': 'flaky.js',
+                  'kind': 'http',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (u.endsWith('ok.js')) {
+          return http.Response('function extract(ctx) { return []; }', 200);
+        }
+        if (u.endsWith('flaky.js')) {
+          flakyHits++;
+          if (flakyHits < 2) {
+            throw const SocketException('Connection reset by peer');
+          }
+          return http.Response('function extract(ctx) { return []; }', 200);
+        }
+        return http.Response('not found', 404);
+      });
+
+      final pack = await registry.install(url);
+      expect(pack.plugins, hasLength(2));
+      expect(flakyHits, greaterThanOrEqualTo(2));
+      expect(
+        await PluginScriptDiskStore.hasEngineScript(
+          sourceUrl: url,
+          pluginId: 'flaky',
+        ),
+        isTrue,
+      );
+    });
+
     test('missing bundled file fails transactionally', () async {
       const url = 'https://cdn.example/miss/manifest.json';
       registry.debugHttpClient = MockClient((req) async {

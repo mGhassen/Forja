@@ -508,12 +508,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final addonFeatures = await SettingsService()
         .listAvailableAddonFeatureNavIds();
     if (!mounted || gen != _navbarLoadGen) return;
+    final platformGated =
+        await PluginNavRegistry.resolvePlatformGatedHubTabIds();
+    if (!mounted || gen != _navbarLoadGen) return;
     final addonSet = addonFeatures.toSet();
     final beforeFilter = List<String>.from(visible);
     // Trust Features `visibleIds`. Do not filter with [isContributed] — that
     // dropped Anime on the rail while KV still had it and Features showed ON
     // (load raced mid-refresh / empty dest map → silent no-op skip). Pack-off
     // cleanup is [PluginNavRegistry] sync only.
+    // Platform-gated hubs (manifest `platforms`) are the exception: leave KV
+    // alone for cross-device sync, but never paint the rail tab (RFC-120).
     visible = visible
         .where((id) => !archivedNavIds.contains(id))
         .where(
@@ -521,6 +526,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
               !SettingsService.addonGatedNavIds.contains(id) ||
               addonSet.contains(id),
         )
+        .where((id) => !platformGated.contains(id))
         .toList();
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
       visible = visible

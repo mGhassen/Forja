@@ -910,12 +910,23 @@ class _EnginePackActions extends StatefulWidget {
 class _EnginePackActionsState extends State<_EnginePackActions> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _switchFocused = false;
+  bool _confirmingRemove = false;
+  bool _yesHasFocus = false;
+  DateTime? _confirmEnteredAt;
   late final FocusNode _switchFocus =
       FocusNode(debugLabel: 'pack-action-switch');
   late final FocusNode _refreshFocus =
       FocusNode(debugLabel: 'pack-action-refresh');
   late final FocusNode _removeFocus =
       FocusNode(debugLabel: 'pack-action-remove');
+  late final FocusNode _yesFocus =
+      FocusNode(debugLabel: 'pack-action-remove-yes');
+  late final FocusNode _noFocus =
+      FocusNode(debugLabel: 'pack-action-remove-no');
+
+  /// ATV Select often synthesizes a click after KeyDown — swallow if it lands
+  /// on Yes in the same press that opened confirm.
+  static const _confirmArmDelay = Duration(milliseconds: 450);
 
   @override
   void dispose() {
@@ -923,11 +934,68 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
     _switchFocus.dispose();
     _refreshFocus.dispose();
     _removeFocus.dispose();
+    _yesFocus.dispose();
+    _noFocus.dispose();
     super.dispose();
   }
 
   void _focusBefore() {
     SettingsExpandHeaderFocus.maybeFocusBeforeActionsOf(context)?.call();
+  }
+
+  void _scheduleFocus(FocusNode node, {int attempts = 4}) {
+    void attempt(int n) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (node.canRequestFocus) {
+          node.requestFocus();
+          if (node.hasFocus) return;
+        }
+        if (n + 1 < attempts) attempt(n + 1);
+      });
+    }
+
+    attempt(0);
+  }
+
+  bool get _confirmArmed {
+    final at = _confirmEnteredAt;
+    if (at == null) return false;
+    return DateTime.now().difference(at) >= _confirmArmDelay;
+  }
+
+  void _enterConfirmRemove() {
+    _confirmEnteredAt = DateTime.now();
+    setState(() {
+      _confirmingRemove = true;
+      _yesHasFocus = false;
+    });
+    _scheduleFocus(_yesFocus);
+  }
+
+  void _cancelConfirmRemove() {
+    if (!_confirmArmed) return;
+    _confirmEnteredAt = null;
+    setState(() {
+      _confirmingRemove = false;
+      _yesHasFocus = false;
+    });
+    _scheduleFocus(_removeFocus);
+  }
+
+  Future<void> _confirmRemove() async {
+    if (!_confirmArmed) return;
+    _confirmEnteredAt = null;
+    // Park on the pack header so disposing this row does not drop D-pad onto
+    // the next pack's trash (same action column).
+    SettingsExpandHeaderFocus.maybeFocusHeaderOf(context)?.call();
+    if (mounted) {
+      setState(() {
+        _confirmingRemove = false;
+        _yesHasFocus = false;
+      });
+    }
+    await widget.onRemove();
   }
 
   @override
@@ -1038,16 +1106,60 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
             }
           },
           onRightEdge: () {
-            if (_removeFocus.canRequestFocus) _removeFocus.requestFocus();
+            if (_confirmingRemove) {
+              _scheduleFocus(_yesFocus);
+            } else {
+              _scheduleFocus(_removeFocus);
+            }
           },
         ),
-        _AddonRemoveActions(
-          onRemove: widget.onRemove,
-          focusNode: _removeFocus,
-          onLeftEdge: () {
-            if (_refreshFocus.canRequestFocus) _refreshFocus.requestFocus();
-          },
-        ),
+        if (_confirmingRemove)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _settingsTvIconButton(
+                context,
+                tooltip: 'Yes',
+                icon: Icons.check_rounded,
+                color: const Color(0xFFEF4444),
+                onPressed: () => unawaited(_confirmRemove()),
+                focusNode: _yesFocus,
+                autoFocus: true,
+                onFocusChange: (f) {
+                  if (!f || _yesHasFocus) return;
+                  setState(() => _yesHasFocus = true);
+                },
+                onLeftEdge: () => _scheduleFocus(_refreshFocus),
+                onRightEdge: () {
+                  if (_yesHasFocus) _scheduleFocus(_noFocus);
+                },
+              ),
+              // Trash sat where No is — block No until Yes owns focus or D-pad
+              // geometrically lands on No after activate.
+              ExcludeFocus(
+                excluding: !_yesHasFocus,
+                child: _settingsTvIconButton(
+                  context,
+                  tooltip: 'No',
+                  icon: Icons.close_rounded,
+                  color: ForjaShellColors.iconMuted,
+                  onPressed: _cancelConfirmRemove,
+                  focusNode: _noFocus,
+                  onLeftEdge: () => _scheduleFocus(_yesFocus),
+                ),
+              ),
+            ],
+          )
+        else
+          _settingsTvIconButton(
+            context,
+            tooltip: 'Remove pack',
+            icon: Icons.delete_outline,
+            color: const Color(0xFFF87171),
+            onPressed: _enterConfirmRemove,
+            focusNode: _removeFocus,
+            onLeftEdge: () => _scheduleFocus(_refreshFocus),
+          ),
       ],
     );
   }
@@ -1061,8 +1173,10 @@ Widget _settingsTvIconButton(
   bool busy = false,
   Color color = ForjaShellColors.textPrimary,
   FocusNode? focusNode,
+  bool autoFocus = false,
   VoidCallback? onLeftEdge,
   VoidCallback? onRightEdge,
+  ValueChanged<bool>? onFocusChange,
 }) {
   return SettingsIconButton(
     tooltip: tooltip,
@@ -1071,101 +1185,11 @@ Widget _settingsTvIconButton(
     busy: busy,
     color: color,
     focusNode: focusNode,
+    autoFocus: autoFocus,
     onLeftEdge: onLeftEdge,
     onRightEdge: onRightEdge,
+    onFocusChange: onFocusChange,
   );
-}
-
-class _AddonRemoveActions extends StatefulWidget {
-  const _AddonRemoveActions({
-    required this.onRemove,
-    this.focusNode,
-    this.onLeftEdge,
-  });
-
-  final Future<void> Function() onRemove;
-  final FocusNode? focusNode;
-  final VoidCallback? onLeftEdge;
-
-  @override
-  State<_AddonRemoveActions> createState() => _AddonRemoveActionsState();
-}
-
-class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
-  bool _confirming = false;
-  late final FocusNode _noFocus =
-      FocusNode(debugLabel: 'pack-action-remove-no');
-
-  @override
-  void dispose() {
-    _noFocus.dispose();
-    super.dispose();
-  }
-
-  void _focusYes() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final yes = widget.focusNode;
-      if (yes != null && yes.canRequestFocus) yes.requestFocus();
-    });
-  }
-
-  Future<void> _confirm() async {
-    setState(() => _confirming = false);
-    await widget.onRemove();
-  }
-
-  void _cancel() {
-    setState(() => _confirming = false);
-    _focusYes();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_confirming) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _settingsTvIconButton(
-            context,
-            tooltip: 'Yes',
-            icon: Icons.check_rounded,
-            color: const Color(0xFFEF4444),
-            onPressed: () => unawaited(_confirm()),
-            focusNode: widget.focusNode,
-            onLeftEdge: widget.onLeftEdge,
-            onRightEdge: () {
-              if (_noFocus.canRequestFocus) _noFocus.requestFocus();
-            },
-          ),
-          _settingsTvIconButton(
-            context,
-            tooltip: 'No',
-            icon: Icons.close_rounded,
-            color: ForjaShellColors.iconMuted,
-            onPressed: _cancel,
-            focusNode: _noFocus,
-            onLeftEdge: () {
-              final yes = widget.focusNode;
-              if (yes != null && yes.canRequestFocus) yes.requestFocus();
-            },
-          ),
-        ],
-      );
-    }
-    return _settingsTvIconButton(
-      context,
-      tooltip: 'Remove pack',
-      icon: Icons.delete_outline,
-      color: const Color(0xFFF87171),
-      onPressed: () {
-        setState(() => _confirming = true);
-        _focusYes();
-      },
-      focusNode: widget.focusNode,
-      onLeftEdge: widget.onLeftEdge,
-    );
-  }
 }
 
 /// Session-only install errors at the top of Settings → Forja Packs.

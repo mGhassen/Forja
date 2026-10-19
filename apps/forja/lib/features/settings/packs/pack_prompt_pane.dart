@@ -171,6 +171,8 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
   }
 
   void _focusToolbar() {
+    // Selection already made — ↑ should land on Install, not Select all.
+    if (_selectedCount > 0 && _tryFocusToolbarAction(_installFocus)) return;
     if (_tryFocusToolbarAction(_selectAllFocus)) return;
     if (_tryFocusToolbarAction(_clearFocus)) return;
     _tryFocusToolbarAction(_installFocus);
@@ -358,22 +360,24 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     // Header + list + selected count — only the pack rows scroll.
     // TV: vertical TvKitRow so ↑/↓ walk packs (ListView linear/spatial was
     // snapping every ↑ to Select all when neighbors were off-screen).
+    // Toolbar graph: Select all (0) · Clear (1) · Install (2). Disabled
+    // actions drop out of the tree; itemCount shrinks so → does not trap
+    // on a hole before Install.
+    final toolbarItemCount = installEnabled ? 3 : (clearEnabled ? 2 : 1);
     Widget toolbar = Row(
       children: [
         SettingsTextAction(
           label: 'Select all',
           focusNode: tv && selectAllEnabled ? _selectAllFocus : null,
-          tvRowId: tv ? _toolbarRowId : null,
-          tvItemIndex: 0,
-          tvZone: tv ? ShellTvZone.row : null,
+          tvRowId: tv && selectAllEnabled ? _toolbarRowId : null,
+          tvItemIndex: selectAllEnabled ? 0 : null,
+          tvZone: tv && selectAllEnabled ? ShellTvZone.row : null,
           onLeftEdge: tv ? _pageBackLeft : null,
           onRightEdge: tv
               ? () {
-                  if (clearEnabled) {
-                    _clearFocus.requestFocus();
-                  } else if (installEnabled) {
-                    _installFocus.requestFocus();
-                  }
+                  if (_tryFocusToolbarAction(_clearFocus)) return;
+                  if (_tryFocusToolbarAction(_installFocus)) return;
+                  ShellTvFocusCoordinator.markKitEdgeMiss();
                 }
               : null,
           onDownEdge: tv ? _focusFirstPack : null,
@@ -382,20 +386,20 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
         SettingsTextAction(
           label: 'Clear',
           focusNode: tv && clearEnabled ? _clearFocus : null,
-          tvRowId: tv ? _toolbarRowId : null,
-          tvItemIndex: 1,
-          tvZone: tv ? ShellTvZone.row : null,
+          tvRowId: tv && clearEnabled ? _toolbarRowId : null,
+          tvItemIndex: clearEnabled ? 1 : null,
+          tvZone: tv && clearEnabled ? ShellTvZone.row : null,
           onLeftEdge: tv
               ? () {
-                  if (selectAllEnabled) {
-                    _selectAllFocus.requestFocus();
-                  } else {
-                    _pageBackLeft();
-                  }
+                  if (_tryFocusToolbarAction(_selectAllFocus)) return;
+                  _pageBackLeft();
                 }
               : null,
-          onRightEdge: tv && installEnabled
-              ? () => _installFocus.requestFocus()
+          onRightEdge: tv
+              ? () {
+                  if (_tryFocusToolbarAction(_installFocus)) return;
+                  ShellTvFocusCoordinator.markKitEdgeMiss();
+                }
               : null,
           onDownEdge: tv ? _focusFirstPack : null,
           onPressed: clearEnabled ? _clearActionable : null,
@@ -406,15 +410,14 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
           icon: Icons.download_rounded,
           busy: _busy,
           focusNode: tv && installEnabled ? _installFocus : null,
+          tvRowId: tv && installEnabled ? _toolbarRowId : null,
+          tvItemIndex: installEnabled ? 2 : null,
+          tvZone: tv && installEnabled ? ShellTvZone.row : null,
           onLeftEdge: tv
               ? () {
-                  if (clearEnabled) {
-                    _clearFocus.requestFocus();
-                  } else if (selectAllEnabled) {
-                    _selectAllFocus.requestFocus();
-                  } else {
-                    _pageBackLeft();
-                  }
+                  if (_tryFocusToolbarAction(_clearFocus)) return;
+                  if (_tryFocusToolbarAction(_selectAllFocus)) return;
+                  _pageBackLeft();
                 }
               : null,
           onDownEdge: tv ? _focusFirstPack : null,
@@ -430,7 +433,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
         rowId: _toolbarRowId,
         // Clear of settings-categories (0). ↑ stays on this install page.
         sortOrder: 110,
-        itemCount: 2,
+        itemCount: toolbarItemCount,
         onFocusUp: () {},
         child: toolbar,
       );

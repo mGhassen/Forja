@@ -15,6 +15,7 @@ import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
+import 'package:forja/shared/utils/bounded_parallel.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -42,6 +43,11 @@ class PluginRegistry {
   static const _preludePrefixV2 = 'engine_js_prelude_v2_';
   static const _migratedKey = 'engine_js_packs_v2_migrated';
   static const _scriptsDiskMigratedKey = 'engine_js_scripts_disk_v3_migrated';
+
+  /// Large packs (providers ~138 files) used unbounded [Future.wait] and
+  /// dropped GETs on Android / flaky CDN — issue 445.
+  static const _packFetchConcurrency = 6;
+  static const _packFetchMaxAttempts = 3;
 
   /// Local checkout script bodies — invalidate catalog answers when JS edits.
   final Map<String, String> _localScriptDigests = {};
@@ -1116,7 +1122,8 @@ class PluginRegistry {
     } on FormatException catch (e) {
       throw Exception('invalid manifest: ${e.message}');
     }
-    final all = await listPacksRaw();
+    // listPacksRaw may return const [] / unmodifiable mem — we mutate below.
+    final all = List<EnginePack>.of(await listPacksRaw());
     EnginePack? previous;
     for (final p in all) {
       if (p.sourceUrl == manifestUrl) {
@@ -1269,15 +1276,28 @@ class PluginRegistry {
       for (final path in filesToFetch)
         if (!byPathBytes.containsKey(path)) path,
     ];
-    await Future.wait([
-      for (final path in toFetch)
-        () async {
-          final url = resolveScriptUrl(manifestUrl, path);
+    await mapBoundedParallel<String, void>(
+      items: toFetch,
+      concurrency: _packFetchConcurrency,
+      work: (path, _) async {
+        final url = resolveScriptUrl(manifestUrl, path);
+        Object? lastError;
+        for (var attempt = 1; attempt <= _packFetchMaxAttempts; attempt++) {
           try {
             final bytes = await _fetchBytes(url);
             if (bytes.isEmpty) {
+              lastError = Exception('empty body');
+              if (attempt < _packFetchMaxAttempts) {
+                await Future<void>.delayed(
+                  Duration(milliseconds: 150 * attempt),
+                );
+                continue;
+              }
               missing.add(path);
-              return;
+              debugPrint(
+                '[PluginInstall] empty $path after $attempt attempts',
+              );
+              return null;
             }
             byPathBytes[path] = bytes;
             // JS entry/prelude need UTF-8 text; binary (.wasm) stays bytes-only.
@@ -1291,11 +1311,31 @@ class PluginRegistry {
               }
             }
             tick(packLabel);
-          } catch (_) {
+            return null;
+          } on ManifestGoneException catch (e) {
             missing.add(path);
+            debugPrint('[PluginInstall] gone $path: $e');
+            return null;
+          } catch (e) {
+            lastError = e;
+            if (attempt < _packFetchMaxAttempts) {
+              debugPrint(
+                '[PluginInstall] retry $path '
+                '($attempt/$_packFetchMaxAttempts): $e',
+              );
+              await Future<void>.delayed(
+                Duration(milliseconds: 150 * attempt),
+              );
+              continue;
+            }
+            missing.add(path);
+            debugPrint('[PluginInstall] failed $path: $lastError');
+            return null;
           }
-        }(),
-    ]);
+        }
+        return null;
+      },
+    );
 
     for (final prelude in preludesNeeded) {
       final text = byPath[prelude];

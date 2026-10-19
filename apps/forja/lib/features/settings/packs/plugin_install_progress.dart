@@ -64,22 +64,50 @@ class SettingsEnginePackPendingTile extends StatefulWidget {
 class _SettingsEnginePackPendingTileState
     extends State<SettingsEnginePackPendingTile> {
   bool _confirmingRemove = false;
+  bool _yesHasFocus = false;
+  DateTime? _confirmEnteredAt;
   late final FocusNode _rowFocus =
       FocusNode(debugLabel: 'pending-pack-row');
   late final FocusNode _actionFocus =
       FocusNode(debugLabel: 'pending-pack-action');
   late final FocusNode _removeFocus =
       FocusNode(debugLabel: 'pending-pack-remove');
+  late final FocusNode _confirmYesFocus =
+      FocusNode(debugLabel: 'pending-pack-remove-yes');
   late final FocusNode _confirmNoFocus =
       FocusNode(debugLabel: 'pending-pack-remove-no');
+
+  static const _confirmArmDelay = Duration(milliseconds: 450);
+
+  bool get _confirmArmed {
+    final at = _confirmEnteredAt;
+    if (at == null) return false;
+    return DateTime.now().difference(at) >= _confirmArmDelay;
+  }
 
   @override
   void dispose() {
     _rowFocus.dispose();
     _actionFocus.dispose();
     _removeFocus.dispose();
+    _confirmYesFocus.dispose();
     _confirmNoFocus.dispose();
     super.dispose();
+  }
+
+  void _scheduleFocus(FocusNode node, {int attempts = 4}) {
+    void attempt(int n) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (node.canRequestFocus) {
+          node.requestFocus();
+          if (node.hasFocus) return;
+        }
+        if (n + 1 < attempts) attempt(n + 1);
+      });
+    }
+
+    attempt(0);
   }
 
   @override
@@ -173,48 +201,54 @@ class _SettingsEnginePackPendingTileState
           if (widget.onRemove != null) ...[
             if (_confirmingRemove) ...[
               _PendingActionIcon(
-                focusNode: _removeFocus,
+                focusNode: _confirmYesFocus,
+                autoFocus: true,
                 tooltip: 'Yes',
                 icon: Icons.check_rounded,
                 color: const Color(0xFFEF4444),
                 onPressed: () {
-                  setState(() => _confirmingRemove = false);
+                  if (!_confirmArmed) return;
+                  _confirmEnteredAt = null;
+                  _rowFocus.requestFocus();
+                  setState(() {
+                    _confirmingRemove = false;
+                    _yesHasFocus = false;
+                  });
                   unawaited(widget.onRemove!());
+                },
+                onFocusChange: (f) {
+                  if (!f || _yesHasFocus) return;
+                  setState(() => _yesHasFocus = true);
                 },
                 onLeftEdge: tv
                     ? () {
                         _rowFocus.requestFocus();
                       }
                     : null,
-                onRightEdge: tv
-                    ? () {
-                        if (_confirmNoFocus.canRequestFocus) {
-                          _confirmNoFocus.requestFocus();
-                        }
-                      }
+                onRightEdge: tv && _yesHasFocus
+                    ? () => _scheduleFocus(_confirmNoFocus)
                     : null,
               ),
-              _PendingActionIcon(
-                focusNode: _confirmNoFocus,
-                tooltip: 'No',
-                icon: Icons.close_rounded,
-                color: ForjaShellColors.iconMuted,
-                onPressed: () {
-                  setState(() => _confirmingRemove = false);
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) return;
-                    if (_removeFocus.canRequestFocus) {
-                      _removeFocus.requestFocus();
-                    }
-                  });
-                },
-                onLeftEdge: tv
-                    ? () {
-                        if (_removeFocus.canRequestFocus) {
-                          _removeFocus.requestFocus();
-                        }
-                      }
-                    : null,
+              ExcludeFocus(
+                excluding: !_yesHasFocus,
+                child: _PendingActionIcon(
+                  focusNode: _confirmNoFocus,
+                  tooltip: 'No',
+                  icon: Icons.close_rounded,
+                  color: ForjaShellColors.iconMuted,
+                  onPressed: () {
+                    if (!_confirmArmed) return;
+                    _confirmEnteredAt = null;
+                    setState(() {
+                      _confirmingRemove = false;
+                      _yesHasFocus = false;
+                    });
+                    _scheduleFocus(_removeFocus);
+                  },
+                  onLeftEdge: tv
+                      ? () => _scheduleFocus(_confirmYesFocus)
+                      : null,
+                ),
               ),
             ] else
               _PendingActionIcon(
@@ -223,13 +257,12 @@ class _SettingsEnginePackPendingTileState
                 icon: Icons.delete_outline,
                 color: const Color(0xFFF87171),
                 onPressed: () {
-                  setState(() => _confirmingRemove = true);
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) return;
-                    if (_removeFocus.canRequestFocus) {
-                      _removeFocus.requestFocus();
-                    }
+                  _confirmEnteredAt = DateTime.now();
+                  setState(() {
+                    _confirmingRemove = true;
+                    _yesHasFocus = false;
                   });
+                  _scheduleFocus(_confirmYesFocus);
                 },
                 onLeftEdge: tv
                     ? () {
@@ -337,8 +370,10 @@ class _PendingActionIcon extends StatelessWidget {
     required this.onPressed,
     required this.color,
     this.focusNode,
+    this.autoFocus = false,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onFocusChange,
   });
 
   final String tooltip;
@@ -346,8 +381,10 @@ class _PendingActionIcon extends StatelessWidget {
   final VoidCallback onPressed;
   final Color color;
   final FocusNode? focusNode;
+  final bool autoFocus;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final ValueChanged<bool>? onFocusChange;
 
   @override
   Widget build(BuildContext context) {
@@ -361,6 +398,7 @@ class _PendingActionIcon extends StatelessWidget {
       return shellFocusableTap(
         context: context,
         focusNode: focusNode,
+        autoFocus: autoFocus,
         onTap: onPressed,
         borderRadius: 8,
         scaleOnFocus: 1.0,
@@ -372,6 +410,7 @@ class _PendingActionIcon extends StatelessWidget {
         ensureVisibleMode: ShellPaintEnsureVisible.item,
         onLeftEdge: onLeftEdge,
         onRightEdge: onRightEdge,
+        onFocusChange: onFocusChange,
         child: SizedBox(
           width: SettingsTokens.iconButtonHitSizeOf(context),
           height: SettingsTokens.iconButtonHitSizeOf(context),
