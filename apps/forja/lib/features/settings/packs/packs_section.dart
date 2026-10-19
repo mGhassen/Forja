@@ -1093,10 +1093,31 @@ class _AddonRemoveActions extends StatefulWidget {
 
 class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
   bool _confirming = false;
+  late final FocusNode _noFocus =
+      FocusNode(debugLabel: 'pack-action-remove-no');
+
+  @override
+  void dispose() {
+    _noFocus.dispose();
+    super.dispose();
+  }
+
+  void _focusYes() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final yes = widget.focusNode;
+      if (yes != null && yes.canRequestFocus) yes.requestFocus();
+    });
+  }
 
   Future<void> _confirm() async {
     setState(() => _confirming = false);
     await widget.onRemove();
+  }
+
+  void _cancel() {
+    setState(() => _confirming = false);
+    _focusYes();
   }
 
   @override
@@ -1111,14 +1132,23 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
             icon: Icons.check_rounded,
             color: const Color(0xFFEF4444),
             onPressed: () => unawaited(_confirm()),
+            focusNode: widget.focusNode,
             onLeftEdge: widget.onLeftEdge,
+            onRightEdge: () {
+              if (_noFocus.canRequestFocus) _noFocus.requestFocus();
+            },
           ),
           _settingsTvIconButton(
             context,
             tooltip: 'No',
             icon: Icons.close_rounded,
             color: ForjaShellColors.iconMuted,
-            onPressed: () => setState(() => _confirming = false),
+            onPressed: _cancel,
+            focusNode: _noFocus,
+            onLeftEdge: () {
+              final yes = widget.focusNode;
+              if (yes != null && yes.canRequestFocus) yes.requestFocus();
+            },
           ),
         ],
       );
@@ -1128,7 +1158,10 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
       tooltip: 'Remove pack',
       icon: Icons.delete_outline,
       color: const Color(0xFFF87171),
-      onPressed: () => setState(() => _confirming = true),
+      onPressed: () {
+        setState(() => _confirming = true);
+        _focusYes();
+      },
       focusNode: widget.focusNode,
       onLeftEdge: widget.onLeftEdge,
     );

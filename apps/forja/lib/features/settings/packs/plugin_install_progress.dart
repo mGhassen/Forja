@@ -70,12 +70,15 @@ class _SettingsEnginePackPendingTileState
       FocusNode(debugLabel: 'pending-pack-action');
   late final FocusNode _removeFocus =
       FocusNode(debugLabel: 'pending-pack-remove');
+  late final FocusNode _confirmNoFocus =
+      FocusNode(debugLabel: 'pending-pack-remove-no');
 
   @override
   void dispose() {
     _rowFocus.dispose();
     _actionFocus.dispose();
     _removeFocus.dispose();
+    _confirmNoFocus.dispose();
     super.dispose();
   }
 
@@ -183,12 +186,35 @@ class _SettingsEnginePackPendingTileState
                         _rowFocus.requestFocus();
                       }
                     : null,
+                onRightEdge: tv
+                    ? () {
+                        if (_confirmNoFocus.canRequestFocus) {
+                          _confirmNoFocus.requestFocus();
+                        }
+                      }
+                    : null,
               ),
               _PendingActionIcon(
+                focusNode: _confirmNoFocus,
                 tooltip: 'No',
                 icon: Icons.close_rounded,
                 color: ForjaShellColors.iconMuted,
-                onPressed: () => setState(() => _confirmingRemove = false),
+                onPressed: () {
+                  setState(() => _confirmingRemove = false);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    if (_removeFocus.canRequestFocus) {
+                      _removeFocus.requestFocus();
+                    }
+                  });
+                },
+                onLeftEdge: tv
+                    ? () {
+                        if (_removeFocus.canRequestFocus) {
+                          _removeFocus.requestFocus();
+                        }
+                      }
+                    : null,
               ),
             ] else
               _PendingActionIcon(
@@ -196,7 +222,15 @@ class _SettingsEnginePackPendingTileState
                 tooltip: 'Remove pack',
                 icon: Icons.delete_outline,
                 color: const Color(0xFFF87171),
-                onPressed: () => setState(() => _confirmingRemove = true),
+                onPressed: () {
+                  setState(() => _confirmingRemove = true);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    if (_removeFocus.canRequestFocus) {
+                      _removeFocus.requestFocus();
+                    }
+                  });
+                },
                 onLeftEdge: tv
                     ? () {
                         if (widget.onAction != null &&
@@ -304,6 +338,7 @@ class _PendingActionIcon extends StatelessWidget {
     required this.color,
     this.focusNode,
     this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final String tooltip;
@@ -312,6 +347,7 @@ class _PendingActionIcon extends StatelessWidget {
   final Color color;
   final FocusNode? focusNode;
   final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -335,6 +371,7 @@ class _PendingActionIcon extends StatelessWidget {
         tvZone: ShellTvZone.settings,
         ensureVisibleMode: ShellPaintEnsureVisible.item,
         onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
         child: SizedBox(
           width: SettingsTokens.iconButtonHitSizeOf(context),
           height: SettingsTokens.iconButtonHitSizeOf(context),

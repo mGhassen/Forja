@@ -1096,8 +1096,19 @@ class _AddonRemoveActions extends StatefulWidget {
 
 class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
   bool _localConfirming = false;
+  late final FocusNode _yesFocus =
+      FocusNode(debugLabel: 'addon-remove-yes');
+  late final FocusNode _noFocus =
+      FocusNode(debugLabel: 'addon-remove-no');
 
   bool get _confirming => widget.confirming ?? _localConfirming;
+
+  @override
+  void dispose() {
+    _yesFocus.dispose();
+    _noFocus.dispose();
+    super.dispose();
+  }
 
   void _setConfirming(bool value) {
     if (widget.onConfirmingChanged != null) {
@@ -1105,6 +1116,13 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
     } else {
       setState(() => _localConfirming = value);
     }
+  }
+
+  void _focusYes() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_yesFocus.canRequestFocus) _yesFocus.requestFocus();
+    });
   }
 
   Future<void> _confirm() async {
@@ -1117,13 +1135,18 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    FocusNode? focusNode,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
   }) {
-    return _settingsTvIconButton(
-      context,
+    return SettingsIconButton(
       tooltip: tooltip,
       icon: icon,
       color: color,
       onPressed: onTap,
+      focusNode: focusNode,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
     );
   }
 
@@ -1138,12 +1161,23 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
             icon: Icons.check_rounded,
             color: const Color(0xFFEF4444),
             onTap: () => unawaited(_confirm()),
+            focusNode: _yesFocus,
+            onRightEdge: () {
+              if (_noFocus.canRequestFocus) _noFocus.requestFocus();
+            },
           ),
           _action(
             tooltip: 'No',
             icon: Icons.close_rounded,
             color: ForjaShellColors.iconMuted,
-            onTap: () => _setConfirming(false),
+            onTap: () {
+              _setConfirming(false);
+              _focusYes();
+            },
+            focusNode: _noFocus,
+            onLeftEdge: () {
+              if (_yesFocus.canRequestFocus) _yesFocus.requestFocus();
+            },
           ),
         ],
       );
@@ -1152,7 +1186,11 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
       tooltip: 'Remove addon',
       icon: Icons.delete_outline,
       color: const Color(0xFFF87171),
-      onTap: () => _setConfirming(true),
+      onTap: () {
+        _setConfirming(true);
+        _focusYes();
+      },
+      focusNode: _yesFocus,
     );
   }
 }
