@@ -258,6 +258,55 @@ fn resolve_url(relative: &str, base_path: &str, server_base: &str) -> String {
     collapse_double_authority(&resolved)
 }
 
+/// Playlist URL used to resolve relative HLS refs (`key.bin`, `seg.ts`).
+///
+/// EncDec `parse-flixcloud?url=<cdn m3u8>` returns bodies whose relative URIs
+/// belong to the nested CDN playlist. Joining against `enc-dec.app/api/` 404s
+/// the AES key and the player never decodes.
+pub fn hls_relative_base_url(playlist_url: &str) -> String {
+    let Ok(u) = url::Url::parse(playlist_url) else {
+        return playlist_url.to_string();
+    };
+    if !u.path().to_ascii_lowercase().contains("parse-flixcloud") {
+        return playlist_url.to_string();
+    }
+    for (k, v) in u.query_pairs() {
+        if k != "url" {
+            continue;
+        }
+        let nested = v.as_ref();
+        if nested.starts_with("http://") || nested.starts_with("https://") {
+            return nested.to_string();
+        }
+    }
+    playlist_url.to_string()
+}
+
+fn hls_join_bases(playlist_url: &str) -> (String, String) {
+    let base_url = hls_relative_base_url(playlist_url);
+    let for_path = base_url
+        .split_once('#')
+        .map(|(a, _)| a)
+        .unwrap_or(base_url.as_str());
+    let for_path = for_path
+        .split_once('?')
+        .map(|(a, _)| a)
+        .unwrap_or(for_path);
+    let slash = for_path.rfind('/').unwrap_or(0);
+    let base_path = for_path[..=slash].to_string();
+    let server_base = if let Some(scheme_end) = for_path.find("://") {
+        let rest = &for_path[scheme_end + 3..];
+        if let Some(path_start) = rest.find('/') {
+            for_path[..scheme_end + 3 + path_start].to_string()
+        } else {
+            for_path.to_string()
+        }
+    } else {
+        for_path.to_string()
+    };
+    (base_path, server_base)
+}
+
 /// Repair `https://hostA//hostB/path` (and `https://hostA//https://hostB/…`)
 /// from bad protocol-relative joins or CDN quirks.
 fn collapse_double_authority(url: &str) -> String {
@@ -305,18 +354,9 @@ pub fn build_hls_proxy_url(
 /// Rewrite playlist URIs to paths relative to [session_base] so `/ext/{id}/…`
 /// relative resolution keeps cookies on nested playlists and segments.
 pub fn rewrite_hls_playlist_relative(body: &str, decoded_url: &str, session_base: &str) -> String {
-    let slash = decoded_url.rfind('/').unwrap_or(0);
-    let base_path = &decoded_url[..=slash];
-    let server_base = if let Some(scheme_end) = decoded_url.find("://") {
-        let rest = &decoded_url[scheme_end + 3..];
-        if let Some(path_start) = rest.find('/') {
-            &decoded_url[..scheme_end + 3 + path_start]
-        } else {
-            decoded_url
-        }
-    } else {
-        decoded_url
-    };
+    let (base_path_s, server_base_s) = hls_join_bases(decoded_url);
+    let base_path = base_path_s.as_str();
+    let server_base = server_base_s.as_str();
 
     let to_rel = |full: &str| -> String {
         if let Some(rest) = full.strip_prefix(session_base) {
@@ -420,18 +460,9 @@ pub fn rewrite_hls_playlist(
 ) -> String {
     let filtered = drop_mixed_image_decoys(body);
     let body = filtered.as_str();
-    let slash = decoded_url.rfind('/').unwrap_or(0);
-    let base_path = &decoded_url[..=slash];
-    let server_base = if let Some(scheme_end) = decoded_url.find("://") {
-        let rest = &decoded_url[scheme_end + 3..];
-        if let Some(path_start) = rest.find('/') {
-            &decoded_url[..scheme_end + 3 + path_start]
-        } else {
-            decoded_url
-        }
-    } else {
-        decoded_url
-    };
+    let (base_path_s, server_base_s) = hls_join_bases(decoded_url);
+    let base_path = base_path_s.as_str();
+    let server_base = server_base_s.as_str();
 
     let mut forja_subs = Vec::new();
     let playlist = body
@@ -512,18 +543,9 @@ pub fn hls_tail_media_urls(body: &str, playlist_url: &str, n: usize) -> Vec<Stri
     if n == 0 {
         return Vec::new();
     }
-    let slash = playlist_url.rfind('/').unwrap_or(0);
-    let base_path = &playlist_url[..=slash];
-    let server_base = if let Some(scheme_end) = playlist_url.find("://") {
-        let rest = &playlist_url[scheme_end + 3..];
-        if let Some(path_start) = rest.find('/') {
-            &playlist_url[..scheme_end + 3 + path_start]
-        } else {
-            playlist_url
-        }
-    } else {
-        playlist_url
-    };
+    let (base_path_s, server_base_s) = hls_join_bases(playlist_url);
+    let base_path = base_path_s.as_str();
+    let server_base = server_base_s.as_str();
     let mut urls = Vec::new();
     for line in body.lines() {
         let trimmed = line.trim();
@@ -1367,6 +1389,36 @@ mod tests {
         );
         assert!(out.contains("http://127.0.0.1:9999/hls-proxy?url="));
         assert!(out.contains("720p%2Findex.m3u8") || out.contains("720p/index.m3u8"));
+    }
+
+    #[test]
+    fn parse_flixcloud_relative_key_uses_nested_cdn() {
+        const BODY: &str = "\
+#EXTM3U
+#EXT-X-KEY:METHOD=AES-128,URI=\"key.bin\",IV=0x01
+https://vault.example/seg-0.png
+";
+        let proxy = "https://enc-dec.app/api/parse-flixcloud?url=https%3A%2F%2Ffetch9.flixcloud.cc%2F_v7%2Fabc%2Fvideo.m3u8&w_payload=xx";
+        assert_eq!(
+            hls_relative_base_url(proxy),
+            "https://fetch9.flixcloud.cc/_v7/abc/video.m3u8"
+        );
+        let out = rewrite_hls_playlist(
+            BODY,
+            proxy,
+            "http://127.0.0.1:9/hls-proxy",
+            "{}",
+            None,
+        );
+        assert!(
+            out.contains("fetch9.flixcloud.cc") && out.contains("key.bin"),
+            "{out}"
+        );
+        assert!(
+            !out.contains("enc-dec.app%2Fapi%2Fkey.bin")
+                && !out.contains("enc-dec.app/api/key.bin"),
+            "{out}"
+        );
     }
 
     #[test]

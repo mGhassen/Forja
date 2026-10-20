@@ -1460,7 +1460,11 @@ bool urlLooksLikeHls(String url) {
 bool shouldProxyExtensionlessHls(String url) {
   final trimmed = url.trim();
   if (trimmed.isEmpty || isLocalLoopbackPlayUrl(trimmed)) return false;
-  if (trimmed.toLowerCase().contains('.m3u8')) return false;
+  final lower = trimmed.toLowerCase();
+  // EncDec parse-flixcloud: relative AES `key.bin` must resolve against nested
+  // CDN `url=`, not enc-dec.app/api/ — local rewrite absolutizes the key.
+  if (lower.contains('parse-flixcloud')) return true;
+  if (lower.contains('.m3u8')) return false;
   final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? '';
   if (path.endsWith('.txt')) return false;
   if (path.contains('/stream/')) return false;

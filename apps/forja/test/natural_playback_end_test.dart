@@ -486,6 +486,13 @@ void main() {
       );
     });
 
+    test('parse-flixcloud is force-proxied even with nested .m3u8', () {
+      const parse =
+          'https://enc-dec.app/api/parse-flixcloud?url=https%3A%2F%2Fcdn.example%2Fv%2Fmaster.m3u8&w_payload=x';
+      expect(urlLooksLikeHls(parse), isTrue);
+      expect(shouldProxyExtensionlessHls(parse), isTrue);
+    });
+
     test('opaque /proxy?u=<b64 m3u8> is HLS and force-proxied', () {
       const inner = 'https://cdn.example/pl/token/master.m3u8';
       final b64 = base64Url.encode(utf8.encode(inner)).replaceAll('=', '');
