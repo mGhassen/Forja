@@ -384,14 +384,19 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       });
 
       _s._startPositionApplied = true;
-      _s._preferredSubtitleApplied = false;
       final prepared = await _s._prepareOpenSubtitles(
         (widget.externalSubtitles ?? [])
             .where((s) => (s['url'] ?? '').toString().isNotEmpty)
             .toList(),
       );
       if (!mounted || _s._disposed || switchGen != _s._fallbackGen) return;
-      _s._sideloadedSubtitles = prepared;
+      final sideloads = sideloadsForSourceSwitch(
+        providerPrepared: prepared,
+        previous: _s._sideloadedSubtitles,
+        selectedUrl: _s._selectedExternalSubUrl,
+      );
+      _s._sideloadedSubtitles = sideloads;
+      _s._resetSubtitleStateForStreamSwitch();
       final maxH = await SettingsService().getMaxPlaybackHeight();
       final caps = exoVodCapsForMaxPlaybackHeight(maxH);
       await ExoPlayerBridge.open(
@@ -399,15 +404,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         url: normalizePlaybackStreamUrl(openUrl),
         headers: headers,
         startPosition: resumeAt.inSeconds > 0 ? resumeAt : Duration.zero,
-        subtitles: prepared
-            .map(
-              (s) => {
-                'url': s['url']!,
-                'lang': s['lang'] ?? 'und',
-                'label': s['label'] ?? s['lang'] ?? 'und',
-              },
-            )
-            .toList(),
+        subtitles: exoSideloadPayloads(sideloads),
         maxVideoHeight: caps.maxVideoHeight,
         maxVideoBitrate: caps.maxVideoBitrate,
       );
@@ -869,10 +866,15 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
           .toList(),
     );
     if (!mounted || _s._fallbackAborted(switchGen)) return;
-    _s._sideloadedSubtitles = prepared;
+    final sideloads = sideloadsForSourceSwitch(
+      providerPrepared: prepared,
+      previous: _s._sideloadedSubtitles,
+      selectedUrl: _s._selectedExternalSubUrl,
+    );
+    _s._sideloadedSubtitles = sideloads;
     // Keep _opening true through open so native error does not failover.
     _s._startPositionApplied = true;
-    _s._preferredSubtitleApplied = false;
+    _s._resetSubtitleStateForStreamSwitch();
     final maxH = await SettingsService().getMaxPlaybackHeight();
     final caps = exoVodCapsForMaxPlaybackHeight(maxH);
     await ExoPlayerBridge.open(
@@ -880,15 +882,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       url: normalizePlaybackStreamUrl(url),
       headers: headers,
       startPosition: resumeAt.inSeconds > 0 ? resumeAt : Duration.zero,
-      subtitles: prepared
-          .map(
-            (s) => {
-              'url': s['url']!,
-              'lang': s['lang'] ?? 'und',
-              'label': s['label'] ?? s['lang'] ?? 'und',
-            },
-          )
-          .toList(),
+      subtitles: exoSideloadPayloads(sideloads),
       maxVideoHeight: caps.maxVideoHeight,
       maxVideoBitrate: caps.maxVideoBitrate,
       drm: drm?.toJson(),

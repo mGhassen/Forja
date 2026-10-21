@@ -41,6 +41,7 @@ import 'package:forja/shared/playback/open/playback_start_trace.dart';
 import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_open_subtitle_budget.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/player/exo/exo_subtitle_session.dart';
 import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
 import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
@@ -246,6 +247,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   List<Map<String, String>>? _lateSubsQueue;
   int _lateSubsGen = -1;
   String? _selectedExternalSubUrl;
+
+  /// Bumped per online subtitle pick; a download that finishes after a newer
+  /// pick started is dropped.
+  int _subtitlePickGen = 0;
+
+  /// Whether the live pick generation is the user's own; an auto pick never
+  /// starts while a manual pick is in flight or applied.
+  bool _subtitlePickManual = false;
+  bool _subtitlePickInFlight = false;
   bool _isFetchingSubs = false;
   double _subtitleSize = 24;
   double _subtitleDelay = 0;
@@ -475,15 +485,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final caps = exoVodCapsForMaxPlaybackHeight(
       await SettingsService().getMaxPlaybackHeight(),
     );
-    final subs = _sideloadedSubtitles
-        .map(
-          (s) => {
-            'url': s['url']!,
-            'lang': s['lang'] ?? 'und',
-            'label': s['label'] ?? s['lang'] ?? 'und',
-          },
-        )
-        .toList();
+    final subs = exoSideloadPayloads(_sideloadedSubtitles);
     try {
       await ExoPlayerBridge.stop(_viewId);
       await ExoPlayerBridge.open(
@@ -580,6 +582,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _preferredSubtitleApplied = false;
     _exoReady = false;
     _selectedExternalSubUrl = null;
+    // A late batch belongs to one open — never attach it to the next one.
+    _lateSubsQueue = null;
+    _lateSubsGen = -1;
     _cueTexts.value = const [];
     _surfaceFallback.resetForNewOpen();
     setState(() {
@@ -613,25 +618,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     );
     _sideloadedSubtitles = prepared;
     if (mounted) {
-      // Keep Wyzie / online rows across failover reopen — only refresh provider.
-      final providerUrls = {
-        for (final s in rawSubs) (s['url'] ?? '').toString(),
-      }..remove('');
-      final preservedOnline = [
-        for (final s in _externalSubtitles)
-          if (!providerUrls.contains((s['url'] ?? '').toString())) s,
-      ];
-      setState(() => _externalSubtitles = [...rawSubs, ...preservedOnline]);
+      // This open's provider rows, then online results found earlier in the
+      // session. Rows from an earlier provider list never carry over.
+      setState(
+        () => _externalSubtitles = externalSubtitleRowsForOpen(
+          providerRows: rawSubs,
+          previousRows: _externalSubtitles,
+        ),
+      );
     }
-    final subs = prepared
-        .map(
-          (s) => {
-            'url': s['url']!,
-            'lang': s['lang'] ?? 'und',
-            'label': s['label'] ?? s['lang'] ?? 'und',
-          },
-        )
-        .toList();
+    final subs = exoSideloadPayloads(prepared);
     try {
       final pendingSeek = _pendingOpenSeek;
       _pendingOpenSeek = null;
@@ -763,6 +759,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         // races MergingMediaPeriod when sideloads are present (issue 132).
         unawaited(_maybeApplyPreferredSubtitle());
         if (_selectedExternalSubUrl != null) {
+          debugPrint(
+            '[ExoPlayer] subtitle: READY, re-select pick '
+            '$_selectedExternalSubUrl',
+          );
           unawaited(_selectSideloadedMatchingSelection());
         }
         break;
@@ -848,7 +848,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           unawaited(_maybeApplyPreferredSubtitle());
         }
         if (_exoReady && _selectedExternalSubUrl != null) {
-          unawaited(_selectSideloadedMatchingSelection());
+          unawaited(_selectSideloadedMatchingSelection(tracksFresh: true));
         }
         break;
       case 'renderedFirstFrame':
@@ -1067,15 +1067,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       final maxH = await SettingsService().getMaxPlaybackHeight();
       if (_fallbackAborted(remountGen)) return false;
       final caps = exoVodCapsForMaxPlaybackHeight(maxH);
-      final subs = _sideloadedSubtitles
-          .map(
-            (s) => {
-              'url': s['url']!,
-              'lang': s['lang'] ?? 'und',
-              'label': s['label'] ?? s['lang'] ?? 'und',
-            },
-          )
-          .toList();
+      final subs = exoSideloadPayloads(_sideloadedSubtitles);
       final playUrl = normalizePlaybackStreamUrl(source.url);
       final headers = resolvePlaybackHttpHeaders(
         source.headers,
@@ -1297,12 +1289,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         PlayerSubtitleDialog.isShowing) {
       return;
     }
-    final known = {for (final e in _sideloadedSubtitles) e['sourceUrl']};
-    final next = <Map<String, String>>[
-      ..._sideloadedSubtitles,
-      for (final s in queued)
-        if (!known.contains(s['sourceUrl'])) s,
-    ];
+    final next = mergeSideloads(_sideloadedSubtitles, queued);
     if (next.length == _sideloadedSubtitles.length) return;
     PlaybackStartTrace.instance.mark(
       'exo-late-subs-attached',
@@ -1315,23 +1302,22 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _exoReady = false;
     _preferredSubtitleApplied = false;
     try {
-      await ExoPlayerBridge.setSubtitles(
-        _viewId,
-        next
-            .map(
-              (e) => {
-                'url': e['url']!,
-                'lang': e['lang'] ?? 'und',
-                'label': e['label'] ?? e['lang'] ?? 'und',
-                if ((e['mime'] ?? '').isNotEmpty) 'mime': e['mime']!,
-              },
-            )
-            .toList(),
-      );
+      debugPrint('[ExoPlayer] subtitle: late attach n=${next.length}');
+      await ExoPlayerBridge.setSubtitles(_viewId, exoSideloadPayloads(next));
       if (mounted) setState(() {});
     } catch (e) {
       debugPrint('[ExoPlayer] late subtitle attach failed: $e');
     }
+  }
+
+  /// A manual Sources / catalog pick reopens the stream under this screen:
+  /// forget this open's auto-select lock and late batch, wait for READY again.
+  /// The user's online pick survives — the caller re-attaches its sideload.
+  void _resetSubtitleStateForStreamSwitch() {
+    _preferredSubtitleApplied = false;
+    _exoReady = false;
+    _lateSubsQueue = null;
+    _lateSubsGen = -1;
   }
 
   void _focusSeekFromTransport() {
@@ -1596,12 +1582,28 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       ),
     );
     if (!mounted || !anchorContext.mounted) return;
+    final rows = [..._externalSubtitles, ...hlsRows];
+    // A sideloaded row is its own Media3 text track. List it once (as the
+    // row), and show the row selected when Media3 renders that track.
+    final twinUrls = sideloadSourceUrls(_sideloadedSubtitles).intersection({
+      for (final r in rows) (r['url'] ?? '').toString(),
+    });
+    final menuTracks = ExoTracksSnapshot(
+      audio: tracks.audio,
+      text: exoEmbeddedTextTracks(tracks.text, twinUrls),
+      video: tracks.video,
+      videoAuto: tracks.videoAuto,
+      textOff: tracks.textOff,
+      rate: tracks.rate,
+      playback: tracks.playback,
+    );
     await ExoPlayerMenus.showSubtitles(
       context: context,
-      tracks: tracks,
+      tracks: menuTracks,
       anchorContext: anchorContext,
-      externalSubtitles: [..._externalSubtitles, ...hlsRows],
-      selectedExternalSubUrl: _selectedExternalSubUrl,
+      externalSubtitles: rows,
+      selectedExternalSubUrl:
+          _selectedExternalSubUrl ?? selectedSideloadSourceUrl(tracks, twinUrls),
       isFetchingSubs: _isFetchingSubs,
       onOff: _turnOffSubtitles,
       onSubtitleSettings: _showSubtitleSettings,
@@ -1775,6 +1777,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (_subtitlePinned) return;
     // Wait for STATE_READY before selectTrack / setSubtitles (issue 132).
     if (!_exoReady) return;
+    // A picked online / file subtitle owns the text track. The language
+    // preference never re-routes it to another track in the same language.
+    if (_selectedExternalSubUrl != null) {
+      _preferredSubtitleApplied = true;
+      await _selectSideloadedMatchingSelection();
+      return;
+    }
     if (_providerExternalSubUrls.isEmpty &&
         (widget.externalSubtitles ?? const []).isNotEmpty) {
       _providerExternalSubUrls = providerExternalSubtitleUrls(
