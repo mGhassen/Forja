@@ -84,6 +84,12 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
   @override
   Future<bool> didPopRoute() async {
     if (!Platform.isAndroid) return false;
+    // Second delivery of a hardware Back already handled on KeyDown
+    // (ShellTvBackHandler) — same physical press, not a new one.
+    if (ShellTvFocusCoordinator.consumePopRouteTwin()) {
+      debugPrint('[NavBack] didPopRoute twin of handled HW Back — ignored');
+      return true;
+    }
     debugPrint('[NavBack] didPopRoute → in-app back (block Activity finish)');
     if (mounted) _onBack();
     return true;

@@ -21,162 +21,162 @@ void main() {
     PlayerBackExitGate.resetForTest();
   });
 
-  test('consumeChromeOrArmExit hides without arming, then arms, then exits', () {
+  test('consumeChromeOrExit: media not started → one Back exits', () {
+    var hidden = 0;
+    // Chrome up or down makes no difference before the first frame.
+    expect(
+      PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: true,
+        mediaStarted: false,
+        hideChrome: () => hidden++,
+      ),
+      isFalse,
+    );
+    expect(
+      PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: false,
+        mediaStarted: false,
+        hideChrome: () => hidden++,
+      ),
+      isFalse,
+    );
+    expect(hidden, 0);
+  });
+
+  test('consumeChromeOrExit: started once, re-buffering → hide then exit', () {
+    // Surfaces pass a session-level flag: a zap / source switch re-buffer
+    // after the first frame is still "started".
+    var startedOnce = false;
+    var framesFlowing = false;
+    void frame() {
+      framesFlowing = true;
+      startedOnce = true;
+    }
+    frame();
+    framesFlowing = false; // zap: per-source flag reset, session flag kept
     var chrome = true;
-    var armed = false;
+    expect(
+      PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: chrome,
+        mediaStarted: startedOnce,
+        hideChrome: () => chrome = false,
+      ),
+      isTrue,
+    );
+    expect(framesFlowing, isFalse);
+    expect(
+      PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: chrome,
+        mediaStarted: startedOnce,
+        hideChrome: () {},
+      ),
+      isFalse,
+    );
+  });
+
+  test('consumeChromeOrExit: terminal failure after playback → one Back exits',
+      () {
+    const startedOnce = true;
+    const terminalFailure = true;
+    var hidden = 0;
+    expect(
+      PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: true,
+        mediaStarted: startedOnce && !terminalFailure,
+        hideChrome: () => hidden++,
+      ),
+      isFalse,
+    );
+    expect(hidden, 0);
+  });
+
+  test('consumeChromeOrExit: playing → hide chrome, then exit', () {
+    var chrome = true;
     var hidden = 0;
 
     expect(
-      PlayerBackExitGate.consumeChromeOrArmExit(
+      PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: chrome,
-        armed: armed,
+        mediaStarted: true,
         hideChrome: () {
           hidden++;
           chrome = false;
         },
-        setArmed: (v) => armed = v,
       ),
       isTrue,
     );
     expect(hidden, 1);
     expect(chrome, isFalse);
-    expect(armed, isFalse);
 
     expect(
-      PlayerBackExitGate.consumeChromeOrArmExit(
+      PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: chrome,
-        armed: armed,
+        mediaStarted: true,
         hideChrome: () => hidden++,
-        setArmed: (v) => armed = v,
-      ),
-      isTrue,
-    );
-    expect(hidden, 1);
-    expect(armed, isTrue);
-
-    expect(
-      PlayerBackExitGate.consumeChromeOrArmExit(
-        chromeVisible: chrome,
-        armed: armed,
-        hideChrome: () => hidden++,
-        setArmed: (v) => armed = v,
       ),
       isFalse,
     );
     expect(hidden, 1);
-    expect(armed, isFalse);
   });
 
-  test('consumeChromeOrArmExit arms when chrome already hidden', () {
-    var armed = false;
-
-    expect(
-      PlayerBackExitGate.consumeChromeOrArmExit(
-        chromeVisible: false,
-        armed: armed,
-        hideChrome: () {},
-        setArmed: (v) => armed = v,
-      ),
-      isTrue,
-    );
-    expect(armed, isTrue);
-
-    expect(
-      PlayerBackExitGate.consumeChromeOrArmExit(
-        chromeVisible: false,
-        armed: armed,
-        hideChrome: () {},
-        setArmed: (v) => armed = v,
-      ),
-      isFalse,
-    );
-    expect(armed, isFalse);
-  });
-
-  testWidgets('TV Back: hide → arm → exit; twins do not skip steps', (
+  testWidgets('TV Back while loading: single press exits the player', (
     tester,
   ) async {
     var chrome = true;
-    var armed = false;
     PlayerBackExitGate.setTryFocusBack(() {
-      return PlayerBackExitGate.consumeChromeOrArmExit(
+      return PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: chrome,
-        armed: armed,
+        mediaStarted: false,
         hideChrome: () => chrome = false,
-        setArmed: (v) => armed = v,
       );
     });
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(size: Size(1920, 1080)),
-          child: ShellScope(
-            profile: ShellProfile.tv,
-            config: shellPlatformConfigFor(ShellProfile.tv),
-            child: const Stack(
-              children: [
-                SizedBox.expand(),
-                ShellOverlayNavigator(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    Navigator.of(
-      shellOverlayNavigatorKey.currentContext!,
-      rootNavigator: true,
-    ).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const _FakePlayerRoute(),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await _pumpShell(tester);
+    await _pushFakePlayer(tester);
     expect(find.text('player-body'), findsOneWidget);
 
-    // 1) Hide chrome (not armed).
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('player-body'), findsNothing);
+    // Chrome was not touched — the press left, it did not hide.
+    expect(chrome, isTrue);
+  });
+
+  testWidgets('TV Back while playing: hide → exit; twins do not skip steps', (
+    tester,
+  ) async {
+    var chrome = true;
+    PlayerBackExitGate.setTryFocusBack(() {
+      return PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: chrome,
+        mediaStarted: true,
+        hideChrome: () => chrome = false,
+      );
+    });
+
+    await _pumpShell(tester);
+    await _pushFakePlayer(tester);
+    expect(find.text('player-body'), findsOneWidget);
+
+    // 1) Hide chrome.
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
     expect(chrome, isFalse);
-    expect(armed, isFalse);
 
-    // Twin under load must not arm/exit on the same physical press.
+    // Twin under load must not exit on the same physical press.
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 150)),
     );
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
-    expect(chrome, isFalse);
-    expect(armed, isFalse);
 
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 450)),
     );
 
-    // 2) Arm while chrome already hidden.
-    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
-    await tester.pumpAndSettle();
-    expect(find.text('player-body'), findsOneWidget);
-    expect(armed, isTrue);
-
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 150)),
-    );
-    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
-    await tester.pumpAndSettle();
-    expect(find.text('player-body'), findsOneWidget);
-    expect(armed, isTrue);
-
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 450)),
-    );
-
-    // 3) Confirm exit.
+    // 2) Chrome hidden → leave. No arm step in between.
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsNothing);
@@ -205,25 +205,58 @@ void main() {
     expect(PlayerBackExitGate.tryFocusBackStay(), isFalse);
   });
 
-  test('markStay swallows armed exit on the overlay-dismiss twin', () async {
+  test('markStay swallows the exit on the overlay-dismiss twin', () async {
     ShellBus.enterPlayerSurface();
     addTearDown(ShellBus.leavePlayerSurface);
 
-    var chrome = false;
-    var armed = true;
+    var exitAsked = 0;
     PlayerBackExitGate.setTryFocusBack(() {
-      return PlayerBackExitGate.consumeChromeOrArmExit(
-        chromeVisible: chrome,
-        armed: armed,
-        hideChrome: () => chrome = false,
-        setArmed: (v) => armed = v,
+      exitAsked++;
+      // Chrome already hidden while playing → would exit.
+      return PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: false,
+        mediaStarted: true,
+        hideChrome: () {},
       );
     });
 
     PlayerBackExitGate.markStay();
     expect(PlayerBackExitGate.tryFocusBackStay(), isTrue);
-    expect(armed, isTrue);
+    expect(exitAsked, 0);
   });
+}
+
+Future<void> _pumpShell(WidgetTester tester) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(size: Size(1920, 1080)),
+        child: ShellScope(
+          profile: ShellProfile.tv,
+          config: shellPlatformConfigFor(ShellProfile.tv),
+          child: const Stack(
+            children: [
+              SizedBox.expand(),
+              ShellOverlayNavigator(),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _pushFakePlayer(WidgetTester tester) async {
+  Navigator.of(
+    shellOverlayNavigatorKey.currentContext!,
+    rootNavigator: true,
+  ).push(
+    MaterialPageRoute<void>(
+      builder: (_) => const _FakePlayerRoute(),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 class _FakePlayerRoute extends StatefulWidget {

@@ -9,7 +9,6 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       _s._controlsVisible = true;
     });
     _s._hideControlsTimer?.cancel();
-    _s._tvBackExitArmed = false;
     _focusPlayerChrome();
   }
 
@@ -31,7 +30,6 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       } else {
         if (liveUseTvFocus(context)) {
           _s._hideControlsTimer?.cancel();
-          _s._tvBackExitArmed = false;
           _focusPlayerChrome();
         } else {
           _scheduleHideControls();
@@ -181,8 +179,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     } else if (_s._player == null) {
       return;
     }
-    // Opening a menu cancels an armed player-exit Back.
-    _s._tvBackExitArmed = false;
+    // Opening a menu cancels a pending player-exit Back.
     PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
     final nativeLabel = _s._avPlayerBackend
@@ -226,7 +223,6 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   }
 
   Future<void> _showAudioMenu(BuildContext anchorContext) async {
-    _s._tvBackExitArmed = false;
     PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
     if (_s._exoBackend) {
@@ -258,7 +254,6 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   }
 
   Future<void> _showSubtitleMenu(BuildContext anchorContext) async {
-    _s._tvBackExitArmed = false;
     PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
     final hint = _s._subQueryTitle.trim().isEmpty
@@ -1068,7 +1063,6 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
 
   void _claimPlayFocus() {
     if (!liveUseTvFocus(context) || !_s._controlsVisible) return;
-    _s._tvBackExitArmed = false;
     // Underlay WebView / Exo SurfaceView can re-take leanback focus after
     // hybrid composition remounts — re-block before claiming Play.
     if (PlatformInfo.isAndroidTv) {
@@ -1391,11 +1385,8 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                     ),
                   // Reconnect/switch always; Buffering… only when picture stalled.
                   if (!hideFullChrome && _s._showPlaybackBanner) _buildBanner(),
-                  if (!hideFullChrome &&
-                      (_s._escapeExitArmed || _s._tvBackExitArmed))
-                    _s._tvBackExitArmed
-                        ? const PlayerEscapeExitHint.tv()
-                        : const PlayerEscapeExitHint(),
+                  if (!hideFullChrome && _s._escapeExitArmed)
+                    const PlayerEscapeExitHint(),
                   // Top bar + bottom controls (below guide when open).
                   // Hidden entirely while PiP / mini is active.
                   if (!hideFullChrome)
@@ -1887,7 +1878,6 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                 focusNode: _s._backFocus,
                 onRightEdge: rightFromBack(),
                 onDownEdge: () {
-                  _s._tvBackExitArmed = false;
                   downFromTop();
                 },
               ),
@@ -2945,7 +2935,6 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     final eps = _s.widget.seriesEpisodes;
     final portal = _s.widget.seriesPortal;
     if (eps == null || eps.isEmpty || portal == null) return;
-    _s._tvBackExitArmed = false;
     PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
     final hub = [

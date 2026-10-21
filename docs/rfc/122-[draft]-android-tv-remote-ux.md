@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 12** components · **0 / 11** acceptance (leanback slice) |
-| **Current slice** | Spec only — branch `feat/tv-remote-ux`, no code landed |
+| **Progress** | **2 / 12** components · **0 / 11** acceptance (leanback slice) |
+| **Current slice** | T01–T02 (one-level Back on details and player) landed on branch `feat/tv-remote-ux` with unit tests; device check pending — T03–T12 not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -20,8 +20,8 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R122-C01 | T01 — Details Back pops in one press (drop the Back-chevron focus step); keep last-card restore on the catalog | ⬜ |
-| 2 | R122-C02 | T02 — Player Back while resolving / loading exits in one press; while playing: hide chrome, then leave (no third arm / toast step) | ⬜ |
+| 1 | R122-C01 | T01 — Details Back pops in one press (drop the Back-chevron focus step); keep last-card restore on the catalog | ✅ |
+| 2 | R122-C02 | T02 — Player Back while resolving / loading exits in one press; while playing: hide chrome, then leave (no third arm / toast step) | ✅ |
 | 3 | R122-C03 | T03 — Horizontal rows: focused card held at a fixed column with animated scroll (150–200 ms); next card always visible; column / duration tokens in foundation | ⬜ |
 | 4 | R122-C04 | T04 — Horizontal hold acceleration: reuse the `ShellTvHoldAccel` curve for ←/→ in rows and grids | ⬜ |
 | 5 | R122-C05 | T05 — Column memory when moving ↑/↓ between rows and chip strips (nearest-x target, not first item) | ⬜ |

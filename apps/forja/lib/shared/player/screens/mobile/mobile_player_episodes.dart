@@ -260,7 +260,6 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   void _focusRightFromSeekbar() => _focusFirstRightTransport();
 
   void _focusDownFromTopBar() {
-    _s._tvBackExitArmed = false;
     if (_s._seekbarFocus.canRequestFocus) {
       _s._seekbarFocus.requestFocus();
       return;

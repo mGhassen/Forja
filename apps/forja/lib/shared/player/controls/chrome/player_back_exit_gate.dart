@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
-/// TV remote Back / Exit while a player surface is active (desktop Escape parity):
+/// TV remote Back / Exit while a player surface is active:
 /// 1. Menus/panels dismiss first ([dismissAnyPlayerChromeOverlay]).
 /// 2. In-player overlays (search ladder, …) via [tryConsumePlayerOverlay].
-/// 3. Chrome visible → hide chrome only (stay, not armed). Chrome already
-///    hidden → first press arms (+ toast); second press exits.
+/// 3. No media started yet (resolving, first buffer, sources exhausted) →
+///    leave at once. Media started: chrome visible → hide chrome only;
+///    chrome hidden → leave. One shell level per press, no arm step.
 /// The Back icon (OK / tap) still exits immediately.
 abstract final class PlayerBackExitGate {
   static bool Function()? _tryFocusBack;
@@ -45,8 +46,8 @@ abstract final class PlayerBackExitGate {
     });
   }
 
-  /// Hide chrome or arm the confirming Back. Return `true` to stay.
-  /// Return `false` so the confirming Back may exit.
+  /// Player ladder step for one TV Back. Return `true` to stay (chrome was
+  /// hidden); return `false` so this Back exits the player.
   static void setTryFocusBack(bool Function()? callback) {
     _ensureSurfaceListener();
     _tryFocusBack = callback;
@@ -163,27 +164,26 @@ abstract final class PlayerBackExitGate {
     return DateTime.now().difference(t) < _escapeHandledPulse;
   }
 
-  /// Chrome up → hide only (not armed). Chrome down + not armed → arm.
-  /// Chrome down + armed → allow exit. Matches desktop Escape ladder.
+  /// One TV Back on a player surface.
+  ///
+  /// [mediaStarted] is session-level: true once this player session has shown
+  /// a frame, kept across source switches / re-buffers, and false again on a
+  /// terminal failure screen (sources exhausted, "Failed to stream"). Surfaces
+  /// pass `startedOnce && !terminalFailure`. False → leave now. Chrome up →
+  /// hide only. Chrome down → leave.
   ///
   /// Return `true` to keep the player open.
-  static bool consumeChromeOrArmExit({
+  static bool consumeChromeOrExit({
     required bool chromeVisible,
-    required bool armed,
+    required bool mediaStarted,
     required VoidCallback hideChrome,
-    required void Function(bool armed) setArmed,
   }) {
+    if (!mediaStarted) return false;
     if (chromeVisible) {
       hideChrome();
-      setArmed(false);
       return true;
     }
-    if (armed) {
-      setArmed(false);
-      return false;
-    }
-    setArmed(true);
-    return true;
+    return false;
   }
 
   /// Test-only.

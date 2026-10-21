@@ -3,16 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
-/// Top-right toast while player exit is armed (second Esc / Back / Exit leaves).
+/// Top-right toast while the desktop Escape exit is armed (second Esc leaves).
+/// TV remote Back has no arm step — see `PlayerBackExitGate`.
 class PlayerEscapeExitHint extends StatelessWidget {
   const PlayerEscapeExitHint({
     super.key,
     this.message = 'Press Esc again to exit',
   });
-
-  /// Android TV — Back and Exit share the player leave ladder.
-  const PlayerEscapeExitHint.tv({super.key})
-      : message = 'Press again to exit';
 
   final String message;
 

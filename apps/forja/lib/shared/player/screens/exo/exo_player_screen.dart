@@ -17,7 +17,6 @@ import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
@@ -294,8 +293,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   final FocusNode _streamActionFocus =
       FocusNode(debugLabel: 'exo-player-stream-action');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'exo-player-tv-keys');
-  /// TV Back / Exit: hide chrome → arm (+ hint) → leave (desktop Escape parity).
-  bool _tvBackExitArmed = false;
   bool _hasPrevEpisodeAdjacent = false;
   bool _hasNextEpisodeAdjacent = false;
   bool _providerPinned = false;
@@ -310,17 +307,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     WakelockPlus.enable();
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted || _disposed) return false;
-      return PlayerBackExitGate.consumeChromeOrArmExit(
+      // Still resolving / first buffer, or on the failed-stream screen: one
+      // Back leaves (in-flight opens are cancelled via dispose).
+      return PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: _showControls,
-        armed: _tvBackExitArmed,
+        mediaStarted: _playbackStartedNotified && !_hasError,
         hideChrome: () {
           _hideTimer?.cancel();
           setState(() => _showControls = false);
-        },
-        setArmed: (v) {
-          if (!mounted || _disposed) return;
-          if (_tvBackExitArmed == v) return;
-          setState(() => _tvBackExitArmed = v);
         },
       );
     });
@@ -1081,7 +1075,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _claimPlayFocus() {
     if (!_isTv) return;
-    _tvBackExitArmed = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_playFocus.canRequestFocus) return;
       // Menu/panel owns the remote - don't yank focus back to Play.
@@ -1101,7 +1094,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _focusDownFromTopBar() {
     if (!_isTv) return;
-    _tvBackExitArmed = false;
     if (_seekFocus.canRequestFocus) {
       _seekFocus.requestFocus();
       return;
@@ -2760,7 +2752,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   ),
                 ),
               ),
-              if (_tvBackExitArmed) const PlayerEscapeExitHint.tv(),
               // Outside the chrome: shows alone while chrome is hidden.
               if (_showNextEpChip)
                 Positioned(

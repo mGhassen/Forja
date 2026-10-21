@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja_foundation/widgets/details/details_scroll_page.dart';
 
-/// Host scroll page — wires TV hero/back focus into foundation paint.
+/// Host scroll page — wires TV hero focus into foundation paint.
 class MediaDetailsScrollPage extends StatelessWidget {
   const MediaDetailsScrollPage({
     super.key,
@@ -14,7 +14,6 @@ class MediaDetailsScrollPage extends StatelessWidget {
     this.bodyOverlap,
     this.topSpacing,
     this.tvHeroPlayFocus,
-    this.tvBackFocus,
   });
 
   final Widget hero;
@@ -25,7 +24,6 @@ class MediaDetailsScrollPage extends StatelessWidget {
   final double? bodyOverlap;
   final double? topSpacing;
   final FocusNode? tvHeroPlayFocus;
-  final FocusNode? tvBackFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +41,6 @@ class MediaDetailsScrollPage extends StatelessWidget {
       page = MediaDetailsTvScope(
         heroPlayFocus: tvHeroPlayFocus!,
         scrollController: scrollController!,
-        backFocus: tvBackFocus,
         child: page,
       );
     }

@@ -24,17 +24,14 @@ mixin _MobilePlayerLifecycle
     super.initState();
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted || _s._disposed) return false;
-      return PlayerBackExitGate.consumeChromeOrArmExit(
+      // Nothing confirmed this session (resolving / first buffer) or on the
+      // failed-stream screen: one Back leaves; dispose cancels the open.
+      return PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: _s._showControls,
-        armed: _s._tvBackExitArmed,
+        mediaStarted: _s._sessionFirstConfirmedAt != null && !_s._hasError,
         hideChrome: () {
           _s._hideTimer?.cancel();
           setState(() => _s._showControls = false);
-        },
-        setArmed: (v) {
-          if (!mounted || _s._disposed) return;
-          if (_s._tvBackExitArmed == v) return;
-          setState(() => _s._tvBackExitArmed = v);
         },
       );
     });

@@ -2,6 +2,7 @@ import 'package:forja/shared/engine/details/poster_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
@@ -48,6 +49,13 @@ void main() {
     ShellTvFocusCoordinator.setNavOrder(['home', 'search', 'settings']);
     ShellTvFocus.currentNavTabId = 'home';
     ShellTvFocusCoordinator.resetBackDebounceForTest();
+    // Same frame hooks bootstrap binds — Back on details needs the overlay pop.
+    ShellTvFocusCoordinator.bindFrame(
+      playerSurfaceActive: ShellBus.playerSurfaceActive,
+      activeShellTabId: () => ShellBus.activeShellTabId,
+      overlayCanPop: shellOverlayCanPop,
+      overlayMaybePop: maybePopShellOverlay,
+    );
   });
 
   testWidgets('focusActiveNavTab requests current tab node', (tester) async {
@@ -1238,6 +1246,70 @@ void main() {
     expect(find.text('Details'), findsNothing);
   });
 
+  testWidgets(
+    'first Back on details pops the overlay — chevron is not an arm step',
+    (tester) async {
+      ShellTvFocusCoordinator.resetBackDebounceForTest();
+      ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
+      ShellTvFocus.currentNavTabId = 'home';
+      final play = FocusNode(debugLabel: 'details-play');
+      final back = FocusNode(debugLabel: 'details-back');
+      final scroll = ScrollController();
+      addTearDown(() {
+        play.dispose();
+        back.dispose();
+        scroll.dispose();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: const Stack(
+                children: [SizedBox.expand(), ShellOverlayNavigator()],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      shellOverlayNavigatorKey.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => MediaDetailsTvScope(
+            heroPlayFocus: play,
+            scrollController: scroll,
+            child: Scaffold(
+              body: Column(
+                children: [
+                  Focus(
+                    focusNode: back,
+                    child: const SizedBox(width: 40, height: 40),
+                  ),
+                  Focus(focusNode: play, child: const Text('Details Play')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      play.requestFocus();
+      await tester.pump();
+      expect(find.text('Details Play'), findsOneWidget);
+      expect(play.hasFocus, isTrue);
+
+      // One press: details gone. Focus must not stop on the Back chevron.
+      expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text('Details Play'), findsNothing);
+      expect(back.hasFocus, isFalse);
+    },
+  );
+
   testWidgets('tv back policy absorbs duplicate back within debounce window', (
     tester,
   ) async {
@@ -1277,6 +1349,128 @@ void main() {
 
     homeNav.dispose();
     page.dispose();
+  });
+
+  testWidgets(
+    'late didPopRoute of a held HW Back is swallowed (press-keyed, not timed)',
+    (tester) async {
+      ShellTvFocusCoordinator.resetBackDebounceForTest();
+      ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
+      final homeNav = FocusNode(debugLabel: 'nav-home');
+      final page = FocusNode(debugLabel: 'page-item');
+      ShellTvFocus.registerNav('home', homeNav);
+      ShellTvFocus.currentNavTabId = 'home';
+      addTearDown(() {
+        homeNav.dispose();
+        page.dispose();
+      });
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: homeNav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: page,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      page.requestFocus();
+      await tester.pump();
+
+      // KeyDown handled by ShellTvBackHandler: page → nav rail.
+      ShellTvFocusCoordinator.noteHardwareBackDown();
+      expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+      await tester.pump();
+      expect(homeNav.hasFocus, isTrue);
+      expect(ShellTvAppExit.isArmed, isFalse);
+
+      // Key held 1.5 s (emulator lag), then released.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 1500)),
+      );
+      ShellTvFocusCoordinator.noteHardwareBackUp();
+
+      // didPopRoute for the SAME press lands 350 ms after KeyUp — far outside
+      // the 80 ms twin / 400 ms debounce windows. Must be paired and ignored.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 350)),
+      );
+      expect(ShellTvFocusCoordinator.consumePopRouteTwin(), isTrue);
+      // Nothing else ran: a real second Back on the rail would have armed exit.
+      expect(ShellTvAppExit.isArmed, isFalse);
+      expect(homeNav.hasFocus, isTrue);
+
+      // No pending press left — a bare pop later is a real one.
+      expect(ShellTvFocusCoordinator.consumePopRouteTwin(), isFalse);
+    },
+  );
+
+  testWidgets('two distinct HW Back presses 2 s apart both act', (
+    tester,
+  ) async {
+    ShellTvFocusCoordinator.resetBackDebounceForTest();
+    ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
+    ShellTvAppExit.debugExitOverride = () async {};
+    addTearDown(() => ShellTvAppExit.debugExitOverride = null);
+    final homeNav = FocusNode(debugLabel: 'nav-home');
+    final page = FocusNode(debugLabel: 'page-item');
+    ShellTvFocus.registerNav('home', homeNav);
+    ShellTvFocus.currentNavTabId = 'home';
+    addTearDown(() {
+      homeNav.dispose();
+      page.dispose();
+    });
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(
+              focusNode: homeNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: page,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    page.requestFocus();
+    await tester.pump();
+
+    // Press 1: down (handled) → up → its pop swallowed.
+    ShellTvFocusCoordinator.noteHardwareBackDown();
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pump();
+    expect(homeNav.hasFocus, isTrue);
+    ShellTvFocusCoordinator.noteHardwareBackUp();
+    expect(ShellTvFocusCoordinator.consumePopRouteTwin(), isTrue);
+    expect(ShellTvAppExit.isArmed, isFalse);
+
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(seconds: 2)),
+    );
+
+    // Press 2: a new physical press acts (rail → arm exit); its pop swallowed.
+    ShellTvFocusCoordinator.noteHardwareBackDown();
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pump();
+    expect(ShellTvAppExit.isArmed, isTrue);
+    ShellTvFocusCoordinator.noteHardwareBackUp();
+    expect(ShellTvFocusCoordinator.consumePopRouteTwin(), isTrue);
+    // Still only armed — the twin did not confirm the quit.
+    expect(ShellTvAppExit.isArmed, isTrue);
   });
 
   testWidgets('tv back policy never returns false on page content', (

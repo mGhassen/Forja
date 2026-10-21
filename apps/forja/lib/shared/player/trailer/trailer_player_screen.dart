@@ -10,7 +10,6 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
@@ -75,6 +74,9 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   bool _ended = false;
   bool _muted = false;
   bool _ready = false;
+  /// Session-level: a trailer became ready at least once (quality switch /
+  /// next trailer reset [_ready] while re-resolving).
+  bool _sessionHadFrame = false;
   bool _resolving = false;
   String? _resolveError;
   /// Native googlevideo failed (age-gate) — play via YouTube embed WebView.
@@ -104,8 +106,6 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
   final FocusNode _seekbarFocus = FocusNode(debugLabel: 'trailer-seekbar');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'trailer-player-tv-keys');
-  /// TV Back / Exit: hide chrome → arm (+ hint) → leave (desktop Escape parity).
-  bool _tvBackExitArmed = false;
   bool _tvFocus = false;
   bool _initialFocusClaimed = false;
   late int _pickerIndex;
@@ -200,17 +200,12 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted) return false;
-      return PlayerBackExitGate.consumeChromeOrArmExit(
+      return PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: _showControls,
-        armed: _tvBackExitArmed,
+        mediaStarted: _sessionHadFrame,
         hideChrome: () {
           _hideTimer?.cancel();
           setState(() => _showControls = false);
-        },
-        setArmed: (v) {
-          if (!mounted) return;
-          if (_tvBackExitArmed == v) return;
-          setState(() => _tvBackExitArmed = v);
         },
       );
     });

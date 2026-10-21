@@ -433,6 +433,9 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   Player? _player;
   VideoController? _controller;
   bool _playerReady = false;
+  /// This player session has shown at least one frame. Never reset while the
+  /// screen lives (zaps / reconnects re-buffer, they do not "un-start").
+  bool _sessionHadFrame = false;
   int _videoEpoch = 0;
   /// MediaKit→Exo: remount Exo TextureView once after first paint (issue 129).
   bool _exoFitRemountAfterMediaKit = false;
@@ -549,10 +552,6 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
 
   bool _guideVisible = false;
   bool _searchVisible = false;
-
-  /// First TV Back focused the Back control — next Back exits even before
-  /// the post-frame [requestFocus] lands.
-  bool _tvBackExitArmed = false;
   late String _selectedGroupId;
   late String _currentChannelId;
   GuideEpgCache? _epgCache;
@@ -896,7 +895,6 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
       if (_isPipMode) return false;
       // Menus (Stream stats, Player, …) own Back before the exit ladder.
       if (dismissAnyPlayerChromeOverlay()) {
-        _tvBackExitArmed = false;
         return true;
       }
       // Guide owns Back first (HardwareKeyboard steals Focus onKey).
@@ -907,7 +905,6 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
           _guideVisible = false;
           _controlsVisible = true;
         });
-        _tvBackExitArmed = false;
         _hideControlsTimer?.cancel();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_disposed || !mounted) return;
@@ -915,27 +912,22 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         });
         return true;
       }
-      final stay = PlayerBackExitGate.consumeChromeOrArmExit(
+      // No picture yet this session (first open pending): one Back leaves.
+      // A zap / reconnect re-buffer after a frame keeps the hide-then-leave.
+      return PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: _controlsVisible,
-        armed: _tvBackExitArmed,
+        mediaStarted: _sessionHadFrame,
         hideChrome: () {
           _hideControlsTimer?.cancel();
           setState(() => _controlsVisible = false);
         },
-        setArmed: (v) {
-          if (_disposed || !mounted) return;
-          if (_tvBackExitArmed == v) return;
-          setState(() => _tvBackExitArmed = v);
-        },
       );
-      return stay;
     });
     PlayerBackExitGate.setTryConsumePlayerOverlay(() {
       if (_disposed || !mounted || _isPipMode) return false;
       if (!_searchVisible) return false;
       // Results list → search field (HardwareKeyboard steals Focus onKey).
       if (ChannelSearchOverlay.tryConsumeBackToField()) {
-        _tvBackExitArmed = false;
         return true;
       }
       // Field (or empty results) → close overlay; stay in player.
@@ -943,7 +935,6 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         _searchVisible = false;
         _controlsVisible = true;
       });
-      _tvBackExitArmed = false;
       _hideControlsTimer?.cancel();
       _scheduleHideControls();
       return true;
@@ -1357,7 +1348,6 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   Future<void> _exitIptvPlayer() async {
     if (_disposed || _exitInProgress) return;
     if (ShellTvFocusCoordinator.consumeOverlayBack()) {
-      _tvBackExitArmed = false;
       PlayerBackExitGate.exitReady = false;
       return;
     }

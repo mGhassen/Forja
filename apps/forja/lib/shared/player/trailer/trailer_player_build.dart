@@ -152,8 +152,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               DesktopWindowChrome.overlayDragStrip(
                 showCaption: _s._showControls,
               ),
-              if (tvFocus && _s._tvBackExitArmed)
-                const PlayerEscapeExitHint.tv(),
             ],
           ),
         ),
