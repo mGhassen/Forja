@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/downloads/download_hub_progress.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_card_quick_actions.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_button.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
@@ -13,6 +14,7 @@ import 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/card_quick_menu_tokens.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -28,6 +30,17 @@ String? _offlineLibraryId(Object? open, Object? meta) {
   final fromOpen = _offlineSurfaceId(open);
   if (fromOpen != null) return fromOpen;
   if (meta is Map) return _offlineSurfaceId(meta['open']);
+  return null;
+}
+
+/// Pack-emitted list status on a card (`props.listStatus` / `meta.listStatus`).
+String? _knownListStatus(Map<String, dynamic> props, Object? meta) {
+  final fromProps = (props['listStatus'] ?? '').toString().trim();
+  if (fromProps.isNotEmpty) return fromProps;
+  if (meta is Map) {
+    final fromMeta = (meta['listStatus'] ?? '').toString().trim();
+    if (fromMeta.isNotEmpty) return fromMeta;
+  }
   return null;
 }
 
@@ -206,8 +219,8 @@ abstract final class PackPaintArtifact {
     final status = (knownStatus ?? '').trim().isNotEmpty
         ? knownStatus!.trim()
         : (fromProps.isNotEmpty
-            ? fromProps
-            : (fromMeta.isNotEmpty ? fromMeta : null));
+              ? fromProps
+              : (fromMeta.isNotEmpty ? fromMeta : null));
     return KitListStatusButton.follow(
       followTarget: target,
       excludeFromTvTraversal: true,
@@ -258,6 +271,17 @@ abstract final class PackPaintArtifact {
         );
         final hover = packDouble(props['hoverScale']);
         final focus = packDouble(props['focusScale']);
+        // Leanback OK-hold / MENU → quick menu (Play · Details · My List).
+        final quickMenu = KitCardQuickActions.openerFor(
+          context,
+          pluginId: pluginId,
+          item: metaItemOf(
+            props: props,
+            open: resolvedOpen,
+            meta: resolvedMeta,
+          ),
+          knownStatus: _knownListStatus(props, resolvedMeta),
+        );
         // durationMs reserved for motion theme; focusableTap uses preset duration.
         final card = InteractivePosterCard(
           imageUrl: (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
@@ -278,6 +302,8 @@ abstract final class PackPaintArtifact {
           ),
           listIndex: listIndex,
           onTap: onTap ?? () {},
+          onLongPress: quickMenu,
+          longPressDuration: CardQuickMenuTokens.holdDelay,
           aspect: aspect,
           width: width,
           height: packLength(context, props['height']),
