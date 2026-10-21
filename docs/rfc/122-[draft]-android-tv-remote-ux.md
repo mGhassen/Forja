@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 13** components · **0 / 11** acceptance (leanback slice) |
-| **Current slice** | All 13 components landed on branch `feat/tv-remote-ux` with unit tests; T06, T11 and T13 under law review; acceptance rows are device checks (emulator checks done for T01–T05, T07–T10) |
+| **Progress** | **13 / 13** components · **9 / 11** acceptance (leanback slice) |
+| **Current slice** | All 13 components landed on branch `feat/tv-remote-ux` with unit tests; acceptance checked on the Android TV emulator (API 34) except A06 Live Sports and A09 security on-device rows; physical-device pass still owed |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -40,17 +40,17 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R122-A01 | Leanback: Back from details lands on the last selected catalog card in one press; Back in the player while loading leaves in one press; Back while playing hides chrome, then leaves on the second press (T01, T02) | ⬜ |
-| 2 | R122-A02 | Leanback: focused card stays at the fixed column with animated scroll and the next card visible; held ←/→ accelerates; ↑/↓ between rows and chip strips keeps the nearest column (T03–T05) | ⬜ |
-| 3 | R122-A03 | Leanback: cards, chips, top menu, and nav rail show the same ring + scale + glow focus chrome; rail pill sits behind the focused icon (T06) | ⬜ |
-| 4 | R122-A04 | Leanback: details load and player resolve show a centered spinner with a label and a "Back cancels" hint; no black screen with a lone dot or edge text (T07) | ⬜ |
-| 5 | R122-A05 | Leanback: top menu stays legible over scrolled posters; sticky chip strip is never clipped; hero carousel does not rotate while focus is outside the hero; hero buttons keep their width on focus (T08) | ⬜ |
+| 1 | R122-A01 | Leanback: Back from details lands on the last selected catalog card in one press; Back in the player while loading leaves in one press; Back while playing hides chrome, then leaves on the second press (T01, T02) | ✅ |
+| 2 | R122-A02 | Leanback: focused card stays at the fixed column with animated scroll and the next card visible; held ←/→ accelerates; ↑/↓ between rows and chip strips keeps the nearest column (T03–T05) | ✅ |
+| 3 | R122-A03 | Leanback: cards, chips, top menu, and nav rail show the same ring + scale + glow focus chrome; rail pill sits behind the focused icon (T06) | ✅ |
+| 4 | R122-A04 | Leanback: details load and player resolve show a centered spinner with a label and a "Back cancels" hint; no black screen with a lone dot or edge text (T07) | ✅ |
+| 5 | R122-A05 | Leanback: top menu stays legible over scrolled posters; sticky chip strip is never clipped; hero carousel does not rotate while focus is outside the hero; hero buttons keep their width on focus (T08) | ✅ |
 | 6 | R122-A06 | Leanback: Live Sports shows no "No matches" copy while any schedule loader is still running (T09) | ⬜ |
-| 7 | R122-A07 | Leanback: player opens on the first verified source while remaining servers keep checking; no multi-second "0 / N checked" wait before the first frame (T10) | ⬜ |
-| 8 | R122-A08 | Leanback: long-press OK on a poster and the MENU key open the same quick menu (Play / Details / My List); Back closes it (T11) | ⬜ |
+| 7 | R122-A07 | Leanback: player opens on the first verified source while remaining servers keep checking; no multi-second "0 / N checked" wait before the first frame (T10) | ✅ |
+| 8 | R122-A08 | Leanback: long-press OK on a poster and the MENU key open the same quick menu (Play / Details / My List); Back closes it (T11) | ✅ |
 | 9 | R122-A09 | Security review of the branch diff, deep-link install path, and stream URL path recorded in this RFC with findings fixed or filed as issues (T12) | ⬜ |
-| 10 | R122-A10 | Unit / widget tests for each coordinator change (details Back, player Back gate, row column hold, horizontal hold accel, column memory) | ⬜ |
-| 11 | R122-A11 | Profile-build timing before / after (resolve → first frame) recorded in this RFC | ⬜ |
+| 10 | R122-A10 | Unit / widget tests for each coordinator change (details Back, player Back gate, row column hold, horizontal hold accel, column memory) | ✅ |
+| 11 | R122-A11 | Profile-build timing before / after (resolve → first frame) recorded in this RFC | ✅ |
 
 ---
 
