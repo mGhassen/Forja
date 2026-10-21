@@ -517,6 +517,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
       onPosition: (pos) {
         if (_disposed || _lockSeekBarPosition) return;
         _positionNotifier.value = pos;
+        _applyPlayheadChrome(pos);
       },
       onPlaying: (playing) {
         if (_disposed) return;

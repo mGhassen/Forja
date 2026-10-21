@@ -479,6 +479,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                           onPosition: (pos) {
                             if (_s._disposed || _s._lockSeekBarPosition) return;
                             _s._positionNotifier.value = pos;
+                            _s._applyPlayheadChrome(pos);
                           },
                           onPlaying: (playing) {
                             if (_s._disposed) return;

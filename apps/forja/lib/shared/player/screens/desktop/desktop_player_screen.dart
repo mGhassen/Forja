@@ -481,6 +481,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
       onPosition: (pos) {
         if (_disposed || _lockSeekBarPosition) return;
         _positionNotifier.value = pos;
+        _applyPlayheadChrome(pos);
       },
       onPlaying: (playing) {
         if (_disposed) return;

@@ -423,7 +423,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [422-[fixed]-…](fixed/422-[fixed]-airplay-offline-file-cannot-open.md) | AirPlay offline file Cannot Open | P1 | High | fixed | Complete · 2/2 · A 0/1 | [RFC-005](../rfc/005-[partial]-casting.md) |
 | [451-[fixed]-…](fixed/451-[fixed]-airplay-seek-bar-not-synced.md) | AirPlay seek bar / play-pause not synced while casting | P1 | Medium | fixed | Complete · 5/5 · A 0/2 | [RFC-005](../rfc/005-[partial]-casting.md) |
 | [452-[fixed]-…](fixed/452-[fixed]-airplay-no-casting-indicator.md) | AirPlay no casting indicator while active | P1 | Medium | fixed | Complete · 2/2 · A 0/1 | [RFC-005](../rfc/005-[partial]-casting.md) |
-| [453-[fixed]-…](fixed/453-[fixed]-airplay-drops-on-next-episode.md) | AirPlay drops on next episode | P1 | Medium | fixed | Complete · 4/4 · A 0/1 | [RFC-005](../rfc/005-[partial]-casting.md) |
+| [453-[fixed]-…](fixed/453-[fixed]-airplay-drops-on-next-episode.md) | AirPlay drops on next episode | P1 | Medium | fixed | Complete · 5/5 · A 0/1 | [RFC-005](../rfc/005-[partial]-casting.md) |
 | [454-[fixed]-…](fixed/454-[fixed]-continue-watching-drops-finished-episode.md) | Continue Watching drops show when an episode finishes | P1 | High | fixed | Complete · 4/4 · A 0/2 | — |
 | [424-[fixed]-…](fixed/424-[fixed]-mediakit-double-subtitle-paint.md) | MediaKit paints the same subtitle cue twice | P1 | Medium | fixed | Complete · 3/3 · A 0/1 | — |
 | [425-[open]-…](425-[open]-home-stream-language-filter.md) | Home stream language multiselect filters providers | P1 | Medium | open | 6/6 · A 0/3 | — |

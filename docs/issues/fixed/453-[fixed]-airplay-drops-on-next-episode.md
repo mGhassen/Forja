@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4/4** tasks · **0/1** acceptance (device QA) |
+| **Progress** | **Complete · 5/5** tasks · **0/1** acceptance (device QA) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I453-T02 | CastingService retain across player replace + `replaceActiveCast` | ✅ |
 | 3 | I453-T03 | `AppRouter.openPlayer` retain; desktop/mobile rebind on playback confirm | ✅ |
 | 4 | I453-T04 | Suppress local **Buffering…** while AirPlay owns playback | ✅ |
+| 5 | I453-T05 | Drive Skip Intro / Credits / Next Episode from AirPlay playhead | ✅ |
 
 ---
 

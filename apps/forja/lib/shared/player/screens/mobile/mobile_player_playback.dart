@@ -1445,25 +1445,7 @@ mixin _MobilePlayerPlayback
         }
       }
 
-      // Near-end detection for next episode button (clears if seeked back /
-      // duration corrects after a bogus early report).
-      if (_s._isNextEpisodeAvailable) {
-        final nearEnd = isNearEndOfEpisode(uiPos, _s._durationNotifier.value);
-        if (nearEnd != _s._nearEndOfEpisode) {
-          setState(() {
-            _s._nearEndOfEpisode = nearEnd;
-            _s._onNearEndChanged(nearEnd);
-          });
-        }
-      } else if (_s._nearEndOfEpisode) {
-        setState(() {
-          _s._nearEndOfEpisode = false;
-          _s._onNearEndChanged(false);
-        });
-      }
-
-      // Skip segment detection (IntroDB)
-      _s._updateActiveSkipSegment(uiPos);
+      _s._applyPlayheadChrome(uiPos);
     });
 
     _s._durationSub = _s._player.stream.duration.listen((dur) {

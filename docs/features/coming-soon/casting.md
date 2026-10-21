@@ -20,6 +20,7 @@ In the movie player or **Live Sports** player, tap **Cast** in the top-right. On
 - Watch the seek bar move with the TV, scrub or play/pause in Forja to control the TV
 - See **Playing on AirPlay** (and a lit cast button) while the TV is playing
 - Go to the next episode without casting again — the TV picks up the new stream
+- Use **Skip Intro**, **Skip Credits**, and **Next Episode** in Forja while the TV plays
 - Pick your own device again to come back — Forja resumes where the TV stopped
 
 ## Coming soon

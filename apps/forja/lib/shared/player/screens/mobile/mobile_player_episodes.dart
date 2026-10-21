@@ -18,6 +18,26 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   //  SKIP SEGMENTS (IntroDB)
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Skip chips + Next Episode from the current playhead (local or AirPlay).
+  void _applyPlayheadChrome(Duration uiPos) {
+    if (_s._disposed) return;
+    if (_isNextEpisodeAvailable) {
+      final nearEnd = isNearEndOfEpisode(uiPos, _s._durationNotifier.value);
+      if (nearEnd != _s._nearEndOfEpisode) {
+        setState(() {
+          _s._nearEndOfEpisode = nearEnd;
+          _onNearEndChanged(nearEnd);
+        });
+      }
+    } else if (_s._nearEndOfEpisode) {
+      setState(() {
+        _s._nearEndOfEpisode = false;
+        _onNearEndChanged(false);
+      });
+    }
+    _updateActiveSkipSegment(uiPos);
+  }
+
   void _updateActiveSkipSegment(Duration pos) {
     if (_s._introDbData == null) return;
 
