@@ -30,10 +30,8 @@ class PluginRegistry {
   static final PluginRegistry instance = PluginRegistry._();
 
   /// Pack `prelude` may list one path or comma-separated paths (`_kit.js,_search.js`).
-  static Iterable<String> expandPreludePaths(String spec) => spec
-      .split(',')
-      .map((s) => s.trim())
-      .where((s) => s.isNotEmpty);
+  static Iterable<String> expandPreludePaths(String spec) =>
+      spec.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty);
 
   static const _packsKeyV1 = 'engine_js_packs_v1';
   static const _packsKeyV2 = 'engine_js_packs_v2';
@@ -168,6 +166,23 @@ class PluginRegistry {
   Future<void>? _officialEnsureFuture;
   final Set<String> _scriptRepairAttempted = {};
 
+  /// Remote packs whose scripts were seen complete on disk, keyed by profile
+  /// scope + sourceUrl. [listPacks] runs on every extract; without this each
+  /// call re-stats every plugin file of every pack. Cleared on any pack index
+  /// write ([_invalidatePacksMem]).
+  final Set<String> _scriptDiskVerified = {};
+
+  /// Remote pack script bodies by profile scope + sourceUrl + pluginId.
+  /// Remote scripts only change through [install] / [removePack], both of
+  /// which rewrite the index and clear this. Local checkouts always hit disk.
+  final Map<String, String> _scriptBodyMem = {};
+
+  /// Remote pack prelude bodies by profile scope + sourceUrl + prelude part.
+  final Map<String, String> _preludeMem = {};
+
+  static String _scopedMemKey(Iterable<String> parts) =>
+      '${LocalDataScope.generation}\u0000${parts.join('\u0000')}';
+
   /// Test-only HTTP client override (MockClient).
   @visibleForTesting
   http.Client? debugHttpClient;
@@ -202,6 +217,9 @@ class PluginRegistry {
   void _invalidatePacksMem() {
     _packsMem = null;
     _packsMemScopeGen = -1;
+    _scriptDiskVerified.clear();
+    _scriptBodyMem.clear();
+    _preludeMem.clear();
   }
 
   /// Sync peek of the last [listPacksRaw] result — null when cold / wrong profile.
@@ -841,7 +859,16 @@ class PluginRegistry {
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
       if (isLocalManifestUrl(pack.sourceUrl)) continue;
       if (_scriptRepairAttempted.contains(pack.sourceUrl)) continue;
-      if (!await packNeedsDiskInstall(pack)) continue;
+      // Invariant: a verified pack is never re-stat-ed for the process
+      // lifetime. Safe because both disk writers that can remove scripts
+      // ([install] and [removePack] → removeEnginePack) end in a pack index
+      // write, which clears this set via [_invalidatePacksMem].
+      final verifiedKey = _scopedMemKey([pack.sourceUrl]);
+      if (_scriptDiskVerified.contains(verifiedKey)) continue;
+      if (!await packNeedsDiskInstall(pack)) {
+        _scriptDiskVerified.add(verifiedKey);
+        continue;
+      }
       _scriptRepairAttempted.add(pack.sourceUrl);
       debugPrint(
         '[engine] scripts missing for ${pack.name} — '
@@ -1036,10 +1063,7 @@ class PluginRegistry {
       final map = jsonDecode(body);
       if (map is! Map) return (version: null, gone: false);
       final remoteVer = (map['version'] as String?)?.trim() ?? '';
-      return (
-        version: remoteVer.isEmpty ? null : remoteVer,
-        gone: false,
-      );
+      return (version: remoteVer.isEmpty ? null : remoteVer, gone: false);
     } on ManifestGoneException catch (e) {
       debugPrint('[engine] remote manifest gone ($manifestUrl): $e');
       return (version: null, gone: true);
@@ -1093,6 +1117,7 @@ class PluginRegistry {
     String manifestUrl, {
     void Function()? onScriptFetched,
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
+
     /// Settings Reload / Update: always hit the network (skip splash disk reuse).
     bool forceNetwork = false,
   }) => _withInstallLock(
@@ -1253,10 +1278,12 @@ class PluginRegistry {
       }
       if (reused > 0) {
         // Count disk hits as completed steps so the splash bar moves.
-        fetchDone = 1 + [
-          for (final path in filesToFetch)
-            if (byPathBytes.containsKey(path)) path,
-        ].length;
+        fetchDone =
+            1 +
+            [
+              for (final path in filesToFetch)
+                if (byPathBytes.containsKey(path)) path,
+            ].length;
         onFetchProgress?.call(
           PluginScriptFetchProgress(
             completed: fetchDone,
@@ -1294,9 +1321,7 @@ class PluginRegistry {
                 continue;
               }
               missing.add(path);
-              debugPrint(
-                '[PluginInstall] empty $path after $attempt attempts',
-              );
+              debugPrint('[PluginInstall] empty $path after $attempt attempts');
               return null;
             }
             byPathBytes[path] = bytes;
@@ -1323,9 +1348,7 @@ class PluginRegistry {
                 '[PluginInstall] retry $path '
                 '($attempt/$_packFetchMaxAttempts): $e',
               );
-              await Future<void>.delayed(
-                Duration(milliseconds: 150 * attempt),
-              );
+              await Future<void>.delayed(Duration(milliseconds: 150 * attempt));
               continue;
             }
             missing.add(path);
@@ -1489,8 +1512,10 @@ class PluginRegistry {
     final hubSlot = forjaHqSlot(manifestUrl);
     var hubCacheWipedAll = false;
     if (isHubManifestSlot(hubSlot) || isIptvVodManifestSlot(hubSlot)) {
-      hubCacheWipedAll =
-          EngineCache.instance.syncPackVersion(pack.packId, pack.version);
+      hubCacheWipedAll = EngineCache.instance.syncPackVersion(
+        pack.packId,
+        pack.version,
+      );
     }
     // Scripts may change at the same semver — always drop cached catalog answers.
     final wipedHubIds = <String>[];
@@ -1835,22 +1860,27 @@ class PluginRegistry {
       return fromCheckout;
     }
 
-    var code = await PluginScriptDiskStore.loadEngineScript(
-      sourceUrl: sourceUrl,
-      pluginId: plugin.id,
-    );
-    if (code == null || code.isEmpty) {
-      // Lazy migrate leftover prefs key.
-      final prefs = await _prefs;
-      final cached = prefs.getString(scriptPrefsKey(sourceUrl, plugin.id));
-      if (cached == null || cached.isEmpty) return null;
-      await PluginScriptDiskStore.saveEngineScript(
+    final bodyKey = _scopedMemKey([sourceUrl, plugin.id]);
+    var code = _scriptBodyMem[bodyKey];
+    if (code == null) {
+      code = await PluginScriptDiskStore.loadEngineScript(
         sourceUrl: sourceUrl,
         pluginId: plugin.id,
-        body: cached,
       );
-      await prefs.remove(scriptPrefsKey(sourceUrl, plugin.id));
-      code = cached;
+      if (code == null || code.isEmpty) {
+        // Lazy migrate leftover prefs key.
+        final prefs = await _prefs;
+        final cached = prefs.getString(scriptPrefsKey(sourceUrl, plugin.id));
+        if (cached == null || cached.isEmpty) return null;
+        await PluginScriptDiskStore.saveEngineScript(
+          sourceUrl: sourceUrl,
+          pluginId: plugin.id,
+          body: cached,
+        );
+        await prefs.remove(scriptPrefsKey(sourceUrl, plugin.id));
+        code = cached;
+      }
+      _scriptBodyMem[bodyKey] = code;
     }
 
     if (preludeEntry.isNotEmpty) {
@@ -1876,22 +1906,29 @@ class PluginRegistry {
         .toList();
     if (parts.isEmpty) return '';
     final buf = StringBuffer();
-    final prefs = await _prefs;
     for (final part in parts) {
-      var shared = await PluginScriptDiskStore.loadEnginePrelude(
-        sourceUrl: sourceUrl,
-        preludeEntry: part,
-      );
-      if (shared == null || shared.isEmpty) {
-        final pre = prefs.getString(preludePrefsKey(sourceUrl, part));
-        if (pre != null && pre.isNotEmpty) {
-          await PluginScriptDiskStore.saveEnginePrelude(
-            sourceUrl: sourceUrl,
-            preludeEntry: part,
-            body: pre,
-          );
-          await prefs.remove(preludePrefsKey(sourceUrl, part));
-          shared = pre;
+      final preludeKey = _scopedMemKey([sourceUrl, part]);
+      var shared = _preludeMem[preludeKey];
+      if (shared == null) {
+        shared = await PluginScriptDiskStore.loadEnginePrelude(
+          sourceUrl: sourceUrl,
+          preludeEntry: part,
+        );
+        if (shared == null || shared.isEmpty) {
+          final prefs = await _prefs;
+          final pre = prefs.getString(preludePrefsKey(sourceUrl, part));
+          if (pre != null && pre.isNotEmpty) {
+            await PluginScriptDiskStore.saveEnginePrelude(
+              sourceUrl: sourceUrl,
+              preludeEntry: part,
+              body: pre,
+            );
+            await prefs.remove(preludePrefsKey(sourceUrl, part));
+            shared = pre;
+          }
+        }
+        if (shared != null && shared.isNotEmpty) {
+          _preludeMem[preludeKey] = shared;
         }
       }
       if (shared == null || shared.isEmpty) continue;
@@ -2071,7 +2108,8 @@ class PluginRegistry {
         // or omitted lean row (issue 289). Same-slot remote URLs still match
         // via [_leanRemoteKeyForPack] above.
         final stub = pack.plugins.isEmpty;
-        final dropNow = stub ||
+        final dropNow =
+            stub ||
             purgeRemovedImmediately ||
             isLocalManifestUrl(pack.sourceUrl);
         if (dropNow) {
@@ -2092,7 +2130,8 @@ class PluginRegistry {
         continue;
       }
       if (remoteKey != null && remoteKey != pack.sourceUrl) {
-        final localOk = isLocalManifestUrl(pack.sourceUrl) &&
+        final localOk =
+            isLocalManifestUrl(pack.sourceUrl) &&
             await _localManifestExists(pack.sourceUrl);
         if (localOk) {
           // Readable checkout wins over same-slot remote URL — still apply
@@ -2113,9 +2152,7 @@ class PluginRegistry {
           continue;
         }
         // Remote URL moved (or dead local path) — cloud URL wins.
-        debugPrint(
-          '[engine] lean URL migrate ${pack.sourceUrl} → $remoteKey',
-        );
+        debugPrint('[engine] lean URL migrate ${pack.sourceUrl} → $remoteKey');
         victims.add(pack);
         changed = true;
         await DeferredRemoteInstallStore.clear(pack.sourceUrl);

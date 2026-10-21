@@ -4,6 +4,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/engine/packs/settings/pack_green_play_config.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
+import 'package:forja/shared/playback/open/playback_start_trace.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 
@@ -20,15 +21,19 @@ Future<void> runPackGreenPlay({
     return;
   }
 
+  final trace = PlaybackStartTrace.instance;
   final config = await PackGreenPlayConfig.resolve(ctx.pluginId);
   if (!context.mounted) return;
+  trace.mark('green-play-config-resolved');
 
   final packs = await EngineService.instance.listSourcesPanelPacks();
   if (!context.mounted) return;
+  trace.mark('packs-listed', detail: 'packs=${packs.length}');
 
   final langKeys = await PluginStreamLanguages.selectedKeys(ctx.pluginId);
   if (!context.mounted) return;
-  final audioCategory = ctx.audioCategory ??
+  final audioCategory =
+      ctx.audioCategory ??
       PluginStreamLanguages.audioCategoryFromKeys(langKeys);
 
   final session = PlaySession(
@@ -71,7 +76,9 @@ Future<void> runPackGreenPlay({
     for (final id in langFiltered)
       if (!preferred.contains(id)) id,
   ];
+  trace.mark('plugin-list-ready', detail: 'plugins=${ordered.length}');
   if (ordered.isEmpty) {
+    trace.abandon();
     if (context.mounted) {
       ForjaToast.info(
         langKeys.isEmpty
@@ -83,9 +90,8 @@ Future<void> runPackGreenPlay({
   }
 
   final resumePin = ctx.preferredPluginId?.trim();
-  final pin = (resumePin != null &&
-          resumePin.isNotEmpty &&
-          ordered.contains(resumePin))
+  final pin =
+      (resumePin != null && resumePin.isNotEmpty && ordered.contains(resumePin))
       ? resumePin
       : (preferred.isNotEmpty ? preferred.first : null);
 

@@ -74,11 +74,11 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
         .toString();
 
     Future<Map<String, String>> pack(String fileUri) async => {
-          'url': fileUri,
-          'lang': lang,
-          'label': label,
-          'sourceUrl': url,
-        };
+      'url': fileUri,
+      'lang': lang,
+      'label': label,
+      'sourceUrl': url,
+    };
 
     final cached = _s._externalSubFileCache[url];
     if (cached != null) {
@@ -150,8 +150,8 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       final ext = lowerPath.endsWith('.vtt')
           ? 'vtt'
           : lowerPath.endsWith('.srt')
-              ? 'srt'
-              : 'srt';
+          ? 'srt'
+          : 'srt';
       final file = File(
         '${dir.path}/forja_exo_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.$ext',
       );
@@ -165,15 +165,15 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     }
   }
 
+  /// Downloads every sideload at once; one slow host no longer serialises
+  /// the rest. Failed rows are dropped, order is preserved.
   Future<List<Map<String, String>>> _prepareOpenSubtitles(
     List<Map<String, dynamic>> raw,
   ) async {
-    final out = <Map<String, String>>[];
-    for (final s in raw) {
-      final prepared = await _prepareSubtitleSideload(s);
-      if (prepared != null) out.add(prepared);
-    }
-    return out;
+    final results = await Future.wait([
+      for (final s in raw) _prepareSubtitleSideload(s),
+    ]);
+    return [for (final prepared in results) ?prepared];
   }
 
   Future<void> _fetchSubtitles() async {
@@ -311,15 +311,15 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
 
     // Already on a matching Media3 text track (embedded or previous sideload).
     if (_s._tracks.text.any(
-          (t) =>
-              !_s._tracks.textOff &&
-              t.selected &&
-              matchesPreferredLanguage(
-                preferred,
-                language: t.language,
-                title: t.label,
-              ),
-        )) {
+      (t) =>
+          !_s._tracks.textOff &&
+          t.selected &&
+          matchesPreferredLanguage(
+            preferred,
+            language: t.language,
+            title: t.label,
+          ),
+    )) {
       _s._preferredSubtitleApplied = true;
       return;
     }
@@ -330,18 +330,12 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       restrictScraped: restrictScrapedSubtitleAutoPick(
         mediaType: widget.movie?.mediaType,
         engineCategory: widget.movie != null && widget.enginePlaySession != null
-            ? engineCategoryForSession(
-                widget.enginePlaySession,
-                widget.movie!,
-              )
+            ? engineCategoryForSession(widget.enginePlaySession, widget.movie!)
             : null,
       ),
     );
 
-    final pick = pickExternalSubtitleWithFallback(
-      preferred,
-      subsForAuto,
-    );
+    final pick = pickExternalSubtitleWithFallback(preferred, subsForAuto);
     if (pick == null) return;
     final pickUrl = pick['url']?.toString();
     if (pickUrl != null && pickUrl == _s._selectedExternalSubUrl) {
@@ -373,11 +367,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     _s._preferredSubtitleApplied = true;
     _s._cueTexts.value = const [];
     await SettingsService().setPreferredSubtitleLanguage('None');
-    await ExoPlayerBridge.selectTrack(
-      _s._viewId,
-      type: 'text',
-      trackId: null,
-    );
+    await ExoPlayerBridge.selectTrack(_s._viewId, type: 'text', trackId: null);
     if (mounted) setState(() {});
   }
 
@@ -405,8 +395,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
                 language: t.language,
                 title: t.label,
               )) ||
-          (label.isNotEmpty &&
-              t.label.toLowerCase() == label.toLowerCase())) {
+          (label.isNotEmpty && t.label.toLowerCase() == label.toLowerCase())) {
         match = t;
         break;
       }
