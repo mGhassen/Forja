@@ -1527,6 +1527,13 @@ mixin _MobilePlayerPlayback
 
     _s._bufferingSub = _s._player.stream.buffering.listen((buffering) {
       if (_s._disposed) return;
+      // AirPlay owns playback — local demux buffering must not paint chrome.
+      if (CastingService.instance.airPlayActive.value) {
+        if (_s._isBufferingNotifier.value) {
+          _s._isBufferingNotifier.value = false;
+        }
+        return;
+      }
       _s._isBufferingNotifier.value = buffering;
       _s._postSeekStall?.onBuffering(buffering);
     });

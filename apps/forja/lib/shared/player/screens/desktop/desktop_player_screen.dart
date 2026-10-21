@@ -471,11 +471,19 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
         (isLocalTorrentStreamUrl(widget.mediaPath) ? widget.mediaPath : null);
     if (url == null || url.isEmpty) return;
     final handoff = CastHandoff(
-      onStarted: () => unawaited(_player.pause()),
+      onStarted: () {
+        unawaited(_player.pause());
+        _isPlayingNotifier.value = true;
+        _isBufferingNotifier.value = false;
+      },
       onEnded: (resumeAt) => unawaited(_resumeAfterCast(resumeAt)),
       onPosition: (pos) {
         if (_disposed || _lockSeekBarPosition) return;
         _positionNotifier.value = pos;
+      },
+      onPlaying: (playing) {
+        if (_disposed) return;
+        _isPlayingNotifier.value = playing;
       },
     );
     final ok = await CastingService.instance.replaceActiveCast(
@@ -490,6 +498,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     if (_disposed) return;
     if (ok) {
       _positionNotifier.value = Duration.zero;
+      _isBufferingNotifier.value = false;
       await _player.pause();
     }
   }

@@ -473,6 +473,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                           onStarted: () {
                             unawaited(_s._player.pause());
                             _s._isPlayingNotifier.value = true;
+                            _s._isBufferingNotifier.value = false;
                           },
                           onEnded: (resumeAt) => unawaited(_s._resumeAfterCast(resumeAt)),
                           onPosition: (pos) {

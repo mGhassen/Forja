@@ -273,7 +273,9 @@ class PlayerStatusOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget buildOverlay(bool buffering, bool airPlayActive) {
-      final rouletteEntries = _rouletteEntries(buffering);
+      // Local mpv keeps buffering while AirPlay owns playback — hide that.
+      final rouletteEntries =
+          _rouletteEntries(buffering && !airPlayActive);
       final notificationEntries =
           _notificationEntries(airPlayActive: airPlayActive);
       if (rouletteEntries.isEmpty && notificationEntries.isEmpty) {

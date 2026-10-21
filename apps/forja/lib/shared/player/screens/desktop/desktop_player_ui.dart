@@ -293,6 +293,12 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       _s._isPlayingNotifier.value = v;
     });
     _s._bufferingSub = _s._player.stream.buffering.listen((v) {
+      if (CastingService.instance.airPlayActive.value) {
+        if (_s._isBufferingNotifier.value) {
+          _s._isBufferingNotifier.value = false;
+        }
+        return;
+      }
       _s._isBufferingNotifier.value = v;
     });
     _s._volumeSub = _s._player.stream.volume.listen((v) {
